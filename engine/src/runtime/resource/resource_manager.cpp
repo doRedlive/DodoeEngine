@@ -1,0 +1,66 @@
+//
+// Created by GreenMuffin on 2025/10/28.
+//
+
+#include "resource_manager.h"
+
+#include "runtime/core/utils/common.h"
+#include "runtime/function/context.h"
+
+#include "asset/texture_manager.h"
+#include "asset/shader_library.h"
+
+namespace dodoe {
+
+    ResourceManager& ResourceManager::self() {
+        if (!g_context.resource_manager) {
+            DoError("ResourceManager is not initialized!");
+            static ResourceManager fallback;
+            return fallback;
+        }
+
+        return *g_context.resource_manager;
+    }
+
+    void ResourceManager::initialize() {        
+        texture_manager_ = TextureManager::create({});
+        shader_library_ = ShaderLibrary::create({});
+    }
+
+    void ResourceManager::shutdown() {
+        TextureManager::destroy(texture_manager_);
+        ShaderLibrary::destroy(shader_library_);
+    }
+
+    Ref<Texture> ResourceManager::load_texture(const std::string& path) {
+        if (!texture_manager_) {
+            DoError("TextureManager is not initialized!");
+            return nullptr;
+        }
+
+        return texture_manager_->load_texture(path);
+    }
+
+    Ref<Shader> ResourceManager::load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path) {
+        if (!shader_library_) {
+            DoError("ShaderLibrary is not initialized!");
+            return nullptr;
+        }
+
+        return shader_library_->load_shader(name, vert_path, frag_path);
+    }
+
+    Ref<Texture> ResourceManager::get_texture(const std::string& path) {
+        return load_texture(path);
+    }
+
+    Ref<Shader> ResourceManager::get_shader(const std::string& name) {
+        if (!shader_library_) {
+            DoError("ShaderLibrary is not initialized!");
+            return nullptr;
+        }
+
+        return shader_library_->get_shader(name);
+    }
+
+} // dodoe 

@@ -1,0 +1,36 @@
+//
+// Sandbox application entry registration.
+//
+
+#include "core/application.h"
+#include "sandbox_layer.h"
+
+namespace sandbox {
+
+class SandboxApp final : public dodoe::Application {
+public:
+    explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
+        : dodoe::Application(spec) {
+        push_layer(new SandboxLayer("Sandbox"));
+    }
+
+    ~SandboxApp() override = default;
+};
+
+} // namespace sandbox
+
+namespace dodoe {
+
+Application* create_application(ApplicationCommandLineArgs cli_args) {
+    ApplicationSpecification sandbox_spec;
+    sandbox_spec.name = "dodoe-sandbox";
+    sandbox_spec.custom_titlebar = false;
+    sandbox_spec.window_resizeable = true;
+    sandbox_spec.width = 1600;
+    sandbox_spec.height = 900;
+    sandbox_spec.cli_args = cli_args;
+
+    return new sandbox::SandboxApp(sandbox_spec);
+}
+
+} // namespace dodoe
