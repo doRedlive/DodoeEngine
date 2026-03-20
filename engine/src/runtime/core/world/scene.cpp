@@ -6,6 +6,7 @@
 
 #include "world.h"
 #include "entity.h"
+#include "world_manager.h"
 
 #include "runtime/core/utils/common.h"
 #include "runtime/core/world/components.h"
@@ -16,9 +17,30 @@
 #include "runtime/function/render/camera/camera.h"
 #include "runtime/function/window/window_manager.h"
 
+#include "runtime/resource/resource_manager.h"
+
 namespace dodoe {
 
-    Scene::Scene(World& world, const std::string& name) : world_(world), name_(name), reg_(this), registry_(reg_) { }
+    namespace systems {
+        using namespace dodoe;
+
+        void SpriteRendererSystem(Registry& reg, float dt) {
+            (void)dt;
+            auto& world = WorldManager::self().active_world();
+
+            auto& renderer = world.context.renderer;
+            auto view = reg.view<SpriteRendererComponent, TransformComponent>();
+            view.each([&renderer](Entity entity, SpriteRendererComponent& sr, TransformComponent& tr) {
+                (void)entity;
+                auto texture = ResourceManager::self().load_texture(sr.texture_path);
+                renderer.draw_sprite(texture, {tr.position.x, tr.position.y}, {tr.scale.x, tr.scale.y}, tr.rotation, {sr.color.r, sr.color.g, sr.color.b, sr.color.a});
+            });
+        }
+    }
+
+    Scene::Scene(World& world, const std::string& name) : world_(world), name_(name), reg_(this), registry_(reg_) {
+        world.add_update_system(systems::SpriteRendererSystem);
+    }
 
     Scene::~Scene() = default;
 

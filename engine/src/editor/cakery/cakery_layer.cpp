@@ -26,12 +26,13 @@ namespace cakery {
     CakeryLayer::~CakeryLayer() { }
 
     void CakeryLayer::on_attach() {
-        if (WorldManager::world_count() == 0) {
-            WorldManager::create_world("default");
+        auto& world_manager = WorldManager::self();
+        if (world_manager.world_count() == 0) {
+            world_manager.create_world("default");
         }
-        Ref<World> default_world = WorldManager::get_world("default");
+        auto& default_world = world_manager.active_world();
 
-        const auto scene = default_world->active_scene();
+        const auto scene = default_world.active_scene();
         hierarchy_panel_.set_context(scene);
 
         const auto test_go = scene->create_game_object("test_go");

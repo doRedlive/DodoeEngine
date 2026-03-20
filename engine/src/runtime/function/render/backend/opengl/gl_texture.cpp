@@ -30,7 +30,10 @@ namespace dodoe {
 	}
 
 	void GlTexture::shutdown() {
-		glDeleteTextures(1, &id);
+		if (id != 0) {
+			glDeleteTextures(1, &id);
+			id = 0;
+		}
 	}
 
 } // dodoe

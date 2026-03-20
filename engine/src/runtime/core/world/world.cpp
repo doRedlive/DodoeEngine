@@ -15,18 +15,25 @@
 
 namespace dodoe {
 
-    // TODO: one window to one world;
-
     WorldProperty World::property = WorldProperty();
 
-    World::World(const std::string& name) : name_(name) { }
+    Scope<World> World::create(WorldCreateInfo create_info) {
+        auto context = Scope<World>(new World(std::string(create_info.name), create_info.context));
+        context->initialize();
+        return context;
+    }
+
+    void World::destroy(Scope<World>& world) {
+        world->shutdown();
+        world.reset();
+    }
+
+    World::World(const std::string& in_name, WorldContext& in_context) : name_(in_name), context(in_context) { }
 
     void World::initialize() {
-        GLFWwindow* active_window = nullptr;
-        if (const auto* window = g_context.window_manager->active_window()) {
-            active_window = window->native_window();
-        }
-        Camera::initialize(active_window);  // TODO : FIXME : window scene 处理好他俩的关系，
+
+        // context_ = SystemContext::create();
+
         // Read config
         auto* scene = active_scene();
         if (!scene) {

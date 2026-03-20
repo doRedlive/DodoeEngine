@@ -5,7 +5,6 @@
 #include "resource_manager.h"
 
 #include "runtime/core/utils/common.h"
-#include "runtime/function/context.h"
 
 #include "asset/texture_manager.h"
 #include "asset/shader_library.h"
@@ -13,16 +12,12 @@
 namespace dodoe {
 
     ResourceManager& ResourceManager::self() {
-        if (!g_context.resource_manager) {
-            DoError("ResourceManager is not initialized!");
-            static ResourceManager fallback;
-            return fallback;
-        }
-
-        return *g_context.resource_manager;
+        static ResourceManager instance;
+        return instance;
     }
 
     void ResourceManager::initialize() {        
+        shutdown();
         texture_manager_ = TextureManager::create({});
         shader_library_ = ShaderLibrary::create({});
     }

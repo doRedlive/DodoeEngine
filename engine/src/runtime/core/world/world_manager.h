@@ -9,21 +9,39 @@
 
 #include "world.h"
 
+#include "runtime/function/render/renderer.h"
+
 namespace dodoe {
+
+	struct WorldManagerInitInfo {
+		Renderer* renderer;
+	};
 
 	class WorldManager {
 	public:
-		[[nodiscard]]
-		static const std::vector<Ref<World>>& worlds();
-		[[nodiscard]]
-		static int world_count();
-		static Ref<World> create_world(const std::string& name);
-		[[nodiscard]]
-		static Ref<World> get_world(const std::string& name);
-		static void destory_worlds();
+		static WorldManager& self();
+
+		WorldManager(const WorldManager&) = delete;
+		WorldManager& operator=(const WorldManager&) = delete;
+		WorldManager(WorldManager&&) = delete;
+		WorldManager& operator=(WorldManager&&) = delete;
+
+		void initialize(WorldManagerInitInfo init_info);
+		void shutdown();
+
+		World& create_world(const std::string& name);
+		void destory_worlds();
+
+		[[nodiscard]] const std::vector<Scope<World>>& worlds() const;
+		[[nodiscard]] int world_count() const;
+		[[nodiscard]] World& get_world(const std::string& name);
+		[[nodiscard]] World& active_world();
 
 	private:
-		static std::vector<Ref<World>> worlds_;
+		std::vector<Scope<World>> worlds_;
+		Scope<WorldContext> context_{nullptr};
+		
+		WorldManager() = default;
 	};
 
 } // dodoe

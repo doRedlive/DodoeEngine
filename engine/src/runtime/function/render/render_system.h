@@ -16,17 +16,21 @@
 
 namespace dodoe {
 
-    struct RenderSystemInitInfo {
+    struct RenderSystemCreateInfo {
         WindowManager* window_manager;
     };
 
     class RenderSystem {
     public:
-        void initialize(RenderSystemInitInfo init_info);
+        static Scope<RenderSystem> create(RenderSystemCreateInfo create_info);
+
+        void initialize(RenderSystemCreateInfo init_info);
         void shutdown();
 
         void prepare();
         void present();
+
+        [[nodiscard]] Renderer* renderer() { return renderer_.get(); }
 
     private:
         Scope<Renderer> renderer_;

@@ -13,7 +13,13 @@
 
 namespace dodoe {
 
-    void RenderSystem::initialize(RenderSystemInitInfo init_info) {
+    Scope<RenderSystem> RenderSystem::create(RenderSystemCreateInfo create_info) {
+        auto context = create_scope<RenderSystem>();
+        context->initialize(create_info);
+        return context;
+    }
+
+    void RenderSystem::initialize(RenderSystemCreateInfo init_info) {
         window_manager_ = init_info.window_manager;
         auto native_window = window_manager_->active_window()->native_window();
         RenderApi::initialize({RenderApiType::OpenGL});
@@ -40,7 +46,6 @@ namespace dodoe {
 
     void RenderSystem::prepare() {
         RenderDrawer::clear_color(Color::Gray());
-        renderer_->draw_sprite(ResourceManager::self().load_texture("engine/res/pictures/grm.jpg"), {-0.5f, -0.5f}, {1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
     }
 
     void RenderSystem::present() {

@@ -46,8 +46,8 @@ namespace {
             const int mw = mode->width;
             const int mh = mode->height;
 
-            const int overlap_width = std::max(0, std::min(wx + ww, mx + mw) - std::max(wx, mx));
-            const int overlap_height = std::max(0, std::min(wy + wh, my + mh) - std::max(wy, my));
+            const int overlap_width = (std::max)(0, (std::min)(wx + ww, mx + mw) - (std::max)(wx, mx));
+            const int overlap_height = (std::max)(0, (std::min)(wy + wh, my + mh) - (std::max)(wy, my));
             const int overlap = overlap_width * overlap_height;
 
             if (overlap > best_overlap) {

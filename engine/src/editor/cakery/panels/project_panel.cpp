@@ -5,7 +5,7 @@
 #include "project_panel.h"
 
 #include "runtime/core/project/project.h"
-#include "runtime/function/context.h"
+#include "runtime/resource/resource_manager.h"
 
 #include "imgui/imgui.h"
 
@@ -17,8 +17,8 @@ namespace cakery {
         base_directory_ = FileSystem::asset_path;
         cur_directory_ = base_directory_;
 
-        directory_icon_ = g_context.resource_manager->get_texture("pictures/ContentBrowser/DirectoryIcon.png");
-        file_icon_ = g_context.resource_manager->get_texture("pictures/ContentBrowser/FileIcon.png");
+        directory_icon_ = ResourceManager::self().get_texture("pictures/ContentBrowser/DirectoryIcon.png");
+        file_icon_ = ResourceManager::self().get_texture("pictures/ContentBrowser/FileIcon.png");
     }
 
 	void ProjectPanel::on_ui_render() {

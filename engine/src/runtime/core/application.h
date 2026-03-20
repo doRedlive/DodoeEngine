@@ -47,14 +47,9 @@ namespace dodoe {
         virtual void push_layer(Layer* layer);
         virtual void pop_layer(Layer* layer);
 
-    protected:
-        void push_runtime_layer();
-        void pop_runtime_layer();
-
     private:
         bool running {false};
         LayerStack layer_stack_ {};
-        Layer* runtime_layer_{ nullptr };
         ApplicationSpecification app_spec_{};
         static Application* instance_;
 

@@ -11,7 +11,7 @@ namespace {
         auto file_path = std::filesystem::path(path);
         std::ifstream ifs(file_path, std::ios::in | std::ios::binary);
         if (!ifs) {
-            DoError("Can't open the file!");
+            DoError("Can't open the file: {}", path);
             return std::nullopt;
         }
 
@@ -70,7 +70,7 @@ namespace dodoe {
             auto [inserted_it, _] = shader_umap_.emplace(id, std::move(res));
             return inserted_it->second.shader;
         }
-        DoError("Can't load the shader!");
+        DoError("Can't load the shader! name={}, vert={}, frag={}", name, vert_path, frag_path);
         return nullptr;
     }
 

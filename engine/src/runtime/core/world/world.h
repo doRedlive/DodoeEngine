@@ -8,6 +8,7 @@
 #include "dopch.h"
 
 #include "registry.h"
+#include "world_context.h"
 
 #include "runtime/core/base.h"
 #include "runtime/core/world/scene.h"
@@ -22,13 +23,23 @@ namespace dodoe {
         float size{ 10.0f };
     };
 
+    struct WorldCreateInfo {
+        std::string_view name;
+        WorldContext& context;
+    };
+
     class World {
         friend class WorldManager;
+        friend class Scene;
     public:
         static WorldProperty property;
+        WorldContext& context;
 
-        World(const std::string& name);
+        World(const std::string& in_name, WorldContext& in_context);
         ~World() = default;
+
+        static Scope<World> create(WorldCreateInfo create_info);
+        static void destroy(Scope<World>& world);
 
         void initialize();
         void shutdown();
@@ -45,8 +56,8 @@ namespace dodoe {
         int add_start_system(StartSystem start);
         int add_update_system(UpdateSystem update);
 
-        const std::vector<StartSystem>&  load_start_systems();
-        const std::vector<UpdateSystem>& load_update_systems();
+        [[nodiscard]] const std::vector<StartSystem>&  load_start_systems();
+        [[nodiscard]] const std::vector<UpdateSystem>& load_update_systems();
 
         void remove_start_system(int id);
         void remove_update_system(int id);
@@ -55,6 +66,8 @@ namespace dodoe {
     private:
         std::string name_;
         Uuid uuid_{};
+
+
         std::vector<Scope<Scene>> scenes_{};
         std::vector<StartSystem> start_systems_{};
         std::vector<UpdateSystem> update_systems_{};

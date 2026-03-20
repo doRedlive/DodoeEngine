@@ -82,7 +82,7 @@ namespace dodoe {
 
 			template<typename Func>
 			void each(Func&& func) {
-				view_.each([&func](const entt::entity entity, auto&... components) {
+				view_.each([this, &func](const entt::entity entity, auto&... components) {
 					std::invoke(std::forward<Func>(func), registry_make_entity(scene_, entity), components...);
 				});
 			}

@@ -16,8 +16,8 @@ namespace dodoe {
 
 	class Texture {
 	public:
-		uint id;
-		uint width, height;
+		uint id{0};
+		uint width{0}, height{0};
 
 		virtual ~Texture() = default;
 

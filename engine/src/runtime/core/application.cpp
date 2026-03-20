@@ -10,7 +10,10 @@
 #include "runtime/core/event/event_system.h"
 
 #include "runtime/function/context.h"
-#include "runtime/function/runtime_layer.h"
+#include "runtime/function/time/time_system.h"
+#include "runtime/function/input/input_manager.h"
+#include "runtime/function/render/render_system.h"
+#include "runtime/function/ui/ui_system.h"
 
 namespace dodoe {
 
@@ -77,15 +80,6 @@ namespace dodoe {
 
     void Application::pop_layer(Layer* layer) {
         layer_stack_.pop_layer(layer);
-    }
-
-    void Application::push_runtime_layer() {
-        runtime_layer_ = new RuntimeLayer("Runtime");
-        push_layer(runtime_layer_);
-    }
-
-    void Application::pop_runtime_layer() {
-        pop_layer(runtime_layer_);
     }
 
     bool Application::initialize_() {

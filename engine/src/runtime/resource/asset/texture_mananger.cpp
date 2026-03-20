@@ -30,7 +30,9 @@ namespace dodoe {
     }
 
     void TextureManager::shutdown() {
-        // MARK: Instead of explicitly calling a function to destroy the texture, a custom deleter is used.
+        for (auto& [id, res] : texture_umap_) {
+            res.texture.reset();
+        }
         texture_umap_.clear();
     }
 

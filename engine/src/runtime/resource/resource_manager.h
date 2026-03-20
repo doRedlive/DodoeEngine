@@ -16,6 +16,11 @@ namespace dodoe {
     public:
         static ResourceManager& self();
 
+        ResourceManager(const ResourceManager&) = delete;
+        ResourceManager& operator=(const ResourceManager&) = delete;
+        ResourceManager(ResourceManager&&) = delete;
+        ResourceManager& operator=(ResourceManager&&) = delete;
+
         void initialize();
         void shutdown();
 
@@ -26,6 +31,7 @@ namespace dodoe {
         [[nodiscard]] Ref<Shader> get_shader(const std::string& name);
 
     private:
+        ResourceManager() = default;
         Scope<TextureManager> texture_manager_{nullptr};
         Scope<ShaderLibrary> shader_library_{nullptr};
     };
