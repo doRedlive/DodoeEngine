@@ -13,7 +13,7 @@ namespace dodoe {
         event_dispatcher_ = create_scope<entt::dispatcher>();
     }
 
-    void EventSystem::update() {
+    void EventSystem::poll_events() {
         glfwPollEvents();
     }
 

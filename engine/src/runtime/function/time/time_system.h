@@ -5,6 +5,8 @@
 #ifndef DODOE_TIME_H
 #define DODOE_TIME_H
 
+#include "dopch.h"
+
 namespace dodoe {
     class TimeSystem {
 

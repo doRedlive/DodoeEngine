@@ -6,7 +6,8 @@
 #define DODOE_APPLICATION_H
 
 #include "dopch.h"
-#include "runtime/core/layer/layer_stack.h"
+
+#include "system_context.h"
 
 #include "function/render/render_api.h"
 
@@ -40,25 +41,16 @@ namespace dodoe {
         const ApplicationSpecification& specification() { return app_spec_; }
 
         void run();
-        virtual void tick_one_frame();
-        virtual void update(float delta_time);
-        virtual void render();
-
-        virtual void push_layer(Layer* layer);
-        virtual void pop_layer(Layer* layer);
+    
+    protected:
+        Scope<SystemContext> context_{nullptr};
 
     private:
         bool running {false};
-        LayerStack layer_stack_ {};
         ApplicationSpecification app_spec_{};
         static Application* instance_;
 
-        [[nodiscard]]
-        bool initialize_();
-        [[nodiscard]]
-        bool shutdown_();
-
-        void quit_();
+        void quit();
     };
 
     Application* create_application(ApplicationCommandLineArgs cli_args);

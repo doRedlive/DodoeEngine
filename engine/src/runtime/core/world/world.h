@@ -44,14 +44,15 @@ namespace dodoe {
         void initialize();
         void shutdown();
 
+        void runtime_update(float delta_time);
+        void simulation_update(float delta_time);
+
         Scene* create_scene(const std::string& name);
-        [[nodiscard]]
-        Scene* get_scene(const std::string& name) const;
-        [[nodiscard]]
-        Scene* active_scene() const;
         void load_scene(const std::string& name);
         void destroy_scene(const std::string& name);
         void destroy_all_scenes();
+        [[nodiscard]] Scene* get_scene(const std::string& name) const;
+        [[nodiscard]] Scene* active_scene() const;
 
         int add_start_system(StartSystem start);
         int add_update_system(UpdateSystem update);
@@ -66,7 +67,6 @@ namespace dodoe {
     private:
         std::string name_;
         Uuid uuid_{};
-
 
         std::vector<Scope<Scene>> scenes_{};
         std::vector<StartSystem> start_systems_{};

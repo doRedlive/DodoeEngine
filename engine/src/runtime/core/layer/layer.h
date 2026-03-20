@@ -19,7 +19,7 @@ namespace dodoe {
         virtual void on_ui_render() = 0;
 
         [[nodiscard]]
-        const std::string& get_name() const { return name_; }
+        const std::string& name() const { return name_; }
 
     private:
         std::string name_;

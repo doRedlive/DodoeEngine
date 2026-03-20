@@ -15,7 +15,7 @@ namespace dodoe {
     class EventSystem {
     public:
         void initialize();
-        void update();
+        void poll_events();
         void shutdown();
 
         template<typename T, auto Method, typename Instance>

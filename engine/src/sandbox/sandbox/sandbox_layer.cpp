@@ -28,6 +28,7 @@ namespace sandbox {
     }
 
     void SandboxLayer::on_detach() {
+
     }
 
     void SandboxLayer::on_update(const float delta_time) {

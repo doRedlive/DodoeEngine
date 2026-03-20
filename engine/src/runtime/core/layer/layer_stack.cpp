@@ -7,30 +7,39 @@
 
 namespace dodoe {
 
-    void LayerStack::clear_layers() {
-        for (Layer* layer : layers_) {
+    LayerStack::~LayerStack() {
+        clear_layers();
+    }
+
+    void LayerStack::attach() {
+        for (auto& layer : layers_) {
+            layer->on_attach();
+        }
+    }
+
+    void LayerStack::detach() {
+        for (auto& layer : layers_) {
             layer->on_detach();
         }
+    }
+
+    void LayerStack::clear_layers() {
         layers_.clear();
         layer_insert_index_ = 0;
     }
 
-
     void LayerStack::push_layer(Layer *layer) {
-        layer->on_attach();
         layers_.emplace(layers_.begin() + layer_insert_index_, layer);
         layer_insert_index_++;
     }
 
     void LayerStack::push_over_layer(Layer *layer) {
-        layer->on_attach();
         layers_.emplace_back(layer);
     }
 
     void LayerStack::pop_layer(Layer *layer) {
         if (const auto it = std::find(layers_.begin(), layers_.begin() + layer_insert_index_, layer);
             it != layers_.begin() + layer_insert_index_) {
-                layer->on_detach();
                 layers_.erase(it);
                 layer_insert_index_--;
         }
@@ -39,7 +48,6 @@ namespace dodoe {
     void LayerStack::pop_over_layer(Layer *layer) {
         if (const auto it = std::find(layers_.begin() + layer_insert_index_, layers_.end(), layer);
             it != layers_.end()) {
-                layer->on_detach();
                 layers_.erase(it);
         }
     }

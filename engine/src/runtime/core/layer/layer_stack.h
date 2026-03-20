@@ -12,7 +12,10 @@ namespace dodoe {
     class LayerStack {
     public:
         LayerStack() = default;
-        ~LayerStack() = default;
+        ~LayerStack();
+
+        void attach();
+        void detach();
 
         void clear_layers();
 
@@ -23,7 +26,6 @@ namespace dodoe {
 
         std::vector<Layer*>::iterator begin() { return layers_.begin(); }
         std::vector<Layer*>::iterator end() { return layers_.end(); }
-
 
     private:
         std::vector<Layer*> layers_ {};

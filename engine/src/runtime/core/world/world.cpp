@@ -39,12 +39,30 @@ namespace dodoe {
         if (!scene) {
             scene = create_scene("default");
         }
-        //scene->initialize();
+
+        for (auto& scene : scenes_) {
+            scene->on_runtime_start();
+        }
     }
 
     void World::shutdown() {
+        for (auto& scene : scenes_) {
+            scene->on_runtime_stop();
+        }
         if (!scenes_.empty()) {
             destroy_all_scenes();
+        }
+    }
+
+    void World::runtime_update(const float delta_time) {
+        for (auto& scene : scenes_) {
+            scene->on_runtime_update(delta_time);
+        }
+    }
+
+    void World::simulation_update(const float delta_time) {
+        for (auto& scene : scenes_) {
+            scene->on_simulation_update(delta_time);
         }
     }
 

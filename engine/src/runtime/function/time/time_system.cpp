@@ -4,8 +4,6 @@
 
 #include "runtime/function/time/time_system.h"
 
-#include "GLFW/glfw3.h"
-
 namespace dodoe {
     float TimeSystem::get_delta_time() const {
         return delta_time_ * time_scale_;
