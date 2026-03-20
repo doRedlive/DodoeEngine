@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DodoeSandbox (LLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "preLaunchTask": "Build DodoeSandbox (Debug)",
+      "program": "${workspaceFolder}/bin/DodoeSandbox.exe",
+      "cwd": "${workspaceFolder}",
+      "args": []
+    },
+    {
+      "name": "DodoeSandbox (cppvsdbg)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "preLaunchTask": "Build DodoeSandbox (Debug)",
+      "program": "${workspaceFolder}/bin/DodoeSandbox.exe",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "stopAtEntry": false,
+      "console": "integratedTerminal"
+    }
+  ]
+}

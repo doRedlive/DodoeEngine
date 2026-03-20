@@ -1,6 +1,6 @@
 .idea/
 .vs/
-.vscode/
+# .vscode/
 bin/
 build/
 build_check/
