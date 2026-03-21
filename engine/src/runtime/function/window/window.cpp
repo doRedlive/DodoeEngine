@@ -4,8 +4,6 @@
 
 #include "window.h"
 
-#include "viewport_manager.h
-
 #include "runtime/resource/resource_manager.h"
 #include "runtime/core/utils/common.h"
 
@@ -83,6 +81,10 @@ namespace dodoe {
         window_ = glfwCreateWindow(prop_.width, prop_.height, prop_.title, nullptr, nullptr);
         DoAssert(window_, "The window create failed!");
 
+        int fb_width, fb_height;
+        glfwGetFramebufferSize(window_, &fb_width, &fb_height);
+
+        viewport_manager = ViewportManager::create({Vector2f(prop_.width, prop_.height), Vector2f(800.0f, 600.0f), Vector2f(fb_width, fb_height)});
 
         data_.title = prop_.title;
         data_.id = string2hash(data_.title);
@@ -107,6 +109,7 @@ namespace dodoe {
     }
 
     void Window::shutdown() {
+        ViewportManager::destroy(viewport_manager);
         if (window_) {
             glfwDestroyWindow(window_);
             window_ = nullptr;

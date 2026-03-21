@@ -21,17 +21,17 @@ namespace dodoe {
 
     WindowManager::~WindowManager() = default;
 
-    bool WindowManager::initialize() {
+    bool WindowManager::initialize(WindowManagerInitInfo init_info) {
         glfwInit();
 
-        g_context.event_system->subscribe_event<WindowFocusEvent, &WindowManager::on_window_focus_>(this);
-        g_context.event_system->subscribe_event<WindowCloseEvent, &WindowManager::on_window_close_>(this);
-        g_context.event_system->subscribe_event<WindowResizeEvent, &WindowManager::on_window_resize_>(this);
-        g_context.event_system->subscribe_event<WindowLostFocusEvent, &WindowManager::on_window_lost_focus_>(this);
+        EventSystem::subscribe_event<WindowFocusEvent, &WindowManager::on_window_focus_>(this);
+        EventSystem::subscribe_event<WindowCloseEvent, &WindowManager::on_window_close_>(this);
+        EventSystem::subscribe_event<WindowResizeEvent, &WindowManager::on_window_resize_>(this);
+        EventSystem::subscribe_event<WindowLostFocusEvent, &WindowManager::on_window_lost_focus_>(this);
         
         if (windows_.empty()) {
             WindowProperty prop;
-            auto spec = Application::self().specification();
+            auto spec = init_info.spec;
             prop.title = spec.name.c_str();
             prop.width = static_cast<int>(spec.width);
             prop.height = static_cast<int>(spec.height);
@@ -54,10 +54,10 @@ namespace dodoe {
     }
 
     void WindowManager::shutdown() {
-         g_context.event_system->unsubscribe_event<WindowFocusEvent, &WindowManager::on_window_focus_>(this);
-         g_context.event_system->unsubscribe_event<WindowLostFocusEvent, &WindowManager::on_window_lost_focus_>(this);
-         g_context.event_system->unsubscribe_event<WindowCloseEvent, &WindowManager::on_window_close_>(this);
-         g_context.event_system->unsubscribe_event<WindowResizeEvent, &WindowManager::on_window_resize_>(this);
+         EventSystem::unsubscribe_event<WindowFocusEvent, &WindowManager::on_window_focus_>(this);
+         EventSystem::unsubscribe_event<WindowLostFocusEvent, &WindowManager::on_window_lost_focus_>(this);
+         EventSystem::unsubscribe_event<WindowCloseEvent, &WindowManager::on_window_close_>(this);
+         EventSystem::unsubscribe_event<WindowResizeEvent, &WindowManager::on_window_resize_>(this);
 
         glfwTerminate();
     }
@@ -87,7 +87,7 @@ namespace dodoe {
         glfwSetWindowSizeCallback(window->native_window(), [](GLFWwindow* native_window, int width, int height) {
             WindowData& data = *static_cast<WindowData *>(glfwGetWindowUserPointer(native_window));
             WindowResizeEvent event(width, height, data.id);
-            g_context.event_system->enqueue_event<WindowResizeEvent>(event);
+            EventSystem::enqueue_event<WindowResizeEvent>(event);
         });
         glfwSetFramebufferSizeCallback(window->native_window(), [](GLFWwindow* native_window, int width, int height) {
             (void)native_window;
@@ -97,17 +97,17 @@ namespace dodoe {
         glfwSetWindowCloseCallback(window->native_window(), [](GLFWwindow* native_window) {
             WindowData& data = *static_cast<WindowData *>(glfwGetWindowUserPointer(native_window));
             WindowCloseEvent event(data.id);
-            g_context.event_system->enqueue_event<WindowCloseEvent>(event);
+            EventSystem::enqueue_event<WindowCloseEvent>(event);
         });
         glfwSetWindowFocusCallback(window->native_window(), [](GLFWwindow* native_window, int focused) {
             WindowData& data = *static_cast<WindowData *>(glfwGetWindowUserPointer(native_window));
             if (static_cast<bool>(focused)) {
                 WindowFocusEvent event(data.id);
-                g_context.event_system->enqueue_event<WindowFocusEvent>(event);
+                EventSystem::enqueue_event<WindowFocusEvent>(event);
             }
             else {
                 WindowLostFocusEvent event(data.id);
-                g_context.event_system->enqueue_event<WindowLostFocusEvent>(event);
+                EventSystem::enqueue_event<WindowLostFocusEvent>(event);
             }
         });
 		glfwSetKeyCallback(window->native_window(), [](GLFWwindow* native_window, int key, int scancode, int action, int mods) {
@@ -115,17 +115,17 @@ namespace dodoe {
 			switch (action) {
 				case GLFW_PRESS: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), false);
-                    g_context.event_system->enqueue_event<KeyPressedEvent>(event);
+                    EventSystem::enqueue_event<KeyPressedEvent>(event);
                     break;
 				}
 				case GLFW_RELEASE: {
 					KeyReleasedEvent event(static_cast<KeyCode>(key));
-					g_context.event_system->enqueue_event<KeyReleasedEvent>(event);
+					EventSystem::enqueue_event<KeyReleasedEvent>(event);
 					break;
 				}
 				case GLFW_REPEAT: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), true);
-					g_context.event_system->enqueue_event<KeyPressedEvent>(event);
+					EventSystem::enqueue_event<KeyPressedEvent>(event);
 					break;
 				}
 			}
@@ -146,12 +146,12 @@ namespace dodoe {
 			switch (action) {
 				case GLFW_PRESS: {
 					MouseButtonPressedEvent event(static_cast<MouseCode>(button));
-					g_context.event_system->enqueue_event<MouseButtonPressedEvent>(event);
+					EventSystem::enqueue_event<MouseButtonPressedEvent>(event);
 					break;
 				}
 				case GLFW_RELEASE: {
 					MouseButtonReleasedEvent event(static_cast<MouseCode>(button));
-					g_context.event_system->enqueue_event<MouseButtonReleasedEvent>(event);
+					EventSystem::enqueue_event<MouseButtonReleasedEvent>(event);
 					break;
 				}
 			}
@@ -162,7 +162,7 @@ namespace dodoe {
 			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(native_window);
 
 			MouseScrolledEvent event(static_cast<float>(x_offset), static_cast<float>(x_offset));
-			g_context.event_system->enqueue_event<MouseScrolledEvent>(event);
+			EventSystem::enqueue_event<MouseScrolledEvent>(event);
 		});
 
 		glfwSetCursorPosCallback(window->native_window(), [](GLFWwindow* native_window, double x_pos, double y_pos)
@@ -170,7 +170,7 @@ namespace dodoe {
 			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(native_window);
 
 			MouseMovedEvent event(static_cast<float>(x_pos), static_cast<float>(y_pos));
-			g_context.event_system->enqueue_event<MouseMovedEvent>(event);
+			EventSystem::enqueue_event<MouseMovedEvent>(event);
 		});
     }
 
@@ -194,7 +194,7 @@ namespace dodoe {
          }
          if (windows_.empty()) {
              DoDebug("WindowManager::application quit");
-             g_context.event_system->publish_event<ApplicationQuitEvent>();
+             EventSystem::publish_event<ApplicationQuitEvent>();
          }
      }
 
@@ -207,8 +207,8 @@ namespace dodoe {
                  int fb_width = 0, fb_height = 0;
                  glfwGetFramebufferSize(native_window, &fb_width, &fb_height);
 
-                 ViewportManager::self().set_window_size(Vector2f(event.width, event.height));
-                 ViewportManager::self().set_pixel_size(Vector2f(fb_width, fb_height));
+                 window->viewport_manager->set_window_size(Vector2f(event.width, event.height));
+                 window->viewport_manager->set_pixel_size(Vector2f(fb_width, fb_height));
              }
          }
      }

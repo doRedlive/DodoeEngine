@@ -6,7 +6,6 @@
 
 #include "ui_system.h"
 
-#include "runtime/function/context.h"
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
 
@@ -16,13 +15,17 @@
 
 namespace dodoe {
 
-    void UiSystem::initialize() {
+    void UiSystem::initialize(WindowManager* window_manager) {
+        DoAssert(window_manager, "UiSystem::initialize: window_manager is null.");
+        auto* window = window_manager->active_window();
+        DoAssert(window, "UiSystem::initialize: active_window is null.");
+
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-        ImGui_ImplGlfw_InitForOpenGL(g_context.window_manager->active_window()->native_window(), true);
+        ImGui_ImplGlfw_InitForOpenGL(window->native_window(), true);
         ImGui_ImplOpenGL3_Init("#version 450");
         DoInfo("Ui system initialize success.");
     }

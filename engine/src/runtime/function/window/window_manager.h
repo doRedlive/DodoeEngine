@@ -7,10 +7,16 @@
 #include "dopch.h"
 #include "window.h"
 
+#include "runtime/core/application.h"
+
 #include "runtime/core/event/event.h"
 
 namespace dodoe {
 
+    struct WindowManagerInitInfo {
+        ApplicationSpecification spec;
+    };
+    
     class WindowManager {
     public:
         WindowManager();
@@ -19,8 +25,7 @@ namespace dodoe {
         [[nodiscard]] Window* active_window() const;
         Window* create_window(const WindowProperty& props);
 
-        [[nodiscard]]
-        bool initialize();
+        [[nodiscard]] bool initialize(WindowManagerInitInfo init_info);
         void update();
         void shutdown();
 

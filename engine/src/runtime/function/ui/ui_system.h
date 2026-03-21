@@ -6,12 +6,14 @@
 #define DODOE_UI_SYSTEM_H
 
 namespace dodoe {
+    class WindowManager;
+
     class UiSystem {
     public:
         UiSystem() = default;
         ~UiSystem() = default;
 
-        void initialize();
+        void initialize(WindowManager* window_manager);
         void shutdown();
 
         void begin_render();

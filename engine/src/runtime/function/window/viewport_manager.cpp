@@ -15,6 +15,7 @@ namespace dodoe {
     }
 
     void ViewportManager::destroy(Scope<ViewportManager>& viewport_manager) {
+        if (!viewport_manager) return;
         viewport_manager->shutdown();
         viewport_manager.reset();
     }
@@ -72,7 +73,7 @@ namespace dodoe {
             result.scale = 1.0f;
         }
 
-        glm::vec2 viewport_size = logical_size * result.scale;
+        Vector2f viewport_size = logical_size * result.scale;
         viewport_size = Math::clamp(viewport_size, Vector2f(1.0f, 1.0f), pixel_size);
         result.viewport.size = viewport_size;
         result.viewport.pos = (pixel_size - viewport_size) * 0.5f;

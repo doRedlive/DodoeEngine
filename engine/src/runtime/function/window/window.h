@@ -18,6 +18,8 @@
 
 #include "runtime/function/render/render_api.h"
 
+#include "viewport_manager.h"
+
 #include "entt/entt.hpp"
 
 #include "GLFW/glfw3.h"
@@ -48,6 +50,8 @@ namespace dodoe {
     class Window {
         friend class WindowManager;
     public:
+        Scope<ViewportManager> viewport_manager{};
+
         explicit Window(const WindowProperty& prop);
         ~Window();
 
@@ -84,6 +88,7 @@ namespace dodoe {
         bool borderless_maximized_ {false};
         bool titlebar_hovered_{false};
         WindowRect windowed_rect_{};
+
     };
 
     inline Window* create_window(const WindowProperty& prop) {
