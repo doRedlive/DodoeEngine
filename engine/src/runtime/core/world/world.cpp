@@ -7,7 +7,6 @@
 #include "scene.h"
 
 #include "runtime/core/world/components.h"
-#include "runtime/function/context.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/camera/camera.h"
 #include "runtime/function/window/window_manager.h"

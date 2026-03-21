@@ -5,18 +5,18 @@
 #include "input_manager.h"
 
 #include "runtime/function/input/input.h"
-#include "runtime/function/context.h"
+#include "runtime/core/application.h"
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
 
 namespace dodoe {
 
     void InputManager::initialize() {
-        g_context.event_system->subscribe_event<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
-        g_context.event_system->subscribe_event<KeyReleasedEvent, &InputManager::on_key_released_>(this);
-        g_context.event_system->subscribe_event<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
-        g_context.event_system->subscribe_event<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
-        g_context.event_system->subscribe_event<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
+        EventSystem::subscribe_event<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
+        EventSystem::subscribe_event<KeyReleasedEvent, &InputManager::on_key_released_>(this);
+        EventSystem::subscribe_event<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
+        EventSystem::subscribe_event<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
+        EventSystem::subscribe_event<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
 
         Input::initialize(this);
     }
@@ -48,11 +48,11 @@ namespace dodoe {
     void InputManager::shutdown() {
         key_map_.clear();
 
-        g_context.event_system->unsubscribe_event<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
-        g_context.event_system->unsubscribe_event<KeyReleasedEvent, &InputManager::on_key_released_>(this);
-        g_context.event_system->unsubscribe_event<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
-        g_context.event_system->unsubscribe_event<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
-        g_context.event_system->unsubscribe_event<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
+        EventSystem::unsubscribe_event<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
+        EventSystem::unsubscribe_event<KeyReleasedEvent, &InputManager::on_key_released_>(this);
+        EventSystem::unsubscribe_event<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
+        EventSystem::unsubscribe_event<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
+        EventSystem::unsubscribe_event<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
     }
 
     void InputManager::on_key_pressed_(KeyPressedEvent& e) {

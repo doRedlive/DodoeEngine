@@ -9,20 +9,27 @@
 
 namespace dodoe {
 
+    static Scope<entt::dispatcher> g_event_dispatcher{};
+
+    entt::dispatcher& EventSystem::dispatcher_() {
+        DoAssert(g_event_dispatcher, "EventSystem not initialized");
+        return *g_event_dispatcher;
+    }
+
     void EventSystem::initialize() {
-        event_dispatcher_ = create_scope<entt::dispatcher>();
+        g_event_dispatcher = create_scope<entt::dispatcher>();
     }
 
     void EventSystem::poll_events() {
         glfwPollEvents();
     }
 
-    void EventSystem::handle_events() const {
-        event_dispatcher_->update();
+    void EventSystem::handle_events() {
+        dispatcher_().update();
     }
 
     void EventSystem::shutdown() {
-        event_dispatcher_ = nullptr;
+        g_event_dispatcher.reset();
     }
 
 } // dodoe

@@ -10,9 +10,7 @@
 
 #include "runtime/core/utils/common.h"
 #include "runtime/core/world/components.h"
-#include "runtime/core/world/game_object.h"
 
-#include "runtime/function/context.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/camera/camera.h"
 #include "runtime/function/window/window_manager.h"

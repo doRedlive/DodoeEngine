@@ -7,11 +7,10 @@
 
 #include "dopch.h"
 
-#include "system_context.h"
-
 #include "function/render/render_api.h"
 
 namespace dodoe {
+    class SystemContext;
 
     struct ApplicationCommandLineArgs {
         int argc{ 0 };
@@ -37,8 +36,10 @@ namespace dodoe {
         explicit Application(const ApplicationSpecification& spec);
         virtual ~Application();
 
-        static Application& self() { return *instance_; }
-        const ApplicationSpecification& specification() { return app_spec_; }
+        [[nodiscard]] static Application& self() { return *instance_; }
+        [[nodiscard]] const ApplicationSpecification& specification() { return app_spec_; }
+        [[nodiscard]] SystemContext& context();
+        [[nodiscard]] const SystemContext& context() const;
 
         void run();
     

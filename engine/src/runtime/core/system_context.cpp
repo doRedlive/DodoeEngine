@@ -30,9 +30,11 @@
 
 namespace dodoe {
 
-    Scope<SystemContext> SystemContext::create() {
+    SystemContext::~SystemContext() = default;
+
+    Scope<SystemContext> SystemContext::create(SystemContextCreateInfo create_info) {
         auto context = create_scope<SystemContext>();
-        DoAssert(context->initialize_systems(), "System initialize failed!");
+        DoAssert(context->initialize_systems(create_info), "System initialize failed!");
         return context;
     }
 
@@ -42,22 +44,21 @@ namespace dodoe {
         context.reset();
     }
 
-    bool SystemContext::initialize_systems() {
+    bool SystemContext::initialize_systems(SystemContextCreateInfo create_info) {
         window_manager = create_scope<WindowManager>();
         render_system = create_scope<RenderSystem>();
         time_system = create_scope<TimeSystem>();
         ui_system = create_scope<UiSystem>();
-        event_system = create_scope<EventSystem>();
         input_manager = create_scope<InputManager>();
         // ---------------------CORE-------------------------
         Log::initialize();
-        event_system->initialize();
+        EventSystem::initialize();
         // ---------------------RESOURCE-------------------------
         ResourceManager::self().initialize();
         // ---------------------RENDER-------------------------
-        if (!window_manager->initialize()) return false;
+        if (!window_manager->initialize({create_info.spec})) return false;
         render_system->initialize({window_manager.get()});
-        ui_system->initialize();
+        ui_system->initialize(window_manager.get());
         
         // ---------------------GAME-------------------------
         input_manager->initialize();
@@ -83,8 +84,7 @@ namespace dodoe {
         window_manager.reset();
         // ---------------------CORE-------------------------
         time_system.reset();
-        event_system->shutdown();
-        event_system.reset();
+        EventSystem::shutdown();
         return true;
     }
 

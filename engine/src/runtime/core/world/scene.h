@@ -14,14 +14,12 @@
 
 namespace dodoe {
     class Entity;
-    class GameObject;
     class RenderSystem;
     class SceneManager;
 
     class Scene {
         friend class World;
         friend class Entity;
-        friend class GameObject;
     public:
         Scene(World& world, const std::string& name);
         ~Scene();
@@ -44,6 +42,8 @@ namespace dodoe {
         [[nodiscard]]
         const std::string& get_name() const { return name_; }
         void set_name(const std::string& name) { name_ = name; }
+        Registry& registry() { return registry_; }
+        const Registry& registry() const { return registry_; }
 
         Entity create_entity(const std::string& name);
         Entity create_entity(Uuid uuid, const std::string& name = std::string());

@@ -7,6 +7,7 @@
 
 #include "dopch.h"
 
+#include "runtime/core/application.h"
 #include "runtime/core/layer/layer_stack.h"
 
 namespace dodoe {
@@ -15,30 +16,34 @@ namespace dodoe {
     class RenderSystem;
     class UiSystem;
     class TimeSystem;
-    class EventSystem;
     class InputManager;
+
+    struct SystemContextCreateInfo {
+        ApplicationSpecification spec{};
+    };
  
     class SystemContext {
     public:
+        ~SystemContext();
+
         Scope<WindowManager>    window_manager {nullptr};
         Scope<RenderSystem>     render_system  {nullptr};
         Scope<InputManager>     input_manager  {nullptr};
-        Scope<EventSystem>      event_system   {nullptr};
         Scope<TimeSystem>       time_system    {nullptr};
         Scope<UiSystem>         ui_system      {nullptr};
 
         LayerStack layer_stack{};
 
-        static Scope<SystemContext> create();
+        static Scope<SystemContext> create(SystemContextCreateInfo create_info);
         static void destroy(Scope<SystemContext>& context);
 
-        [[nodiscard]] bool initialize_systems();
-        [[nodiscard]] bool shutdown_systems();
-
+        
         void tick_one_frame();
-    
+        
     private:
-
+        [[nodiscard]] bool initialize_systems(SystemContextCreateInfo create_info);
+        [[nodiscard]] bool shutdown_systems();
+        
         void update_tick(float dt);
         void render_tick();
     };

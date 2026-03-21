@@ -43,6 +43,8 @@ namespace dodoe {
 
         void initialize();
         void shutdown();
+        [[nodiscard]]
+        const std::string& get_name() const { return name_; }
 
         void runtime_update(float delta_time);
         void simulation_update(float delta_time);

@@ -14,43 +14,43 @@
 namespace dodoe {
     class EventSystem {
     public:
-        void initialize();
-        void poll_events();
-        void shutdown();
+        EventSystem() = delete;
+        ~EventSystem() = delete;
+
+        static void initialize();
+        static void poll_events();
+        static void shutdown();
 
         template<typename T, auto Method, typename Instance>
-        void subscribe_event(Instance* instance) {
-            event_dispatcher_->sink<T>().template connect<Method>(instance);
+        static void subscribe_event(Instance* instance) {
+            dispatcher_().sink<T>().template connect<Method>(instance);
         }
 
         template<typename T, auto Method, typename Instance>
-        void unsubscribe_event(Instance* instance) {
+        static void unsubscribe_event(Instance* instance) {
             static_assert(Method != nullptr, "Method must be a valid member function pointer");
-            assert(event_dispatcher_ && "EventSystem not initialized");
-            event_dispatcher_->sink<T>().template disconnect<Method>(instance);
+            dispatcher_().sink<T>().template disconnect<Method>(instance);
         }
 
         template<typename T, auto Method, typename Instance>
-        void unsubscribe_all(Instance* instance) {
-            event_dispatcher_->sink<T>().disconnect<Method>(instance);
+        static void unsubscribe_all(Instance* instance) {
+            dispatcher_().sink<T>().disconnect<Method>(instance);
         }
 
         template<typename T, typename ...Args>
-        void publish_event(Args&&... args) {
-            assert(event_dispatcher_ && "EventSystem not initialized");
-            event_dispatcher_->trigger<T>(std::forward<Args>(args)...);
+        static void publish_event(Args&&... args) {
+            dispatcher_().trigger<T>(std::forward<Args>(args)...);
         }
 
         template<typename T, typename ...Args>
-        void enqueue_event(Args&&... args) {
-            assert(event_dispatcher_ && "EventSystem not initialized");
-            event_dispatcher_->enqueue<T>(std::forward<Args>(args)...);
+        static void enqueue_event(Args&&... args) {
+            dispatcher_().enqueue<T>(std::forward<Args>(args)...);
         }
 
-        void handle_events() const;
+        static void handle_events();
 
     private:
-        Scope<entt::dispatcher> event_dispatcher_ {nullptr};
+        static entt::dispatcher& dispatcher_();
     };
 } // dodoe
 
