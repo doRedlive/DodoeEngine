@@ -3,6 +3,8 @@
 
 #include "dopch.h"
 
+#include <type_traits>
+
 #include "runtime/core/meta/json.h"
 
 namespace dodoe {
@@ -33,6 +35,14 @@ namespace dodoe {
 #define REGISTER_BASE_CLASS_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register_to_class_map(name, value)
 #define REGISTER_ARRAY_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register_to_array_map(name, value)
 #define UNREGISTER_ALL dodoe::reflection::TypeMetaRegisterInterface::unregister_all()
+
+    template<typename T, typename U, typename = void>
+    struct is_safely_castable : std::false_type
+    {};
+
+    template<typename T, typename U>
+    struct is_safely_castable<T, U, std::void_t<decltype(static_cast<U>(std::declval<T>()))>> : std::true_type
+    {};
 
     class Serializer;
 
@@ -90,7 +100,7 @@ namespace dodoe {
             static ReflectionInstance newFromNameAndJson(const std::string& type_name, const Json& json_context);
             static Json writeByName(const std::string& name, void* instance);
 
-            const std::string& get_type_name();
+            const std::string& get_type_name() const;
             int get_field_list(FieldAccessor*& out_list);
             int get_method_list(MethodAccessor*& out_list);
             int get_base_class_reflection_instance_list(ReflectionInstance*& out_list, void* instance);
@@ -177,129 +187,111 @@ namespace dodoe {
             ReflectionInstance& operator=(ReflectionInstance& dest);
             ReflectionInstance& operator=(ReflectionInstance&& dest);
         };
-    }
-
-    template<typename T>
-    class ReflectionPtr
-        {
+        template<typename T>
+        class ReflectionPtr {
             template<typename U>
             friend class ReflectionPtr;
 
         public:
-            ReflectionPtr(std::string type_name, T* instance) : m_type_name(type_name), m_instance(instance) {}
-            ReflectionPtr() : m_type_name(), m_instance(nullptr) {}
+            ReflectionPtr(std::string type_name, T* instance) : type_name_(std::move(type_name)), instance_(instance) {}
+            ReflectionPtr() = default;
 
-            ReflectionPtr(const ReflectionPtr& dest) : m_type_name(dest.m_type_name), m_instance(dest.m_instance) {}
+            ReflectionPtr(const ReflectionPtr& dest) : type_name_(dest.type_name_), instance_(dest.instance_) {}
 
-            template<typename U /*, typename = typename std::enable_if<std::is_safely_castable<T*, U*>::value>::type */>
-            ReflectionPtr<T>& operator=(const ReflectionPtr<U>& dest)
-            {
-                if (this == static_cast<void*>(&dest))
-                {
+            template<typename U>
+            ReflectionPtr<T>& operator=(const ReflectionPtr<U>& dest) {
+                if (this == static_cast<const void*>(&dest)) {
                     return *this;
                 }
-                m_type_name = dest.m_type_name;
-                m_instance  = static_cast<T*>(dest.m_instance);
+                type_name_ = dest.type_name_;
+                instance_  = static_cast<T*>(dest.instance_);
                 return *this;
             }
 
-            template<typename U /*, typename = typename std::enable_if<std::is_safely_castable<T*, U*>::value>::type*/>
-            ReflectionPtr<T>& operator=(ReflectionPtr<U>&& dest)
-            {
-                if (this == static_cast<void*>(&dest))
-                {
+            template<typename U>
+            ReflectionPtr<T>& operator=(ReflectionPtr<U>&& dest) {
+                if (this == static_cast<const void*>(&dest)) {
                     return *this;
                 }
-                m_type_name = dest.m_type_name;
-                m_instance  = static_cast<T*>(dest.m_instance);
+                type_name_ = std::move(dest.type_name_);
+                instance_  = static_cast<T*>(dest.instance_);
                 return *this;
             }
 
-            ReflectionPtr<T>& operator=(const ReflectionPtr<T>& dest)
-            {
-                if (this == &dest)
-                {
+            ReflectionPtr<T>& operator=(const ReflectionPtr<T>& dest) {
+                if (this == &dest) {
                     return *this;
                 }
-                m_type_name = dest.m_type_name;
-                m_instance  = dest.m_instance;
+                type_name_ = dest.type_name_;
+                instance_  = dest.instance_;
                 return *this;
             }
 
-            ReflectionPtr<T>& operator=(ReflectionPtr<T>&& dest)
-            {
-                if (this == &dest)
-                {
+            ReflectionPtr<T>& operator=(ReflectionPtr<T>&& dest) {
+                if (this == &dest) {
                     return *this;
                 }
-                m_type_name = dest.m_type_name;
-                m_instance  = dest.m_instance;
+                type_name_ = std::move(dest.type_name_);
+                instance_  = dest.instance_;
                 return *this;
             }
 
-            std::string getTypeName() const { return m_type_name; }
+            std::string getTypeName() const { return type_name_; }
+            void setTypeName(std::string name) { type_name_ = std::move(name); }
 
-            void setTypeName(std::string name) { m_type_name = name; }
+            const std::string& get_type_name() const { return type_name_; }
+            void set_type_name(std::string name) { type_name_ = std::move(name); }
 
-            bool operator==(const T* ptr) const { return (m_instance == ptr); }
+            bool operator==(const T* ptr) const { return (instance_ == ptr); }
+            bool operator!=(const T* ptr) const { return (instance_ != ptr); }
+            bool operator==(const ReflectionPtr<T>& rhs_ptr) const { return (instance_ == rhs_ptr.instance_); }
+            bool operator!=(const ReflectionPtr<T>& rhs_ptr) const { return (instance_ != rhs_ptr.instance_); }
 
-            bool operator!=(const T* ptr) const { return (m_instance != ptr); }
-
-            bool operator==(const ReflectionPtr<T>& rhs_ptr) const { return (m_instance == rhs_ptr.m_instance); }
-
-            bool operator!=(const ReflectionPtr<T>& rhs_ptr) const { return (m_instance != rhs_ptr.m_instance); }
-
-            template<
-                typename T1 /*, typename = typename std::enable_if<std::is_safely_castable<T*, T1*>::value>::type*/>
-            explicit operator T1*()
-            {
-                return static_cast<T1*>(m_instance);
+            template<typename T1>
+            explicit operator T1*() {
+                return static_cast<T1*>(instance_);
             }
 
-            template<
-                typename T1 /*, typename = typename std::enable_if<std::is_safely_castable<T*, T1*>::value>::type*/>
-            operator ReflectionPtr<T1>()
-            {
-                return ReflectionPtr<T1>(m_type_name, (T1*)(m_instance));
+            template<typename T1>
+            operator ReflectionPtr<T1>() {
+                return ReflectionPtr<T1>(type_name_, static_cast<T1*>(instance_));
             }
 
-            template<
-                typename T1 /*, typename = typename std::enable_if<std::is_safely_castable<T*, T1*>::value>::type*/>
-            explicit operator const T1*() const
-            {
-                return static_cast<T1*>(m_instance);
+            template<typename T1>
+            explicit operator const T1*() const {
+                return static_cast<const T1*>(instance_);
             }
 
-            template<
-                typename T1 /*, typename = typename std::enable_if<std::is_safely_castable<T*, T1*>::value>::type*/>
-            operator const ReflectionPtr<T1>() const
-            {
-                return ReflectionPtr<T1>(m_type_name, (T1*)(m_instance));
+            template<typename T1>
+            operator const ReflectionPtr<T1>() const {
+                return ReflectionPtr<T1>(type_name_, static_cast<T1*>(instance_));
             }
 
-            T* operator->() { return m_instance; }
+            T* operator->() { return instance_; }
+            T* operator->() const { return instance_; }
+            T& operator*() { return *(instance_); }
+            const T& operator*() const { return *(static_cast<const T*>(instance_)); }
 
-            T* operator->() const { return m_instance; }
+            T* getPtr() { return instance_; }
+            T* getPtr() const { return instance_; }
+            T* get_ptr() { return instance_; }
+            T* get_ptr() const { return instance_; }
 
-            T& operator*() { return *(m_instance); }
+            T*& getPtrReference() { return instance_; }
+            T*& get_ptr_reference() { return instance_; }
 
-            T* getPtr() { return m_instance; }
-
-            T* getPtr() const { return m_instance; }
-
-            const T& operator*() const { return *(static_cast<const T*>(m_instance)); }
-
-            T*& getPtrReference() { return m_instance; }
-
-            operator bool() const { return (m_instance != nullptr); }
+            operator bool() const { return (instance_ != nullptr); }
 
         private:
-            std::string m_type_name {""};
-            typedef T   m_type;
-            T*          m_instance {nullptr};
+            std::string type_name_{};
+            T*          instance_{nullptr};
         };
+    }
 
-}
+    template<typename T>
+    using ReflectionPtr = reflection::ReflectionPtr<T>;
+
+} // namespace dodoe
 
 #endif//DODOE_REFLECTION_HPP
 

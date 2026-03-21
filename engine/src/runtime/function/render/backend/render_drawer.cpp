@@ -10,6 +10,21 @@
 
 namespace dodoe {
 
+	void RenderDrawer::update_viewport(const Rect& viewport) {
+		switch (RenderApi::api_type()) {
+		case RenderApiType::OpenGL:
+			glViewport(static_cast<GLint>(viewport.pos.x), static_cast<GLint>(viewport.pos.y), viewport.size.x, viewport.size.y);
+			break;
+		case RenderApiType::Vulkan:
+			DoAssert(false, "RenderDrawer::update_viewport: Vulkan backend draw call is not implemented yet.");
+			break;
+		case RenderApiType::None:
+		default:
+			DoAssert(false, "RenderDrawer::update_viewport: Invalid render api type.");
+			break;
+		}
+	}
+
 	void RenderDrawer::clear_color(const Color& color) {
 		switch (RenderApi::api_type()) {
 		case RenderApiType::OpenGL:

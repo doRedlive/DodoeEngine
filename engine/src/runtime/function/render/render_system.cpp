@@ -31,10 +31,9 @@ namespace dodoe {
             glfwGetFramebufferSize(native_window, &frame_width, &frame_height);
         }
 
-        render2d_graph_ = RenderGraph::create({
-            static_cast<ui32>((std::max)(frame_width, 1)),
-            static_cast<ui32>((std::max)(frame_height, 1))
-        });
+        auto window = window_manager_->active_window();
+        render2d_graph_ = RenderGraph::create({window->viewport_manager->get_logical_size()});
+
         renderer_ = Renderer::create({render2d_graph_.get()});
     }
 
@@ -45,6 +44,11 @@ namespace dodoe {
     }
 
     void RenderSystem::prepare() {
+        auto& viewport_manager = window_manager_->active_window()->viewport_manager;
+        if (viewport_manager->dirty()) [[unlikely]] {
+            viewport_manager->update();
+        }
+        RenderDrawer::update_viewport(viewport_manager->viewport());
         RenderDrawer::clear_color(Color::Gray());
     }
 

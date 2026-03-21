@@ -52,6 +52,8 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC imgui
         PUBLIC EnTT::EnTT
         PUBLIC box2d
+        PUBLIC sol2::sol2
+        PUBLIC lua_static
         PUBLIC ${Vulkan_LIBRARIES}
 )
 

@@ -13,6 +13,7 @@ namespace dodoe {
 
 	class RenderDrawer {
 	public:
+		static void update_viewport(const Rect& size);
 		static void clear_color(const Color& color);
 		static void draw_elements(ui32 index_count);
 	};

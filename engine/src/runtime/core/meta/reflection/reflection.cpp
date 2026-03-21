@@ -129,7 +129,15 @@ namespace dodoe {
             return Json();
         }
 
-        const std::string& TypeMeta::get_type_name() {
+        ReflectionInstance TypeMeta::newFromNameAndJson(const std::string& type_name, const Json& json_context) {
+            return new_from_name_and_json(type_name, json_context);
+        }
+
+        Json TypeMeta::writeByName(const std::string& name, void* instance) {
+            return write_by_name(name, instance);
+        }
+
+        const std::string& TypeMeta::get_type_name() const {
             return type_name_;
         }
 
@@ -303,14 +311,10 @@ namespace dodoe {
         }
 
         void ArrayAccessor::set(int index, void* instance, void* element_value) {
-            size_t count = get_size(instance);
-
             std::get<0>(*functions_)(index, instance, element_value);
         }
 
         void* ArrayAccessor::get(int index, void* instance) {
-            size_t count = get_size(instance);
-
             return std::get<1>(*functions_)(index, instance);
 
         }

@@ -32,12 +32,7 @@ namespace sandbox {
     }
 
     void SandboxLayer::on_update(const float delta_time) {
-        auto& world = dodoe::WorldManager::self().active_world();
-        auto* scene = world.active_scene();
-        if (!scene) {
-            return;
-        }
-        scene->on_runtime_update(delta_time);
+
     }
 
     void SandboxLayer::on_ui_render() {

@@ -3,6 +3,7 @@
 //
 
 #include "core/application.h"
+#include "core/system_context.h"
 #include "sandbox_layer.h"
 
 namespace sandbox {

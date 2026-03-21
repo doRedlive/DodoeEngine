@@ -14,6 +14,9 @@ namespace dodoe {
 	struct RenderGraphCreateInfo {
 		ui32 frame_width{1};
 		ui32 frame_height{1};
+
+		RenderGraphCreateInfo() = default;
+		RenderGraphCreateInfo(const Vector2f& logical_size) : frame_width(static_cast<uint>(logical_size.x)), frame_height(static_cast<uint>(logical_size.y)) { }
 	};
 
 	class RenderGraph {

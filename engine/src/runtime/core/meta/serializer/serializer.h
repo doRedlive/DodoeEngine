@@ -18,38 +18,49 @@ namespace dodoe {
     public:
         template<typename T>
         static Json write_pointer(T* instance) {
-            return Json::object {{"$typeName", Json {"*"}}, {"$context", Serializer::write(*instance)}};
+            return Json{{"$typeName", "*"}, {"$context", Serializer::write(*instance)}};
         }
 
         template<typename T>
         static T*& read_pointer(const Json& json_context, T*& instance) {
-            assert(instance == nullptr);
-            std::string type_name = json_context["$typeName"].string_value();
-            assert(!type_name.empty());
+            DoAssert(instance == nullptr);
+            DoAssert(json_context.is_object(), "Serializer::read_pointer expects object");
+            DoAssert(json_context.contains("$typeName"), "Serializer::read_pointer missing $typeName");
+            DoAssert(json_context.contains("$context"), "Serializer::read_pointer missing $context");
+
+            std::string type_name = json_context.at("$typeName").get<std::string>();
+            DoAssert(!type_name.empty(), "Serializer::read_pointer empty $typeName");
+
             if ('*' == type_name[0]) {
                 instance = new T;
-                read(json_context["$context"], *instance);
+                read(json_context.at("$context"), *instance);
             }
             else {
-                instance = static_cast<T*>(
-                    Reflection::TypeMeta::newFromNameAndJson(type_name, json_context["$context"]).m_instance);
+                auto reflection_instance =
+                    reflection::TypeMeta::new_from_name_and_json(type_name, json_context.at("$context"));
+                instance = static_cast<T*>(reflection_instance.instance);
             }
             return instance;
         }
 
         template<typename T>
         static Json write(const reflection::ReflectionPtr<T>& instance) {
-            T*          instance_ptr = static_cast<T*>(instance.operator->());
-            std::string type_name    = instance.getTypeName();
-            return Json::object {{"$typeName", Json(type_name)},
-                                  {"$context", Reflection::TypeMeta::writeByName(type_name, instance_ptr)}};
+            T*                 instance_ptr = instance.get_ptr();
+            const std::string& type_name    = instance.get_type_name();
+            if (!instance_ptr) {
+                return Json{{"$typeName", type_name}, {"$context", Json()}};
+            }
+            return Json{{"$typeName", type_name},
+                        {"$context", reflection::TypeMeta::write_by_name(type_name, instance_ptr)}};
         }
 
         template<typename T>
         static T*& read(const Json& json_context, reflection::ReflectionPtr<T>& instance) {
-            std::string type_name = json_context["$typeName"].string_value();
-            instance.setTypeName(type_name);
-            return read_pointer(json_context, instance.getPtrReference());
+            DoAssert(json_context.is_object(), "Serializer::read expects object");
+            DoAssert(json_context.contains("$typeName"), "Serializer::read missing $typeName");
+            std::string type_name = json_context.at("$typeName").get<std::string>();
+            instance.set_type_name(type_name);
+            return read_pointer(json_context, instance.get_ptr_reference());
         }
 
         template<typename T>

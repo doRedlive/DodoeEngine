@@ -5,6 +5,7 @@ local doMain = {
 
 function doMain:doStart()
 	print("Hello Lua")
+	dodoe.logInfo("main.lua doStart")
 end
 
 function doMain:doUpdate(dt)

@@ -12,8 +12,9 @@ namespace dodoe {
     }
     template<>
     char& Serializer::read(const Json& json_context, char& instance) {
-        assert(json_context.is_number());
-        return instance = json_context.number_value();
+        DoAssert(json_context.is_number_integer() || json_context.is_number_unsigned(),
+                 "Serializer::read<char> expects integer");
+        return instance = static_cast<char>(json_context.get<int>());
     }
 
     template<>
@@ -22,18 +23,22 @@ namespace dodoe {
     }
     template<>
     int& Serializer::read(const Json& json_context, int& instance) {
-        assert(json_context.is_number());
-        return instance = static_cast<int>(json_context.number_value());
+        DoAssert(json_context.is_number_integer() || json_context.is_number_unsigned(),
+                 "Serializer::read<int> expects integer");
+        return instance = json_context.get<int>();
     }
 
     template<>
     Json Serializer::write(const unsigned int& instance) {
-        return Json(static_cast<int>(instance));
+        return Json(instance);
     }
     template<>
     unsigned int& Serializer::read(const Json& json_context, unsigned int& instance) {
-        assert(json_context.is_number());
-        return instance = static_cast<unsigned int>(json_context.number_value());
+        DoAssert(json_context.is_number_integer() || json_context.is_number_unsigned(),
+                 "Serializer::read<unsigned int> expects integer");
+        const auto value = json_context.get<long long>();
+        DoAssert(value >= 0, "Serializer::read<unsigned int> expects non-negative integer");
+        return instance = static_cast<unsigned int>(value);
     }
 
     template<>
@@ -42,8 +47,8 @@ namespace dodoe {
     }
     template<>
     float& Serializer::read(const Json& json_context, float& instance) {
-        assert(json_context.is_number());
-        return instance = static_cast<float>(json_context.number_value());
+        DoAssert(json_context.is_number(), "Serializer::read<float> expects number");
+        return instance = json_context.get<float>();
     }
 
     template<>
@@ -52,8 +57,8 @@ namespace dodoe {
     }
     template<>
     double& Serializer::read(const Json& json_context, double& instance) {
-        assert(json_context.is_number());
-        return instance = static_cast<float>(json_context.number_value());
+        DoAssert(json_context.is_number(), "Serializer::read<double> expects number");
+        return instance = json_context.get<double>();
     }
 
     template<>
@@ -62,8 +67,8 @@ namespace dodoe {
     }
     template<>
     bool& Serializer::read(const Json& json_context, bool& instance) {
-        assert(json_context.is_bool());
-        return instance = json_context.bool_value();
+        DoAssert(json_context.is_boolean(), "Serializer::read<bool> expects boolean");
+        return instance = json_context.get<bool>();
     }
 
     template<>
@@ -72,8 +77,8 @@ namespace dodoe {
     }
     template<>
     std::string& Serializer::read(const Json& json_context, std::string& instance) {
-        assert(json_context.is_string());
-        return instance = json_context.string_value();
+        DoAssert(json_context.is_string(), "Serializer::read<std::string> expects string");
+        return instance = json_context.get_ref<const std::string&>();
     }
 
 } // dodoe
