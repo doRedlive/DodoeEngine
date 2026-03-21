@@ -4,12 +4,11 @@
 
 #include "window.h"
 
-#include "runtime/function/context.h"
+#include "viewport_manager.h
 
 #include "runtime/resource/resource_manager.h"
 #include "runtime/core/utils/common.h"
 
-#include "imgui/backends/imgui_impl_glfw.h"
 
 namespace {
     GLFWmonitor* get_best_monitor_for_window(GLFWwindow* window) {
@@ -82,10 +81,9 @@ namespace dodoe {
         if (prop_.custom_titlebar) glfwWindowHint(GLFW_TITLEBAR, GLFW_FALSE);
 
         window_ = glfwCreateWindow(prop_.width, prop_.height, prop_.title, nullptr, nullptr);
-        if (!window_) {
-            DoError("Window::initialize: The window create failure!");
-            return false;
-        }
+        DoAssert(window_, "The window create failed!");
+
+
         data_.title = prop_.title;
         data_.id = string2hash(data_.title);
         data_.owner = this;

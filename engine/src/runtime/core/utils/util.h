@@ -27,28 +27,19 @@ namespace dodoe {
         static Color Gray()  { return {0.5f, 0.5f, 0.5f, 1.0f}; }
     };
 
-    inline char* read_bytes(const std::string& file_path, uint32_t* out_size) {
-		std::ifstream stream(file_path, std::ios::binary | std::ios::ate);
+    struct Rect {
+        Vector2f pos{};
+        Vector2f size{};
 
-		if (!stream) {
-			return nullptr;
-		}
+        Rect() = default;
+        Rect(Vector2f in_pos, Vector2f in_size) : pos(in_pos), size(in_size) {}
+        Rect(float x, float y, float width, float height) : pos(x, y), size(width, height) {}
 
-		std::streampos end = stream.tellg();
-		stream.seekg(0, std::ios::beg);
-		uint32_t size = end - stream.tellg();
-
-		if (size == 0) {
-			return nullptr;
-		}
-
-		char* buffer = new char[size];
-		stream.read((char*)buffer, size);
-		stream.close();
-
-		*out_size = size;
-		return buffer;
-	}
+        [[nodiscard]] bool contains(const Vector2f& point) const {
+            return point.x >= pos.x && point.x <= pos.x + size.x &&
+                point.y >= pos.y && point.y <= pos.y + size.y;
+        }
+    };
 
     
 } // dodoe

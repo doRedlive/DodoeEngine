@@ -4,11 +4,11 @@
 
 #include "window_manager.h"
 
-#include "runtime/core/application.h"
+#include "viewport_manager.h"
+
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
 
-#include "runtime/function/context.h"
 #include "runtime/function/input/key_code.h"
 #include "runtime/function/input/mouse_code.h"
 
@@ -201,14 +201,14 @@ namespace dodoe {
      void WindowManager::on_window_resize_(const WindowResizeEvent& event) {
          if (const auto window = get_window_(event.window_id); window) {
              if (const auto native_window = window->native_window()) {
-                 window->prop_.width = static_cast<unsigned int>(event.width);
-                 window->prop_.height = static_cast<unsigned int>(event.height);
+                 window->prop_.width = static_cast<uint>(event.width);
+                 window->prop_.height = static_cast<uint>(event.height);
 
-                 int fb_width = 0;
-                 int fb_height = 0;
+                 int fb_width = 0, fb_height = 0;
                  glfwGetFramebufferSize(native_window, &fb_width, &fb_height);
-                 (void)fb_width;
-                 (void)fb_height;
+
+                 ViewportManager::self().set_window_size(Vector2f(event.width, event.height));
+                 ViewportManager::self().set_pixel_size(Vector2f(fb_width, fb_height));
              }
          }
      }
