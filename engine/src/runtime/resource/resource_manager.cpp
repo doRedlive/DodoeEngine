@@ -27,13 +27,13 @@ namespace dodoe {
         ShaderLibrary::destroy(shader_library_);
     }
 
-    TextureRes ResourceManager::load_texture(const std::string& path) {
+    TextureRes ResourceManager::load_texture(const std::string& name, const std::string& path) {
         if (!texture_manager_) {
             DoError("TextureManager is not initialized!");
             return {};
         }
 
-        return texture_manager_->load_texture(path);
+        return texture_manager_->load_texture(name, path);
     }
 
     Ref<Shader> ResourceManager::load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path) {
@@ -45,16 +45,33 @@ namespace dodoe {
         return shader_library_->load_shader(name, vert_path, frag_path);
     }
 
-    TextureRes ResourceManager::get_texture(const std::string& path) {
-        return load_texture(path);
+    TextureRes ResourceManager::get_texture(const identifier id) {
+        if (!texture_manager_) {
+            DoError("TextureManager is not initialized!");
+            return {};
+        }
+        return texture_manager_->get_texture(id);
+    }
+
+    TextureRes ResourceManager::get_texture(const std::string& id) {
+        if (!texture_manager_) {
+            DoError("TextureManager is not initialized!");
+            return {};
+        }
+        const identifier texture_id = static_cast<identifier>(string2hash(id));
+        return texture_manager_->get_texture(texture_id);
+    }
+
+    TextureRes ResourceManager::get_texture(const std::string& id, const std::string& path) {
+        if (!texture_manager_) {
+            DoError("TextureManager is not initialized!");
+            return {};
+        }
+        const identifier texture_id = static_cast<identifier>(string2hash(id));
+        return texture_manager_->get_texture(texture_id, path);
     }
 
     Ref<Shader> ResourceManager::get_shader(const std::string& name) {
-        if (!shader_library_) {
-            DoError("ShaderLibrary is not initialized!");
-            return nullptr;
-        }
-
         return shader_library_->get_shader(name);
     }
 

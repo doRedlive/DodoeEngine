@@ -8,8 +8,8 @@
 
 namespace dodoe::lua_register_detail {
 
-    void register_world_system(sol::state& lua, sol::table& dodoe_table) {
-        lua.new_usertype<Registry>("Registry",
+    void register_world(sol::state& lua, sol::table& dodoe_table) {
+        dodoe_table.new_usertype<Registry>("Registry",
             sol::no_constructor,
             "createEntity", &Registry::create,
             "destroyEntity", [](Registry& reg, const Entity& entity) { reg.destroy(entity); },
@@ -17,7 +17,7 @@ namespace dodoe::lua_register_detail {
             "clear", &Registry::clear
         );
 
-        lua.new_usertype<Scene>("Scene",
+        dodoe_table.new_usertype<Scene>("Scene",
             sol::no_constructor,
             "getName", &Scene::get_name,
             "setName", &Scene::set_name,
@@ -26,12 +26,12 @@ namespace dodoe::lua_register_detail {
             "getRegistry", [](Scene& scene) { return &scene.registry(); }
         );
 
-        lua.new_usertype<World>("World",
+        dodoe_table.new_usertype<World>("World",
             sol::no_constructor,
             "getName", &World::get_name,
             "createScene", &World::create_scene,
             "getScene", &World::get_scene,
-            "getActiveScene", &World::active_scene,
+            "activeScene", &World::active_scene,
             "loadScene", &World::load_scene,
             "destroyScene", &World::destroy_scene,
             "destroyAllScenes", &World::destroy_all_scenes,
@@ -55,19 +55,13 @@ namespace dodoe::lua_register_detail {
                     }
                 });
             },
-            "startSystemCount", [](World& world) { return static_cast<int>(world.load_start_systems().size()); },
-            "updateSystemCount", [](World& world) { return static_cast<int>(world.load_update_systems().size()); },
             "removeStartSystem", &World::remove_start_system,
             "removeUpdateSystem", &World::remove_update_system,
             "removeAllSystems", &World::remove_all_systems
         );
 
-        sol::table world_manager_table = dodoe_table["worldManager"];
-        if (!world_manager_table.valid()) {
-            world_manager_table = lua.create_table();
-            dodoe_table["worldManager"] = world_manager_table;
-        }
-
+        sol::table world_manager_table = lua.create_table();
+        dodoe_table["WorldManager"] = world_manager_table;
         world_manager_table.set_function("worldCount", []() { return WorldManager::self().world_count(); });
         world_manager_table.set_function("createWorld",
                                          [](const std::string& name) -> World* { return &WorldManager::self().create_world(name); });

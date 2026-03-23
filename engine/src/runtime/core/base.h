@@ -13,6 +13,7 @@
 #include "glm/ext/matrix_float4x4.hpp"
 
 #include "entt/entt.hpp"
+#include "entt/entity/entity.hpp"
 
 namespace dodoe {
 
@@ -46,6 +47,7 @@ namespace dodoe {
     using Matrix4f = glm::mat4;
 
     using identifier = entt::id_type;
+    using null = entt::null;
 
 } // dodoe
 

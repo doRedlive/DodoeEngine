@@ -36,6 +36,7 @@ namespace dodoe {
     void Application::run() {
         EventSystem::subscribe_event<ApplicationQuitEvent, &Application::quit>(this);
         context_->layer_stack.attach();
+        context_->runtime_start();
 
         while (running) {
             EventSystem::poll_events();
@@ -45,6 +46,7 @@ namespace dodoe {
             EventSystem::handle_events();
         }
 
+        context_->runtime_finalize();
         context_->layer_stack.detach();
         EventSystem::unsubscribe_event<ApplicationQuitEvent, &Application::quit>(this);
     }

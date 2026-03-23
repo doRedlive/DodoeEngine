@@ -1,7 +1,12 @@
+//
+// Created by GreenMuffin on 2026/3/x.
+//
+
 #include "lua_register_detail.h"
 
 #include "runtime/core/world/entity.h"
 #include "runtime/core/world/components.h"
+#include "runtime/core/utils/common.h"
 
 namespace {
 
@@ -98,40 +103,33 @@ namespace {
 
 namespace dodoe::lua_register_detail {
 
-    void register_components_entity(sol::state& lua, sol::table& dodoe_table) {
+    void register_entity(sol::state& lua, sol::table& dodoe_table) {
         dodoe_table.new_enum<Rigidbody2dComponent::BodyType>(
-            "rigidbodyBodyType",
-            {
+            "RigidbodyBodyType", {
                 {"Static", Rigidbody2dComponent::BodyType::Static},
                 {"Dynamic", Rigidbody2dComponent::BodyType::Dynamic},
                 {"Kinematic", Rigidbody2dComponent::BodyType::Kinematic}
             }
         );
 
-        lua.new_usertype<TransformComponent>("TransformComponent",
+        dodoe_table.new_usertype<TransformComponent>("TransformComponent",
             sol::constructors<TransformComponent()>(),
             "position", &TransformComponent::position,
             "rotation", &TransformComponent::rotation,
             "scale", &TransformComponent::scale
         );
-        lua.new_usertype<TagComponent>("TagComponent",
+        dodoe_table.new_usertype<TagComponent>("TagComponent",
             sol::constructors<TagComponent(), TagComponent(const std::string&)>(),
             "tag", &TagComponent::tag
         );
-        lua.new_usertype<ScriptComponent>("ScriptComponent",
-            sol::constructors<ScriptComponent()>(),
-            "className", sol::property(
-                [](ScriptComponent& c) -> std::string& { return c.class_name; },
-                [](ScriptComponent& c, const std::string& value) { c.class_name = value; })
-        );
-        lua.new_usertype<Rigidbody2dComponent>("Rigidbody2dComponent",
+        dodoe_table.new_usertype<Rigidbody2dComponent>("Rigidbody2dComponent",
             sol::constructors<Rigidbody2dComponent()>(),
             "bodyType", sol::property(
                 [](Rigidbody2dComponent& c) { return c.type; },
                 [](Rigidbody2dComponent& c, const Rigidbody2dComponent::BodyType value) { c.type = value; }),
             "fixedRotation", &Rigidbody2dComponent::fixed_rotation
         );
-        lua.new_usertype<BoxCollider2dComponent>("BoxCollider2dComponent",
+        dodoe_table.new_usertype<BoxCollider2dComponent>("BoxCollider2dComponent",
             sol::constructors<BoxCollider2dComponent()>(),
             "offset", &BoxCollider2dComponent::offset,
             "size", &BoxCollider2dComponent::size,
@@ -140,11 +138,18 @@ namespace dodoe::lua_register_detail {
             "restitution", &BoxCollider2dComponent::restitution,
             "restitutionThreshold", &BoxCollider2dComponent::restitution_threshold
         );
+        dodoe_table.new_usertype<SpriteRendererComponent>("SpriteRendererComponent",
+            sol::constructors<SpriteRendererComponent()>(),
+            "texture_id", &SpriteRendererComponent::texture_id,
+            "flip", &SpriteRendererComponent::flip,
+            "pivot", &SpriteRendererComponent::pivot,
+            "depth", &SpriteRendererComponent::depth_
+        );
         dodoe_table["TagComponent"]["__type_name"] = "TagComponent";
         dodoe_table["TransformComponent"]["__type_name"] = "TransformComponent";
-        dodoe_table["ScriptComponent"]["__type_name"] = "ScriptComponent";
         dodoe_table["Rigidbody2dComponent"]["__type_name"] = "Rigidbody2dComponent";
         dodoe_table["BoxCollider2dComponent"]["__type_name"] = "BoxCollider2dComponent";
+        dodoe_table["SpriteRendererComponent"]["__type_name"] = "SpriteRendererComponent";
 
         s_component_registry.clear();
 
@@ -201,27 +206,6 @@ namespace dodoe::lua_register_detail {
         {
             ComponentRegistry registry{};
             registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (self.has_component<ScriptComponent>()) {
-                    return sol::make_object(lua_state, std::ref(self.get_component<ScriptComponent>()));
-                }
-                return sol::make_object(lua_state, std::ref(self.add_component<ScriptComponent>()));
-            };
-            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (!self.has_component<ScriptComponent>()) return sol::make_object(lua_state, sol::nil);
-                return sol::make_object(lua_state, std::ref(self.get_component<ScriptComponent>()));
-            };
-            registry.has_func = [](Entity& self) -> bool { return self.has_component<ScriptComponent>(); };
-            registry.remove_func = [](Entity& self) { if (self.has_component<ScriptComponent>()) self.remove_component<ScriptComponent>(); };
-            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
-                auto& c = self.add_or_replace_component<ScriptComponent>();
-                c.class_name = get_string_field(data, "className", c.class_name);
-                return true;
-            };
-            s_component_registry["ScriptComponent"] = std::move(registry);
-        }
-        {
-            ComponentRegistry registry{};
-            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
                 if (self.has_component<Rigidbody2dComponent>()) {
                     return sol::make_object(lua_state, std::ref(self.get_component<Rigidbody2dComponent>()));
                 }
@@ -273,8 +257,42 @@ namespace dodoe::lua_register_detail {
             };
             s_component_registry["BoxCollider2dComponent"] = std::move(registry);
         }
+        {
+            ComponentRegistry registry{};
+            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
+                if (self.has_component<SpriteRendererComponent>()) {
+                    return sol::make_object(lua_state, std::ref(self.get_component<SpriteRendererComponent>()));
+                }
+                return sol::make_object(lua_state, std::ref(self.add_component<SpriteRendererComponent>()));
+            };
+            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
+                if (!self.has_component<SpriteRendererComponent>()) return sol::make_object(lua_state, sol::nil);
+                return sol::make_object(lua_state, std::ref(self.get_component<SpriteRendererComponent>()));
+            };
+            registry.has_func = [](Entity& self) -> bool { return self.has_component<SpriteRendererComponent>(); };
+            registry.remove_func = [](Entity& self) { if (self.has_component<SpriteRendererComponent>()) self.remove_component<SpriteRendererComponent>(); };
+            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
+                auto& c = self.add_or_replace_component<SpriteRendererComponent>();
+                if (sol::object texture_id_obj = data["texture_id"]; texture_id_obj.valid() && texture_id_obj.get_type() == sol::type::number) {
+                    c.texture_id = static_cast<identifier>(texture_id_obj.as<uint32_t>());
+                }
+                if (sol::object texture_obj = data["texture"]; texture_obj.valid() && texture_obj.get_type() == sol::type::string) {
+                    const std::string texture = texture_obj.as<std::string>();
+                    if (!texture.empty()) {
+                        c.texture_id = static_cast<identifier>(string2hash(texture));
+                    }
+                }
+                c.flip = get_bool_field(data, "flip", c.flip);
+                c.depth_ = get_float_field(data, "depth", c.depth_);
+                if (sol::object pivot_obj = data["pivot"]; pivot_obj.valid() && pivot_obj.get_type() == sol::type::table) {
+                    c.pivot = table_to_vec2(pivot_obj.as<sol::table>(), c.pivot);
+                }
+                return true;
+            };
+            s_component_registry["SpriteRendererComponent"] = std::move(registry);
+        }
 
-        lua.new_usertype<Entity>("Entity",
+        dodoe_table.new_usertype<Entity>("Entity",
             sol::constructors<Entity()>(),
             "valid", &Entity::valid,
             "name", &Entity::name,

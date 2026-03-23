@@ -1,3 +1,7 @@
+//
+// Created by GreenMuffin on 2026/3/x.
+//
+
 #ifndef DODOE_SCRIPT_RUNTIME_H
 #define DODOE_SCRIPT_RUNTIME_H
 
@@ -18,9 +22,7 @@ namespace dodoe {
         virtual bool initialize() = 0;
         virtual void shutdown() = 0;
 
-        virtual bool execute_file(const std::filesystem::path& script_file) = 0;
-        virtual bool invoke(const std::string& function_name) = 0;
-        virtual bool invoke(const std::string& module_name, const std::string& function_name) = 0;
+        virtual bool execute(const std::filesystem::path& script_file) = 0;
     };
 
     struct ScriptLanguageHash {

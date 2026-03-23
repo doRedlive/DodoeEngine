@@ -43,14 +43,12 @@ namespace dodoe {
     };
 
     struct SpriteRendererComponent {
-        std::string texture_path;
-        // std::string shader_name;
+        identifier texture_id{ 0 };
         bool flip{ false };
         Vector2f pivot{0.0f, 0.0f};
         float depth_{0.0f};
         Color color{ };
         SpriteRendererComponent() = default;
-        SpriteRendererComponent(const std::string& t_name, const std::string& /*s_name*/) : texture_path(t_name) { }
     };
 
     struct ScriptComponent {

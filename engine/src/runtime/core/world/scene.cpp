@@ -37,7 +37,11 @@ namespace dodoe {
                 auto& sr = reg.get<SpriteRendererComponent>(entity);
                 auto& tr = reg.get<TransformComponent>(entity);
 
-                const auto texture_res = ResourceManager::self().load_texture(sr.texture_path);
+                if (sr.texture_id == 0) {
+                    continue;
+                }
+
+                const auto texture_res = ResourceManager::self().get_texture(sr.texture_id);
                 if (!texture_res.texture) {
                     continue;
                 }

@@ -7,6 +7,7 @@
 #include "runtime/core/world/world_manager.h"
 #include "runtime/core/world/entity.h"
 #include "runtime/core/world/components.h"
+#include "runtime/resource/resource_manager.h"
 
 namespace sandbox {
 
@@ -24,7 +25,9 @@ namespace sandbox {
         transform.position = {0.0f, 0.0f, 0.0f};
         transform.scale = {1.0f, 1.0f, 1.0f};
         auto& sprite_renderer = test_go.add_component<dodoe::SpriteRendererComponent>();
-        sprite_renderer.texture_path = "engine/res/pictures/grm.jpg";
+        const std::string texture_path = "engine/res/pictures/grm.jpg";
+        const auto texture_res = dodoe::ResourceManager::self().get_texture(texture_path, texture_path);
+        sprite_renderer.texture_id = texture_res.texture_id;
         sprite_renderer.pivot = dodoe::Vector2f(0.5f, 0.5f);
     }
 

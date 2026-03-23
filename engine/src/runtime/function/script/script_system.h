@@ -20,12 +20,7 @@ namespace dodoe {
         static void destroy(Scope<ScriptSystem>& script_system);
 
         bool has_language(ScriptLanguage language) const;
-        bool execute_file(const std::filesystem::path& script_file, ScriptLanguage language = ScriptLanguage::Lua);
-        bool invoke(const std::string& function_name, ScriptLanguage language = ScriptLanguage::Lua);
-        bool invoke(const std::string& module_name, const std::string& function_name, ScriptLanguage language = ScriptLanguage::Lua);
-        bool execute_lua_file(const std::filesystem::path& script_file);
-        bool invoke_lua(const std::string& function_name);
-        bool invoke_lua(const std::string& module_name, const std::string& function_name);
+        bool execute(const std::filesystem::path& script_file, ScriptLanguage language = ScriptLanguage::Lua);
 
     private:
         IScriptRuntime* get_runtime(ScriptLanguage language);

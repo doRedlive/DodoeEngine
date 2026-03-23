@@ -36,8 +36,11 @@ namespace dodoe {
         texture_umap_.clear();
     }
 
-    TextureRes TextureManager::load_texture(const std::string& path) {
-        auto id = string2hash(path);
+    TextureRes TextureManager::load_texture(const std::string& id, const std::string& path) {
+        return load_texture(static_cast<identifier>(string2hash(id)), path);
+    }
+
+    TextureRes TextureManager::load_texture(identifier id, const std::string& path) {
         if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
             return it->second;
         } 
@@ -57,7 +60,7 @@ namespace dodoe {
 
         auto texture = Texture::create({width, height, data});
 
-        TextureRes res {texture, path, 10.0f};
+        TextureRes res {id, texture, path, 10.0f};
         auto [inserted_it, _] = texture_umap_.emplace(id, std::move(res));
 
         stbi_image_free(data);
@@ -65,14 +68,24 @@ namespace dodoe {
         return inserted_it->second;
     }
 
-    TextureRes TextureManager::get_texture(const std::string& path) {
-        auto id = string2hash(path);
+    TextureRes TextureManager::get_texture(identifier id) {
         if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
             return it->second;
         }
 
-        DoError("Can't find the texture {}!", path);
+        DoError("TextureManager::get_texture: texture not found.");
         return {};
+    }
+
+    TextureRes TextureManager::get_texture(identifier id, const std::string& path) {
+        if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
+            return it->second;
+        }
+        return load_texture(id, path);
+    }
+
+    TextureRes TextureManager::get_texture(const std::string& id) {
+        return get_texture(static_cast<identifier>(string2hash(id)));
     }
 
 } // dodoe

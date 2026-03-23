@@ -17,8 +17,14 @@ namespace cakery {
         base_directory_ = FileSystem::asset_path;
         cur_directory_ = base_directory_;
 
-        directory_icon_ = ResourceManager::self().get_texture("pictures/ContentBrowser/DirectoryIcon.png").texture;
-        file_icon_ = ResourceManager::self().get_texture("pictures/ContentBrowser/FileIcon.png").texture;
+        directory_icon_ = ResourceManager::self()
+                              .get_texture("pictures/ContentBrowser/DirectoryIcon.png",
+                                           "pictures/ContentBrowser/DirectoryIcon.png")
+                              .texture;
+        file_icon_ = ResourceManager::self()
+                         .get_texture("pictures/ContentBrowser/FileIcon.png",
+                                      "pictures/ContentBrowser/FileIcon.png")
+                         .texture;
     }
 
 	void ProjectPanel::on_ui_render() {

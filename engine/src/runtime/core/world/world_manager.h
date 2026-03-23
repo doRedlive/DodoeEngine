@@ -29,7 +29,9 @@ namespace dodoe {
 		void initialize(WorldManagerInitInfo init_info);
 		void shutdown();
 
+		void runtime_start();
 		void runtime_update(float delta_time);
+		void runtime_finalize();
 		void simulation_update(float delta_time);
 
 		World& create_world(const std::string& name);

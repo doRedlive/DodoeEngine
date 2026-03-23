@@ -18,3 +18,5 @@ __pycache__/
 *.pdb
 
 *.log
+
+engine/src/sandbox/proj/

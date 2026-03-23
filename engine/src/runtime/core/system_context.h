@@ -17,6 +17,7 @@ namespace dodoe {
     class UiSystem;
     class TimeSystem;
     class InputManager;
+    class ScriptSystem;
 
     struct SystemContextCreateInfo {
         ApplicationSpecification spec{};
@@ -29,6 +30,7 @@ namespace dodoe {
         Scope<WindowManager>    window_manager {nullptr};
         Scope<RenderSystem>     render_system  {nullptr};
         Scope<InputManager>     input_manager  {nullptr};
+        Scope<ScriptSystem>     script_system  {nullptr};
         Scope<TimeSystem>       time_system    {nullptr};
         Scope<UiSystem>         ui_system      {nullptr};
 
@@ -36,9 +38,10 @@ namespace dodoe {
 
         static Scope<SystemContext> create(SystemContextCreateInfo create_info);
         static void destroy(Scope<SystemContext>& context);
-
-        
+ 
+        void runtime_start();
         void tick_one_frame();
+        void runtime_finalize();
         
     private:
         [[nodiscard]] bool initialize_systems(SystemContextCreateInfo create_info);

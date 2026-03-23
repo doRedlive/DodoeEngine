@@ -46,7 +46,9 @@ namespace dodoe {
         [[nodiscard]]
         const std::string& get_name() const { return name_; }
 
+        void runtime_start();
         void runtime_update(float delta_time);
+        void runtime_finalize();
         void simulation_update(float delta_time);
 
         Scene* create_scene(const std::string& name);

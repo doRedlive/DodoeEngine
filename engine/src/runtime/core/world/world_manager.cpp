@@ -26,8 +26,16 @@ namespace dodoe {
 		WorldContext::destroy(context_);
 	}
 
+	void WorldManager::runtime_start() {
+		active_world().runtime_start();
+	}
+
 	void WorldManager::runtime_update(const float delta_time) {
 		active_world().runtime_update(delta_time);
+	}
+
+	void WorldManager::runtime_finalize() {
+		active_world().runtime_finalize();
 	}
 
 	void WorldManager::simulation_update(const float delta_time) {

@@ -8,7 +8,7 @@
 
 namespace {
 
-    std::string script_language_name(const dodoe::ScriptLanguage language) {
+    std::string script_language_type2name(const dodoe::ScriptLanguage language) {
         switch (language) {
             case dodoe::ScriptLanguage::Lua: return "Lua";
             case dodoe::ScriptLanguage::CSharp: return "C#";
@@ -25,7 +25,7 @@ namespace dodoe {
             case ScriptLanguage::Lua:
                 return create_scope<LuaScriptRuntime>();
             case ScriptLanguage::CSharp:
-                DoWarn("ScriptSystem: script language {} is not available right now.", script_language_name(language));
+                DoWarn("ScriptSystem: script language {} is not available right now.", script_language_type2name(language));
                 return nullptr;
             default:
                 return nullptr;
@@ -50,40 +50,12 @@ namespace dodoe {
         return runtimes_.contains(language);
     }
 
-    bool ScriptSystem::execute_file(const std::filesystem::path& script_file, const ScriptLanguage language) {
+    bool ScriptSystem::execute(const std::filesystem::path& script_file, const ScriptLanguage language) {
         auto* runtime = get_runtime(language);
         if (!runtime) {
             return false;
         }
-        return runtime->execute_file(script_file);
-    }
-
-    bool ScriptSystem::invoke(const std::string& function_name, const ScriptLanguage language) {
-        auto* runtime = get_runtime(language);
-        if (!runtime) {
-            return false;
-        }
-        return runtime->invoke(function_name);
-    }
-
-    bool ScriptSystem::invoke(const std::string& module_name, const std::string& function_name, const ScriptLanguage language) {
-        auto* runtime = get_runtime(language);
-        if (!runtime) {
-            return false;
-        }
-        return runtime->invoke(module_name, function_name);
-    }
-
-    bool ScriptSystem::execute_lua_file(const std::filesystem::path& script_file) {
-        return execute_file(script_file, ScriptLanguage::Lua);
-    }
-
-    bool ScriptSystem::invoke_lua(const std::string& function_name) {
-        return invoke(function_name, ScriptLanguage::Lua);
-    }
-
-    bool ScriptSystem::invoke_lua(const std::string& module_name, const std::string& function_name) {
-        return invoke(module_name, function_name, ScriptLanguage::Lua);
+        return runtime->execute(script_file);
     }
 
     void ScriptSystem::initialize(ScriptSystemCreateInfo create_info) {
@@ -100,7 +72,7 @@ namespace dodoe {
             }
 
             if (!script_runtime->initialize()) {
-                DoError("ScriptSystem: script language {} initialize failed.", script_language_name(language));
+                DoError("ScriptSystem: script language {} initialize failed.", script_language_type2name(language));
                 continue;
             }
 
@@ -122,7 +94,7 @@ namespace dodoe {
     IScriptRuntime* ScriptSystem::get_runtime(const ScriptLanguage language) {
         const auto it = runtimes_.find(language);
         if (it == runtimes_.end()) {
-            DoError("ScriptSystem: script language {} is not available.", script_language_name(language));
+            DoError("ScriptSystem: script language {} is not available.", script_language_type2name(language));
             return nullptr;
         }
         return it->second.get();
@@ -131,7 +103,7 @@ namespace dodoe {
     const IScriptRuntime* ScriptSystem::get_runtime(const ScriptLanguage language) const {
         const auto it = runtimes_.find(language);
         if (it == runtimes_.end()) {
-            DoError("ScriptSystem: script language {} is not available.", script_language_name(language));
+            DoError("ScriptSystem: script language {} is not available.", script_language_type2name(language));
             return nullptr;
         }
         return it->second.get();

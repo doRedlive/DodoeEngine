@@ -28,6 +28,7 @@
 // game
 #include "runtime/core/world/world_manager.h"
 #include "runtime/function/input/input_manager.h"
+#include "runtime/function/script/script_system.h"
 
 namespace dodoe {
 
@@ -47,10 +48,10 @@ namespace dodoe {
 
     bool SystemContext::initialize_systems(SystemContextCreateInfo create_info) {
         window_manager = create_scope<WindowManager>();
-        render_system = create_scope<RenderSystem>();
-        time_system = create_scope<TimeSystem>();
-        ui_system = create_scope<UiSystem>();
-        input_manager = create_scope<InputManager>();
+        render_system  = create_scope<RenderSystem>();
+        input_manager  = create_scope<InputManager>();
+        time_system    = create_scope<TimeSystem>();
+        ui_system      = create_scope<UiSystem>();
         // ---------------------CORE-------------------------
         Log::initialize();
         EventSystem::initialize();
@@ -65,6 +66,7 @@ namespace dodoe {
         // ---------------------GAME-------------------------
         input_manager->initialize();
         WorldManager::self().initialize({render_system->renderer()});
+        script_system  = ScriptSystem::create({});
  
         return true;
     }
@@ -72,6 +74,7 @@ namespace dodoe {
     bool SystemContext::shutdown_systems() {
         // ---------------------GAME-------------------------
         WorldManager::self().shutdown();
+        ScriptSystem::destroy(script_system);
         input_manager->shutdown();
         input_manager.reset();
         // ---------------------RESOURCE-------------------------
@@ -90,11 +93,19 @@ namespace dodoe {
         return true;
     }
 
+    void SystemContext::runtime_start() {
+        WorldManager::self().runtime_start();
+    }
+
     void SystemContext::tick_one_frame() {
         time_system->calculate_time();
         const auto& dt = time_system->get_delta_time();
         update_tick(dt);
         render_tick();
+    }
+
+    void SystemContext::runtime_finalize() {
+        WorldManager::self().runtime_finalize();
     }
 
     void SystemContext::update_tick(const float delta_time) {
