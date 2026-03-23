@@ -8,7 +8,10 @@
 #include "runtime/function/render/backend/render_process.h"
 #include "runtime/function/render/backend/shader.h"
 
+#include "runtime/function/render/camera/camera.h"
+
 namespace dodoe {
+
 
     class GlRenderPass : public RenderPass {
     public:
@@ -28,7 +31,8 @@ namespace dodoe {
         void shutdown() override;
 
     private:
-        Ref<Shader> shader_;
+        Ref<Shader> shader_{nullptr};
+        Camera* camera_{nullptr};
     };
 
 } // dodoe

@@ -6,13 +6,15 @@
 #include "core/system_context.h"
 #include "sandbox_layer.h"
 
+#include "onlyone_layer.h"
+
 namespace sandbox {
 
 class SandboxApp final : public dodoe::Application {
 public:
     explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
         : dodoe::Application(spec) {
-            context_->layer_stack.push_layer(new SandboxLayer("Sandbox"));
+            context_->layer_stack.push_layer(new OnlyoneLayer("Onlyone"));
     }
 
     ~SandboxApp() override = default;

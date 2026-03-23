@@ -11,17 +11,17 @@
 #include "runtime/core/meta/reflection/reflection.h"
 
 namespace dodoe {
-    template<typename...>
+    template <typename...>
     inline constexpr bool always_false = false;
 
     class Serializer {
     public:
-        template<typename T>
+        template <typename T>
         static Json write_pointer(T* instance) {
-            return Json{{"$typeName", "*"}, {"$context", Serializer::write(*instance)}};
+            return Json{ { "$typeName", "*" }, { "$context", Serializer::write(*instance) } };
         }
 
-        template<typename T>
+        template <typename T>
         static T*& read_pointer(const Json& json_context, T*& instance) {
             DoAssert(instance == nullptr);
             DoAssert(json_context.is_object(), "Serializer::read_pointer expects object");
@@ -36,25 +36,24 @@ namespace dodoe {
                 read(json_context.at("$context"), *instance);
             }
             else {
-                auto reflection_instance =
-                    reflection::TypeMeta::new_from_name_and_json(type_name, json_context.at("$context"));
+                auto reflection_instance = reflection::TypeMeta::new_from_name_and_json(type_name, json_context.at("$context"));
                 instance = static_cast<T*>(reflection_instance.instance);
             }
             return instance;
         }
 
-        template<typename T>
+        template <typename T>
         static Json write(const reflection::ReflectionPtr<T>& instance) {
-            T*                 instance_ptr = instance.get_ptr();
+            T* instance_ptr = instance.get_ptr();
             const std::string& type_name    = instance.get_type_name();
             if (!instance_ptr) {
-                return Json{{"$typeName", type_name}, {"$context", Json()}};
+                return Json{ { "$typeName", type_name }, { "$context", Json() } };
             }
-            return Json{{"$typeName", type_name},
-                        {"$context", reflection::TypeMeta::write_by_name(type_name, instance_ptr)}};
+            return Json{ { "$typeName", type_name },
+                         { "$context", reflection::TypeMeta::write_by_name(type_name, instance_ptr) } };
         }
 
-        template<typename T>
+        template <typename T>
         static T*& read(const Json& json_context, reflection::ReflectionPtr<T>& instance) {
             DoAssert(json_context.is_object(), "Serializer::read expects object");
             DoAssert(json_context.contains("$typeName"), "Serializer::read missing $typeName");
@@ -63,7 +62,7 @@ namespace dodoe {
             return read_pointer(json_context, instance.get_ptr_reference());
         }
 
-        template<typename T>
+        template <typename T>
         static Json write(const T& instance) {
 
             if constexpr (std::is_pointer<T>::value) {
@@ -75,7 +74,7 @@ namespace dodoe {
             }
         }
 
-        template<typename T>
+        template <typename T>
         static T& read(const Json& json_context, T& instance) {
             if constexpr (std::is_pointer<T>::value) {
                 return read_pointer(json_context, instance);
@@ -125,4 +124,4 @@ namespace dodoe {
 
 } // dodoe
 
-#endif//DODOE_SERIALIZER_H
+#endif // DODOE_SERIALIZER_H

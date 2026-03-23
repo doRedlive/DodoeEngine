@@ -22,7 +22,7 @@ namespace dodoe {
 	}
 
 	void RenderGraph::initialize(RenderGraphCreateInfo create_info) {
-		sprite_stage = RenderStage::create({nullptr, create_info.frame_width, create_info.frame_height});
+		sprite_stage = RenderStage::create({create_info.framebuffer_width, create_info.framebuffer_height, create_info.camera});
 	}
 
 	void RenderGraph::shutdown() {

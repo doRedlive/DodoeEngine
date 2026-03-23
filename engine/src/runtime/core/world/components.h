@@ -10,6 +10,8 @@
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
 
+#include "runtime/function/render/camera/camera.h"
+
 #include "glm/glm.hpp"
 #include "entt/entt.hpp"
 
@@ -44,6 +46,8 @@ namespace dodoe {
         std::string texture_path;
         // std::string shader_name;
         bool flip{ false };
+        Vector2f pivot{0.0f, 0.0f};
+        float depth_{0.0f};
         Color color{ };
         SpriteRendererComponent() = default;
         SpriteRendererComponent(const std::string& t_name, const std::string& /*s_name*/) : texture_path(t_name) { }
@@ -62,6 +66,11 @@ namespace dodoe {
         bool fixed_rotation{ false };
         void* runtime_body{ nullptr };
         Rigidbody2dComponent() = default;
+    };
+
+    struct CameraComponent {
+        CameraType type;
+        float zoom;
     };
 
     struct BoxCollider2dComponent {

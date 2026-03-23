@@ -21,18 +21,12 @@ namespace dodoe {
 
     void RenderSystem::initialize(RenderSystemCreateInfo init_info) {
         window_manager_ = init_info.window_manager;
-        auto native_window = window_manager_->active_window()->native_window();
-        RenderApi::initialize({RenderApiType::OpenGL});
-        render_context_ = RenderContext::create({native_window});
-
-        int frame_width = 1;
-        int frame_height = 1;
-        if (native_window) {
-            glfwGetFramebufferSize(native_window, &frame_width, &frame_height);
-        }
-
         auto window = window_manager_->active_window();
-        render2d_graph_ = RenderGraph::create({window->viewport_manager->get_logical_size()});
+
+        RenderApi::initialize({init_info.backend_api});
+        render_context_ = RenderContext::create({window->native_window()});         
+        camera_ = Camera::create({CameraType::Orthographic, window->viewport_manager->get_logical_size()});
+        render2d_graph_ = RenderGraph::create({window->viewport_manager->get_logical_size(), camera_.get()});
 
         renderer_ = Renderer::create({render2d_graph_.get()});
     }
@@ -40,6 +34,7 @@ namespace dodoe {
     void RenderSystem::shutdown() {
         Renderer::destroy(renderer_);
         RenderGraph::destroy(render2d_graph_);
+        Camera::destroy(camera_);
         RenderContext::destroy(render_context_);
     }
 
@@ -47,8 +42,8 @@ namespace dodoe {
         auto& viewport_manager = window_manager_->active_window()->viewport_manager;
         if (viewport_manager->dirty()) [[unlikely]] {
             viewport_manager->update();
+            RenderDrawer::update_viewport(viewport_manager->viewport());
         }
-        RenderDrawer::update_viewport(viewport_manager->viewport());
         RenderDrawer::clear_color(Color::Gray());
     }
 

@@ -4,6 +4,9 @@
 
 #include "reflection.h"
 
+#include <algorithm>
+#include <cstring>
+
 namespace dodoe {
 
     namespace reflection {
@@ -15,7 +18,7 @@ namespace dodoe {
         static std::multimap<std::string, FieldFuncTuple*> field_map;
         static std::multimap<std::string, MethodFuncTuple*> method_map;
         static std::map<std::string, ArrayFuncTuple*> array_map;
-        
+
         void TypeMetaRegisterInterface::register2classmap(const char* name, ClassFuncTuple* value) {
             if (class_map.find(name) == class_map.end()) {
                 class_map.insert(std::make_pair(name, value));
@@ -25,15 +28,15 @@ namespace dodoe {
             }
         }
 
-        void TypeMetaRegisterInterface::register2methodmap(const char *name, MethodFuncTuple *value) {
+        void TypeMetaRegisterInterface::register2methodmap(const char* name, MethodFuncTuple* value) {
             method_map.insert(std::make_pair(name, value));
         }
 
-        void TypeMetaRegisterInterface::register2fieldmap(const char *name, FieldFuncTuple *value) {
+        void TypeMetaRegisterInterface::register2fieldmap(const char* name, FieldFuncTuple* value) {
             field_map.insert(std::make_pair(name, value));
         }
 
-        void TypeMetaRegisterInterface::register2arraymap(const char *name, ArrayFuncTuple *value) {
+        void TypeMetaRegisterInterface::register2arraymap(const char* name, ArrayFuncTuple* value) {
             if (array_map.find(name) == array_map.end()) {
                 array_map.insert(std::make_pair(name, value));
             }
@@ -66,7 +69,6 @@ namespace dodoe {
 
 
         TypeMeta::TypeMeta(const std::string& name) : type_name_(name) {
-
             fields_.clear();
             methods_.clear();
 
@@ -87,10 +89,12 @@ namespace dodoe {
 
                 methods_it.first++;
             }
-            
         }
 
-        TypeMeta::TypeMeta() : type_name_(unknownType) { fields_.clear(); methods_.clear(); }
+        TypeMeta::TypeMeta() : type_name_(unknownType) {
+            fields_.clear();
+            methods_.clear();
+        }
 
         TypeMeta TypeMeta::new_meta_from_name(const std::string& name) {
             TypeMeta type_meta(name);
@@ -119,7 +123,7 @@ namespace dodoe {
             return ReflectionInstance();
         }
 
-        Json TypeMeta::write_by_name(const std::string &name, void *instance) {
+        Json TypeMeta::write_by_name(const std::string& name, void* instance) {
             auto it = class_map.find(name);
 
             if (it != class_map.end()) {
@@ -316,7 +320,6 @@ namespace dodoe {
 
         void* ArrayAccessor::get(int index, void* instance) {
             return std::get<1>(*functions_)(index, instance);
-
         }
 
         int ArrayAccessor::get_size(void* instance) {
@@ -357,8 +360,6 @@ namespace dodoe {
             return *this;
         }
 
-    }
-
-    
-}
+    } // namespace reflection
+} // namespace dodoe
 

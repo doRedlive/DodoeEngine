@@ -13,12 +13,14 @@
 #include "backend/render_process.h"
 #include "render_batch.h"
 
+#include "camera/camera.h"
+
 namespace dodoe {
 
 	struct RenderStageCreateInfo {
-		Ref<Shader> shader;
-		ui32 frame_width{0};
-		ui32 frame_height{0};
+		ui32 framebuffer_width{0};
+		ui32 framebuffer_height{0};
+		Camera* camera{nullptr};
 	};
 
 	class RenderStage {

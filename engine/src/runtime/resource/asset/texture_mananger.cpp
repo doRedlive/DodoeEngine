@@ -36,10 +36,10 @@ namespace dodoe {
         texture_umap_.clear();
     }
 
-    Ref<Texture> TextureManager::load_texture(const std::string& path) {
+    TextureRes TextureManager::load_texture(const std::string& path) {
         auto id = string2hash(path);
         if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
-            return it->second.texture;
+            return it->second;
         } 
 
         stbi_set_flip_vertically_on_load(true);
@@ -52,27 +52,27 @@ namespace dodoe {
 
         if (!data) {
             DoError("Load texture from {} failed!", path);
-            return nullptr;
+            return {};
         }
 
         auto texture = Texture::create({width, height, data});
 
-        TextureRes res {texture, path};
+        TextureRes res {texture, path, 10.0f};
         auto [inserted_it, _] = texture_umap_.emplace(id, std::move(res));
 
         stbi_image_free(data);
 
-        return inserted_it->second.texture;
+        return inserted_it->second;
     }
 
-    Ref<Texture> TextureManager::get_texture(const std::string& path) {
+    TextureRes TextureManager::get_texture(const std::string& path) {
         auto id = string2hash(path);
         if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
-            return it->second.texture;
+            return it->second;
         }
 
         DoError("Can't find the texture {}!", path);
-        return nullptr;
+        return {};
     }
 
 } // dodoe

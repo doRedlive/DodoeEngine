@@ -8,6 +8,7 @@
 #include "dopch.h"
 
 #include "shader.h"
+#include "runtime/function/render/camera/camera.h"
 
 namespace dodoe {
 
@@ -29,6 +30,7 @@ namespace dodoe {
 
 	struct RenderPipelineCreateInfo {
 		Ref<Shader> shder;
+		Camera* camera{nullptr};
 	};
 
 	class RenderPipeline {

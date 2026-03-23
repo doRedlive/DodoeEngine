@@ -12,10 +12,10 @@ namespace dodoe::lua_register_detail {
         }
 
         resource_manager_table.set_function("loadTexture", [](const std::string& path) -> bool {
-            return ResourceManager::self().load_texture(path) != nullptr;
+            return ResourceManager::self().load_texture(path).texture != nullptr;
         });
         resource_manager_table.set_function("getTexture", [](const std::string& path) -> bool {
-            return ResourceManager::self().get_texture(path) != nullptr;
+            return ResourceManager::self().get_texture(path).texture != nullptr;
         });
         resource_manager_table.set_function("loadShader", [](const std::string& name, const std::string& vertPath, const std::string& fragPath) -> bool {
             return ResourceManager::self().load_shader(name, vertPath, fragPath) != nullptr;

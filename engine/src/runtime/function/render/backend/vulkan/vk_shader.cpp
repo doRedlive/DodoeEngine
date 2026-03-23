@@ -36,6 +36,48 @@ namespace dodoe {
         // Vulkan shader modules are consumed by pipeline creation; no direct runtime detach step.
     }
 
+    void VkShader::set_bool(const std::string& name, bool value) {
+        (void)name;
+        (void)value;
+        DoError("VkShader::set_bool is not supported.");
+    }
+
+    void VkShader::set_int(const std::string& name, int value) {
+        (void)name;
+        (void)value;
+        DoError("VkShader::set_int is not supported.");
+    }
+
+    void VkShader::set_float(const std::string& name, float value) {
+        (void)name;
+        (void)value;
+        DoError("VkShader::set_float is not supported.");
+    }
+
+    void VkShader::set_vec2(const std::string& name, const Vector2f& value) {
+        (void)name;
+        (void)value;
+        DoError("VkShader::set_vec2 is not supported.");
+    }
+
+    void VkShader::set_vec3(const std::string& name, const Vector3f& value) {
+        (void)name;
+        (void)value;
+        DoError("VkShader::set_vec3 is not supported.");
+    }
+
+    void VkShader::set_vec4(const std::string& name, const Vector4f& value) {
+        (void)name;
+        (void)value;
+        DoError("VkShader::set_vec4 is not supported.");
+    }
+
+    void VkShader::set_mat4(const std::string& name, const Matrix4f& value) {
+        (void)name;
+        (void)value;
+        DoError("VkShader::set_mat4 is not supported.");
+    }
+
     void VkShader::initialize(ShaderCreateInfo create_info) {
         DoAssert(create_info.native_device, "ShaderCreateInfo::native_device must not be null for Vulkan shaders.");
         DoAssert(create_info.vert_module.stage == ShaderStage::Vertex,

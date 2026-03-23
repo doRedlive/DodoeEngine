@@ -8,6 +8,7 @@
 // core
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
+#include "runtime/core/meta/reflection/reflection_register.h"
 
 #include "runtime/core/layer/layer.h"
 #include "runtime/core/layer/layer_stack.h"
@@ -53,11 +54,12 @@ namespace dodoe {
         // ---------------------CORE-------------------------
         Log::initialize();
         EventSystem::initialize();
+        reflection::TypeMetaRegister::meta_register();
         // ---------------------RESOURCE-------------------------
         ResourceManager::self().initialize();
         // ---------------------RENDER-------------------------
         if (!window_manager->initialize({create_info.spec})) return false;
-        render_system->initialize({window_manager.get()});
+        render_system->initialize({window_manager.get(), create_info.spec.render_api_type});
         ui_system->initialize(window_manager.get());
         
         // ---------------------GAME-------------------------
@@ -72,10 +74,9 @@ namespace dodoe {
         WorldManager::self().shutdown();
         input_manager->shutdown();
         input_manager.reset();
-
-        // ---------------------RENDER-------------------------
-        ResourceManager::self().shutdown();
         // ---------------------RESOURCE-------------------------
+        ResourceManager::self().shutdown();
+        // ---------------------RENDER-------------------------
         ui_system->shutdown();
         ui_system.reset();
         render_system->shutdown();
@@ -84,6 +85,7 @@ namespace dodoe {
         window_manager.reset();
         // ---------------------CORE-------------------------
         time_system.reset();
+        reflection::TypeMetaRegister::meta_unregister();
         EventSystem::shutdown();
         return true;
     }

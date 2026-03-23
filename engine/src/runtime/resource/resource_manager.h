@@ -24,10 +24,10 @@ namespace dodoe {
         void initialize();
         void shutdown();
 
-        Ref<Texture> load_texture(const std::string& path);
+        TextureRes load_texture(const std::string& path);
         Ref<Shader> load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path);
 
-        [[nodiscard]] Ref<Texture> get_texture(const std::string& path);
+        [[nodiscard]] TextureRes get_texture(const std::string& path);
         [[nodiscard]] Ref<Shader> get_shader(const std::string& name);
 
     private:

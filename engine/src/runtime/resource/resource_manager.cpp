@@ -27,10 +27,10 @@ namespace dodoe {
         ShaderLibrary::destroy(shader_library_);
     }
 
-    Ref<Texture> ResourceManager::load_texture(const std::string& path) {
+    TextureRes ResourceManager::load_texture(const std::string& path) {
         if (!texture_manager_) {
             DoError("TextureManager is not initialized!");
-            return nullptr;
+            return {};
         }
 
         return texture_manager_->load_texture(path);
@@ -45,7 +45,7 @@ namespace dodoe {
         return shader_library_->load_shader(name, vert_path, frag_path);
     }
 
-    Ref<Texture> ResourceManager::get_texture(const std::string& path) {
+    TextureRes ResourceManager::get_texture(const std::string& path) {
         return load_texture(path);
     }
 

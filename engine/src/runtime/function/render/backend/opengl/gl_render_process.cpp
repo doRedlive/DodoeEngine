@@ -17,6 +17,7 @@ namespace dodoe {
     void GlRenderPipeline::initialize(RenderPipelineCreateInfo create_info) {
         DoAssert(create_info.shder, "Pipeline initialize failed! Shader is null!");
         shader_ = create_info.shder;
+        camera_ = create_info.camera;
     }
 
     void GlRenderPipeline::shutdown() {
@@ -25,6 +26,7 @@ namespace dodoe {
 
     void GlRenderPipeline::attach() {
         shader_->attach();
+        shader_->set_mat4("u_ViewProj", camera_->view_projection_matrix());
     }
 
     void GlRenderPipeline::detach() {

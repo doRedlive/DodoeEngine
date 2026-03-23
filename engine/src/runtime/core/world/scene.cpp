@@ -27,12 +27,32 @@ namespace dodoe {
             auto& world = WorldManager::self().active_world();
 
             auto& renderer = world.context.renderer;
-            auto view = reg.view<SpriteRendererComponent, TransformComponent>();
-            view.each([&renderer](Entity entity, SpriteRendererComponent& sr, TransformComponent& tr) {
-                (void)entity;
-                auto texture = ResourceManager::self().load_texture(sr.texture_path);
-                renderer.draw_sprite(texture, {tr.position.x, tr.position.y}, {tr.scale.x, tr.scale.y}, tr.rotation, {sr.color.r, sr.color.g, sr.color.b, sr.color.a});
+            reg.sort<SpriteRendererComponent>([](const SpriteRendererComponent& a, const SpriteRendererComponent& b) {
+                return a.depth_ > b.depth_;
             });
+
+            auto view = reg.view<SpriteRendererComponent, TransformComponent>();
+            view.use<SpriteRendererComponent>();
+            for (auto entity : view) {
+                auto& sr = reg.get<SpriteRendererComponent>(entity);
+                auto& tr = reg.get<TransformComponent>(entity);
+
+                const auto texture_res = ResourceManager::self().load_texture(sr.texture_path);
+                if (!texture_res.texture) {
+                    continue;
+                }
+
+                const float ppu = (texture_res.ppu > 0.0f) ? texture_res.ppu : 10.0f;
+                const Vector2f tex_size(static_cast<float>(texture_res.texture->width), static_cast<float>(texture_res.texture->height));
+                const Vector2f world_size = (tex_size / ppu) * Vector2f(tr.scale.x, tr.scale.y);
+
+                const Vector2f anchor_pos(tr.position.x, tr.position.y);
+                const Vector2f pivot_offset = world_size * sr.pivot;
+                const Vector2f bl_pos = anchor_pos - pivot_offset;
+
+                renderer.draw_sprite(texture_res.texture, bl_pos, world_size, tr.rotation,
+                    {sr.color.r, sr.color.g, sr.color.b, sr.color.a});
+            }
         }
     }
 

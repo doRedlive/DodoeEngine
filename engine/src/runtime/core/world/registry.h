@@ -87,6 +87,11 @@ namespace dodoe {
 				});
 			}
 
+			template<typename... Components>
+			void use() {
+				view_.template use<Components...>();
+			}
+
 		private:
 			Scene* scene_{ nullptr };
 			RawView view_;
@@ -110,6 +115,11 @@ namespace dodoe {
 
 		void clear() {
 			registry_.clear();
+		}
+
+		template<typename Component, typename Compare>
+		void sort(Compare&& compare) {
+			registry_.template sort<Component>(std::forward<Compare>(compare));
 		}
 
 		template<typename Component, typename... Args>

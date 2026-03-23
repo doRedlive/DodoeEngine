@@ -9,14 +9,17 @@
 
 #include "render_stage.h"
 
+#include "camera/camera.h"
+
 namespace dodoe {
 
 	struct RenderGraphCreateInfo {
-		ui32 frame_width{1};
-		ui32 frame_height{1};
+		ui32 framebuffer_width{1};
+		ui32 framebuffer_height{1};
+		Camera* camera{nullptr};
 
 		RenderGraphCreateInfo() = default;
-		RenderGraphCreateInfo(const Vector2f& logical_size) : frame_width(static_cast<uint>(logical_size.x)), frame_height(static_cast<uint>(logical_size.y)) { }
+		RenderGraphCreateInfo(const Vector2f& logical_size, Camera* cam) : framebuffer_width(static_cast<uint>(logical_size.x)), framebuffer_height(static_cast<uint>(logical_size.y)), camera(cam) { }
 	};
 
 	class RenderGraph {

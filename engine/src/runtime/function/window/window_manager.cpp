@@ -59,6 +59,13 @@ namespace dodoe {
          EventSystem::unsubscribe_event<WindowCloseEvent, &WindowManager::on_window_close_>(this);
          EventSystem::unsubscribe_event<WindowResizeEvent, &WindowManager::on_window_resize_>(this);
 
+        for (auto& window : windows_) {
+            if (window) {
+                window->shutdown();
+            }
+        }
+        windows_.clear();
+
         glfwTerminate();
     }
 
@@ -174,52 +181,50 @@ namespace dodoe {
 		});
     }
 
-     void WindowManager::on_window_focus_(const WindowFocusEvent& event) {
-         if (const auto window = get_window_(event.window_id); window) {
-             active_window_ = window;
-         }
-     }
-    
-     void WindowManager::on_window_lost_focus_(const WindowLostFocusEvent& event) {
-         // TODO: improve here.
-     }
-    
-     void WindowManager::on_window_close_(const WindowCloseEvent& event) {
-         DoDebug("WindowManager::on_window_close");
-         if (const auto window = get_window_(event.window_id); window) {
-             window->shutdown();
-             if (const auto it = std::ranges::find_if(windows_, [&](const Scope<Window>& w) { return w.get() == window; }); it != windows_.end()) {
-                 windows_.erase(it);
-             }
-         }
-         if (windows_.empty()) {
-             DoDebug("WindowManager::application quit");
-             EventSystem::publish_event<ApplicationQuitEvent>();
-         }
-     }
+    void WindowManager::on_window_focus_(const WindowFocusEvent& event) {
+        if (const auto window = get_window_(event.window_id); window) {
+            active_window_ = window;
+        }
+    }
 
-     void WindowManager::on_window_resize_(const WindowResizeEvent& event) {
-         if (const auto window = get_window_(event.window_id); window) {
-             if (const auto native_window = window->native_window()) {
-                 window->prop_.width = static_cast<uint>(event.width);
-                 window->prop_.height = static_cast<uint>(event.height);
+    void WindowManager::on_window_lost_focus_(const WindowLostFocusEvent& event) {
+        // TODO: improve here.
+    }
 
-                 int fb_width = 0, fb_height = 0;
-                 glfwGetFramebufferSize(native_window, &fb_width, &fb_height);
+    // MARK: TODO : FIXME: the render system is using window, it cause when the window destroyed the render and imgui can't use.
+    void WindowManager::on_window_close_(const WindowCloseEvent& event) {
+        DoDebug("WindowManager::on_window_close");
+        if (const auto window = get_window_(event.window_id); window) {
+            if (const auto native_window = window->native_window(); native_window) {
+                glfwSetWindowShouldClose(native_window, GLFW_TRUE);
+            }
+        } 
+        DoDebug("WindowManager::application quit");
+        EventSystem::publish_event<ApplicationQuitEvent>();
+    }
 
-                 window->viewport_manager->set_window_size(Vector2f(event.width, event.height));
-                 window->viewport_manager->set_pixel_size(Vector2f(fb_width, fb_height));
-             }
-         }
-     }
+    void WindowManager::on_window_resize_(const WindowResizeEvent& event) {
+        if (const auto window = get_window_(event.window_id); window) {
+            if (const auto native_window = window->native_window()) {
+                window->prop_.width = static_cast<uint>(event.width);
+                window->prop_.height = static_cast<uint>(event.height);
 
-     Window* WindowManager::get_window_(const uint32_t window_id) const {
-          for (const auto& window : windows_) {
-              if (window->data_.id == window_id) {
-                  return window.get();
-              }
-          }
-          return nullptr;
-     }
+                int fb_width = 0, fb_height = 0;
+                glfwGetFramebufferSize(native_window, &fb_width, &fb_height);
+
+                window->viewport_manager->set_window_size(Vector2f(event.width, event.height));
+                window->viewport_manager->set_pixel_size(Vector2f(fb_width, fb_height));
+            }
+        }
+    }
+
+    Window* WindowManager::get_window_(const uint32_t window_id) const {
+        for (const auto& window : windows_) {
+            if (window->data_.id == window_id) {
+                return window.get();
+            }
+        }
+        return nullptr;
+    }
 
 }

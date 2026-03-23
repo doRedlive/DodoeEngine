@@ -5,12 +5,14 @@
 #ifndef DODOE_REFLECTION_REGISTER_H
 #define DODOE_REFLECTION_REGISTER_H
 
+#include "dopch.h"
+
 namespace dodoe {
     namespace reflection {
         class TypeMetaRegister {
         public:
-            static void metaRegister();
-            static void metaUnregister();
+            static void meta_register();
+            static void meta_unregister();
         };
     } // reflection
 } // dodoe

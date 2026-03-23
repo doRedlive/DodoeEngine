@@ -48,6 +48,14 @@ namespace dodoe {
 		virtual void attach() = 0;
 		virtual void detach() = 0;
 
+		virtual void set_bool(const std::string& name, bool value) = 0;
+		virtual void set_int(const std::string& name, int value) = 0;
+		virtual void set_float(const std::string& name, float value) = 0;
+		virtual void set_vec2(const std::string& name, const Vector2f& value) = 0;
+		virtual void set_vec3(const std::string& name, const Vector3f& value) = 0;
+		virtual void set_vec4(const std::string& name, const Vector4f& value) = 0;
+		virtual void set_mat4(const std::string& name, const Matrix4f& value) = 0;
+
 	protected:
 		virtual void initialize(ShaderCreateInfo create_info) = 0;
 		virtual void shutdown() = 0;

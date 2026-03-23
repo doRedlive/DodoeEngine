@@ -30,19 +30,18 @@ namespace dodoe {
         } \
     }
 
-#define REGISTER_FIELD_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register_to_field_map(name, value)
-#define REGISTER_METHOD_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register_to_method_map(name, value)
-#define REGISTER_BASE_CLASS_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register_to_class_map(name, value)
-#define REGISTER_ARRAY_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register_to_array_map(name, value)
+#define REGISTER_FIELD_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2fieldmap(name, value)
+#define REGISTER_METHOD_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2methodmap(name, value)
+#define REGISTER_BASE_CLASS_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2classmap(name, value)
+#define REGISTER_ARRAY_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2arraymap(name, value)
 #define UNREGISTER_ALL dodoe::reflection::TypeMetaRegisterInterface::unregister_all()
 
-    template<typename T, typename U, typename = void>
-    struct is_safely_castable : std::false_type
-    {};
+    template <typename T, typename U, typename = void>
+    struct is_safely_castable : std::false_type {};
 
-    template<typename T, typename U>
-    struct is_safely_castable<T, U, std::void_t<decltype(static_cast<U>(std::declval<T>()))>> : std::true_type
-    {};
+    template <typename T, typename U>
+    struct is_safely_castable<T, U, std::void_t<decltype(static_cast<U>(std::declval<T>()))>>
+        : std::true_type {};
 
     class Serializer;
 
@@ -73,10 +72,6 @@ namespace dodoe {
 
         class TypeMetaRegisterInterface {
         public:
-            static void register_to_class_map(const char* name, ClassFuncTuple* value);
-            static void register_to_field_map(const char* name, FieldFuncTuple* value);
-            static void register_to_array_map(const char* name, ArrayFuncTuple* value);
-            static void register_to_method_map(const char* name, MethodFuncTuple* value);
             static void unregister_all();
 
             static void register2classmap(const char* name, ClassFuncTuple* value);
@@ -89,6 +84,7 @@ namespace dodoe {
             friend class FieldAccessor;
             friend class ArrayAccessor;
             friend class TypeMetaRegisterInterface;
+
         public:
             TypeMeta();
 
@@ -113,13 +109,14 @@ namespace dodoe {
             std::vector<FieldAccessor> fields_;
             std::vector<MethodAccessor> methods_;
             std::string type_name_;
-            bool is_valid_{false};
+            bool is_valid_{ false };
 
             explicit TypeMeta(const std::string& type_name);
         };
 
         class FieldAccessor {
             friend class TypeMeta;
+
         public:
             FieldAccessor();
 
@@ -142,6 +139,7 @@ namespace dodoe {
 
         class MethodAccessor {
             friend class TypeMeta;
+
         public:
             MethodAccessor();
 
@@ -158,6 +156,7 @@ namespace dodoe {
 
         class ArrayAccessor {
             friend class TypeMeta;
+
         public:
             ArrayAccessor();
 
@@ -187,9 +186,9 @@ namespace dodoe {
             ReflectionInstance& operator=(ReflectionInstance& dest);
             ReflectionInstance& operator=(ReflectionInstance&& dest);
         };
-        template<typename T>
+        template <typename T>
         class ReflectionPtr {
-            template<typename U>
+            template <typename U>
             friend class ReflectionPtr;
 
         public:
@@ -198,7 +197,7 @@ namespace dodoe {
 
             ReflectionPtr(const ReflectionPtr& dest) : type_name_(dest.type_name_), instance_(dest.instance_) {}
 
-            template<typename U>
+            template <typename U>
             ReflectionPtr<T>& operator=(const ReflectionPtr<U>& dest) {
                 if (this == static_cast<const void*>(&dest)) {
                     return *this;
@@ -208,7 +207,7 @@ namespace dodoe {
                 return *this;
             }
 
-            template<typename U>
+            template <typename U>
             ReflectionPtr<T>& operator=(ReflectionPtr<U>&& dest) {
                 if (this == static_cast<const void*>(&dest)) {
                     return *this;
@@ -247,22 +246,22 @@ namespace dodoe {
             bool operator==(const ReflectionPtr<T>& rhs_ptr) const { return (instance_ == rhs_ptr.instance_); }
             bool operator!=(const ReflectionPtr<T>& rhs_ptr) const { return (instance_ != rhs_ptr.instance_); }
 
-            template<typename T1>
+            template <typename T1>
             explicit operator T1*() {
                 return static_cast<T1*>(instance_);
             }
 
-            template<typename T1>
+            template <typename T1>
             operator ReflectionPtr<T1>() {
                 return ReflectionPtr<T1>(type_name_, static_cast<T1*>(instance_));
             }
 
-            template<typename T1>
+            template <typename T1>
             explicit operator const T1*() const {
                 return static_cast<const T1*>(instance_);
             }
 
-            template<typename T1>
+            template <typename T1>
             operator const ReflectionPtr<T1>() const {
                 return ReflectionPtr<T1>(type_name_, static_cast<T1*>(instance_));
             }
@@ -284,14 +283,14 @@ namespace dodoe {
 
         private:
             std::string type_name_{};
-            T*          instance_{nullptr};
+            T* instance_{ nullptr };
         };
     }
 
-    template<typename T>
+    template <typename T>
     using ReflectionPtr = reflection::ReflectionPtr<T>;
 
 } // namespace dodoe
 
-#endif//DODOE_REFLECTION_HPP
+#endif // DODOE_REFLECTION_HPP
 

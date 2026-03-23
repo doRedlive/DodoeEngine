@@ -14,6 +14,7 @@ namespace dodoe {
     struct TextureRes {
         Ref<Texture> texture;
         std::string path;
+        float ppu{10.0f};
     };
 
     struct TextureManagerInitInfo {
@@ -28,8 +29,8 @@ namespace dodoe {
         void initialize(TextureManagerInitInfo init_info);
         void shutdown();
 
-        Ref<Texture> load_texture(const std::string& path);
-        [[nodiscard]] Ref<Texture> get_texture(const std::string& path);
+        TextureRes load_texture(const std::string& path);
+        [[nodiscard]] TextureRes get_texture(const std::string& path);
 
     private:
         std::unordered_map<identifier, TextureRes> texture_umap_;

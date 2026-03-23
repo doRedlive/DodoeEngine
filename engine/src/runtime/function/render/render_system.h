@@ -8,9 +8,10 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/backend/render_context.hpp"
 #include "renderer.h"
 #include "render_graph.h"
+#include "backend/render_context.hpp"
+#include "camera/camera.h"
 
 #include "runtime/function/window/window_manager.h"
 
@@ -18,6 +19,7 @@ namespace dodoe {
 
     struct RenderSystemCreateInfo {
         WindowManager* window_manager;
+        RenderApiType backend_api;
     };
 
     class RenderSystem {
@@ -36,6 +38,8 @@ namespace dodoe {
         Scope<Renderer> renderer_;
         Scope<RenderGraph> render2d_graph_;
         Scope<RenderContext> render_context_;
+
+        Scope<Camera> camera_;
 
         WindowManager* window_manager_;
     };

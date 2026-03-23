@@ -24,9 +24,10 @@ namespace dodoe {
 
 	void RenderStage::initialize(RenderStageCreateInfo create_info) {
 		render_batch_ = RenderBatch::create({});
-		frame_buffer_ = FrameBuffer::create({create_info.frame_width, create_info.frame_height});
+		frame_buffer_ = FrameBuffer::create({create_info.framebuffer_width, create_info.framebuffer_height});
 		render_pipeline_ = RenderPipeline::create({
-			ResourceManager::self().load_shader("quad2d", "engine/res/shaders/quad2d.vert", "engine/res/shaders/quad2d.frag")
+			ResourceManager::self().load_shader("quad2d", "engine/res/shaders/quad2d.vert", "engine/res/shaders/quad2d.frag"),
+			create_info.camera
 		});
 	}
 
