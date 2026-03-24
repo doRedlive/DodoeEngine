@@ -60,10 +60,15 @@ namespace dodoe {
 
         if (logical_size.x <= 0.0f || logical_size.y <= 0.0f ||
             pixel_size.x <= 0.0f || pixel_size.y <= 0.0f) {
-            result.viewport = Rect(Vector2f(0.0f), Math::max(glm::vec2(1.0f), pixel_size));
+            result.viewport = Rect(Vector2f(0.0f), Math::max(Vector2f(1.0f), pixel_size));
             result.scale = 1.0f;
             return result;
         }
+
+        // 640 * 360 : 1920 * 1080
+        // result.scale = 3 --> viewport.size = 1920 * 1080
+        // 640 * 360 : 1280 * 7200 (scaled)
+        // result.scale = 2 --> viewport.size = 1280 * 720
 
         const float scale_x = pixel_size.x / logical_size.x;
         const float scale_y = pixel_size.y / logical_size.y;
@@ -72,11 +77,14 @@ namespace dodoe {
         if (!std::isfinite(result.scale) || result.scale <= 0.0f) {
             result.scale = 1.0f;
         }
-
+        DoDebug("Scale: {}, pixel size: ({}, {})", result.scale, pixel_size.x, pixel_size.y);
         Vector2f viewport_size = logical_size * result.scale;
         viewport_size = Math::clamp(viewport_size, Vector2f(1.0f, 1.0f), pixel_size);
         result.viewport.size = viewport_size;
         result.viewport.pos = (pixel_size - viewport_size) * 0.5f;
+        DoDebug("Viewport size({}, {}), pos({}, {})",
+            result.viewport.size.x, result.viewport.size.y,
+            result.viewport.pos.x, result.viewport.pos.y);
         return result;
     }
 
