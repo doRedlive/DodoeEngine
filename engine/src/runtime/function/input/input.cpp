@@ -14,6 +14,10 @@ namespace dodoe {
         input_manager_ = input_manager;
     }
 
+    void Input::shutdown() {
+        input_manager_ = nullptr;
+    }
+
     bool Input::is_key_pressed(const KeyCode key_code) {
         if (input_manager_->key_map_.contains(key_code)) {
             if (const auto info = input_manager_->key_map_[key_code]; 
@@ -34,14 +38,14 @@ namespace dodoe {
     }
 
     Vector2f Input::get_mouse_position() {
-        return input_manager_->mouse_info_.position;
+        return input_manager_->window2world(input_manager_->mouse_info_.position);
     }
 
     float Input::get_mouse_x() {
-        return input_manager_->mouse_info_.position.x;
+        return get_mouse_position().x;
     }
 
     float Input::get_mouse_y() {
-        return input_manager_->mouse_info_.position.y;
+        return get_mouse_position().y;
     }
 } // dodoe

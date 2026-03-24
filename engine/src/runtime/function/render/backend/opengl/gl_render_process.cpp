@@ -27,6 +27,9 @@ namespace dodoe {
     void GlRenderPipeline::attach() {
         shader_->attach();
         shader_->set_mat4("u_ViewProj", camera_->view_projection_matrix());
+        for (int i = 0; i < 16; ++i) {
+            shader_->set_int("u_Textures[" + std::to_string(i) + "]", i);
+        }
     }
 
     void GlRenderPipeline::detach() {

@@ -64,8 +64,8 @@ namespace dodoe {
         ui_system->initialize(window_manager.get());
         
         // ---------------------GAME-------------------------
-        input_manager->initialize();
-        WorldManager::self().initialize({render_system->renderer()});
+        input_manager->initialize({window_manager->active_window()->viewport_manager.get()});
+        WorldManager::self().initialize({render_system.get()});
         script_system  = ScriptSystem::create({});
  
         return true;

@@ -33,6 +33,7 @@ namespace dodoe {
         void present();
 
         [[nodiscard]] Renderer* renderer() { return renderer_.get(); }
+        [[nodiscard]] Camera* camera() { return camera_.get(); }
 
     private:
         Scope<Renderer> renderer_;

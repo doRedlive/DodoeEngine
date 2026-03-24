@@ -145,11 +145,20 @@ namespace dodoe::lua_register_detail {
             "pivot", &SpriteRendererComponent::pivot,
             "depth", &SpriteRendererComponent::depth_
         );
+        dodoe_table.new_usertype<Animation2dComponent>("Animation2dComponent",
+            sol::constructors<Animation2dComponent()>(),
+            "cur_anim_id", &Animation2dComponent::cur_anim_id,
+            "cur_frame_id", &Animation2dComponent::cur_frame_id,
+            "cur_time_duration", &Animation2dComponent::cur_time_duration,
+            "speed", &Animation2dComponent::speed,
+            "addAnimClip", &Animation2dComponent::add_anim_clip
+        );
         dodoe_table["TagComponent"]["__type_name"] = "TagComponent";
         dodoe_table["TransformComponent"]["__type_name"] = "TransformComponent";
         dodoe_table["Rigidbody2dComponent"]["__type_name"] = "Rigidbody2dComponent";
         dodoe_table["BoxCollider2dComponent"]["__type_name"] = "BoxCollider2dComponent";
         dodoe_table["SpriteRendererComponent"]["__type_name"] = "SpriteRendererComponent";
+        dodoe_table["Animation2dComponent"]["__type_name"] = "Animation2dComponent";
 
         s_component_registry.clear();
 
@@ -290,6 +299,34 @@ namespace dodoe::lua_register_detail {
                 return true;
             };
             s_component_registry["SpriteRendererComponent"] = std::move(registry);
+        }
+        {
+            ComponentRegistry registry{};
+            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
+                if (self.has_component<Animation2dComponent>()) {
+                    return sol::make_object(lua_state, std::ref(self.get_component<Animation2dComponent>()));
+                }
+                return sol::make_object(lua_state, std::ref(self.add_component<Animation2dComponent>()));
+            };
+            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
+                if (!self.has_component<Animation2dComponent>()) return sol::make_object(lua_state, sol::nil);
+                return sol::make_object(lua_state, std::ref(self.get_component<Animation2dComponent>()));
+            };
+            registry.has_func = [](Entity& self) -> bool { return self.has_component<Animation2dComponent>(); };
+            registry.remove_func = [](Entity& self) { if (self.has_component<Animation2dComponent>()) self.remove_component<Animation2dComponent>(); };
+            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
+                auto& c = self.add_or_replace_component<Animation2dComponent>();
+                if (sol::object cur_anim_id_obj = data["cur_anim_id"]; cur_anim_id_obj.valid() && cur_anim_id_obj.get_type() == sol::type::number) {
+                    c.cur_anim_id = static_cast<identifier>(cur_anim_id_obj.as<uint32_t>());
+                }
+                if (sol::object cur_frame_id_obj = data["cur_frame_id"]; cur_frame_id_obj.valid() && cur_frame_id_obj.get_type() == sol::type::number) {
+                    c.cur_frame_id = static_cast<size_t>(cur_frame_id_obj.as<uint32_t>());
+                }
+                c.cur_time_duration = get_float_field(data, "cur_time_duration", c.cur_time_duration);
+                c.speed = get_float_field(data, "speed", c.speed);
+                return true;
+            };
+            s_component_registry["Animation2dComponent"] = std::move(registry);
         }
 
         dodoe_table.new_usertype<Entity>("Entity",

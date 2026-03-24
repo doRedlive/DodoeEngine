@@ -25,7 +25,7 @@ namespace dodoe {
 
         RenderApi::initialize({init_info.backend_api});
         render_context_ = RenderContext::create({window->native_window()});         
-        camera_ = Camera::create({CameraType::Orthographic, window->viewport_manager->get_logical_size()});
+        camera_ = Camera::create({CameraType::Orthographic, window->viewport_manager->get_logical_size(), window->viewport_manager->get_window_size()});
         render2d_graph_ = RenderGraph::create({window->viewport_manager->get_logical_size(), camera_.get()});
 
         renderer_ = Renderer::create({render2d_graph_.get()});
@@ -44,7 +44,7 @@ namespace dodoe {
             viewport_manager->update();
             RenderDrawer::update_viewport(viewport_manager->viewport());
         }
-        RenderDrawer::clear_color(Color::Gray());
+        RenderDrawer::clear_color(camera_->get_clear_color());
     }
 
     void RenderSystem::present() {

@@ -60,34 +60,21 @@ namespace dodoe {
 			scene_->reg_.remove<T>(*this);
 		}
 
-		[[nodiscard]]
-		bool valid() const {
-			return handle_ != entt::null;
-		}
-
-		explicit operator bool() const {
-			return valid();
-		}
-
-		Uuid uuid() { return get_component<IDComponent>().id; }
-
-		const std::string& name() { return get_component<IDComponent>().name; }
-
+		[[nodiscard]] bool valid() const { return handle_ != entt::null; }	
+		[[nodiscard]] Uuid uuid() { return get_component<IDComponent>().id; }	
+		[[nodiscard]] const std::string& name() { return get_component<IDComponent>().name; }
+		
+		explicit operator bool() const { return valid(); }
 		bool operator==(const Entity&) const = default;
 
 	private:
-
-		[[nodiscard]]
-		static Entity from_handle(const entt::entity handle) {
+		[[nodiscard]] static Entity from_handle(const entt::entity handle) {
 			Entity entity;
 			entity.handle_ = handle;
 			return entity;
 		}
 
-		[[nodiscard]]
-		entt::entity handle() const {
-			return handle_;
-		}
+		[[nodiscard]] entt::entity handle() const { return handle_; }
 
 		entt::entity handle_{ entt::null };
 		Scene* scene_{ nullptr };

@@ -6,62 +6,16 @@
 
 #include "world.h"
 #include "entity.h"
-#include "world_manager.h"
 
 #include "runtime/core/utils/common.h"
 #include "runtime/core/world/components.h"
 
-#include "runtime/function/render/render_system.h"
-#include "runtime/function/render/camera/camera.h"
-#include "runtime/function/window/window_manager.h"
-
-#include "runtime/resource/resource_manager.h"
-
 namespace dodoe {
 
-    namespace systems {
-        using namespace dodoe;
-
-        void SpriteRendererSystem(Registry& reg, float dt) {
-            (void)dt;
-            auto& world = WorldManager::self().active_world();
-
-            auto& renderer = world.context.renderer;
-            reg.sort<SpriteRendererComponent>([](const SpriteRendererComponent& a, const SpriteRendererComponent& b) {
-                return a.depth_ > b.depth_;
-            });
-
-            auto view = reg.view<SpriteRendererComponent, TransformComponent>();
-            view.use<SpriteRendererComponent>();
-            for (auto entity : view) {
-                auto& sr = reg.get<SpriteRendererComponent>(entity);
-                auto& tr = reg.get<TransformComponent>(entity);
-
-                if (sr.texture_id == 0) {
-                    continue;
-                }
-
-                const auto texture_res = ResourceManager::self().get_texture(sr.texture_id);
-                if (!texture_res.texture) {
-                    continue;
-                }
-
-                const float ppu = (texture_res.ppu > 0.0f) ? texture_res.ppu : 10.0f;
-                const Vector2f tex_size(static_cast<float>(texture_res.texture->width), static_cast<float>(texture_res.texture->height));
-                const Vector2f world_size = (tex_size / ppu) * Vector2f(tr.scale.x, tr.scale.y);
-
-                const Vector2f anchor_pos(tr.position.x, tr.position.y);
-                const Vector2f pivot_offset = world_size * sr.pivot;
-                const Vector2f bl_pos = anchor_pos - pivot_offset;
-
-                renderer.draw_sprite(texture_res.texture, bl_pos, world_size, tr.rotation,
-                    {sr.color.r, sr.color.g, sr.color.b, sr.color.a});
-            }
-        }
-    }
-
-    Scene::Scene(World& world, const std::string& name) : world_(world), name_(name), reg_(this), registry_(reg_) {
-        world.add_update_system(systems::SpriteRendererSystem);
+    Scene::Scene(World& world, const std::string& name) : world_(world), name_(name), reg_(this) {
+        auto entity = create_entity("Primary Camera"); 
+        entity.add_component<CameraComponent>();
+        entity.get_component<TagComponent>().set_tag("Primary Camera");
     }
 
     Scene::~Scene() = default;
@@ -110,7 +64,7 @@ namespace dodoe {
         entity.add_component<TagComponent>();
         entity.add_component<TransformComponent>();
 
-        entity_umap_[uuid] = entity.handle();
+        entity_umap_[uuid] = entity;
 
         return entity;
     }
@@ -119,7 +73,7 @@ namespace dodoe {
         if (entity.has_component<IDComponent>()) {
             auto id = entity.get_component<IDComponent>();
             if (entity_umap_.find(id.id) != entity_umap_.end()) {
-                entity_umap_[id.id] = entity.handle();
+                entity_umap_[id.id] = entity;
             }
             else {
                 DoError("The scene already has the entity!");
@@ -134,6 +88,16 @@ namespace dodoe {
     void Scene::destroy_entity(Entity entity) {
         entity_umap_.erase(entity.uuid());
         reg_.destroy(entity);
+    }
+
+    Entity Scene::get_entity(const std::string& tag) {
+        for (auto& [_, entity] : entity_umap_) {
+            if (entity.get_component<TagComponent>().id == string2hash(tag)) {
+                return entity;
+            }
+        }
+        DoError("Not found entity has the tag {}.", tag);
+        return Entity();
     }
 
 } // dodoe

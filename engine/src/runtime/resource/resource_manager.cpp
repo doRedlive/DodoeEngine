@@ -8,6 +8,7 @@
 
 #include "asset/texture_manager.h"
 #include "asset/shader_library.h"
+#include "asset/animation_library.h"
 
 namespace dodoe {
 
@@ -20,11 +21,13 @@ namespace dodoe {
         shutdown();
         texture_manager_ = TextureManager::create({});
         shader_library_ = ShaderLibrary::create({});
+        animation_library_ = AnimationLibrary::create({});
     }
 
     void ResourceManager::shutdown() {
         TextureManager::destroy(texture_manager_);
         ShaderLibrary::destroy(shader_library_);
+        AnimationLibrary::destroy(animation_library_);
     }
 
     TextureRes ResourceManager::load_texture(const std::string& name, const std::string& path) {
@@ -73,6 +76,46 @@ namespace dodoe {
 
     Ref<Shader> ResourceManager::get_shader(const std::string& name) {
         return shader_library_->get_shader(name);
+    }
+
+    AnimClip2dRes ResourceManager::get_anim_clip2d(const identifier id) {
+        if (!animation_library_) {
+            DoError("AnimationLibrary is not initialized!");
+            return {};
+        }
+        return animation_library_->get_clip(id);
+    }
+
+    AnimClip2dRes ResourceManager::get_anim_clip2d(const std::string& name) {
+        if (!animation_library_) {
+            DoError("AnimationLibrary is not initialized!");
+            return {};
+        }
+        return animation_library_->get_clip(name);
+    }
+
+    AnimClip2dRes ResourceManager::create_anim_clip2d(const std::string& name, const std::vector<identifier>& texture_ids, const bool loop, const float frame_ms) {
+        if (!animation_library_) {
+            DoError("AnimationLibrary is not initialized!");
+            return {};
+        }
+        return animation_library_->create_clip(name, texture_ids, loop, frame_ms);
+    }
+
+    bool ResourceManager::destroy_anim_clip2d(const identifier id) {
+        if (!animation_library_) {
+            DoError("AnimationLibrary is not initialized!");
+            return false;
+        }
+        return animation_library_->destroy_clip(id);
+    }
+
+    bool ResourceManager::destroy_anim_clip2d(const std::string& name) {
+        if (!animation_library_) {
+            DoError("AnimationLibrary is not initialized!");
+            return false;
+        }
+        return animation_library_->destroy_clip(name);
     }
 
 } // dodoe 

@@ -16,6 +16,7 @@ namespace dodoe {
     public:
 
         static void initialize(InputManager* input_manager);
+        static void shutdown();
 
         static bool is_key_pressed(KeyCode key_code);
         static bool is_mouse_button_pressed(MouseCode mouse_code);

@@ -19,12 +19,12 @@ namespace dodoe {
             return {r, g, b, a};
         }
 
-        static Color White() { return {1.0f, 1.0f, 1.0f, 1.0f}; }
-        static Color Black() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
-        static Color Red()   { return {1.0f, 0.0f, 0.0f, 1.0f}; }
-        static Color Green() { return {0.0f, 1.0f, 0.0f, 1.0f}; }
-        static Color Blue()  { return {0.0f, 0.0f, 1.0f, 1.0f}; }
-        static Color Gray()  { return {0.5f, 0.5f, 0.5f, 1.0f}; }
+        static Color white() { return {1.0f, 1.0f, 1.0f, 1.0f}; }
+        static Color black() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
+        static Color red()   { return {1.0f, 0.0f, 0.0f, 1.0f}; }
+        static Color green() { return {0.0f, 1.0f, 0.0f, 1.0f}; }
+        static Color blue()  { return {0.0f, 0.0f, 1.0f, 1.0f}; }
+        static Color gray()  { return {0.5f, 0.5f, 0.5f, 1.0f}; }
     };
 
     struct Rect {
@@ -40,8 +40,7 @@ namespace dodoe {
                 point.y >= pos.y && point.y <= pos.y + size.y;
         }
     };
-
-    
+ 
 } // dodoe
 
 #endif //DODOE_UTIL_H

@@ -28,16 +28,16 @@ namespace dodoe {
     public:
         static Scope<ShaderLibrary> create(ShaderLibraryCreateInfo create_info);
         static void destroy(Scope<ShaderLibrary>& shader_library);
-
-        void initialize(ShaderLibraryCreateInfo init_info);
-        void shutdown();
-
+        
         Ref<Shader> load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path);
-
+        
         [[nodiscard]] Ref<Shader> get_shader(const std::string& name);
-
+        
     private:
         std::unordered_map<identifier, ShaderRes> shader_umap_;
+
+        void shutdown();
+        void initialize(ShaderLibraryCreateInfo init_info);
     };
 
 }

@@ -10,19 +10,28 @@
 namespace dodoe {
 
     class Renderer;
+    class Camera;
 
     struct WorldContextCreateInfo {
         Renderer& renderer;
+        Camera& camera;
     };
 
     class WorldContext {
     public:
-        Renderer& renderer;
+        WorldContext(Renderer& in_renderer, Camera& in_camera);
 
-        WorldContext(Renderer& in_renderer);
-
-        static Scope<WorldContext> create(WorldContextCreateInfo create_info);
+        static Scope<WorldContext> create(const WorldContextCreateInfo& create_info);
         static void destroy(Scope<WorldContext>& system_context);
+
+        [[nodiscard]] Renderer& renderer();
+        [[nodiscard]] const Renderer& renderer() const;
+        [[nodiscard]] Camera& camera();
+        [[nodiscard]] const Camera& camera() const;
+
+    private:
+        Renderer& renderer_;
+        Camera& camera_;
     };
 
 } // dodoe

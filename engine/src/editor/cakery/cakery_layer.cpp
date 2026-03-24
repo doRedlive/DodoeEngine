@@ -41,7 +41,7 @@ namespace cakery {
         transform.scale = {200.0f, 200.0f, 1.0f};
         auto& sprite_renderer = test_go->add_component<SpriteRendererComponent>();
 
-        Camera::instance().set_background_color(Color::Gray());
+        Camera::instance().set_background_color(Color::gray());
     }
 
     void CakeryLayer::on_detach() {

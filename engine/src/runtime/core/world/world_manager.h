@@ -9,12 +9,13 @@
 
 #include "world.h"
 
-#include "runtime/function/render/renderer.h"
 
 namespace dodoe {
 
+	class RenderSystem;
+	
 	struct WorldManagerInitInfo {
-		Renderer* renderer;
+		RenderSystem* render_system{nullptr};
 	};
 
 	class WorldManager {

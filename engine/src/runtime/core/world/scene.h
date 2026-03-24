@@ -39,24 +39,24 @@ namespace dodoe {
 
         void destroy();
 
-        [[nodiscard]]
-        const std::string& get_name() const { return name_; }
+        [[nodiscard]] const std::string& get_name() const { return name_; }
         void set_name(const std::string& name) { name_ = name; }
-        Registry& registry() { return registry_; }
-        const Registry& registry() const { return registry_; }
+
+        [[nodiscard]] Registry& registry() { return reg_; }
+        [[nodiscard]] const Registry& registry() const { return reg_; }
 
         Entity create_entity(const std::string& name);
         Entity create_entity(Uuid uuid, const std::string& name = std::string());
         void add_entity(Entity entity);
         void destroy_entity(Entity entity);
+        [[nodiscard]] Entity get_entity(const std::string& tag);
 
     private:
         World& world_;
         std::string name_;
 
         Registry reg_;
-        Registry& registry_;
-        std::unordered_map<Uuid, entt::entity> entity_umap_;
+        std::unordered_map<Uuid, Entity> entity_umap_;
 
         template<typename T>
         void on_component_add_(Entity entity, T& component) { }

@@ -5,6 +5,7 @@
 #include "world.h"
 
 #include "scene.h"
+#include "systems.h"
 
 #include "runtime/core/world/components.h"
 #include "runtime/function/render/render_system.h"
@@ -30,8 +31,9 @@ namespace dodoe {
     World::World(const std::string& in_name, WorldContext& in_context) : name_(in_name), context(in_context) { }
 
     void World::initialize() {
-
-        // context_ = SystemContext::create();
+        add_update_system(systems::CameraUpdateSystem);
+        add_update_system(systems::Animation2dUpdateSystem);
+        add_update_system(systems::SpriteRendererUpdateSystem);
 
         // Read config
         auto* scene = active_scene();

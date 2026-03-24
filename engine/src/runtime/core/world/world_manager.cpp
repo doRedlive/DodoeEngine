@@ -12,12 +12,12 @@ namespace dodoe {
 	}
 
 	void WorldManager::initialize(WorldManagerInitInfo init_info) {
-		DoAssert(init_info.renderer, "WorldManager::initialize: renderer is null.");
+		DoAssert(init_info.render_system, "WorldManager::initialize: render_system is null.");
 		destory_worlds();
 		if (context_) {
 			WorldContext::destroy(context_);
 		}
-		context_ = WorldContext::create({*init_info.renderer});
+		context_ = WorldContext::create({*init_info.render_system->renderer(), *init_info.render_system->camera()});
 		create_world("default");
 	}
 

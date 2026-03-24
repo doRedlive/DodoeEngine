@@ -47,7 +47,6 @@ namespace dodoe {
     using Matrix4f = glm::mat4;
 
     using identifier = entt::id_type;
-    using null = entt::null;
 
 } // dodoe
 

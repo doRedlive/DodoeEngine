@@ -9,11 +9,12 @@
 
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
+#include "runtime/core/utils/common.h"
 
+#include "runtime/function/animation/animation.h"
 #include "runtime/function/render/camera/camera.h"
 
-#include "glm/glm.hpp"
-#include "entt/entt.hpp"
+#include "runtime/resource/resource_type.h"
 
 namespace dodoe {
 
@@ -29,11 +30,14 @@ namespace dodoe {
     };
 
     struct TagComponent {
-        entt::id_type id;
+        identifier id;
         std::string tag;
 
+        const std::string& get_tag() { return tag; }
+        void set_tag(const std::string& in_tag) { tag = in_tag; id = string2hash(tag); } 
+
         TagComponent() : id("default"_hs), tag("default") { }
-        TagComponent(const std::string& tag) : id(entt::hashed_string{tag.c_str()}.value()), tag(tag) { }
+        TagComponent(const std::string& tag) : id(string2hash(tag)), tag(tag) { }
     };
 
     struct TransformComponent {
@@ -67,8 +71,14 @@ namespace dodoe {
     };
 
     struct CameraComponent {
-        CameraType type;
-        float zoom;
+        CameraType type{ CameraType::Orthographic };
+        float zoom{ 1.0f };
+        Color background{};
+        bool dirty{ true };
+        bool has_synced{ false };
+        Vector3f last_synced_position{ 0.0f, 0.0f, 0.0f };
+        float last_synced_rotation{ 0.0f };
+        float last_synced_zoom{ 1.0f };
     };
 
     struct BoxCollider2dComponent {
@@ -85,13 +95,22 @@ namespace dodoe {
         BoxCollider2dComponent() = default;
     };
 
-    template <typename... Component>
-    struct ComponentGroup {
+    struct Animation2dComponent {
+        std::unordered_map<identifier, Ref<AnimClip2d>> anim_clip_umap{};
+        identifier cur_anim_id{0};
+        size_t cur_frame_id{0};
+        float cur_time_duration{0.0f};
+        float speed{1.0f};
+
+        void add_anim_clip(AnimClip2dRes res) {
+            anim_clip_umap.emplace(res.id, res.clip);
+            cur_anim_id = res.id;
+        }
     };
 
-    using AllComponents =
-        ComponentGroup<TransformComponent, SpriteRendererComponent, ScriptComponent,
-        Rigidbody2dComponent, BoxCollider2dComponent>;
+    struct Animator2dComponent {
+
+    };
 
 
 } // dodoe
