@@ -18,6 +18,7 @@ namespace dodoe {
     class TimeSystem;
     class InputManager;
     class ScriptSystem;
+    class PhysicsSystem;
 
     struct SystemContextCreateInfo {
         ApplicationSpecification spec{};
@@ -28,6 +29,7 @@ namespace dodoe {
         ~SystemContext();
 
         Scope<WindowManager>    window_manager {nullptr};
+        Scope<PhysicsSystem>    physics_system {nullptr};
         Scope<RenderSystem>     render_system  {nullptr};
         Scope<InputManager>     input_manager  {nullptr};
         Scope<ScriptSystem>     script_system  {nullptr};

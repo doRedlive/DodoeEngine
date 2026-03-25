@@ -12,6 +12,7 @@
 #include "registry.h"
 #include "entity.h"
 #include "components.h"
+#include "systems/physics2d_system.h"
 
 #include "runtime/resource/resource_manager.h"
 
@@ -19,8 +20,30 @@ namespace dodoe {
 
     namespace systems {
 
+        inline system::Physics2dSystem& physics2d_system_instance(Registry& reg) {
+            static std::unordered_map<Registry*, Scope<system::Physics2dSystem>> instances{};
+            auto it = instances.find(&reg);
+            if (it == instances.end()) {
+                it = instances.emplace(&reg, create_scope<system::Physics2dSystem>()).first;
+            }
+            return *(it->second);
+        }
+
+        inline void Physics2dStartSystem(Registry& reg) {
+            physics2d_system_instance(reg).start(reg);
+        }
+
+        inline void Physics2dUpdateSystem(Registry& reg, float dt) {
+            if (dt <= 0.0f) {
+                return;
+            }
+            auto& world = WorldManager::self().active_world();
+            world.context.physics_system().step(dt);
+            physics2d_system_instance(reg).update(reg);
+        }
+
         // MARK: TODO: FIXME: establish communcation between the primary camera component and the camera instance. 
-        void CameraUpdateSystem(Registry& reg, float dt) {
+        inline void CameraUpdateSystem(Registry& reg, float dt) {
             (void)dt;
             auto& world = WorldManager::self().active_world();
 
@@ -59,7 +82,7 @@ namespace dodoe {
             }
         }
 
-        void SpriteRendererUpdateSystem(Registry& reg, float dt) {
+        inline void SpriteRendererUpdateSystem(Registry& reg, float dt) {
             (void)dt;
             auto& world = WorldManager::self().active_world();
             auto& renderer = world.context.renderer();
@@ -95,7 +118,7 @@ namespace dodoe {
             }
         }
 
-        void Animation2dUpdateSystem(Registry& reg, float dt) {
+        inline void Animation2dUpdateSystem(Registry& reg, float dt) {
             auto view = reg.view<Animation2dComponent, SpriteRendererComponent>();
             for (auto entity : view) {
                 auto& anim2d = reg.get<Animation2dComponent>(entity);

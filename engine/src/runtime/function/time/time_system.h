@@ -14,7 +14,8 @@ namespace dodoe {
         TimeSystem() = default;
         ~TimeSystem() = default;
 
-        [[nodiscard]] float get_delta_time() const;
+        [[nodiscard]] float delta_time();
+        [[nodiscard]] float current_time() const;
         [[nodiscard]] float get_time_scale() const;
         [[nodiscard]] int   get_target_fps() const;
         [[nodiscard]] int   get_fps() const;
@@ -22,16 +23,16 @@ namespace dodoe {
 
         void set_time_scale(float time_scale);
         void set_target_fps(int target_fps);
-
-        void calculate_time();
-
+ 
     private:
         float delta_time_ {0.0f};
         float time_scale_ {1.0f};
-
+        float cur_time_{0.0f};
+        
         std::chrono::steady_clock::time_point last_time_point_ { std::chrono::steady_clock::now() };
-
+        
         int target_fps_ {-1};
+        void calculate_time();
     };
 }
 #endif //DODOE_TIME_H

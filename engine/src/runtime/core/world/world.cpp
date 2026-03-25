@@ -31,6 +31,8 @@ namespace dodoe {
     World::World(const std::string& in_name, WorldContext& in_context) : name_(in_name), context(in_context) { }
 
     void World::initialize() {
+        add_start_system(systems::Physics2dStartSystem);
+        add_update_system(systems::Physics2dUpdateSystem);
         add_update_system(systems::CameraUpdateSystem);
         add_update_system(systems::Animation2dUpdateSystem);
         add_update_system(systems::SpriteRendererUpdateSystem);

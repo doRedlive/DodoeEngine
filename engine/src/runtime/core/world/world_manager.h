@@ -13,9 +13,11 @@
 namespace dodoe {
 
 	class RenderSystem;
+	class PhysicsSystem;
 	
 	struct WorldManagerInitInfo {
 		RenderSystem* render_system{nullptr};
+		PhysicsSystem* physics_system{nullptr};
 	};
 
 	class WorldManager {

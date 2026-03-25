@@ -106,9 +106,9 @@ namespace dodoe::lua_register_detail {
     void register_entity(sol::state& lua, sol::table& dodoe_table) {
         dodoe_table.new_enum<Rigidbody2dComponent::BodyType>(
             "RigidbodyBodyType", {
-                {"Static", Rigidbody2dComponent::BodyType::Static},
-                {"Dynamic", Rigidbody2dComponent::BodyType::Dynamic},
-                {"Kinematic", Rigidbody2dComponent::BodyType::Kinematic}
+                {"static", Rigidbody2dComponent::BodyType::Static},
+                {"dynamic", Rigidbody2dComponent::BodyType::Dynamic},
+                {"kinematic", Rigidbody2dComponent::BodyType::Kinematic}
             }
         );
 
@@ -124,10 +124,10 @@ namespace dodoe::lua_register_detail {
         );
         dodoe_table.new_usertype<Rigidbody2dComponent>("Rigidbody2dComponent",
             sol::constructors<Rigidbody2dComponent()>(),
-            "bodyType", sol::property(
+            "body_type", sol::property(
                 [](Rigidbody2dComponent& c) { return c.type; },
                 [](Rigidbody2dComponent& c, const Rigidbody2dComponent::BodyType value) { c.type = value; }),
-            "fixedRotation", &Rigidbody2dComponent::fixed_rotation
+            "fixed_rotation", &Rigidbody2dComponent::fixed_rotation
         );
         dodoe_table.new_usertype<BoxCollider2dComponent>("BoxCollider2dComponent",
             sol::constructors<BoxCollider2dComponent()>(),
@@ -136,7 +136,7 @@ namespace dodoe::lua_register_detail {
             "density", &BoxCollider2dComponent::density,
             "friction", &BoxCollider2dComponent::friction,
             "restitution", &BoxCollider2dComponent::restitution,
-            "restitutionThreshold", &BoxCollider2dComponent::restitution_threshold
+            "restitution_threshold", &BoxCollider2dComponent::restitution_threshold
         );
         dodoe_table.new_usertype<SpriteRendererComponent>("SpriteRendererComponent",
             sol::constructors<SpriteRendererComponent()>(),
@@ -228,10 +228,10 @@ namespace dodoe::lua_register_detail {
             registry.remove_func = [](Entity& self) { if (self.has_component<Rigidbody2dComponent>()) self.remove_component<Rigidbody2dComponent>(); };
             registry.set_func = [](Entity& self, const sol::table& data) -> bool {
                 auto& c = self.add_or_replace_component<Rigidbody2dComponent>();
-                if (sol::object body_type_obj = data["bodyType"]; body_type_obj.valid() && body_type_obj.get_type() == sol::type::number) {
+                if (sol::object body_type_obj = data["body_type"]; body_type_obj.valid() && body_type_obj.get_type() == sol::type::number) {
                     c.type = static_cast<Rigidbody2dComponent::BodyType>(body_type_obj.as<int>());
                 }
-                c.fixed_rotation = get_bool_field(data, "fixedRotation", c.fixed_rotation);
+                c.fixed_rotation = get_bool_field(data, "fixed_rotation", c.fixed_rotation);
                 return true;
             };
             s_component_registry["Rigidbody2dComponent"] = std::move(registry);

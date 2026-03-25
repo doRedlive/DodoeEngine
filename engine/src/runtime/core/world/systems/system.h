@@ -7,11 +7,11 @@
 
 #include "dopch.h"
 
-#include "../entity.h"
-#include "../registry.h"
-#include "../world.h"
-#include "../world_context.h"
-#include "../world_manager.h"
+#include "runtime/core/world/entity.h"
+#include "runtime/core/world/registry.h"
+#include "runtime/core/world/world.h"
+#include "runtime/core/world/world_context.h"
+#include "runtime/core/world/world_manager.h"
 
 namespace dodoe {
 
@@ -22,7 +22,7 @@ namespace dodoe {
             virtual ~System() = default;
 
             virtual void start(Registry& reg) { }
-            virtual void update(Registry& reg, float dt) { }
+            virtual void update(Registry& reg) { }
             virtual void finalize(Registry& reg) { }
 
         protected:

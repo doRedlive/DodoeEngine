@@ -7,7 +7,7 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/backend/render_context.hpp"
+#include "runtime/function/render/backend/render_context.h"
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"

@@ -5,6 +5,7 @@
 #include "runtime/core/world/scene.h"
 #include "runtime/core/world/registry.h"
 #include "runtime/core/world/entity.h"
+#include "runtime/core/world/systems.h"
 
 namespace dodoe::lua_register_detail {
 

@@ -5,8 +5,14 @@
 #include "runtime/function/time/time_system.h"
 
 namespace dodoe {
-    float TimeSystem::get_delta_time() const {
+
+    float TimeSystem::delta_time() {
+        calculate_time();
         return delta_time_ * time_scale_;
+    }
+
+    float TimeSystem::current_time() const {
+        return cur_time_;
     }
 
     float TimeSystem::get_time_scale() const {
@@ -25,16 +31,16 @@ namespace dodoe {
         return delta_time_;
     }
 
-    void TimeSystem::set_time_scale(float timeScale) {
-        if (timeScale < 0.0f) {
-            timeScale = 1.0f;
+    void TimeSystem::set_time_scale(float time_scale) {
+        if (time_scale < 0.0f) {
+            time_scale = 1.0f;
             DoWarn("TimeSystem scale cannot be negative. Resetting to 1.0f.");
         }
-        time_scale_ = timeScale;
+        time_scale_ = time_scale;
     }
 
-    void TimeSystem::set_target_fps(const int targetFPS) {
-        target_fps_ = targetFPS;
+    void TimeSystem::set_target_fps(const int fps) {
+        target_fps_ = fps;
     }
 
     void TimeSystem::calculate_time() {
@@ -46,5 +52,7 @@ namespace dodoe {
         const auto frame_start_time_point = steady_clock::now();
         delta_time_ = duration_cast<duration<float>>(frame_start_time_point - last_time_point_).count();
         last_time_point_ = frame_start_time_point;
+
+        cur_time_ += delta_time_;
     }
 }

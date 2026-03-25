@@ -11,15 +11,17 @@ namespace dodoe {
 
     class Renderer;
     class Camera;
+    class PhysicsSystem;
 
     struct WorldContextCreateInfo {
         Renderer& renderer;
         Camera& camera;
+        PhysicsSystem& physics_system;
     };
 
     class WorldContext {
     public:
-        WorldContext(Renderer& in_renderer, Camera& in_camera);
+        WorldContext(Renderer& in_renderer, Camera& in_camera, PhysicsSystem& in_physics_system);
 
         static Scope<WorldContext> create(const WorldContextCreateInfo& create_info);
         static void destroy(Scope<WorldContext>& system_context);
@@ -28,10 +30,13 @@ namespace dodoe {
         [[nodiscard]] const Renderer& renderer() const;
         [[nodiscard]] Camera& camera();
         [[nodiscard]] const Camera& camera() const;
+        [[nodiscard]] PhysicsSystem& physics_system();
+        [[nodiscard]] const PhysicsSystem& physics_system() const;
 
     private:
         Renderer& renderer_;
         Camera& camera_;
+        PhysicsSystem& physics_system_;
     };
 
 } // dodoe

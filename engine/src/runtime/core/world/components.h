@@ -62,14 +62,6 @@ namespace dodoe {
         ScriptComponent& operator=(const ScriptComponent&) = default;
     };
 
-    struct Rigidbody2dComponent {
-        enum class BodyType { Static = 0, Dynamic, Kinematic };
-        BodyType type{ BodyType::Static };
-        bool fixed_rotation{ false };
-        void* runtime_body{ nullptr };
-        Rigidbody2dComponent() = default;
-    };
-
     struct CameraComponent {
         CameraType type{ CameraType::Orthographic };
         float zoom{ 1.0f };
@@ -81,16 +73,25 @@ namespace dodoe {
         float last_synced_zoom{ 1.0f };
     };
 
+    struct Rigidbody2dComponent {
+        enum class BodyType {
+            Static = 0,
+            Dynamic = 1,
+            Kinematic = 2
+        };
+
+        BodyType type{ BodyType::Static };
+        bool fixed_rotation{ false };
+    };
+
     struct BoxCollider2dComponent {
         Vector2f offset{ 0.0f,0.0f };
-        Vector2f size{ 0.0f, 0.0f };
+        Vector2f size{ 1.0f, 1.0f };
 
         float density{ 1.0f };
         float friction{ 0.5f };
         float restitution{ 0.0f };
         float restitution_threshold{ 0.5f };
-
-        void* runtime_fixture{ nullptr };
 
         BoxCollider2dComponent() = default;
     };

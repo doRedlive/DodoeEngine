@@ -29,6 +29,7 @@
 #include "runtime/core/world/world_manager.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/script/script_system.h"
+#include "runtime/function/physics/physics_system.h"
 
 namespace dodoe {
 
@@ -65,7 +66,8 @@ namespace dodoe {
         
         // ---------------------GAME-------------------------
         input_manager->initialize({window_manager->active_window()->viewport_manager.get()});
-        WorldManager::self().initialize({render_system.get()});
+        physics_system = PhysicsSystem::create({});
+        WorldManager::self().initialize({render_system.get(), physics_system.get()});
         script_system  = ScriptSystem::create({});
  
         return true;
@@ -75,6 +77,7 @@ namespace dodoe {
         // ---------------------GAME-------------------------
         WorldManager::self().shutdown();
         ScriptSystem::destroy(script_system);
+        PhysicsSystem::destroy(physics_system);
         input_manager->shutdown();
         input_manager.reset();
         // ---------------------RESOURCE-------------------------
@@ -98,9 +101,7 @@ namespace dodoe {
     }
 
     void SystemContext::tick_one_frame() {
-        time_system->calculate_time();
-        const auto& dt = time_system->get_delta_time();
-        update_tick(dt);
+        update_tick(time_system->delta_time());
         render_tick();
     }
 
@@ -115,6 +116,7 @@ namespace dodoe {
 
         input_manager->update();
         WorldManager::self().runtime_update(delta_time);
+        physics_system->step(delta_time);
     }
 
     void SystemContext::render_tick() {
