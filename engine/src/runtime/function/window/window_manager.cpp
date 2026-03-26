@@ -47,7 +47,7 @@ namespace dodoe {
         return false;
     }
 
-    void WindowManager::update() {
+    void WindowManager::swap_buffers() {
         for (auto& window : windows_) {
             window->swap_buffer();
         }

@@ -4,60 +4,95 @@
 
 #include "renderer.h"
 
-#include "runtime/function/render/backend/draw_defs.h"
-#include "render_api.h"
+#include "render_resource.h"
 
-#include "backend/opengl/gl_renderer.h"
-#include "backend/vulkan/vk_renderer.h"
+#include "runtime/core/math/math.h"
+#include "runtime/core/utils/util.h"
 
 namespace dodoe {
 
-    Scope<Renderer> Renderer::create(RendererCreateInfo create_info) {
-        auto context = create_scope<Renderer>();
-        context->initialize(create_info);
-        return context;
-    }
-
-    void Renderer::destroy(Scope<Renderer>& renderer) {
-        if (!renderer) {
-            return;
-        }
-
-        renderer->shutdown();
-        renderer.reset();
-    }
-
-    void Renderer::initialize(RendererCreateInfo create_info) {
-        DoAssert(create_info.render2d_graph, "RendererCreateInfo::render2d_graph must not be null.");
-        render2d_graph_ = create_info.render2d_graph;
-    }
-
-    void Renderer::shutdown() {
-
-    }
-
     void Renderer::draw_sprite(const Ref<Texture>& texture, const Vector2f& pos, 
-            const Vector2f& size, const Vector3f& rotation, const Vector4f& color) {
-        DoAssert(render2d_graph_ && render2d_graph_->sprite_stage, 
-            "Renderer::draw_sprite: renderer2d_graph and sprite_stage must not be null");
-
+            const Vector2f& size, const Vector3f& rotation, const Color& color, RenderStageType stage) {
+        QuadDrawContext quad;
         if (!texture) {
             DoError("Renderer::draw_sprite: texture is null.");
+            quad = QuadDrawContext(nullptr, {pos.x, pos.y, size.x, size.y}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4());
+            g_render_resource->submit(quad);
             return;
         }
         
-        TextureDrawContext draw_context;
-        draw_context.texture = texture;
-        draw_context.dst_rect = Vector4f(pos.x, pos.y, size.x, size.y);
-        draw_context.uv_rect  = Vector4f(0.0f, 0.0f, 1.0f, 1.0f);
-        draw_context.rotation = rotation;
-        draw_context.color = color;
-
-        render2d_graph_->sprite_stage->queue_draw_context(draw_context);
+        quad = QuadDrawContext(texture, {pos.x, pos.y, size.x, size.y}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4());
+        g_render_resource->submit(quad);
     }
 
-    void Renderer::draw_line() {
+    void Renderer::draw_rect(
+        const Vector2f& pos, 
+        const Vector2f& size, 
+        const Vector3f& rotation,
+        const Color& color, 
+        float thickness, 
+        RenderStageType stage
+    ) {
+        if (thickness <= 0.0f || size.x <= 0.0f || size.y <= 0.0f) return;
 
+        const float h_thickness = std::min(thickness, size.y);
+        const float v_thickness = std::min(thickness, size.x);
+
+        const float left = pos.x;
+        const float bottom = pos.y;
+        const float right = pos.x + size.x;
+        const float top = pos.y + size.y;
+
+        QuadDrawContext q0, q1, q2, q3;
+        q0 = QuadDrawContext(nullptr, {left, bottom, size.x, h_thickness}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4(), stage);
+        g_render_resource->submit(q0);
+        if (h_thickness < size.y) {
+            q1 = QuadDrawContext(nullptr, {left, top - h_thickness, size.x, h_thickness}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4(), stage);
+            g_render_resource->submit(q1);
+        } 
+        q2 = QuadDrawContext(nullptr, {left, bottom, v_thickness, size.y}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4(), stage);
+        g_render_resource->submit(q2);
+        if (v_thickness < size.x) { 
+            q3 = QuadDrawContext(nullptr, {right - v_thickness, bottom, v_thickness, size.y}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4(), stage);
+            g_render_resource->submit(q3);
+        }
+    }
+
+    void Renderer::draw_line(const Vector2f& start, const Vector2f& end, const Vector3f& rotation, const float thickness, const Color& color, RenderStageType stage) {
+        if (thickness <= 0.0f) return;
+
+        const Vector2f delta = end - start;
+        const float length = Math::length(delta);
+        const float half_thickness = thickness * 0.5f;
+
+        const Vector2f min_point{std::min(start.x, end.x), std::min(start.y, end.y)};
+        const Vector2f max_point{std::max(start.x, end.y), std::max(start.y, end.y)};
+        const Rect cull_rect{
+            {min_point.x - half_thickness, min_point.y - half_thickness},
+            {std::max(max_point.x - min_point.x, 0.0f) + thickness,
+             std::max(max_point.y - max_point.y, 0.0f) + thickness}
+        };
+
+        // if (should_cull_rect(cull_rect)) return;
+
+        QuadDrawContext quad;
+        if (length <= std::numeric_limits<float>::epsilon()) {
+            const Vector4f rect {
+                start.x - half_thickness,
+                start.y - half_thickness,
+                thickness,
+                thickness
+            };
+            quad = QuadDrawContext(nullptr, rect, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4(), stage);
+            g_render_resource->submit(quad);
+            return;
+        }
+
+        const Vector4f rect{start.x, start.y + half_thickness, length, thickness};
+        const float angle = std::atan2(delta.y, delta.x) + rotation.z;
+
+        quad = QuadDrawContext(nullptr, rect, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f, angle}, color.to_vec4(), stage);
+        g_render_resource->submit(quad);
     }
 
     void Renderer::draw_text() {

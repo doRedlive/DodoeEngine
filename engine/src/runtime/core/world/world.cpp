@@ -8,8 +8,6 @@
 #include "systems.h"
 
 #include "runtime/core/world/components.h"
-#include "runtime/function/render/render_system.h"
-#include "runtime/function/render/camera/camera.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/resource/resource_manager.h"
 
@@ -18,7 +16,7 @@ namespace dodoe {
     WorldProperty World::property = WorldProperty();
 
     Scope<World> World::create(WorldCreateInfo create_info) {
-        auto context = Scope<World>(new World(std::string(create_info.name), create_info.context));
+        auto context = Scope<World>(new World(std::string(create_info.name)));
         context->initialize();
         return context;
     }
@@ -28,7 +26,7 @@ namespace dodoe {
         world.reset();
     }
 
-    World::World(const std::string& in_name, WorldContext& in_context) : name_(in_name), context(in_context) { }
+    World::World(const std::string& in_name) : name_(in_name) { }
 
     void World::initialize() {
         add_start_system(systems::Physics2dStartSystem);

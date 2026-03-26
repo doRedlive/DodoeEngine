@@ -11,6 +11,9 @@
 #include "runtime/core/world/components.h"
 #include "runtime/function/physics/physics_system.h"
 
+#include "runtime/core/application.h"
+#include "runtime/core/system_context.h"
+
 namespace dodoe {
 
     namespace system {
@@ -20,7 +23,7 @@ namespace dodoe {
             ~Physics2dSystem() override = default;
 
             void start(Registry& reg) override {
-                auto world_id = context.physics_system().world_id_;
+                auto world_id = Application::self().context().physics_system->world_id_;
                 if (!B2_IS_NON_NULL(world_id)) {
                     return;
                 }
@@ -94,7 +97,7 @@ namespace dodoe {
             }
 
             void finalize(Registry& reg) override {
-                auto world_id = context.physics_system().world_id_;
+                auto world_id = Application::self().context().physics_system->world_id_;
                 if (B2_IS_NON_NULL(world_id)) {
                     for (auto& [_, body_id] : body_umap_) {
                         if (!B2_IS_NON_NULL(body_id)) {

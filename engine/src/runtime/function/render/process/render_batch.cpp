@@ -17,18 +17,20 @@ namespace dodoe {
 	}
 
 	void RenderBatch::destroy(Scope<RenderBatch>& render_batch) {
-		if (!render_batch) {
-			return;
-		}
-
+		if (!render_batch) { return; }
 		render_batch->shutdown();
 		render_batch.reset();
 	}
 
 	void RenderBatch::initialize(RenderBatchCreateInfo create_info) {
 		(void)create_info;
-		draw_contexts_.reserve(max_quads_);
+		quad_draw_contexts_.reserve(max_quads_);
 		quad_vertices_.reserve(max_vertices_);
+
+		if (!default_texture_) {
+			std::array<uchar, 4> white_pixel{255, 255, 255, 255};
+			default_texture_ = Texture::create({1, 1, white_pixel.data()});
+		}
 
 		quad_vb_ = VertexBuffer::create(
 			{nullptr, static_cast<ui32>(max_vertices_ * sizeof(QuadVertex)), true});
@@ -60,16 +62,17 @@ namespace dodoe {
 	}
 
 	void RenderBatch::shutdown() {
-		draw_contexts_.clear();
+		quad_draw_contexts_.clear();
 		quad_vertices_.clear();
+		default_texture_.reset();
 
 		GeometryBinding::destroy(geometry_binding_);
 		VertexBuffer::destroy(quad_vb_);
 		IndexBuffer::destroy(quad_ib_);
 	}
 
-	void RenderBatch::queue_draw_context(const TextureDrawContext& draw_context) {
-		draw_contexts_.push_back(draw_context);
+	void RenderBatch::queue_draw_context(const QuadDrawContext& context) {
+		quad_draw_contexts_.push_back(context);
 	}
 
 	void RenderBatch::flush() {
@@ -93,19 +96,19 @@ namespace dodoe {
 
 				batch.texture_slots[slot]->attach(static_cast<uint>(slot));
 			}
-			draw_indexed(batch.index_count);
+			RenderDrawer::draw_elements(batch.index_count);
 		}
 	}
 
 	std::vector<RenderBatchPacket> RenderBatch::build_batches() {
 		std::vector<RenderBatchPacket> out_batches;
 
-		if (draw_contexts_.empty()) {
+		if (quad_draw_contexts_.empty()) {
 			return out_batches;
 		}
 
 		size_t cursor = 0;
-		while (cursor < draw_contexts_.size()) {
+		while (cursor < quad_draw_contexts_.size()) {
 			quad_vertices_.clear();
 			quad_vertices_.reserve(max_vertices_);
 
@@ -116,13 +119,14 @@ namespace dodoe {
 
 			size_t batch_quad_count = 0;
 			size_t batch_end = cursor;
-			for (; batch_end < draw_contexts_.size() && batch_quad_count < max_quads_; ++batch_end) {
-				const auto& draw_context = draw_contexts_[batch_end];
-				if (!draw_context.texture) {
+			for (; batch_end < quad_draw_contexts_.size() && batch_quad_count < max_quads_; ++batch_end) {
+				const auto& draw_context = quad_draw_contexts_[batch_end];
+				const Ref<Texture> texture_ref = draw_context.texture ? draw_context.texture : default_texture_;
+				if (!texture_ref) {
 					continue;
 				}
 
-				Texture* texture_ptr = draw_context.texture.get();
+				Texture* texture_ptr = texture_ref.get();
 				auto texture_it = texture_slot_lookup.find(texture_ptr);
 				ui32 texture_slot_index = 0;
 				if (texture_it == texture_slot_lookup.end()) {
@@ -132,7 +136,7 @@ namespace dodoe {
 
 					texture_slot_index = static_cast<ui32>(texture_slots.size());
 					texture_slot_lookup.emplace(texture_ptr, texture_slot_index);
-					texture_slots.push_back(draw_context.texture);
+					texture_slots.push_back(texture_ref);
 				} else {
 					texture_slot_index = texture_it->second;
 				}
@@ -186,16 +190,8 @@ namespace dodoe {
 			cursor = batch_end;
 		}
 
-		draw_contexts_.clear();
+		quad_draw_contexts_.clear();
 		return out_batches;
-	}
-
-	void RenderBatch::draw_indexed(ui32 index_count) {
-		if (index_count == 0) {
-			return;
-		}
-
-		RenderDrawer::draw_elements(index_count);
 	}
 
 } // dodoe

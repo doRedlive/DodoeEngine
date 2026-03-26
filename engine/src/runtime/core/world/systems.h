@@ -15,6 +15,10 @@
 #include "systems/physics2d_system.h"
 
 #include "runtime/resource/resource_manager.h"
+#include "runtime/core/application.h"
+#include "runtime/core/system_context.h"
+#include "runtime/function/render/render_system.h"
+#include "runtime/function/render/renderer.h"
 
 namespace dodoe {
 
@@ -37,15 +41,17 @@ namespace dodoe {
             if (dt <= 0.0f) {
                 return;
             }
-            auto& world = WorldManager::self().active_world();
-            world.context.physics_system().step(dt);
+            auto* physics_system = Application::self().context().physics_system.get();
+            if (physics_system) {
+                physics_system->step(dt);
+            }
             physics2d_system_instance(reg).update(reg);
         }
 
         // MARK: TODO: FIXME: establish communcation between the primary camera component and the camera instance. 
         inline void CameraUpdateSystem(Registry& reg, float dt) {
             (void)dt;
-            auto& world = WorldManager::self().active_world();
+            auto& camera_instance = Application::self().context().render_system->camera();
 
             auto view = reg.view<CameraComponent, TagComponent, TransformComponent>();
             for (auto entity : view) {
@@ -56,7 +62,6 @@ namespace dodoe {
 
                 auto& camera = reg.get<CameraComponent>(entity);
                 auto& transform = reg.get<TransformComponent>(entity);
-                auto& camera_instance = world.context.camera();
                 const bool component_changed = !camera.has_synced
                     || camera.last_synced_position.x != transform.position.x
                     || camera.last_synced_position.y != transform.position.y
@@ -84,8 +89,6 @@ namespace dodoe {
 
         inline void SpriteRendererUpdateSystem(Registry& reg, float dt) {
             (void)dt;
-            auto& world = WorldManager::self().active_world();
-            auto& renderer = world.context.renderer();
             reg.sort<SpriteRendererComponent>([](const SpriteRendererComponent& a, const SpriteRendererComponent& b) {
                 return a.depth_ > b.depth_;
             });
@@ -113,8 +116,7 @@ namespace dodoe {
                 const Vector2f pivot_offset = world_size * sr.pivot;
                 const Vector2f bl_pos = anchor_pos - pivot_offset;
 
-                renderer.draw_sprite(texture_res.texture, bl_pos, world_size, tr.rotation,
-                    {sr.color.r, sr.color.g, sr.color.b, sr.color.a});
+                Renderer::draw_sprite(texture_res.texture, bl_pos, world_size, tr.rotation, sr.color);
             }
         }
 

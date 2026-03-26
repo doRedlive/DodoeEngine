@@ -12,19 +12,13 @@ namespace dodoe {
 	}
 
 	void WorldManager::initialize(WorldManagerInitInfo init_info) {
-		DoAssert(init_info.render_system, "WorldManager::initialize: render_system is null.");
-		DoAssert(init_info.physics_system, "WorldManager::initialize: physics_system is null.");
+		(void)init_info;
 		destory_worlds();
-		if (context_) {
-			WorldContext::destroy(context_);
-		}
-		context_ = WorldContext::create({*init_info.render_system->renderer(), *init_info.render_system->camera(), *init_info.physics_system});
 		create_world("default");
 	}
 
 	void WorldManager::shutdown() {
 		destory_worlds();
-		WorldContext::destroy(context_);
 	}
 
 	void WorldManager::runtime_start() {
@@ -52,7 +46,6 @@ namespace dodoe {
 	}
 
 	World& WorldManager::create_world(const std::string& name) {
-		DoAssert(context_, "WorldManager::create_world: context is not initialized.");
 		for (auto it = worlds_.begin(); it != worlds_.end(); ++it) {
 			if (!(*it) || (*it)->name_ != name) {
 				continue;
@@ -67,7 +60,7 @@ namespace dodoe {
 			worlds_.push_back(std::move(world));
 			return *worlds_.back();
 		}
-		Scope<World> world = World::create({name, *context_});
+		Scope<World> world = World::create({name});
 		worlds_.push_back(std::move(world));
 		return *worlds_.back();
 	}

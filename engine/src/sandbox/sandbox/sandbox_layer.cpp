@@ -9,6 +9,8 @@
 #include "runtime/core/world/components.h"
 #include "runtime/resource/resource_manager.h"
 
+#include "runtime/function/render/renderer.h"
+
 namespace sandbox {
 
     SandboxLayer::SandboxLayer(const std::string& name)
@@ -24,19 +26,21 @@ namespace sandbox {
         auto& transform = test_go.get_component<dodoe::TransformComponent>();
         transform.position = {0.0f, 0.0f, 0.0f};
         transform.scale = {1.0f, 1.0f, 1.0f};
-        auto& sprite_renderer = test_go.add_component<dodoe::SpriteRendererComponent>();
-        const std::string texture_path = "engine/res/pictures/grm.jpg";
-        const auto texture_res = dodoe::ResourceManager::self().get_texture(texture_path, texture_path);
-        sprite_renderer.texture_id = texture_res.texture_id;
-        sprite_renderer.pivot = dodoe::Vector2f(0.5f, 0.5f);
-    }
+        // auto& sprite_renderer = test_go.add_component<dodoe::SpriteRendererComponent>();
+        // const std::string texture_path = "engine/res/pictures/grm.jpg";
+        // const auto texture_res = dodoe::ResourceManager::self().get_texture(texture_path, texture_path);
+        // sprite_renderer.texture_id = texture_res.texture_id;
+        // sprite_renderer.pivot = dodoe::Vector2f(0.5f, 0.5f);
 
+    }
+    
     void SandboxLayer::on_detach() {
-
+        
     }
-
+    
     void SandboxLayer::on_update(const float delta_time) {
-
+        dodoe::Renderer::draw_line({0.0f, 0.0f}, {300.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        dodoe::Renderer::draw_rect({0.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
     }
 
     void SandboxLayer::on_ui_render() {

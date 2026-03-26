@@ -10,7 +10,6 @@
 #include "runtime/core/world/entity.h"
 #include "runtime/core/world/registry.h"
 #include "runtime/core/world/world.h"
-#include "runtime/core/world/world_context.h"
 #include "runtime/core/world/world_manager.h"
 
 namespace dodoe {
@@ -25,8 +24,6 @@ namespace dodoe {
             virtual void update(Registry& reg) { }
             virtual void finalize(Registry& reg) { }
 
-        protected:
-            WorldContext& context{WorldManager::self().active_world().context};
         };
 
     } // system

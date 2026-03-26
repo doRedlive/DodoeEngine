@@ -13,6 +13,9 @@
 #include "../components/camera2d_component.h"
 
 #include "runtime/core/utils/tags.h"
+#include "runtime/core/application.h"
+#include "runtime/core/system_context.h"
+#include "runtime/function/render/render_system.h"
 
 namespace dodoe {
 
@@ -34,7 +37,7 @@ namespace dodoe {
 
                     auto& camera_comp = reg.get<Camera2dComponent>(entity);
                     auto& transform_comp = reg.get<TransformComponent>(entity);
-                    auto& camera = context.camera();
+                    auto& camera = Application::self().context().render_system->camera();
                     if (camera_comp.dirty) {
                         camera.set_position(transform_comp.position);
                         camera.set_rotation(transform_comp.rotation.z);

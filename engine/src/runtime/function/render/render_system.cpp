@@ -8,6 +8,8 @@
 #include "render_api.h"
 #include "backend/render_drawer.h"
 
+#include "process/graphs/render2d_graph.h"
+
 #include "runtime/resource/resource_manager.h"
 #include "runtime/core/utils/util.h"
 
@@ -26,13 +28,10 @@ namespace dodoe {
         RenderApi::initialize({init_info.backend_api});
         render_context_ = RenderContext::create({window->native_window()});         
         camera_ = Camera::create({CameraType::Orthographic, window->viewport_manager->get_logical_size(), window->viewport_manager->get_window_size()});
-        render2d_graph_ = RenderGraph::create({window->viewport_manager->get_logical_size(), camera_.get()});
-
-        renderer_ = Renderer::create({render2d_graph_.get()});
+        render2d_graph_ = RenderGraph::create<Render2dGraph>({});
     }
 
     void RenderSystem::shutdown() {
-        Renderer::destroy(renderer_);
         RenderGraph::destroy(render2d_graph_);
         Camera::destroy(camera_);
         RenderContext::destroy(render_context_);
@@ -45,14 +44,12 @@ namespace dodoe {
             RenderDrawer::update_viewport(viewport_manager->viewport());
         }
         RenderDrawer::clear_color(camera_->get_clear_color());
+        render2d_graph_->prepare();
     }
 
     void RenderSystem::present() {
-        if (render2d_graph_ && render2d_graph_->sprite_stage) {
-            render2d_graph_->sprite_stage->flush();
-        }
-
-        window_manager_->update();
+        render2d_graph_->flush();
+        window_manager_->swap_buffers();
     }
 
 }

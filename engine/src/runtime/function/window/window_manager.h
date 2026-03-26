@@ -26,7 +26,7 @@ namespace dodoe {
         Window* create_window(const WindowProperty& props);
 
         [[nodiscard]] bool initialize(WindowManagerInitInfo init_info);
-        void update();
+        void swap_buffers();
         void shutdown();
 
     private:

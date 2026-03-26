@@ -9,8 +9,8 @@
 #include "dopch.h"
 
 #include "renderer.h"
-#include "render_graph.h"
-#include "backend/render_context.hpp"
+#include "process/render_graph.h"
+#include "backend/render_context.h"
 #include "camera/camera.h"
 
 #include "runtime/function/window/window_manager.h"
@@ -32,15 +32,13 @@ namespace dodoe {
         void prepare();
         void present();
 
-        [[nodiscard]] Renderer* renderer() { return renderer_.get(); }
-        [[nodiscard]] Camera* camera() { return camera_.get(); }
+        [[nodiscard]] Camera& camera() { return *camera_.get(); }
 
     private:
-        Scope<Renderer> renderer_;
-        Scope<RenderGraph> render2d_graph_;
-        Scope<RenderContext> render_context_;
-
+        Scope<RenderContext> render_context_; 
         Scope<Camera> camera_;
+
+        Scope<RenderGraph> render2d_graph_;
 
         WindowManager* window_manager_;
     };

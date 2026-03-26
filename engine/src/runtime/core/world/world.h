@@ -8,11 +8,9 @@
 #include "dopch.h"
 
 #include "registry.h"
-#include "world_context.h"
 
 #include "runtime/core/base.h"
 #include "runtime/core/world/scene.h"
-#include "runtime/function/render/render_system.h"
 
 namespace dodoe {
 
@@ -25,7 +23,6 @@ namespace dodoe {
 
     struct WorldCreateInfo {
         std::string_view name;
-        WorldContext& context;
     };
 
     class World {
@@ -33,9 +30,8 @@ namespace dodoe {
         friend class Scene;
     public:
         static WorldProperty property;
-        WorldContext& context;
 
-        World(const std::string& in_name, WorldContext& in_context);
+        explicit World(const std::string& in_name);
         ~World() = default;
 
         static Scope<World> create(WorldCreateInfo create_info);

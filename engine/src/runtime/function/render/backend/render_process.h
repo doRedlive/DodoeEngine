@@ -8,12 +8,42 @@
 #include "dopch.h"
 
 #include "shader.h"
-#include "runtime/function/render/camera/camera.h"
+#include "texture.h"
+
+#include "core/utils/util.h"
 
 namespace dodoe {
 
-	struct RenderPassCreateInfo {
+	enum class LoadOp {
+		Load = 0,
+		Crear,
+		DontCare
+	};
 
+	enum class StoreOp {
+		Load = 0,
+	};
+
+	struct ColorAttachment {
+		Ref<Texture> texture{nullptr};
+		LoadOp load_op{};
+		StoreOp store_op{};
+		Color clear_color{Color::white()};
+	};
+
+	struct DepthAttachment {
+		Ref<Texture> texture{nullptr};
+		LoadOp load_op{};
+		StoreOp store_op{};
+		Color clear_depth{Color::white()};
+	};
+
+	struct RenderPassCreateInfo {
+		std::vector<ColorAttachment> colors{};
+		DepthAttachment depth{};
+		LoadOp load_op{};
+		StoreOp store_op{};
+		bool clear{};
 	};
 
 	class RenderPass {
@@ -30,7 +60,6 @@ namespace dodoe {
 
 	struct RenderPipelineCreateInfo {
 		Ref<Shader> shder;
-		Camera* camera{nullptr};
 	};
 
 	class RenderPipeline {

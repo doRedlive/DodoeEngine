@@ -47,7 +47,6 @@ namespace dodoe {
 
 	private:
 		std::vector<Scope<World>> worlds_;
-		Scope<WorldContext> context_{nullptr};
 		
 		WorldManager() = default;
 	};

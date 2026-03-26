@@ -28,7 +28,7 @@ namespace dodoe {
     };
 
     struct Rect {
-        Vector2f pos{};
+        Vector2f pos{}; // left bottom is zero point
         Vector2f size{};
 
         Rect() = default;

@@ -8,8 +8,6 @@
 #include "runtime/function/render/backend/render_process.h"
 #include "runtime/function/render/backend/shader.h"
 
-#include "runtime/function/render/camera/camera.h"
-
 namespace dodoe {
 
 
@@ -32,7 +30,6 @@ namespace dodoe {
 
     private:
         Ref<Shader> shader_{nullptr};
-        Camera* camera_{nullptr};
     };
 
 } // dodoe

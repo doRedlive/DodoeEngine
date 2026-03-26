@@ -8,7 +8,8 @@
 #include "runtime/core/application.h"
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
-#include "runtime/core/world/world_manager.h"
+#include "runtime/core/system_context.h"
+#include "runtime/function/render/render_system.h"
 
 namespace dodoe {
 
@@ -124,7 +125,7 @@ namespace dodoe {
             0.0f
         };
 
-        const auto& camera = WorldManager::self().active_world().context.camera();
+        auto& camera = Application::self().context().render_system->camera();
         const auto world_pos = camera.screen2world(logical_pos);
         return Vector2f(world_pos.x, world_pos.y);
     }

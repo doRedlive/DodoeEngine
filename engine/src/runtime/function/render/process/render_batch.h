@@ -7,8 +7,9 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/backend/draw_defs.h"
+#include "runtime/function/render/render_resource.h"
 #include "runtime/function/render/backend/buffer.h"
+#include "runtime/function/render/backend/texture.h"
 
 namespace dodoe {
 	struct RenderBatchPacket {
@@ -32,23 +33,23 @@ namespace dodoe {
 		static Scope<RenderBatch> create(RenderBatchCreateInfo create_info);
 		static void destroy(Scope<RenderBatch>& render_batch);
 
-		void queue_draw_context(const TextureDrawContext& draw_context);
 		void flush();
+		void queue_draw_context(const QuadDrawContext& context);
 		
-		private:
+	private:
 		const uint max_quads_{20000};
 		const uint max_texslots_{16};
 		const uint max_indices_{20000 * 6};
 		const uint max_vertices_{20000 * 4};
-		
-		std::vector<TextureDrawContext> draw_contexts_;
+
+		Ref<Texture> default_texture_{nullptr};
+		std::vector<QuadDrawContext> quad_draw_contexts_{};	
 		std::vector<QuadVertex> quad_vertices_;
 		Scope<VertexBuffer> quad_vb_;
 		Scope<IndexBuffer> quad_ib_;
 		Scope<GeometryBinding> geometry_binding_;
 		
 		std::vector<RenderBatchPacket> build_batches();
-		void draw_indexed(ui32 index_count);
 
 		void initialize(RenderBatchCreateInfo create_info);
 		void shutdown();

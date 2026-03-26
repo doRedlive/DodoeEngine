@@ -18,12 +18,59 @@ namespace dodoe {
     class Math {
     public:
 
-        [[nodiscard]] static Vector2f max(const Vector2f& left, const Vector2f& right) { return glm::max(left, right); } 
-        [[nodiscard]] static Vector2f clamp(const Vector2f& value, const Vector2f& min, const Vector2f& max) { return glm::clamp(value, min, max); }
-        [[nodiscard]] static Matrix4f ortho(float left, float right, float bottom, float top, float near, float far) { return glm::ortho(left, right, bottom, top, near, far); }
-        [[nodiscard]] static Matrix4f scale(const Matrix4f& value, const Vector3f& scale) { return glm::scale(value, scale); }
-        [[nodiscard]] static Matrix4f translate(const Matrix4f& value, const Vector3f& translation) { return glm::translate(value, translation); }
-        [[nodiscard]] static Matrix4f rotate(const Matrix4f& value, float radians, const Vector3f& axis) { return glm::rotate(value, radians, axis); }
+        template <typename... Args>
+        [[nodiscard]] static auto max(Args&&... args) { return glm::max(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto min(Args&&... args) { return glm::min(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto clamp(Args&&... args) { return glm::clamp(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto ortho(Args&&... args) { return glm::ortho(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto perspective(Args&&... args) { return glm::perspective(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto lookAt(Args&&... args) { return glm::lookAt(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto translate(Args&&... args) { return glm::translate(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto scale(Args&&... args) { return glm::scale(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto rotate(Args&&... args) { return glm::rotate(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto radians(Args&&... args) { return glm::radians(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto degrees(Args&&... args) { return glm::degrees(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto dot(Args&&... args) { return glm::dot(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto cross(Args&&... args) { return glm::cross(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto length(Args&&... args) { return glm::length(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto normalize(Args&&... args) { return glm::normalize(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto distance(Args&&... args) { return glm::distance(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto inverse(Args&&... args) { return glm::inverse(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto transpose(Args&&... args) { return glm::transpose(std::forward<Args>(args)...); }
 
         template <typename T>
         [[nodiscard]] static constexpr T epsilon() { return glm::epsilon<T>(); }

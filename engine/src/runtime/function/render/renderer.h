@@ -7,31 +7,47 @@
 
 #include "dopch.h"
 
+#include "runtime/core/utils/util.h"
 #include "runtime/function/render/backend/texture.h"
-#include "render_graph.h"
-
-#include "GLFW/glfw3.h"
 
 namespace dodoe {
 
-    struct RendererCreateInfo {
-        RenderGraph* render2d_graph{nullptr};
+    enum class RenderStageType {
+        Sprite = 0,
+        Debug,
+        Ui,
     };
 
     class Renderer {
     public:
-        static Scope<Renderer> create(RendererCreateInfo create_info);
-        static void destroy(Scope<Renderer>& renderer);
+        static void draw_sprite(
+            const Ref<Texture>& texture,
+            const Vector2f& pos, 
+            const Vector2f& size,
+            const Vector3f& rotation, 
+            const Color& color = Color::white(), 
+            RenderStageType stage = RenderStageType::Sprite
+        );
 
-        void initialize(RendererCreateInfo create_info);
-        void shutdown();
+        static void draw_rect(
+            const Vector2f& pos, 
+            const Vector2f& size,
+            const Vector3f& rotation, 
+            const Color& color = Color::white(), 
+            float thickness = 1.0f, 
+            RenderStageType stage = RenderStageType::Sprite
+        );
 
-        void draw_sprite(const Ref<Texture>& texture, const Vector2f& pos, 
-            const Vector2f& size, const Vector3f& rotation, const Vector4f& color);
-        void draw_line();
-        void draw_text();
-    private:
-        RenderGraph* render2d_graph_{nullptr};
+        static void draw_line(
+            const Vector2f& start, 
+            const Vector2f& end, 
+            const Vector3f& rotation,
+            float thickness = 1.0f, 
+            const Color& color = Color::white(), 
+            RenderStageType stage = RenderStageType::Sprite
+        );
+
+        static void draw_text();
     };
 
 } // dodoe
