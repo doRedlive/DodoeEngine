@@ -22,6 +22,7 @@ namespace dodoe {
 
 	void PhysicsSystem::step(const float dt) {
 		b2World_Step(world_id_, dt, sub_step_count_);
+		b2World_Draw(world_id_, debugger_->native_debug_draw());
 	}
 
 	void PhysicsSystem::initialize(const PhysicsSystemCreateInfo& create_info) {
@@ -37,10 +38,14 @@ namespace dodoe {
 		world_def.gravity.y = create_info.gravity;
 		world_id_ = b2CreateWorld(&world_def);
 
+		debugger_ = PhysicsDebugger::create({});
+
 		sub_step_count_ = create_info.sub_step_count;
 	}
 
 	void PhysicsSystem::shutdown() {
+		PhysicsDebugger::destroy(debugger_);
+
 		if (B2_IS_NON_NULL(world_id_)) {
 			b2DestroyWorld(world_id_);
 		}

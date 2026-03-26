@@ -7,6 +7,8 @@
 
 #include "dopch.h"
 
+#include "physics_debug.h"
+
 #include "box2d/box2d.h"
 #include "box2d/types.h"
 
@@ -33,6 +35,8 @@ namespace dodoe {
 	private:
 		b2WorldId world_id_{};
 		int sub_step_count_{0};
+
+		Scope<PhysicsDebugger> debugger_{nullptr};
 
 		void initialize(const PhysicsSystemCreateInfo& create_info);
 		void shutdown();

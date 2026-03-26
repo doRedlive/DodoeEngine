@@ -3,7 +3,9 @@
 //
 
 #include "render_batch.h"
+
 #include "runtime/function/render/backend/render_drawer.h"
+#include "runtime/core/math/math.h"
 
 #include <cmath>
 #include <cstring>
@@ -151,7 +153,7 @@ namespace dodoe {
 				const float hx = w * 0.5f;
 				const float hy = h * 0.5f;
 
-				const float r = draw_context.rotation.z;
+				const float r = Math::radians(draw_context.rotation.z);
 				const float cos_r = std::cos(r);
 				const float sin_r = std::sin(r);
 

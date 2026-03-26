@@ -8,6 +8,15 @@
 #include "runtime/core/world/components.h"
 #include "runtime/core/utils/common.h"
 
+#include "runtime/core/world/systems/physics2d_system.h"
+#include "runtime/core/world/systems.h"
+#include "runtime/core/world/scene.h"
+#include "runtime/core/world/world.h"
+#include "runtime/core/world/world_manager.h"
+#include "runtime/core/application.h"
+#include "runtime/core/system_context.h"
+#include "box2d/box2d.h"
+
 namespace {
 
     struct ComponentRegistry {
@@ -127,7 +136,11 @@ namespace dodoe::lua_register_detail {
             "body_type", sol::property(
                 [](Rigidbody2dComponent& c) { return c.type; },
                 [](Rigidbody2dComponent& c, const Rigidbody2dComponent::BodyType value) { c.type = value; }),
-            "fixed_rotation", &Rigidbody2dComponent::fixed_rotation
+            "fixed_rotation", &Rigidbody2dComponent::fixed_rotation,
+            "gravity_scale", &Rigidbody2dComponent::gravity_scale,
+            "setLinearVelocity", &Rigidbody2dComponent::set_linear_velocity,
+            "applyForceToCenter", &Rigidbody2dComponent::apply_force_to_center,
+            "applyLinearImpulseToCenter", &Rigidbody2dComponent::apply_linear_impulse_to_center
         );
         dodoe_table.new_usertype<BoxCollider2dComponent>("BoxCollider2dComponent",
             sol::constructors<BoxCollider2dComponent()>(),
@@ -232,6 +245,7 @@ namespace dodoe::lua_register_detail {
                     c.type = static_cast<Rigidbody2dComponent::BodyType>(body_type_obj.as<int>());
                 }
                 c.fixed_rotation = get_bool_field(data, "fixed_rotation", c.fixed_rotation);
+                c.gravity_scale = get_float_field(data, "gravity_scale", c.gravity_scale);
                 return true;
             };
             s_component_registry["Rigidbody2dComponent"] = std::move(registry);

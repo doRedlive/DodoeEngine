@@ -42,6 +42,7 @@ namespace dodoe {
                     body_def.type = rigidbody2d_type2box2d_type_(rb2d.type);
                     body_def.position = { transform.position.x, transform.position.y };
                     body_def.rotation = b2MakeRot(transform.rotation.z);
+                    body_def.gravityScale = rb2d.gravity_scale;
 
                     b2BodyId body_id = b2CreateBody(world_id, &body_def);
                     if (!B2_IS_NON_NULL(body_id)) {
@@ -51,6 +52,7 @@ namespace dodoe {
 
                     b2Body_SetFixedRotation(body_id, rb2d.fixed_rotation);
                     body_umap_[key] = body_id;
+                    rb2d.body_id = body_id;
 
                     if (reg.all_of<BoxCollider2dComponent>(entity)) {
                         auto& bc2d = reg.get<BoxCollider2dComponent>(entity);
@@ -122,6 +124,15 @@ namespace dodoe {
 
             std::unordered_map<ui32, b2BodyId> body_umap_{};
             std::unordered_map<ui32, b2ShapeId> shape_umap_{};
+
+        public:
+            b2BodyId get_body_id(const Entity& entity) const {
+                const ui32 key = static_cast<ui32>(entity);
+                if (auto it = body_umap_.find(key); it != body_umap_.end()) {
+                    return it->second;
+                }
+                return b2_nullBodyId;
+            }
         };
 
     } // system
