@@ -66,11 +66,11 @@ namespace dodoe {
         const float half_thickness = thickness * 0.5f;
 
         const Vector2f min_point{std::min(start.x, end.x), std::min(start.y, end.y)};
-        const Vector2f max_point{std::max(start.x, end.y), std::max(start.y, end.y)};
+        const Vector2f max_point{std::max(start.x, end.x), std::max(start.y, end.y)};
         const Rect cull_rect{
             {min_point.x - half_thickness, min_point.y - half_thickness},
             {std::max(max_point.x - min_point.x, 0.0f) + thickness,
-             std::max(max_point.y - max_point.y, 0.0f) + thickness}
+             std::max(max_point.y - min_point.y, 0.0f) + thickness}
         };
 
         // if (should_cull_rect(cull_rect)) return;
@@ -88,8 +88,14 @@ namespace dodoe {
             return;
         }
 
-        const Vector4f rect{start.x, start.y + half_thickness, length, thickness};
-        const float angle = std::atan2(delta.y, delta.x) + rotation.z;
+        Vector2f center = (start + end) * 0.5f;
+        const Vector4f rect{
+            center.x - length * 0.5f,
+            center.y - half_thickness,
+            length,
+            thickness
+        };
+        const float angle = Math::rad2deg(std::atan2(delta.y, delta.x)) + rotation.z;
 
         quad = QuadDrawContext(nullptr, rect, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f, angle}, color.to_vec4(), stage);
         g_render_resource->submit(quad);

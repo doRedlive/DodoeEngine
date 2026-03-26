@@ -17,6 +17,11 @@ namespace dodoe {
 
     class Math {
     public:
+        static constexpr float PI = 3.1415926f;
+
+        static float rad2deg(float rad) {
+            return rad * 180.0f / PI;
+        }
 
         template <typename... Args>
         [[nodiscard]] static auto max(Args&&... args) { return glm::max(std::forward<Args>(args)...); }

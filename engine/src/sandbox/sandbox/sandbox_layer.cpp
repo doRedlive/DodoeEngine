@@ -39,8 +39,15 @@ namespace sandbox {
     }
     
     void SandboxLayer::on_update(const float delta_time) {
-        dodoe::Renderer::draw_line({0.0f, 0.0f}, {300.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
-        dodoe::Renderer::draw_rect({0.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
+        dodoe::Renderer::draw_line({0.0f, 0.0f}, {300.0f, 0.0f}, {0.0f, 0.0f, 100.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::draw_rect({5.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
+        // dodoe::Renderer::draw_rect({-5.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
+
+
+        dodoe::Renderer::draw_line({-5.0f, 5.0f}, {5.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::draw_line({-5.0f, 5.0f}, {-5.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::draw_line({-5.0f, -5.0f}, {5.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::draw_line({5.0f, -5.0f}, {5.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
     }
 
     void SandboxLayer::on_ui_render() {
