@@ -39,7 +39,6 @@ namespace dodoe {
             prop.custom_titlebar = spec.custom_titlebar;
             prop.backend_api = spec.render_api_type;
             if (create_window(prop)) {
-                DoInfo("Window manager initialize success.");
                 return true;
             }
         }
@@ -47,7 +46,7 @@ namespace dodoe {
         return false;
     }
 
-    void WindowManager::swap_buffers() {
+    void WindowManager::swapBuffers() {
         for (auto& window : windows_) {
             window->swap_buffer();
         }

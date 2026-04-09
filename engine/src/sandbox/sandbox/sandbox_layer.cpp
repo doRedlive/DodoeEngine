@@ -4,12 +4,14 @@
 
 #include "sandbox_layer.h"
 
-#include "runtime/core/world/world_manager.h"
-#include "runtime/core/world/entity.h"
-#include "runtime/core/world/components.h"
-#include "runtime/resource/resource_manager.h"
+#include "core/application.h"
+#include "core/context/system_context.h"
 
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/world/world.h"
+#include "runtime/function/world/entity.h"
+#include "runtime/function/world/components.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/function/render/renderer_2d.h"
 
 namespace sandbox {
 
@@ -18,9 +20,8 @@ namespace sandbox {
     }
 
     void SandboxLayer::on_attach() {
-        auto& world = dodoe::WorldManager::self().active_world();
-
-        auto scene = world.active_scene();
+        auto& world = dodoe::Application::self().context().world;
+        auto scene = world->active_scene();
 
         auto test_go = scene->create_entity("test_go");
         auto& transform = test_go.get_component<dodoe::TransformComponent>();
@@ -39,18 +40,18 @@ namespace sandbox {
     }
     
     void SandboxLayer::on_update(const float delta_time) {
-        dodoe::Renderer::draw_line({0.0f, 0.0f}, {300.0f, 0.0f}, {0.0f, 0.0f, 100.0f}, 1.5f, dodoe::Color::green());
-        // dodoe::Renderer::draw_rect({5.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
-        // dodoe::Renderer::draw_rect({-5.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
+        dodoe::Renderer2d::drawLine({0.0f, 0.0f}, {300.0f, 0.0f}, {0.0f, 0.0f, 100.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::drawRect({5.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
+        // dodoe::Renderer::drawRect({-5.0f, 0.0f}, {100.0f, 100.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::blue(), 2.0f);
 
 
-        dodoe::Renderer::draw_line({-5.0f, 5.0f}, {5.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
-        // dodoe::Renderer::draw_line({-5.0f, 5.0f}, {-5.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
-        // dodoe::Renderer::draw_line({-5.0f, -5.0f}, {5.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
-        // dodoe::Renderer::draw_line({5.0f, -5.0f}, {5.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        dodoe::Renderer2d::drawLine({-5.0f, 5.0f}, {5.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::drawLine({-5.0f, 5.0f}, {-5.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::drawLine({-5.0f, -5.0f}, {5.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
+        // dodoe::Renderer::drawLine({5.0f, -5.0f}, {5.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, 1.5f, dodoe::Color::green());
     }
 
-    void SandboxLayer::on_ui_render() {
+    void SandboxLayer::on_render() {
     }
 
 } // namespace sandbox

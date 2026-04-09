@@ -11,7 +11,7 @@ namespace cakery {
         ConsolePanel() = default;
         ~ConsolePanel() = default;
 
-        void on_ui_render();
+        void on_render();
 
     private:
 

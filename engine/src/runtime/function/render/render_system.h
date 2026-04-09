@@ -8,9 +8,9 @@
 
 #include "dopch.h"
 
-#include "renderer.h"
-#include "process/render_graph.h"
-#include "backend/render_context.h"
+#include "render_graph.h"
+#include "render_helper.h"
+#include "interface/rhi_backend.h"
 #include "camera/camera.h"
 
 #include "runtime/function/window/window_manager.h"
@@ -23,24 +23,24 @@ namespace dodoe {
     };
 
     class RenderSystem {
-    public:
-        static Scope<RenderSystem> create(RenderSystemCreateInfo create_info);
+        Scope<RhiBackend> rhi_backend_{nullptr};
+        Scope<Camera> camera_;
+        Scope<RenderGraph> render_graph_{nullptr};
 
-        void initialize(RenderSystemCreateInfo init_info);
+        WindowManager* window_manager_{nullptr};
+    public:
+        static Scope<RenderSystem> create(const RenderSystemCreateInfo& create_info);
+
+        void initialize(const RenderSystemCreateInfo& init_info);
         void shutdown();
 
         void prepare();
         void present();
-
+        
         [[nodiscard]] Camera& camera() { return *camera_.get(); }
-
+        
     private:
-        Scope<RenderContext> render_context_; 
-        Scope<Camera> camera_;
-
-        Scope<RenderGraph> render2d_graph_;
-
-        WindowManager* window_manager_;
+        void swapLogicRenderContext();
     };
 
 

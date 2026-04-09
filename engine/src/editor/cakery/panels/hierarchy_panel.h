@@ -19,7 +19,7 @@ namespace cakery {
         HierarchyPanel();
         ~HierarchyPanel() = default;
 
-        void on_ui_render();
+        void on_render();
 
         void set_context(dodoe::Scene* context);
 

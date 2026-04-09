@@ -1,11 +1,10 @@
 #include "lua_register_detail.h"
 
-#include "runtime/core/world/world_manager.h"
-#include "runtime/core/world/world.h"
-#include "runtime/core/world/scene.h"
-#include "runtime/core/world/registry.h"
-#include "runtime/core/world/entity.h"
-#include "runtime/core/world/systems.h"
+#include "runtime/function/world/world.h"
+#include "runtime/function/world/scene.h"
+#include "runtime/function/world/registry.h"
+#include "runtime/function/world/entity.h"
+#include "runtime/function/world/systems.h"
 
 namespace dodoe::lua_register_detail {
 
@@ -60,16 +59,6 @@ namespace dodoe::lua_register_detail {
             "removeUpdateSystem", &World::remove_update_system,
             "removeAllSystems", &World::remove_all_systems
         );
-
-        sol::table world_manager_table = lua.create_table();
-        dodoe_table["WorldManager"] = world_manager_table;
-        world_manager_table.set_function("worldCount", []() { return WorldManager::self().world_count(); });
-        world_manager_table.set_function("createWorld",
-                                         [](const std::string& name) -> World* { return &WorldManager::self().create_world(name); });
-        world_manager_table.set_function("getWorld",
-                                         [](const std::string& name) -> World* { return &WorldManager::self().get_world(name); });
-        world_manager_table.set_function("activeWorld", []() -> World* { return &WorldManager::self().active_world(); });
-        world_manager_table.set_function("destroyWorlds", []() { WorldManager::self().destory_worlds(); });
     }
 
 } // dodoe::lua_register_detail

@@ -2,61 +2,30 @@
 // Created by Redlive on 2026/3/25.
 //
 
-#ifndef DODOE_DRAW_CONTEXT_H
-#define DODOE_DRAW_CONTEXT_H
+#pragma once
 
 #include "dopch.h"
 
-#include "renderer.h"
-#include "runtime/function/render/backend/texture.h"
+#include "renderer_2d.h"
+#include "interface/rhi.h"
 
 namespace dodoe {
 
-    struct QuadDrawContext {
-        Ref<Texture> texture{nullptr};
-        Vector4f dst_rect{0.0f};
-        Vector4f uv_rect{0.0f};
-        Vector3f rotation{0.0f};
-        Vector4f color{1.0f, 1.0f, 1.0f, 1.0f}; 
-
-        RenderStageType stage{};
-    };
-
-    struct LineDrawContext {
-        Vector2f start{0.0f};
-        Vector2f end{0.0f};
-        Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
-        float thickness{2.0f};
-
-        RenderStageType stage{};
-    };
-
-    struct TextDrawContext {
-        Ref<Texture> texture{nullptr};
-        Vector4f dst_rect{0.0f};
-        Vector4f uv_rect{0.0f};
-        Vector3f rotation{0.0f};
-        Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
-
-        RenderStageType stage{};
+    struct MeshSubmitData {
+        identifier model_id{0};
     };
 
     class RenderResource {
+        rhi::DeviceHandle device_{};
+        rhi::CommandListHandle cmd_list_{};
     public:
-        void submit(const QuadDrawContext& context);
-        void submit(const LineDrawContext& context);
-        void submit(const TextDrawContext& context);
+        void initilize(rhi::DeviceHandle device);
+        void shutdown();
 
-        [[nodiscard]] std::vector<QuadDrawContext> gain_quad_draw_contexts();
-
-    private:
-        std::vector<QuadDrawContext> texture_draw_contexts_{};
-        std::vector<LineDrawContext> line_draw_contexts_{};
-        std::vector<TextDrawContext> text_draw_contexts_{};
+        void submit(const MeshSubmitData& context);
+        void swapLogicRenderContext();
     };
 
-    extern RenderResource* g_render_resource;
+    extern RenderResource* g_RenderResource;
 
 } // dodoe
-
-#endif//DODOE_DRAW_CONTEXT_H

@@ -5,11 +5,9 @@ layout(location = 1) in vec2  a_UV;
 layout(location = 2) in vec4  a_Color;
 layout(location = 3) in float a_TexIndex;
 
-out vec2 v_UV;
-out vec4 v_Color;
-flat out float v_TexIndex;
-
-uniform mat4 u_ViewProj;
+layout(location = 0) out vec2 v_UV;
+layout(location = 1) out vec4 v_Color;
+layout(location = 2) flat out float v_TexIndex;
 
 void main() 
 {
@@ -17,5 +15,5 @@ void main()
     v_Color = a_Color;
     v_TexIndex = a_TexIndex;
 
-    gl_Position = u_ViewProj * vec4(a_Position, 1.0);
+    gl_Position = vec4(a_Position, 1.0);
 }

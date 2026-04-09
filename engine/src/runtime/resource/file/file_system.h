@@ -15,6 +15,8 @@ namespace dodoe {
         static fs::path asset_path;
         static fs::path script_core_path;
 
+        static std::vector<char> readFile(const std::string& path);
+
         static const std::string& cwd();
 
         static std::string str2normalize_path(const std::string& str);

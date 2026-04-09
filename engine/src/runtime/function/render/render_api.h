@@ -13,6 +13,7 @@ namespace dodoe {
         None,
         OpenGL,
         Vulkan,
+        DX12,
     };
 
     struct RenderApiInitInfo {

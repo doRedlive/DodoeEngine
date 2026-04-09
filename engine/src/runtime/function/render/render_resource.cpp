@@ -4,28 +4,27 @@
 
 #include "render_resource.h"
 
+#include "runtime/resource/resource_manager.h"
+
 namespace dodoe {
 
-    RenderResource* g_render_resource = new RenderResource();
+    RenderResource* g_RenderResource = new RenderResource();
 
-    void RenderResource::submit(const QuadDrawContext& context) {
-        texture_draw_contexts_.push_back(context);
+    void RenderResource::initilize(rhi::DeviceHandle device) {
+        device_ = device;
+        cmd_list_ = device_->createCommandList();
     }
 
-    void RenderResource::submit(const LineDrawContext& context) {
-        line_draw_contexts_.push_back(context);
+    void RenderResource::shutdown() {
+
     }
 
-    void RenderResource::submit(const TextDrawContext& context) {
-        text_draw_contexts_.push_back(context);
+    void RenderResource::submit(const MeshSubmitData& context) {
+
     }
 
-    std::vector<QuadDrawContext> RenderResource::gain_quad_draw_contexts() {
-        std::vector<QuadDrawContext> out;
-        out.swap(texture_draw_contexts_);
-        line_draw_contexts_.clear();
-        text_draw_contexts_.clear();
-        return out;
+    void RenderResource::swapLogicRenderContext() {
+
     }
 
 } // dodoe

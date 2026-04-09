@@ -15,7 +15,7 @@ namespace cakery {
 		ViewportPanel();
 		~ViewportPanel() = default;
 
-		void on_ui_render();
+		void on_render();
 		void on_update();
 
 	private:

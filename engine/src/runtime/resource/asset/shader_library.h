@@ -8,10 +8,59 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/backend/shader.h"
-
 
 namespace dodoe {
+
+    struct ShaderCreateInfo {
+        std::string vert_source{};
+        std::string frag_source{};
+    };
+
+    class Shader {
+    public:
+        static Ref<Shader> create(const ShaderCreateInfo& info) {
+            (void)info;
+            return create_ref<Shader>();
+        }
+
+        void attach() {}
+        void detach() {}
+
+        void set_bool(const std::string& name, bool value) {
+            (void)name;
+            (void)value;
+        }
+
+        void set_int(const std::string& name, int value) {
+            (void)name;
+            (void)value;
+        }
+
+        void set_float(const std::string& name, float value) {
+            (void)name;
+            (void)value;
+        }
+
+        void set_vec2(const std::string& name, const Vector2f& value) {
+            (void)name;
+            (void)value;
+        }
+
+        void set_vec3(const std::string& name, const Vector3f& value) {
+            (void)name;
+            (void)value;
+        }
+
+        void set_vec4(const std::string& name, const Vector4f& value) {
+            (void)name;
+            (void)value;
+        }
+
+        void set_mat4(const std::string& name, const Matrix4f& value) {
+            (void)name;
+            (void)value;
+        }
+    };
 
     struct ShaderRes{
         Ref<Shader> shader;

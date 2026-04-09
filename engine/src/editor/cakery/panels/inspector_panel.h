@@ -13,7 +13,7 @@ namespace cakery {
         InspectorPanel();
         ~InspectorPanel() = default;
 
-        void on_ui_render();
+        void on_render();
 
     private:
         dodoe::GameObject* selected_game_object_ {nullptr};

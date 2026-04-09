@@ -8,8 +8,9 @@
 
 #include "runtime/core/utils/util.h"
 #include "asset/shader_library.h"
-#include "asset/texture_manager.h"
+#include "asset/texture_loader.h"
 #include "asset/animation_library.h"
+#include "asset/mesh_loader.h"
 
 namespace dodoe {
 
@@ -27,11 +28,16 @@ namespace dodoe {
 
         TextureRes load_texture(const std::string& name, const std::string& path);
         Ref<Shader> load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path);
+        ModelRes load_model(const std::string& name, const std::string& path);
 
         [[nodiscard]] TextureRes get_texture(identifier id);
         [[nodiscard]] TextureRes get_texture(const std::string& id);
         [[nodiscard]] TextureRes get_texture(const std::string& id, const std::string& path);
         [[nodiscard]] Ref<Shader> get_shader(const std::string& name);
+        [[nodiscard]] ModelRes get_model(identifier id);
+        [[nodiscard]] ModelRes get_model(const std::string& id);
+        [[nodiscard]] ModelRes get_model(const std::string& id, const std::string& path);
+        [[nodiscard]] MeshRes get_mesh(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(const std::string& name);
 
@@ -41,9 +47,10 @@ namespace dodoe {
 
     private:
         ResourceManager() = default;
-        Scope<TextureManager> texture_manager_{nullptr};
+        Scope<TextureLoader> texture_loader_{nullptr};
         Scope<ShaderLibrary> shader_library_{nullptr};
         Scope<AnimationLibrary> animation_library_{nullptr};
+        Scope<MeshLoader> mesh_loader_{nullptr};
     };
 } // dodoe
 

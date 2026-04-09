@@ -19,12 +19,10 @@ namespace cakery {
 
         directory_icon_ = ResourceManager::self()
                               .get_texture("pictures/ContentBrowser/DirectoryIcon.png",
-                                           "pictures/ContentBrowser/DirectoryIcon.png")
-                              .texture;
+									   "pictures/ContentBrowser/DirectoryIcon.png");
         file_icon_ = ResourceManager::self()
                          .get_texture("pictures/ContentBrowser/FileIcon.png",
-                                      "pictures/ContentBrowser/FileIcon.png")
-                         .texture;
+								   "pictures/ContentBrowser/FileIcon.png");
     }
 
 	void ProjectPanel::on_ui_render() {
@@ -55,9 +53,9 @@ namespace cakery {
 			std::string file_name = path.filename().string();
 
 			ImGui::PushID(file_name.c_str());
-			Ref<Texture> icon = directory_entry.is_directory() ? directory_icon_ : file_icon_;
+			TextureRes icon = directory_entry.is_directory() ? directory_icon_ : file_icon_;
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-			ImGui::ImageButton(file_name.c_str(), static_cast<ImTextureID>(static_cast<uintptr_t>(icon ? icon->id : 0)), { thumbnail_size, thumbnail_size }, { 0, 1 }, { 1, 0 });
+			ImGui::ImageButton(file_name.c_str(), static_cast<ImTextureID>(static_cast<uintptr_t>(icon.id)), { thumbnail_size, thumbnail_size }, { 0, 1 }, { 1, 0 });
 
 			if (ImGui::BeginDragDropSource())
 			{

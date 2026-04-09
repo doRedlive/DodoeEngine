@@ -19,7 +19,7 @@ namespace dodoe {
 
     }
 
-    void RuntimeLayer::on_ui_render() {
+    void RuntimeLayer::on_render() {
 
     }
 

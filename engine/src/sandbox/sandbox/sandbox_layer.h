@@ -18,7 +18,7 @@ namespace sandbox {
         void on_attach() override;
         void on_detach() override;
         void on_update(float delta_time) override;
-        void on_ui_render() override;
+        void on_render() override;
     };
 
 } // namespace sandbox

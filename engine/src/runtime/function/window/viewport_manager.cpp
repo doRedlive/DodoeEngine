@@ -78,7 +78,6 @@ namespace dodoe {
         if (!std::isfinite(result.scale) || result.scale < 1.0f) {
             result.scale = 1.0f;
         }
-        DoDebug("Scale: {}, pixel size: ({}, {})", result.scale, pixel_size.x, pixel_size.y);
         Vector2f viewport_size = logical_size * result.scale;
         viewport_size.x = std::floor(viewport_size.x);
         viewport_size.y = std::floor(viewport_size.y);
@@ -87,9 +86,6 @@ namespace dodoe {
         result.viewport.pos = (pixel_size - viewport_size) * 0.5f;
         result.viewport.pos.x = std::floor(result.viewport.pos.x);
         result.viewport.pos.y = std::floor(result.viewport.pos.y);
-        DoDebug("Viewport size({}, {}), pos({}, {})",
-            result.viewport.size.x, result.viewport.size.y,
-            result.viewport.pos.x, result.viewport.pos.y);
         return result;
     }
 

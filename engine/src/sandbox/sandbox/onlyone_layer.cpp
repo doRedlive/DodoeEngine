@@ -5,7 +5,7 @@
 #include "onlyone_layer.h"
 
 #include "runtime/core/application.h"
-#include "runtime/core/system_context.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/script/script_system.h"
 
 namespace sandbox {
@@ -22,7 +22,7 @@ namespace sandbox {
 
     }
 
-    void OnlyoneLayer::on_ui_render() {
+    void OnlyoneLayer::on_render() {
 
     }
 

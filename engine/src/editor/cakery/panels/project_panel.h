@@ -7,7 +7,7 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/backend/texture.h"
+#include "runtime/resource/resource_type.h"
 
 namespace fs = std::filesystem;
 
@@ -17,14 +17,14 @@ namespace cakery {
 		ProjectPanel();
 		~ProjectPanel() = default;
 
-		void on_ui_render();
+		void on_render();
 
 	private:
 		fs::path cur_directory_;
 		fs::path base_directory_;
 
-		dodoe::Ref<dodoe::Texture> directory_icon_;
-		dodoe::Ref<dodoe::Texture> file_icon_;
+		dodoe::TextureRes directory_icon_;
+		dodoe::TextureRes file_icon_;
 	};
 }
 

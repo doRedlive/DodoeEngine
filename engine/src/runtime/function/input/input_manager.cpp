@@ -8,7 +8,7 @@
 #include "runtime/core/application.h"
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
-#include "runtime/core/system_context.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/render/render_system.h"
 
 namespace dodoe {

@@ -4,17 +4,16 @@
 
 #include "lua_register_detail.h"
 
-#include "runtime/core/world/entity.h"
-#include "runtime/core/world/components.h"
+#include "runtime/function/world/entity.h"
+#include "runtime/function/world/components.h"
 #include "runtime/core/utils/common.h"
 
-#include "runtime/core/world/systems/physics2d_system.h"
-#include "runtime/core/world/systems.h"
-#include "runtime/core/world/scene.h"
-#include "runtime/core/world/world.h"
-#include "runtime/core/world/world_manager.h"
+#include "runtime/function/world/systems/physics2d_system.h"
+#include "runtime/function/world/systems.h"
+#include "runtime/function/world/scene.h"
+#include "runtime/function/world/world.h"
 #include "runtime/core/application.h"
-#include "runtime/core/system_context.h"
+#include "runtime/core/context/system_context.h"
 #include "box2d/box2d.h"
 
 namespace {

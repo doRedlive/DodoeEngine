@@ -3,7 +3,7 @@
 //
 
 #include "core/application.h"
-#include "core/system_context.h"
+#include "core/context/system_context.h"
 #include "sandbox_layer.h"
 
 #include "onlyone_layer.h"
@@ -14,8 +14,8 @@ class SandboxApp final : public dodoe::Application {
 public:
     explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
         : dodoe::Application(spec) {
-            context_->layer_stack.push_layer(new OnlyoneLayer("Onlyone"));
-            // context_->layer_stack.push_layer(new SandboxLayer("Sandbox"));
+            // context_->layer_stack.push_layer(new OnlyoneLayer("Onlyone"));
+            context_->layer_stack.push_layer(new SandboxLayer("Sandbox"));
     }
 
     ~SandboxApp() override = default;
@@ -32,6 +32,7 @@ Application* create_application(ApplicationCommandLineArgs cli_args) {
     sandbox_spec.window_resizeable = true;
     sandbox_spec.width = 1600;
     sandbox_spec.height = 900;
+    sandbox_spec.render_api_type = RenderApiType::Vulkan;
     sandbox_spec.cli_args = cli_args;
 
     return new sandbox::SandboxApp(sandbox_spec);

@@ -6,7 +6,7 @@
 
 #include "dopch.h"
 
-#include "system_context.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/core/event/event_system.h"
 
 namespace dodoe {

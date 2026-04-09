@@ -5,7 +5,7 @@
 #include "lua_register_detail.h"
 
 #include "runtime/core/application.h"
-#include "runtime/core/system_context.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/time/time_system.h"
 #include "runtime/function/input/input.h"
 #include "runtime/function/input/key_code.h"

@@ -4,7 +4,7 @@
 
 #include "physics_system.h"
 
-#include "runtime/core/world/scene.h"
+#include "runtime/function/world/scene.h"
 
 namespace dodoe {
 

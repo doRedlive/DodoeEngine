@@ -73,6 +73,8 @@ namespace dodoe {
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        } else {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         }
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         if (prop_.resizeable) glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -98,9 +100,7 @@ namespace dodoe {
                 WindowData& data = *static_cast<WindowData*>(glfwGetWindowUserPointer(native_window));
                 *hit = (data.owner != nullptr && data.owner->is_titlebar_hovered()) ? 1 : 0;
             });
-        }
-        
-        DoInfo("The window crate success.");
+        } 
         return true;
     }
 

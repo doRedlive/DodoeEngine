@@ -54,7 +54,7 @@ namespace dodoe {
 
     private:
         static uint32_t channel_from_float(float value) {
-            const float clamped = std::max(0.0f, std::min(1.0f, value));
+            const float clamped = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
             return static_cast<uint32_t>(clamped * 255.0f + 0.5f);
         }
     };

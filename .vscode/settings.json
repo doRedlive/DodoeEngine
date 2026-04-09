@@ -1,5 +1,4 @@
 {
   "cmake.generator": "Visual Studio 18 2026",
-  "cmake.platform": "x64",
-  "cmake.configureArgs": ["-A", "x64"]
+  "cmake.platform": "x64"
 }

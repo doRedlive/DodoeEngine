@@ -4,6 +4,8 @@
 
 #include "file_system.h"
 
+#include "runtime/core/debug/instrumentor.h"
+
 #ifdef DO_PLATFORM_WINDOWS
 #include <direct.h>
 #define getcwd _getcwd
@@ -18,6 +20,26 @@ namespace dodoe {
 
 	fs::path FileSystem::asset_path = AssetPath;
 	std::string FileSystem::cwd_ = "";
+
+	std::vector<char> FileSystem::readFile(const std::string& path) {
+		DO_PROFILE_FUNCTION();
+
+		std::ifstream in(path, std::ios::binary | std::ios::ate);
+		if (!in.is_open()) {
+			DoError("Open file {} failed!", path);
+			return {};
+		}
+
+		const std::streamsize size = in.tellg();
+		if (size <= 0) {
+			return {};
+		}
+
+		std::vector<char> data(static_cast<size_t>(size));
+		in.seekg(0, std::ios::beg);
+		in.read(data.data(), size);
+		return data;
+	}
 
 	const std::string& FileSystem::cwd() {
 		if (cwd_.empty()) {

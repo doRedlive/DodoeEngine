@@ -1,0 +1,69 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build",
+      "installDir": "${sourceDir}/bin",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_SHARED_LIBS": "OFF"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "displayName": "doDebug-Windows",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "windows-release",
+      "displayName": "doRelease-Windows",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-debug-sandbox",
+      "displayName": "Debug Sandbox",
+      "configurePreset": "windows-debug",
+      "targets": "DodoeSandbox",
+      "cleanFirst": false
+    },
+    {
+      "name": "build-release-sandbox",
+      "displayName": "Release Sandbox",
+      "configurePreset": "windows-release",
+      "targets": "DodoeSandbox",
+      "cleanFirst": false
+    },
+    {
+      "name": "build-debug-cakery",
+      "displayName": "Debug Cakery",
+      "configurePreset": "windows-debug",
+      "targets": "Cakery",
+      "cleanFirst": false
+    },
+    {
+      "name": "build-release-cakery",
+      "displayName": "Release Cakery",
+      "configurePreset": "windows-release",
+      "targets": "Cakery",
+      "cleanFirst": false
+    }
+  ]
+}

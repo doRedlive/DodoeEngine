@@ -36,6 +36,9 @@ target_include_directories(${TARGET_NAME}
                 ${ENGINE_ROOT_DIR}/external/box2d/include
                 ${ENGINE_ROOT_DIR}/external/vulkanmemoryallocator/include
                 ${ENGINE_ROOT_DIR}/external/json/include
+                ${ENGINE_ROOT_DIR}/external/assimp/include
+                ${ENGINE_ROOT_DIR}/external/nvrhi/include
+                ${ENGINE_ROOT_DIR}/external/nvrhi/thirdparty/Vulkan-Headers/include
                 ${Vulkan_INCLUDE_DIRS}
         PRIVATE
                 ${ENGINE_ROOT_DIR}/src
@@ -52,12 +55,17 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC imgui
         PUBLIC EnTT::EnTT
         PUBLIC box2d
+        PUBLIC assimp
         PUBLIC sol2::sol2
         PUBLIC lua_static
+        PUBLIC nvrhi
+        PUBLIC nvrhi_vk
         PUBLIC ${Vulkan_LIBRARIES}
 )
 
 target_compile_definitions(${TARGET_NAME}
         PUBLIC GLFW_INCLUDE_NONE
+        PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
+        PUBLIC $<$<CONFIG:Debug>:NDEBUG>
         PRIVATE $<$<CONFIG:Debug>:DO_DEBUG>
 )

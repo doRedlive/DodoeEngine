@@ -1,0 +1,33 @@
+{
+    "entities": [
+        {
+            "components": [
+                {
+                    "id": {
+                        "name": "default"
+                    },
+                    "tag": {
+                        "tag": "default"
+                    },
+                    "transform": {
+                        "position": {
+                            "x": 0.0,
+                            "y": 0.0,
+                            "z": 0.0
+                        },
+                        "rotation": {
+                            "x": 0.0,
+                            "y": 0.0,
+                            "z": 0.0
+                        },
+                        "scale": {
+                            "x": 0.0,
+                            "y": 0.0,
+                            "z": 0.0
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

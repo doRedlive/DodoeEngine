@@ -2,6 +2,8 @@ set(ENGINE_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(external)
 
+add_subdirectory(res)
+
 add_subdirectory(src/runtime)
 add_subdirectory(src/sandbox)
 add_subdirectory(src/editor)

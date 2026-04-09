@@ -1,7 +1,5 @@
 #include "lua_register_detail.h"
 
-#include "runtime/function/render/backend/shader.h"
-#include "runtime/function/render/backend/texture.h"
 #include "runtime/function/animation/animation.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/core/utils/common.h"
@@ -9,12 +7,6 @@
 namespace dodoe::lua_register_detail {
 
     void register_resource(sol::state& lua, sol::table& dodoe_table) {
-        dodoe_table.new_usertype<Texture>("Texture",
-            "id", &Texture::id,
-            "width", &Texture::width,
-            "height", &Texture::height,
-            "attach", &Texture::attach
-        );
         dodoe_table.new_usertype<Shader>("Shader",
             "attach", &Shader::attach,
             "detach", &Shader::detach,
@@ -28,10 +20,10 @@ namespace dodoe::lua_register_detail {
         );
         dodoe_table.new_usertype<TextureRes>("TextureRes",
             sol::constructors<TextureRes()>(),
-            "textureId", &TextureRes::texture_id,
+            "textureId", &TextureRes::id,
             "path", &TextureRes::path,
             "ppu", &TextureRes::ppu,
-            "texture", sol::property([](TextureRes& res) { return res.texture.get(); })
+            "valid", sol::property([](TextureRes& res) { return res.data && res.data->isValid(); })
         );
         dodoe_table.new_usertype<AnimClip2d>("AnimClip2d",
             sol::constructors<AnimClip2d()>(),

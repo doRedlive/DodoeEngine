@@ -16,7 +16,7 @@ namespace dodoe {
         virtual void on_attach() = 0;
         virtual void on_detach() = 0;
         virtual void on_update(float delta_time) = 0;
-        virtual void on_ui_render() = 0;
+        virtual void on_render() = 0;
 
         [[nodiscard]]
         const std::string& name() const { return name_; }

@@ -1,0 +1,473 @@
+//
+// Created by Redlive on 2026/4/5.
+//
+
+#include "vulkan_backend.h"
+
+namespace dodoe {
+
+	namespace {
+		static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT,
+                                                        VkDebugUtilsMessageTypeFlagsEXT,
+                                                        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                        void*) {
+		DoError("Validation layer: {}.", pCallbackData->pMessage);
+        return VK_FALSE;
+		}
+	}
+
+	Scope<VulkanBackend> VulkanBackend::create(const VulkanBackendCreateInfo& info) {
+		auto context = std::make_unique<VulkanBackend>();
+		context->initialize(info);
+		return context;
+	}
+
+	void VulkanBackend::destroy(Scope<VulkanBackend>& context) {
+		if (!context) return;
+		context->shutdown();
+		context.reset();
+	}
+
+	void VulkanBackend::initialize(const VulkanBackendCreateInfo& info) {
+		enable_validation_layers_ = info.enable_validation && checkValidationLayerSupport();
+        auto extension = getRequiredExtensions();
+		createInstance(extension.data(), static_cast<int>(extension.size()));
+		if (enable_validation_layers_) {
+			initializeDebugMessenger();
+		}
+		createSurface(info.window_handle);
+		pickPhysicalDevice();
+		createLogicalDevice();
+		createSwapchain(info.window_handle);
+		createSwapchainFences();
+		createCommandPool();
+		// createSwapchainImageViews();
+	}
+
+	void VulkanBackend::shutdown() {
+		if (device_ != VK_NULL_HANDLE) {
+			vkDeviceWaitIdle(device_);
+
+			if (command_pool_ != VK_NULL_HANDLE) {
+				vkDestroyCommandPool(device_, command_pool_, nullptr);
+				command_pool_ = VK_NULL_HANDLE;
+			}
+
+			for (auto fence : swapchain_fences_) {
+				if (fence != VK_NULL_HANDLE) {
+					vkDestroyFence(device_, fence, nullptr);
+				}
+			}
+			swapchain_fences_.clear();
+
+			if (swapchain_ != VK_NULL_HANDLE) {
+				vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+				swapchain_ = VK_NULL_HANDLE;
+			}
+
+			vkDestroyDevice(device_, nullptr);
+			device_ = VK_NULL_HANDLE;
+		}
+
+		if (surface_ != VK_NULL_HANDLE) {
+			vkDestroySurfaceKHR(instance_, surface_, nullptr);
+			surface_ = VK_NULL_HANDLE;
+		}
+
+		if (debug_messenger_ != VK_NULL_HANDLE) {
+			auto destroy_debug = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+				vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+			if (destroy_debug) {
+				destroy_debug(instance_, debug_messenger_, nullptr);
+			}
+			debug_messenger_ = VK_NULL_HANDLE;
+		}
+
+		if (instance_ != VK_NULL_HANDLE) {
+			vkDestroyInstance(instance_, nullptr);
+			instance_ = VK_NULL_HANDLE;
+		}
+	}
+
+	bool VulkanBackend::checkValidationLayerSupport() {
+		uint32_t count;
+		vkEnumerateInstanceLayerProperties(&count, nullptr);
+
+		std::vector<VkLayerProperties> available_layers_(count);
+		vkEnumerateInstanceLayerProperties(&count, available_layers_.data());
+
+		for (auto& valid : validation_layers_) {
+			bool found{false};
+			for (const auto& avail : available_layers_) {
+				if (strcmp(valid, avail.layerName) == 0) {
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) return false;
+		}
+		return true;
+	}
+
+	void VulkanBackend::createInstance(const char** extensions, int extension_count) {
+		VkApplicationInfo app_info{};
+		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		app_info.pNext = nullptr;
+		app_info.pApplicationName = "Dodoe";
+		app_info.applicationVersion = VK_API_VERSION_1_3;
+		app_info.pEngineName = "Dodoe Renderer";
+		app_info.engineVersion = VK_API_VERSION_1_3;
+		app_info.apiVersion = VK_API_VERSION_1_3;
+
+		VkInstanceCreateInfo create_info{};
+		create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		create_info.pApplicationInfo = &app_info;
+		create_info.enabledExtensionCount = extension_count;
+		create_info.ppEnabledExtensionNames = extensions;
+
+		VkDebugUtilsMessengerCreateInfoEXT debug_info{};
+		debug_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		debug_info.pfnUserCallback = VulkanDebugCallback;
+
+		if (enable_validation_layers_) {
+			create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers_.size());
+			create_info.ppEnabledLayerNames = validation_layers_.data();
+			create_info.pNext = &debug_info;
+		}
+		else {
+			create_info.enabledLayerCount = 0;
+			create_info.ppEnabledLayerNames = nullptr;
+			create_info.pNext = nullptr;
+		}
+
+		VkResult result = vkCreateInstance(&create_info, nullptr, &instance_);
+		DoAssert(result == VK_SUCCESS, "VulkanBackend::createInstance failed with VkResult={}", static_cast<int>(result));
+	}
+
+	void VulkanBackend::createSurface(GLFWwindow* window_handle) {
+		VkResult result = glfwCreateWindowSurface(instance_, window_handle, nullptr, &surface_);
+		DoAssert(result == VK_SUCCESS, "VulkanBackend::createSurface failed with VkResult={}", static_cast<int>(result));
+	}
+
+	void VulkanBackend::pickPhysicalDevice() {
+		uint32_t gpu_count;
+		vkEnumeratePhysicalDevices(instance_, &gpu_count, nullptr);
+		DoAssert(gpu_count > 0, "No available GPU found!");
+
+		std::vector<VkPhysicalDevice> gpus(gpu_count);
+		vkEnumeratePhysicalDevices(instance_, &gpu_count, gpus.data());
+
+		int use_gpu = 0;
+		for (int i = 0; i < gpu_count; i++) {
+			VkPhysicalDeviceProperties prop;
+			vkGetPhysicalDeviceProperties(gpus[i], &prop);
+			if (prop.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+				use_gpu = i;
+				break;
+			}
+		}
+		DoAssert(isDeviceSuitable(gpus[use_gpu]), "Suitable gpu not found!");
+
+		physical_device_ = gpus[use_gpu];
+	}
+
+	void VulkanBackend::createLogicalDevice() {
+		queue_family_indices_ = findQueueFamilies(physical_device_);
+
+		std::vector<VkDeviceQueueCreateInfo> queue_infos;
+		std::set<uint32_t> queue_families = {queue_family_indices_.graphics_family.value(), 
+			queue_family_indices_.present_family.value(), queue_family_indices_.compute_family.value() };
+
+		float queue_priority{1.0f};
+		for (uint32_t queue_family : queue_families) {
+			VkDeviceQueueCreateInfo queue_info{};
+			queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queue_info.queueFamilyIndex = queue_family;
+			queue_info.queueCount = 1;
+			queue_info.pQueuePriorities = &queue_priority;
+			queue_infos.push_back(queue_info);
+		}
+
+		VkPhysicalDeviceFeatures features{};
+		features.samplerAnisotropy = VK_TRUE;
+		features.fragmentStoresAndAtomics = VK_TRUE;
+		features.independentBlend = VK_TRUE;
+
+		VkPhysicalDeviceTimelineSemaphoreFeatures timeline_features{};
+		timeline_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+		timeline_features.pNext = nullptr;
+		timeline_features.timelineSemaphore = VK_TRUE;
+
+		VkDeviceCreateInfo device_info{};
+		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		device_info.pNext = &timeline_features;
+		device_info.flags = 0;
+		device_info.pQueueCreateInfos = queue_infos.data();
+		device_info.queueCreateInfoCount = static_cast<uint32_t>(queue_infos.size());
+		device_info.pEnabledFeatures = &features;
+		device_info.enabledLayerCount = 0;
+		device_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions_.size());
+		device_info.ppEnabledExtensionNames = device_extensions_.data();
+
+		VkResult result = vkCreateDevice(physical_device_, &device_info, nullptr, &device_);
+		DoAssert(result == VK_SUCCESS, "VulkanBackend::createLogicalDevice failed with VkResult={}", static_cast<int>(result));
+
+		vkGetDeviceQueue(device_, queue_family_indices_.graphics_family.value(), 0, &graphics_queue_);
+		vkGetDeviceQueue(device_, queue_family_indices_.present_family.value(), 0, &present_queue_);
+		vkGetDeviceQueue(device_, queue_family_indices_.compute_family.value(), 0, &compute_queue_);
+	}
+
+	void VulkanBackend::createSwapchain(::GLFWwindow* window_handle) {
+		VulkanBackend::SwapchainSupportDetails swapchain_details = querySwapchainSupport(physical_device_);
+		VkSurfaceFormatKHR chosen_surface_format;
+		{
+			bool chosen{false};
+
+			for (const auto& surface_format : swapchain_details.formats) {
+				if (surface_format.format == VK_FORMAT_B8G8R8A8_UNORM && surface_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+					chosen_surface_format = surface_format;
+					chosen = true;
+				}
+			}
+			if (!chosen) {
+				chosen_surface_format = swapchain_details.formats[0];
+			}
+		}
+		VkPresentModeKHR chosen_present_mode;
+		{
+			bool chosen{false};
+			for (const auto& present_mode : swapchain_details.present_modes) {
+				if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+					chosen_present_mode = present_mode;
+					chosen = true;
+				}
+			}
+			if (!chosen) {
+				chosen_present_mode = swapchain_details.present_modes[0];
+			}
+		}
+		VkExtent2D chosen_extent;
+		{
+			if (swapchain_details.capabilities.currentExtent.width != UINT32_MAX) {
+				chosen_extent = swapchain_details.capabilities.currentExtent;	
+			}
+			else {
+				int width, height;
+				glfwGetFramebufferSize(window_handle, &width, &height);
+				VkExtent2D actual_extent{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+				actual_extent.width = std::clamp(actual_extent.width, swapchain_details.capabilities.minImageExtent.width, swapchain_details.capabilities.maxImageExtent.width); 
+				actual_extent.height = std::clamp(actual_extent.height, swapchain_details.capabilities.minImageExtent.height, swapchain_details.capabilities.maxImageExtent.height);
+				chosen_extent = actual_extent;
+			}
+		}
+        uint32_t image_count = swapchain_details.capabilities.minImageCount + 1;
+        if (swapchain_details.capabilities.maxImageCount > 0 &&
+            image_count > swapchain_details.capabilities.maxImageCount) {
+            image_count = swapchain_details.capabilities.maxImageCount;
+        }
+
+		VkSwapchainCreateInfoKHR swapchain_info{};
+		swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		swapchain_info.pNext = nullptr;
+		swapchain_info.flags = 0;
+		swapchain_info.surface = surface_;
+		swapchain_info.minImageCount = image_count;
+		swapchain_info.imageFormat = chosen_surface_format.format;
+		swapchain_info.imageColorSpace = chosen_surface_format.colorSpace;
+		swapchain_info.imageExtent = chosen_extent;
+		swapchain_info.imageArrayLayers = 1;
+		swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+		uint32_t queue_family_indices[] = {queue_family_indices_.graphics_family.value(), queue_family_indices_.present_family.value()};	
+		if (queue_family_indices_.graphics_family != queue_family_indices_.present_family) {
+			swapchain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+			swapchain_info.queueFamilyIndexCount = 2;
+			swapchain_info.pQueueFamilyIndices = queue_family_indices;
+		}
+		else {
+			swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			swapchain_info.queueFamilyIndexCount = 0;
+			swapchain_info.pQueueFamilyIndices = nullptr;
+		}
+
+		swapchain_info.preTransform = swapchain_details.capabilities.currentTransform;
+		swapchain_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+		swapchain_info.presentMode = chosen_present_mode;
+		swapchain_info.clipped = VK_TRUE;
+		swapchain_info.oldSwapchain = VK_NULL_HANDLE;
+
+		VkResult result = vkCreateSwapchainKHR(device_, &swapchain_info, nullptr, &swapchain_);
+		DoAssert(result == VK_SUCCESS, "VulkanBackend::createSwapchain failed with VkResult={}", static_cast<int>(result));
+
+		vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr);
+		swapchain_images_.resize(image_count);
+		vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, swapchain_images_.data());
+
+		swapchain_image_format_ = chosen_surface_format.format;
+		swapchain_extent_.width = chosen_extent.width;
+		swapchain_extent_.height = chosen_extent.height;
+		scissor_ = {{0, 0}, {swapchain_extent_.width, swapchain_extent_.height}};
+	}
+
+	// void VulkanBackend::createSwapchainImageViews() {
+	// 	swapchain_imageviews_.resize(swapchain_images_.size());	
+	// 	for (size_t i = 0; i < swapchain_images_.size(); i++) {
+	// 		VkImageView view;
+	// 		VkImageViewCreateInfo view_info {};
+	// 		view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	// 		view_info.image = swapchain_images_[i];
+	// 		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	// 		view_info.format = swapchain_image_format_;
+	// 		view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	// 		view_info.subresourceRange.baseMipLevel = 0;
+	// 		view_info.subresourceRange.levelCount = 1;
+	// 		view_info.subresourceRange.baseArrayLayer = 0;
+	// 		view_info.subresourceRange.layerCount = 1;
+
+	// 		vkCreateImageView(device_, &view_info, nullptr, &view);
+	// 		swapchain_imageviews_.push_back(view);
+	// 	}
+	// }
+
+	void VulkanBackend::createSwapchainFences() {
+		VkFenceCreateInfo fence_info{};
+		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fence_info.pNext = nullptr;
+		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+		swapchain_fences_.resize(swapchain_images_.size());
+		for (auto& fence : swapchain_fences_) {
+			vkCreateFence(device_, &fence_info, nullptr, &fence);
+		}
+	}
+
+	void VulkanBackend::createCommandPool() {
+		VkCommandPoolCreateInfo cmd_pool_info{};
+		cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		cmd_pool_info.pNext = nullptr;
+		cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		cmd_pool_info.queueFamilyIndex = queue_family_indices_.graphics_family.value();
+
+		vkCreateCommandPool(device_, &cmd_pool_info, nullptr, &command_pool_);
+	}
+
+    std::vector<const char*> VulkanBackend::getRequiredExtensions() {
+        uint32_t     glfwExtensionCount = 0;
+        const char** glfwExtensions;
+        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+        std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+		if (enable_validation_layers_) {
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+
+        return extensions;
+    }
+
+	void VulkanBackend::initializeDebugMessenger() {
+		VkDebugUtilsMessengerCreateInfoEXT create_info{};
+		create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		create_info.pfnUserCallback = VulkanDebugCallback;
+
+		auto fun = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT");
+		if (fun) {
+			fun(instance_, &create_info, nullptr, &debug_messenger_);
+		}
+		else {
+			DoError("Create debug messenger failed!");
+		}
+	}
+
+ 	bool VulkanBackend::isDeviceSuitable(VkPhysicalDevice gpu) {
+        auto queue_indices           = findQueueFamilies(gpu);
+        bool is_extensions_supported = checkDeviceExtensionSupport(gpu);
+        bool is_swapchain_adequate   = false;
+        if (is_extensions_supported) {
+            SwapchainSupportDetails swapchain_support_details = querySwapchainSupport(gpu);
+            is_swapchain_adequate =
+                !swapchain_support_details.formats.empty() && !swapchain_support_details.present_modes.empty();
+        }
+
+        VkPhysicalDeviceFeatures gpu_features;
+        vkGetPhysicalDeviceFeatures(gpu, &gpu_features);
+
+        if (!queue_indices.isComplete() || !is_swapchain_adequate || !gpu_features.samplerAnisotropy) {
+            return false;
+        }
+
+        return true;
+    }
+
+	VulkanBackend::QueueFamilyIndices VulkanBackend::findQueueFamilies(VkPhysicalDevice gpu)
+    {
+        QueueFamilyIndices indices;
+        uint32_t           queue_family_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queue_family_count, nullptr);
+        std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queue_family_count, queue_families.data());
+
+        int i = 0;
+        for (const auto& queue_family : queue_families) {
+            if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                indices.graphics_family = i;
+            }
+            if (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+                indices.compute_family = i;
+            }
+
+            VkBool32 is_present_support = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(gpu, i, surface_, &is_present_support);
+            if (is_present_support) {
+                indices.present_family = i;
+            }
+
+            if (indices.isComplete()) {
+                break;
+            }
+            i++;
+        }
+        return indices;
+    }
+
+	bool VulkanBackend::checkDeviceExtensionSupport(VkPhysicalDevice gpu) {
+        uint32_t extension_count;
+        vkEnumerateDeviceExtensionProperties(gpu, nullptr, &extension_count, nullptr);
+        std::vector<VkExtensionProperties> available_extensions(extension_count);
+        vkEnumerateDeviceExtensionProperties(gpu, nullptr, &extension_count, available_extensions.data());
+
+        std::set<std::string> required_extensions(device_extensions_.begin(), device_extensions_.end());
+        for (const auto& extension : available_extensions) {
+            required_extensions.erase(extension.extensionName);
+        }
+
+        return required_extensions.empty();
+    }
+
+	VulkanBackend::SwapchainSupportDetails VulkanBackend::querySwapchainSupport(VkPhysicalDevice gpu) {
+        VulkanBackend::SwapchainSupportDetails details_result;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu, surface_, &details_result.capabilities);
+
+        uint32_t format_count;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface_, &format_count, nullptr);
+        if (format_count != 0) {
+            details_result.formats.resize(format_count);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(
+                gpu, surface_, &format_count, details_result.formats.data());
+        }
+
+        uint32_t presentmode_count;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(gpu, surface_, &presentmode_count, nullptr);
+        if (presentmode_count != 0) {
+            details_result.present_modes.resize(presentmode_count);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(
+                gpu, surface_, &presentmode_count, details_result.present_modes.data());
+        }
+
+        return details_result;
+    }
+
+} // dodoe
