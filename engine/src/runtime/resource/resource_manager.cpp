@@ -73,7 +73,7 @@ namespace dodoe {
             DoError("TextureLoader is not initialized!");
             return {};
         }
-        const identifier texture_id = static_cast<identifier>(string2hash(id));
+        const identifier texture_id = static_cast<identifier>(String2Hash(id));
         return texture_loader_->getTexture(texture_id);
     }
 
@@ -82,7 +82,7 @@ namespace dodoe {
             DoError("TextureLoader is not initialized!");
             return {};
         }
-        const identifier texture_id = static_cast<identifier>(string2hash(id));
+        const identifier texture_id = static_cast<identifier>(String2Hash(id));
         return texture_loader_->getTexture(texture_id, path);
     }
 

@@ -28,7 +28,7 @@ namespace dodoe {
 			return;
 		}
 
-		const identifier main_camera_pass_id = string2hash("main_camera_pass");
+		const identifier main_camera_pass_id = String2Hash("main_camera_pass");
 		pass_umap_[main_camera_pass_id] = create_scope<MainCameraPass>(
 			RenderPassCreateInfo{device_},
 			swapchain_targets_,
@@ -36,7 +36,7 @@ namespace dodoe {
 		);
 		// execute_passes_.push_back(main_camera_pass_id);
 
-		const identifier sprite_pass_id = string2hash("sprite_pass");
+		const identifier sprite_pass_id = String2Hash("sprite_pass");
 		pass_umap_[sprite_pass_id] = create_scope<SpritePass>(
 			RenderPassCreateInfo{device_},
 			swapchain_targets_,

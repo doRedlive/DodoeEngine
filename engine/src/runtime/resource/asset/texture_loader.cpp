@@ -37,7 +37,7 @@ namespace dodoe {
     }
 
     TextureRes TextureLoader::loadTexture(const std::string& id, const std::string& path) {
-        return loadTexture(static_cast<identifier>(string2hash(id)), path);
+        return loadTexture(static_cast<identifier>(String2Hash(id)), path);
     }
 
     TextureRes TextureLoader::loadTexture(identifier id, const std::string& path) {
@@ -85,7 +85,7 @@ namespace dodoe {
     }
 
     TextureRes TextureLoader::getTexture(const std::string& id) {
-        return getTexture(static_cast<identifier>(string2hash(id)));
+        return getTexture(static_cast<identifier>(String2Hash(id)));
     }
 
 } // dodoe

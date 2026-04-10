@@ -36,10 +36,9 @@ namespace dodoe {
 		void createBuffers();
 		void createSampler();
 		void createBindingLayout();
-		void createBindingSet();
+		void createBindingSet(const std::vector<identifier>& texture_ids);
 		void createFramebuffers();
 		void createGraphicsPipeline();
-		void ensureBufferCapacity(size_t vertex_count, size_t index_count);
 	};
 
 } // dodoe

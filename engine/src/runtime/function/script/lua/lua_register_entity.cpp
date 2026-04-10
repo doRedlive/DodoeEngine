@@ -301,7 +301,7 @@ namespace dodoe::lua_register_detail {
                 if (sol::object texture_obj = data["texture"]; texture_obj.valid() && texture_obj.get_type() == sol::type::string) {
                     const std::string texture = texture_obj.as<std::string>();
                     if (!texture.empty()) {
-                        c.texture_id = static_cast<identifier>(string2hash(texture));
+                        c.texture_id = static_cast<identifier>(String2Hash(texture));
                     }
                 }
                 c.flip = get_bool_field(data, "flip", c.flip);

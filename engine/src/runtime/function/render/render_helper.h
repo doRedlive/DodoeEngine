@@ -24,4 +24,10 @@ namespace dodoe {
         [[nodiscard]] rhi::TextureHandle getFallbackTexture();
     };
 
+    // class ShaderLibrary {
+    // public:
+
+    // private:
+    // };
+
 } // dodoe

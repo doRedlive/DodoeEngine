@@ -10,7 +10,7 @@
 
 namespace dodoe {
 
-    inline uint32_t string2hash(const std::string& str) {
+    inline uint32_t String2Hash(const std::string& str) {
         return entt::hashed_string{ str.c_str() }.value();
     }
 
@@ -19,6 +19,21 @@ namespace dodoe {
             name = name.substr(pos + 1);
         }
     }
+
+	inline std::vector<char> ReadShaderFile(const std::string& path) {
+		std::ifstream in(path, std::ios::binary | std::ios::ate);
+		if (!in.is_open()) {
+			DoError("Open shader file {} failed!", path);
+			return {};
+		}
+
+		const std::streamsize size = in.tellg();
+		in.seekg(0, std::ios::beg);
+
+		std::vector<char> content(static_cast<size_t>(size));
+		in.read(content.data(), size);
+		return content;
+	}
 
 
 } // dodoe

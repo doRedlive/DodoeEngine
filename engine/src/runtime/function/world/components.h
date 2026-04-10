@@ -35,10 +35,10 @@ namespace dodoe {
         std::string tag;
 
         const std::string& get_tag() { return tag; }
-        void set_tag(const std::string& in_tag) { tag = in_tag; id = string2hash(tag); } 
+        void set_tag(const std::string& in_tag) { tag = in_tag; id = String2Hash(tag); } 
 
         TagComponent() : id("default"_hs), tag("default") { }
-        TagComponent(const std::string& tag) : id(string2hash(tag)), tag(tag) { }
+        TagComponent(const std::string& tag) : id(String2Hash(tag)), tag(tag) { }
     };
 
     struct TransformComponent {

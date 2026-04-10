@@ -236,7 +236,7 @@ namespace cakery {
             return;
         }
 
-        const auto type = entt::resolve(dodoe::string2hash(comp_name));
+        const auto type = entt::resolve(dodoe::String2Hash(comp_name));
         if (!type) {
             DoDebug("Could not found {} component meta type.", comp_name);
             return;

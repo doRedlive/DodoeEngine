@@ -41,7 +41,7 @@ namespace dodoe {
             }
         }
 
-        const identifier id = static_cast<identifier>(string2hash(name));
+        const identifier id = static_cast<identifier>(String2Hash(name));
         AnimClip2dRes res{create_ref<AnimClip2d>(clip), name, id};
         anim_clip2d_umap_.emplace(id, res);
         return res;
@@ -57,7 +57,7 @@ namespace dodoe {
     }
 
     bool AnimationLibrary::destroy_clip(const std::string& name) {
-        const auto id = string2hash(name);
+        const auto id = String2Hash(name);
         return destroy_clip(id);
     }
 
@@ -66,7 +66,7 @@ namespace dodoe {
     }
 
     bool AnimationLibrary::has_clip(const std::string& name) const {
-        return has_clip(static_cast<identifier>(string2hash(name)));
+        return has_clip(static_cast<identifier>(String2Hash(name)));
     }
 
     AnimClip2dRes AnimationLibrary::get_clip(const identifier id) {
@@ -78,7 +78,7 @@ namespace dodoe {
     }
 
     AnimClip2dRes AnimationLibrary::get_clip(const std::string& name) {
-        return get_clip(static_cast<identifier>(string2hash(name)));
+        return get_clip(static_cast<identifier>(String2Hash(name)));
     }
 
 } // dodoe

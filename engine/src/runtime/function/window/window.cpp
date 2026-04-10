@@ -89,7 +89,7 @@ namespace dodoe {
         viewport_manager = ViewportManager::create({Vector2f(640.0f, 360.0f), Vector2f(prop_.width, prop_.height), Vector2f(fb_width, fb_height)});
 
         data_.title = prop_.title;
-        data_.id = string2hash(data_.title);
+        data_.id = String2Hash(data_.title);
         data_.owner = this;
         glfwSetWindowUserPointer(window_, &data_);
 

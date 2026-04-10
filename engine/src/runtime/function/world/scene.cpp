@@ -92,7 +92,7 @@ namespace dodoe {
 
     Entity Scene::get_entity(const std::string& tag) {
         for (auto& [_, entity] : entity_umap_) {
-            if (entity.get_component<TagComponent>().id == string2hash(tag)) {
+            if (entity.get_component<TagComponent>().id == String2Hash(tag)) {
                 return entity;
             }
         }
