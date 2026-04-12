@@ -17,107 +17,67 @@
 
 namespace dodoe {
 
-    WindowManager::WindowManager() = default;
-
-    WindowManager::~WindowManager() = default;
-
-    bool WindowManager::initialize(WindowManagerInitInfo init_info) {
+    void WindowManager::initialize(const WindowManagerInitInfo& init_info) {
         glfwInit();
 
-        EventSystem::subscribe_event<WindowFocusEvent, &WindowManager::on_window_focus_>(this);
-        EventSystem::subscribe_event<WindowCloseEvent, &WindowManager::on_window_close_>(this);
-        EventSystem::subscribe_event<WindowResizeEvent, &WindowManager::on_window_resize_>(this);
-        EventSystem::subscribe_event<WindowLostFocusEvent, &WindowManager::on_window_lost_focus_>(this);
-        
-        if (windows_.empty()) {
-            WindowProperty prop;
-            auto spec = init_info.spec;
-            prop.title = spec.name.c_str();
-            prop.width = static_cast<int>(spec.width);
-            prop.height = static_cast<int>(spec.height);
-            prop.resizeable = spec.window_resizeable;
-            prop.custom_titlebar = spec.custom_titlebar;
-            prop.backend_api = spec.render_api_type;
-            if (create_window(prop)) {
-                return true;
-            }
-        }
-        DoError("Window manager initialize failed.");
-        return false;
-    }
+        EventSystem::subscribe_event<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
+        EventSystem::subscribe_event<WindowCloseEvent, &WindowManager::onWindowClose>(this);
+        EventSystem::subscribe_event<WindowResizeEvent, &WindowManager::onWindowResize>(this);
+        EventSystem::subscribe_event<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
 
-    void WindowManager::swapBuffers() {
-        for (auto& window : windows_) {
-            window->swap_buffer();
-        }
+        WindowProperty prop;
+        auto spec = init_info.spec;
+        prop.title = spec.name.c_str();
+        prop.width = static_cast<int>(spec.width);
+        prop.height = static_cast<int>(spec.height);
+        prop.resizeable = spec.window_resizeable;
+        prop.custom_titlebar = spec.custom_titlebar;
+        prop.backend_api = spec.render_api_type;
+
+        window_ = Window::create(prop);
+        bindEventCallback();
     }
 
     void WindowManager::shutdown() {
-         EventSystem::unsubscribe_event<WindowFocusEvent, &WindowManager::on_window_focus_>(this);
-         EventSystem::unsubscribe_event<WindowLostFocusEvent, &WindowManager::on_window_lost_focus_>(this);
-         EventSystem::unsubscribe_event<WindowCloseEvent, &WindowManager::on_window_close_>(this);
-         EventSystem::unsubscribe_event<WindowResizeEvent, &WindowManager::on_window_resize_>(this);
+        EventSystem::unsubscribe_event<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
+        EventSystem::unsubscribe_event<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
+        EventSystem::unsubscribe_event<WindowCloseEvent, &WindowManager::onWindowClose>(this);
+        EventSystem::unsubscribe_event<WindowResizeEvent, &WindowManager::onWindowResize>(this);
 
-        for (auto& window : windows_) {
-            if (window) {
-                window->shutdown();
-            }
-        }
-        windows_.clear();
+        Window::destroy(window_);
 
         glfwTerminate();
     }
-
-    Window* WindowManager::active_window() const {
-        return windows_.back().get();   // TODO: FIXME;
-    }
-
-    Window* WindowManager::create_window(const WindowProperty& props) {
-        for (const auto& window : windows_) {
-            if (window->data_.title == props.title) {
-                DoError("Has the same name window.");
-                return nullptr;
-            }
-        }
-        Scope<Window> window = create_scope<Window>(props);
-        if (!window->initialize()) {
-            DoError("WindowManager::create_window: The window is created failure.");
-            return nullptr;
-        }
-        bind_events_callback_(window.get());
-        windows_.emplace_back(std::move(window));
-        return windows_.back().get();
-    }
     
-    void WindowManager::bind_events_callback_(Window* window) {
-        glfwSetWindowSizeCallback(window->native_window(), [](GLFWwindow* native_window, int width, int height) {
-            WindowData& data = *static_cast<WindowData *>(glfwGetWindowUserPointer(native_window));
-            WindowResizeEvent event(width, height, data.id);
+    void WindowManager::swapBuffers() {
+        window_->swapBuffers();
+    }
+
+    void WindowManager::bindEventCallback() {
+        glfwSetWindowSizeCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int width, int height) {
+            WindowResizeEvent event(width, height);
             EventSystem::enqueue_event<WindowResizeEvent>(event);
         });
-        glfwSetFramebufferSizeCallback(window->native_window(), [](GLFWwindow* native_window, int width, int height) {
+        glfwSetFramebufferSizeCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int width, int height) {
             (void)native_window;
             (void)width;
             (void)height;
         });
-        glfwSetWindowCloseCallback(window->native_window(), [](GLFWwindow* native_window) {
-            WindowData& data = *static_cast<WindowData *>(glfwGetWindowUserPointer(native_window));
-            WindowCloseEvent event(data.id);
+        glfwSetWindowCloseCallback(window_->nativeWindow(), [](GLFWwindow* native_window) {
+            WindowCloseEvent event;
             EventSystem::enqueue_event<WindowCloseEvent>(event);
         });
-        glfwSetWindowFocusCallback(window->native_window(), [](GLFWwindow* native_window, int focused) {
-            WindowData& data = *static_cast<WindowData *>(glfwGetWindowUserPointer(native_window));
+        glfwSetWindowFocusCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int focused) {
             if (static_cast<bool>(focused)) {
-                WindowFocusEvent event(data.id);
+                WindowFocusEvent event;
                 EventSystem::enqueue_event<WindowFocusEvent>(event);
             }
             else {
-                WindowLostFocusEvent event(data.id);
+                WindowLostFocusEvent event;
                 EventSystem::enqueue_event<WindowLostFocusEvent>(event);
             }
         });
-		glfwSetKeyCallback(window->native_window(), [](GLFWwindow* native_window, int key, int scancode, int action, int mods) {
-			WindowData& data = *static_cast<WindowData *>(glfwGetWindowUserPointer(native_window));
+		glfwSetKeyCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int key, int scancode, int action, int mods) {
 			switch (action) {
 				case GLFW_PRESS: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), false);
@@ -145,10 +105,7 @@ namespace dodoe {
 		// 	data.EventCallback(event);
 		// });
 
-		glfwSetMouseButtonCallback(window->native_window(), [](GLFWwindow* native_window, int button, int action, int mods)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(native_window);
-
+		glfwSetMouseButtonCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int button, int action, int mods) {
 			switch (action) {
 				case GLFW_PRESS: {
 					MouseButtonPressedEvent event(static_cast<MouseCode>(button));
@@ -163,67 +120,39 @@ namespace dodoe {
 			}
 		});
 
-		glfwSetScrollCallback(window->native_window(), [](GLFWwindow* native_window, double x_offset, double y_offset)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(native_window);
-
+		glfwSetScrollCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_offset, double y_offset) {
 			MouseScrolledEvent event(static_cast<float>(x_offset), static_cast<float>(x_offset));
 			EventSystem::enqueue_event<MouseScrolledEvent>(event);
 		});
 
-		glfwSetCursorPosCallback(window->native_window(), [](GLFWwindow* native_window, double x_pos, double y_pos)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(native_window);
-
+		glfwSetCursorPosCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_pos, double y_pos) {
 			MouseMovedEvent event(static_cast<float>(x_pos), static_cast<float>(y_pos));
 			EventSystem::enqueue_event<MouseMovedEvent>(event);
 		});
     }
 
-    void WindowManager::on_window_focus_(const WindowFocusEvent& event) {
-        if (const auto window = get_window_(event.window_id); window) {
-            active_window_ = window;
-        }
+    void WindowManager::onWindowFocus(const WindowFocusEvent& event) {
+
     }
 
-    void WindowManager::on_window_lost_focus_(const WindowLostFocusEvent& event) {
-        // TODO: improve here.
+    void WindowManager::onWindowLostFocus(const WindowLostFocusEvent& event) {
+
     }
 
-    // MARK: TODO : FIXME: the render system is using window, it cause when the window destroyed the render and imgui can't use.
-    void WindowManager::on_window_close_(const WindowCloseEvent& event) {
-        DoDebug("WindowManager::on_window_close");
-        if (const auto window = get_window_(event.window_id); window) {
-            if (const auto native_window = window->native_window(); native_window) {
-                glfwSetWindowShouldClose(native_window, GLFW_TRUE);
-            }
-        } 
-        DoDebug("WindowManager::application quit");
+    void WindowManager::onWindowClose(const WindowCloseEvent& event) { 
+        glfwSetWindowShouldClose(window_->nativeWindow(), GLFW_TRUE);
         EventSystem::publish_event<ApplicationQuitEvent>();
     }
 
-    void WindowManager::on_window_resize_(const WindowResizeEvent& event) {
-        if (const auto window = get_window_(event.window_id); window) {
-            if (const auto native_window = window->native_window()) {
-                window->prop_.width = static_cast<uint>(event.width);
-                window->prop_.height = static_cast<uint>(event.height);
+    void WindowManager::onWindowResize(const WindowResizeEvent& event) {
+        window_->prop_.width = static_cast<uint>(event.width);
+        window_->prop_.height = static_cast<uint>(event.height);
 
-                int fb_width = 0, fb_height = 0;
-                glfwGetFramebufferSize(native_window, &fb_width, &fb_height);
+        int fb_width = 0, fb_height = 0;
+        glfwGetFramebufferSize(window_->nativeWindow(), &fb_width, &fb_height);
 
-                window->viewport_manager->set_window_size(Vector2f(event.width, event.height));
-                window->viewport_manager->set_pixel_size(Vector2f(fb_width, fb_height));
-            }
-        }
-    }
-
-    Window* WindowManager::get_window_(const uint32_t window_id) const {
-        for (const auto& window : windows_) {
-            if (window->data_.id == window_id) {
-                return window.get();
-            }
-        }
-        return nullptr;
+        window_->viewport_manager->set_window_size(Vector2f(event.width, event.height));
+        window_->viewport_manager->set_pixel_size(Vector2f(fb_width, fb_height));
     }
 
 }

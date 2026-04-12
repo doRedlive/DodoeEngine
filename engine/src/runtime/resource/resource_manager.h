@@ -30,7 +30,7 @@ namespace dodoe {
         Ref<Shader> load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path);
         ModelRes load_model(const std::string& name, const std::string& path);
 
-        [[nodiscard]] TextureRes get_texture(identifier id);
+        [[nodiscard]] TextureRes getTextureRes(identifier id);
         [[nodiscard]] TextureRes get_texture(const std::string& id);
         [[nodiscard]] TextureRes get_texture(const std::string& id, const std::string& path);
         [[nodiscard]] Ref<Shader> get_shader(const std::string& name);

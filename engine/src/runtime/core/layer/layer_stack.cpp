@@ -13,13 +13,13 @@ namespace dodoe {
 
     void LayerStack::attach() {
         for (auto& layer : layers_) {
-            layer->on_attach();
+            layer->attach();
         }
     }
 
     void LayerStack::detach() {
         for (auto& layer : layers_) {
-            layer->on_detach();
+            layer->detach();
         }
     }
 

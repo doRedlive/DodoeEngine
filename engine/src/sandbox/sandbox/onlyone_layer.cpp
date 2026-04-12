@@ -10,19 +10,19 @@
 
 namespace sandbox {
 
-    void OnlyoneLayer::on_attach() {
+    void OnlyoneLayer::attach() {
         dodoe::Application::self().context().script_system->execute("engine/src/sandbox/proj/OnlyOne/Scripts/main.lua");
     }
 
-    void OnlyoneLayer::on_detach() {
+    void OnlyoneLayer::detach() {
 
     }
 
-    void OnlyoneLayer::on_update(const float dt) {
+    void OnlyoneLayer::updateTick(const float dt) {
 
     }
 
-    void OnlyoneLayer::on_render() {
+    void OnlyoneLayer::renderTick() {
 
     }
 

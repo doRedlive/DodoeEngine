@@ -93,7 +93,7 @@ namespace dodoe::lua_register_detail {
                     if (obj.get_type() == sol::type::number) {
                         ids.push_back(static_cast<identifier>(obj.as<uint32_t>()));
                     } else if (obj.get_type() == sol::type::string) {
-                        ids.push_back(static_cast<identifier>(String2Hash(obj.as<std::string>())));
+                        ids.push_back(static_cast<identifier>(string2hash(obj.as<std::string>())));
                     }
                 }
                 return ResourceManager::self().create_anim_clip2d(name, ids, false, 100.0f);
@@ -108,7 +108,7 @@ namespace dodoe::lua_register_detail {
                     if (obj.get_type() == sol::type::number) {
                         ids.push_back(static_cast<identifier>(obj.as<uint32_t>()));
                     } else if (obj.get_type() == sol::type::string) {
-                        ids.push_back(static_cast<identifier>(String2Hash(obj.as<std::string>())));
+                        ids.push_back(static_cast<identifier>(string2hash(obj.as<std::string>())));
                     }
                 }
                 return ResourceManager::self().create_anim_clip2d(name, ids, loop, frame_ms);

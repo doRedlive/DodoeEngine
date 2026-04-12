@@ -14,10 +14,10 @@ namespace sandbox {
         explicit OnlyoneLayer(const std::string& name) : dodoe::Layer(name) { }
         ~OnlyoneLayer() override = default;
 
-        void on_attach() override;
-        void on_detach() override;
-        void on_update(float dt) override;
-        void on_render() override;
+        void attach() override;
+        void detach() override;
+        void updateTick(float dt) override;
+        void renderTick() override;
 
     private:
     };

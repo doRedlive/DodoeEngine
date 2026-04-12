@@ -11,9 +11,33 @@ namespace dodoe {
 
     namespace {
 
+        struct QuadDrawContext {
+            identifier texture_id{0};
+            Vector4f dst_rect{0.0f};
+            Vector4f uv_rect{0.0f};
+            Vector3f rotation{0.0f};
+            Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
+        };
+
+        struct LineDrawContext {
+            Vector2f start{0.0f};
+            Vector2f end{0.0f};
+            Vector3f rotation{0.0f};
+            Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
+            float thickness{2.0f};
+        };
+
+        struct TextDrawContext {
+            identifier texture_id{0};
+            Vector4f dst_rect{0.0f};
+            Vector4f uv_rect{0.0f};
+            Vector3f rotation{0.0f};
+            Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
+        };
+
         struct Renderer2dSubmitLists {
             std::vector<QuadDrawContext> quads{};
-            std::vector<LineDrarContext> lines{};
+            std::vector<LineDrawContext> lines{};
             std::vector<TextDrawContext> texts{};
 
             void clear() {
@@ -119,7 +143,7 @@ namespace dodoe {
                 if (texture_index.find(texture_id) != texture_index.end()) {
                     return false;
                 }
-                return (batch.textures.size() + 1) > static_cast<size_t>(Renderer2d::k_MaxTextureCount);
+                return (batch.textures.size() + 1) > static_cast<size_t>(Renderer2d::MaxTextureCount);
             }
 
             void pushQuad(
@@ -150,13 +174,13 @@ namespace dodoe {
             }
 
             QuadBatchBuilder builder{};
-            builder.batch.vertices.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::k_MaxQuadCount)) * 4);
-            builder.batch.indices.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::k_MaxQuadCount)) * 6);
-            builder.batch.textures.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::k_MaxTextureCount)));
-            builder.texture_index.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::k_MaxTextureCount)));
+            builder.batch.vertices.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::MaxQuadCount)) * 4);
+            builder.batch.indices.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::MaxQuadCount)) * 6);
+            builder.batch.textures.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::MaxTextureCount)));
+            builder.texture_index.reserve((std::min)(submit.quads.size() + submit.lines.size(), static_cast<size_t>(Renderer2d::MaxTextureCount)));
 
             auto ensureRoomForQuad = [&](identifier texture_id) {
-                const bool quad_limit_hit = builder.quadCount() >= static_cast<size_t>(Renderer2d::k_MaxQuadCount);
+                const bool quad_limit_hit = builder.quadCount() >= static_cast<size_t>(Renderer2d::MaxQuadCount);
                 const bool texture_limit_hit = builder.wouldExceedTextureLimit(texture_id);
                 if ((quad_limit_hit || texture_limit_hit) && !builder.empty()) {
                     flushIfNotEmpty(out, builder);
@@ -226,13 +250,7 @@ namespace dodoe {
         s_Data.dirty = true;
     }
 
-    void Renderer2d::drawRect(
-        const Vector2f& pos, 
-        const Vector2f& size, 
-        const Vector3f& rotation,
-        const Color& color, 
-        float thickness
-    ) {
+    void Renderer2d::drawRect(const Vector2f& pos, const Vector2f& size, const Vector3f& rotation, const Color& color,  float thickness) {
         if (thickness <= 0.0f || size.x <= 0.0f || size.y <= 0.0f) return;
 
         const float h_thickness = std::min(thickness, size.y);
@@ -281,7 +299,7 @@ namespace dodoe {
     void Renderer2d::drawLine(const Vector2f& start, const Vector2f& end, const Vector3f& rotation, const float thickness, const Color& color) {
         if (thickness <= 0.0f) return;
 
-        LineDrarContext line{};
+        LineDrawContext line{};
         line.start = start;
         line.end = end;
         line.rotation = rotation;

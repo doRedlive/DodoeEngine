@@ -18,29 +18,20 @@ namespace dodoe {
     };
     
     class WindowManager {
+        Scope<Window> window_;
     public:
-        WindowManager();
-        ~WindowManager();
-
-        [[nodiscard]] Window* active_window() const;
-        Window* create_window(const WindowProperty& props);
-
-        [[nodiscard]] bool initialize(WindowManagerInitInfo init_info);
-        void swapBuffers();
+        void initialize(const WindowManagerInitInfo& init_info);
         void shutdown();
 
+        [[nodiscard]] Window* window() const { return window_.get(); };
+        void swapBuffers();
+
     private:
-        Window* active_window_ {nullptr};
-        std::vector<Scope<Window>> windows_ {};
-
-        [[nodiscard]] Window* get_window_(uint32_t window_id) const;
-
-        void on_window_focus_(const WindowFocusEvent& event);
-        void on_window_lost_focus_(const WindowLostFocusEvent& event);
-        void on_window_close_(const WindowCloseEvent& event);
-        void on_window_resize_(const WindowResizeEvent& event);
-
-        void bind_events_callback_(Window* window);
+        void onWindowFocus(const WindowFocusEvent& event);
+        void onWindowLostFocus(const WindowLostFocusEvent& event);
+        void onWindowClose(const WindowCloseEvent& event);
+        void onWindowResize(const WindowResizeEvent& event);
+        void bindEventCallback();
     };
 }
 

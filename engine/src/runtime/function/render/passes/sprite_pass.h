@@ -8,28 +8,30 @@
 #include "../render_resource.h"
 
 namespace dodoe {
+	class Camera;
 
 	class SpritePass : public RenderPass {
-		std::vector<rhi::TextureHandle> swapchain_targets_{};
 		Vector2i target_extent_{0, 0};
+		size_t target_count_{0};
+		Camera* camera_{nullptr};
+		std::vector<identifier> bound_texture_ids_{};
+
+		std::vector<rhi::TextureHandle> scene_targets_{};
 		std::vector<rhi::FramebufferHandle> framebuffers_{};
-		size_t current_framebuffer_index_{0};
 		rhi::BufferHandle vertex_buffer_{};
 		rhi::BufferHandle index_buffer_{};
-		std::vector<identifier> bound_texture_ids_{};
+		rhi::BufferHandle camera_buffer_{};
 
 		rhi::GraphicsPipelineHandle graphics_pipeline_{};
 		rhi::BindingLayoutHandle binding_layout_{};
 		rhi::BindingSetHandle binding_set_{};
 		rhi::SamplerHandle sampler_{};
-		rhi::CommandListHandle cmd_list_{};
-		bool initialized_{false};
-
 	public:
-		SpritePass(const RenderPassCreateInfo& info, const std::vector<rhi::TextureHandle>& swapchain_targets, const Vector2i& target_extent);
+		SpritePass(const RenderPassCreateInfo& info, size_t target_count, const Vector2i& target_extent, Camera* camera);
+		[[nodiscard]] const std::vector<rhi::TextureHandle>& scene_targets() const { return scene_targets_; }
 
 		void setup() override;
-		void execute() override;
+		void execute(size_t index) override;
 		void cleanup() override;
 
 	private:
@@ -39,6 +41,8 @@ namespace dodoe {
 		void createBindingSet(const std::vector<identifier>& texture_ids);
 		void createFramebuffers();
 		void createGraphicsPipeline();
+
+		bool checkBindingSet(const std::vector<identifier>& cpu_texture_ids);
 	};
 
 } // dodoe

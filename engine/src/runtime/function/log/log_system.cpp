@@ -54,6 +54,7 @@ namespace dodoe {
     Ref<spdlog::logger> Log::core_logger_   = spdlog::stdout_color_mt("Dodoe");
     Ref<spdlog::logger> Log::client_logger_ = spdlog::stdout_color_mt("Client");
     Ref<memory_sink_mt> s_editor_console_sink = create_ref<memory_sink_mt>();
+    Ref<memory_sink_mt> s_engine_console_sink = create_ref<memory_sink_mt>();
 
     void Log::initialize() {
         core_logger_->set_pattern("%^[%T] %n: %v%$");
@@ -70,11 +71,13 @@ namespace dodoe {
         core_file_sink->set_pattern("[%T] [%l] %n: %v");
         client_file_sink->set_pattern("[%T] [%l] %n: %v");
         s_editor_console_sink->set_pattern("[%T] %n: %v");
+        s_engine_console_sink->set_pattern("[%T] [%l] %n: %v");
 
         core_logger_->sinks().clear();
         client_logger_->sinks().clear();
         core_logger_->sinks().push_back(console_sink);
         core_logger_->sinks().push_back(core_file_sink);
+        core_logger_->sinks().push_back(s_engine_console_sink);
         client_logger_->sinks().push_back(console_sink);
         client_logger_->sinks().push_back(client_file_sink);
         client_logger_->sinks().push_back(s_editor_console_sink);
@@ -106,5 +109,9 @@ namespace dodoe {
 
     const std::vector<LogMessage>& Log::get_all_client_logs() {
         return s_editor_console_sink->get_all_logs();
+    }
+
+    const std::vector<LogMessage>& Log::getCoreLogs() {
+        return s_engine_console_sink->get_all_logs();
     }
 }

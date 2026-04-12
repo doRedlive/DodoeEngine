@@ -9,7 +9,6 @@
 #include "runtime/core/utils/common.h"
 
 #include "runtime/function/world/systems/physics2d_system.h"
-#include "runtime/function/world/systems.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/world.h"
 #include "runtime/core/application.h"
@@ -137,9 +136,9 @@ namespace dodoe::lua_register_detail {
                 [](Rigidbody2dComponent& c, const Rigidbody2dComponent::BodyType value) { c.type = value; }),
             "fixed_rotation", &Rigidbody2dComponent::fixed_rotation,
             "gravity_scale", &Rigidbody2dComponent::gravity_scale,
-            "setLinearVelocity", &Rigidbody2dComponent::set_linear_velocity,
-            "applyForceToCenter", &Rigidbody2dComponent::apply_force_to_center,
-            "applyLinearImpulseToCenter", &Rigidbody2dComponent::apply_linear_impulse_to_center
+            "setLinearVelocity", &Rigidbody2dComponent::setLinearVelocity,
+            "applyForceToCenter", &Rigidbody2dComponent::applyForceToCenter,
+            "applyLinearImpulseToCenter", &Rigidbody2dComponent::applyLinearImpulseToCenter
         );
         dodoe_table.new_usertype<BoxCollider2dComponent>("BoxCollider2dComponent",
             sol::constructors<BoxCollider2dComponent()>(),
@@ -163,7 +162,7 @@ namespace dodoe::lua_register_detail {
             "cur_frame_id", &Animation2dComponent::cur_frame_id,
             "cur_time_duration", &Animation2dComponent::cur_time_duration,
             "speed", &Animation2dComponent::speed,
-            "addAnimClip", &Animation2dComponent::add_anim_clip
+            "addAnimClip", &Animation2dComponent::addClip
         );
         dodoe_table["TagComponent"]["__type_name"] = "TagComponent";
         dodoe_table["TransformComponent"]["__type_name"] = "TransformComponent";
@@ -301,7 +300,7 @@ namespace dodoe::lua_register_detail {
                 if (sol::object texture_obj = data["texture"]; texture_obj.valid() && texture_obj.get_type() == sol::type::string) {
                     const std::string texture = texture_obj.as<std::string>();
                     if (!texture.empty()) {
-                        c.texture_id = static_cast<identifier>(String2Hash(texture));
+                        c.texture_id = static_cast<identifier>(string2hash(texture));
                     }
                 }
                 c.flip = get_bool_field(data, "flip", c.flip);

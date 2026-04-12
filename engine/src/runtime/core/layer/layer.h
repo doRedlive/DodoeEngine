@@ -8,21 +8,19 @@
 
 namespace dodoe {
     class Layer {
+        std::string name_;
     public:
         explicit Layer(std::string name);
 
         virtual ~Layer() = default;
 
-        virtual void on_attach() = 0;
-        virtual void on_detach() = 0;
-        virtual void on_update(float delta_time) = 0;
-        virtual void on_render() = 0;
+        virtual void attach() = 0;
+        virtual void detach() = 0;
+        virtual void updateTick(float delta_time) = 0;
+        virtual void renderTick() = 0;
 
         [[nodiscard]]
         const std::string& name() const { return name_; }
-
-    private:
-        std::string name_;
     };
 } // dodoe
 

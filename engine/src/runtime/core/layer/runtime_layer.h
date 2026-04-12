@@ -14,10 +14,10 @@ namespace dodoe {
         explicit RuntimeLayer(const std::string& name) : Layer(name) { }
         ~RuntimeLayer() override = default;
 
-        void on_attach() override;
-        void on_detach() override;
-        void on_update(float dt) override;
-        void on_render() override;
+        void attach() override;
+        void detach() override;
+        void updateTick(float dt) override;
+        void renderTick() override;
 
     private:
     };

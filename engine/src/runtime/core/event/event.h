@@ -15,33 +15,20 @@ namespace dodoe {
 
     struct ApplicationQuitEvent {};
 
-     struct WindowCloseEvent {
-         explicit WindowCloseEvent(const uint32_t window_id) : window_id(window_id) { }
-         uint32_t window_id;
-     };
-    
-     struct WindowFocusEvent {
-         explicit WindowFocusEvent(const uint32_t window_id) : window_id(window_id) { }
-         uint32_t window_id;
-     };
-    
-     struct WindowLostFocusEvent {
-         explicit WindowLostFocusEvent(const uint32_t window_id) : window_id(window_id) { }
-         uint32_t window_id;
-     };
+    struct WindowCloseEvent {};
 
-     struct WindowMovedEvent {
-         explicit WindowMovedEvent(const uint32_t window_id) : window_id(window_id) { }
-         uint32_t window_id;
-     };
+    struct WindowFocusEvent {};
 
-     struct WindowResizeEvent {
-         WindowResizeEvent(const unsigned int width, const unsigned int height, const uint32_t window_id)
-             : width(width), height(height), window_id(window_id){ }
-         unsigned int width;
-         unsigned int height;
-         uint32_t window_id;
-     };
+    struct WindowLostFocusEvent {};
+
+    struct WindowMovedEvent {};
+
+    struct WindowResizeEvent {
+        WindowResizeEvent(const unsigned int width, const unsigned int height)
+            : width(width), height(height){ }
+        unsigned int width;
+        unsigned int height;
+    };
     
     struct KeyPressedEvent {
         KeyPressedEvent(const KeyCode scancode, const bool repeat) : scancode(scancode), repeat(repeat) { }

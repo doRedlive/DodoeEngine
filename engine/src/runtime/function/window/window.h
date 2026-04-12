@@ -27,14 +27,6 @@
 
 namespace dodoe {
 
-    class Window;
-
-    struct WindowData {
-        std::string title;
-        uint32_t id;
-        Window* owner{nullptr};
-    };
-
     struct WindowProperty {
         int width;
         int height;
@@ -49,51 +41,27 @@ namespace dodoe {
 
     class Window {
         friend class WindowManager;
+        GLFWwindow* window_ {nullptr};
+        WindowProperty prop_ {};
     public:
         Scope<ViewportManager> viewport_manager{};
 
-        explicit Window(const WindowProperty& prop);
-        ~Window();
+        static Scope<Window> create(const WindowProperty& prop);
+        static void destroy(Scope<Window>& window);
 
-        [[nodiscard]]
-        bool initialize();
+        void initialize(const WindowProperty& prop);
         void shutdown();
-        void swap_buffer();
+        void swapBuffers();
 
-        [[nodiscard]] GLFWwindow* native_window() const { return window_;}
+        [[nodiscard]] GLFWwindow* nativeWindow() const { return window_;}
         [[nodiscard]] HWND handle() const;
         [[nodiscard]] uint width() const { return prop_.width; }
         [[nodiscard]] uint height() const { return prop_.height; }
         [[nodiscard]] bool is_maximized() const;
-        [[nodiscard]] bool is_titlebar_hovered() const { return titlebar_hovered_; }
-        void set_titlebar_hovered(const bool hovered) { titlebar_hovered_ = hovered; }
         void maximize();
         void restore();
-        void toggle_maximize();
-
-    private:
-        struct WindowRect {
-            int x = 0;
-            int y = 0;
-            int width = 0;
-            int height = 0;
-        };
-
-        void maximize_borderless_();
-        void restore_borderless_();
-
-        GLFWwindow* window_ {nullptr};
-        WindowProperty prop_ {};
-        WindowData data_{};
-        bool borderless_maximized_ {false};
-        bool titlebar_hovered_{false};
-        WindowRect windowed_rect_{};
-
     };
 
-    inline Window* create_window(const WindowProperty& prop) {
-        return new Window(prop);
-    }
 } // dodoe
 
 

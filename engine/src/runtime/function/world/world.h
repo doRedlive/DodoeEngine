@@ -11,11 +11,9 @@
 
 #include "runtime/core/base.h"
 #include "scene.h"
+#include "systems/system.h"
 
 namespace dodoe {
-
-    using StartSystem  = std::function<void(Registry& reg)>;
-    using UpdateSystem = std::function<void(Registry& reg, float dt)>;
 
     struct WorldCreateInfo {
         std::string name;
@@ -45,22 +43,17 @@ namespace dodoe {
         [[nodiscard]] Scene* get_scene(const std::string& name) const;
         [[nodiscard]] Scene* active_scene() const;
 
-        int add_start_system(StartSystem start);
-        int add_update_system(UpdateSystem update);
+        void register_system(Scope<System> system);
 
-        [[nodiscard]] const std::vector<StartSystem>&  load_start_systems();
-        [[nodiscard]] const std::vector<UpdateSystem>& load_update_systems();
-
-        void remove_start_system(int id);
-        void remove_update_system(int id);
-        void remove_all_systems();
+        void start_systems(Registry& reg);
+        void update_systems(Registry& reg, float dt);
+        void finalize_systems(Registry& reg);
     private:
         std::string name_;
         Uuid uuid_{};
 
         std::vector<Scope<Scene>> scenes_{};
-        std::vector<StartSystem> start_systems_{};
-        std::vector<UpdateSystem> update_systems_{};
+        std::vector<Scope<System>> systems_{};
     };
 
 } // dodoe

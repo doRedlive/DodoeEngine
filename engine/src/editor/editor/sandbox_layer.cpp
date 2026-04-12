@@ -12,15 +12,15 @@ namespace cakery {
 		// Placeholder: bgfx backend integration is temporarily disabled.
 	}
 
-	void SandboxLayer::on_attach() {
+	void SandboxLayer::attach() {
 
 	}
 
-	void SandboxLayer::on_detach() {
+	void SandboxLayer::detach() {
 
 	}
 
-	void SandboxLayer::on_update(const float delta_time) {
+	void SandboxLayer::updateTick(const float delta_time) {
 
 	}
 

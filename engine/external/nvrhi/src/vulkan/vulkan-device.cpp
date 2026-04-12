@@ -121,17 +121,17 @@ namespace nvrhi::vulkan
             m_Context.extensions.buffer_device_address = true;
 
         void* pNext = nullptr;
-        vk::PhysicalDeviceAccelerationStructurePropertiesKHR accelStructProperties;
-        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties;
-        vk::PhysicalDeviceConservativeRasterizationPropertiesEXT conservativeRasterizationProperties;
-        vk::PhysicalDeviceFragmentShadingRatePropertiesKHR shadingRateProperties;
-        vk::PhysicalDeviceOpacityMicromapPropertiesEXT opacityMicromapProperties;
-        vk::PhysicalDeviceRayTracingInvocationReorderPropertiesNV nvRayTracingInvocationReorderProperties;
-        vk::PhysicalDeviceClusterAccelerationStructurePropertiesNV nvClusterAccelerationStructureProperties;
-        vk::PhysicalDeviceCooperativeVectorPropertiesNV nvCoopVecProperties;
-        vk::PhysicalDeviceSubgroupProperties subgroupProperties;
-        
-        vk::PhysicalDeviceProperties2 deviceProperties2;
+        vk::PhysicalDeviceAccelerationStructurePropertiesKHR accelStructProperties{};
+        vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties{};
+        vk::PhysicalDeviceConservativeRasterizationPropertiesEXT conservativeRasterizationProperties{};
+        vk::PhysicalDeviceFragmentShadingRatePropertiesKHR shadingRateProperties{};
+        vk::PhysicalDeviceOpacityMicromapPropertiesEXT opacityMicromapProperties{};
+        vk::PhysicalDeviceRayTracingInvocationReorderPropertiesNV nvRayTracingInvocationReorderProperties{};
+        vk::PhysicalDeviceClusterAccelerationStructurePropertiesNV nvClusterAccelerationStructureProperties{};
+        vk::PhysicalDeviceCooperativeVectorPropertiesNV nvCoopVecProperties{};
+        vk::PhysicalDeviceSubgroupProperties subgroupProperties{};
+
+        vk::PhysicalDeviceProperties2 deviceProperties2{};
 
         // Subgroup properties are provided by core Vulkan 1.1
         subgroupProperties.pNext = pNext;
@@ -204,22 +204,25 @@ namespace nvrhi::vulkan
 
         if (m_Context.extensions.KHR_fragment_shading_rate)
         {
-            vk::PhysicalDeviceFeatures2 deviceFeatures2;
-            deviceFeatures2.setPNext(&m_Context.shadingRateFeatures);
+            vk::PhysicalDeviceFeatures2 deviceFeatures2{};
+            deviceFeatures2.sType = vk::StructureType::ePhysicalDeviceFeatures2;
+            deviceFeatures2.pNext = &m_Context.shadingRateFeatures;
             m_Context.physicalDevice.getFeatures2(&deviceFeatures2);
         }
 
         if (m_Context.extensions.NV_cooperative_vector)
         {
-            vk::PhysicalDeviceFeatures2 deviceFeatures2;
-            deviceFeatures2.setPNext(&m_Context.coopVecFeatures);
+            vk::PhysicalDeviceFeatures2 deviceFeatures2{};
+            deviceFeatures2.sType = vk::StructureType::ePhysicalDeviceFeatures2;
+            deviceFeatures2.pNext = &m_Context.coopVecFeatures;
             m_Context.physicalDevice.getFeatures2(&deviceFeatures2);
         }
 
         if (m_Context.extensions.NV_ray_tracing_linear_swept_spheres)
         {
-            vk::PhysicalDeviceFeatures2 deviceFeatures2;
-            deviceFeatures2.setPNext(&m_Context.linearSweptSpheresFeatures);
+            vk::PhysicalDeviceFeatures2 deviceFeatures2{};
+            deviceFeatures2.sType = vk::StructureType::ePhysicalDeviceFeatures2;
+            deviceFeatures2.pNext = &m_Context.linearSweptSpheresFeatures;
             m_Context.physicalDevice.getFeatures2(&deviceFeatures2);
         }
 #ifdef NVRHI_WITH_RTXMU
@@ -238,7 +241,8 @@ namespace nvrhi::vulkan
             m_Context.warning("Opacity micro-maps are not currently supported by RTXMU.");
         }
 #endif
-        auto pipelineInfo = vk::PipelineCacheCreateInfo();
+        vk::PipelineCacheCreateInfo pipelineInfo{};
+        pipelineInfo.sType = vk::StructureType::ePipelineCacheCreateInfo;
         vk::Result res = m_Context.device.createPipelineCache(&pipelineInfo,
             m_Context.allocationCallbacks,
             &m_Context.pipelineCache);
@@ -249,9 +253,10 @@ namespace nvrhi::vulkan
         }
 
         // Create an empty Vk::DescriptorSetLayout
-        auto descriptorSetLayoutInfo = vk::DescriptorSetLayoutCreateInfo()
-            .setBindingCount(0)
-            .setPBindings(nullptr);
+        vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo{};
+        descriptorSetLayoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+        descriptorSetLayoutInfo.bindingCount = 0;
+        descriptorSetLayoutInfo.pBindings = nullptr;
         res = m_Context.device.createDescriptorSetLayout(&descriptorSetLayoutInfo,
             m_Context.allocationCallbacks,
             &m_Context.emptyDescriptorSetLayout);

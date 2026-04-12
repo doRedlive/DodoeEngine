@@ -23,20 +23,7 @@ namespace dodoe {
 			return magic == kSpirvMagic;
 		}
 
-		std::vector<char> ReadShaderFile(const std::string& path) {
-			std::ifstream in(path, std::ios::binary | std::ios::ate);
-			if (!in.is_open()) {
-				DoError("MainCameraPass: open shader file {} failed.", path);
-				return {};
-			}
-
-			const std::streamsize size = in.tellg();
-			in.seekg(0, std::ios::beg);
-
-			std::vector<char> content(static_cast<size_t>(size));
-			in.read(content.data(), size);
-			return content;
-		}
+		
 
 	}
 
@@ -67,7 +54,7 @@ namespace dodoe {
 	void MainCameraPass::cleanup() {
 	}
 
-	void MainCameraPass::execute() {
+	void MainCameraPass::execute(size_t index) {
 		if (!initialized_ || !cmd_list_ || !graphics_pipeline_ || framebuffers_.empty() || !vertex_buffer_ || !binding_set_ || !constant_buffer_) {
 			return;
 		}
@@ -128,8 +115,8 @@ namespace dodoe {
 	}
 
 	void MainCameraPass::createGraphicsPipeline() {
-		auto vert_source = ReadShaderFile("engine/res/shaders/main_camera_pass.vert.spv");
-		auto frag_source = ReadShaderFile("engine/res/shaders/main_camera_pass.frag.spv");
+		auto vert_source = dodoe::ReadShaderFile("engine/res/shaders/main_camera_pass.vert.spv");
+		auto frag_source = dodoe::ReadShaderFile("engine/res/shaders/main_camera_pass.frag.spv");
 		if (vert_source.empty() || frag_source.empty()) {
 			DoError("MainCameraPass: missing SPIR-V shader files (expected main_camera_pass.vert.spv / main_camera_pass.frag.spv).");
 			return;

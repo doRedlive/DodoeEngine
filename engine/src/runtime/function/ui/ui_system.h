@@ -10,19 +10,10 @@ namespace dodoe {
 
     class UiSystem {
     public:
-        UiSystem() = default;
-        ~UiSystem() = default;
-
         void initialize(WindowManager* window_manager);
         void shutdown();
 
-        void begin_render();
-        void end_render();
-        
-    private:
-        bool context_created_{false};
-        bool glfw_backend_initialized_{false};
-        bool opengl_renderer_initialized_{false};
+        void prepare();
     };
 } // dodoe
 

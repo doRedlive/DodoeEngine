@@ -60,7 +60,7 @@ namespace dodoe {
         return mesh_loader_->loadModel(name, path);
     }
 
-    TextureRes ResourceManager::get_texture(const identifier id) {
+    TextureRes ResourceManager::getTextureRes(const identifier id) {
         if (!texture_loader_) {
             DoError("TextureLoader is not initialized!");
             return {};
@@ -73,7 +73,7 @@ namespace dodoe {
             DoError("TextureLoader is not initialized!");
             return {};
         }
-        const identifier texture_id = static_cast<identifier>(String2Hash(id));
+        const identifier texture_id = static_cast<identifier>(string2hash(id));
         return texture_loader_->getTexture(texture_id);
     }
 
@@ -82,7 +82,7 @@ namespace dodoe {
             DoError("TextureLoader is not initialized!");
             return {};
         }
-        const identifier texture_id = static_cast<identifier>(String2Hash(id));
+        const identifier texture_id = static_cast<identifier>(string2hash(id));
         return texture_loader_->getTexture(texture_id, path);
     }
 

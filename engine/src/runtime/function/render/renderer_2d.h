@@ -29,34 +29,10 @@ namespace dodoe {
         }
     };
 
-    struct QuadDrawContext {
-        identifier texture_id{0};
-        Vector4f dst_rect{0.0f};
-        Vector4f uv_rect{0.0f};
-        Vector3f rotation{0.0f};
-        Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
-    };
-
-    struct LineDrarContext {
-        Vector2f start{0.0f};
-        Vector2f end{0.0f};
-        Vector3f rotation{0.0f};
-        Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
-        float thickness{2.0f};
-    };
-
-    struct TextDrawContext {
-        identifier texture_id{0};
-        Vector4f dst_rect{0.0f};
-        Vector4f uv_rect{0.0f};
-        Vector3f rotation{0.0f};
-        Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
-    };
-
     class Renderer2d {
     public:
-        static constexpr ui32 k_MaxQuadCount = 2048;
-        static constexpr ui32 k_MaxTextureCount = 1024;
+        static constexpr ui32 MaxQuadCount = 2048;
+        static constexpr ui32 MaxTextureCount = 1024;
 
         static void drawSprite(
             identifier texture,

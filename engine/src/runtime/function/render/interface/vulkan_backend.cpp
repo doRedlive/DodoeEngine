@@ -30,10 +30,17 @@ namespace dodoe {
 
 	void VulkanBackend::initialize(const VulkanBackendCreateInfo& info) {
 		enable_validation_layers_ = info.enable_validation && checkValidationLayerSupport();
+		if (info.enable_validation) {
+			DoInfo("enable validation");
+		}
         auto extension = getRequiredExtensions();
 		createInstance(extension.data(), static_cast<int>(extension.size()));
 		if (enable_validation_layers_) {
+			DoDebug("Enable Validation Layer");
 			initializeDebugMessenger();
+		}
+		else {
+			DoDebug("Don't enable validation layer");
 		}
 		createSurface(info.window_handle);
 		pickPhysicalDevice();
@@ -41,12 +48,19 @@ namespace dodoe {
 		createSwapchain(info.window_handle);
 		createSwapchainFences();
 		createCommandPool();
-		// createSwapchainImageViews();
+		createSwapchainImageViews();
 	}
 
 	void VulkanBackend::shutdown() {
 		if (device_ != VK_NULL_HANDLE) {
 			vkDeviceWaitIdle(device_);
+
+			for (auto image_view : swapchain_imageviews_) {
+				if (image_view != VK_NULL_HANDLE) {
+					vkDestroyImageView(device_, image_view, nullptr);
+				}
+			}
+			swapchain_imageviews_.clear();
 
 			if (command_pool_ != VK_NULL_HANDLE) {
 				vkDestroyCommandPool(device_, command_pool_, nullptr);
@@ -105,7 +119,9 @@ namespace dodoe {
 				}
 			}
 
-			if (!found) return false;
+			if (!found) {
+				return false;
+			}
 		}
 		return true;
 	}
@@ -196,18 +212,40 @@ namespace dodoe {
 		features.fragmentStoresAndAtomics = VK_TRUE;
 		features.independentBlend = VK_TRUE;
 
+		VkPhysicalDeviceVulkan13Features supported_vulkan13_features{};
+		supported_vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		supported_vulkan13_features.pNext = nullptr;
+
+		VkPhysicalDeviceFeatures2 supported_features2{};
+		supported_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		supported_features2.pNext = &supported_vulkan13_features;
+		vkGetPhysicalDeviceFeatures2(physical_device_, &supported_features2);
+		DoAssert(supported_vulkan13_features.dynamicRendering == VK_TRUE,
+			"VulkanBackend::createLogicalDevice requires dynamicRendering support.");
+
+		VkPhysicalDeviceVulkan13Features vulkan13_features{};
+		vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		vulkan13_features.pNext = nullptr;
+		vulkan13_features.dynamicRendering = VK_TRUE;
+		vulkan13_features.synchronization2 = VK_TRUE;
+
 		VkPhysicalDeviceTimelineSemaphoreFeatures timeline_features{};
 		timeline_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
-		timeline_features.pNext = nullptr;
+		timeline_features.pNext = &vulkan13_features;
 		timeline_features.timelineSemaphore = VK_TRUE;
+
+		VkPhysicalDeviceFeatures2 enabled_features2{};
+		enabled_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		enabled_features2.pNext = &timeline_features;
+		enabled_features2.features = features;
 
 		VkDeviceCreateInfo device_info{};
 		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		device_info.pNext = &timeline_features;
+		device_info.pNext = &enabled_features2;
 		device_info.flags = 0;
 		device_info.pQueueCreateInfos = queue_infos.data();
 		device_info.queueCreateInfoCount = static_cast<uint32_t>(queue_infos.size());
-		device_info.pEnabledFeatures = &features;
+		device_info.pEnabledFeatures = nullptr;
 		device_info.enabledLayerCount = 0;
 		device_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions_.size());
 		device_info.ppEnabledExtensionNames = device_extensions_.data();
@@ -279,7 +317,11 @@ namespace dodoe {
 		swapchain_info.imageColorSpace = chosen_surface_format.colorSpace;
 		swapchain_info.imageExtent = chosen_extent;
 		swapchain_info.imageArrayLayers = 1;
-		swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		if ((swapchain_details.capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0) {
+			image_usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		}
+		swapchain_info.imageUsage = image_usage;
 
 		uint32_t queue_family_indices[] = {queue_family_indices_.graphics_family.value(), queue_family_indices_.present_family.value()};	
 		if (queue_family_indices_.graphics_family != queue_family_indices_.present_family) {
@@ -312,25 +354,31 @@ namespace dodoe {
 		scissor_ = {{0, 0}, {swapchain_extent_.width, swapchain_extent_.height}};
 	}
 
-	// void VulkanBackend::createSwapchainImageViews() {
-	// 	swapchain_imageviews_.resize(swapchain_images_.size());	
-	// 	for (size_t i = 0; i < swapchain_images_.size(); i++) {
-	// 		VkImageView view;
-	// 		VkImageViewCreateInfo view_info {};
-	// 		view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	// 		view_info.image = swapchain_images_[i];
-	// 		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	// 		view_info.format = swapchain_image_format_;
-	// 		view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	// 		view_info.subresourceRange.baseMipLevel = 0;
-	// 		view_info.subresourceRange.levelCount = 1;
-	// 		view_info.subresourceRange.baseArrayLayer = 0;
-	// 		view_info.subresourceRange.layerCount = 1;
+	void VulkanBackend::createSwapchainImageViews() {
+		swapchain_imageviews_.clear();
+		swapchain_imageviews_.reserve(swapchain_images_.size());
+		for (const auto swapchain_image : swapchain_images_) {
+			VkImageViewCreateInfo view_info{};
+			view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			view_info.image = swapchain_image;
+			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			view_info.format = swapchain_image_format_;
+			view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+			view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			view_info.subresourceRange.baseMipLevel = 0;
+			view_info.subresourceRange.levelCount = 1;
+			view_info.subresourceRange.baseArrayLayer = 0;
+			view_info.subresourceRange.layerCount = 1;
 
-	// 		vkCreateImageView(device_, &view_info, nullptr, &view);
-	// 		swapchain_imageviews_.push_back(view);
-	// 	}
-	// }
+			VkImageView image_view = VK_NULL_HANDLE;
+			DoAssert(vkCreateImageView(device_, &view_info, nullptr, &image_view) == VK_SUCCESS,
+				"VulkanBackend::createSwapchainImageViews failed to create swapchain image view.");
+			swapchain_imageviews_.push_back(image_view);
+		}
+	}
 
 	void VulkanBackend::createSwapchainFences() {
 		VkFenceCreateInfo fence_info{};
@@ -351,6 +399,62 @@ namespace dodoe {
 		cmd_pool_info.queueFamilyIndex = queue_family_indices_.graphics_family.value();
 
 		vkCreateCommandPool(device_, &cmd_pool_info, nullptr, &command_pool_);
+	}
+
+	bool VulkanBackend::acquireNextImage(uint32_t& image_index) {
+		if (device_ == VK_NULL_HANDLE || swapchain_ == VK_NULL_HANDLE || swapchain_fences_.empty()) {
+			return false;
+		}
+
+		VkFence fence = swapchain_fences_[acquire_fence_index_ % static_cast<uint32_t>(swapchain_fences_.size())];
+		VkResult wait_result = vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX);
+		if (wait_result != VK_SUCCESS) {
+			DoError("VulkanBackend::acquireNextImage wait fence failed with VkResult={}", static_cast<int>(wait_result));
+			return false;
+		}
+
+		VkResult reset_result = vkResetFences(device_, 1, &fence);
+		if (reset_result != VK_SUCCESS) {
+			DoError("VulkanBackend::acquireNextImage reset fence failed with VkResult={}", static_cast<int>(reset_result));
+			return false;
+		}
+
+		VkResult acquire_result = vkAcquireNextImageKHR(device_, swapchain_, UINT64_MAX, VK_NULL_HANDLE, fence, &image_index);
+		if (acquire_result == VK_SUBOPTIMAL_KHR || acquire_result == VK_SUCCESS) {
+			VkResult post_wait_result = vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX);
+			if (post_wait_result != VK_SUCCESS) {
+				DoError("VulkanBackend::acquireNextImage post-wait fence failed with VkResult={}", static_cast<int>(post_wait_result));
+				return false;
+			}
+			++acquire_fence_index_;
+			return true;
+		}
+
+		DoError("VulkanBackend::acquireNextImage failed with VkResult={}", static_cast<int>(acquire_result));
+		return false;
+	}
+
+	bool VulkanBackend::presentImage(uint32_t image_index) {
+		if (swapchain_ == VK_NULL_HANDLE || present_queue_ == VK_NULL_HANDLE) {
+			return false;
+		}
+
+		VkPresentInfoKHR present_info{};
+		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.waitSemaphoreCount = 0;
+		present_info.pWaitSemaphores = nullptr;
+		present_info.swapchainCount = 1;
+		present_info.pSwapchains = &swapchain_;
+		present_info.pImageIndices = &image_index;
+		present_info.pResults = nullptr;
+
+		VkResult present_result = vkQueuePresentKHR(present_queue_, &present_info);
+		if (present_result == VK_SUBOPTIMAL_KHR || present_result == VK_SUCCESS) {
+			return true;
+		}
+
+		DoError("VulkanBackend::presentImage failed with VkResult={}", static_cast<int>(present_result));
+		return false;
 	}
 
     std::vector<const char*> VulkanBackend::getRequiredExtensions() {

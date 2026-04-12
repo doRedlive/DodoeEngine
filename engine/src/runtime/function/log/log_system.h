@@ -32,6 +32,7 @@ namespace dodoe {
         static void initialize();
         static void set_logger_level(const Ref<spdlog::logger>& logger, LogLevel level);
         static const std::vector<LogMessage>& get_all_client_logs();
+        static const std::vector<LogMessage>& getCoreLogs();
 
     private:
         static Ref<spdlog::logger> core_logger_;

@@ -5,11 +5,11 @@
 #include "world.h"
 
 #include "scene.h"
-#include "systems.h"
 
-#include "runtime/function/world/components.h"
-#include "runtime/function/window/window_manager.h"
-#include "runtime/resource/resource_manager.h"
+#include "systems/animation2d_system.h"
+#include "systems/camera2d_system.h"
+#include "systems/physics2d_system.h"
+#include "systems/sprite_renderer_system.h"
 
 namespace dodoe {
 
@@ -28,11 +28,11 @@ namespace dodoe {
     void World::initialize(const WorldCreateInfo& create_info) {
         name_ = create_info.name;
 
-        add_start_system(systems::Physics2dStartSystem);
-        add_update_system(systems::Physics2dUpdateSystem);
-        add_update_system(systems::CameraUpdateSystem);
-        add_update_system(systems::Animation2dUpdateSystem);
-        add_update_system(systems::SpriteRendererUpdateSystem);
+        systems_.clear();
+        systems_.push_back(create_scope<Physics2dSystem>());
+        systems_.push_back(create_scope<Camera2dSystem>());
+        systems_.push_back(create_scope<Animation2dSystem>());
+        systems_.push_back(create_scope<SpriteRendererSystem>());
 
         // Read config
         auto* scene = active_scene();
@@ -45,7 +45,7 @@ namespace dodoe {
         if (!scenes_.empty()) {
             destroy_all_scenes();
         }
-        remove_all_systems();
+        systems_.clear();
     }
 
     void World::runtime_start() {
@@ -131,35 +131,35 @@ namespace dodoe {
         scenes_.clear();
     }
 
-    int World::add_start_system(StartSystem start) {
-        start_systems_.push_back(start);
-        return static_cast<int>(start_systems_.size() - 1);
+    void World::register_system(Scope<System> system) {
+        if (!system) {
+            return;
+        }
+        systems_.push_back(std::move(system));
     }
 
-    int World::add_update_system(UpdateSystem update) {
-        update_systems_.push_back(update);
-        return static_cast<int>(update_systems_.size() - 1);
+    void World::start_systems(Registry& reg) {
+        for (auto& sys : systems_) {
+            if (sys) {
+                sys->start(reg);
+            }
+        }
     }
 
-    const std::vector<StartSystem>& World::load_start_systems() {
-        return start_systems_;
+    void World::update_systems(Registry& reg, const float dt) {
+        for (auto& sys : systems_) {
+            if (sys) {
+                sys->update(reg, dt);
+            }
+        }
     }
 
-    const std::vector<UpdateSystem>& World::load_update_systems() {
-        return update_systems_;
-    }
-
-    void World::remove_start_system(const int id) {
-        start_systems_.erase(start_systems_.begin() + id);  // TODO, dirty flag and remove all at a time point.
-    }
-
-    void World::remove_update_system(const int id) {
-        update_systems_.erase(update_systems_.begin() + id);
-    }
-
-    void World::remove_all_systems() {
-        start_systems_.clear();
-        update_systems_.clear();
+    void World::finalize_systems(Registry& reg) {
+        for (auto& sys : systems_) {
+            if (sys) {
+                sys->finalize(reg);
+            }
+        }
     }
 
 } // dodoe

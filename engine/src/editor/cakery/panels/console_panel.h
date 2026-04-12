@@ -8,13 +8,7 @@
 namespace cakery {
     class ConsolePanel {
     public:
-        ConsolePanel() = default;
-        ~ConsolePanel() = default;
-
-        void on_render();
-
-    private:
-
+        void draw();
     };
 } // cakery
 

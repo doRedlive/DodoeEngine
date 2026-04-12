@@ -13,7 +13,7 @@ namespace dodoe {
 
     namespace tag {
 
-        const identifier PrimaryCameraTag = String2Hash("PrimaryCamera");
+        const identifier PrimaryCameraTag = string2hash("PrimaryCamera");
 
     } // tag
 

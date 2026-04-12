@@ -15,10 +15,10 @@ namespace sandbox {
         explicit SandboxLayer(const std::string& name);
         ~SandboxLayer() override = default;
 
-        void on_attach() override;
-        void on_detach() override;
-        void on_update(float delta_time) override;
-        void on_render() override;
+        void attach() override;
+        void detach() override;
+        void updateTick(float delta_time) override;
+        void renderTick() override;
     };
 
 } // namespace sandbox

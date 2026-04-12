@@ -14,26 +14,22 @@ namespace dodoe {
 
     Scene::Scene(World& world, const std::string& name) : world_(world), name_(name), reg_(this) {
         auto entity = create_entity("Primary Camera"); 
-        entity.add_component<CameraComponent>();
-        entity.get_component<TagComponent>().set_tag("Primary Camera");
+        auto& camera = entity.add_component<Camera2dComponent>();
+        entity.get_component<TagComponent>().setTag("PrimaryCamera");
     }
 
     Scene::~Scene() = default;
 
     void Scene::on_runtime_start() {
-        for (auto& on_start : world_.load_start_systems()) {
-            on_start(reg_);
-        }
+        world_.start_systems(reg_);
     }
 
     void Scene::on_runtime_update(const float delta_time) {
-        for (auto& on_update : world_.load_update_systems()) {
-            on_update(reg_, delta_time);
-        }
+        world_.update_systems(reg_, delta_time);
     }
 
     void Scene::on_runtime_stop() {
-
+        world_.finalize_systems(reg_);
     }
 
     void Scene::on_simulation_start() {
@@ -92,12 +88,20 @@ namespace dodoe {
 
     Entity Scene::get_entity(const std::string& tag) {
         for (auto& [_, entity] : entity_umap_) {
-            if (entity.get_component<TagComponent>().id == String2Hash(tag)) {
+            if (entity.get_component<TagComponent>().id == string2hash(tag)) {
                 return entity;
             }
         }
         DoError("Not found entity has the tag {}.", tag);
         return Entity();
+    }
+
+    std::vector<Entity> Scene::getEntities() {
+        std::vector<Entity> entities(entity_umap_.size());
+        for (const auto& [_, entity] : entity_umap_) {
+            entities.push_back(entity);
+        }
+        return entities;
     }
 
 } // dodoe

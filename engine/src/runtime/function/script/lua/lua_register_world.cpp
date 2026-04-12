@@ -4,7 +4,10 @@
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/registry.h"
 #include "runtime/function/world/entity.h"
-#include "runtime/function/world/systems.h"
+
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/world/systems/lua_system.h"
 
 namespace dodoe::lua_register_detail {
 
@@ -35,30 +38,14 @@ namespace dodoe::lua_register_detail {
             "loadScene", &World::load_scene,
             "destroyScene", &World::destroy_scene,
             "destroyAllScenes", &World::destroy_all_scenes,
-            "addStartSystem", [](World& world, const sol::function& callback) {
-                return world.add_start_system([callback](Registry& reg) {
-                    sol::protected_function pf = callback;
-                    auto result = pf(std::ref(reg));
-                    if (!result.valid()) {
-                        sol::error err = result;
-                        DoError("Lua World addStartSystem callback failed: {}", err.what());
-                    }
-                });
-            },
-            "addUpdateSystem", [](World& world, const sol::function& callback) {
-                return world.add_update_system([callback](Registry& reg, const float dt) {
-                    sol::protected_function pf = callback;
-                    auto result = pf(std::ref(reg), dt);
-                    if (!result.valid()) {
-                        sol::error err = result;
-                        DoError("Lua World addUpdateSystem callback failed: {}", err.what());
-                    }
-                });
-            },
-            "removeStartSystem", &World::remove_start_system,
-            "removeUpdateSystem", &World::remove_update_system,
-            "removeAllSystems", &World::remove_all_systems
+            "registerSystem", [](World& self, const sol::table& system_table) {
+                self.register_system(create_scope<LuaSystem>(system_table));
+            }
         );
+
+        dodoe_table.set_function("getWorld", []() -> World* {
+            return Application::self().context().world.get();
+        });
     }
 
 } // dodoe::lua_register_detail

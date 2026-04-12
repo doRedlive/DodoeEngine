@@ -23,6 +23,25 @@
       "problemMatcher": [
         "$msCompile"
       ]
+    },
+    {
+      "label": "Build Cakery (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "build",
+        "--config",
+        "Debug",
+        "--target",
+        "Cakery"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ]
     }
   ]
 }

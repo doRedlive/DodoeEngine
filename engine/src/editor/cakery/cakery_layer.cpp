@@ -7,69 +7,58 @@
 #include "panels/title_bar.h"
 
 #include "runtime/core/application.h"
-#include "runtime/core/world/components.h"
-#include "runtime/core/world/world_manager.h"
-
-#include "runtime/function/context.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/input/input.h"
 #include "runtime/function/render/camera/camera.h"
+#include "runtime/function/render/render_system.h"
+#include "runtime/function/render/renderer_2d.h"
 
 #include "imgui/imgui.h"
 
 using namespace dodoe;
 
 namespace cakery {
-    CakeryLayer::CakeryLayer(const std::string& name): Layer(name) {
-        cakery_window_ = g_context.window_manager->active_window();     //TODO: FIXME;
+    CakeryLayer::CakeryLayer(const std::string& name)
+        : Layer(name)
+        , viewport_panel_(
+            Application::self().context().render_system->rhiBackend(),
+            Application::self().context().render_system->mainSceneTextures()) {
     }
 
     CakeryLayer::~CakeryLayer() { }
 
-    void CakeryLayer::on_attach() {
-        auto& world_manager = WorldManager::self();
-        if (world_manager.world_count() == 0) {
-            world_manager.create_world("default");
-        }
-        auto& default_world = world_manager.active_world();
-
-        const auto scene = default_world.active_scene();
-        hierarchy_panel_.set_context(scene);
-
-        const auto test_go = scene->create_game_object("test_go");
-        auto& transform = test_go->get_component<TransformComponent>();
-        transform.position = {200.0f, 200.0f, 0.0f};
-        transform.scale = {200.0f, 200.0f, 1.0f};
-        auto& sprite_renderer = test_go->add_component<SpriteRendererComponent>();
-
-        Camera::instance().set_background_color(Color::gray());
-    }
-
-    void CakeryLayer::on_detach() {
+    void CakeryLayer::attach() {
 
     }
 
-    void CakeryLayer::on_update(float delta_time) {
-        if (dodoe::Input::is_key_pressed(dodoe::KeyCode::A)) {
-            LogDebug("the a is pressed");
-        }
-        //viewport_panel_.on_update();
+    void CakeryLayer::detach() {
+        project_panel_.cleanup();
+        viewport_panel_.cleanup();
     }
 
-    void CakeryLayer::on_ui_render() {
-        hierarchy_panel_.on_ui_render();
-        inspector_panel_.on_ui_render();
-        project_panel_.on_ui_render();
-        console_panel_.on_ui_render();
+    void CakeryLayer::updateTick(float delta_time) {
+		(void)delta_time;
+		dodoe::Renderer2d::drawLine({-300.0f, 0.0f}, {300.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 2.0f, dodoe::Color::green());
+		dodoe::Renderer2d::drawLine({0.0f, -200.0f}, {0.0f, 200.0f}, {0.0f, 0.0f, 0.0f}, 2.0f, dodoe::Color::blue());
+		dodoe::Renderer2d::drawRect({-80.0f, -80.0f}, {160.0f, 160.0f}, {0.0f, 0.0f, 0.0f}, dodoe::Color::white(), 3.0f);
+
+        auto* render_system = Application::self().context().render_system.get();
+        viewport_panel_.setTextures(render_system->mainSceneTextures());
+        viewport_panel_.setCurrentFramebufferIndex(render_system->currentSwapchainImageIndex());
+        viewport_panel_.update();
+    }
+
+    void CakeryLayer::renderTick() {
+        dockspace_panel_.draw();
+        hierarchy_panel_.draw();
+        // inspector_panel_.draw();
+        project_panel_.draw();
+        console_panel_.draw();
+        viewport_panel_.draw();
 
         if (Application::self().specification().custom_titlebar) {
-            Titlebar titlebar;
-            titlebar.draw(cakery_window_);
+            // Titlebar titlebar;
+            // titlebar.draw(cakery_window_);
         }
-
-        // tests
-        ImGui::Begin("FPS");
-        auto fps = dodoe::g_context.time_system->get_fps();
-        ImGui::Text("fps: %d", fps);
-        ImGui::End();
     }
 }

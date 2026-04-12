@@ -5,33 +5,22 @@
 #ifndef CAKERY_HIERARCHY_PANEL_H
 #define CAKERY_HIERARCHY_PANEL_H
 
-#include "cakery/command/scene_hierarchy_cmd.h"
+#include "dopch.h"
 
-namespace dodoe {
-    class GameObject;
-    class Scene;
-}
+#include "runtime/function/world/scene.h"
+#include "runtime/function/world/entity.h"
 
 namespace cakery {
     class HierarchyPanel {
-        friend class SceneHierarchyHandler;
-    public:
-        HierarchyPanel();
-        ~HierarchyPanel() = default;
-
-        void on_render();
-
-        void set_context(dodoe::Scene* context);
-
-    private:
         dodoe::Scene* context_ {nullptr};
-        dodoe::GameObject* selected_game_object_ {nullptr};
-
-        SceneHierarchyHandler handler_;
-
-        void draw_game_object_node_(dodoe::GameObject* game_object);
+        dodoe::ui32 editing_handle_{0};
+    public:
+        void draw();
+        void setContext(dodoe::Scene* context);
+    private:
+        void drawEntityNode(dodoe::Entity entity);
     };
-}
+} // cakery
 
 
 #endif//CAKERY_HIERARCHY_PANEL_H

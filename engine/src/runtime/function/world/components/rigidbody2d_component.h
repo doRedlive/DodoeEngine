@@ -11,38 +11,36 @@
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
-
-    namespace component {
-
-        struct Rigidbody2dComponent {
-            enum class BodyType { Static = 0, Dynamic, Kinematic };
-            BodyType type{ BodyType::Static };
-            bool fixed_rotation{ false };
-            float gravity_scale{ 1.0f };
-            b2BodyId body_id{ b2_nullBodyId };
-
-            Rigidbody2dComponent() = default;
-
-            void set_linear_velocity(const Vector2f& velocity) {
-                if (B2_IS_NON_NULL(body_id)) {
-                    b2Body_SetLinearVelocity(body_id, {velocity.x, velocity.y});
-                }
-            }
-
-            void apply_force_to_center(const Vector2f& force, bool wake) {
-                if (B2_IS_NON_NULL(body_id)) {
-                    b2Body_ApplyForceToCenter(body_id, {force.x, force.y}, wake);
-                }
-            }
-
-            void apply_linear_impulse_to_center(const Vector2f& impulse, bool wake) {
-                if (B2_IS_NON_NULL(body_id)) {
-                    b2Body_ApplyLinearImpulseToCenter(body_id, {impulse.x, impulse.y}, wake);
-                }
-            }
+    struct Rigidbody2dComponent {
+        enum class BodyType {
+            Static = 0,
+            Dynamic = 1,
+            Kinematic = 2
         };
 
-    } // component
+        BodyType type{ BodyType::Static };
+        float gravity_scale{1.0f};
+        bool fixed_rotation{ false };
+        b2BodyId body_id{ b2_nullBodyId };
+
+        void setLinearVelocity(const Vector2f& velocity) {
+            if (B2_IS_NON_NULL(body_id)) {
+                b2Body_SetLinearVelocity(body_id, {velocity.x, velocity.y});
+            }
+        }
+
+        void applyForceToCenter(const Vector2f& force, bool wake) {
+            if (B2_IS_NON_NULL(body_id)) {
+                b2Body_ApplyForceToCenter(body_id, {force.x, force.y}, wake);
+            }
+        }
+
+        void applyLinearImpulseToCenter(const Vector2f& impulse, bool wake) {
+            if (B2_IS_NON_NULL(body_id)) {
+                b2Body_ApplyLinearImpulseToCenter(body_id, {impulse.x, impulse.y}, wake);
+            }
+        }
+    };
 
 } // dodoe
 

@@ -15,9 +15,7 @@
 namespace dodoe {
 
 	class Scene;
-	namespace system {
-		class Physics2dSystem;
-	}
+	class Physics2dSystem;
 
 	struct PhysicsSystemCreateInfo {
 		float gravity{-9.8f};
@@ -25,7 +23,7 @@ namespace dodoe {
 	};
 
 	class PhysicsSystem {
-		friend class system::Physics2dSystem;
+		friend class Physics2dSystem;
 	public:
 		static Scope<PhysicsSystem> create(const PhysicsSystemCreateInfo& create_info);
 		static void destroy(Scope<PhysicsSystem>& physics_system);

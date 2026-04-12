@@ -5,6 +5,7 @@
 #include "../render_resource.h"
 #include "../render_helper.h"
 #include "../renderer_2d.h"
+#include "../camera/camera.h"
 
 #include "runtime/core/utils/common.h"
 #include "runtime/resource/resource_manager.h"
@@ -14,15 +15,8 @@
 
 namespace dodoe {
 
-	namespace {
-		const int k_MaxQuadCount = static_cast<int>(Renderer2d::k_MaxQuadCount);
-		const int k_MaxIndexCount = k_MaxQuadCount * 6;
-		const int k_MaxVertexCount = k_MaxQuadCount * 4;
-		const int k_MaxTextures = static_cast<int>(Renderer2d::k_MaxTextureCount);
-	}
-
-	SpritePass::SpritePass(const RenderPassCreateInfo& info, const std::vector<rhi::TextureHandle>& swapchain_targets, const Vector2i& target_extent)
-		: RenderPass(info), swapchain_targets_(swapchain_targets), target_extent_(target_extent) {
+	SpritePass::SpritePass(const RenderPassCreateInfo& info, size_t target_count, const Vector2i& target_extent, Camera* camera)
+		: RenderPass(info), target_extent_(target_extent), target_count_(target_count), camera_(camera) {
 		setName("SpritePass");
 	}
 
@@ -30,83 +24,109 @@ namespace dodoe {
 		createBuffers();
 		createBindingLayout();
 		createSampler();
+		createBindingSet({});
 		createFramebuffers();
 		createGraphicsPipeline();
-		cmd_list_ = device_->createCommandList();
 	}
 
-	void SpritePass::execute() {
+	void SpritePass::execute(size_t index) {
 		const auto& batches = Renderer2d::swapQuadCpuBatches();
+		const size_t framebuffer_index = index % framebuffers_.size();
+		auto framebuffer = framebuffers_[framebuffer_index];
+		auto scene_target = scene_targets_[framebuffer_index];
+
+		std::vector<rhi::BindingSetHandle> batch_binding_sets;
+		batch_binding_sets.reserve(batches.size());
+		for (const auto& batch : batches) {
+			if (!checkBindingSet(batch.textures)) {
+				createBindingSet(batch.textures);
+			}
+			batch_binding_sets.push_back(binding_set_);
+		}
+
+		auto cmd_list = device_->createCommandList();
+		cmd_list->open();
+		cmd_list->setTextureState(scene_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
+		cmd_list->commitBarriers();
+		cmd_list->clearTextureFloat(scene_target, rhi::AllSubresources, rhi::Color(0.1f));
+
 		if (batches.empty()) {
+			cmd_list->setTextureState(scene_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+			cmd_list->commitBarriers();
+			cmd_list->close();
+			device_->executeCommandList(cmd_list);
 			return;
 		}
 
-		const size_t framebuffer_index = current_framebuffer_index_ % framebuffers_.size();
-		auto framebuffer = framebuffers_[framebuffer_index];
+		const Matrix4f view_projection = camera_ ? camera_->view_projection_matrix() : Matrix4f(1.0f);
+		cmd_list->writeBuffer(camera_buffer_, &view_projection, sizeof(Matrix4f));
 
-		cmd_list_->open();
-
-		for (const auto& batch : batches) {
+		for (size_t batch_index = 0; batch_index < batches.size(); ++batch_index) {
+			const auto& batch = batches[batch_index];
 			if (batch.indices.empty() || batch.vertices.empty()) {
 				continue;
 			}
-
-			createBindingSet(batch.textures);
+			if (batch_index >= batch_binding_sets.size() || !batch_binding_sets[batch_index]) {
+				continue;
+			}
 
 			const size_t vertex_byte_size = sizeof(QuadVertex) * batch.vertices.size();
-			if (vertex_byte_size <= vertex_buffer_->getDesc().byteSize) {
-				cmd_list_->writeBuffer(vertex_buffer_, batch.vertices.data(), vertex_byte_size);
-			} else {
-				DoError("SpritePass: vertex buffer is not large enough.");
-				continue;
-			}
-
 			const size_t index_byte_size = sizeof(ui32) * batch.indices.size();
-			if (index_byte_size <= index_buffer_->getDesc().byteSize) {
-				cmd_list_->writeBuffer(index_buffer_, batch.indices.data(), index_byte_size);
-			} else {
-				DoError("SpritePass: index buffer is not large enough.");
-				continue;
-			}
+			cmd_list->writeBuffer(vertex_buffer_, batch.vertices.data(), vertex_byte_size);
+			cmd_list->writeBuffer(index_buffer_, batch.indices.data(), index_byte_size);
 
 			auto state = rhi::GraphicsState()
 				.setPipeline(graphics_pipeline_)
 				.setFramebuffer(framebuffer)
 				.setViewport(rhi::ViewportState().addViewportAndScissorRect(
 					rhi::Viewport(static_cast<float>(target_extent_.x), static_cast<float>(target_extent_.y))))
-				.addBindingSet(binding_set_)
+				.addBindingSet(batch_binding_sets[batch_index])
 				.addVertexBuffer(rhi::VertexBufferBinding().setBuffer(vertex_buffer_).setSlot(0).setOffset(0))
 				.setIndexBuffer(rhi::IndexBufferBinding().setBuffer(index_buffer_).setFormat(rhi::Format::R32_UINT).setOffset(0));
 
-			cmd_list_->setGraphicsState(state);
+			cmd_list->setGraphicsState(state);
 			auto args = rhi::DrawArguments()
 				.setVertexCount(static_cast<ui32>(batch.indices.size()))
 				.setInstanceCount(1);
-			cmd_list_->drawIndexed(args);
+			cmd_list->drawIndexed(args);
 		}
 
-		cmd_list_->close();		
+		cmd_list->setTextureState(scene_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+		cmd_list->commitBarriers();
 
-		device_->executeCommandList(cmd_list_);
-		++current_framebuffer_index_;
+		cmd_list->close();
+		device_->executeCommandList(cmd_list);
 	}
 
 	void SpritePass::cleanup() {
-
+		scene_targets_.clear();
+		framebuffers_.clear();
 	}
 
 	void SpritePass::createFramebuffers() {
+		scene_targets_.clear();
 		framebuffers_.clear();
-		framebuffers_.reserve(swapchain_targets_.size());
-		current_framebuffer_index_ = 0;
+		scene_targets_.reserve(target_count_);
+		framebuffers_.reserve(target_count_);
 
-		for (const auto& target : swapchain_targets_) {
+		for (size_t index = 0; index < target_count_; ++index) {
+			auto texture_desc = rhi::TextureDesc()
+				.setDimension(rhi::TextureDimension::Texture2D)
+				.setFormat(rhi::Format::RGBA8_UNORM)
+				.setWidth(target_extent_.x)
+				.setHeight(target_extent_.y)
+				.setIsRenderTarget(true)
+				.enableAutomaticStateTracking(rhi::ResourceStates::ShaderResource)
+				.setDebugName("SpritePass Scene Target");
+			auto target = device_->createTexture(texture_desc);
+			if (!target) { continue; }
+			scene_targets_.push_back(target);
+
 			auto framebuffer_desc = rhi::FramebufferDesc().addColorAttachment(target);
 			auto framebuffer = device_->createFramebuffer(framebuffer_desc);
-			if (framebuffer) {
-				framebuffers_.push_back(framebuffer);
-			}
+			framebuffers_.push_back(framebuffer);
 		}
+
 	}
 
 	void SpritePass::createGraphicsPipeline() {
@@ -163,8 +183,21 @@ namespace dodoe {
 
 		rhi::DepthStencilState depth_stencil_state;
 		depth_stencil_state.disableDepthTest().disableDepthWrite().disableStencil();
+		rhi::BlendState blend_state;
+		blend_state.targets[0]
+			.enableBlend()
+			.setSrcBlend(rhi::BlendFactor::SrcAlpha)
+			.setDestBlend(rhi::BlendFactor::OneMinusSrcAlpha)
+			.setBlendOp(rhi::BlendOp::Add)
+			.setSrcBlendAlpha(rhi::BlendFactor::One)
+			.setDestBlendAlpha(rhi::BlendFactor::OneMinusSrcAlpha)
+			.setBlendOpAlpha(rhi::BlendOp::Add);
+		rhi::RasterState raster_state;
+		raster_state.setCullNone();
 		rhi::RenderState render_state;
+		render_state.setBlendState(blend_state);
 		render_state.setDepthStencilState(depth_stencil_state);
+		render_state.setRasterState(raster_state);
 		pipeline_desc.setRenderState(render_state);
 
 		graphics_pipeline_ = device_->createGraphicsPipeline(pipeline_desc, framebuffer_info);
@@ -175,18 +208,26 @@ namespace dodoe {
 
 	void SpritePass::createBuffers() {
         auto vertex_buffer_desc = rhi::BufferDesc()
-            .setByteSize(sizeof(QuadVertex) * k_MaxVertexCount)
+            .setByteSize(sizeof(QuadVertex) * Renderer2d::MaxQuadCount * 4)
             .setIsVertexBuffer(true)
             .enableAutomaticStateTracking(rhi::ResourceStates::VertexBuffer)
             .setDebugName("SpritePass Vertex Buffer");
         vertex_buffer_ = device_->createBuffer(vertex_buffer_desc); 
         
         auto index_buffer_desc = rhi::BufferDesc()
-            .setByteSize(sizeof(ui32) * k_MaxIndexCount)
+            .setByteSize(sizeof(ui32) * Renderer2d::MaxQuadCount * 6)
             .setIsIndexBuffer(true)
             .enableAutomaticStateTracking(rhi::ResourceStates::IndexBuffer)
             .setDebugName("SpritePass Index Buffer");
         index_buffer_ = device_->createBuffer(index_buffer_desc);
+
+		auto camera_buffer_desc = rhi::BufferDesc()
+			.setByteSize(sizeof(Matrix4f))
+			.setIsConstantBuffer(true)
+			.setIsVolatile(true)
+			.setMaxVersions(16)
+			.setDebugName("SpritePass Camera Buffer");
+		camera_buffer_ = device_->createBuffer(camera_buffer_desc);
 	}
 
 	void SpritePass::createSampler() {
@@ -196,53 +237,51 @@ namespace dodoe {
 	void SpritePass::createBindingLayout() {
 		auto binding_desc = rhi::BindingLayoutDesc()
 			.setVisibility(rhi::ShaderType::All)
-			.addItem(rhi::BindingLayoutItem::Texture_SRV(0).setSize(k_MaxTextures))
-			.addItem(rhi::BindingLayoutItem::Sampler(0));
+			.addItem(rhi::BindingLayoutItem::Texture_SRV(0).setSize(Renderer2d::MaxTextureCount))
+			.addItem(rhi::BindingLayoutItem::Sampler(0))
+			.addItem(rhi::BindingLayoutItem::VolatileConstantBuffer(0));
 		binding_layout_ = device_->createBindingLayout(binding_desc);
 		bound_texture_ids_.clear();
-		binding_set_ = {};
-		DoInfo("createBindingLayout called. new layout ptr: {}", (void*)binding_layout_.Get());
 	}
 
-	void SpritePass::createBindingSet(const std::vector<identifier>& cpu_texture_ids) {
-
-		const size_t texture_count = (std::min)(cpu_texture_ids.size(), static_cast<size_t>(k_MaxTextures));
-
-		const bool layout_matches = binding_set_ && (binding_set_->getLayout() == binding_layout_.Get());
-		if (layout_matches && bound_texture_ids_.size() == texture_count) {
-			bool same = true;
-			for (size_t i = 0; i < texture_count; ++i) {
-				if (bound_texture_ids_[i] != cpu_texture_ids[i]) {
-					same = false;
-					break;
-				}
-			}
-			if (same) return;
-		}
+	void SpritePass::createBindingSet(const std::vector<identifier>& texture_ids) {
+		const size_t texture_count = (std::min)(texture_ids.size(), static_cast<size_t>(Renderer2d::MaxTextureCount));
 
 		auto fallback = TextureManager::self().getFallbackTexture();
-		if (!fallback) {
-			DoError("SpritePass: fallback texture is null.");
-			return;
-		}
 
 		rhi::BindingSetDesc binding_set_desc;
-		for (uint32_t i = 0; i < static_cast<uint32_t>(k_MaxTextures); ++i) {
+		for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer2d::MaxTextureCount); ++i) {
 			rhi::TextureHandle texture = fallback;
 			if (i < texture_count) {
-				const identifier texture_id = cpu_texture_ids[i];
+				const identifier texture_id = texture_ids[i];
 				if (texture_id != 0) {
-					const auto texture_res = ResourceManager::self().get_texture(texture_id);
+					const auto texture_res = ResourceManager::self().getTextureRes(texture_id);
 					texture = TextureManager::self().getTexture(texture_id, texture_res);
 				}
 			}
 			binding_set_desc.addItem(rhi::BindingSetItem::Texture_SRV(0, texture).setArrayElement(i));
 		}
 		binding_set_desc.addItem(rhi::BindingSetItem::Sampler(0, sampler_));
+		binding_set_desc.addItem(rhi::BindingSetItem::ConstantBuffer(0, camera_buffer_));
 
 		binding_set_ = device_->createBindingSet(binding_set_desc, binding_layout_);
-		bound_texture_ids_.assign(cpu_texture_ids.begin(), cpu_texture_ids.begin() + texture_count);
-		DoInfo("createBindingSet. passed layout ptr: {}, returned set layout ptr: {}", (void*)binding_layout_.Get(), (void*)binding_set_->getLayout());
+		bound_texture_ids_.assign(texture_ids.begin(), texture_ids.begin() + texture_count);
+	}
+
+	bool SpritePass::checkBindingSet(const std::vector<identifier>& texture_ids) {
+		if (!binding_set_) {
+			return false;
+		}
+		const size_t texture_count = (std::min)(texture_ids.size(), static_cast<size_t>(Renderer2d::MaxTextureCount));
+		if (bound_texture_ids_.size() == texture_count) {
+			for (size_t i = 0; i < texture_count; ++i) {
+				if (bound_texture_ids_[i] != texture_ids[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+		return false;
 	}
 
 } // dodoe

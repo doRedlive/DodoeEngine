@@ -22,6 +22,8 @@ namespace dodoe {
         [[nodiscard]] rhi::TextureHandle getTexture(identifier texture_id, const TextureRes& res);
         [[nodiscard]] rhi::TextureHandle getTexture(const TextureRes& res);
         [[nodiscard]] rhi::TextureHandle getFallbackTexture();
+    private:
+        void createFallbackTexture();
     };
 
     // class ShaderLibrary {

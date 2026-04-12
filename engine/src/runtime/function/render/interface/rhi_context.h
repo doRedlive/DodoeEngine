@@ -19,17 +19,21 @@ namespace dodoe {
         bool enable_validation{true};
     };
 
-    class RhiBackend {
+    class RhiContext {
         Scope<VulkanBackend> vulkan_backend_{nullptr};
         rhi::DeviceHandle device_{};
         std::vector<rhi::TextureHandle> swapchain_textures_{};
     public:
-        static Scope<RhiBackend> create(const RhiBackendCreateInfo& create_info);
-        static void destroy(Scope<RhiBackend>& backend);
+        static Scope<RhiContext> create(const RhiBackendCreateInfo& create_info);
+        static void destroy(Scope<RhiContext>& backend);
 
         [[nodiscard]] rhi::DeviceHandle getDevice() const { return device_; }
         [[nodiscard]] const std::vector<rhi::TextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
         [[nodiscard]] Vector2i getSwapchainExtent2d() const { return vulkan_backend_->getSwapchainExtent2d(); }
+        [[nodiscard]] bool acquireNextSwapchainImage(uint32_t& image_index);
+        [[nodiscard]] bool presentSwapchainImage(uint32_t image_index);
+
+        [[nodiscard]] VulkanBackend* getVulkanBackend() const { return vulkan_backend_.get(); }
 
     private:
         void initialize(const RhiBackendCreateInfo& create_info);

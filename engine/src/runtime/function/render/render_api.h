@@ -24,7 +24,7 @@ namespace dodoe {
     public:
         static void initialize(RenderApiInitInfo init_info);
 
-        static RenderApiType api_type();
+        static RenderApiType apiType();
 
     private:
         static RenderApiType api_type_;

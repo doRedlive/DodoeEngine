@@ -4,45 +4,39 @@
 
 #include "hierarchy_panel.h"
 
-#include "cakery_helper.h"
+#include "../cakery_event.h"
+
+#include "runtime/core/event/event_system.h"
+#include "runtime/function/world/components.h"
+
+#include <cstring>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
-#include "command/command_handler.h"
-
-#include "runtime/core/world/components.h"
-#include "runtime/core/world/game_object.h"
-
-#include "runtime/function/context.h"
-
 
 namespace cakery {
 
-    HierarchyPanel::HierarchyPanel() : handler_(SceneHierarchyHandler(*this)) {
-
-    }
-
-    void HierarchyPanel::set_context(dodoe::Scene* context) {
+    void HierarchyPanel::setContext(dodoe::Scene* context) {
         context_ = context;
     }
 
-    void HierarchyPanel::on_ui_render() {
+    void HierarchyPanel::draw() {
         ImGui::Begin("Scene Hierarchy");
 
-        if (context_) {
-            for (const auto game_objects = context_->get_all_game_objects(); const auto& game_object: game_objects) {
-                if (!game_object) continue;
-                draw_game_object_node_(game_object);
-            }
+        if (!context_) {
+            ImGui::End();
+            return;
+        }
 
+        for (const auto& entities = context_->getEntities(); const auto& entity : entities) {
+            drawEntityNode(entity);
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
-                g_cakery_helper.set_selected_game_object(nullptr);
-                selected_game_object_ = nullptr;
+                dodoe::EventSystem::enqueue_event<NonSelectEntityEvent>();
             }
 
             if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
-                if (ImGui::MenuItem("Create GameObject")) {
-                    CommandHandler::push_command(dodoe::create_ref<SceneHierarchyHandler::CreateGameObjectCmd>(handler_));
+                if (ImGui::MenuItem("Create Entity")) {
+                    context_->create_entity("Entity");
                 }
                 ImGui::EndPopup();
             }
@@ -51,40 +45,61 @@ namespace cakery {
         ImGui::End();
     }
 
-    void HierarchyPanel::draw_game_object_node_(dodoe::GameObject* game_object) {
-        const auto name = game_object->get_name();
-        ImGuiTreeNodeFlags flags = (selected_game_object_ == game_object ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
-        flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
+    void HierarchyPanel::drawEntityNode(dodoe::Entity entity) {
+        const auto& name = entity.get_component<dodoe::IDComponent>().getName();
+        static char edit_name_buf[256]{};
 
-        const bool is_opened = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(game_object->entity_handle_)), flags,"%s", name.c_str());
+        ImGui::PushID(static_cast<int>(static_cast<dodoe::ui32>(entity)));
+
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
+        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+        ImGui::TreeNodeEx("##entity_node", flags, "%s", name.c_str());
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-            selected_game_object_ = game_object;
-            g_cakery_helper.set_selected_game_object(selected_game_object_);
-            DoDebug("SceneHierarchy: selected '{}' ptr={}.", name, static_cast<void*>(game_object));
+            dodoe::EventSystem::enqueue_event<SelectEntityEvent>(entity);
         }
 
-        if (ImGui::BeginPopupContextItem()) {
-            if (ImGui::MenuItem("Delete GameObject")) {
-                CommandHandler::push_command(dodoe::create_ref<SceneHierarchyHandler::DeleteGameObjectCmd>(handler_, game_object));
-                if (g_cakery_helper.get_selected_game_object() == game_object) {
-                    g_cakery_helper.set_selected_game_object(nullptr);
-                    selected_game_object_ = nullptr;
-                }
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+            editing_handle_ = static_cast<dodoe::ui32>(entity);
+            {
+                const size_t copy_len = (std::min)(name.size(), sizeof(edit_name_buf) - 1);
+                std::memcpy(edit_name_buf, name.data(), copy_len);
+                edit_name_buf[copy_len] = '\0';
             }
-            if (ImGui::MenuItem("Create Child GameObject")) {
-                CommandHandler::push_command(dodoe::create_ref<SceneHierarchyHandler::CreateChildGameObjectCmd>(handler_, game_object));
+            ImGui::OpenPopup("EditEntityPopup");
+        }
+
+        bool request_delete = false;
+        if (ImGui::BeginPopupContextItem("EntityContext")) {
+            if (ImGui::MenuItem("Delete")) {
+                request_delete = true;
             }
             ImGui::EndPopup();
         }
 
-        if (is_opened) {
-            constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-            for (const auto children = game_object->get_children(); const auto& child : children) {
-                draw_game_object_node_(child);
+        if (editing_handle_ == static_cast<dodoe::ui32>(entity) && ImGui::BeginPopup("EditEntityPopup")) {
+            ImGui::SetKeyboardFocusHere(0);
+            const bool name_changed = ImGui::InputText("##edit_name", edit_name_buf, sizeof(edit_name_buf), ImGuiInputTextFlags_EnterReturnsTrue);
+            if (name_changed || ImGui::IsItemDeactivatedAfterEdit()) {
+                entity.get_component<dodoe::IDComponent>().setName(edit_name_buf);
             }
-            ImGui::TreePop();
+
+            if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                editing_handle_ = 0;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        } else if (editing_handle_ == static_cast<dodoe::ui32>(entity) && !ImGui::IsPopupOpen("EditEntityPopup")) {
+            editing_handle_ = 0;
         }
+
+        if (request_delete) {
+            dodoe::EventSystem::enqueue_event<NonSelectEntityEvent>();
+            context_->destroy_entity(entity);
+        }
+
+        ImGui::PopID();
     }
 
 }

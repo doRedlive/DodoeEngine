@@ -56,7 +56,7 @@ namespace dodoe {
     }
 
     Ref<Shader> ShaderLibrary::load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path) {
-        auto id = String2Hash(name);
+        auto id = string2hash(name);
         if (auto it = shader_umap_.find(id); it != shader_umap_.end()) {
             return it->second.shader;
         }
@@ -75,7 +75,7 @@ namespace dodoe {
     }
 
     Ref<Shader> ShaderLibrary::get_shader(const std::string& name) { 
-        auto id = String2Hash(name);
+        auto id = string2hash(name);
         if (auto it = shader_umap_.find(id); it != shader_umap_.end()) {
             return it->second.shader;
         }

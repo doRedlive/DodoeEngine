@@ -5,9 +5,9 @@
 #ifndef DODOE_APPLICATION_H
 #define DODOE_APPLICATION_H
 
-#include "dopch.h"
+#include "runtime/dopch.h"
 
-#include "function/render/render_api.h"
+#include "runtime/function/render/render_api.h"
 
 namespace dodoe {
     class SystemContext;

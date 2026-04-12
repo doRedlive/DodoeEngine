@@ -37,7 +37,7 @@ namespace dodoe {
 		~MainCameraPass() override = default;
 
 		void setup() override;
-		void execute() override;
+		void execute(size_t index) override;
 		void cleanup() override;
 
 	private:

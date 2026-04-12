@@ -48,9 +48,8 @@ namespace dodoe {
 		if (device_ == device && device_) {
 			return;
 		}
-
-		shutdown();
 		device_ = device;
+		createFallbackTexture();
 	}
 
 	void TextureManager::shutdown() {
@@ -87,10 +86,10 @@ namespace dodoe {
 	}
 
 	rhi::TextureHandle TextureManager::getFallbackTexture() {
-		if (fallback_texture_) {
-			return fallback_texture_;
-		}
+		return fallback_texture_;
+	}
 
+	void TextureManager::createFallbackTexture() {
 		auto texture_desc = rhi::TextureDesc()
 			.setDimension(rhi::TextureDimension::Texture2D)
 			.setWidth(1)
@@ -100,14 +99,8 @@ namespace dodoe {
 			.enableAutomaticStateTracking(rhi::ResourceStates::ShaderResource)
 			.setDebugName("Render TextureManager Fallback");
 		auto handle = device_->createTexture(texture_desc);
-		DoAssert(handle);
 
 		auto upload_cmd = device_->createCommandList();
-		if (!upload_cmd) {
-			fallback_texture_ = handle;
-			return handle;
-		}
-
 		const unsigned char white[4] = {255, 255, 255, 255};
 		upload_cmd->open();
 		upload_cmd->writeTexture(handle, 0, 0, white, sizeof(white));
@@ -115,7 +108,7 @@ namespace dodoe {
 		device_->executeCommandList(upload_cmd);
 
 		fallback_texture_ = handle;
-		return handle;
+		DoAssert(fallback_texture_);
 	}
 
 } // dodoe

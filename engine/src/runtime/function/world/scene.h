@@ -13,6 +13,7 @@
 #include "entt/entt.hpp"
 
 namespace dodoe {
+    class World;
     class Entity;
     class RenderSystem;
     class SceneManager;
@@ -20,6 +21,11 @@ namespace dodoe {
     class Scene {
         friend class World;
         friend class Entity;
+
+        World& world_;
+        Registry reg_;
+        std::string name_;
+        std::unordered_map<Uuid, Entity> entity_umap_;
     public:
         Scene(World& world, const std::string& name);
         ~Scene();
@@ -50,14 +56,9 @@ namespace dodoe {
         void add_entity(Entity entity);
         void destroy_entity(Entity entity);
         [[nodiscard]] Entity get_entity(const std::string& tag);
+        [[nodiscard]] std::vector<Entity> getEntities();
 
     private:
-        World& world_;
-        std::string name_;
-
-        Registry reg_;
-        std::unordered_map<Uuid, Entity> entity_umap_;
-
         template<typename T>
         void on_component_add_(Entity entity, T& component) { }
     };

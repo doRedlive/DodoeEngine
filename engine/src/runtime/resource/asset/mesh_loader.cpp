@@ -176,7 +176,7 @@ namespace dodoe {
     }
 
     ModelRes MeshLoader::loadModel(const std::string& id, const std::string& path) {
-        return loadModel(String2Hash(id), path);
+        return loadModel(string2hash(id), path);
     }
 
     ModelRes MeshLoader::getModel(identifier id) {
@@ -194,11 +194,11 @@ namespace dodoe {
     }
 
     ModelRes MeshLoader::getModel(const std::string& id) {
-        return getModel(String2Hash(id));
+        return getModel(string2hash(id));
     }
 
     ModelRes MeshLoader::getModel(const std::string& id, const std::string& path) {
-        return getModel(String2Hash(id), path);
+        return getModel(string2hash(id), path);
     }
 
     MeshRes MeshLoader::getMesh(identifier id) const {

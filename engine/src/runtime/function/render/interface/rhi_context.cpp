@@ -2,7 +2,7 @@
 // Created by Redlive on 2026/4/5.
 //
 
-#include "rhi_backend.h"
+#include "rhi_context.h"
 
 #include "../render_api.h"
 
@@ -34,24 +34,24 @@ namespace dodoe {
 
     }
 
-    Scope<RhiBackend> RhiBackend::create(const RhiBackendCreateInfo& create_info) {
-        auto context = create_scope<RhiBackend>();
+    Scope<RhiContext> RhiContext::create(const RhiBackendCreateInfo& create_info) {
+        auto context = create_scope<RhiContext>();
         context->initialize(create_info);
         return context;
     }
 
-    void RhiBackend::destroy(Scope<RhiBackend>& backend) {
+    void RhiContext::destroy(Scope<RhiContext>& backend) {
         if (!backend) return;
         backend->shutdown();
         backend.reset();
     }
     
-    void RhiBackend::initialize(const RhiBackendCreateInfo& create_info) {
+    void RhiContext::initialize(const RhiBackendCreateInfo& create_info) {
         if (create_info.api_type != RenderApiType::Vulkan) {
             return;
         }
 
-        vulkan_backend_ = VulkanBackend::create({create_info.window_handle, false});
+        vulkan_backend_ = VulkanBackend::create({create_info.window_handle, true});
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(vulkan_backend_->getInstance()));
@@ -69,17 +69,7 @@ namespace dodoe {
         device_desc.deviceExtensions = const_cast<const char**>(vulkan_backend_->getDeviceExtensions().data());
         device_desc.numDeviceExtensions = vulkan_backend_->getDeviceExtensions().size();
 
-        try {
-            device_ = rhi::vulkan::createDevice(device_desc);
-        }
-        catch (const std::exception& e) {
-            DoError("RhiBackend::initialize: nvrhi createDevice exception: {}", e.what());
-            device_ = nullptr;
-        }
-        catch (...) {
-            DoError("RhiBackend::initialize: nvrhi createDevice unknown exception.");
-            device_ = nullptr;
-        }
+        device_ = rhi::vulkan::createDevice(device_desc);
         DoAssert(device_ != nullptr, "RhiBackend::initialize: failed to create nvrhi vulkan device.");
 
         if (create_info.enable_validation) {
@@ -90,16 +80,17 @@ namespace dodoe {
         createSwapchainTextures();
     }
 
-    void RhiBackend::shutdown() {
+    void RhiContext::shutdown() {
 		if (device_) {
 			device_->waitForIdle();
+			device_->runGarbageCollection();
 		}
         swapchain_textures_.clear();
         device_ = nullptr;
         VulkanBackend::destroy(vulkan_backend_);
     }
 
-    void RhiBackend::createSwapchainTextures() {
+    void RhiContext::createSwapchainTextures() {
         if (!device_ || !vulkan_backend_) {
             return;
         }
@@ -119,6 +110,20 @@ namespace dodoe {
             rhi::TextureHandle swapchain_texture = device_->createHandleForNativeTexture(rhi::ObjectTypes::VK_Image, image, texture_desc);
             swapchain_textures_.push_back(swapchain_texture);
         }
+    }
+
+    bool RhiContext::acquireNextSwapchainImage(uint32_t& image_index) {
+        if (!vulkan_backend_) {
+            return false;
+        }
+        return vulkan_backend_->acquireNextImage(image_index);
+    }
+
+    bool RhiContext::presentSwapchainImage(uint32_t image_index) {
+        if (!vulkan_backend_) {
+            return false;
+        }
+        return vulkan_backend_->presentImage(image_index);
     }
 
 } // dodoe

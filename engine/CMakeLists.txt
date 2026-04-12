@@ -9,6 +9,10 @@ add_subdirectory(src/sandbox)
 add_subdirectory(src/editor)
 add_subdirectory(src/metaparser)
 
+if(TARGET shaders)
+	add_dependencies(DodoeRuntime shaders)
+endif()
+
 set(CODEGEN_TARGET "DodoePreCompile")
 include(src/precompile/precompile.cmake)
 set_target_properties("${CODEGEN_TARGET}" PROPERTIES FOLDER "Engine")

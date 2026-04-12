@@ -7,25 +7,18 @@
 
 #include "dopch.h"
 
-#include "runtime/function/world/entity.h"
 #include "runtime/function/world/registry.h"
-#include "runtime/function/world/world.h"
 
 namespace dodoe {
 
-    namespace system {
+    class System {
+    public:
+        virtual ~System() = default;
 
-        class System {
-        public:
-            virtual ~System() = default;
-
-            virtual void start(Registry& reg) { }
-            virtual void update(Registry& reg) { }
-            virtual void finalize(Registry& reg) { }
-
-        };
-
-    } // system
+        virtual void start(Registry& reg) { (void)reg; }
+        virtual void update(Registry& reg, float dt) { (void)reg; (void)dt; }
+        virtual void finalize(Registry& reg) { (void)reg; }
+    };
 
 } // dodoe
 

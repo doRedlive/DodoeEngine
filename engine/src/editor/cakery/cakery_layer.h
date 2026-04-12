@@ -10,10 +10,8 @@
 #include "panels/hierarchy_panel.h"
 #include "panels/project_panel.h"
 #include "panels/viewport_panel.h"
+#include "panels/dockspace_panel.h"
 
-#include "command/command_handler.h"
-
-#include "runtime/core/application.h"
 #include "runtime/core/layer/layer.h"
 #include "runtime/function/window/window.h"
 
@@ -23,21 +21,20 @@ namespace cakery {
         explicit CakeryLayer(const std::string& name);
         ~CakeryLayer() override;
 
-        void on_attach() override;
-        void on_detach() override;
-        void on_update(float delta_time) override;
-        void on_render() override;
+        void attach() override;
+        void detach() override;
+        void updateTick(float delta_time) override;
+        void renderTick() override;
 
     private:
         dodoe::Window* cakery_window_{ nullptr };
 
-        bool is_custom_titlebar_{ true };
-
         HierarchyPanel hierarchy_panel_{};
         ProjectPanel project_panel_{};
-        InspectorPanel inspector_panel_{};
+        //InspectorPanel inspector_panel_{};
         ConsolePanel console_panel_{};
-        //ViewportPanel viewport_panel_{};
+        DockSpacePanel dockspace_panel_{};
+        ViewportPanel viewport_panel_;
     };
 } // cakery
 

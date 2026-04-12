@@ -60,14 +60,14 @@ namespace dodoe {
         // ---------------------RESOURCE-------------------------
         ResourceManager::self().initialize();
         // ---------------------RENDER-------------------------
-        if (!window_manager->initialize({create_info.spec})) return false;
-        render_system->initialize({window_manager.get(), create_info.spec.render_api_type});
+        window_manager->initialize({create_info.spec});
         ui_system->initialize(window_manager.get());
+        render_system->initialize({window_manager.get(), ui_system.get(), create_info.spec.render_api_type});
         
         // ---------------------GAME-------------------------
         world = World::create({"Main"});
 
-        input_manager->initialize({window_manager->active_window()->viewport_manager.get()});
+        input_manager->initialize({window_manager->window()->viewport_manager.get()});
         physics_system = PhysicsSystem::create({});
         script_system  = ScriptSystem::create({});
  
@@ -76,6 +76,7 @@ namespace dodoe {
 
     bool SystemContext::shutdown_systems() {
         // ---------------------GAME-------------------------
+        World::destroy(world);
         ScriptSystem::destroy(script_system);
         PhysicsSystem::destroy(physics_system);
         input_manager->shutdown();
@@ -83,10 +84,10 @@ namespace dodoe {
         // ---------------------RESOURCE-------------------------
         ResourceManager::self().shutdown();
         // ---------------------RENDER-------------------------
-        ui_system->shutdown();
-        ui_system.reset();
         render_system->shutdown();
         render_system.reset();
+        ui_system->shutdown();
+        ui_system.reset();
         window_manager->shutdown();
         window_manager.reset();
         // ---------------------CORE-------------------------
@@ -111,7 +112,7 @@ namespace dodoe {
 
     void SystemContext::update_tick(const float delta_time) {
         for (auto& layer : layer_stack) {
-            layer->on_update(delta_time);
+            layer->updateTick(delta_time);
         }
 
         input_manager->update();
@@ -121,12 +122,11 @@ namespace dodoe {
 
     void SystemContext::render_tick() {
         render_system->prepare();
-        ui_system->begin_render();
+        ui_system->prepare();
 
         for (auto& layer : layer_stack) {
-            layer->on_render();
+            layer->renderTick();
         }
-        ui_system->end_render();
         render_system->present();
     }
 } // dodoe

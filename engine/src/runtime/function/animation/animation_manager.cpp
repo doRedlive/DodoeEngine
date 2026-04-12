@@ -4,7 +4,7 @@
 
 #include "animation_manager.h"
 
-#include "core/utils/common.h"
+#include "runtime/core/utils/common.h"
 
 namespace dodoe {
 

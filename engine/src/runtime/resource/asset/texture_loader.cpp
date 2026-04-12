@@ -6,6 +6,8 @@
 
 #include "runtime/core/utils/common.h"
 
+#include <cstring>
+
 #include "stb_image.h"
 
 namespace dodoe {
@@ -37,7 +39,7 @@ namespace dodoe {
     }
 
     TextureRes TextureLoader::loadTexture(const std::string& id, const std::string& path) {
-        return loadTexture(static_cast<identifier>(String2Hash(id)), path);
+        return loadTexture(static_cast<identifier>(string2hash(id)), path);
     }
 
     TextureRes TextureLoader::loadTexture(identifier id, const std::string& path) {
@@ -58,12 +60,15 @@ namespace dodoe {
             return {};
         }
 
-        auto texture_data = create_ref<TextureData>(width, height, data);
+        const size_t byte_count = static_cast<size_t>(width) * static_cast<size_t>(height) * 4u;
+        auto* owned_pixels = new unsigned char[byte_count];
+        std::memcpy(owned_pixels, data, byte_count);
+        stbi_image_free(data);
+
+        auto texture_data = create_ref<TextureData>(width, height, owned_pixels);
 
         TextureRes res{id, texture_data, path, 10.0f};
         auto [inserted_it, _] = texture_umap_.emplace(id, std::move(res));
-
-        stbi_image_free(data);
 
         return inserted_it->second;
     }
@@ -85,7 +90,7 @@ namespace dodoe {
     }
 
     TextureRes TextureLoader::getTexture(const std::string& id) {
-        return getTexture(static_cast<identifier>(String2Hash(id)));
+        return getTexture(static_cast<identifier>(string2hash(id)));
     }
 
 } // dodoe

@@ -10,7 +10,7 @@
 
 namespace dodoe {
 
-    inline uint32_t String2Hash(const std::string& str) {
+    inline uint32_t string2hash(const std::string& str) {
         return entt::hashed_string{ str.c_str() }.value();
     }
 

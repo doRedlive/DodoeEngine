@@ -7,19 +7,19 @@
 
 namespace dodoe {
 
-    void RuntimeLayer::on_attach() {
+    void RuntimeLayer::attach() {
 
     }
 
-    void RuntimeLayer::on_detach() {
+    void RuntimeLayer::detach() {
 
     }
 
-    void RuntimeLayer::on_update(const float dt) {
+    void RuntimeLayer::updateTick(const float dt) {
 
     }
 
-    void RuntimeLayer::on_render() {
+    void RuntimeLayer::renderTick() {
 
     }
 

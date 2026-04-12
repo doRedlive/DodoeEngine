@@ -14,7 +14,7 @@ namespace dodoe {
         api_type_ = init_info.api_type;
     }
 
-    RenderApiType RenderApi::api_type() {
+    RenderApiType RenderApi::apiType() {
         return api_type_;
     }
 

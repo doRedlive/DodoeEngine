@@ -16,12 +16,13 @@ namespace dodoe {
 	protected:
 		std::string name_{};
 		rhi::DeviceHandle device_{};
+
 	public:
 		explicit RenderPass(const RenderPassCreateInfo& info) : device_(info.device) {}
 
 		virtual ~RenderPass() = default;
 
-		virtual void execute() = 0;
+		virtual void execute(size_t index) = 0;
 		virtual void setup() {}
 		virtual void cleanup() {}
 
