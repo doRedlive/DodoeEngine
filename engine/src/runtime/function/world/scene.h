@@ -57,6 +57,7 @@ namespace dodoe {
         void destroy_entity(Entity entity);
         [[nodiscard]] Entity get_entity(const std::string& tag);
         [[nodiscard]] std::vector<Entity> getEntities();
+        [[nodiscard]] Entity getEntityByUUID(Uuid uuid);
 
     private:
         template<typename T>

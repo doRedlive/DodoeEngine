@@ -13,7 +13,7 @@ namespace dodoe {
     class FileSystem {
     public:
         static fs::path asset_path;
-        static fs::path script_core_path;
+        static fs::path ScriptModulePath;
 
         static std::vector<char> readFile(const std::string& path);
 

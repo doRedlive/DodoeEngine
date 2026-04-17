@@ -9,7 +9,7 @@ namespace dodoe {
     RenderApiType RenderApi::api_type_ = RenderApiType::None;
 
     void RenderApi::initialize(RenderApiInitInfo init_info) {
-        DoAssert(init_info.api_type != RenderApiType::None, "The rendering api is not set correctly!");
+        DO_ASSERT(init_info.api_type != RenderApiType::None, "The rendering api is not set correctly!");
 
         api_type_ = init_info.api_type;
     }

@@ -16,6 +16,10 @@ namespace dodoe {
 
     }
 
+    UUID::UUID(const uint64_t value) : uuid_(value) {
+
+    }
+
     UUID::operator uint64_t() const {
         return uuid_;
     }

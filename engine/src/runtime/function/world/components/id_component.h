@@ -4,12 +4,19 @@
 
 #include "dopch.h"
 
+#include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/uuid.h"
+
+REFLECTION_TYPE(IDComponent)
 
 namespace dodoe {
 
-    struct IDComponent {
+    STRUCT(IDComponent, WhiteListFields) {
+        REFLECTION_BODY(IDComponent)
+
+        META(Enable)
         Uuid id{};
+        META(Enable)
         std::string name{};
 
         IDComponent() = default;

@@ -12,85 +12,27 @@
 
 namespace dodoe {
 
-    Scope<TextureLoader> TextureLoader::create(const TextureLoaderCreateInfo& create_info) {
-        auto context = create_scope<TextureLoader>();
-        context->initialize(create_info);
-        return context;
+    TextureBlob::TextureBlob(const std::string& path) {
+        load(path);
     }
 
-    void TextureLoader::destroy(Scope<TextureLoader>& texture_loader) {
-        if (!texture_loader) {
-            return;
+    TextureBlob::~TextureBlob() {
+        if (isValid()) {
+            free();
         }
-
-        texture_loader->shutdown();
-        texture_loader.reset();
     }
 
-    void TextureLoader::initialize(const TextureLoaderCreateInfo& info) {
-
-    }
-
-    void TextureLoader::shutdown() {
-        for (auto& [id, res] : texture_umap_) {
-            res.data.reset();
-        }
-        texture_umap_.clear();
-    }
-
-    TextureRes TextureLoader::loadTexture(const std::string& id, const std::string& path) {
-        return loadTexture(static_cast<identifier>(string2hash(id)), path);
-    }
-
-    TextureRes TextureLoader::loadTexture(identifier id, const std::string& path) {
-        if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
-            return it->second;
-        }
-
+    void TextureBlob::load(const std::string& path) {
         stbi_set_flip_vertically_on_load(true);
+        pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
-        int width = 0;
-        int height = 0;
-        int channels = 0;
-
-        unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-
-        if (!data) {
-            DoError("Load texture from {} failed!", path);
-            return {};
+        if (!pixels) {
+            DoError("Load texture {} error!", path);
         }
-
-        const size_t byte_count = static_cast<size_t>(width) * static_cast<size_t>(height) * 4u;
-        auto* owned_pixels = new unsigned char[byte_count];
-        std::memcpy(owned_pixels, data, byte_count);
-        stbi_image_free(data);
-
-        auto texture_data = create_ref<TextureData>(width, height, owned_pixels);
-
-        TextureRes res{id, texture_data, path, 10.0f};
-        auto [inserted_it, _] = texture_umap_.emplace(id, std::move(res));
-
-        return inserted_it->second;
     }
 
-    TextureRes TextureLoader::getTexture(identifier id) {
-        if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
-            return it->second;
-        }
-
-        DoError("TextureLoader::getTexture: texture not found.");
-        return {};
-    }
-
-    TextureRes TextureLoader::getTexture(identifier id, const std::string& path) {
-        if (auto it = texture_umap_.find(id); it != texture_umap_.end()) {
-            return it->second;
-        }
-        return loadTexture(id, path);
-    }
-
-    TextureRes TextureLoader::getTexture(const std::string& id) {
-        return getTexture(static_cast<identifier>(string2hash(id)));
+    void TextureBlob::free() {
+        if (pixels) stbi_image_free(pixels);
     }
 
 } // dodoe

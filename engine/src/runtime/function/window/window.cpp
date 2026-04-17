@@ -36,12 +36,10 @@ namespace dodoe {
         if (prop_.custom_titlebar) glfwWindowHint(GLFW_TITLEBAR, GLFW_FALSE);
 
         window_ = glfwCreateWindow(prop_.width, prop_.height, prop_.title, nullptr, nullptr);
-        DoAssert(window_, "The window create failed!");
+        DO_ASSERT(window_, "The window create failed!");
 
         int fb_width, fb_height;
         glfwGetFramebufferSize(window_, &fb_width, &fb_height);
-
-        viewport_manager = ViewportManager::create({Vector2f(640.0f, 360.0f), Vector2f(prop_.width, prop_.height), Vector2f(fb_width, fb_height)});
 
         if (prop_.custom_titlebar) {
             glfwSetTitlebarHitTestCallback(window_, [](GLFWwindow* native_window, int x, int y, int* hit) {});
@@ -53,7 +51,6 @@ namespace dodoe {
     }
 
     void Window::shutdown() {
-        ViewportManager::destroy(viewport_manager);
         if (window_) {
             glfwDestroyWindow(window_);
             window_ = nullptr;
@@ -69,6 +66,12 @@ namespace dodoe {
         return glfwGetX11Window(window_);
 #endif //DO_PLATFORMS
 
+    }
+
+    Vector2i Window::pixelSize() const {
+        int w = 0, h = 0;
+        glfwGetFramebufferSize(window_, &w, &h);
+        return Vector2i(w, h);
     }
 
     bool Window::is_maximized() const {

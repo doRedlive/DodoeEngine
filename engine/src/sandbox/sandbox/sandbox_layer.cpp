@@ -21,15 +21,16 @@ namespace sandbox {
     }
 
     void SandboxLayer::attach() {
-        dodoe::Application::self().context().script_system->execute("engine/res/scripts/test.lua");
+        dodoe::Application::self().context().script_system->execute_lua("engine/res/scripts/test.lua");
+        // dodoe::Application::self().context().script_system->execute_csharp("engine/src/scriptcore/bin/Debug/net8.0/GreenCake.dll");
         auto& world = dodoe::Application::self().context().world;
         auto scene = world->active_scene();
 
         auto test_go = scene->create_entity("test_go");
-        auto& transform = test_go.get_component<dodoe::TransformComponent>();
+        auto& transform = test_go.getComponent<dodoe::TransformComponent>();
         transform.position = {0.0f, 0.0f, 0.0f};
         transform.scale = {1.0f, 1.0f, 1.0f};
-        auto& sprite_renderer = test_go.add_component<dodoe::SpriteRendererComponent>();
+        auto& sprite_renderer = test_go.addComponent<dodoe::SpriteRendererComponent>();
         const std::string texture_path = "engine/res/pictures/grm.jpg";
         const auto texture_res = dodoe::ResourceManager::self().get_texture(texture_path, texture_path);
         sprite_renderer.texture_id = texture_res.id;

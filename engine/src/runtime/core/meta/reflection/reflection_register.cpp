@@ -8,12 +8,11 @@
 #include "_generated/serializer/all_serializer.ipp"
 
 namespace dodoe {
-    namespace reflection {
-        void TypeMetaRegister::meta_register() {
-        }
+    void TypeMetaRegister::meta_register() {
+        TypeFieldReflectionOperator::RegisterAllReflection();
+    }
 
-        void TypeMetaRegister::meta_unregister() {
-            TypeMetaRegisterInterface::unregister_all();
-        }
-    } // reflection
+    void TypeMetaRegister::meta_unregister() {
+        TypeMetaRegisterInterface::unregister_all();
+    }
 } // dodoe

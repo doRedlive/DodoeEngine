@@ -1,0 +1,16 @@
+#pragma once
+
+{{#include_headfiles}}
+#include "{{headfile_name}}"
+{{/include_headfiles}}
+
+namespace dodoe::TypeFieldReflectionOperator {
+
+inline void RegisterAllReflection() {
+{{#sourefile_names}}
+    RegisterAll{{sourefile_name_upper_camel_case}}Reflection();
+{{/sourefile_names}}
+}
+
+} // namespace dodoe::TypeFieldReflectionOperator
+

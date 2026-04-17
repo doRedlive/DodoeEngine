@@ -4,8 +4,6 @@
 
 #include "window_manager.h"
 
-#include "viewport_manager.h"
-
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
 
@@ -56,7 +54,7 @@ namespace dodoe {
     void WindowManager::bindEventCallback() {
         glfwSetWindowSizeCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int width, int height) {
             WindowResizeEvent event(width, height);
-            EventSystem::enqueue_event<WindowResizeEvent>(event);
+            EventSystem::enqueueEvent<WindowResizeEvent>(event);
         });
         glfwSetFramebufferSizeCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int width, int height) {
             (void)native_window;
@@ -65,33 +63,33 @@ namespace dodoe {
         });
         glfwSetWindowCloseCallback(window_->nativeWindow(), [](GLFWwindow* native_window) {
             WindowCloseEvent event;
-            EventSystem::enqueue_event<WindowCloseEvent>(event);
+            EventSystem::enqueueEvent<WindowCloseEvent>(event);
         });
         glfwSetWindowFocusCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int focused) {
             if (static_cast<bool>(focused)) {
                 WindowFocusEvent event;
-                EventSystem::enqueue_event<WindowFocusEvent>(event);
+                EventSystem::enqueueEvent<WindowFocusEvent>(event);
             }
             else {
                 WindowLostFocusEvent event;
-                EventSystem::enqueue_event<WindowLostFocusEvent>(event);
+                EventSystem::enqueueEvent<WindowLostFocusEvent>(event);
             }
         });
 		glfwSetKeyCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int key, int scancode, int action, int mods) {
 			switch (action) {
 				case GLFW_PRESS: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), false);
-                    EventSystem::enqueue_event<KeyPressedEvent>(event);
+                    EventSystem::enqueueEvent<KeyPressedEvent>(event);
                     break;
 				}
 				case GLFW_RELEASE: {
 					KeyReleasedEvent event(static_cast<KeyCode>(key));
-					EventSystem::enqueue_event<KeyReleasedEvent>(event);
+					EventSystem::enqueueEvent<KeyReleasedEvent>(event);
 					break;
 				}
 				case GLFW_REPEAT: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), true);
-					EventSystem::enqueue_event<KeyPressedEvent>(event);
+					EventSystem::enqueueEvent<KeyPressedEvent>(event);
 					break;
 				}
 			}
@@ -109,12 +107,12 @@ namespace dodoe {
 			switch (action) {
 				case GLFW_PRESS: {
 					MouseButtonPressedEvent event(static_cast<MouseCode>(button));
-					EventSystem::enqueue_event<MouseButtonPressedEvent>(event);
+					EventSystem::enqueueEvent<MouseButtonPressedEvent>(event);
 					break;
 				}
 				case GLFW_RELEASE: {
 					MouseButtonReleasedEvent event(static_cast<MouseCode>(button));
-					EventSystem::enqueue_event<MouseButtonReleasedEvent>(event);
+					EventSystem::enqueueEvent<MouseButtonReleasedEvent>(event);
 					break;
 				}
 			}
@@ -122,12 +120,12 @@ namespace dodoe {
 
 		glfwSetScrollCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_offset, double y_offset) {
 			MouseScrolledEvent event(static_cast<float>(x_offset), static_cast<float>(x_offset));
-			EventSystem::enqueue_event<MouseScrolledEvent>(event);
+			EventSystem::enqueueEvent<MouseScrolledEvent>(event);
 		});
 
 		glfwSetCursorPosCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_pos, double y_pos) {
 			MouseMovedEvent event(static_cast<float>(x_pos), static_cast<float>(y_pos));
-			EventSystem::enqueue_event<MouseMovedEvent>(event);
+			EventSystem::enqueueEvent<MouseMovedEvent>(event);
 		});
     }
 
@@ -150,9 +148,6 @@ namespace dodoe {
 
         int fb_width = 0, fb_height = 0;
         glfwGetFramebufferSize(window_->nativeWindow(), &fb_width, &fb_height);
-
-        window_->viewport_manager->set_window_size(Vector2f(event.width, event.height));
-        window_->viewport_manager->set_pixel_size(Vector2f(fb_width, fb_height));
     }
 
 }

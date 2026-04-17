@@ -14,7 +14,6 @@
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
-#include "imgui/backends/imgui_impl_vulkan.h"
 
 namespace dodoe {
 
@@ -50,8 +49,6 @@ namespace dodoe {
         ImGui_ImplGlfw_NewFrame();
         if (RenderApi::apiType() == RenderApiType::OpenGL) {
             ImGui_ImplOpenGL3_NewFrame();
-        } else if (RenderApi::apiType() == RenderApiType::Vulkan) {
-            ImGui_ImplVulkan_NewFrame();
         }
         ImGui::NewFrame();
     }

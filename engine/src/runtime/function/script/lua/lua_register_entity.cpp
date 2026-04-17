@@ -106,6 +106,273 @@ namespace {
         return &it->second;
     }
 
+    dodoe::Color table_to_color(const sol::table& data, const dodoe::Color default_value) {
+        return dodoe::Color{
+            get_float_field(data, "r", default_value.r),
+            get_float_field(data, "g", default_value.g),
+            get_float_field(data, "b", default_value.b),
+            get_float_field(data, "a", default_value.a)
+        };
+    }
+
+    entt::meta_data find_meta_field(const entt::meta_type& type, const std::string& key) {
+        if (const auto direct = type.data(entt::hashed_string{ key.c_str() }.value()); direct) {
+            return direct;
+        }
+
+        for (auto range = type.data(); const auto& data : range | std::views::values) {
+            const auto* name_ptr = static_cast<const std::string*>(data.custom());
+            if (name_ptr != nullptr && *name_ptr == key) {
+                return data;
+            }
+        }
+
+        return {};
+    }
+
+    bool assign_meta_field_from_lua(entt::meta_any& any, const entt::meta_data& field, const sol::object& value) {
+        if (!value.valid()) {
+            return false;
+        }
+
+        const auto field_type = field.type().info();
+
+        if (field_type == entt::type_id<bool>()) {
+            if (value.get_type() == sol::type::boolean) {
+                return field.set(entt::meta_handle{ any }, value.as<bool>());
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<int>()) {
+            if (value.get_type() == sol::type::number) {
+                return field.set(entt::meta_handle{ any }, value.as<int>());
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<float>()) {
+            if (value.get_type() == sol::type::number) {
+                return field.set(entt::meta_handle{ any }, value.as<float>());
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<size_t>()) {
+            if (value.get_type() == sol::type::number) {
+                return field.set(entt::meta_handle{ any }, static_cast<size_t>(value.as<uint32_t>()));
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<dodoe::identifier>()) {
+            if (value.get_type() == sol::type::number) {
+                return field.set(entt::meta_handle{ any }, static_cast<dodoe::identifier>(value.as<uint32_t>()));
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<std::string>()) {
+            if (value.get_type() == sol::type::string) {
+                return field.set(entt::meta_handle{ any }, value.as<std::string>());
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<dodoe::Rigidbody2dComponent::BodyType>()) {
+            if (value.get_type() == sol::type::number) {
+                return field.set(entt::meta_handle{ any }, static_cast<dodoe::Rigidbody2dComponent::BodyType>(value.as<int>()));
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<dodoe::Vector2f>()) {
+            if (value.get_type() == sol::type::table) {
+                const auto current = field.get(entt::meta_handle{ any }).cast<dodoe::Vector2f>();
+                return field.set(entt::meta_handle{ any }, table_to_vec2(value.as<sol::table>(), current));
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<dodoe::Vector3f>()) {
+            if (value.get_type() == sol::type::table) {
+                const auto current = field.get(entt::meta_handle{ any }).cast<dodoe::Vector3f>();
+                return field.set(entt::meta_handle{ any }, table_to_vec3(value.as<sol::table>(), current));
+            }
+            return false;
+        }
+
+        if (field_type == entt::type_id<dodoe::Color>()) {
+            if (value.get_type() == sol::type::table) {
+                const auto current = field.get(entt::meta_handle{ any }).cast<dodoe::Color>();
+                return field.set(entt::meta_handle{ any }, table_to_color(value.as<sol::table>(), current));
+            }
+            return false;
+        }
+
+        return false;
+    }
+
+    template <typename T>
+    bool set_component_by_reflection(dodoe::Entity& self, const sol::table& data) {
+        auto& component = self.addOrReplaceComponent<T>();
+        const entt::meta_type type = entt::resolve<T>();
+        if (!type) {
+            return false;
+        }
+
+        entt::meta_any any = type.from_void(&component);
+        for (const auto& [key_obj, value_obj] : data) {
+            if (key_obj.get_type() != sol::type::string) {
+                continue;
+            }
+
+            const std::string key = key_obj.as<std::string>();
+            const entt::meta_data field = find_meta_field(type, key);
+            if (!field) {
+                continue;
+            }
+
+            assign_meta_field_from_lua(any, field, value_obj);
+        }
+
+        return true;
+    }
+
+    sol::table copy_table(sol::state_view lua, const sol::table& source) {
+        sol::table out = lua.create_table();
+        for (const auto& [key, value] : source) {
+            out[key] = value;
+        }
+        return out;
+    }
+
+    template <typename T, typename SetFunc>
+    void register_component_registry(const std::string& type_name, SetFunc&& set_func) {
+        ComponentRegistry registry{};
+        registry.add_func = [](sol::state_view lua_state, dodoe::Entity& self) -> sol::object {
+            if (self.hasComponent<T>()) {
+                return sol::make_object(lua_state, std::ref(self.getComponent<T>()));
+            }
+            return sol::make_object(lua_state, std::ref(self.addComponent<T>()));
+        };
+        registry.get_func = [](sol::state_view lua_state, dodoe::Entity& self) -> sol::object {
+            if (!self.hasComponent<T>()) {
+                return sol::make_object(lua_state, sol::nil);
+            }
+            return sol::make_object(lua_state, std::ref(self.getComponent<T>()));
+        };
+        registry.has_func = [](dodoe::Entity& self) -> bool {
+            return self.hasComponent<T>();
+        };
+        registry.remove_func = [](dodoe::Entity& self) {
+            if (self.hasComponent<T>()) {
+                self.removeComponent<T>();
+            }
+        };
+        registry.set_func = std::forward<SetFunc>(set_func);
+        s_component_registry[type_name] = std::move(registry);
+    }
+
+    template <typename T>
+    void register_component_registry(const std::string& type_name) {
+        register_component_registry<T>(type_name, [](dodoe::Entity& self, const sol::table& data) -> bool {
+            return set_component_by_reflection<T>(self, data);
+        });
+    }
+
+    sol::object meta_any_to_lua(sol::state_view lua, entt::meta_any value) {
+        if (!value) {
+            return sol::make_object(lua, sol::nil);
+        }
+
+        const auto type_info = value.type().info();
+        if (type_info == entt::type_id<bool>()) {
+            return sol::make_object(lua, value.cast<bool>());
+        }
+        if (type_info == entt::type_id<int>()) {
+            return sol::make_object(lua, value.cast<int>());
+        }
+        if (type_info == entt::type_id<float>()) {
+            return sol::make_object(lua, value.cast<float>());
+        }
+        if (type_info == entt::type_id<size_t>()) {
+            return sol::make_object(lua, static_cast<uint32_t>(value.cast<size_t>()));
+        }
+        if (type_info == entt::type_id<dodoe::identifier>()) {
+            return sol::make_object(lua, static_cast<uint32_t>(value.cast<dodoe::identifier>()));
+        }
+        if (type_info == entt::type_id<std::string>()) {
+            return sol::make_object(lua, value.cast<std::string>());
+        }
+        if (type_info == entt::type_id<dodoe::Vector2f>()) {
+            return sol::make_object(lua, vec2_to_table(lua, value.cast<dodoe::Vector2f>()));
+        }
+        if (type_info == entt::type_id<dodoe::Vector3f>()) {
+            return sol::make_object(lua, vec3_to_table(lua, value.cast<dodoe::Vector3f>()));
+        }
+        if (type_info == entt::type_id<dodoe::Color>()) {
+            const auto c = value.cast<dodoe::Color>();
+            sol::table t = lua.create_table();
+            t["r"] = c.r;
+            t["g"] = c.g;
+            t["b"] = c.b;
+            t["a"] = c.a;
+            return sol::make_object(lua, t);
+        }
+        if (type_info == entt::type_id<dodoe::Rigidbody2dComponent::BodyType>()) {
+            return sol::make_object(lua, static_cast<int>(value.cast<dodoe::Rigidbody2dComponent::BodyType>()));
+        }
+
+        return sol::make_object(lua, sol::nil);
+    }
+
+    template <typename T>
+    void bind_reflected_fields(sol::table& type_table) {
+        const entt::meta_type meta_type = entt::resolve<T>();
+        if (!meta_type) {
+            return;
+        }
+
+        for (auto range = meta_type.data(); const auto& [field_id, field] : range) {
+            const auto* field_name_ptr = static_cast<const std::string*>(field.custom());
+            if (field_name_ptr == nullptr || field_name_ptr->empty()) {
+                continue;
+            }
+
+            const std::string field_name = *field_name_ptr;
+            type_table.set(field_name, sol::property(
+                [field_id](T& self, sol::this_state lua_state) -> sol::object {
+                    sol::state_view lua(lua_state);
+                    entt::meta_any any = entt::resolve<T>().from_void(&self);
+                    const entt::meta_data data = entt::resolve<T>().data(field_id);
+                    if (!data) {
+                        return sol::make_object(lua, sol::nil);
+                    }
+                    return meta_any_to_lua(lua, data.get(entt::meta_handle{ any }));
+                },
+                [field_id](T& self, const sol::object& value) {
+                    entt::meta_any any = entt::resolve<T>().from_void(&self);
+                    const entt::meta_data data = entt::resolve<T>().data(field_id);
+                    if (!data) {
+                        return;
+                    }
+                    assign_meta_field_from_lua(any, data, value);
+                }
+            ));
+        }
+    }
+
+    template <typename T, typename... Ctors>
+    void register_reflected_usertype(sol::state& lua, sol::table& dodoe_table, const char* type_name,
+                                     sol::constructors<Ctors...> ctors) {
+        dodoe_table.new_usertype<T>(type_name, ctors);
+        sol::table type_table = dodoe_table[type_name];
+        bind_reflected_fields<T>(type_table);
+        type_table["__type_name"] = std::string(type_name);
+        (void)lua;
+    }
+
 }
 
 namespace dodoe::lua_register_detail {
@@ -119,227 +386,80 @@ namespace dodoe::lua_register_detail {
             }
         );
 
-        dodoe_table.new_usertype<TransformComponent>("TransformComponent",
-            sol::constructors<TransformComponent()>(),
-            "position", &TransformComponent::position,
-            "rotation", &TransformComponent::rotation,
-            "scale", &TransformComponent::scale
-        );
-        dodoe_table.new_usertype<TagComponent>("TagComponent",
-            sol::constructors<TagComponent(), TagComponent(const std::string&)>(),
-            "tag", &TagComponent::tag
-        );
+        register_reflected_usertype<TransformComponent>(lua, dodoe_table, "TransformComponent", sol::constructors<TransformComponent()>());
+        register_reflected_usertype<TagComponent>(lua, dodoe_table, "TagComponent", sol::constructors<TagComponent(), TagComponent(const std::string&)>());
+
         dodoe_table.new_usertype<Rigidbody2dComponent>("Rigidbody2dComponent",
             sol::constructors<Rigidbody2dComponent()>(),
             "body_type", sol::property(
-                [](Rigidbody2dComponent& c) { return c.type; },
-                [](Rigidbody2dComponent& c, const Rigidbody2dComponent::BodyType value) { c.type = value; }),
-            "fixed_rotation", &Rigidbody2dComponent::fixed_rotation,
-            "gravity_scale", &Rigidbody2dComponent::gravity_scale,
+                [](Rigidbody2dComponent& c) { return static_cast<int>(c.type); },
+                [](Rigidbody2dComponent& c, const int value) { c.type = static_cast<Rigidbody2dComponent::BodyType>(value); }
+            ),
             "setLinearVelocity", &Rigidbody2dComponent::setLinearVelocity,
             "applyForceToCenter", &Rigidbody2dComponent::applyForceToCenter,
             "applyLinearImpulseToCenter", &Rigidbody2dComponent::applyLinearImpulseToCenter
         );
-        dodoe_table.new_usertype<BoxCollider2dComponent>("BoxCollider2dComponent",
-            sol::constructors<BoxCollider2dComponent()>(),
-            "offset", &BoxCollider2dComponent::offset,
-            "size", &BoxCollider2dComponent::size,
-            "density", &BoxCollider2dComponent::density,
-            "friction", &BoxCollider2dComponent::friction,
-            "restitution", &BoxCollider2dComponent::restitution,
-            "restitution_threshold", &BoxCollider2dComponent::restitution_threshold
-        );
-        dodoe_table.new_usertype<SpriteRendererComponent>("SpriteRendererComponent",
-            sol::constructors<SpriteRendererComponent()>(),
-            "texture_id", &SpriteRendererComponent::texture_id,
-            "flip", &SpriteRendererComponent::flip,
-            "pivot", &SpriteRendererComponent::pivot,
-            "depth", &SpriteRendererComponent::depth_
-        );
+
+        {
+            sol::table type_table = dodoe_table["Rigidbody2dComponent"];
+            bind_reflected_fields<Rigidbody2dComponent>(type_table);
+            type_table["__type_name"] = "Rigidbody2dComponent";
+        }
+
+        register_reflected_usertype<BoxCollider2dComponent>(lua, dodoe_table, "BoxCollider2dComponent", sol::constructors<BoxCollider2dComponent()>());
+        register_reflected_usertype<SpriteRendererComponent>(lua, dodoe_table, "SpriteRendererComponent", sol::constructors<SpriteRendererComponent()>());
         dodoe_table.new_usertype<Animation2dComponent>("Animation2dComponent",
             sol::constructors<Animation2dComponent()>(),
-            "cur_anim_id", &Animation2dComponent::cur_anim_id,
-            "cur_frame_id", &Animation2dComponent::cur_frame_id,
-            "cur_time_duration", &Animation2dComponent::cur_time_duration,
-            "speed", &Animation2dComponent::speed,
             "addAnimClip", &Animation2dComponent::addClip
         );
-        dodoe_table["TagComponent"]["__type_name"] = "TagComponent";
-        dodoe_table["TransformComponent"]["__type_name"] = "TransformComponent";
-        dodoe_table["Rigidbody2dComponent"]["__type_name"] = "Rigidbody2dComponent";
-        dodoe_table["BoxCollider2dComponent"]["__type_name"] = "BoxCollider2dComponent";
-        dodoe_table["SpriteRendererComponent"]["__type_name"] = "SpriteRendererComponent";
-        dodoe_table["Animation2dComponent"]["__type_name"] = "Animation2dComponent";
+
+        {
+            sol::table type_table = dodoe_table["Animation2dComponent"];
+            bind_reflected_fields<Animation2dComponent>(type_table);
+            type_table["__type_name"] = "Animation2dComponent";
+        }
 
         s_component_registry.clear();
 
-        {
-            ComponentRegistry registry{};
-            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (self.has_component<TagComponent>()) {
-                    return sol::make_object(lua_state, std::ref(self.get_component<TagComponent>()));
+        register_component_registry<TagComponent>("TagComponent");
+        register_component_registry<TransformComponent>("TransformComponent");
+        register_component_registry<Animation2dComponent>("Animation2dComponent");
+
+        register_component_registry<Rigidbody2dComponent>("Rigidbody2dComponent", [](Entity& self, const sol::table& data) -> bool {
+            sol::state_view lua = data.lua_state();
+            sol::table patch = copy_table(lua, data);
+            if (const sol::object body_type = data["body_type"]; body_type.valid()) {
+                patch["type"] = body_type;
+            }
+            return set_component_by_reflection<Rigidbody2dComponent>(self, patch);
+        });
+
+        register_component_registry<BoxCollider2dComponent>("BoxCollider2dComponent", [](Entity& self, const sol::table& data) -> bool {
+            sol::state_view lua = data.lua_state();
+            sol::table patch = copy_table(lua, data);
+            if (const sol::object old_key = data["restitutionThreshold"]; old_key.valid()) {
+                patch["restitution_threshold"] = old_key;
+            }
+            return set_component_by_reflection<BoxCollider2dComponent>(self, patch);
+        });
+
+        register_component_registry<SpriteRendererComponent>("SpriteRendererComponent", [](Entity& self, const sol::table& data) -> bool {
+            sol::state_view lua = data.lua_state();
+            sol::table patch = copy_table(lua, data);
+
+            if (const sol::object texture = data["texture"]; texture.valid() && texture.get_type() == sol::type::string) {
+                const std::string texture_name = texture.as<std::string>();
+                if (!texture_name.empty()) {
+                    patch["texture_id"] = static_cast<identifier>(string2hash(texture_name));
                 }
-                return sol::make_object(lua_state, std::ref(self.add_component<TagComponent>()));
-            };
-            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (!self.has_component<TagComponent>()) return sol::make_object(lua_state, sol::nil);
-                return sol::make_object(lua_state, std::ref(self.get_component<TagComponent>()));
-            };
-            registry.has_func = [](Entity& self) -> bool { return self.has_component<TagComponent>(); };
-            registry.remove_func = [](Entity& self) { if (self.has_component<TagComponent>()) self.remove_component<TagComponent>(); };
-            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
-                auto& c = self.add_or_replace_component<TagComponent>();
-                c.tag = get_string_field(data, "tag", c.tag);
-                return true;
-            };
-            s_component_registry["TagComponent"] = std::move(registry);
-        }
-        {
-            ComponentRegistry registry{};
-            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (self.has_component<TransformComponent>()) {
-                    return sol::make_object(lua_state, std::ref(self.get_component<TransformComponent>()));
-                }
-                return sol::make_object(lua_state, std::ref(self.add_component<TransformComponent>()));
-            };
-            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (!self.has_component<TransformComponent>()) return sol::make_object(lua_state, sol::nil);
-                return sol::make_object(lua_state, std::ref(self.get_component<TransformComponent>()));
-            };
-            registry.has_func = [](Entity& self) -> bool { return self.has_component<TransformComponent>(); };
-            registry.remove_func = [](Entity& self) { if (self.has_component<TransformComponent>()) self.remove_component<TransformComponent>(); };
-            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
-                auto& c = self.add_or_replace_component<TransformComponent>();
-                if (sol::object pos_obj = data["position"]; pos_obj.valid() && pos_obj.get_type() == sol::type::table) {
-                    c.position = table_to_vec3(pos_obj.as<sol::table>(), c.position);
-                }
-                if (sol::object rot_obj = data["rotation"]; rot_obj.valid() && rot_obj.get_type() == sol::type::table) {
-                    c.rotation = table_to_vec3(rot_obj.as<sol::table>(), c.rotation);
-                }
-                if (sol::object scale_obj = data["scale"]; scale_obj.valid() && scale_obj.get_type() == sol::type::table) {
-                    c.scale = table_to_vec3(scale_obj.as<sol::table>(), c.scale);
-                }
-                return true;
-            };
-            s_component_registry["TransformComponent"] = std::move(registry);
-        }
-        {
-            ComponentRegistry registry{};
-            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (self.has_component<Rigidbody2dComponent>()) {
-                    return sol::make_object(lua_state, std::ref(self.get_component<Rigidbody2dComponent>()));
-                }
-                return sol::make_object(lua_state, std::ref(self.add_component<Rigidbody2dComponent>()));
-            };
-            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (!self.has_component<Rigidbody2dComponent>()) return sol::make_object(lua_state, sol::nil);
-                return sol::make_object(lua_state, std::ref(self.get_component<Rigidbody2dComponent>()));
-            };
-            registry.has_func = [](Entity& self) -> bool { return self.has_component<Rigidbody2dComponent>(); };
-            registry.remove_func = [](Entity& self) { if (self.has_component<Rigidbody2dComponent>()) self.remove_component<Rigidbody2dComponent>(); };
-            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
-                auto& c = self.add_or_replace_component<Rigidbody2dComponent>();
-                if (sol::object body_type_obj = data["body_type"]; body_type_obj.valid() && body_type_obj.get_type() == sol::type::number) {
-                    c.type = static_cast<Rigidbody2dComponent::BodyType>(body_type_obj.as<int>());
-                }
-                c.fixed_rotation = get_bool_field(data, "fixed_rotation", c.fixed_rotation);
-                c.gravity_scale = get_float_field(data, "gravity_scale", c.gravity_scale);
-                return true;
-            };
-            s_component_registry["Rigidbody2dComponent"] = std::move(registry);
-        }
-        {
-            ComponentRegistry registry{};
-            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (self.has_component<BoxCollider2dComponent>()) {
-                    return sol::make_object(lua_state, std::ref(self.get_component<BoxCollider2dComponent>()));
-                }
-                return sol::make_object(lua_state, std::ref(self.add_component<BoxCollider2dComponent>()));
-            };
-            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (!self.has_component<BoxCollider2dComponent>()) return sol::make_object(lua_state, sol::nil);
-                return sol::make_object(lua_state, std::ref(self.get_component<BoxCollider2dComponent>()));
-            };
-            registry.has_func = [](Entity& self) -> bool { return self.has_component<BoxCollider2dComponent>(); };
-            registry.remove_func = [](Entity& self) { if (self.has_component<BoxCollider2dComponent>()) self.remove_component<BoxCollider2dComponent>(); };
-            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
-                auto& c = self.add_or_replace_component<BoxCollider2dComponent>();
-                if (sol::object offset_obj = data["offset"]; offset_obj.valid() && offset_obj.get_type() == sol::type::table) {
-                    c.offset = table_to_vec2(offset_obj.as<sol::table>(), c.offset);
-                }
-                if (sol::object size_obj = data["size"]; size_obj.valid() && size_obj.get_type() == sol::type::table) {
-                    c.size = table_to_vec2(size_obj.as<sol::table>(), c.size);
-                }
-                c.density = get_float_field(data, "density", c.density);
-                c.friction = get_float_field(data, "friction", c.friction);
-                c.restitution = get_float_field(data, "restitution", c.restitution);
-                c.restitution_threshold = get_float_field(data, "restitutionThreshold", c.restitution_threshold);
-                return true;
-            };
-            s_component_registry["BoxCollider2dComponent"] = std::move(registry);
-        }
-        {
-            ComponentRegistry registry{};
-            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (self.has_component<SpriteRendererComponent>()) {
-                    return sol::make_object(lua_state, std::ref(self.get_component<SpriteRendererComponent>()));
-                }
-                return sol::make_object(lua_state, std::ref(self.add_component<SpriteRendererComponent>()));
-            };
-            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (!self.has_component<SpriteRendererComponent>()) return sol::make_object(lua_state, sol::nil);
-                return sol::make_object(lua_state, std::ref(self.get_component<SpriteRendererComponent>()));
-            };
-            registry.has_func = [](Entity& self) -> bool { return self.has_component<SpriteRendererComponent>(); };
-            registry.remove_func = [](Entity& self) { if (self.has_component<SpriteRendererComponent>()) self.remove_component<SpriteRendererComponent>(); };
-            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
-                auto& c = self.add_or_replace_component<SpriteRendererComponent>();
-                if (sol::object texture_id_obj = data["texture_id"]; texture_id_obj.valid() && texture_id_obj.get_type() == sol::type::number) {
-                    c.texture_id = static_cast<identifier>(texture_id_obj.as<uint32_t>());
-                }
-                if (sol::object texture_obj = data["texture"]; texture_obj.valid() && texture_obj.get_type() == sol::type::string) {
-                    const std::string texture = texture_obj.as<std::string>();
-                    if (!texture.empty()) {
-                        c.texture_id = static_cast<identifier>(string2hash(texture));
-                    }
-                }
-                c.flip = get_bool_field(data, "flip", c.flip);
-                c.depth_ = get_float_field(data, "depth", c.depth_);
-                if (sol::object pivot_obj = data["pivot"]; pivot_obj.valid() && pivot_obj.get_type() == sol::type::table) {
-                    c.pivot = table_to_vec2(pivot_obj.as<sol::table>(), c.pivot);
-                }
-                return true;
-            };
-            s_component_registry["SpriteRendererComponent"] = std::move(registry);
-        }
-        {
-            ComponentRegistry registry{};
-            registry.add_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (self.has_component<Animation2dComponent>()) {
-                    return sol::make_object(lua_state, std::ref(self.get_component<Animation2dComponent>()));
-                }
-                return sol::make_object(lua_state, std::ref(self.add_component<Animation2dComponent>()));
-            };
-            registry.get_func = [](sol::state_view lua_state, Entity& self) -> sol::object {
-                if (!self.has_component<Animation2dComponent>()) return sol::make_object(lua_state, sol::nil);
-                return sol::make_object(lua_state, std::ref(self.get_component<Animation2dComponent>()));
-            };
-            registry.has_func = [](Entity& self) -> bool { return self.has_component<Animation2dComponent>(); };
-            registry.remove_func = [](Entity& self) { if (self.has_component<Animation2dComponent>()) self.remove_component<Animation2dComponent>(); };
-            registry.set_func = [](Entity& self, const sol::table& data) -> bool {
-                auto& c = self.add_or_replace_component<Animation2dComponent>();
-                if (sol::object cur_anim_id_obj = data["cur_anim_id"]; cur_anim_id_obj.valid() && cur_anim_id_obj.get_type() == sol::type::number) {
-                    c.cur_anim_id = static_cast<identifier>(cur_anim_id_obj.as<uint32_t>());
-                }
-                if (sol::object cur_frame_id_obj = data["cur_frame_id"]; cur_frame_id_obj.valid() && cur_frame_id_obj.get_type() == sol::type::number) {
-                    c.cur_frame_id = static_cast<size_t>(cur_frame_id_obj.as<uint32_t>());
-                }
-                c.cur_time_duration = get_float_field(data, "cur_time_duration", c.cur_time_duration);
-                c.speed = get_float_field(data, "speed", c.speed);
-                return true;
-            };
-            s_component_registry["Animation2dComponent"] = std::move(registry);
-        }
+            }
+
+            if (const sol::object depth = data["depth"]; depth.valid()) {
+                patch["depth_"] = depth;
+            }
+
+            return set_component_by_reflection<SpriteRendererComponent>(self, patch);
+        });
 
         dodoe_table.new_usertype<Entity>("Entity",
             sol::constructors<Entity()>(),

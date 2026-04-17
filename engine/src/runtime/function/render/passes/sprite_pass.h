@@ -9,40 +9,48 @@
 
 namespace dodoe {
 	class Camera;
+	class DescriptorTableManager;
 
 	class SpritePass : public RenderPass {
-		Vector2i target_extent_{0, 0};
-		size_t target_count_{0};
+		inline static const std::string kInputSceneColorResourceName = "MainCameraColor";
+		inline static const std::string kInputSceneDepthResourceName = "MainCameraDepth";
+
 		Camera* camera_{nullptr};
-		std::vector<identifier> bound_texture_ids_{};
+		DescriptorTableManager* m_descriptor_table{nullptr};
 
-		std::vector<rhi::TextureHandle> scene_targets_{};
-		std::vector<rhi::FramebufferHandle> framebuffers_{};
-		rhi::BufferHandle vertex_buffer_{};
-		rhi::BufferHandle index_buffer_{};
-		rhi::BufferHandle camera_buffer_{};
+		rhi::TextureHandle m_scene_color_target{};
+		rhi::TextureHandle m_scene_depth_target{};
+		rhi::FramebufferHandle m_framebuffer{};
+		rhi::BufferHandle m_vertex_buffer{};
+		rhi::BufferHandle m_index_buffer{};
+		rhi::BufferHandle m_camera_buffer{};
+		rhi::ShaderHandle m_vertex_shader{};
+		rhi::ShaderHandle m_pixel_shader{};
+		rhi::CommandListHandle m_cmd_list{};
 
-		rhi::GraphicsPipelineHandle graphics_pipeline_{};
-		rhi::BindingLayoutHandle binding_layout_{};
-		rhi::BindingSetHandle binding_set_{};
-		rhi::SamplerHandle sampler_{};
+		rhi::InputLayoutHandle m_input_layout{};
+		rhi::GraphicsPipelineHandle m_graphics_pipeline{};
+		rhi::BindingLayoutHandle m_binding_layout{};
+		rhi::BindingSetHandle m_binding_set{};
+		rhi::SamplerHandle m_sampler{};
 	public:
-		SpritePass(const RenderPassCreateInfo& info, size_t target_count, const Vector2i& target_extent, Camera* camera);
-		[[nodiscard]] const std::vector<rhi::TextureHandle>& scene_targets() const { return scene_targets_; }
+		SpritePass(RhiContext* rhi, Camera* camera, DescriptorTableManager* descriptor_table);
 
 		void setup() override;
 		void execute(size_t index) override;
 		void cleanup() override;
+		void onViewportResize(const Vector2i& viewport_extent) override;
 
 	private:
 		void createBuffers();
+		void createShaders();
 		void createSampler();
+		void createInputLayout();
 		void createBindingLayout();
-		void createBindingSet(const std::vector<identifier>& texture_ids);
-		void createFramebuffers();
+		void createBindingSet();
+		void createFramebuffer();
 		void createGraphicsPipeline();
-
-		bool checkBindingSet(const std::vector<identifier>& cpu_texture_ids);
+		void drawQuadBatch(const QuadCpuData& batch, const Matrix4f& view_projection);
 	};
 
 } // dodoe

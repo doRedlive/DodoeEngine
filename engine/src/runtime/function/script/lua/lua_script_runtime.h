@@ -1,22 +1,20 @@
 //
 // Created by GreenMuffin on 2026/3/x.
 //
-#ifndef DODOE_LUA_SCRIPT_RUNTIME_H
-#define DODOE_LUA_SCRIPT_RUNTIME_H
+#ifndef DODOE_LUA_SCRIPT_ENGINE_H
+#define DODOE_LUA_SCRIPT_ENGINE_H
 
-#include "runtime/function/script/script_runtime.h"
-
+#include "dopch.h"
 #include "sol/sol.hpp"
 
 namespace dodoe {
 
-    class LuaScriptRuntime final : public IScriptRuntime {
+    class LuaScriptEngine {
     public:
-        ScriptLanguage language() const override;
-        bool initialize() override;
-        void shutdown() override;
+        bool initialize();
+        void shutdown();
 
-        bool execute(const std::filesystem::path& script_file) override;
+        bool execute(const std::filesystem::path& script_file);
 
     private:
         sol::state lua_{};
@@ -26,4 +24,4 @@ namespace dodoe {
 
 } // dodoe
 
-#endif//DODOE_LUA_SCRIPT_RUNTIME_H
+#endif//DODOE_LUA_SCRIPT_ENGINE_H

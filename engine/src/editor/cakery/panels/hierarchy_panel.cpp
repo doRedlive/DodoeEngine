@@ -21,7 +21,7 @@ namespace cakery {
     }
 
     void HierarchyPanel::draw() {
-        ImGui::Begin("Scene Hierarchy");
+        ImGui::Begin("Hierarchy");
 
         if (!context_) {
             ImGui::End();
@@ -31,7 +31,7 @@ namespace cakery {
         for (const auto& entities = context_->getEntities(); const auto& entity : entities) {
             drawEntityNode(entity);
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
-                dodoe::EventSystem::enqueue_event<NonSelectEntityEvent>();
+                dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
             }
 
             if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
@@ -46,7 +46,11 @@ namespace cakery {
     }
 
     void HierarchyPanel::drawEntityNode(dodoe::Entity entity) {
-        const auto& name = entity.get_component<dodoe::IDComponent>().getName();
+        if (!entity || !context_->registry().valid(entity)) {
+            return;
+        }
+
+        const auto& name = entity.name();
         static char edit_name_buf[256]{};
 
         ImGui::PushID(static_cast<int>(static_cast<dodoe::ui32>(entity)));
@@ -57,7 +61,7 @@ namespace cakery {
         ImGui::TreeNodeEx("##entity_node", flags, "%s", name.c_str());
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-            dodoe::EventSystem::enqueue_event<SelectEntityEvent>(entity);
+            dodoe::EventSystem::enqueueEvent<SelectEntityEvent>(entity);
         }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -82,7 +86,7 @@ namespace cakery {
             ImGui::SetKeyboardFocusHere(0);
             const bool name_changed = ImGui::InputText("##edit_name", edit_name_buf, sizeof(edit_name_buf), ImGuiInputTextFlags_EnterReturnsTrue);
             if (name_changed || ImGui::IsItemDeactivatedAfterEdit()) {
-                entity.get_component<dodoe::IDComponent>().setName(edit_name_buf);
+                entity.getComponent<dodoe::IDComponent>().setName(edit_name_buf);
             }
 
             if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
@@ -95,7 +99,7 @@ namespace cakery {
         }
 
         if (request_delete) {
-            dodoe::EventSystem::enqueue_event<NonSelectEntityEvent>();
+            dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
             context_->destroy_entity(entity);
         }
 

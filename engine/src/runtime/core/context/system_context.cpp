@@ -23,12 +23,14 @@
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/render_system.h"
+#include "runtime/function/render/render_api.h"
 #include "runtime/function/ui/ui_system.h"
 
 // game
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/script/script_system.h"
+#include "runtime/function/script/lua/lua_script_runtime.h"
 #include "runtime/function/physics/physics_system.h"
 
 namespace dodoe {
@@ -37,37 +39,38 @@ namespace dodoe {
 
     Scope<SystemContext> SystemContext::create(SystemContextCreateInfo create_info) {
         auto context = create_scope<SystemContext>();
-        DoAssert(context->initialize_systems(create_info), "System initialize failed!");
+        DO_ASSERT(context->initialize_systems(create_info), "System initialize failed!");
         return context;
     }
 
     void SystemContext::destroy(Scope<SystemContext>& context) {
         if (!context) return;
-        DoAssert(context->shutdown_systems(), "System shutdown failed!");
+        DO_ASSERT(context->shutdown_systems(), "System shutdown failed!");
         context.reset();
     }
 
     bool SystemContext::initialize_systems(SystemContextCreateInfo create_info) {
         window_manager = create_scope<WindowManager>();
-        render_system  = create_scope<RenderSystem>();
         input_manager  = create_scope<InputManager>();
         time_system    = create_scope<TimeSystem>();
         ui_system      = create_scope<UiSystem>();
         // ---------------------CORE-------------------------
         Log::initialize();
         EventSystem::initialize();
-        reflection::TypeMetaRegister::meta_register();
+        TypeMetaRegister::meta_register();
         // ---------------------RESOURCE-------------------------
         ResourceManager::self().initialize();
         // ---------------------RENDER-------------------------
         window_manager->initialize({create_info.spec});
+        RenderApi::initialize({create_info.spec.render_api_type});
         ui_system->initialize(window_manager.get());
-        render_system->initialize({window_manager.get(), ui_system.get(), create_info.spec.render_api_type});
+        render_system = RenderSystem::create({window_manager.get(), ui_system.get(), create_info.spec.render_api_type});
+        DO_ASSERT(render_system, "RenderSystem initialize failed!");
         
         // ---------------------GAME-------------------------
         world = World::create({"Main"});
 
-        input_manager->initialize({window_manager->window()->viewport_manager.get()});
+        input_manager->initialize({render_system->viewportManager()});
         physics_system = PhysicsSystem::create({});
         script_system  = ScriptSystem::create({});
  
@@ -75,6 +78,10 @@ namespace dodoe {
     }
 
     bool SystemContext::shutdown_systems() {
+        // Destroy layers while EventSystem/World/Render are still valid.
+        layer_stack.detach();
+        layer_stack.clear_layers();
+
         // ---------------------GAME-------------------------
         World::destroy(world);
         ScriptSystem::destroy(script_system);
@@ -84,15 +91,14 @@ namespace dodoe {
         // ---------------------RESOURCE-------------------------
         ResourceManager::self().shutdown();
         // ---------------------RENDER-------------------------
-        render_system->shutdown();
-        render_system.reset();
+        RenderSystem::destroy(render_system);
         ui_system->shutdown();
         ui_system.reset();
         window_manager->shutdown();
         window_manager.reset();
         // ---------------------CORE-------------------------
         time_system.reset();
-        reflection::TypeMetaRegister::meta_unregister();
+        TypeMetaRegister::meta_unregister();
         EventSystem::shutdown();
         return true;
     }

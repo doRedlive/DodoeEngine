@@ -26,17 +26,15 @@ namespace dodoe {
         void initialize();
         void shutdown();
 
-        TextureRes load_texture(const std::string& name, const std::string& path);
         Ref<Shader> load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path);
         ModelRes load_model(const std::string& name, const std::string& path);
 
-        [[nodiscard]] TextureRes getTextureRes(identifier id);
-        [[nodiscard]] TextureRes get_texture(const std::string& id);
-        [[nodiscard]] TextureRes get_texture(const std::string& id, const std::string& path);
         [[nodiscard]] Ref<Shader> get_shader(const std::string& name);
         [[nodiscard]] ModelRes get_model(identifier id);
         [[nodiscard]] ModelRes get_model(const std::string& id);
         [[nodiscard]] ModelRes get_model(const std::string& id, const std::string& path);
+        [[nodiscard]] TextureRes get_texture(const std::string& id, const std::string& path);
+        [[nodiscard]] TextureRes get_texture(const std::string& id);
         [[nodiscard]] MeshRes get_mesh(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(const std::string& name);
@@ -47,7 +45,6 @@ namespace dodoe {
 
     private:
         ResourceManager() = default;
-        Scope<TextureLoader> texture_loader_{nullptr};
         Scope<ShaderLibrary> shader_library_{nullptr};
         Scope<AnimationLibrary> animation_library_{nullptr};
         Scope<MeshLoader> mesh_loader_{nullptr};

@@ -7,8 +7,8 @@ layout(location = 1) in vec4 v_Color;
 layout(location = 2) flat in uint v_TexIndex;
 
 const uint kMaxTextures = 1024u;
-layout(set = 0, binding = 0) uniform texture2D u_Textures[kMaxTextures];
 layout(set = 0, binding = 128) uniform sampler u_TextureSampler;
+layout(set = 1, binding = 0) uniform texture2D u_Textures[kMaxTextures];
 
 void main()
 {

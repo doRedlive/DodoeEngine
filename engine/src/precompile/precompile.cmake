@@ -1,8 +1,23 @@
 # 
 set(PRECOMPILE_TOOLS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/bin")
-set(DODOE_PRECOMPILE_PARAMS_IN_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/precompile/precompile.json.in")
 set(DODOE_PRECOMPILE_PARAMS_PATH "${PRECOMPILE_TOOLS_PATH}/precompile.json")
-configure_file(${DODOE_PRECOMPILE_PARAMS_IN_PATH} ${DODOE_PRECOMPILE_PARAMS_PATH})
+
+if (NOT DEFINED DODOE_RUNTIME_HEADS)
+    set(DODOE_RUNTIME_HEADS "")
+endif()
+if (NOT DEFINED DODOE_EDITOR_HEADS)
+    set(DODOE_EDITOR_HEADS "")
+endif()
+
+set(_DODOE_PRECOMPILE_HEADS "")
+foreach(_h IN LISTS DODOE_RUNTIME_HEADS DODOE_EDITOR_HEADS)
+    if (NOT _h STREQUAL "")
+        list(APPEND _DODOE_PRECOMPILE_HEADS "${_h}")
+    endif()
+endforeach()
+list(REMOVE_DUPLICATES _DODOE_PRECOMPILE_HEADS)
+list(JOIN _DODOE_PRECOMPILE_HEADS ";" _DODOE_PRECOMPILE_HEADS_JOINED)
+file(WRITE "${DODOE_PRECOMPILE_PARAMS_PATH}" "${_DODOE_PRECOMPILE_HEADS_JOINED}")
 
 #
 # use wine for linux
@@ -43,17 +58,8 @@ add_custom_target(${PRECOMPILE_TARGET} ALL
 #     this will make configure_file() is called on each compile
 #   ${CMAKE_COMMAND} -E touch ${PRECOMPILE_PARAM_IN_PATH}a
 
-# If more than one COMMAND is specified they will be executed in order...
 COMMAND
-  ${CMAKE_COMMAND} -E echo "************************************************************* "
+  ${CMAKE_COMMAND} -DINPUT_LIST_FILE="${DODOE_PRECOMPILE_PARAMS_PATH}" -DOUTPUT_HEADER_FILE="${PARSER_INPUT}" -P "${CMAKE_CURRENT_SOURCE_DIR}/src/precompile/generate_parser_header.cmake"
 COMMAND
-  ${CMAKE_COMMAND} -E echo "**** [Precompile] BEGIN "
-COMMAND
-  ${CMAKE_COMMAND} -E echo "************************************************************* "
-
-COMMAND
-  ${PRECOMPILE_PARSER} "${DODOE_PRECOMPILE_PARAMS_PATH}"  "${PARSER_INPUT}"  "${ENGINE_ROOT_DIR}/src" ${sys_include} "DODOE" 0
-### BUILDING ====================================================================================
-COMMAND
-    ${CMAKE_COMMAND} -E echo "+++ Precompile finished +++"
+  ${PRECOMPILE_PARSER} "*"  "${PARSER_INPUT}"  "${ENGINE_ROOT_DIR}/src" ${sys_include} "DODOE" 0
 )

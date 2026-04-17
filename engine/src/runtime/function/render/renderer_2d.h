@@ -20,19 +20,16 @@ namespace dodoe {
     struct QuadCpuData {
         std::vector<QuadVertex> vertices{};
         std::vector<ui32> indices{};
-        std::vector<identifier> textures{};
 
         void clear() {
             vertices.clear();
             indices.clear();
-            textures.clear();
         }
     };
 
     class Renderer2d {
     public:
         static constexpr ui32 MaxQuadCount = 2048;
-        static constexpr ui32 MaxTextureCount = 1024;
 
         static void drawSprite(
             identifier texture,
@@ -41,6 +38,14 @@ namespace dodoe {
             const Vector3f& rotation, 
             const Color& color = Color::white()
         );
+
+        // static void drawTexture(
+        //     identifier texture,
+        //     const Vector2f& pos,
+        //     const Vector2f& size,
+        //     const Vector3f& rotation,
+        //     const Color& color = Color::white()
+        // );
 
         static void drawRect(
             const Vector2f& pos, 
@@ -61,7 +66,6 @@ namespace dodoe {
         static void drawText();
 
         static const std::vector<QuadCpuData>& swapQuadCpuBatches();
-        static const QuadCpuData& swapQuadCpuData();
         static void clearBatches();
     };
 

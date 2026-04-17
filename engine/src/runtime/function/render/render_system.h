@@ -3,15 +3,15 @@
 // love u forever. owo
 //
 
-#ifndef DODOE_RENDER_SYSTEM_H
-#define DODOE_RENDER_SYSTEM_H
+#pragma once
 
 #include "dopch.h"
 
 #include "render_graph.h"
-#include "render_helper.h"
-#include "interface/rhi_backend.h"
-#include "camera/camera.h"
+#include "interface/rhi_context.h"
+#include "framework/camera.h"
+#include "framework/descriptor_table_manager.h"
+#include "framework/viewport_manager.h"
 
 #include "runtime/function/ui/ui_system.h"
 #include "runtime/function/window/window_manager.h"
@@ -25,31 +25,30 @@ namespace dodoe {
     };
 
     class RenderSystem {
-        Scope<RhiContext> rhi_backend_{nullptr};
-        Scope<Camera> camera_;
-        Scope<RenderGraph> render_graph_{nullptr};
-        uint32_t current_swapchain_image_index_{0};
+        Scope<Camera> m_camera{nullptr};
+        Scope<RhiContext> m_rhi{nullptr};
+        Scope<RenderGraph> m_render_graph{nullptr};
+        Scope<ViewportManager> m_viewport_manager{nullptr};
+        Scope<TextureManager> m_texture_manager{nullptr};
+        Scope<DescriptorTableManager> m_descriptor_table{nullptr};
 
-        WindowManager* window_manager_{nullptr};
-        UiSystem* ui_system_{nullptr};
+        WindowManager* m_window_manager{nullptr};
+        UiSystem* m_ui_system{nullptr};
     public:
         static Scope<RenderSystem> create(const RenderSystemCreateInfo& create_info);
         static void destroy(Scope<RenderSystem>& system);
-        void initialize(const RenderSystemCreateInfo& init_info);
-        void shutdown();
-
+ 
         void prepare();
         void present();
         
-        [[nodiscard]] Camera& camera() { return *camera_.get(); }
-        [[nodiscard]] RhiContext* rhiBackend() const { return rhi_backend_.get(); }
-        [[nodiscard]] const std::vector<rhi::TextureHandle>& mainSceneTextures() const;
-        [[nodiscard]] uint32_t currentSwapchainImageIndex() const { return current_swapchain_image_index_; }
+        [[nodiscard]] Camera& camera() { return *m_camera.get(); }
+        [[nodiscard]] RhiContext* rhi() const { return m_rhi.get(); }
+        [[nodiscard]] ViewportManager* viewportManager() const { return m_viewport_manager.get(); }
         
     private:
+        bool initialize(const RenderSystemCreateInfo& init_info);
+        void shutdown();
         void swapLogicRenderContext();
     };
 
 }
-
-#endif//DODOE_RENDER_SYSTEM_H

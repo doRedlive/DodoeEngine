@@ -1,0 +1,127 @@
+#pragma once
+
+#include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/meta/json.h"
+#include "runtime/core/meta/serializer/serializer.h"
+
+{{#include_headfiles}}
+#include "{{headfile_name}}"
+{{/include_headfiles}}
+
+namespace dodoe::TypeFieldReflectionOperator {
+
+{{#class_defines}}
+class Type{{class_name}}Operator {
+public:
+    static const char* TypeName() { return "{{class_name}}"; }
+
+    static int GetBaseClassReflectionInstanceList(dodoe::ReflectionInstance*& out_list, void* instance) {
+        {{#class_has_base}}
+        out_list = new dodoe::ReflectionInstance[{{class_base_class_size}}];
+        {{#class_base_class_defines}}
+        out_list[{{class_base_class_index}}] = dodoe::ReflectionInstance(
+            dodoe::TypeMeta::new_meta_from_name("{{class_base_class_name}}"),
+            static_cast<{{class_base_class_name}}*>(static_cast<{{class_name}}*>(instance))
+        );
+        {{/class_base_class_defines}}
+        return {{class_base_class_size}};
+        {{/class_has_base}}
+        {{^class_has_base}}
+        out_list = nullptr;
+        return 0;
+        {{/class_has_base}}
+    }
+
+    static void* ConstructorWithJson(const dodoe::Json& json_context) {
+        auto* obj = new {{class_name}}();
+        if (json_context.is_object()) {
+            {{#class_field_defines}}
+            if (json_context.contains("{{class_field_name}}")) {
+                dodoe::Serializer::read(json_context.at("{{class_field_name}}"), obj->{{class_field_name}});
+            }
+            {{/class_field_defines}}
+        }
+        return obj;
+    }
+
+    static dodoe::Json WriteJsonByName(void* instance) {
+        auto* obj = static_cast<{{class_name}}*>(instance);
+        dodoe::Json j = dodoe::Json::object();
+        {{#class_field_defines}}
+        j["{{class_field_name}}"] = dodoe::Serializer::write(obj->{{class_field_name}});
+        {{/class_field_defines}}
+        return j;
+    }
+
+    static void Register() {
+        dodoe::TypeMetaRegisterInterface::register2classmap(
+            TypeName(),
+            new dodoe::ClassFuncTuple(
+                GetBaseClassReflectionInstanceList,
+                ConstructorWithJson,
+                WriteJsonByName
+            )
+        );
+
+        {{#class_field_defines}}
+        dodoe::TypeMetaRegisterInterface::register2fieldmap(
+            TypeName(),
+            new dodoe::FieldFuncTuple(
+                [](void* instance, void* value) {
+                    using FieldType = std::remove_cv_t<std::remove_reference_t<decltype(static_cast<{{class_name}}*>(instance)->{{class_field_name}})>>;
+                    static_cast<{{class_name}}*>(instance)->{{class_field_name}} = *static_cast<FieldType*>(value);
+                },
+                [](void* instance) -> void* {
+                    return &(static_cast<{{class_name}}*>(instance)->{{class_field_name}});
+                },
+                []() -> const char* { return "{{class_name}}"; },
+                []() -> const char* { return "{{class_field_name}}"; },
+                []() -> const char* { return "{{class_field_type}}"; },
+                []() -> bool { return {{#class_field_is_vector}}true{{/class_field_is_vector}}{{^class_field_is_vector}}false{{/class_field_is_vector}}; }
+            )
+        );
+        {{/class_field_defines}}
+
+        {{#vector_defines}}
+        dodoe::TypeMetaRegisterInterface::register2arraymap(
+            "{{vector_type_name}}",
+            new dodoe::ArrayFuncTuple(
+                [](int index, void* instance, void* element_value) {
+                    auto* vec = static_cast<{{vector_type_name}}*>(instance);
+                    (*vec)[index] = *static_cast<{{vector_element_type_name}}*>(element_value);
+                },
+                [](int index, void* instance) -> void* {
+                    auto* vec = static_cast<{{vector_type_name}}*>(instance);
+                    return &((*vec)[index]);
+                },
+                [](void* instance) -> int {
+                    auto* vec = static_cast<{{vector_type_name}}*>(instance);
+                    return static_cast<int>(vec->size());
+                },
+                []() -> const char* { return "{{vector_type_name}}"; },
+                []() -> const char* { return "{{vector_element_type_name}}"; }
+            )
+        );
+        {{/vector_defines}}
+
+        {{#class_method_defines}}
+        dodoe::TypeMetaRegisterInterface::register2methodmap(
+            TypeName(),
+            new dodoe::MethodFuncTuple(
+                []() -> const char* { return "{{class_method_name}}"; },
+                [](void*) {}
+            )
+        );
+        {{/class_method_defines}}
+    }
+};
+{{/class_defines}}
+
+inline void RegisterAll{{sourefile_name_upper_camel_case}}Reflection() {
+{{#class_defines}}
+    Type{{class_name}}Operator::Register();
+{{/class_defines}}
+}
+
+} // namespace dodoe::TypeFieldReflectionOperator
+

@@ -11,6 +11,7 @@ namespace dodoe {
     class UUID {
     public:
         UUID();
+        explicit UUID(uint64_t value);
 
         bool operator==(const UUID& other) const noexcept {
             return uuid_ == other.uuid_;

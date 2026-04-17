@@ -160,18 +160,18 @@ namespace dodoe {
 		}
 
 		VkResult result = vkCreateInstance(&create_info, nullptr, &instance_);
-		DoAssert(result == VK_SUCCESS, "VulkanBackend::createInstance failed with VkResult={}", static_cast<int>(result));
+		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createInstance failed with VkResult={}", static_cast<int>(result));
 	}
 
 	void VulkanBackend::createSurface(GLFWwindow* window_handle) {
 		VkResult result = glfwCreateWindowSurface(instance_, window_handle, nullptr, &surface_);
-		DoAssert(result == VK_SUCCESS, "VulkanBackend::createSurface failed with VkResult={}", static_cast<int>(result));
+		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createSurface failed with VkResult={}", static_cast<int>(result));
 	}
 
 	void VulkanBackend::pickPhysicalDevice() {
 		uint32_t gpu_count;
 		vkEnumeratePhysicalDevices(instance_, &gpu_count, nullptr);
-		DoAssert(gpu_count > 0, "No available GPU found!");
+		DO_ASSERT(gpu_count > 0, "No available GPU found!");
 
 		std::vector<VkPhysicalDevice> gpus(gpu_count);
 		vkEnumeratePhysicalDevices(instance_, &gpu_count, gpus.data());
@@ -185,7 +185,7 @@ namespace dodoe {
 				break;
 			}
 		}
-		DoAssert(isDeviceSuitable(gpus[use_gpu]), "Suitable gpu not found!");
+		DO_ASSERT(isDeviceSuitable(gpus[use_gpu]), "Suitable gpu not found!");
 
 		physical_device_ = gpus[use_gpu];
 	}
@@ -216,12 +216,22 @@ namespace dodoe {
 		supported_vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 		supported_vulkan13_features.pNext = nullptr;
 
+		VkPhysicalDeviceVulkan12Features supported_vulkan12_features{};
+		supported_vulkan12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		supported_vulkan12_features.pNext = &supported_vulkan13_features;
+
 		VkPhysicalDeviceFeatures2 supported_features2{};
 		supported_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-		supported_features2.pNext = &supported_vulkan13_features;
+		supported_features2.pNext = &supported_vulkan12_features;
 		vkGetPhysicalDeviceFeatures2(physical_device_, &supported_features2);
-		DoAssert(supported_vulkan13_features.dynamicRendering == VK_TRUE,
+		DO_ASSERT(supported_vulkan13_features.dynamicRendering == VK_TRUE,
 			"VulkanBackend::createLogicalDevice requires dynamicRendering support.");
+		DO_ASSERT(supported_vulkan12_features.descriptorBindingPartiallyBound == VK_TRUE,
+			"VulkanBackend::createLogicalDevice requires descriptorBindingPartiallyBound support.");
+		DO_ASSERT(supported_vulkan12_features.runtimeDescriptorArray == VK_TRUE,
+			"VulkanBackend::createLogicalDevice requires runtimeDescriptorArray support.");
+		DO_ASSERT(supported_vulkan12_features.timelineSemaphore == VK_TRUE,
+			"VulkanBackend::createLogicalDevice requires timelineSemaphore support.");
 
 		VkPhysicalDeviceVulkan13Features vulkan13_features{};
 		vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -229,14 +239,19 @@ namespace dodoe {
 		vulkan13_features.dynamicRendering = VK_TRUE;
 		vulkan13_features.synchronization2 = VK_TRUE;
 
-		VkPhysicalDeviceTimelineSemaphoreFeatures timeline_features{};
-		timeline_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
-		timeline_features.pNext = &vulkan13_features;
-		timeline_features.timelineSemaphore = VK_TRUE;
+		VkPhysicalDeviceVulkan12Features vulkan12_features{};
+		vulkan12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		vulkan12_features.pNext = &vulkan13_features;
+		vulkan12_features.descriptorIndexing = VK_TRUE;
+		vulkan12_features.runtimeDescriptorArray = VK_TRUE;
+		vulkan12_features.descriptorBindingPartiallyBound = VK_TRUE;
+		vulkan12_features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+		vulkan12_features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+		vulkan12_features.timelineSemaphore = VK_TRUE;
 
 		VkPhysicalDeviceFeatures2 enabled_features2{};
 		enabled_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-		enabled_features2.pNext = &timeline_features;
+		enabled_features2.pNext = &vulkan12_features;
 		enabled_features2.features = features;
 
 		VkDeviceCreateInfo device_info{};
@@ -251,7 +266,7 @@ namespace dodoe {
 		device_info.ppEnabledExtensionNames = device_extensions_.data();
 
 		VkResult result = vkCreateDevice(physical_device_, &device_info, nullptr, &device_);
-		DoAssert(result == VK_SUCCESS, "VulkanBackend::createLogicalDevice failed with VkResult={}", static_cast<int>(result));
+		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createLogicalDevice failed with VkResult={}", static_cast<int>(result));
 
 		vkGetDeviceQueue(device_, queue_family_indices_.graphics_family.value(), 0, &graphics_queue_);
 		vkGetDeviceQueue(device_, queue_family_indices_.present_family.value(), 0, &present_queue_);
@@ -342,7 +357,7 @@ namespace dodoe {
 		swapchain_info.oldSwapchain = VK_NULL_HANDLE;
 
 		VkResult result = vkCreateSwapchainKHR(device_, &swapchain_info, nullptr, &swapchain_);
-		DoAssert(result == VK_SUCCESS, "VulkanBackend::createSwapchain failed with VkResult={}", static_cast<int>(result));
+		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createSwapchain failed with VkResult={}", static_cast<int>(result));
 
 		vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr);
 		swapchain_images_.resize(image_count);
@@ -374,7 +389,7 @@ namespace dodoe {
 			view_info.subresourceRange.layerCount = 1;
 
 			VkImageView image_view = VK_NULL_HANDLE;
-			DoAssert(vkCreateImageView(device_, &view_info, nullptr, &image_view) == VK_SUCCESS,
+			DO_ASSERT(vkCreateImageView(device_, &view_info, nullptr, &image_view) == VK_SUCCESS,
 				"VulkanBackend::createSwapchainImageViews failed to create swapchain image view.");
 			swapchain_imageviews_.push_back(image_view);
 		}
@@ -455,6 +470,37 @@ namespace dodoe {
 
 		DoError("VulkanBackend::presentImage failed with VkResult={}", static_cast<int>(present_result));
 		return false;
+	}
+
+	bool VulkanBackend::recreateSwapchain(GLFWwindow* window_handle) {
+		vkDeviceWaitIdle(device_);
+
+		for (auto image_view : swapchain_imageviews_) {
+			if (image_view != VK_NULL_HANDLE) {
+				vkDestroyImageView(device_, image_view, nullptr);
+			}
+		}
+		swapchain_imageviews_.clear();
+
+		for (auto fence : swapchain_fences_) {
+			if (fence != VK_NULL_HANDLE) {
+				vkDestroyFence(device_, fence, nullptr);
+			}
+		}
+		swapchain_fences_.clear();
+
+		if (swapchain_ != VK_NULL_HANDLE) {
+			vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+			swapchain_ = VK_NULL_HANDLE;
+		}
+
+		swapchain_images_.clear();
+		acquire_fence_index_ = 0;
+
+		createSwapchain(window_handle);
+		createSwapchainFences();
+		createSwapchainImageViews();
+		return true;
 	}
 
     std::vector<const char*> VulkanBackend::getRequiredExtensions() {

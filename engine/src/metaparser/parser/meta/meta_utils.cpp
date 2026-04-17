@@ -6,6 +6,97 @@ static int parse_flag = 0;
 namespace Utils
 {
 
+    std::string getFieldTypeName(const Cursor& cursor)
+    {
+        const std::string field_name = cursor.getSpelling();
+
+        const CXCursor& native_cursor = cursor.getHandle();
+        CXTranslationUnit tu = clang_Cursor_getTranslationUnit(native_cursor);
+        if (tu == nullptr)
+        {
+            return getTypeNameWithoutNamespace(cursor.getType());
+        }
+
+        CXFile file = nullptr;
+        unsigned line = 0;
+        unsigned column = 0;
+        unsigned offset = 0;
+        clang_getExpansionLocation(clang_getCursorLocation(native_cursor), &file, &line, &column, &offset);
+        if (file == nullptr || line == 0 || column == 0)
+        {
+            return getTypeNameWithoutNamespace(cursor.getType());
+        }
+
+        const CXSourceLocation line_begin = clang_getLocation(tu, file, line, 1);
+        const CXSourceLocation field_loc = clang_getLocation(tu, file, line, column);
+
+        CXToken* tokens = nullptr;
+        unsigned token_count = 0;
+        clang_tokenize(tu, clang_getRange(line_begin, field_loc), &tokens, &token_count);
+        if (tokens == nullptr || token_count == 0)
+        {
+            return getTypeNameWithoutNamespace(cursor.getType());
+        }
+
+        std::vector<std::string> token_texts;
+        token_texts.reserve(token_count);
+
+        for (unsigned i = 0; i < token_count; ++i)
+        {
+            std::string spelling;
+            toString(clang_getTokenSpelling(tu, tokens[i]), spelling);
+            token_texts.emplace_back(std::move(spelling));
+        }
+
+        clang_disposeTokens(tu, tokens, token_count);
+
+        std::string type_name;
+        for (const std::string& tok : token_texts)
+        {
+            if (tok.empty())
+            {
+                continue;
+            }
+
+            const bool no_space_before = (tok == "::" || tok == "," || tok == ">" || tok == ")" || tok == "]" || tok == "*" || tok == "&");
+            if (!type_name.empty() && !no_space_before)
+            {
+                const char prev = type_name.back();
+                if (prev != ':' && prev != '<' && prev != '>' && prev != '*' && prev != '&' && prev != '(' && prev != '[')
+                {
+                    type_name.push_back(' ');
+                }
+            }
+
+            type_name += tok;
+        }
+
+        replaceAll(type_name, " > >", ">>");
+        replaceAll(type_name, "> >", ">>");
+        replaceAll(type_name, "< ", "<");
+        replaceAll(type_name, " >", ">");
+        replaceAll(type_name, " :: ", "::");
+        replaceAll(type_name, ":: ", "::");
+        replaceAll(type_name, " ::", "::");
+
+        if (!field_name.empty() && type_name.size() >= field_name.size())
+        {
+            const std::size_t pos = type_name.size() - field_name.size();
+            if (type_name.compare(pos, field_name.size(), field_name) == 0)
+            {
+                type_name.erase(pos);
+            }
+        }
+
+        trim(type_name, " ");
+        if (type_name.empty())
+        {
+            return getTypeNameWithoutNamespace(cursor.getType());
+        }
+
+        return type_name;
+    }
+
     void toString(const CXString& str, std::string& output)
     {
         auto cstr = clang_getCString(str);
@@ -19,8 +110,19 @@ namespace Utils
 
     std::string getTypeNameWithoutNamespace(const CursorType& type)
     {
-        std::string&& type_name = type.GetDisplayName();
-        return type_name;
+        const auto kind = type.GetKind();
+        std::string decl_name = type.GetDeclaration().getSpelling();
+
+        if (!decl_name.empty())
+        {
+            if (kind == CXType_Typedef || kind == CXType_Elaborated || kind == CXType_Enum ||
+                kind == CXType_Record || kind == CXType_Unexposed)
+            {
+                return decl_name;
+            }
+        }
+
+        return type.GetDisplayName();
     }
 
     std::string getQualifiedName(const std::string& display_name, const Namespace& current_namespace)

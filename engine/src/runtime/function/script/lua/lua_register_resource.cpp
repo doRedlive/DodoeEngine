@@ -23,7 +23,7 @@ namespace dodoe::lua_register_detail {
             "textureId", &TextureRes::id,
             "path", &TextureRes::path,
             "ppu", &TextureRes::ppu,
-            "valid", sol::property([](TextureRes& res) { return res.data && res.data->isValid(); })
+            "valid", sol::property([](TextureRes& res) { return res.id != 0; })
         );
         dodoe_table.new_usertype<AnimClip2d>("AnimClip2d",
             sol::constructors<AnimClip2d()>(),

@@ -1,0 +1,143 @@
+#include "component_db.h"
+
+#include "runtime/function/world/components.h"
+#include "runtime/function/world/entity.h"
+
+#include <functional>
+#include <type_traits>
+#include <utility>
+
+namespace dodoe {
+
+    bool ComponentDB::Entry::contains(Entity& entity) const {
+        return has && has(entity);
+    }
+
+    void* ComponentDB::Entry::get(Entity& entity) const {
+        return getPtr ? getPtr(entity) : nullptr;
+    }
+
+    ComponentDB& ComponentDB::self() {
+        static ComponentDB db;
+        return db;
+    }
+
+    ComponentDB::ComponentDB() {
+        m_entries.reserve(16);
+        registerBuiltinComponents();
+    }
+
+    const ComponentDB::Entry* ComponentDB::find(const std::string& name) const {
+        const auto it = m_name2index.find(name);
+        if (it == m_name2index.end()) {
+            return nullptr;
+        }
+        return &m_entries[it->second];
+    }
+
+    const ComponentDB::Entry* ComponentDB::find(entt::id_type type) const {
+        const auto it = m_typ2index.find(type);
+        if (it == m_typ2index.end()) {
+            return nullptr;
+        }
+        return &m_entries[it->second];
+    }
+
+    const std::vector<ComponentDB::Entry>& ComponentDB::entries() const {
+        return m_entries;
+    }
+
+    const std::vector<std::pair<entt::id_type, std::string>>& ComponentDB::allComponents() const {
+        return m_addable_components;
+    }
+
+    bool ComponentDB::hasComponent(Entity& entity, const std::string& name) const {
+        const Entry* entry = find(name);
+        return entry && entry->contains(entity);
+    }
+
+    void* ComponentDB::getComponentPtr(Entity& entity, const std::string& name) const {
+        const Entry* entry = find(name);
+        return entry ? entry->get(entity) : nullptr;
+    }
+
+    bool ComponentDB::addComponent(Entity& entity, const std::string& name) const {
+        const Entry* entry = find(name);
+        if (!entry || !entry->canAdd()) {
+            return false;
+        }
+        entry->add(entity);
+        return true;
+    }
+
+    bool ComponentDB::removeComponent(Entity& entity, const std::string& name) const {
+        const Entry* entry = find(name);
+        if (!entry || entry->remove == nullptr) {
+            return false;
+        }
+        entry->remove(entity);
+        return true;
+    }
+
+    template <typename T>
+    void ComponentDB::registerComponent(const std::string& name, bool addable) {
+        Entry entry{};
+        entry.type = entt::type_hash<T>::value();
+        entry.name = name;
+        entry.addable = addable;
+
+        entry.has = +[](Entity& entity) -> bool {
+            return entity.hasComponent<T>();
+        };
+
+        if constexpr (!std::is_empty_v<T>) {
+            entry.getPtr = +[](Entity& entity) -> void* {
+                if (!entity.hasComponent<T>()) {
+                    return nullptr;
+                }
+                return &entity.getComponent<T>();
+            };
+
+            entry.add = +[](Entity& entity) -> void {
+                if (!entity.hasComponent<T>()) {
+                    entity.addComponent<T>();
+                }
+            };
+        } else {
+            entry.getPtr = +[](Entity&) -> void* {
+                return nullptr;
+            };
+            entry.add = nullptr;
+        }
+
+        entry.remove = +[](Entity& entity) -> void {
+            if (entity.hasComponent<T>()) {
+                entity.removeComponent<T>();
+            }
+        };
+
+        const std::size_t index = m_entries.size();
+        m_entries.push_back(std::move(entry));
+        m_name2index.emplace(m_entries[index].name, index);
+        m_typ2index.emplace(m_entries[index].type, index);
+
+        if (m_entries[index].canAdd()) {
+            m_addable_components.emplace_back(m_entries[index].type, m_entries[index].name);
+        }
+    }
+
+    void ComponentDB::registerBuiltinComponents() {
+        registerComponent<IDComponent>("IDComponent", false);
+        registerComponent<TagComponent>("TagComponent", false);
+        registerComponent<TransformComponent>("TransformComponent", false);
+
+        registerComponent<Animation2dComponent>("Animation2dComponent");
+        registerComponent<Camera2dComponent>("Camera2dComponent");
+        registerComponent<BoxCollider2dComponent>("BoxCollider2dComponent");
+        registerComponent<MeshComponent>("MeshComponent");
+        registerComponent<ModelRendererComponent>("ModelRendererComponent");
+        registerComponent<Rigidbody2dComponent>("Rigidbody2dComponent");
+        registerComponent<SpriteRendererComponent>("SpriteRendererComponent");
+    }
+
+} // namespace dodoe

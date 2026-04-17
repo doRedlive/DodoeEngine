@@ -8,6 +8,7 @@
 
 #include "systems/animation2d_system.h"
 #include "systems/camera2d_system.h"
+#include "systems/model_renderer_system.h"
 #include "systems/physics2d_system.h"
 #include "systems/sprite_renderer_system.h"
 
@@ -32,6 +33,7 @@ namespace dodoe {
         systems_.push_back(create_scope<Physics2dSystem>());
         systems_.push_back(create_scope<Camera2dSystem>());
         systems_.push_back(create_scope<Animation2dSystem>());
+        systems_.push_back(create_scope<ModelRendererSystem>());
         systems_.push_back(create_scope<SpriteRendererSystem>());
 
         // Read config

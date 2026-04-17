@@ -6,46 +6,66 @@
 
 #include "../interface/rhi.h"
 #include "../render_pass.h"
+#include "../render_resource.h"
+#include "../framework/descriptor_table_manager.h"
 
 #include "runtime/resource/resource_type.h"
 
 namespace dodoe {
+	class Camera;
 
 	class MainCameraPass : public RenderPass {
-		std::vector<rhi::TextureHandle> swapchain_targets_{};
-		Vector2i target_extent_{0, 0};
+		inline static const std::string kSceneColorName = "MainCameraColor";
+		inline static const std::string kSceneDepthName = "MainCameraDepth";
 
-		std::vector<rhi::FramebufferHandle> framebuffers_{};
-		rhi::GraphicsPipelineHandle graphics_pipeline_{};
-		rhi::BufferHandle constant_buffer_{};
-		rhi::BufferHandle vertex_buffer_{};
-		rhi::BindingLayoutHandle binding_layout_{};
-		rhi::BindingSetHandle binding_set_{};
-		rhi::CommandListHandle cmd_list_{};
+		Camera* m_camera{nullptr};
+		DescriptorTableManager* m_descriptor_table{nullptr};
+
+		rhi::BufferHandle m_constant_buffer{};
+		rhi::BufferHandle m_vertex_buffer{};
+		rhi::ShaderHandle m_vertex_shader{};
+		rhi::ShaderHandle m_pixel_shader{};
+		rhi::SamplerHandle m_sampler{};
+		rhi::InputLayoutHandle m_input_layout{};
+		rhi::BindingLayoutHandle m_binding_layout{};
+		rhi::BindingSetHandle m_binding_set{};
+		rhi::GraphicsPipelineHandle m_graphics_pipeline{};
+		rhi::CommandListHandle m_cmd_list{};
+
+		rhi::TextureHandle m_render_target{};
+		rhi::TextureHandle m_depth_target{};
+		rhi::FramebufferHandle m_framebuffer{};
 
 		struct MainCameraVertex {
 			Vector3f position{0.0f};
 			Vector3f normal{0.0f, 0.0f, 1.0f};
+			Vector2f uv{0.0f, 0.0f};
+			ui32 texture_index{0};
 		};
 
 		std::vector<MainCameraVertex> draw_vertices_{};
-		bool initialized_{false};
-		bool mesh_loaded_{false};
-		identifier model_id_{0};
+		std::unordered_map<identifier, std::vector<MainCameraVertex>> model_vertex_cache_{};
 	public:
-		MainCameraPass(const RenderPassCreateInfo& info, const std::vector<rhi::TextureHandle>& swapchain_targets, const Vector2i& target_extent);
+		MainCameraPass(RhiContext* rhi, Camera* camera, DescriptorTableManager* descriptor_manager);
 		~MainCameraPass() override = default;
 
 		void setup() override;
 		void execute(size_t index) override;
 		void cleanup() override;
+		void onViewportResize(const Vector2i& viewport_extent) override;
 
 	private:
-		void createFramebuffers();
-		void createGraphicsPipeline();
+		void createShaders();
 		void createBuffers();
-		void fillResources();
-		void loadMeshFromResourceManager();
+		void createSampler();
+		void createInputLayout();
+		void createBindingLayout();
+		void createBindingSet();
+		void createFramebuffer();
+		void createGraphicsPipeline();
+
+		void rebuildDrawVerticesFromScene();
+		void appendModelVertices(const MainCameraDrawPacket& packet, std::vector<MainCameraVertex>& out_vertices);
 	};
 
 } // dodoe

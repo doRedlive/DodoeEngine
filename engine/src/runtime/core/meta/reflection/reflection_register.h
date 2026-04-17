@@ -8,13 +8,11 @@
 #include "dopch.h"
 
 namespace dodoe {
-    namespace reflection {
-        class TypeMetaRegister {
-        public:
-            static void meta_register();
-            static void meta_unregister();
-        };
-    } // reflection
+    class TypeMetaRegister {
+    public:
+        static void meta_register();
+        static void meta_unregister();
+    };
 } // dodoe
 
 #endif//DODOE_REFLECTION_REGISTER_H

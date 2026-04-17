@@ -19,6 +19,15 @@ file(GLOB_RECURSE HEADER_FILES
 
 set(DODOE_ALL_SOURCES ${SOURCE_FILES} ${HEADER_FILES})
 
+set(_DODOE_RUNTIME_HEADS "")
+foreach(_header_file IN LISTS HEADER_FILES)
+    file(RELATIVE_PATH _rel "${ENGINE_ROOT_DIR}/src" "${_header_file}")
+    string(REPLACE "\\" "/" _rel "${_rel}")
+    list(APPEND _DODOE_RUNTIME_HEADS "${_rel}")
+endforeach()
+list(REMOVE_DUPLICATES _DODOE_RUNTIME_HEADS)
+set(DODOE_RUNTIME_HEADS "${_DODOE_RUNTIME_HEADS}" CACHE STRING "Runtime headers for DodoePreCompile" FORCE)
+
 add_library(${TARGET_NAME} STATIC ${DODOE_ALL_SOURCES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${DODOE_ALL_SOURCES})
@@ -61,6 +70,10 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC nvrhi_vk
         PUBLIC ${Vulkan_LIBRARIES}
 )
+
+if(TARGET mono::mono)
+    target_link_libraries(${TARGET_NAME} PUBLIC mono::mono)
+endif()
 
 target_compile_definitions(${TARGET_NAME}
         PUBLIC GLFW_INCLUDE_NONE

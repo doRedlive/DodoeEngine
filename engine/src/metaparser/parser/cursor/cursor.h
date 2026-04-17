@@ -21,6 +21,7 @@ public:
     bool isDefinition(void) const;
 
     CursorType getType(void) const;
+    const CXCursor& getHandle(void) const;
 
     List getChildren(void) const;
     void visitChildren(Visitor visitor, void* data = nullptr);

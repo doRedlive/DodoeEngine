@@ -9,8 +9,6 @@
 
 namespace dodoe {
 
-    namespace reflection {
-
         const char* unknownType = "unknownType";
         const char* unknownName = "unknownName";
 
@@ -96,7 +94,7 @@ namespace dodoe {
             methods_.clear();
         }
 
-        TypeMeta TypeMeta::new_meta_from_name(const std::string& name) {
+        TypeMeta TypeMeta::newMetaFromName(const std::string& name) {
             TypeMeta type_meta(name);
             return type_meta;
         }
@@ -177,7 +175,7 @@ namespace dodoe {
 
         FieldAccessor TypeMeta::get_field_by_name(const char* name) {
             const auto it = std::find_if(fields_.begin(), fields_.end(), [&](const auto& i) {
-                return std::strcmp(i.get_field_name(), name) == 0;
+                return std::strcmp(i.getFieldName(), name) == 0;
             });
 
             if (it != fields_.end()) {
@@ -244,11 +242,11 @@ namespace dodoe {
             return field_type.is_valid_;
         }
 
-        const char* FieldAccessor::get_field_name() const {
+        const char* FieldAccessor::getFieldName() const {
             return field_name_;
         }
 
-        const char* FieldAccessor::get_field_type_name() {
+        const char* FieldAccessor::getFieldTypeName() {
             return field_type_name_;
         }
 
@@ -360,6 +358,5 @@ namespace dodoe {
             return *this;
         }
 
-    } // namespace reflection
 } // namespace dodoe
 

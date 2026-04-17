@@ -14,10 +14,23 @@ file(GLOB_RECURSE CAKERY_HEADERS
 
 set(CAKERY_ALL_SOURCES ${CAKERY_SOURCES} ${CAKERY_HEADERS})
 
+set(_DODOE_EDITOR_HEADS "")
+foreach(_header_file IN LISTS CAKERY_HEADERS)
+    file(RELATIVE_PATH _rel "${ENGINE_ROOT_DIR}/src" "${_header_file}")
+    string(REPLACE "\\" "/" _rel "${_rel}")
+    list(APPEND _DODOE_EDITOR_HEADS "${_rel}")
+endforeach()
+list(REMOVE_DUPLICATES _DODOE_EDITOR_HEADS)
+set(DODOE_EDITOR_HEADS "${_DODOE_EDITOR_HEADS}" CACHE STRING "Editor headers for DodoePreCompile" FORCE)
+
 
 add_executable(Cakery EXCLUDE_FROM_ALL ${CAKERY_ALL_SOURCES})
 
 target_link_libraries(Cakery PRIVATE DodoeRuntime)
+
+if(TARGET GreenCake)
+    add_dependencies(Cakery GreenCake)
+endif()
 
 target_include_directories(Cakery
     PRIVATE
@@ -27,10 +40,11 @@ target_include_directories(Cakery
 
 set(POST_BUILD_COMMANDS
         COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>/" "${BINARY_ROOT_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${TARGET_NAME}>" "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
 )
 
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
         ${POST_BUILD_COMMANDS}
 )
+
 

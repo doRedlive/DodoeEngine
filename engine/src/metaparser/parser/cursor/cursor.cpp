@@ -47,6 +47,8 @@ bool Cursor::isDefinition(void) const { return clang_isCursorDefinition(m_handle
 
 CursorType Cursor::getType(void) const { return clang_getCursorType(m_handle); }
 
+const CXCursor& Cursor::getHandle(void) const { return m_handle; }
+
 Cursor::List Cursor::getChildren(void) const
 {
     List children;

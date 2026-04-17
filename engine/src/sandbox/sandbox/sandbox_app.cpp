@@ -14,8 +14,8 @@ class SandboxApp final : public dodoe::Application {
 public:
     explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
         : dodoe::Application(spec) {
-            context_->layer_stack.push_layer(new OnlyoneLayer("Onlyone"));
-            // context_->layer_stack.push_layer(new SandboxLayer("Sandbox"));
+            // context_->layer_stack.push_layer(new OnlyoneLayer("Onlyone"));
+            context_->layer_stack.push_layer(new SandboxLayer("Sandbox"));
     }
 
     ~SandboxApp() override = default;

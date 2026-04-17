@@ -20,21 +20,21 @@ namespace dodoe {
 #endif
 
 #define REFLECTION_BODY(class_name) \
-    friend class dodoe::reflection::TypeFieldReflectionOperator::Type##class_name##Operator; \
+    friend class dodoe::TypeFieldReflectionOperator::Type##class_name##Operator; \
     friend class dodoe::Serializer;
 
 #define REFLECTION_TYPE(class_name) \
-    namespace dodoe::reflection { \
+    namespace dodoe { \
         namespace TypeFieldReflectionOperator { \
             class Type##class_name##Operator; \
         } \
     }
 
-#define REGISTER_FIELD_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2fieldmap(name, value)
-#define REGISTER_METHOD_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2methodmap(name, value)
-#define REGISTER_BASE_CLASS_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2classmap(name, value)
-#define REGISTER_ARRAY_TO_MAP(name, value) dodoe::reflection::TypeMetaRegisterInterface::register2arraymap(name, value)
-#define UNREGISTER_ALL dodoe::reflection::TypeMetaRegisterInterface::unregister_all()
+#define REGISTER_FIELD_TO_MAP(name, value) dodoe::TypeMetaRegisterInterface::register2fieldmap(name, value)
+#define REGISTER_METHOD_TO_MAP(name, value) dodoe::TypeMetaRegisterInterface::register2methodmap(name, value)
+#define REGISTER_BASE_CLASS_TO_MAP(name, value) dodoe::TypeMetaRegisterInterface::register2classmap(name, value)
+#define REGISTER_ARRAY_TO_MAP(name, value) dodoe::TypeMetaRegisterInterface::register2arraymap(name, value)
+#define UNREGISTER_ALL dodoe::TypeMetaRegisterInterface::unregister_all()
 
     template <typename T, typename U, typename = void>
     struct is_safely_castable : std::false_type {};
@@ -45,12 +45,11 @@ namespace dodoe {
 
     class Serializer;
 
-    namespace reflection {
-        class TypeMeta;
-        class FieldAccessor;
-        class MethodAccessor;
-        class ArrayAccessor;
-        class ReflectionInstance;
+    class TypeMeta;
+    class FieldAccessor;
+    class MethodAccessor;
+    class ArrayAccessor;
+    class ReflectionInstance;
 
         using SetFunc = std::function<void(void*, void*)>;
         using GetFunc = std::function<void*(void*)>;
@@ -88,7 +87,7 @@ namespace dodoe {
         public:
             TypeMeta();
 
-            static TypeMeta new_meta_from_name(const std::string& name);
+            static TypeMeta newMetaFromName(const std::string& name);
             static bool new_array_accessor_from_name(const std::string& array_type_name, ArrayAccessor& accessor);
             static ReflectionInstance new_from_name_and_json(const std::string& type_name, const Json& json_context);
             static Json write_by_name(const std::string& name, void* instance);
@@ -102,7 +101,7 @@ namespace dodoe {
             int get_base_class_reflection_instance_list(ReflectionInstance*& out_list, void* instance);
             FieldAccessor get_field_by_name(const char* name);
             MethodAccessor get_method_by_name(const char* name);
-            bool is_valid() const { return is_valid_; }
+            bool isValid() const { return is_valid_; }
             TypeMeta& operator=(const TypeMeta& dest);
 
         private:
@@ -124,8 +123,8 @@ namespace dodoe {
             void set(void* instance, void* value);
             TypeMeta get_owner_type_meta();
             bool get_type_meta(TypeMeta& field_type);
-            const char* get_field_name() const;
-            const char* get_field_type_name();
+            const char* getFieldName() const;
+            const char* getFieldTypeName();
             bool is_array_type();
             FieldAccessor& operator=(const FieldAccessor& dest);
 
@@ -285,11 +284,6 @@ namespace dodoe {
             std::string type_name_{};
             T* instance_{ nullptr };
         };
-    }
-
-    template <typename T>
-    using ReflectionPtr = reflection::ReflectionPtr<T>;
-
 } // namespace dodoe
 
 #endif // DODOE_REFLECTION_HPP

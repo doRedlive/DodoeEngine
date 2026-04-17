@@ -100,9 +100,9 @@ namespace dodoe {
             return window_pos;
         }
 
-        const auto& logical_size = viewport_manager_->get_logical_size();
-        const auto& window_size = viewport_manager_->get_window_size();
-        const auto& pixel_size = viewport_manager_->get_pixel_size();
+        const auto& logical_size = viewport_manager_->getLogicalSize();
+        const auto& window_size = viewport_manager_->getWindowSize();
+        const auto& pixel_size = viewport_manager_->getPixelSize();
         const auto& viewport = viewport_manager_->viewport();
 
         if (window_size.x <= 0.0f || window_size.y <= 0.0f
@@ -112,8 +112,8 @@ namespace dodoe {
         }
 
         const Vector2f pixel_pos{
-            window_pos.x * (pixel_size.x / window_size.x),
-            window_pos.y * (pixel_size.y / window_size.y)
+            window_pos.x * (static_cast<float>(pixel_size.x) / static_cast<float>(window_size.x)),
+            window_pos.y * (static_cast<float>(pixel_size.y) / static_cast<float>(window_size.y))
         };
 
         const float normalized_x = (pixel_pos.x - viewport.pos.x) / viewport.size.x;

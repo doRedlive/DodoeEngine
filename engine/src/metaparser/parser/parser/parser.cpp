@@ -83,6 +83,15 @@ void MetaParser::finish(void)
 bool MetaParser::parseProject()
 {
     bool result = true;
+    if (m_project_input_file == "*")
+    {
+        if (!fs::exists(fs::path(m_source_include_file_name)))
+        {
+            std::cout << "Could not load Source Include file: " << m_source_include_file_name << std::endl;
+            return false;
+        }
+        return true;
+    }
     std::cout << "Parsing project file: " << m_project_input_file << std::endl;
 
     std::fstream include_txt_file(m_project_input_file, std::ios::in);

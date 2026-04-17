@@ -4,9 +4,14 @@
 
 #include "dopch.h"
 
+#include "runtime/core/meta/reflection/reflection.h"
+
+REFLECTION_TYPE(MeshComponent)
+
 namespace dodoe {
 
-	struct MeshComponent {
+	STRUCT(MeshComponent, WhiteListFields) {
+		REFLECTION_BODY(MeshComponent)
 
 	};
 

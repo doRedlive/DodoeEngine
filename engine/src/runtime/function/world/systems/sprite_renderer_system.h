@@ -7,7 +7,7 @@
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components.h"
 #include "runtime/function/render/renderer_2d.h"
-#include "runtime/resource/resource_manager.h"
+#include "runtime/function/render/framework/texture_manager.h"
 
 namespace dodoe {
 
@@ -31,15 +31,15 @@ namespace dodoe {
                     continue;
                 }
 
-                const auto texture_res = ResourceManager::self().getTextureRes(sr.texture_id);
-                if (!texture_res.data) {
+                const auto texture = TextureManager::self().loadTexture(sr.texture_id);
+                if (!texture) {
                     continue;
                 }
 
-                const float ppu = (texture_res.ppu > 0.0f) ? texture_res.ppu : 10.0f;
+                constexpr float ppu = 10.0f;
                 const Vector2f tex_size(
-                    static_cast<float>(texture_res.data->width),
-                    static_cast<float>(texture_res.data->height)
+                    static_cast<float>(texture->width),
+                    static_cast<float>(texture->height)
                 );
                 const Vector2f world_size = (tex_size / ppu) * Vector2f(tr.scale.x, tr.scale.y);
 

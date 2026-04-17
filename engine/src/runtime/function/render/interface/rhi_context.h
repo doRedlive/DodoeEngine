@@ -20,9 +20,11 @@ namespace dodoe {
     };
 
     class RhiContext {
-        Scope<VulkanBackend> vulkan_backend_{nullptr};
         rhi::DeviceHandle device_{};
+        rhi::CommandListHandle cmd_{};
         std::vector<rhi::TextureHandle> swapchain_textures_{};
+        Scope<VulkanBackend> vulkan_backend_{nullptr};
+        GLFWwindow* window_handle_{nullptr};
     public:
         static Scope<RhiContext> create(const RhiBackendCreateInfo& create_info);
         static void destroy(Scope<RhiContext>& backend);
@@ -32,6 +34,8 @@ namespace dodoe {
         [[nodiscard]] Vector2i getSwapchainExtent2d() const { return vulkan_backend_->getSwapchainExtent2d(); }
         [[nodiscard]] bool acquireNextSwapchainImage(uint32_t& image_index);
         [[nodiscard]] bool presentSwapchainImage(uint32_t image_index);
+        [[nodiscard]] bool recreateSwapchain();
+        [[nodiscard]] const rhi::CommandListHandle& getCommandList() { return cmd_; }
 
         [[nodiscard]] VulkanBackend* getVulkanBackend() const { return vulkan_backend_.get(); }
 

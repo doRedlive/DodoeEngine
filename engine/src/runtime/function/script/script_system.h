@@ -6,30 +6,31 @@
 #define DODOE_SCRIPT_SYSTEM_H
 
 #include "dopch.h"
-#include "script_runtime.h"
+#include "lua/lua_script_runtime.h"
 
 namespace dodoe {
 
     struct ScriptSystemCreateInfo {
-        std::vector<ScriptLanguage> languages{ ScriptLanguage::Lua };
+
     };
 
     class ScriptSystem {
     public:
-        static Scope<ScriptSystem> create(ScriptSystemCreateInfo create_info);
+        static Scope<ScriptSystem> create(const ScriptSystemCreateInfo& create_info);
         static void destroy(Scope<ScriptSystem>& script_system);
 
-        bool has_language(ScriptLanguage language) const;
-        bool execute(const std::filesystem::path& script_file, ScriptLanguage language = ScriptLanguage::Lua);
+        bool execute_csharp(const std::filesystem::path& script_file);
+        bool execute_lua(const std::filesystem::path& script_file);
+
+        LuaScriptEngine* get_lua_engine() { return lua_engine_.get(); }
 
     private:
-        IScriptRuntime* get_runtime(ScriptLanguage language);
-        const IScriptRuntime* get_runtime(ScriptLanguage language) const;
-
-        void initialize(ScriptSystemCreateInfo create_info);
+        bool initialize(const ScriptSystemCreateInfo& create_info);
         void shutdown();
 
-        std::unordered_map<ScriptLanguage, Scope<IScriptRuntime>, ScriptLanguageHash> runtimes_{};
+        Scope<LuaScriptEngine> lua_engine_;
+        bool csharp_initialized_{ false };
+        bool enable_csharp_on_startup_{ false };
     };
 
 } // dodoe

@@ -14,8 +14,8 @@ namespace dodoe {
 
     Scene::Scene(World& world, const std::string& name) : world_(world), name_(name), reg_(this) {
         auto entity = create_entity("Primary Camera"); 
-        auto& camera = entity.add_component<Camera2dComponent>();
-        entity.get_component<TagComponent>().setTag("PrimaryCamera");
+        auto& camera = entity.addComponent<Camera2dComponent>();
+        entity.getComponent<TagComponent>().setTag("PrimaryCamera");
     }
 
     Scene::~Scene() = default;
@@ -55,10 +55,10 @@ namespace dodoe {
 
     Entity Scene::create_entity(Uuid uuid, const std::string& name) {
         auto entity = reg_.create();
-        auto id = entity.add_component<IDComponent>(uuid, name);
+        auto id = entity.addComponent<IDComponent>(uuid, name);
         id.name = name.empty() ? "Entity" : name;
-        entity.add_component<TagComponent>();
-        entity.add_component<TransformComponent>();
+        entity.addComponent<TagComponent>();
+        entity.addComponent<TransformComponent>();
 
         entity_umap_[uuid] = entity;
 
@@ -66,8 +66,8 @@ namespace dodoe {
     }
 
     void Scene::add_entity(Entity entity) {
-        if (entity.has_component<IDComponent>()) {
-            auto id = entity.get_component<IDComponent>();
+        if (entity.hasComponent<IDComponent>()) {
+            auto id = entity.getComponent<IDComponent>();
             if (entity_umap_.find(id.id) != entity_umap_.end()) {
                 entity_umap_[id.id] = entity;
             }
@@ -75,7 +75,7 @@ namespace dodoe {
                 DoError("The scene already has the entity!");
             }
         }
-        auto id = entity.add_component<IDComponent>();
+        auto id = entity.addComponent<IDComponent>();
         id.name = "Entity";
 
         entity_umap_[id.id] = entity.handle();
@@ -88,7 +88,7 @@ namespace dodoe {
 
     Entity Scene::get_entity(const std::string& tag) {
         for (auto& [_, entity] : entity_umap_) {
-            if (entity.get_component<TagComponent>().id == string2hash(tag)) {
+            if (entity.getComponent<TagComponent>().id == string2hash(tag)) {
                 return entity;
             }
         }
@@ -96,8 +96,17 @@ namespace dodoe {
         return Entity();
     }
 
+    Entity Scene::getEntityByUUID(Uuid uuid) {
+        if (entity_umap_.find(uuid) != entity_umap_.end()) {
+            return entity_umap_[uuid];
+        }
+        DoError("Not found entity with UUID {}.", static_cast<uint64_t>(uuid));
+        return Entity();
+    }
+
     std::vector<Entity> Scene::getEntities() {
-        std::vector<Entity> entities(entity_umap_.size());
+        std::vector<Entity> entities;
+        entities.reserve(entity_umap_.size());
         for (const auto& [_, entity] : entity_umap_) {
             entities.push_back(entity);
         }

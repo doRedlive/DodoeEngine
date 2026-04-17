@@ -10,12 +10,9 @@
 #include "runtime/resource/file/file_system.h"
 #include "runtime/resource/resource_manager.h"
 
-#include "runtime/function/render/render_api.h"
-#include "runtime/function/render/render_helper.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/function/render/framework/texture_manager.h"
 
 #include "imgui/imgui.h"
-#include "imgui/backends/imgui_impl_vulkan.h"
 
 using namespace dodoe;
 
@@ -30,7 +27,7 @@ namespace cakery {
         file_icon_ = ResourceManager::self().get_texture("engine/res/pictures/ContentBrowser/FileIcon.png",
 			"engine/res/pictures/ContentBrowser/FileIcon.png");
 
-		initializeVulkanIconDescriptors();
+		initializeIconTextures();
     }
 
 	ProjectPanel::~ProjectPanel() {
@@ -38,91 +35,26 @@ namespace cakery {
 	}
 
 	void ProjectPanel::cleanup() {
-		if (RenderApi::apiType() != RenderApiType::Vulkan) {
-			return;
-		}
-
-		if (directory_icon_set_ != VK_NULL_HANDLE) {
-			ImGui_ImplVulkan_RemoveTexture(directory_icon_set_);
-			directory_icon_set_ = VK_NULL_HANDLE;
-		}
-		if (file_icon_set_ != VK_NULL_HANDLE) {
-			ImGui_ImplVulkan_RemoveTexture(file_icon_set_);
-			file_icon_set_ = VK_NULL_HANDLE;
-		}
-
-		if (icon_sampler_ != VK_NULL_HANDLE && icon_device_ != VK_NULL_HANDLE) {
-			vkDestroySampler(icon_device_, icon_sampler_, nullptr);
-			icon_sampler_ = VK_NULL_HANDLE;
-		}
-		icon_device_ = VK_NULL_HANDLE;
+		directory_icon_texture_ = nullptr;
+		file_icon_texture_ = nullptr;
 	}
 
-	void ProjectPanel::initializeVulkanIconDescriptors() {
-		if (RenderApi::apiType() != RenderApiType::Vulkan) {
-			return;
-		}
-		if (directory_icon_set_ != VK_NULL_HANDLE && file_icon_set_ != VK_NULL_HANDLE) {
+	void ProjectPanel::initializeIconTextures() {
+		if (directory_icon_texture_ && file_icon_texture_) {
 			return;
 		}
 
-		auto* render_system = dodoe::Application::self().context().render_system.get();
-		auto* rhi_backend = render_system ? render_system->rhiBackend() : nullptr;
-		auto* vulkan_backend = rhi_backend ? rhi_backend->getVulkanBackend() : nullptr;
-		if (!vulkan_backend) {
-			return;
-		}
-		icon_device_ = vulkan_backend->getDevice();
-		if (icon_device_ == VK_NULL_HANDLE) {
-			return;
+		directory_icon_texture_ = TextureManager::self().loadTexture(directory_icon_.id);
+		file_icon_texture_ = TextureManager::self().loadTexture(file_icon_.id);
+	}
+
+	Ref<Texture> ProjectPanel::getIconTexture(const bool is_directory) const {
+		auto texture = is_directory ? directory_icon_texture_ : file_icon_texture_;
+		if (texture && texture->handle) {
+			return texture;
 		}
 
-		if (icon_sampler_ == VK_NULL_HANDLE) {
-			VkSamplerCreateInfo sampler_info{};
-			sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			sampler_info.magFilter = VK_FILTER_LINEAR;
-			sampler_info.minFilter = VK_FILTER_LINEAR;
-			sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			sampler_info.minLod = 0.0f;
-			sampler_info.maxLod = 1.0f;
-			if (vkCreateSampler(icon_device_, &sampler_info, nullptr, &icon_sampler_) != VK_SUCCESS) {
-				icon_device_ = VK_NULL_HANDLE;
-				return;
-			}
-		}
-		if (icon_sampler_ == VK_NULL_HANDLE) {
-			return;
-		}
-
-		if (directory_icon_set_ != VK_NULL_HANDLE) {
-			ImGui_ImplVulkan_RemoveTexture(directory_icon_set_);
-			directory_icon_set_ = VK_NULL_HANDLE;
-		}
-		if (file_icon_set_ != VK_NULL_HANDLE) {
-			ImGui_ImplVulkan_RemoveTexture(file_icon_set_);
-			file_icon_set_ = VK_NULL_HANDLE;
-		}
-
-		auto create_icon_set = [this](const TextureRes& icon_res) -> VkDescriptorSet {
-			if (icon_sampler_ == VK_NULL_HANDLE) {
-				return VK_NULL_HANDLE;
-			}
-			auto texture = TextureManager::self().getTexture(icon_res);
-			if (!texture) {
-				return VK_NULL_HANDLE;
-			}
-			auto image_view = static_cast<VkImageView>(texture->getNativeView(rhi::ObjectTypes::VK_ImageView));
-			if (!image_view) {
-				return VK_NULL_HANDLE;
-			}
-			return ImGui_ImplVulkan_AddTexture(icon_sampler_, image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		};
-
-		directory_icon_set_ = create_icon_set(directory_icon_);
-		file_icon_set_ = create_icon_set(file_icon_);
+		return TextureManager::self().loadFallbackTexture();
 	}
 
 	void ProjectPanel::draw() {
@@ -148,24 +80,20 @@ namespace cakery {
 		for (auto& directory_entry : fs::directory_iterator(cur_directory_)) {
 			const auto& path = directory_entry.path();
 			std::string file_name = path.filename().string();
+			const bool is_directory = directory_entry.is_directory();
 
 			ImGui::PushID(file_name.c_str());
-			TextureRes icon = directory_entry.is_directory() ? directory_icon_ : file_icon_;
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-			if (RenderApi::apiType() == RenderApiType::Vulkan) {
-				if (directory_icon_set_ == VK_NULL_HANDLE || file_icon_set_ == VK_NULL_HANDLE) {
-					initializeVulkanIconDescriptors();
-				}
-				const VkDescriptorSet icon_set = directory_entry.is_directory() ? directory_icon_set_ : file_icon_set_;
-				if (icon_set != VK_NULL_HANDLE) {
-					const ImTextureRef icon_ref(static_cast<ImTextureID>(reinterpret_cast<uintptr_t>(icon_set)));
-					ImGui::ImageButton(file_name.c_str(), icon_ref, ImVec2(thumbnail_size, thumbnail_size), ImVec2(0, 1), ImVec2(1, 0));
-				} else {
-					ImGui::Button(file_name.c_str(), ImVec2(thumbnail_size, thumbnail_size));
-				}
-			} else {
-				const ImTextureRef icon_ref(static_cast<ImTextureID>(static_cast<uintptr_t>(icon.id)));
+			if (!directory_icon_texture_ || !file_icon_texture_) {
+				initializeIconTextures();
+			}
+
+			auto icon_texture = getIconTexture(is_directory);
+			if (icon_texture && icon_texture->handle) {
+				const ImTextureRef icon_ref(reinterpret_cast<ImTextureID>(icon_texture->handle.Get()));
 				ImGui::ImageButton(file_name.c_str(), icon_ref, ImVec2(thumbnail_size, thumbnail_size), ImVec2(0, 1), ImVec2(1, 0));
+			} else {
+				ImGui::Button(file_name.c_str(), ImVec2(thumbnail_size, thumbnail_size));
 			}
 
 			if (ImGui::BeginDragDropSource())
@@ -179,7 +107,7 @@ namespace cakery {
 			ImGui::PopStyleColor();
 			if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 			{
-				if (directory_entry.is_directory())
+				if (is_directory)
 					cur_directory_ /= path.filename();
 
 			}

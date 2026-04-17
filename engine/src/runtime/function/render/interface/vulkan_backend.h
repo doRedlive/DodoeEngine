@@ -74,6 +74,7 @@ namespace dodoe {
 		[[nodiscard]] Vector2i getSwapchainExtent2d() { return Vector2i(swapchain_extent_.width, swapchain_extent_.height); }
 		[[nodiscard]] bool acquireNextImage(uint32_t& image_index);
 		[[nodiscard]] bool presentImage(uint32_t image_index);
+		[[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle);
 
 	private:
 		void initialize(const VulkanBackendCreateInfo& info);

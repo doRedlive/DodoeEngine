@@ -1,6 +1,4 @@
-//
-// Created by Redlive on 2026/4/5.
-//
+// do@GreenMuffin
 
 #pragma once
 
@@ -8,6 +6,8 @@
 #include "nvrhi/vulkan.h"
 #include "nvrhi/validation.h"
 #include "nvrhi/utils.h"
+
+#include "vulkan_backend.h"
 
 namespace dodoe {
 

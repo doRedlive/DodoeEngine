@@ -3,6 +3,7 @@
 #include "mesh_loader.h"
 
 #include "runtime/core/utils/common.h"
+#include "runtime/resource/resource_manager.h"
 
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
@@ -50,7 +51,38 @@ namespace {
         return vertex;
     }
 
-    dodoe::Ref<dodoe::MeshData> MakeMesh(const aiMesh& source_mesh) {
+    std::vector<dodoe::identifier> LoadMaterialTextures(const aiMaterial* material, const std::filesystem::path& model_directory) {
+        std::vector<dodoe::identifier> texture_ids{};
+        if (!material) {
+            return texture_ids;
+        }
+
+        auto load_type = [&](aiTextureType type) {
+            const unsigned int count = material->GetTextureCount(type);
+            for (unsigned int i = 0; i < count; ++i) {
+                aiString texture_path{};
+                if (material->GetTexture(type, i, &texture_path) != aiReturn_SUCCESS) {
+                    continue;
+                }
+
+                std::filesystem::path resolved = model_directory / std::filesystem::path(texture_path.C_Str());
+                resolved = resolved.lexically_normal();
+                auto texture_res = dodoe::ResourceManager::self().get_texture(resolved.string(), resolved.string());
+                if (texture_res.id != 0) {
+                    texture_ids.push_back(texture_res.id);
+                }
+            }
+        };
+
+        load_type(aiTextureType_DIFFUSE);
+        if (texture_ids.empty()) {
+            load_type(aiTextureType_BASE_COLOR);
+        }
+
+        return texture_ids;
+    }
+
+    dodoe::Ref<dodoe::MeshData> MakeMesh(const aiMesh& source_mesh, const aiScene& scene, const std::filesystem::path& model_directory) {
         std::vector<dodoe::MeshVertex> vertices;
         vertices.reserve(source_mesh.mNumVertices);
 
@@ -70,6 +102,9 @@ namespace {
         auto context = dodoe::create_ref<dodoe::MeshData>();
         context->vertices = std::move(vertices);
         context->indices = std::move(indices);
+        if (source_mesh.mMaterialIndex < scene.mNumMaterials) {
+            context->textures = LoadMaterialTextures(scene.mMaterials[source_mesh.mMaterialIndex], model_directory);
+        }
 
         return context;
     }
@@ -85,7 +120,8 @@ namespace {
                 continue;
             }
 
-            const dodoe::identifier mesh_id = loader.addMesh(MakeMesh(*source_mesh));
+            const std::filesystem::path model_directory = std::filesystem::path(model->directory);
+            const dodoe::identifier mesh_id = loader.addMesh(MakeMesh(*source_mesh, scene, model_directory));
             model->meshes.push_back(mesh_id);
         }
 

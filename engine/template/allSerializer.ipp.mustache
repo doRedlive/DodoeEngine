@@ -1,0 +1,31 @@
+#pragma once
+
+#include "all_serializer.h"
+
+namespace dodoe {
+
+{{#class_defines}}
+template<>
+inline Json Serializer::write(const {{class_name}}& instance) {
+    Json j = Json::object();
+    {{#class_field_defines}}
+    j["{{class_field_name}}"] = Serializer::write(instance.{{class_field_name}});
+    {{/class_field_defines}}
+    return j;
+}
+
+template<>
+inline {{class_name}}& Serializer::read(const Json& json_context, {{class_name}}& instance) {
+    if (json_context.is_object()) {
+        {{#class_field_defines}}
+        if (json_context.contains("{{class_field_name}}")) {
+            Serializer::read(json_context.at("{{class_field_name}}"), instance.{{class_field_name}});
+        }
+        {{/class_field_defines}}
+    }
+    return instance;
+}
+{{/class_defines}}
+
+} // namespace dodoe
+

@@ -87,6 +87,10 @@ if(NOT TARGET lua)
     include(lua.cmake)
 endif()
 
+if(NOT TARGET mono::mono)
+    include(mono.cmake)
+endif()
+
 if(NOT TARGET assimp)
     include(assimp.cmake)
     set_target_properties(assimp PROPERTIES FOLDER ${external_folder}/assimp)
@@ -96,3 +100,4 @@ if(NOT TARGET nvrhi)
     include(nvrhi.cmake)
     set_target_properties(nvrhi PROPERTIES FLODER ${external_folder}/nvrhi)
 endif()
+

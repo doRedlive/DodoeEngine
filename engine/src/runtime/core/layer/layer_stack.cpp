@@ -24,6 +24,9 @@ namespace dodoe {
     }
 
     void LayerStack::clear_layers() {
+        for (auto* layer : layers_) {
+            delete layer;
+        }
         layers_.clear();
         layer_insert_index_ = 0;
     }
@@ -40,6 +43,7 @@ namespace dodoe {
     void LayerStack::pop_layer(Layer *layer) {
         if (const auto it = std::find(layers_.begin(), layers_.begin() + layer_insert_index_, layer);
             it != layers_.begin() + layer_insert_index_) {
+                delete *it;
                 layers_.erase(it);
                 layer_insert_index_--;
         }
@@ -48,6 +52,7 @@ namespace dodoe {
     void LayerStack::pop_over_layer(Layer *layer) {
         if (const auto it = std::find(layers_.begin() + layer_insert_index_, layers_.end(), layer);
             it != layers_.end()) {
+                delete *it;
                 layers_.erase(it);
         }
     }

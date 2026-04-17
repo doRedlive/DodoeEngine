@@ -31,7 +31,7 @@ namespace cakery {
 
         HierarchyPanel hierarchy_panel_{};
         ProjectPanel project_panel_{};
-        //InspectorPanel inspector_panel_{};
+        InspectorPanel inspector_panel_{};
         ConsolePanel console_panel_{};
         DockSpacePanel dockspace_panel_{};
         ViewportPanel viewport_panel_;

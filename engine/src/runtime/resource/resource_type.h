@@ -11,28 +11,12 @@
 
 namespace dodoe {
 
-    struct TextureData {
-        int width{0}, height{0};
-        uchar* pixels{nullptr};
-
-        ~TextureData() {
-            if (pixels) {
-                delete[] pixels;
-                pixels = nullptr;
-            }
-        }
-
-        bool isValid() {
-            return pixels != nullptr;
-        }
-    };
-
     struct TextureRes {
         identifier id{0};
-        Ref<TextureData> data{nullptr};
         std::string path{};
         float ppu{10.0f};
     };
+
 
     struct Material {
         Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};

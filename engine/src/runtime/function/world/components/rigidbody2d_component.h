@@ -8,18 +8,26 @@
 #include "dopch.h"
 
 #include "box2d/box2d.h"
+#include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/math/math.h"
 
+REFLECTION_TYPE(Rigidbody2dComponent)
+
 namespace dodoe {
-    struct Rigidbody2dComponent {
+    STRUCT(Rigidbody2dComponent, WhiteListFields) {
+        REFLECTION_BODY(Rigidbody2dComponent)
+
         enum class BodyType {
             Static = 0,
             Dynamic = 1,
             Kinematic = 2
         };
 
+        META(Enable)
         BodyType type{ BodyType::Static };
+        META(Enable)
         float gravity_scale{1.0f};
+        META(Enable)
         bool fixed_rotation{ false };
         b2BodyId body_id{ b2_nullBodyId };
 

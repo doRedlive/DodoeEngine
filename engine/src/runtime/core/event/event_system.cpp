@@ -5,14 +5,17 @@
 #include "event_system.h"
 
 #include "GLFW/glfw3.h"
-#include "backends/imgui_impl_glfw.h"
 
 namespace dodoe {
 
     static Scope<entt::dispatcher> g_event_dispatcher{};
 
+    bool EventSystem::initialized_() {
+        return static_cast<bool>(g_event_dispatcher);
+    }
+
     entt::dispatcher& EventSystem::dispatcher_() {
-        DoAssert(g_event_dispatcher, "EventSystem not initialized");
+        DO_ASSERT(g_event_dispatcher, "EventSystem not initialized");
         return *g_event_dispatcher;
     }
 
@@ -25,6 +28,9 @@ namespace dodoe {
     }
 
     void EventSystem::handle_events() {
+        if (!initialized_()) {
+            return;
+        }
         dispatcher_().update();
     }
 

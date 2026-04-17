@@ -11,26 +11,19 @@
 
 namespace dodoe {
 
-    struct TextureLoaderCreateInfo {
+    struct TextureBlob {
+        int width{0}, height{0};
+        int channels{0};
+        uchar* pixels{nullptr};
 
-    };
+        TextureBlob() = default;
+        explicit TextureBlob(const std::string& paht);
+        ~TextureBlob();
 
-    class TextureLoader {
-    public:
-        static Scope<TextureLoader> create(const TextureLoaderCreateInfo& create_info);
-        static void destroy(Scope<TextureLoader>& texture_loader);
+        void load(const std::string& path);
+        void free();
 
-        void initialize(const TextureLoaderCreateInfo& info);
-        void shutdown();
-
-        TextureRes loadTexture(identifier id, const std::string& path);
-        TextureRes loadTexture(const std::string& id, const std::string& path);
-        [[nodiscard]] TextureRes getTexture(identifier id);
-        [[nodiscard]] TextureRes getTexture(identifier id, const std::string& path);
-        [[nodiscard]] TextureRes getTexture(const std::string& id);
-
-    private:
-        std::unordered_map<identifier, TextureRes> texture_umap_;
+        bool isValid() const { return pixels != nullptr; }
     };
 
 } // dodoe

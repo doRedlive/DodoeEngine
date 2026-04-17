@@ -7,7 +7,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-using json = nlohmann::json;
+using Json = nlohmann::json;
 
 namespace dodoe {
 	ProjectSerializer::ProjectSerializer(Ref<Project> proj) : project_(proj) { }
@@ -15,7 +15,7 @@ namespace dodoe {
 	bool ProjectSerializer::serialize(const std::filesystem::path& file_path) {
 		const auto& config = project_->config();
 
-		json root;
+		Json root;
 		root["Project"] = {
 			{"Name", config.name},
 			{"StartScene", config.start_scene_path.string()},
@@ -36,7 +36,7 @@ namespace dodoe {
 	bool ProjectSerializer::deserialize(const std::filesystem::path& file_path) {
 		auto& config = project_->config();
 
-		json data;
+		Json data;
 		try {
 			std::ifstream fin(file_path);
 			if (!fin.is_open()) {
@@ -45,7 +45,7 @@ namespace dodoe {
 			}
 			fin >> data;
 		}
-		catch (const json::exception& e) {
+		catch (const Json::exception& e) {
 			DoError("Failed to parse project file {}: {}", file_path.string(), e.what());
 			return false;
 		}

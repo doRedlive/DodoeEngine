@@ -24,6 +24,10 @@ target_link_libraries(${TARGET_NAME}
         PRIVATE DodoeRuntime
 )
 
+if(TARGET GreenCake)
+    add_dependencies(${TARGET_NAME} GreenCake)
+endif()
+
 target_include_directories(${TARGET_NAME}
         PRIVATE
                 ${ENGINE_ROOT_DIR}/src
@@ -38,3 +42,4 @@ set(POST_BUILD_COMMANDS
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
         ${POST_BUILD_COMMANDS}
 )
+

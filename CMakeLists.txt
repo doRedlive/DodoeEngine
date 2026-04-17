@@ -20,3 +20,8 @@ add_compile_definitions(DODOE_ROOT="${DODOE_ROOT_DIR}")
 
 add_subdirectory(engine)
 
+option(DODOE_BUILD_DEMO "Build demo targets" ON)
+if(DODOE_BUILD_DEMO)
+    add_subdirectory(demo)
+endif()
+

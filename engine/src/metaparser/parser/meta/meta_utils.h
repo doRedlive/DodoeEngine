@@ -29,6 +29,8 @@ namespace Utils
 
     std::string getNameWithoutFirstM(std::string& name);
 
+    std::string getFieldTypeName(const Cursor& cursor);
+
     std::string getTypeNameWithoutNamespace(const CursorType& type);
 
     std::string getNameWithoutContainer(std::string name);

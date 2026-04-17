@@ -51,6 +51,8 @@ namespace dodoe {
             return;
         }
 
+        window_handle_ = create_info.window_handle;
+
         vulkan_backend_ = VulkanBackend::create({create_info.window_handle, true});
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
@@ -70,22 +72,24 @@ namespace dodoe {
         device_desc.numDeviceExtensions = vulkan_backend_->getDeviceExtensions().size();
 
         device_ = rhi::vulkan::createDevice(device_desc);
-        DoAssert(device_ != nullptr, "RhiBackend::initialize: failed to create nvrhi vulkan device.");
+        DO_ASSERT(device_ != nullptr, "RhiBackend::initialize: failed to create nvrhi vulkan device.");
 
         if (create_info.enable_validation) {
             device_ = rhi::validation::createValidationLayer(device_);
-            DoAssert(device_ != nullptr, "RhiBackend::initialize: failed to create validation layer.");
+            DO_ASSERT(device_ != nullptr, "RhiBackend::initialize: failed to create validation layer.");
         }
 
         createSwapchainTextures();
+        cmd_ = device_->createCommandList();
     }
 
     void RhiContext::shutdown() {
+		cmd_ = nullptr;
+        swapchain_textures_.clear();
 		if (device_) {
 			device_->waitForIdle();
 			device_->runGarbageCollection();
 		}
-        swapchain_textures_.clear();
         device_ = nullptr;
         VulkanBackend::destroy(vulkan_backend_);
     }
@@ -124,6 +128,16 @@ namespace dodoe {
             return false;
         }
         return vulkan_backend_->presentImage(image_index);
+    }
+
+    bool RhiContext::recreateSwapchain() {
+        if (!vulkan_backend_->recreateSwapchain(window_handle_)) {
+            return false;
+        }
+
+        swapchain_textures_.clear();
+        createSwapchainTextures();
+        return !swapchain_textures_.empty();
     }
 
 } // dodoe

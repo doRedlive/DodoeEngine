@@ -35,10 +35,12 @@ namespace dodoe {
                 auto& transform_comp = reg.get<TransformComponent>(entity);
                 auto& camera = Application::self().context().render_system->camera();
                 if (camera_comp.dirty) {
-                    camera.set_position(transform_comp.position);
-                    camera.set_rotation(transform_comp.rotation.z);
-                    camera.set_zoom(camera_comp.zoom);
-                    camera.set_clear_color(camera_comp.background);
+                    camera.setCameraType(camera_comp.getCameraType());
+                    camera.setPosition(transform_comp.position);
+                    camera.setRotation(transform_comp.rotation.z);
+                    camera.setZoom(camera_comp.zoom);
+                    camera.setClearColor(camera_comp.background);
+                    camera_comp.dirty = false;
                 }
             }
         }

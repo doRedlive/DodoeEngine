@@ -8,14 +8,16 @@
 #include "render_api.h"
 #include "render_resource.h"
 
+#include "framework/texture_manager.h"
+
 #include "runtime/core/utils/util.h"
 
 namespace dodoe {
 
-    Scope<RenderSystem> RenderSystem::create(const RenderSystemCreateInfo& create_info) {
-        auto context = create_scope<RenderSystem>();
-        context->initialize(create_info);
-        return context;
+    Scope<RenderSystem> RenderSystem::create(const RenderSystemCreateInfo& info) { 
+        if (auto context = create_scope<RenderSystem>(); context->initialize(info)) 
+            return context;
+        return nullptr;
     }
 
     void RenderSystem::destroy(Scope<RenderSystem>& system) {
@@ -24,83 +26,71 @@ namespace dodoe {
         system.reset();
     }
 
-    void RenderSystem::initialize(const RenderSystemCreateInfo& init_info) {
-        window_manager_ = init_info.window_manager;
-        ui_system_ = init_info.ui_system;
-        auto window = window_manager_->window();
+    bool RenderSystem::initialize(const RenderSystemCreateInfo& init_info) {
+        m_window_manager = init_info.window_manager;
+        m_ui_system = init_info.ui_system;
+
+        auto window = m_window_manager->window();
 
         RenderApi::initialize({init_info.backend_api});
-        rhi_backend_ = RhiContext::create({window->nativeWindow(), init_info.backend_api, true});
-        TextureManager::self().initialize(rhi_backend_->getDevice());
-        camera_ = Camera::create({CameraType::Orthographic, window->viewport_manager->get_logical_size(), window->viewport_manager->get_window_size()});
+        m_viewport_manager = ViewportManager::create({window});
+        m_rhi = RhiContext::create({window->nativeWindow(), init_info.backend_api, true});
+        m_camera = Camera::create({CameraType::Orthographic, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
+        m_descriptor_table = DescriptorTableManager::create({m_rhi.get()});
+        m_texture_manager = TextureManager::create({m_rhi.get(), m_descriptor_table.get()});
 
-        std::vector<rhi::TextureHandle> swapchain_targets{};
-        Vector2i target_extent{0, 0};
-        if (rhi_backend_) {
-            swapchain_targets = rhi_backend_->getSwapchainTextures();
-            target_extent = rhi_backend_->getSwapchainExtent2d();
-        }
+        g_RenderResource->initilize(m_rhi->getDevice());
 
-        render_graph_ = RenderGraph::create({
-            rhi_backend_ ? rhi_backend_->getDevice() : rhi::DeviceHandle{},
-            swapchain_targets,
-            target_extent,
-            camera_.get(),
-            rhi_backend_.get(),
-            ui_system_
-        });
+        m_render_graph = RenderGraph::create({m_rhi.get(), m_camera.get(), m_ui_system, m_descriptor_table.get()});
 
-        render_graph_->setup();
-        render_graph_->compile();
+        m_render_graph->setup();
+        m_render_graph->compile();
+
+        return m_camera && m_descriptor_table && m_texture_manager && m_render_graph;
     }
 
     void RenderSystem::shutdown() {
-        RenderGraph::destroy(render_graph_);
-        Camera::destroy(camera_);
-        TextureManager::self().shutdown();
-		if (rhi_backend_ && rhi_backend_->getDevice()) {
-			rhi_backend_->getDevice()->waitForIdle();
-			rhi_backend_->getDevice()->runGarbageCollection();
+        RenderGraph::destroy(m_render_graph);
+        Camera::destroy(m_camera);
+        g_RenderResource->shutdown();
+        TextureManager::destroy(m_texture_manager);
+        DescriptorTableManager::destroy(m_descriptor_table);
+		if (m_rhi && m_rhi->getDevice()) {
+			m_rhi->getDevice()->waitForIdle();
+			m_rhi->getDevice()->runGarbageCollection();
 		}
-        RhiContext::destroy(rhi_backend_);
+        RhiContext::destroy(m_rhi);
     }
 
     void RenderSystem::prepare() {
-        auto& viewport_manager = window_manager_->window()->viewport_manager;
-        if (viewport_manager->dirty()) [[unlikely]] {
-            viewport_manager->update();
+        m_viewport_manager->update();
+        if (m_viewport_manager->isViewportDirty()) [[unlikely]] {
+            m_camera->setViewportSize(m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize());
+            m_render_graph->onViewportResize(m_viewport_manager->viewport());
         }
+        if (m_viewport_manager->isWindowDirty()) [[unlikely]] {
+		    m_rhi->recreateSwapchain();
+            m_camera->setViewportSize(m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize());
+            m_render_graph->onWindowResize(m_viewport_manager->getPixelSize());
+        }
+        m_viewport_manager->clearDirtyFlags();
 
         swapLogicRenderContext();
     }
 
     void RenderSystem::present() {
-        if (RenderApi::apiType() == RenderApiType::Vulkan && rhi_backend_) {
-            uint32_t image_index = 0;
-            if (!rhi_backend_->acquireNextSwapchainImage(image_index)) {
-                return;
-            }
-            current_swapchain_image_index_ = image_index;
-
-            render_graph_->execute(image_index);
-            rhi_backend_->getDevice()->waitForIdle();
-            if (!rhi_backend_->presentSwapchainImage(image_index)) {
-                return;
-            }
-            rhi_backend_->getDevice()->runGarbageCollection();
+        uint32_t image_index = 0;
+        if (!m_rhi->acquireNextSwapchainImage(image_index)) {
             return;
         }
 
-        render_graph_->execute();
-        // window_manager_->swapBuffers();
-    }
+        m_render_graph->execute(image_index);
 
-    const std::vector<rhi::TextureHandle>& RenderSystem::mainSceneTextures() const {
-        static const std::vector<rhi::TextureHandle> empty_textures{};
-        if (!render_graph_) {
-            return empty_textures;
+        m_rhi->getDevice()->waitForIdle();
+        if (!m_rhi->presentSwapchainImage(image_index)) {
+            return;
         }
-        return render_graph_->getMainSceneTextures();
+        m_rhi->getDevice()->runGarbageCollection();
     }
 
     void RenderSystem::swapLogicRenderContext() {

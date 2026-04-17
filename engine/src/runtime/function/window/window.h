@@ -18,8 +18,6 @@
 
 #include "runtime/function/render/render_api.h"
 
-#include "viewport_manager.h"
-
 #include "entt/entt.hpp"
 
 #include "GLFW/glfw3.h"
@@ -44,19 +42,18 @@ namespace dodoe {
         GLFWwindow* window_ {nullptr};
         WindowProperty prop_ {};
     public:
-        Scope<ViewportManager> viewport_manager{};
-
         static Scope<Window> create(const WindowProperty& prop);
         static void destroy(Scope<Window>& window);
 
-        void initialize(const WindowProperty& prop);
+        [[nodiscard]] void initialize(const WindowProperty& prop);
         void shutdown();
         void swapBuffers();
 
         [[nodiscard]] GLFWwindow* nativeWindow() const { return window_;}
         [[nodiscard]] HWND handle() const;
-        [[nodiscard]] uint width() const { return prop_.width; }
-        [[nodiscard]] uint height() const { return prop_.height; }
+        [[nodiscard]] int width() const { return prop_.width; }
+        [[nodiscard]] int height() const { return prop_.height; }
+        [[nodiscard]] Vector2i pixelSize() const;
         [[nodiscard]] bool is_maximized() const;
         void maximize();
         void restore();

@@ -7,14 +7,22 @@
 
 #include "dopch.h"
 
+#include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/util.h"
-#include "runtime/function/render/camera/camera.h"
+#include "runtime/function/render/framework/camera.h"
+
+REFLECTION_TYPE(Camera2dComponent)
 
 namespace dodoe {
 
-    struct Camera2dComponent {
+    STRUCT(Camera2dComponent, WhiteListFields) {
+        REFLECTION_BODY(Camera2dComponent)
+
+        META(Enable)
         CameraType type{CameraType::Orthographic};
+        META(Enable)
         float zoom{1.0f};
+        META(Enable)
         Color background{Color::white()};
         
         bool dirty{false};

@@ -8,11 +8,7 @@
 
 namespace dodoe {
 
-    ScriptLanguage LuaScriptRuntime::language() const {
-        return ScriptLanguage::Lua;
-    }
-
-    bool LuaScriptRuntime::initialize() {
+    bool LuaScriptEngine::initialize() {
         lua_.open_libraries(
             sol::lib::base,
             sol::lib::package,
@@ -28,18 +24,18 @@ namespace dodoe {
         return true;
     }
 
-    void LuaScriptRuntime::shutdown() {
+    void LuaScriptEngine::shutdown() {
         modules_.clear();
         last_module_name_.reset();
         lua_ = sol::state{};
     }
 
-    bool LuaScriptRuntime::execute(const std::filesystem::path& script_file) {
+    bool LuaScriptEngine::execute(const std::filesystem::path& script_file) {
         const auto script_path = script_file.lexically_normal();
         auto result = lua_.safe_script_file(script_path.string(), &sol::script_pass_on_error);
         if (!result.valid()) {
             const sol::error err = result;
-            DoError("LuaScriptRuntime: execute file failed: {}, error: {}", script_path.string(), err.what());
+            DoError("LuaScriptEngine: execute file failed: {}, error: {}", script_path.string(), err.what());
             return false;
         }
 
