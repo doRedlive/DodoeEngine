@@ -25,7 +25,7 @@ namespace dodoe {
 
 		std::ofstream fout(file_path);
 		if (!fout.is_open()) {
-			DoError("Failed to open project file for writing: {}", file_path.string());
+			DO_ERROR("Failed to open project file for writing: {}", file_path.string());
 			return false;
 		}
 
@@ -40,18 +40,18 @@ namespace dodoe {
 		try {
 			std::ifstream fin(file_path);
 			if (!fin.is_open()) {
-				DoError("Failed to open project file for reading: {}", file_path.string());
+				DO_ERROR("Failed to open project file for reading: {}", file_path.string());
 				return false;
 			}
 			fin >> data;
 		}
 		catch (const Json::exception& e) {
-			DoError("Failed to parse project file {}: {}", file_path.string(), e.what());
+			DO_ERROR("Failed to parse project file {}: {}", file_path.string(), e.what());
 			return false;
 		}
 
 		if (!data.contains("Project") || !data["Project"].is_object()) {
-			DoError("No project");
+			DO_ERROR("No project");
 			return false;
 		}
 
@@ -59,7 +59,7 @@ namespace dodoe {
 
 		if (!project_node.contains("Name") || !project_node.contains("StartScene") ||
 			!project_node.contains("AssetDirectory") || !project_node.contains("ScriptModulePath")) {
-			DoError("Project file missing required fields: {}", file_path.string());
+			DO_ERROR("Project file missing required fields: {}", file_path.string());
 			return false;
 		}
 

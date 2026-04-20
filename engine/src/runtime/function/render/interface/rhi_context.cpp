@@ -28,7 +28,7 @@ namespace dodoe {
         public:
             void message(rhi::MessageSeverity severity, const char* message_text) override {
                 if (severity == rhi::MessageSeverity::Info || severity == rhi::MessageSeverity::Warning) return;
-                DoError("RHI::ERROR: {}", message_text);
+                DO_ERROR("RHI::ERROR: {}", message_text);
             }
         };
 

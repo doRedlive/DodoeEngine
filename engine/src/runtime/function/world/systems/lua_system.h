@@ -57,7 +57,7 @@ namespace dodoe {
             sol::protected_function_result result2 = pf(std::ref(reg));
             if (!result2.valid()) {
                 sol::error err = result2;
-                DoError("LuaSystem Start failed: {}", err.what());
+                DO_ERROR("LuaSystem Start failed: {}", err.what());
             }
         }
 
@@ -75,7 +75,7 @@ namespace dodoe {
             sol::protected_function_result result2 = pf(std::ref(reg), dt);
             if (!result2.valid()) {
                 sol::error err = result2;
-                DoError("LuaSystem Update failed: {}", err.what());
+                DO_ERROR("LuaSystem Update failed: {}", err.what());
             }
         }
 
@@ -93,7 +93,7 @@ namespace dodoe {
             sol::protected_function_result result2 = pf(std::ref(reg));
             if (!result2.valid()) {
                 sol::error err = result2;
-                DoError("LuaSystem Finalize failed: {}", err.what());
+                DO_ERROR("LuaSystem Finalize failed: {}", err.what());
             }
         }
     };

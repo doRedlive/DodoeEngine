@@ -225,7 +225,7 @@ namespace dodoe {
     void Renderer2d::drawSprite(const identifier texture, const Vector2f& pos, 
             const Vector2f& size, const Vector3f& rotation, const Color& color) {
         if (!texture) {
-            DoError("Renderer2d::drawSprite: texture is null.");
+            DO_ERROR("Renderer2d::drawSprite: texture is null.");
             return;
         }
 

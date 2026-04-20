@@ -213,7 +213,7 @@ namespace dodoe {
         }
 
         if (m_logical_size.x <= 0.0f || m_logical_size.y <= 0.0f) {
-            DoError("Camera: logical size is invalid.");
+            DO_ERROR("Camera: logical size is invalid.");
             m_logical_size = Vector2f(1.0f, 1.0f);
         }
 

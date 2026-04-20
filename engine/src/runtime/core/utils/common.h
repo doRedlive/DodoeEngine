@@ -23,7 +23,7 @@ namespace dodoe {
 	inline std::vector<char> ReadShaderFile(const std::string& path) {
 		std::ifstream in(path, std::ios::binary | std::ios::ate);
 		if (!in.is_open()) {
-			DoError("Open shader file {} failed!", path);
+			DO_ERROR("Open shader file {} failed!", path);
 			return {};
 		}
 

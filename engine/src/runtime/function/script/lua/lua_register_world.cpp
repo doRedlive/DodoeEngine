@@ -22,24 +22,23 @@ namespace dodoe::lua_register_detail {
 
         dodoe_table.new_usertype<Scene>("Scene",
             sol::no_constructor,
-            "getName", &Scene::get_name,
-            "setName", &Scene::set_name,
-            "createEntity", [](Scene& scene, const std::string& name) { return scene.create_entity(name); },
-            "destroyEntity", &Scene::destroy_entity,
+            "getName", &Scene::getName,
+            "setName", &Scene::setName,
+            "createEntity", [](Scene& scene, const std::string& name) { return scene.createEntity(name); },
+            "destroyEntity", &Scene::destroyEntity,
             "getRegistry", [](Scene& scene) { return &scene.registry(); }
         );
 
         dodoe_table.new_usertype<World>("World",
             sol::no_constructor,
-            "getName", &World::get_name,
-            "createScene", &World::create_scene,
-            "getScene", &World::get_scene,
-            "activeScene", &World::active_scene,
-            "loadScene", &World::load_scene,
-            "destroyScene", &World::destroy_scene,
-            "destroyAllScenes", &World::destroy_all_scenes,
+            "getName", &World::getName,
+            "createScene", &World::createScene,
+            "deleteScene", &World::deleteScene,
+            "getScene", &World::getScene,
+            "getCurrentScene", &World::getCurrentScene,
+            "loadScene", &World::loadScene,
             "registerSystem", [](World& self, const sol::table& system_table) {
-                self.register_system(create_scope<LuaSystem>(system_table));
+                self.registerRuntimeSystem(create_ref<LuaSystem>(system_table));
             }
         );
 

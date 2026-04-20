@@ -21,12 +21,12 @@ namespace sandbox {
     }
 
     void SandboxLayer::attach() {
-        dodoe::Application::self().context().script_system->execute_lua("engine/res/scripts/test.lua");
+        dodoe::Application::self().context().script_system->executeLua("engine/res/scripts/test.lua");
         // dodoe::Application::self().context().script_system->execute_csharp("engine/src/scriptcore/bin/Debug/net8.0/GreenCake.dll");
         auto& world = dodoe::Application::self().context().world;
-        auto scene = world->active_scene();
+        auto scene = world->getCurrentScene();
 
-        auto test_go = scene->create_entity("test_go");
+        auto test_go = scene->createEntity("test_go");
         auto& transform = test_go.getComponent<dodoe::TransformComponent>();
         transform.position = {0.0f, 0.0f, 0.0f};
         transform.scale = {1.0f, 1.0f, 1.0f};

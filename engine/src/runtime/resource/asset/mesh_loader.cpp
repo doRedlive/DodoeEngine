@@ -195,7 +195,7 @@ namespace dodoe {
         );
 
         if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || !scene->mRootNode) {
-            DoError("MeshLoader::loadModel: {}", importer.GetErrorString());
+            DO_ERROR("MeshLoader::loadModel: {}", importer.GetErrorString());
             return {};
         }
 

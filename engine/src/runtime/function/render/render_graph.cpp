@@ -43,7 +43,7 @@ namespace dodoe {
 	RenderGraphPass& RenderGraph::addPass(const std::string& name, Ref<RenderPass> pass_implementation) {
 		auto existing = m_pass_map.find(name);
 		if (existing != m_pass_map.end()) {
-			DoError("RenderGraph: pass '{}' already exists.", name);
+			DO_ERROR("RenderGraph: pass '{}' already exists.", name);
 			return *existing->second;
 		}
 
@@ -186,7 +186,7 @@ namespace dodoe {
 			}
 
 			if (candidate_index == pass_count) {
-				DoError("RenderGraph: dependency cycle detected, falling back to registration order.");
+				DO_ERROR("RenderGraph: dependency cycle detected, falling back to registration order.");
 				m_sorted_passes = m_registered_passes;
 				has_cycle = true;
 				break;

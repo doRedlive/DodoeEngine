@@ -13,7 +13,7 @@ namespace dodoe {
 			s_instance_ = context.get();
 			return context;
 		}
-		DoError("Failed to create TextureManager!");
+		DO_ERROR("Failed to create TextureManager!");
 		return nullptr;
 	}
 
@@ -63,7 +63,7 @@ namespace dodoe {
         const auto& it = texture_umap_.find(id);
         if (it != texture_umap_.end()) { return it->second; }
 
-		DoError("Can't not found the texture id!");
+		DO_ERROR("Can't not found the texture id!");
 		return fallback_texture_;
 	}
 
@@ -74,7 +74,7 @@ namespace dodoe {
 	Ref<Texture> TextureManager::createTexture(const std::string& path) {
 		TextureBlob data(path);
 		if (!data.isValid()) {
-			DoError("TextureManager: Create texture {} failed!", path);
+			DO_ERROR("TextureManager: Create texture {} failed!", path);
 			return nullptr;
 		}
 
@@ -88,7 +88,7 @@ namespace dodoe {
 			.setDebugName(path);
 		auto handle = rhi_->getDevice()->createTexture(texture_desc);
 		if (!handle) {
-			DoError("TextureManager::createTexture: createTexture failed for {}.", path);
+			DO_ERROR("TextureManager::createTexture: createTexture failed for {}.", path);
 			return nullptr;
 		}
 

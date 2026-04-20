@@ -35,7 +35,7 @@ namespace dodoe {
         auto result = lua_.safe_script_file(script_path.string(), &sol::script_pass_on_error);
         if (!result.valid()) {
             const sol::error err = result;
-            DoError("LuaScriptEngine: execute file failed: {}, error: {}", script_path.string(), err.what());
+            DO_ERROR("LuaScriptEngine: execute file failed: {}, error: {}", script_path.string(), err.what());
             return false;
         }
 

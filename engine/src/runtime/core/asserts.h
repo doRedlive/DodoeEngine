@@ -15,7 +15,7 @@
         {                                                  \
             if (!(check))                                  \
             {                                              \
-                type##Error(msg, __VA_ARGS__);             \
+                type##_ERROR(msg, __VA_ARGS__);             \
                 DoDebugBreak();                            \
             }                                              \
         }
@@ -27,13 +27,13 @@
     #define DO_INTERNAL_ASSERT_GET_MACRO_NAME(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, macro, ...) macro
     #define DO_INTERNAL_ASSERT_GET_MACRO(...) DO_EXPAND_MACRO( DO_INTERNAL_ASSERT_GET_MACRO_NAME(__VA_ARGS__, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_WITH_MSG, DO_INTERNAL_ASSERT_NO_MSG) )
 
-    #define DO_ASSERT(...) DO_EXPAND_MACRO( DO_INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(Do, __VA_ARGS__) )
-    #define InAssert(...) DO_EXPAND_MACRO( DO_INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(Log, __VA_ARGS__))
+    #define DO_ASSERT(...) DO_EXPAND_MACRO( DO_INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(DO, __VA_ARGS__) )
+    #define IN_ASSERT(...) DO_EXPAND_MACRO( DO_INTERNAL_ASSERT_GET_MACRO(__VA_ARGS__)(LOG, __VA_ARGS__))
 
 #else
 
     #define DO_ASSERT(...)
-    #define InAssert(...)
+    #define IN_ASSERT(...)
 
 #endif//DO_ENABLE_ASSERTS
 

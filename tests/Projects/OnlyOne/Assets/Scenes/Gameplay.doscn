@@ -1,0 +1,21 @@
+{
+    "Entities": {
+        "Entity": {
+            "UUID" {
+                "ID": 11111111
+            },
+            "Components": {
+                "TagComponents": {
+                    "Tag": "default"
+                },
+                "TransformComponents: {
+                    "Position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    }
+                }
+            }
+        }
+    }
+}

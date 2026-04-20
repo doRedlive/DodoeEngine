@@ -16,13 +16,13 @@ namespace dodoe::lua_register_detail {
     void register_core(sol::state& lua, sol::table& dodoe_table) {
         (void)lua;
         dodoe_table.set_function("logInfo", [](const std::string& msg) {
-            LogInfo("Lua: {}", msg);
+            LOG_INFO("Lua: {}", msg);
         });
         dodoe_table.set_function("logWarn", [](const std::string& msg) {
             LogWarn("Lua: {}", msg);
         });
         dodoe_table.set_function("logError", [](const std::string& msg) {
-            LogError("Lua: {}", msg);
+            LOG_ERROR("Lua: {}", msg);
         });
 
         dodoe_table.set_function("getFps", []() -> int {

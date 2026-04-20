@@ -33,7 +33,7 @@ namespace dodoe {
 
     Ref<Shader> ResourceManager::load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path) {
         if (!shader_library_) {
-            DoError("ShaderLibrary is not initialized!");
+            DO_ERROR("ShaderLibrary is not initialized!");
             return nullptr;
         }
 
@@ -42,7 +42,7 @@ namespace dodoe {
 
     ModelRes ResourceManager::load_model(const std::string& name, const std::string& path) {
         if (!mesh_loader_) {
-            DoError("MeshLoader is not initialized!");
+            DO_ERROR("MeshLoader is not initialized!");
             return {};
         }
 
@@ -55,7 +55,7 @@ namespace dodoe {
 
     ModelRes ResourceManager::get_model(const identifier id) {
         if (!mesh_loader_) {
-            DoError("MeshLoader is not initialized!");
+            DO_ERROR("MeshLoader is not initialized!");
             return {};
         }
         return mesh_loader_->getModel(id);
@@ -63,7 +63,7 @@ namespace dodoe {
 
     ModelRes ResourceManager::get_model(const std::string& id) {
         if (!mesh_loader_) {
-            DoError("MeshLoader is not initialized!");
+            DO_ERROR("MeshLoader is not initialized!");
             return {};
         }
         return mesh_loader_->getModel(id);
@@ -71,7 +71,7 @@ namespace dodoe {
 
     ModelRes ResourceManager::get_model(const std::string& id, const std::string& path) {
         if (!mesh_loader_) {
-            DoError("MeshLoader is not initialized!");
+            DO_ERROR("MeshLoader is not initialized!");
             return {};
         }
         return mesh_loader_->getModel(id, path);
@@ -99,7 +99,7 @@ namespace dodoe {
 
     MeshRes ResourceManager::get_mesh(const identifier id) {
         if (!mesh_loader_) {
-            DoError("MeshLoader is not initialized!");
+            DO_ERROR("MeshLoader is not initialized!");
             return {};
         }
         return mesh_loader_->getMesh(id);
@@ -107,7 +107,7 @@ namespace dodoe {
 
     AnimClip2dRes ResourceManager::get_anim_clip2d(const identifier id) {
         if (!animation_library_) {
-            DoError("AnimationLibrary is not initialized!");
+            DO_ERROR("AnimationLibrary is not initialized!");
             return {};
         }
         return animation_library_->get_clip(id);
@@ -115,7 +115,7 @@ namespace dodoe {
 
     AnimClip2dRes ResourceManager::get_anim_clip2d(const std::string& name) {
         if (!animation_library_) {
-            DoError("AnimationLibrary is not initialized!");
+            DO_ERROR("AnimationLibrary is not initialized!");
             return {};
         }
         return animation_library_->get_clip(name);
@@ -123,7 +123,7 @@ namespace dodoe {
 
     AnimClip2dRes ResourceManager::create_anim_clip2d(const std::string& name, const std::vector<identifier>& texture_ids, const bool loop, const float frame_ms) {
         if (!animation_library_) {
-            DoError("AnimationLibrary is not initialized!");
+            DO_ERROR("AnimationLibrary is not initialized!");
             return {};
         }
         return animation_library_->create_clip(name, texture_ids, loop, frame_ms);
@@ -131,7 +131,7 @@ namespace dodoe {
 
     bool ResourceManager::destroy_anim_clip2d(const identifier id) {
         if (!animation_library_) {
-            DoError("AnimationLibrary is not initialized!");
+            DO_ERROR("AnimationLibrary is not initialized!");
             return false;
         }
         return animation_library_->destroy_clip(id);
@@ -139,7 +139,7 @@ namespace dodoe {
 
     bool ResourceManager::destroy_anim_clip2d(const std::string& name) {
         if (!animation_library_) {
-            DoError("AnimationLibrary is not initialized!");
+            DO_ERROR("AnimationLibrary is not initialized!");
             return false;
         }
         return animation_library_->destroy_clip(name);

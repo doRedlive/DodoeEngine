@@ -44,14 +44,14 @@ namespace dodoe {
 #define DoDebug(...)       dodoe::Log::get_core_logger()->debug(__VA_ARGS__)
 #define DoInfo(...)        dodoe::Log::get_core_logger()->info(__VA_ARGS__)
 #define DoWarn(...)        dodoe::Log::get_core_logger()->warn(__VA_ARGS__)
-#define DoError(...)       dodoe::Log::get_core_logger()->error(__VA_ARGS__)
+#define DO_ERROR(...)       dodoe::Log::get_core_logger()->error(__VA_ARGS__)
 #define DoCritical(...)    dodoe::Log::get_core_logger()->critical(__VA_ARGS__)
 
 #define LogTrace(...)      dodoe::Log::get_client_logger()->trace(__VA_ARGS__)
 #define LogDebug(...)      dodoe::Log::get_client_logger()->debug(__VA_ARGS__)
-#define LogInfo(...)       dodoe::Log::get_client_logger()->info(__VA_ARGS__)
+#define LOG_INFO(...)       dodoe::Log::get_client_logger()->info(__VA_ARGS__)
 #define LogWarn(...)       dodoe::Log::get_client_logger()->warn(__VA_ARGS__)
-#define LogError(...)      dodoe::Log::get_client_logger()->error(__VA_ARGS__)
+#define LOG_ERROR(...)      dodoe::Log::get_client_logger()->error(__VA_ARGS__)
 #define LogCritical(...)   dodoe::Log::get_client_logger()->critical(__VA_ARGS__)
     
 }

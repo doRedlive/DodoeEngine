@@ -27,9 +27,9 @@ namespace dodoe {
         static Scope<ScriptEngine> create(const ScriptEngineCreateInfo& info);
         static void destroy(Scope<ScriptEngine>& engine);
 
-        MonoDomain* getCoreDomain() const { return m_core_domain; }
-        MonoImage* getCoreImage() const { return m_core_image; }
-        MonoImage* getAppImage()  const { return m_app_image;  }
+        [[nodiscard]] MonoDomain* getCoreDomain() const { return m_core_domain; }
+        [[nodiscard]] MonoImage* getCoreImage() const { return m_core_image; }
+        [[nodiscard]] MonoImage* getAppImage()  const { return m_app_image;  }
 
     private:
         bool initialize(const ScriptEngineCreateInfo& info);
@@ -39,8 +39,6 @@ namespace dodoe {
         bool loadCoreAssembly(const std::string& path);
         bool loadAppAssembly(const std::string& path);
         void cleanupMono();
-
-        bool loadAssembly(const std::string& path);
     };
 
 } // dodoe

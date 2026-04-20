@@ -11,7 +11,7 @@ namespace dodoe {
                                                         VkDebugUtilsMessageTypeFlagsEXT,
                                                         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                         void*) {
-		DoError("Validation layer: {}.", pCallbackData->pMessage);
+		DO_ERROR("Validation layer: {}.", pCallbackData->pMessage);
         return VK_FALSE;
 		}
 	}
@@ -424,13 +424,13 @@ namespace dodoe {
 		VkFence fence = swapchain_fences_[acquire_fence_index_ % static_cast<uint32_t>(swapchain_fences_.size())];
 		VkResult wait_result = vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX);
 		if (wait_result != VK_SUCCESS) {
-			DoError("VulkanBackend::acquireNextImage wait fence failed with VkResult={}", static_cast<int>(wait_result));
+			DO_ERROR("VulkanBackend::acquireNextImage wait fence failed with VkResult={}", static_cast<int>(wait_result));
 			return false;
 		}
 
 		VkResult reset_result = vkResetFences(device_, 1, &fence);
 		if (reset_result != VK_SUCCESS) {
-			DoError("VulkanBackend::acquireNextImage reset fence failed with VkResult={}", static_cast<int>(reset_result));
+			DO_ERROR("VulkanBackend::acquireNextImage reset fence failed with VkResult={}", static_cast<int>(reset_result));
 			return false;
 		}
 
@@ -438,14 +438,14 @@ namespace dodoe {
 		if (acquire_result == VK_SUBOPTIMAL_KHR || acquire_result == VK_SUCCESS) {
 			VkResult post_wait_result = vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX);
 			if (post_wait_result != VK_SUCCESS) {
-				DoError("VulkanBackend::acquireNextImage post-wait fence failed with VkResult={}", static_cast<int>(post_wait_result));
+				DO_ERROR("VulkanBackend::acquireNextImage post-wait fence failed with VkResult={}", static_cast<int>(post_wait_result));
 				return false;
 			}
 			++acquire_fence_index_;
 			return true;
 		}
 
-		DoError("VulkanBackend::acquireNextImage failed with VkResult={}", static_cast<int>(acquire_result));
+		DO_ERROR("VulkanBackend::acquireNextImage failed with VkResult={}", static_cast<int>(acquire_result));
 		return false;
 	}
 
@@ -468,7 +468,7 @@ namespace dodoe {
 			return true;
 		}
 
-		DoError("VulkanBackend::presentImage failed with VkResult={}", static_cast<int>(present_result));
+		DO_ERROR("VulkanBackend::presentImage failed with VkResult={}", static_cast<int>(present_result));
 		return false;
 	}
 
@@ -528,7 +528,7 @@ namespace dodoe {
 			fun(instance_, &create_info, nullptr, &debug_messenger_);
 		}
 		else {
-			DoError("Create debug messenger failed!");
+			DO_ERROR("Create debug messenger failed!");
 		}
 	}
 

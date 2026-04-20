@@ -26,7 +26,7 @@ namespace dodoe {
 
 		std::ifstream in(path, std::ios::binary | std::ios::ate);
 		if (!in.is_open()) {
-			DoError("Open file {} failed!", path);
+			DO_ERROR("Open file {} failed!", path);
 			return {};
 		}
 
@@ -47,7 +47,7 @@ namespace dodoe {
 			if (getcwd(buffer, sizeof(buffer)) != nullptr) {
 				cwd_ = std::string(buffer);
 			} else {
-				DoError("Get CWD fiale");
+				DO_ERROR("Get CWD fiale");
 			}
 		}
 		return cwd_;
@@ -70,7 +70,7 @@ namespace dodoe {
 	std::string FileSystem::relative2absolute(const std::string& path) {
 		fs::path relative_path(path);
 		if (!fs::is_directory(FileSystem::asset_path)) {
-			DoError("Base dir must be an directory!");
+			DO_ERROR("Base dir must be an directory!");
 		}
 
 		fs::path absolute_path = FileSystem::asset_path / relative_path;
@@ -80,11 +80,11 @@ namespace dodoe {
 	std::vector<std::string> FileSystem::traverse_directory(const fs::path& target_dir, const std::vector<std::string>& extensions, bool case_sensitive) {
 		std::vector<std::string> relative_path_list;
 		if (!fs::exists(target_dir)) {
-			DoError("The {} not exist.", target_dir.string());
+			DO_ERROR("The {} not exist.", target_dir.string());
 			return relative_path_list;
 		}
 		if (!fs::is_directory(target_dir)) {
-			DoError("The {} is not directory.", target_dir.string());
+			DO_ERROR("The {} is not directory.", target_dir.string());
 			return relative_path_list;
 		}
 		try {
@@ -105,7 +105,7 @@ namespace dodoe {
 			}
 		}
 		catch (const fs::filesystem_error& err) {
-			DoError("Traverse {} error occur : {}", target_dir.string(), err.what());
+			DO_ERROR("Traverse {} error occur : {}", target_dir.string(), err.what());
 		}
 		return relative_path_list;
 	}

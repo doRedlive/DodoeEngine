@@ -1,12 +1,11 @@
+namespace GreenCake;
+
 using System;
 
-namespace GreenCake
+public static class Input
 {
-    public class Input
+    public static bool IsKeyDown(KeyCode keycode)
     {
-        public static bool IsKeyDown(KeyCode keycode)
-        {
-            return InternalCalls.Input_IsKeyDown(keycode);
-        }
+        return InternalCalls.Native_IsKeyDown(keycode);
     }
 }

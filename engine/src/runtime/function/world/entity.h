@@ -7,22 +7,26 @@
 
 #include "dopch.h"
 
-#include "scene.h"
+#include "registry.h"
 #include "components.h"
 
 #include "entt/entt.hpp"
 
 namespace dodoe {
 	class Entity;
+	class Scene;
 	class Registry;
-	entt::entity registry_entity_handle(const Entity& entity);
-	Entity registry_make_entity(Scene* scene, entt::entity handle);
+	entt::entity GetEntityHandle_Help(const Entity& entity);
+	Entity CreateEntityByScene_Help(Scene* scene, entt::entity handle);
+	Registry& GetSceneRegitry_Help(Scene* scene);
+	template<typename T>
+	void OnComponentAdd_Help(Scene* scene, Entity entity, T& component);
 
 	class Entity {
 		friend class Registry;
 		friend class Scene;
-		friend entt::entity registry_entity_handle(const Entity& entity);
-		friend Entity registry_make_entity(Scene* scene, entt::entity handle);
+		friend entt::entity GetEntityHandle_Help(const Entity& entity);
+		friend Entity CreateEntityByScene_Help(Scene* scene, entt::entity handle);
 	public:
 		Entity() = default;
 		Entity(entt::entity entity);
@@ -31,33 +35,33 @@ namespace dodoe {
 		template<typename T, typename...Args>
 		T& addComponent(Args&&... args) {
 			DO_ASSERT(!hasComponent<T>(), "Entity already has the component!");
-			T& component = scene_->reg_.emplace<T>(*this, std::forward<Args>(args)...);
-			scene_->on_component_add_<T>(*this, component);
+			T& component = GetSceneRegitry_Help(scene_).emplace<T>(*this, std::forward<Args>(args)...);
+			OnComponentAdd_Help(scene_, *this, component);
 			return component;
 		}
 
 		template<typename T, typename...Args>
 		T& addOrReplaceComponent(Args&&... args) {
-			T& component = scene_->reg_.emplace_or_replace<T>(*this, std::forward<Args>(args)...);
-			scene_->on_component_add_<T>(*this, component);
+			T& component = GetSceneRegitry_Help(scene_).emplace_or_replace<T>(*this, std::forward<Args>(args)...);
+			OnComponentAdd_Help(scene_, *this, component);
 			return component;
 		}
 
 		template<typename T>
 		T& getComponent() {
 			DO_ASSERT(hasComponent<T>(), "Entity does not have the component!");
-			return scene_->reg_.get<T>(*this);
+			return GetSceneRegitry_Help(scene_).get<T>(*this);
 		}
 
 		template<typename T>
 		bool hasComponent() {
-			return scene_->reg_.all_of<T>(*this);
+			return GetSceneRegitry_Help(scene_).all_of<T>(*this);
 		}
 
 		template<typename T>
 		void removeComponent() {
 			DO_ASSERT(hasComponent<T>(), "Entity does not have the component!");
-			scene_->reg_.remove<T>(*this);
+			GetSceneRegitry_Help(scene_).remove<T>(*this);
 		}
 
 		[[nodiscard]] static entt::entity nullEntity() { return entt::null; }

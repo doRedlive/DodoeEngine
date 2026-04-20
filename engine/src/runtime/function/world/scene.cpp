@@ -12,102 +12,137 @@
 
 namespace dodoe {
 
-    Scene::Scene(World& world, const std::string& name) : world_(world), name_(name), reg_(this) {
-        auto entity = create_entity("Primary Camera"); 
+    Scene::Scene(World& world, const std::string& name) : m_world(world), m_name(name), m_reg(this) { }
+
+    Scope<Scene> Scene::create(const SceneCreateInfo& info) {
+        auto scene = create_scope<Scene>(info.world, info.name);
+        if (!scene->initialize()) return nullptr;
+        return scene;
+    }
+
+    void Scene::destroy(Scope<Scene>& scene) {
+        if (!scene) return;
+        scene->shutdown();
+        scene.reset();
+    }
+
+    void Scene::save() {
+
+    }
+
+    void Scene::onCreate() {
+
+    }
+
+    void Scene::onDelete() {
+
+    }
+
+    bool Scene::initialize() {
+        auto entity = createEntity("Primary Camera"); 
         auto& camera = entity.addComponent<Camera2dComponent>();
         entity.getComponent<TagComponent>().setTag("PrimaryCamera");
+
+        return true;
     }
 
-    Scene::~Scene() = default;
-
-    void Scene::on_runtime_start() {
-        world_.start_systems(reg_);
+    void Scene::shutdown() {
+        m_reg.clear();
     }
 
-    void Scene::on_runtime_update(const float delta_time) {
-        world_.update_systems(reg_, delta_time);
+    void Scene::onRuntimeStart() {
+        m_world.onRuntimeStart(m_reg);
     }
 
-    void Scene::on_runtime_stop() {
-        world_.finalize_systems(reg_);
+    void Scene::onRuntimeUpdate(const float delta_time) {
+        m_world.onRuntimeUpdate(m_reg, delta_time);
     }
 
-    void Scene::on_simulation_start() {
-
+    void Scene::onRuntimeStop() {
+        m_world.onRuntimeFinalize(m_reg);
     }
 
-    void Scene::on_simulation_stop() {
-
+    void Scene::onSimulationStart() {
+        m_world.onSimulationStart(m_reg);
     }
 
-    void Scene::on_simulation_update(const float delta_time) {
-
+    void Scene::onSimulationStop() {
+        m_world.onSimulationFinalize(m_reg);
     }
 
-    void Scene::destroy() {
-        on_runtime_stop();
-        reg_.clear();
+    void Scene::onSimulationUpdate(const float dt) {
+        m_world.onSimulationUpdate(m_reg, dt);
     }
 
-    Entity Scene::create_entity(const std::string& name) {
-        return create_entity(Uuid(), name);
+    Entity Scene::createEntity(const std::string& name) {
+        return createEntity(Uuid(), name);
     }
 
-    Entity Scene::create_entity(Uuid uuid, const std::string& name) {
-        auto entity = reg_.create();
+    Entity Scene::createEntity(Uuid uuid, const std::string& name) {
+        auto entity = m_reg.create();
         auto id = entity.addComponent<IDComponent>(uuid, name);
         id.name = name.empty() ? "Entity" : name;
         entity.addComponent<TagComponent>();
         entity.addComponent<TransformComponent>();
 
-        entity_umap_[uuid] = entity;
+        m_entity_umap[uuid] = entity;
 
         return entity;
     }
 
-    void Scene::add_entity(Entity entity) {
+    void Scene::addEntity(Entity entity) {
         if (entity.hasComponent<IDComponent>()) {
             auto id = entity.getComponent<IDComponent>();
-            if (entity_umap_.find(id.id) != entity_umap_.end()) {
-                entity_umap_[id.id] = entity;
+            if (m_entity_umap.find(id.id) != m_entity_umap.end()) {
+                m_entity_umap[id.id] = entity;
             }
             else {
-                DoError("The scene already has the entity!");
+                DO_ERROR("The scene already has the entity!");
             }
         }
         auto id = entity.addComponent<IDComponent>();
         id.name = "Entity";
 
-        entity_umap_[id.id] = entity.handle();
+        m_entity_umap[id.id] = entity.handle();
     }
 
-    void Scene::destroy_entity(Entity entity) {
-        entity_umap_.erase(entity.uuid());
-        reg_.destroy(entity);
+    void Scene::destroyEntity(Entity entity) {
+        m_entity_umap.erase(entity.uuid());
+        m_reg.destroy(entity);
     }
 
-    Entity Scene::get_entity(const std::string& tag) {
-        for (auto& [_, entity] : entity_umap_) {
+    Entity Scene::getEntityByTag(const std::string& tag) {
+        for (auto& [_, entity] : m_entity_umap) {
             if (entity.getComponent<TagComponent>().id == string2hash(tag)) {
                 return entity;
             }
         }
-        DoError("Not found entity has the tag {}.", tag);
-        return Entity();
+        DO_ERROR("Not found entity has the tag {}.", tag);
+        return Entity::nullEntity();
+    }
+
+    Entity Scene::getEntity(const ui32 entity_id) {
+        for (auto&[_, entity] : m_entity_umap) {
+            if (static_cast<ui32>(entity) == entity_id) {
+                return entity;
+            }
+        }
+        DO_ERROR("Not found entity!");
+        return Entity::nullEntity();
     }
 
     Entity Scene::getEntityByUUID(Uuid uuid) {
-        if (entity_umap_.find(uuid) != entity_umap_.end()) {
-            return entity_umap_[uuid];
+        if (m_entity_umap.find(uuid) != m_entity_umap.end()) {
+            return m_entity_umap[uuid];
         }
-        DoError("Not found entity with UUID {}.", static_cast<uint64_t>(uuid));
+        DO_ERROR("Not found entity with UUID {}.", static_cast<uint64_t>(uuid));
         return Entity();
     }
 
     std::vector<Entity> Scene::getEntities() {
         std::vector<Entity> entities;
-        entities.reserve(entity_umap_.size());
-        for (const auto& [_, entity] : entity_umap_) {
+        entities.reserve(m_entity_umap.size());
+        for (const auto& [_, entity] : m_entity_umap) {
             entities.push_back(entity);
         }
         return entities;

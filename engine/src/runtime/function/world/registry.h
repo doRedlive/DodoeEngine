@@ -13,8 +13,8 @@ namespace dodoe {
 	class Scene;
 	class Entity;
 
-	Entity registry_make_entity(Scene* scene, entt::entity handle);
-	entt::entity registry_entity_handle(const Entity& entity);
+	Entity CreateEntityByScene_Help(Scene* scene, entt::entity handle);
+	entt::entity GetEntityHandle_Help(const Entity& entity);
 
 	class Registry {
 	public:
@@ -46,7 +46,7 @@ namespace dodoe {
 				}
 
 				auto operator*() const {
-					return registry_make_entity(scene_, *iter_);
+					return CreateEntityByScene_Help(scene_, *iter_);
 				}
 
 			private:
@@ -76,13 +76,13 @@ namespace dodoe {
 
 			[[nodiscard]]
 			bool contains(const Entity& entity) const {
-				return view_.contains(registry_entity_handle(entity));
+				return view_.contains(GetEntityHandle_Help(entity));
 			}
 
 			template<typename Func>
 			void each(Func&& func) {
 				view_.each([this, &func](const entt::entity entity, auto&... components) {
-					std::invoke(std::forward<Func>(func), registry_make_entity(scene_, entity), components...);
+					std::invoke(std::forward<Func>(func), CreateEntityByScene_Help(scene_, entity), components...);
 				});
 			}
 
@@ -123,7 +123,7 @@ namespace dodoe {
 
 		template<typename Component, typename... Args>
 		Component& emplace(const Entity& entity, Args&&... args) {
-			return registry_.template emplace<Component>(registry_entity_handle(entity), std::forward<Args>(args)...);
+			return registry_.template emplace<Component>(GetEntityHandle_Help(entity), std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
@@ -133,7 +133,7 @@ namespace dodoe {
 
 		template<typename Component, typename... Args>
 		Component& get_or_emplace(const Entity& entity, Args&&... args) {
-			return registry_.template get_or_emplace<Component>(registry_entity_handle(entity), std::forward<Args>(args)...);
+			return registry_.template get_or_emplace<Component>(GetEntityHandle_Help(entity), std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
@@ -143,7 +143,7 @@ namespace dodoe {
 
 		template<typename Component, typename... Args>
 		Component& emplace_or_replace(const Entity& entity, Args&&... args) {
-			return registry_.template emplace_or_replace<Component>(registry_entity_handle(entity), std::forward<Args>(args)...);
+			return registry_.template emplace_or_replace<Component>(GetEntityHandle_Help(entity), std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
@@ -153,7 +153,7 @@ namespace dodoe {
 
 		template<typename Component>
 		Component& get(const Entity& entity) {
-			return registry_.template get<Component>(registry_entity_handle(entity));
+			return registry_.template get<Component>(GetEntityHandle_Help(entity));
 		}
 
 		template<typename Component>
@@ -163,7 +163,7 @@ namespace dodoe {
 
 		template<typename Component>
 		const Component& get(const Entity& entity) const {
-			return registry_.template get<Component>(registry_entity_handle(entity));
+			return registry_.template get<Component>(GetEntityHandle_Help(entity));
 		}
 
 		template<typename Component>
@@ -173,7 +173,7 @@ namespace dodoe {
 
 		template<typename... Components>
 		bool all_of(const Entity& entity) const {
-			return registry_.template all_of<Components...>(registry_entity_handle(entity));
+			return registry_.template all_of<Components...>(GetEntityHandle_Help(entity));
 		}
 
 		template<typename... Components>
@@ -183,7 +183,7 @@ namespace dodoe {
 
 		template<typename... Components>
 		bool any_of(const Entity& entity) const {
-			return registry_.template any_of<Components...>(registry_entity_handle(entity));
+			return registry_.template any_of<Components...>(GetEntityHandle_Help(entity));
 		}
 
 		template<typename... Components>
@@ -203,7 +203,7 @@ namespace dodoe {
 
 		template<typename... Components>
 		void remove(const Entity& entity) {
-			registry_.template remove<Components...>(registry_entity_handle(entity));
+			registry_.template remove<Components...>(GetEntityHandle_Help(entity));
 		}
 
 		template<typename... Components>
@@ -213,7 +213,7 @@ namespace dodoe {
 
 		template<typename Component>
 		void erase(const Entity& entity) {
-			registry_.template erase<Component>(registry_entity_handle(entity));
+			registry_.template erase<Component>(GetEntityHandle_Help(entity));
 		}
 
 		template<typename Component>

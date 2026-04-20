@@ -104,7 +104,7 @@ namespace dodoe {
     }
 
     void SystemContext::runtime_start() {
-        world->runtime_start();
+        world->start();
     }
 
     void SystemContext::tick_one_frame() {
@@ -113,7 +113,7 @@ namespace dodoe {
     }
 
     void SystemContext::runtime_finalize() {
-        world->runtime_finalize();
+        world->finalize();
     }
 
     void SystemContext::update_tick(const float delta_time) {
@@ -122,7 +122,7 @@ namespace dodoe {
         }
 
         input_manager->update();
-        world->runtime_update(delta_time);
+        world->update(delta_time);
         physics_system->step(delta_time);
     }
 

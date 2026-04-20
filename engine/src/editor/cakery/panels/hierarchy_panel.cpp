@@ -36,7 +36,7 @@ namespace cakery {
 
             if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
                 if (ImGui::MenuItem("Create Entity")) {
-                    context_->create_entity("Entity");
+                    context_->createEntity("Entity");
                 }
                 ImGui::EndPopup();
             }
@@ -100,7 +100,7 @@ namespace cakery {
 
         if (request_delete) {
             dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
-            context_->destroy_entity(entity);
+            context_->destroyEntity(entity);
         }
 
         ImGui::PopID();

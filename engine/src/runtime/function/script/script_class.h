@@ -38,7 +38,7 @@ namespace dodoe{
 		ScriptInstance(Ref<ScriptClass> script_class);
 
 		void invokeStart();
-		void invokeUpdate(float dt);
+		void invokeUpdate();
 		void invokeFinalize();
 
 	private:

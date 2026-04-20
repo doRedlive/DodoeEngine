@@ -1,40 +1,62 @@
+namespace GreenCake;
+
 using System;
 
-namespace GreenCake
+public class Entity
 {
-    public class Entity
+    protected Entity() { ID = 0; }
+    internal Entity(ulong id) { ID = id; }
+
+    public readonly ulong ID;
+
+    public bool HasComponent<T>() where T : Component
     {
-        protected Entity() { ID = 0; }
-        internal Entity(ulong id) { ID = id; }
+        if (World.Current?.HasComponent<T>(ID) == true)
+            return true;
+        return false;
+    }
 
-        public readonly ulong ID;
-
-        public Vector3 Translation
-        {
-            get
-            {
-                InternalCalls.TransformComponent_GetTranslation(ID, out Vector3 result);
-                return result;
-            }
-            set
-            {
-                InternalCalls.TransformComponent_SetTranslation(ID, ref value);
-            }
-        }
-
-        public bool HasComponent<T>() where T : Component, new()
-        {
-            Type componentType = typeof(T);
-            return InternalCalls.Entity_HasComponent(ID, componentType);
-        }
-
-        public T GetComponent<T>() where T : Component, new()
-        {
-            if (!HasComponent<T>())
-                return null;
-
-            T component = new T() { Entity = this };
+    public T GetComponent<T>() where T : Component
+    {
+        if (World.Current != null && World.Current.TryGetComponent<T>(ID, out T component))
             return component;
+
+        throw new InvalidOperationException($"Entity {ID} does not have component {typeof(T).FullName}.");
+    }
+
+    public void AddComponent<T>(T component) where T : Component
+    {
+        if (HasComponent<T>()) return;
+
+        component.Entity = this;
+        World.Current.AddComponent(ID, component);
+
+        Type componentType = typeof(T);
+        if (InternalCalls.Native_ComponentExists(ID, componentType))
+        {
+            if (InternalCalls.Native_EntityHasComponent(ID, componentType))
+                return;
+            InternalCalls.Native_EntityAddComponent(ID, component);
+        }
+    }
+
+    public void AddComponent<T>() where T : Component, new()
+    {
+        AddComponent(new T());
+    }
+
+    public void RemoveComponent<T>() where T : Component
+    {
+        if (!HasComponent<T>()) return;
+
+        World.Current.RemoveComponent<T>(ID);
+
+        Type componentType = typeof(T);
+        if (InternalCalls.Native_ComponentExists(ID, componentType))
+        {
+            if (!InternalCalls.Native_EntityHasComponent(ID, componentType))
+                return;
+            InternalCalls.Native_EntityRemoveComponent(ID, componentType);
         }
     }
 }

@@ -19,13 +19,13 @@ namespace dodoe {
 
     namespace {
 
-        static fs::path GetExeDir() {
+        fs::path GetExeDir() {
             std::array<char, 256> buffer{};
             DWORD len = GetModuleFileNameA(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
             return len ? fs::path(buffer.data()).parent_path() : std::filesystem::path();
         }
 
-        static std::string ResolveTpaList(fs::path dir) {
+        std::string ResolveTpaList(const fs::path &dir) {
             std::vector<std::string> tpa_list;
             for (const auto& entry : fs::directory_iterator(dir)) {
                 if (entry.is_regular_file() && entry.path().extension() == ".dll") {
@@ -58,7 +58,10 @@ namespace dodoe {
     }
 
     bool ScriptEngine::initialize(const ScriptEngineCreateInfo& info) {
-        setupMono();
+        if (!setupMono()) return false;
+        if (!loadCoreAssembly("")) return false;
+        if (!loadAppAssembly("")) return false;
+        return true;
     }
 
     void ScriptEngine::shutdown() {
@@ -67,7 +70,7 @@ namespace dodoe {
 
     bool ScriptEngine::setupMono() {
         const fs::path runtime_dir =
-            "C:\\Users\\33235\\Redlive\\Libraries\\runtime\\artifacts\\bin\\testhost\\net8.0-windows-Release-x64\\shared\\Microsoft.NETCore.App\\8.0.25";
+            R"(C:\Users\33235\Redlive\Libraries\runtime\artifacts\bin\testhost\net8.0-windows-Release-x64\shared\Microsoft.NETCore.App\8.0.25)";
         const fs::path exe_dir = GetExeDir();
 
         const std::string tpa = ResolveTpaList(runtime_dir);
@@ -110,14 +113,19 @@ namespace dodoe {
 
         m_core_image = mono_assembly_get_image(m_core_assembly);
         DO_ASSERT(m_core_image);
+
+        return true;
     }
 
     bool ScriptEngine::loadAppAssembly(const std::string& path) {
-        // const fs::path assembly_path = GetExeDir
-    }
+        const fs::path assembly_path = R"(C:\Users\33235\Redlive\dodoe\tests\Projects\OnlyOne\Assets\Scripts\Binaries\OnlyOne.dll)";
+        m_app_assembly = mono_domain_assembly_open(m_core_domain, assembly_path.string().c_str());
+        DO_ASSERT(m_app_assembly);
 
-    bool ScriptEngine::loadAssembly(const std::string& path) {
+        m_app_image = mono_assembly_get_image(m_app_assembly);
+        DO_ASSERT(m_app_assembly);
 
+        return true;
     }
 
     void ScriptEngine::cleanupMono() {

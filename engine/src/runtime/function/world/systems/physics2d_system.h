@@ -46,7 +46,7 @@ namespace dodoe {
 
                 b2BodyId body_id = b2CreateBody(world_id, &body_def);
                 if (!B2_IS_NON_NULL(body_id)) {
-                    DoError("Created b2body failed!");
+                    DO_ERROR("Created b2body failed!");
                     continue;
                 }
 

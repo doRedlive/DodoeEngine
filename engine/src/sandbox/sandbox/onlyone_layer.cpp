@@ -11,7 +11,7 @@
 namespace sandbox {
 
     void OnlyoneLayer::attach() {
-        dodoe::Application::self().context().script_system->execute_lua("engine/src/sandbox/proj/OnlyOne/Scripts/main.lua");
+        dodoe::Application::self().context().script_system->executeLua("engine/src/sandbox/proj/OnlyOne/Scripts/main.lua");
     }
 
     void OnlyoneLayer::detach() {

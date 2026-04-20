@@ -30,7 +30,7 @@ namespace cakery {
 
     void CakeryLayer::attach() {
         const auto& world = Application::self().context().world;
-        auto* scene = world->active_scene();
+        auto* scene = world->getCurrentScene();
         hierarchy_panel_.setContext(scene);
 
         bool has_marry_entity = false;
@@ -45,7 +45,7 @@ namespace cakery {
         }
 
         if (!has_marry_entity) {
-            dodoe::Entity model_entity = scene->create_entity("MarryModel");
+            dodoe::Entity model_entity = scene->createEntity("MarryModel");
             model_entity.getComponent<dodoe::TagComponent>().setTag("MarryModel");
 
             auto& transform = model_entity.getComponent<dodoe::TransformComponent>();

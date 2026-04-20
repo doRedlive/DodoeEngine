@@ -13,6 +13,7 @@ namespace dodoe {
 	STRUCT(MeshComponent, WhiteListFields) {
 		REFLECTION_BODY(MeshComponent)
 
+		int value;
 	};
 
 } // dodoe

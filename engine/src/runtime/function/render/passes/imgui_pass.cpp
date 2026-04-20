@@ -203,7 +203,7 @@ namespace dodoe {
 		auto vert_source = ReadShaderFile("engine/res/shaders/imgui_pass.vert.spv");
 		auto frag_source = ReadShaderFile("engine/res/shaders/imgui_pass.frag.spv");
 		if (vert_source.empty() || frag_source.empty()) {
-			DoError("ImGuiPass: shader files are missing.");
+			DO_ERROR("ImGuiPass: shader files are missing.");
 			return;
 		}
 

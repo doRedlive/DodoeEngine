@@ -11,6 +11,7 @@
 #include "systems/model_renderer_system.h"
 #include "systems/physics2d_system.h"
 #include "systems/sprite_renderer_system.h"
+#include "systems/mono_system.h"
 
 namespace dodoe {
 
@@ -27,141 +28,233 @@ namespace dodoe {
     }
 
     void World::initialize(const WorldCreateInfo& create_info) {
-        name_ = create_info.name;
+        m_name = create_info.name;
 
-        systems_.clear();
-        systems_.push_back(create_scope<Physics2dSystem>());
-        systems_.push_back(create_scope<Camera2dSystem>());
-        systems_.push_back(create_scope<Animation2dSystem>());
-        systems_.push_back(create_scope<ModelRendererSystem>());
-        systems_.push_back(create_scope<SpriteRendererSystem>());
+        auto mono = create_ref<MonoSystem>();
+        auto camera2d = create_ref<Camera2dSystem>();
+        auto physics2d = create_ref<Physics2dSystem>();
+        auto animation2d = create_ref<Animation2dSystem>();
+        auto model_renderer = create_ref<ModelRendererSystem>();
+        auto sprite_renderer = create_ref<SpriteRendererSystem>();
 
+        registerRuntimeSystem(mono);
+        registerRuntimeSystem(camera2d);
+        registerRuntimeSystem(physics2d);
+        registerRuntimeSystem(animation2d);
+        registerRuntimeSystem(model_renderer);
+        registerRuntimeSystem(sprite_renderer);
+
+        registerSimulationSystem(camera2d);
+        registerSimulationSystem(physics2d);
+        registerSimulationSystem(animation2d);
+        registerSimulationSystem(model_renderer);
+        registerSimulationSystem(sprite_renderer);
+        
         // Read config
-        auto* scene = active_scene();
+        auto* scene = getCurrentScene();
         if (!scene) {
-            scene = create_scene("default");
+            scene = createScene("default");
+            loadScene("default");
         }
     }
 
     void World::shutdown() {
-        if (!scenes_.empty()) {
-            destroy_all_scenes();
-        }
-        systems_.clear();
-    }
+        m_active_scenes.clear();
+        m_runtime_systems.clear();
+        m_simulation_systems.clear();
 
-    void World::runtime_start() {
-        for (auto& scene : scenes_) {
-            scene->on_runtime_start();
+        for (auto& scene : m_scenes) {
+            Scene::destroy(scene);
         }
     }
 
-    void World::runtime_update(const float delta_time) {
-        for (auto& scene : scenes_) {
-            scene->on_runtime_update(delta_time);
+    void World::start() {
+        switch (m_state) {
+            case WorldState::Runtime:
+                for (auto& scene : m_active_scenes) {
+                    scene->onRuntimeStart();
+                }
+            break;
+            case WorldState::Simulation:
+                for (auto& scene : m_active_scenes) {
+                    scene->onSimulationStart();
+                }
+            break;
         }
     }
 
-    void World::runtime_finalize() {
-        for (auto& scene : scenes_) {
-            scene->on_runtime_stop();
+    void World::update(const float dt) {
+        switch (m_state) {
+            case WorldState::Runtime:
+                for (auto& scene : m_active_scenes) {
+                    scene->onRuntimeUpdate(dt);
+                }
+            break;
+            case WorldState::Simulation:
+                for (auto& scene : m_active_scenes) {
+                    scene->onSimulationUpdate(dt);
+                }
+            break;
         }
     }
 
-    void World::simulation_update(const float delta_time) {
-        for (auto& scene : scenes_) {
-            scene->on_simulation_update(delta_time);
+    void World::finalize() {
+        switch (m_state) {
+            case WorldState::Runtime:
+                for (auto& scene : m_active_scenes) {
+                    scene->onRuntimeStop();
+                }
+            break;
+            case WorldState::Simulation:
+                for (auto& scene : m_active_scenes) {
+                    scene->onSimulationStop();
+                }
+            break;
         }
     }
 
-    Scene* World::create_scene(const std::string& name) {
-        for (const auto& scene : scenes_) {
-            if (scene->get_name() == name) {
-                DoError("Scene with name '{}' already exists. Returning existing Scene.", name);
+    Scene* World::createScene(const std::string& name) { 
+        if (auto* existing_scene = getScene(name)) {
+            return existing_scene;
+        }
+
+        auto scene = Scene::create({*this, name});
+        scene->onCreate();
+        Scene* created_scene = scene.get();
+        m_scenes.push_back(std::move(scene));
+
+        return created_scene;
+    }
+
+    void World::deleteScene(const std::string& name) {
+        auto scene = getScene(name);
+        if (!scene) return;
+
+        auto active_it = std::find_if(m_active_scenes.begin(), m_active_scenes.end(),
+            [&name](const auto& scene) {
+                return scene->getName() == name; }
+        );
+        if (active_it != m_active_scenes.end()) {
+            DO_ERROR("Scene with name '{}' has loaded! Can't delete!", name);
+            return;
+        }
+
+        scene->onDelete();
+
+        auto it = std::find_if(m_scenes.begin(), m_scenes.end(),
+            [&name](const auto& scene) {
+                return scene->getName() == name; }
+        );
+        m_scenes.erase(it);
+    }
+
+    Scene* World::getScene(const std::string& name) const {
+        for (const auto& scene : m_scenes) {
+            if (scene->getName() == name) {
                 return scene.get();
             }
         }
-        auto scene = create_scope<Scene>(*this, name);
-        scenes_.push_back(std::move(scene));
-        return get_scene(name);
-    }
-
-    Scene* World::get_scene(const std::string& name) const {
-        for (const auto& scene : scenes_) {
-            if (scene->get_name() == name) {
-                return scene.get();
-            }
-        }
-        DoError("Scene with name '{}' does not exist. Returning nullptr.", name);
+        DoWarn("Scene with name '{}' does not exist. Returning nullptr.", name);
         return nullptr;
     }
 
-    Scene* World::active_scene() const {
-        return scenes_.empty() ? nullptr : scenes_.back().get();
+    Scene* World::getCurrentScene() {
+        if (!m_current_scene && !m_active_scenes.empty()) {
+            m_current_scene = m_active_scenes.front();
+        }
+        return m_current_scene;
     }
 
-    void World::load_scene(const std::string& name) {
-        if (scenes_.back()->get_name() == name) {
+    void World::loadScene(const std::string& name) {
+        auto scene = getScene(name);
+        if (!scene) return;
+
+        auto it = std::find_if(m_active_scenes.begin(), m_active_scenes.end(),
+            [&name](const auto& scene) {
+                return scene->getName() == name; }
+        );
+
+        if (it != m_active_scenes.end()) {
+            DO_ERROR("Scene with name '{}' has loaded!", name);
             return;
         }
-        for (size_t i = 0; i < scenes_.size(); ++i) {
-            if (scenes_[i]->get_name() == name) {
-                auto scene = std::move(scenes_[i]);
-                scenes_.erase(scenes_.begin() + i);
-                scenes_.push_back(std::move(scene));
-                return;
-            }
-        }
-        DoError("Scene with name '{}' does not exist. Cannot load.", name);
+
+        m_active_scenes.push_back(scene);
     }
 
-    void World::destroy_scene(const std::string& name) {
-        for (size_t i = 0; i < scenes_.size(); ++i) {
-            if (scenes_[i]->get_name() == name) {
-                scenes_[i]->destroy();
-                scenes_.erase(scenes_.begin() + i);
-                return;
-            }
-        }
-        DoError("Scene with name '{}' does not exist. Cannot destroy.", name);
-    }
+    void World::unloadScene(const std::string& name) {
+        auto scene = getScene(name);
+        if (!scene) return;
 
-    void World::destroy_all_scenes() {
-        for (const auto& scene : scenes_) {
-            scene->destroy();
-        }
-        scenes_.clear();
-    }
+        auto it = std::find_if(m_active_scenes.begin(), m_active_scenes.end(),
+            [&name](const auto& scene) {
+                return scene->getName() == name;
+            });
 
-    void World::register_system(Scope<System> system) {
-        if (!system) {
+        if (it == m_active_scenes.end()) {
+            DO_ERROR("Scene with name '{}' does not loaded!", name);
             return;
         }
-        systems_.push_back(std::move(system));
+
+        m_active_scenes.erase(it);
+
     }
 
-    void World::start_systems(Registry& reg) {
-        for (auto& sys : systems_) {
+    void World::registerRuntimeSystem(Ref<System> system) {
+        if (!system) return;
+        m_runtime_systems.push_back(std::move(system));
+    }
+
+    void World::registerSimulationSystem(Ref<System> system) {
+        if (!system) return;
+        m_simulation_systems.push_back(std::move(system));
+    }
+
+    void World::onRuntimeStart(Registry& reg) {
+        for (auto& sys : m_runtime_systems) {
             if (sys) {
                 sys->start(reg);
             }
         }
     }
 
-    void World::update_systems(Registry& reg, const float dt) {
-        for (auto& sys : systems_) {
+    void World::onRuntimeUpdate(Registry& reg, const float dt) {
+        for (auto& sys : m_runtime_systems) {
             if (sys) {
                 sys->update(reg, dt);
             }
         }
     }
 
-    void World::finalize_systems(Registry& reg) {
-        for (auto& sys : systems_) {
+    void World::onRuntimeFinalize(Registry& reg) {
+        for (auto& sys : m_runtime_systems) {
             if (sys) {
                 sys->finalize(reg);
             }
         }
     }
 
+    void World::onSimulationStart(Registry& reg) {
+        for (auto& sys : m_simulation_systems) {
+            if (sys) {
+                sys->start(reg);
+            }
+        }
+    }
+
+    void World::onSimulationUpdate(Registry& reg, const float dt) {
+        for (auto& sys : m_simulation_systems) {
+            if (sys) {
+                sys->update(reg, dt);
+            }
+        }
+    }
+
+    void World::onSimulationFinalize(Registry& reg) {
+        for (auto& sys : m_simulation_systems) {
+            if (sys) {
+                sys->finalize(reg);
+            }
+        }
+    }
 } // dodoe

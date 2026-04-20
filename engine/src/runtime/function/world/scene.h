@@ -2,11 +2,12 @@
 // Created by GreenMuffin on 2025/11/15.
 //
 
-#ifndef DODOE_SCENE_H
-#define DODOE_SCENE_H
+#pragma once
+
 #include "dopch.h"
 
 #include "registry.h"
+#include "entity.h"
 
 #include "runtime/core/utils/uuid.h"
 
@@ -14,56 +15,74 @@
 
 namespace dodoe {
     class World;
-    class Entity;
-    class RenderSystem;
-    class SceneManager;
+
+    struct SceneCreateInfo {
+        World& world;
+        std::string name;
+    };
 
     class Scene {
         friend class World;
         friend class Entity;
+        template<typename T>
+        friend void OnComponentAdd_Help(Scene* scene, Entity entity, T& component);
 
-        World& world_;
-        Registry reg_;
-        std::string name_;
-        std::unordered_map<Uuid, Entity> entity_umap_;
-    public:
+        World& m_world;
+        Registry m_reg;
+        std::string m_name;
+        std::unordered_map<Uuid, Entity> m_entity_umap{};
+    public: 
+        static Scope<Scene> create(const SceneCreateInfo& info);
+        static void destroy(Scope<Scene>& scene);
+        
         Scene(World& world, const std::string& name);
-        ~Scene();
-
+        ~Scene() = default;
         Scene(const Scene&) = delete;
-        Scene& operator=(const Scene&) = delete;
         Scene(Scene&&) = delete;
+        Scene& operator=(const Scene&) = delete;
         Scene& operator=(Scene&&) = delete;
 
-        void on_runtime_start();
-        void on_runtime_stop();
-        void on_runtime_update(float delta_time);
+        void save();
+        void onCreate();
+        void onDelete();
 
-        void on_simulation_start();
-        void on_simulation_stop();
-        void on_simulation_update(float delta_time);
+        void onRuntimeStart();
+        void onRuntimeStop();
+        void onRuntimeUpdate(float delta_time);
 
-        void destroy();
+        void onSimulationStart();
+        void onSimulationStop();
+        void onSimulationUpdate(float delta_time);
 
-        [[nodiscard]] const std::string& get_name() const { return name_; }
-        void set_name(const std::string& name) { name_ = name; }
+        [[nodiscard]] const std::string& getName() const { return m_name; }
+        void setName(const std::string& name) { m_name = name; }
 
-        [[nodiscard]] Registry& registry() { return reg_; }
-        [[nodiscard]] const Registry& registry() const { return reg_; }
+        [[nodiscard]] Registry& registry() { return m_reg; }
+        [[nodiscard]] const Registry& registry() const { return m_reg; }
 
-        Entity create_entity(const std::string& name);
-        Entity create_entity(Uuid uuid, const std::string& name = std::string());
-        void add_entity(Entity entity);
-        void destroy_entity(Entity entity);
-        [[nodiscard]] Entity get_entity(const std::string& tag);
+        Entity createEntity(const std::string& name);
+        Entity createEntity(Uuid uuid, const std::string& name = std::string());
+        void destroyEntity(Entity entity);
+        void addEntity(Entity entity);
+        [[nodiscard]] Entity getEntity(ui32 entity_id);
+        [[nodiscard]] Entity getEntityByTag(const std::string& tag);
         [[nodiscard]] std::vector<Entity> getEntities();
         [[nodiscard]] Entity getEntityByUUID(Uuid uuid);
 
     private:
         template<typename T>
-        void on_component_add_(Entity entity, T& component) { }
+        void onComponentAdd(Entity entity, T& component) { }
+
+        bool initialize();
+        void shutdown();
     };
+
 } // dodoe
 
-
-#endif //DODOE_SCENE_H
+namespace dodoe {
+    template<typename T>
+    void OnComponentAdd_Help(Scene* scene, Entity entity, T& component) {
+        DO_ASSERT(scene);
+        scene->onComponentAdd<T>(entity, component);
+    }
+} // dodoe

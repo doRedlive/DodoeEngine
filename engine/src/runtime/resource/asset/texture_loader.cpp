@@ -27,7 +27,7 @@ namespace dodoe {
         pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
         if (!pixels) {
-            DoError("Load texture {} error!", path);
+            DO_ERROR("Load texture {} error!", path);
         }
     }
 

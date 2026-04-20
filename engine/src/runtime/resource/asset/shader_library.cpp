@@ -11,7 +11,7 @@ namespace {
         auto file_path = std::filesystem::path(path);
         std::ifstream ifs(file_path, std::ios::in | std::ios::binary);
         if (!ifs) {
-            DoError("Can't open the file: {}", path);
+            DO_ERROR("Can't open the file: {}", path);
             return std::nullopt;
         }
 
@@ -19,7 +19,7 @@ namespace {
         ifs.seekg(0, std::ios::end);
         const auto size = ifs.tellg();
         if (size < 0) {
-           DoError("Can't get the file size!");
+           DO_ERROR("Can't get the file size!");
             return std::nullopt;
         }
 
@@ -70,7 +70,7 @@ namespace dodoe {
             auto [inserted_it, _] = shader_umap_.emplace(id, std::move(res));
             return inserted_it->second.shader;
         }
-        DoError("Can't load the shader! name={}, vert={}, frag={}", name, vert_path, frag_path);
+        DO_ERROR("Can't load the shader! name={}, vert={}, frag={}", name, vert_path, frag_path);
         return nullptr;
     }
 
@@ -80,7 +80,7 @@ namespace dodoe {
             return it->second.shader;
         }
 
-        DoError("Can't find the shader {}!", name);
+        DO_ERROR("Can't find the shader {}!", name);
         return nullptr;
     }
 

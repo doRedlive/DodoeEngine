@@ -2,10 +2,13 @@
 // Created by GreenMuffin on 2026/3/20.
 //
 
-#ifndef DODOE_SCRIPT_SYSTEM_H
-#define DODOE_SCRIPT_SYSTEM_H
+#pragma once
 
 #include "dopch.h"
+
+#include "script_engine.h"
+#include "script_runtime.h"
+
 #include "lua/lua_script_runtime.h"
 
 namespace dodoe {
@@ -15,24 +18,22 @@ namespace dodoe {
     };
 
     class ScriptSystem {
+        Scope<ScriptEngine> m_script_engine;
+        Scope<ScriptRuntime> m_script_runtime;
+
+        Scope<LuaScriptEngine> m_lua_engine;
     public:
-        static Scope<ScriptSystem> create(const ScriptSystemCreateInfo& create_info);
-        static void destroy(Scope<ScriptSystem>& script_system);
+        static Scope<ScriptSystem> create(const ScriptSystemCreateInfo& info);
+        static void destroy(Scope<ScriptSystem>& system);
 
-        bool execute_csharp(const std::filesystem::path& script_file);
-        bool execute_lua(const std::filesystem::path& script_file);
-
-        LuaScriptEngine* get_lua_engine() { return lua_engine_.get(); }
+        [[nodiscard]] ScriptEngine* getMonoEngine() const { return m_script_engine.get(); }
+        [[nodiscard]] ScriptRuntime* getMonoRuntime() const { return m_script_runtime.get(); }
+        [[nodiscard]] LuaScriptEngine* getLuaEngine() const { return m_lua_engine.get(); }
+        [[nodiscard]] bool executeLua(const std::filesystem::path& script_file) const;
 
     private:
         bool initialize(const ScriptSystemCreateInfo& create_info);
         void shutdown();
-
-        Scope<LuaScriptEngine> lua_engine_;
-        bool csharp_initialized_{ false };
-        bool enable_csharp_on_startup_{ false };
     };
 
 } // dodoe
-
-#endif//DODOE_SCRIPT_SYSTEM_H

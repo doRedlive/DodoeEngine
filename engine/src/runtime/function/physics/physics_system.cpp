@@ -29,7 +29,7 @@ namespace dodoe {
 		world_id_ = b2WorldId();
 
 		if (B2_IS_NON_NULL(world_id_)) {
-			DoError("Can't create box2d world");
+			DO_ERROR("Can't create box2d world");
 			return;
 		}
 
