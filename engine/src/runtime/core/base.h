@@ -1,9 +1,6 @@
-//
 // Created by GreenMuffin on 2025/11/16.
-//
+#pragma once
 
-#ifndef DODOE_BASE_H
-#define DODOE_BASE_H
 #include <memory>
 
 #include "glm/vec2.hpp"
@@ -13,7 +10,6 @@
 #include "glm/ext/matrix_float4x4.hpp"
 
 #include "entt/entt.hpp"
-#include "entt/entity/entity.hpp"
 
 namespace dodoe {
 
@@ -31,11 +27,20 @@ namespace dodoe {
         return std::make_shared<T>(std::forward<Args>(args)...);
     }
 
+    template <typename T>
+    using Weak = std::weak_ptr<T>;
+
     using uint     = unsigned int;
     using uchar    = unsigned char;
 
+    using i8  = int8_t;
+    using i16 = int16_t;
     using i32 = int32_t;
+    using i64 = int64_t;
+    using ui8  = uint8_t;
+    using ui16 = uint16_t;
     using ui32 = uint32_t;
+    using ui64 = uint64_t;
 
     using Vector2f = glm::vec2;
     using Vector2i = glm::ivec2;
@@ -49,5 +54,3 @@ namespace dodoe {
     using identifier = entt::id_type;
 
 } // dodoe
-
-#endif //DODOE_BASE_H

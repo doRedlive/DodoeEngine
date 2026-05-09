@@ -10,7 +10,6 @@ namespace dodoe {
 
 	Scope<TextureManager> TextureManager::create(const TextureManagerCreateInfo& info) {
 		if (auto context = create_scope<TextureManager>(); context->initialize(info)) {
-			s_instance_ = context.get();
 			return context;
 		}
 		DO_ERROR("Failed to create TextureManager!");
@@ -20,7 +19,6 @@ namespace dodoe {
 	void TextureManager::destroy(Scope<TextureManager>& manager) {
 		if (!manager) return;
 		manager->shutdown();
-		s_instance_ = nullptr;
 		manager.reset();
 	}
 
@@ -28,7 +26,7 @@ namespace dodoe {
 		rhi_ = info.rhi;
         descriptor_table_ = info.descriptor_table;
 		createFallbackTexture();
-		return true;
+		return rhi_ && descriptor_table_;
 	}
 
 	void TextureManager::shutdown() {
@@ -62,8 +60,6 @@ namespace dodoe {
 	Ref<Texture> TextureManager::loadTexture(const identifier id) {
         const auto& it = texture_umap_.find(id);
         if (it != texture_umap_.end()) { return it->second; }
-
-		DO_ERROR("Can't not found the texture id!");
 		return fallback_texture_;
 	}
 
@@ -78,11 +74,14 @@ namespace dodoe {
 			return nullptr;
 		}
 
+		const auto texture_format = data.is_hdr ? rhi::Format::RGBA32_FLOAT : rhi::Format::RGBA8_UNORM;
+		const size_t bytes_per_channel = data.is_hdr ? sizeof(float) : sizeof(uchar);
+
 		auto texture_desc = rhi::TextureDesc()
 			.setDimension(rhi::TextureDimension::Texture2D)
 			.setWidth(data.width)
 			.setHeight(data.height)
-			.setFormat(rhi::Format::RGBA8_UNORM)
+			.setFormat(texture_format)
 			.setMipLevels(1)
 			.enableAutomaticStateTracking(rhi::ResourceStates::ShaderResource)
 			.setDebugName(path);
@@ -93,7 +92,7 @@ namespace dodoe {
 		}
 
 		auto cmd = rhi_->getCommandList();
-		const size_t row_pitch = static_cast<size_t>(data.width) * 4u;
+		const size_t row_pitch = static_cast<size_t>(data.width) * 4u * bytes_per_channel;
 		cmd->open();
 		cmd->writeTexture(handle, 0, 0, data.pixels, row_pitch);
 		cmd->close();
@@ -129,6 +128,10 @@ namespace dodoe {
 		rhi_->getDevice()->executeCommandList(upload_cmd);
 
 		fallback_texture_ = create_ref<Texture>();
+		fallback_texture_->id = 0;
+		fallback_texture_->path = "<fallback>";
+		fallback_texture_->width = 1;
+		fallback_texture_->height = 1;
 		fallback_texture_->handle = handle;
 		fallback_texture_->descriptor_index = descriptor_table_->createDescriptor(rhi::BindingSetItem::Texture_SRV(0, fallback_texture_->handle));
 		DO_ASSERT(fallback_texture_);

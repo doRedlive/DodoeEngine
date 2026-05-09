@@ -1,5 +1,6 @@
-#ifndef DODOE_SPRITE_RENDERER_SYSTEM_H
-#define DODOE_SPRITE_RENDERER_SYSTEM_H
+// do@Redlive
+
+#pragma once
 
 #include "dopch.h"
 
@@ -8,6 +9,9 @@
 #include "runtime/function/world/components.h"
 #include "runtime/function/render/renderer_2d.h"
 #include "runtime/function/render/framework/texture_manager.h"
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_system.h"
 
 namespace dodoe {
 
@@ -15,7 +19,7 @@ namespace dodoe {
     public:
         ~SpriteRendererSystem() override = default;
 
-        void update(Registry& reg, float dt) override {
+        void update(Registry& reg, const float dt) override {
             (void)dt;
             reg.sort<SpriteRendererComponent>([](const SpriteRendererComponent& a, const SpriteRendererComponent& b) {
                 return a.depth_ > b.depth_;
@@ -23,15 +27,22 @@ namespace dodoe {
 
             auto view = reg.view<SpriteRendererComponent, TransformComponent>();
             view.use<SpriteRendererComponent>();
+            auto* texture_manager = Application::Self().context().render_system->getTextureManager();
+            if (!texture_manager) {
+                return;
+            }
             for (auto entity : view) {
                 auto& sr = reg.get<SpriteRendererComponent>(entity);
                 auto& tr = reg.get<TransformComponent>(entity);
 
-                if (sr.texture_id == 0) {
-                    continue;
+                Ref<Texture> texture = nullptr;
+                identifier draw_texture_id = 0;
+                if (!sr.asset_ref.path.empty()) {
+                    texture = texture_manager->loadTexture(sr.asset_ref.path_id, sr.asset_ref.path);
+                    draw_texture_id = sr.asset_ref.path_id;
+                } else {
+                    texture = texture_manager->loadFallbackTexture();
                 }
-
-                const auto texture = TextureManager::self().loadTexture(sr.texture_id);
                 if (!texture) {
                     continue;
                 }
@@ -48,7 +59,7 @@ namespace dodoe {
                 const Vector2f bl_pos = anchor_pos - pivot_offset;
 
                 Renderer2d::drawSprite(
-                    sr.texture_id,
+                    draw_texture_id,
                     bl_pos,
                     world_size,
                     tr.rotation,
@@ -59,5 +70,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif//DODOE_SPRITE_RENDERER_SYSTEM_H

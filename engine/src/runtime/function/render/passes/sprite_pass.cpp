@@ -5,7 +5,6 @@
 #include "../render_graph.h"
 #include "../render_resource.h"
 #include "../renderer_2d.h"
-#include "../framework/camera.h"
 #include "../framework/descriptor_table_manager.h"
 #include "../interface/rhi_context.h"
 
@@ -14,8 +13,12 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 namespace dodoe {
-	SpritePass::SpritePass(RhiContext* rhi, Camera* camera, DescriptorTableManager* descriptor_manager)
-		: camera_(camera), m_descriptor_table(descriptor_manager) {
+    namespace {
+        constexpr ui32 kVolatileConstantBufferVersions = 256;
+    }
+
+	SpritePass::SpritePass(RhiContext* rhi, DescriptorTableManager* descriptor_manager)
+		: m_descriptor_table(descriptor_manager) {
 		m_rhi = rhi;
 	}
 
@@ -41,30 +44,40 @@ namespace dodoe {
 		}
 
 		m_cmd_list->open();
+		m_cmd_list->beginMarker("SpritePass");
 		m_cmd_list->setTextureState(m_scene_color_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
 		m_cmd_list->setTextureState(m_scene_depth_target, rhi::AllSubresources, rhi::ResourceStates::DepthWrite);
 		m_cmd_list->commitBarriers();
 
-		const Matrix4f view_projection = camera_->getViewProjectionMatrix();
+		const auto& camera = g_RenderResource->getRenderScene().mainCamera();
+		if (!camera || !camera->isValid()) {
+			m_cmd_list->setTextureState(m_scene_color_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+			m_cmd_list->commitBarriers();
+			m_cmd_list->endMarker();
+			m_cmd_list->close();
+			m_rhi->getDevice()->executeCommandList(m_cmd_list);
+			return;
+		}
+
+		const Matrix4f view_projection = camera->getViewProjectionMatrix();
+		m_cmd_list->writeBuffer(m_camera_buffer, &view_projection, sizeof(Matrix4f));
 		for (size_t batch_index = 0; batch_index < batches.size(); ++batch_index) {
 			const auto& batch = batches[batch_index];
 			if (batch.indices.empty() || batch.vertices.empty()) {
 				continue;
 			}
-			drawQuadBatch(batch, view_projection);
+			drawQuadBatch(batch);
 		}
 
 		m_cmd_list->setTextureState(m_scene_color_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
 		m_cmd_list->commitBarriers();
 
+		m_cmd_list->endMarker();
 		m_cmd_list->close();
 		m_rhi->getDevice()->executeCommandList(m_cmd_list);
 	}
 
 	void SpritePass::cleanup() {
-		m_scene_color_target = nullptr;
-		m_scene_depth_target = nullptr;
-		m_framebuffer = nullptr;
 	}
 
 	void SpritePass::onViewportResize(const Vector2i& viewport_extent) {
@@ -124,14 +137,14 @@ namespace dodoe {
 			.setByteSize(sizeof(Matrix4f))
 			.setIsConstantBuffer(true)
 			.setIsVolatile(true)
-			.setMaxVersions(16)
+			.setMaxVersions(kVolatileConstantBufferVersions)
 			.setDebugName("SpritePass Camera Buffer");
 		m_camera_buffer = m_rhi->getDevice()->createBuffer(camera_buffer_desc);
 	}
 
 	void SpritePass::createShaders() {
-		auto vert_source = ReadShaderFile("engine/res/shaders/sprite_pass.vert.spv");
-		auto frag_source = ReadShaderFile("engine/res/shaders/sprite_pass.frag.spv");
+		auto vert_source = ReadShaderFile("engine/res/shaders/bin/sprite_pass.vert.spv");
+		auto frag_source = ReadShaderFile("engine/res/shaders/bin/sprite_pass.frag.spv");
 
 		m_vertex_shader = m_rhi->getDevice()->createShader(
 			rhi::ShaderDesc().setShaderType(rhi::ShaderType::Vertex).setEntryName("main").setDebugName("SpritePass Vertex Shader"),
@@ -208,9 +221,7 @@ namespace dodoe {
 		m_framebuffer = m_rhi->getDevice()->createFramebuffer(framebuffer_desc);
 	}
 
-	void SpritePass::drawQuadBatch(const QuadCpuData& batch, const Matrix4f& view_projection) {
-		m_cmd_list->writeBuffer(m_camera_buffer, &view_projection, sizeof(Matrix4f));
-
+	void SpritePass::drawQuadBatch(const QuadCpuData& batch) {
 		const size_t vertex_byte_size = sizeof(QuadVertex) * batch.vertices.size();
 		const size_t index_byte_size = sizeof(ui32) * batch.indices.size();
 		m_cmd_list->writeBuffer(m_vertex_buffer, batch.vertices.data(), vertex_byte_size);

@@ -114,8 +114,8 @@ namespace dodoe {
     }
 
     void CombinePass::createShaders() {
-		auto vert_source = ReadShaderFile("engine/res/shaders/fullscreen.vert.spv");
-		auto frag_source = ReadShaderFile("engine/res/shaders/combine_pass.frag.spv");
+        auto vert_source = ReadShaderFile("engine/res/shaders/bin/fullscreen.vert.spv");
+        auto frag_source = ReadShaderFile("engine/res/shaders/bin/combine_pass.frag.spv");
 
 		m_vertex_shader = m_rhi->getDevice()->createShader(
 			rhi::ShaderDesc().setShaderType(rhi::ShaderType::Vertex).setEntryName("main").setDebugName("CombinePass Vertex Shader"),

@@ -1,9 +1,6 @@
-//
 // Created by GreenMuffin on 2025/10/28.
-//
+#pragma once
 
-#ifndef DODOE_RESOURCE_MANAGER_H
-#define DODOE_RESOURCE_MANAGER_H
 #include "dopch.h"
 
 #include "runtime/core/utils/util.h"
@@ -11,6 +8,7 @@
 #include "asset/texture_loader.h"
 #include "asset/animation_library.h"
 #include "asset/mesh_loader.h"
+#include "asset/asset_manager.h"
 
 namespace dodoe {
 
@@ -38,6 +36,7 @@ namespace dodoe {
         [[nodiscard]] MeshRes get_mesh(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(const std::string& name);
+        [[nodiscard]] AssetManager* asset_manager() const { return asset_manager_.get(); }
 
         AnimClip2dRes create_anim_clip2d(const std::string& name, const std::vector<identifier>& texture_ids, bool loop = false, float frame_ms = 100.0f);
         bool destroy_anim_clip2d(identifier id);
@@ -48,9 +47,6 @@ namespace dodoe {
         Scope<ShaderLibrary> shader_library_{nullptr};
         Scope<AnimationLibrary> animation_library_{nullptr};
         Scope<MeshLoader> mesh_loader_{nullptr};
+        Scope<AssetManager> asset_manager_{nullptr};
     };
 } // dodoe
-
-
-
-#endif //DODOE_RESOURCE_MANAGER_H

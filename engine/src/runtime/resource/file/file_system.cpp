@@ -77,15 +77,17 @@ namespace dodoe {
 		return absolute_path.lexically_normal().generic_string();
 	}
 
-	std::vector<std::string> FileSystem::traverse_directory(const fs::path& target_dir, const std::vector<std::string>& extensions, bool case_sensitive) {
+	bool FileSystem::TraverseDirectory(std::vector<std::string>& out_paths, const fs::path& target_dir, const std::vector<std::string>& extensions, bool case_sensitive) {
 		std::vector<std::string> relative_path_list;
 		if (!fs::exists(target_dir)) {
 			DO_ERROR("The {} not exist.", target_dir.string());
-			return relative_path_list;
+			out_paths = relative_path_list;
+			return false;
 		}
 		if (!fs::is_directory(target_dir)) {
 			DO_ERROR("The {} is not directory.", target_dir.string());
-			return relative_path_list;
+			out_paths = relative_path_list;
+			return false;
 		}
 		try {
 			for (const fs::directory_entry& entry : fs::recursive_directory_iterator(target_dir)) {
@@ -95,10 +97,10 @@ namespace dodoe {
 
 				std::string ext = entry.path().extension().string();
 				if (!case_sensitive) {
-					std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+					std::ranges::transform(ext, ext.begin(), ::tolower);
 				}
 
-				if (std::find(extensions.begin(), extensions.end(), ext) != extensions.end()) {
+				if (std::ranges::find(extensions, ext) != extensions.end()) {
 					fs::path relative_path = fs::relative(entry.path(), FileSystem::asset_path);
 					relative_path_list.emplace_back(relative_path.lexically_normal().generic_string());
 				}
@@ -106,8 +108,11 @@ namespace dodoe {
 		}
 		catch (const fs::filesystem_error& err) {
 			DO_ERROR("Traverse {} error occur : {}", target_dir.string(), err.what());
+			out_paths = relative_path_list;
+			return false;
 		}
-		return relative_path_list;
+		out_paths = relative_path_list;
+		return true;
 	}
 
 } // dodoe

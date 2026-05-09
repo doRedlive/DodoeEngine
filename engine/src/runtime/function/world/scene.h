@@ -1,7 +1,4 @@
-//
-// Created by GreenMuffin on 2025/11/15.
-//
-
+// do@Redlive
 #pragma once
 
 #include "dopch.h"
@@ -10,8 +7,6 @@
 #include "entity.h"
 
 #include "runtime/core/utils/uuid.h"
-
-#include "entt/entt.hpp"
 
 namespace dodoe {
     class World;
@@ -67,6 +62,7 @@ namespace dodoe {
         [[nodiscard]] Entity getEntity(ui32 entity_id);
         [[nodiscard]] Entity getEntityByTag(const std::string& tag);
         [[nodiscard]] std::vector<Entity> getEntities();
+        [[nodiscard]] Entity tryGetEntityByUUID(Uuid uuid) const;
         [[nodiscard]] Entity getEntityByUUID(Uuid uuid);
 
     private:

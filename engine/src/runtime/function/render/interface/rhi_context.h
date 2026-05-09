@@ -25,9 +25,14 @@ namespace dodoe {
         std::vector<rhi::TextureHandle> swapchain_textures_{};
         Scope<VulkanBackend> vulkan_backend_{nullptr};
         GLFWwindow* window_handle_{nullptr};
+        std::vector<VkSemaphore> acquire_semaphores_{};
+        std::vector<VkSemaphore> present_semaphores_{};
+        std::vector<VkFence> frame_fences_{};
+        size_t current_frame_slot_{0};
+        size_t active_frame_slot_{(std::numeric_limits<size_t>::max)()};
     public:
-        static Scope<RhiContext> create(const RhiBackendCreateInfo& create_info);
-        static void destroy(Scope<RhiContext>& backend);
+        static Scope<RhiContext> Create(const RhiBackendCreateInfo& create_info);
+        static void Destroy(Scope<RhiContext>& backend);
 
         [[nodiscard]] rhi::DeviceHandle getDevice() const { return device_; }
         [[nodiscard]] const std::vector<rhi::TextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
@@ -44,6 +49,8 @@ namespace dodoe {
         void shutdown();
 
         void createSwapchainTextures();
+        void createSwapchainSemaphores();
+        void destroySwapchainSemaphores();
     };
 
 } // dodoe

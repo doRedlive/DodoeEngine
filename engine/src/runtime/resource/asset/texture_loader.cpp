@@ -22,9 +22,18 @@ namespace dodoe {
         }
     }
 
-    void TextureBlob::load(const std::string& path) {
-        stbi_set_flip_vertically_on_load(true);
-        pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    void TextureBlob::load(const std::string& path, bool flip_vertical) {
+        stbi_set_flip_vertically_on_load(flip_vertical);
+        is_hdr = stbi_is_hdr(path.c_str()) != 0;
+        if (is_hdr) {
+            pixels = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        } else {
+            pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        }
+
+		if (!flip_vertical) {
+			stbi_set_flip_vertically_on_load(true);
+		}
 
         if (!pixels) {
             DO_ERROR("Load texture {} error!", path);
@@ -33,6 +42,7 @@ namespace dodoe {
 
     void TextureBlob::free() {
         if (pixels) stbi_image_free(pixels);
+        pixels = nullptr;
     }
 
 } // dodoe

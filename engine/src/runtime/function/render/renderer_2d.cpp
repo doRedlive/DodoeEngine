@@ -6,11 +6,19 @@
 
 #include "runtime/core/math/math.h"
 #include "runtime/core/utils/util.h"
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_system.h"
 #include "framework/texture_manager.h"
 
 namespace dodoe {
 
     namespace {
+        TextureManager* GetTextureManager() {
+            auto& app = Application::Self();
+            auto* render_system = app.context().render_system.get();
+            return render_system ? render_system->getTextureManager() : nullptr;
+        }
 
         struct QuadDrawCommand {
             identifier texture_id{0};
@@ -45,7 +53,12 @@ namespace dodoe {
         static Renderer2dState s_Data;
 
         ui32 ResolveDescriptorIndex(identifier texture_id) {
-            auto fallback = TextureManager::self().loadFallbackTexture();
+            auto* texture_manager = GetTextureManager();
+            if (!texture_manager) {
+                return 0;
+            }
+
+            auto fallback = texture_manager->loadFallbackTexture();
             ui32 fallback_index = 0;
             if (fallback && fallback->descriptor_index >= 0) {
                 fallback_index = static_cast<ui32>(fallback->descriptor_index);
@@ -55,7 +68,7 @@ namespace dodoe {
                 return fallback_index;
             }
 
-            auto texture = TextureManager::self().loadTexture(texture_id);
+            auto texture = texture_manager->loadTexture(texture_id);
             if (!texture || texture->descriptor_index < 0) {
                 return fallback_index;
             }
@@ -224,11 +237,6 @@ namespace dodoe {
 
     void Renderer2d::drawSprite(const identifier texture, const Vector2f& pos, 
             const Vector2f& size, const Vector3f& rotation, const Color& color) {
-        if (!texture) {
-            DO_ERROR("Renderer2d::drawSprite: texture is null.");
-            return;
-        }
-
         SubmitQuad(texture, {pos.x, pos.y, size.x, size.y}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4());
     }
 

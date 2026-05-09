@@ -5,6 +5,7 @@
 #include "camera.h"
 
 #include "runtime/core/math/math.h"
+#include "runtime/function/render/render_api.h"
 
 namespace dodoe {
 
@@ -18,7 +19,7 @@ namespace dodoe {
         constexpr float kDefaultOrthographicFar = 1000.0f;
     }
 
-    Scope<Camera> Camera::create(CameraCreateInfo create_info) {
+    Scope<Camera> Camera::create(const CameraCreateInfo& create_info) {
         auto context = create_scope<Camera>();
         context->initialize(create_info);
         return context;
@@ -105,6 +106,22 @@ namespace dodoe {
 
     void Camera::setRotation(const float rotation) {
         m_rotation = rotation;
+        m_use_view_direction = false;
+        updateViewMatrix();
+    }
+
+    void Camera::setViewDirection(const Vector3f& direction) {
+        const float length = Math::length(direction);
+        if (length <= Math::epsilon<float>()) {
+            return;
+        }
+        m_view_direction = direction / length;
+        m_use_view_direction = true;
+        updateViewMatrix();
+    }
+
+    void Camera::clearViewDirection() {
+        m_use_view_direction = false;
         updateViewMatrix();
     }
 
@@ -157,6 +174,10 @@ namespace dodoe {
 
     float Camera::getRotation() const {
         return m_rotation;
+    }
+
+    const Vector3f& Camera::getViewDirection() const {
+        return m_view_direction;
     }
 
     const Color& Camera::getClearColor() const {
@@ -230,7 +251,16 @@ namespace dodoe {
     }
 
     void Camera::updateViewMatrix() {
-        Matrix4f view = Matrix4f(1.0f);
+        if (m_camera_type == CameraType::Perspective && m_use_view_direction) {
+            Vector3f up(0.0f, 1.0f, 0.0f);
+            if (std::abs(Math::dot(m_view_direction, up)) > 0.999f) {
+                up = Vector3f(0.0f, 0.0f, 1.0f);
+            }
+            m_view_matrix = Math::lookAt(m_position, m_position + m_view_direction, up);
+            return;
+        }
+
+        auto view = Matrix4f(1.0f);
         if (!Math::epsilonEqual(m_rotation, 0.0f, Math::epsilon<float>())) {
             view = Math::rotate(view, -m_rotation, Vector3f(0.0f, 0.0f, 1.0f));
         }
@@ -254,6 +284,11 @@ namespace dodoe {
             const float half_width = logical_width * 0.5f / zoom;
             const float half_height = logical_height * 0.5f / zoom;
             m_projection_matrix = Math::ortho(-half_width, half_width, -half_height, half_height, near_plane, far_plane);
+        }
+
+        // Vulkan clip-space has inverted Y compared with OpenGL.
+        if (RenderApi::apiType() == RenderApiType::Vulkan) {
+            m_projection_matrix[1][1] *= -1.0f;
         }
     }
 

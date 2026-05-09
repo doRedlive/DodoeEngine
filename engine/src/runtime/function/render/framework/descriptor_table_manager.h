@@ -52,7 +52,7 @@ namespace dodoe {
         static void destroy(Scope<DescriptorTableManager>& manager);
 
         DescriptorIndex createDescriptor(rhi::BindingSetItem item);
-        rhi::IDescriptorTable* getDescriptorTable() const { return descriptor_table_; }
+        [[nodiscard]] rhi::IDescriptorTable* getDescriptorTable() const { return descriptor_table_; }
 
     private:
         void initialize(const DescriptorTableManagerCreateInfo& info);

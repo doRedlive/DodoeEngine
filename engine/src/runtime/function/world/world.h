@@ -30,7 +30,7 @@ namespace dodoe {
         std::string m_name;
         Uuid m_uuid{};
 
-        WorldState m_state{WorldState::Runtime};
+        WorldState m_state{WorldState::Simulation};
 
         Scene* m_current_scene{nullptr};
         std::vector<Scope<Scene>> m_scenes{};

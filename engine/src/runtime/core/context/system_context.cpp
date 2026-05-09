@@ -1,6 +1,4 @@
-//
 // Created by GreenMuffin on 2025/11/1.
-//
 
 #include "dopch.h"
 
@@ -64,13 +62,13 @@ namespace dodoe {
         window_manager->initialize({create_info.spec});
         RenderApi::initialize({create_info.spec.render_api_type});
         ui_system->initialize(window_manager.get());
-        render_system = RenderSystem::create({window_manager.get(), ui_system.get(), create_info.spec.render_api_type});
+        render_system = RenderSystem::Create({window_manager.get(), ui_system.get(), create_info.spec.render_api_type});
         DO_ASSERT(render_system, "RenderSystem initialize failed!");
         
         // ---------------------GAME-------------------------
         world = World::create({"Main"});
 
-        input_manager->initialize({render_system->viewportManager()});
+        input_manager->initialize({render_system->getViewportManager()});
         physics_system = PhysicsSystem::create({});
         script_system  = ScriptSystem::create({});
  
@@ -78,8 +76,6 @@ namespace dodoe {
     }
 
     bool SystemContext::shutdown_systems() {
-        // Destroy layers while EventSystem/World/Render are still valid.
-        layer_stack.detach();
         layer_stack.clear_layers();
 
         // ---------------------GAME-------------------------
@@ -91,7 +87,7 @@ namespace dodoe {
         // ---------------------RESOURCE-------------------------
         ResourceManager::self().shutdown();
         // ---------------------RENDER-------------------------
-        RenderSystem::destroy(render_system);
+        RenderSystem::Destroy(render_system);
         ui_system->shutdown();
         ui_system.reset();
         window_manager->shutdown();
@@ -103,16 +99,16 @@ namespace dodoe {
         return true;
     }
 
-    void SystemContext::runtime_start() {
+    void SystemContext::startRuntime() {
         world->start();
     }
 
-    void SystemContext::tick_one_frame() {
+    void SystemContext::tickOneFrame() {
         update_tick(time_system->delta_time());
         render_tick();
     }
 
-    void SystemContext::runtime_finalize() {
+    void SystemContext::finalizeRuntime() {
         world->finalize();
     }
 

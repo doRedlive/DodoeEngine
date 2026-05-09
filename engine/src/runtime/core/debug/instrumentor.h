@@ -159,8 +159,8 @@ namespace doogl {
 			}
 			return result;
 		}
-	}
-} // doogl
+	} // InstrumentorUtils
+} // dodoe
 
 #define DO_PROFILE 0
 #if DO_PROFILE

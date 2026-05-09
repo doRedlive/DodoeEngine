@@ -7,16 +7,15 @@
 #include "project_serializer.h"
 
 namespace dodoe {
-	Ref<Project> dodoe::Project::Create() {
+	Ref<Project> Project::Create() {
 		active_project_ = create_ref<Project>();
 		return active_project_;
 	}
 
-	Ref<Project> dodoe::Project::Load(const std::filesystem::path& path) {
-		Ref<Project> project = create_ref<Project>();
+	Ref<Project> Project::Load(const std::filesystem::path& path) {
+		const Ref<Project> project = create_ref<Project>();
 
-		ProjectSerializer serializer(project);
-		if (serializer.deserialize(path)) {
+		if (ProjectSerializer serializer(project); serializer.deserialize(path)) {
 			project->project_directory_ = path.parent_path();
 			active_project_ = project;
 			return active_project_;
@@ -25,9 +24,8 @@ namespace dodoe {
 		return nullptr;
 	}
 
-	bool dodoe::Project::Save(const std::filesystem::path& path) {
-		ProjectSerializer serializer(active_project_);
-		if (serializer.serialize(path)) {
+	bool Project::Save(const std::filesystem::path& path) {
+		if (ProjectSerializer serializer(active_project_); serializer.serialize(path)) {
 			active_project_->project_directory_ = path.parent_path();
 			return true;
 		}

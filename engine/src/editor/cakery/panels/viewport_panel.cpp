@@ -39,7 +39,7 @@ namespace cakery {
 		const ImVec2 avail = ImGui::GetContentRegionAvail();
 		viewport_content_size_.x = (std::max)(1.0f, avail.x);
 		viewport_content_size_.y = (std::max)(1.0f, avail.y);
-		Application::self().context().render_system->viewportManager()->setViewportRect(
+		Application::Self().context().render_system->getViewportManager()->setViewportRect(
 			Rect(
 				Vector2f(content_pos.x, content_pos.y),
 				viewport_content_size_

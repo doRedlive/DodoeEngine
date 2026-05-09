@@ -2,8 +2,8 @@
 // Created by GreenMuffin on 2026/1/22.
 //
 
-#ifndef DODOE_UUID_H
-#define DODOE_UUID_H
+#pragma once
+
 #include <cstdint>
 #include <functional>
 
@@ -12,6 +12,8 @@ namespace dodoe {
     public:
         UUID();
         explicit UUID(uint64_t value);
+
+        [[nodiscard]] bool isValid() const { return uuid_ != 0; }
 
         bool operator==(const UUID& other) const noexcept {
             return uuid_ == other.uuid_;
@@ -35,5 +37,3 @@ namespace std {
     };
     
 } // std
-
-#endif //DODOE_UUID_H

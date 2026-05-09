@@ -7,6 +7,7 @@
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
+#include "runtime/resource/asset/asset.h"
 
 REFLECTION_TYPE(SpriteRendererComponent)
 
@@ -16,7 +17,7 @@ namespace dodoe {
         REFLECTION_BODY(SpriteRendererComponent)
 
         META(Enable)
-        identifier texture_id{ 0 };
+        AssetRef asset_ref{};
         META(Enable)
         bool flip{ false };
         META(Enable)
@@ -25,6 +26,7 @@ namespace dodoe {
         float depth_{0.0f};
         META(Enable)
         Color color{ };
+
         SpriteRendererComponent() = default;
     };
 

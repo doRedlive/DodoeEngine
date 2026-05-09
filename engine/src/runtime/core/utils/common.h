@@ -14,7 +14,7 @@ namespace dodoe {
         return entt::hashed_string{ str.c_str() }.value();
     }
 
-    inline void name_remove_namespace(std::string& name) {
+    inline void NameRemoveNamespace(std::string& name) {
         if (const auto pos = name.find_last_of(':'); pos != std::string::npos) {
             name = name.substr(pos + 1);
         }

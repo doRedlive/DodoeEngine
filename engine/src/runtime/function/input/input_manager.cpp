@@ -16,11 +16,11 @@ namespace dodoe {
     void InputManager::initialize(const InputManagerInitInfo& init_info) {
         viewport_manager_ = init_info.viewport_manager;
 
-        EventSystem::subscribe_event<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
-        EventSystem::subscribe_event<KeyReleasedEvent, &InputManager::on_key_released_>(this);
-        EventSystem::subscribe_event<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
-        EventSystem::subscribe_event<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
-        EventSystem::subscribe_event<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
+        EventSystem::Subscribe<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
+        EventSystem::Subscribe<KeyReleasedEvent, &InputManager::on_key_released_>(this);
+        EventSystem::Subscribe<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
+        EventSystem::Subscribe<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
+        EventSystem::Subscribe<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
 
         Input::initialize(this);
     }
@@ -52,11 +52,11 @@ namespace dodoe {
     void InputManager::shutdown() {
         key_map_.clear();
 
-        EventSystem::unsubscribe_event<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
-        EventSystem::unsubscribe_event<KeyReleasedEvent, &InputManager::on_key_released_>(this);
-        EventSystem::unsubscribe_event<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
-        EventSystem::unsubscribe_event<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
-        EventSystem::unsubscribe_event<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
+        EventSystem::Unsubscribe<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
+        EventSystem::Unsubscribe<KeyReleasedEvent, &InputManager::on_key_released_>(this);
+        EventSystem::Unsubscribe<MouseButtonPressedEvent, &InputManager::on_mouse_button_pressed_>(this);
+        EventSystem::Unsubscribe<MouseButtonReleasedEvent, &InputManager::on_mouse_button_released_>(this);
+        EventSystem::Unsubscribe<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
 
         Input::shutdown();
     }
@@ -125,7 +125,7 @@ namespace dodoe {
             0.0f
         };
 
-        auto& camera = Application::self().context().render_system->camera();
+        auto& camera = Application::Self().context().render_system->getMainCamera();
         const auto world_pos = camera.screen2world(logical_pos);
         return Vector2f(world_pos.x, world_pos.y);
     }

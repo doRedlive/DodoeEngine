@@ -13,7 +13,7 @@ namespace dodoe {
 		std::string name{ "Untitled" };
 
 		std::filesystem::path start_scene_path;
-		std::filesystem::path asset_directory;
+		std::filesystem::path asset_directory{"tests/Projects/OnlyOne/Assets"};
 		std::filesystem::path script_module_path;
 	};
 

@@ -7,6 +7,8 @@
 
 #include "dopch.h"
 
+#include <unordered_set>
+
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
 
@@ -18,7 +20,7 @@ namespace cakery {
         void draw();
         void setContext(dodoe::Scene* context);
     private:
-        void drawEntityNode(dodoe::Entity entity);
+        void drawEntityNode(dodoe::Entity entity, std::unordered_set<dodoe::ui32>& visited);
     };
 } // cakery
 

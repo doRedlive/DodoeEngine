@@ -18,9 +18,10 @@ namespace dodoe {
         static void initialize(InputManager* input_manager);
         static void shutdown();
 
-        static bool is_key_pressed(KeyCode key_code);
-        static bool is_mouse_button_pressed(MouseCode mouse_code);
-        static Vector2f get_mouse_position();
+        static bool IsKeyPressed(KeyCode key_code);
+        static bool IsMouseButtonPressed(MouseCode mouse_code);
+        static Vector2f GetMousePosition();
+        static Vector2f GetMouseWindowPosition();
         static float get_mouse_x();
         static float get_mouse_y();
 

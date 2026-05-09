@@ -118,7 +118,7 @@ namespace dodoe {
             }
         }
         DO_ERROR("Not found entity has the tag {}.", tag);
-        return Entity::nullEntity();
+        return Entity::NullEntity();
     }
 
     Entity Scene::getEntity(const ui32 entity_id) {
@@ -128,15 +128,22 @@ namespace dodoe {
             }
         }
         DO_ERROR("Not found entity!");
-        return Entity::nullEntity();
+        return Entity::NullEntity();
     }
 
-    Entity Scene::getEntityByUUID(Uuid uuid) {
-        if (m_entity_umap.find(uuid) != m_entity_umap.end()) {
-            return m_entity_umap[uuid];
+    Entity Scene::tryGetEntityByUUID(const Uuid uuid) const {
+        if (auto it = m_entity_umap.find(uuid); it != m_entity_umap.end()) {
+            return it->second;
         }
-        DO_ERROR("Not found entity with UUID {}.", static_cast<uint64_t>(uuid));
         return Entity();
+    }
+
+    Entity Scene::getEntityByUUID(const Uuid uuid) {
+        Entity entity = tryGetEntityByUUID(uuid);
+        if (!entity.valid()) {
+            DO_ERROR("Not found entity with UUID {}.", static_cast<uint64_t>(uuid));
+        }
+        return entity;
     }
 
     std::vector<Entity> Scene::getEntities() {

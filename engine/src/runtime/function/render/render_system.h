@@ -35,18 +35,19 @@ namespace dodoe {
         WindowManager* m_window_manager{nullptr};
         UiSystem* m_ui_system{nullptr};
     public:
-        static Scope<RenderSystem> create(const RenderSystemCreateInfo& create_info);
-        static void destroy(Scope<RenderSystem>& system);
+        static Scope<RenderSystem> Create(const RenderSystemCreateInfo& create_info);
+        static void Destroy(Scope<RenderSystem>& system);
  
         void prepare();
         void present();
         
-        [[nodiscard]] Camera& camera() { return *m_camera.get(); }
-        [[nodiscard]] RhiContext* rhi() const { return m_rhi.get(); }
-        [[nodiscard]] ViewportManager* viewportManager() const { return m_viewport_manager.get(); }
+        [[nodiscard]] Camera& getMainCamera() { return *m_camera.get(); }
+        [[nodiscard]] RhiContext* getRhi() const { return m_rhi.get(); }
+        [[nodiscard]] ViewportManager* getViewportManager() const { return m_viewport_manager.get(); }
+        [[nodiscard]] TextureManager* getTextureManager() const { return m_texture_manager.get(); }
         
     private:
-        bool initialize(const RenderSystemCreateInfo& init_info);
+        bool initialize(const RenderSystemCreateInfo& info);
         void shutdown();
         void swapLogicRenderContext();
     };

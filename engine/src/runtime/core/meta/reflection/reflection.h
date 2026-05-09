@@ -1,11 +1,12 @@
-#ifndef DODOE_REFLECTION_HPP
-#define DODOE_REFLECTION_HPP
+// do@Redlive
+
+#pragma once
 
 #include "dopch.h"
 
-#include <type_traits>
+#include "runtime/core/utils/json.h"
 
-#include "runtime/core/meta/json.h"
+#include <type_traits>
 
 namespace dodoe {
 
@@ -284,7 +285,5 @@ namespace dodoe {
             std::string type_name_{};
             T* instance_{ nullptr };
         };
-} // namespace dodoe
 
-#endif // DODOE_REFLECTION_HPP
-
+} // dodoe

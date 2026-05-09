@@ -18,11 +18,11 @@ namespace dodoe {
         ~EventSystem() = delete;
 
         static void initialize();
-        static void poll_events();
+        static void Poll();
         static void shutdown();
 
         template<typename T, auto Method, typename Instance>
-        static void subscribe_event(Instance* instance) {
+        static void Subscribe(Instance* instance) {
             if (!initialized_()) {
                 return;
             }
@@ -30,7 +30,7 @@ namespace dodoe {
         }
 
         template<typename T, auto Method, typename Instance>
-        static void unsubscribe_event(Instance* instance) {
+        static void Unsubscribe(Instance* instance) {
             static_assert(Method != nullptr, "Method must be a valid member function pointer");
             if (!initialized_()) {
                 return;
@@ -47,7 +47,7 @@ namespace dodoe {
         }
 
         template<typename T, typename ...Args>
-        static void publish_event(Args&&... args) {
+        static void Publish(Args&&... args) {
             if (!initialized_()) {
                 return;
             }
@@ -62,7 +62,7 @@ namespace dodoe {
             dispatcher_().enqueue<T>(std::forward<Args>(args)...);
         }
 
-        static void handle_events();
+        static void Handle();
 
     private:
         static bool initialized_();

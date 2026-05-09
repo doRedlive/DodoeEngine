@@ -30,19 +30,23 @@ namespace dodoe {
 
     bool ScriptSystem::initialize(const ScriptSystemCreateInfo& create_info) {
         m_script_engine = ScriptEngine::create({});
-        m_script_runtime = ScriptRuntime::create({m_script_engine.get()});
+        if (m_script_engine) {
+            m_script_runtime = ScriptRuntime::create({m_script_engine.get()});
+            ScriptGlue::Initialize(m_script_engine.get());
+            ScriptGlue::Register();
 
-        ScriptGlue::Initialize(m_script_engine.get());
-        ScriptGlue::Register();
-
-        if (m_script_runtime) {
-            m_script_runtime->loadAssemblyClasses();
+            if (m_script_runtime) {
+                m_script_runtime->loadAssemblyClasses();
+            }
+        } else {
+            ScriptGlue::Initialize(nullptr);
+            DoWarn("ScriptEngine failed to initialize. Managed scripting will be disabled.");
         }
 
         m_lua_engine = create_scope<LuaScriptEngine>();
         m_lua_engine->initialize();
 
-        return m_script_engine && m_script_runtime;
+        return m_lua_engine != nullptr;
     }
 
     void ScriptSystem::shutdown() {

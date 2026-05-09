@@ -2,12 +2,20 @@
 
 #include "runtime/function/world/components.h"
 #include "runtime/function/world/entity.h"
+#include "runtime/function/world/scene.h"
 
 #include <functional>
 #include <type_traits>
 #include <utility>
 
 namespace dodoe {
+
+    namespace {
+        template <typename T>
+        concept HasDirtyFlag = requires(T component) {
+            component.dirty = true;
+        };
+    }
 
     bool ComponentDB::Entry::contains(Entity& entity) const {
         return has && has(entity);
@@ -79,6 +87,15 @@ namespace dodoe {
         return true;
     }
 
+    bool ComponentDB::markComponentDirty(Entity& entity, const std::string& name) const {
+        const Entry* entry = find(name);
+        if (!entry || entry->markDirty == nullptr) {
+            return false;
+        }
+        entry->markDirty(entity);
+        return true;
+    }
+
     template <typename T>
     void ComponentDB::registerComponent(const std::string& name, bool addable) {
         Entry entry{};
@@ -116,6 +133,16 @@ namespace dodoe {
             }
         };
 
+        if constexpr (HasDirtyFlag<T>) {
+            entry.markDirty = +[](Entity& entity) -> void {
+                if (entity.hasComponent<T>()) {
+                    entity.getComponent<T>().dirty = true;
+                }
+            };
+        } else {
+            entry.markDirty = nullptr;
+        }
+
         const std::size_t index = m_entries.size();
         m_entries.push_back(std::move(entry));
         m_name2index.emplace(m_entries[index].name, index);
@@ -130,12 +157,14 @@ namespace dodoe {
         registerComponent<IDComponent>("IDComponent", false);
         registerComponent<TagComponent>("TagComponent", false);
         registerComponent<TransformComponent>("TransformComponent", false);
+        registerComponent<HierarchyComponent>("HierarchyComponent", false);
 
         registerComponent<Animation2dComponent>("Animation2dComponent");
         registerComponent<Camera2dComponent>("Camera2dComponent");
         registerComponent<BoxCollider2dComponent>("BoxCollider2dComponent");
-        registerComponent<MeshComponent>("MeshComponent");
-        registerComponent<ModelRendererComponent>("ModelRendererComponent");
+        registerComponent<PointLightComponent>("PointLightComponent");
+        registerComponent<SpotLightComponent>("SpotLightComponent");
+        registerComponent<MeshRendererComponent>("MeshRendererComponent");
         registerComponent<Rigidbody2dComponent>("Rigidbody2dComponent");
         registerComponent<SpriteRendererComponent>("SpriteRendererComponent");
     }

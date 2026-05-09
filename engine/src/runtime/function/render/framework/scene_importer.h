@@ -1,0 +1,13 @@
+// do@Redlive
+#pragma once
+
+#include "dopch.h"
+
+namespace dodoe {
+
+    class SceneImporter { 
+    public:
+        static void ImportModel(const std::string& path);
+    };
+    
+} // dodoe

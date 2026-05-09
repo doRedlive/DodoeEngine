@@ -43,7 +43,7 @@ namespace dodoe::lua_register_detail {
         );
 
         dodoe_table.set_function("getWorld", []() -> World* {
-            return Application::self().context().world.get();
+            return Application::Self().context().world.get();
         });
     }
 

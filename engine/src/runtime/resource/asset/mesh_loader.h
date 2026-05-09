@@ -29,9 +29,9 @@ namespace dodoe {
         [[nodiscard]] ModelRes getModel(const std::string& id, const std::string& path);
 
     private:
-            void initialize();
-            void shutdown();
-            identifier allocateMeshId();
+        void initialize();
+        void shutdown();
+        identifier allocateMeshId();
     };
 
 } // dodoe

@@ -159,20 +159,8 @@ namespace dodoe {
 		}
 
 		m_binding_sets.clear();
-		m_render_target = nullptr;
-		m_framebuffer = nullptr;
 		m_vtx_buffer.clear();
 		m_idx_buffer.clear();
-		m_pipeline = nullptr;
-		m_binding_layout = nullptr;
-		m_input_layout = nullptr;
-		m_vertex_shader = nullptr;
-		m_pixel_shader = nullptr;
-		m_font_sampler = nullptr;
-		m_font_texture = nullptr;
-		m_index_buffer = nullptr;
-		m_vertex_buffer = nullptr;
-		m_cmd_list = nullptr;
 	}
 
 	void ImGuiPass::onWindowResize(const Vector2i& window_extent) {
@@ -200,8 +188,8 @@ namespace dodoe {
 	}
 
 	void ImGuiPass::createShaders() {
-		auto vert_source = ReadShaderFile("engine/res/shaders/imgui_pass.vert.spv");
-		auto frag_source = ReadShaderFile("engine/res/shaders/imgui_pass.frag.spv");
+		auto vert_source = ReadShaderFile("engine/res/shaders/bin/imgui_pass.vert.spv");
+		auto frag_source = ReadShaderFile("engine/res/shaders/bin/imgui_pass.frag.spv");
 		if (vert_source.empty() || frag_source.empty()) {
 			DO_ERROR("ImGuiPass: shader files are missing.");
 			return;
@@ -246,6 +234,7 @@ namespace dodoe {
 		upload_cmd->writeTexture(m_font_texture, 0, 0, pixels, static_cast<size_t>(width) * 4u);
 		upload_cmd->close();
 		m_rhi->getDevice()->executeCommandList(upload_cmd);
+		upload_cmd = nullptr;
 
 		io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_font_texture.Get()));
 	}

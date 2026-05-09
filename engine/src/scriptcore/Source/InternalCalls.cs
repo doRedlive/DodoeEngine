@@ -138,22 +138,10 @@ internal static class InternalCalls
 	internal extern static void Native_BoxCollider2dComponentSetRestitutionThreshold(ulong entityId, float restitutionThreshold);
 
 	[MethodImplAttribute(MethodImplOptions.InternalCall)]
-	internal extern static int Native_MeshComponentGetValue(ulong entityId);
+	internal extern static int Native_MeshRendererComponentGetValue(ulong entityId);
 
 	[MethodImplAttribute(MethodImplOptions.InternalCall)]
-	internal extern static void Native_MeshComponentSetValue(ulong entityId, int value);
-
-	[MethodImplAttribute(MethodImplOptions.InternalCall)]
-	internal extern static uint Native_ModelRendererComponentGetModelID(ulong entityId);
-
-	[MethodImplAttribute(MethodImplOptions.InternalCall)]
-	internal extern static void Native_ModelRendererComponentSetModelID(ulong entityId, uint modelId);
-
-	[MethodImplAttribute(MethodImplOptions.InternalCall)]
-	internal extern static void Native_ModelRendererComponentGetColor(ulong entityId, out Color color);
-
-	[MethodImplAttribute(MethodImplOptions.InternalCall)]
-	internal extern static void Native_ModelRendererComponentSetColor(ulong entityId, ref Color color);
+	internal extern static void Native_MeshRendererComponentSetValue(ulong entityId, int value);
 
 	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	internal extern static int Native_Rigidbody2dComponentGetType(ulong entityId);

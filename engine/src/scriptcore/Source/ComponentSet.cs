@@ -8,6 +8,7 @@ internal interface IComponentSet
     void Remove(ulong entityId);
     bool Has(ulong entityId);
     IEnumerable<ulong> GetEntities();
+    bool TryGetComponent(ulong entityId, out Component component);
 }
 
 internal class ComponentSet<T> : IComponentSet where T : Component
@@ -79,6 +80,18 @@ internal class ComponentSet<T> : IComponentSet where T : Component
         }
 
         component = default;
+        return false;
+    }
+
+    public bool TryGetComponent(ulong entityId, out Component component)
+    {
+        if (TryGet(entityId, out T typedComponent) && typedComponent is not null)
+        {
+            component = typedComponent;
+            return true;
+        }
+
+        component = null!;
         return false;
     }
 

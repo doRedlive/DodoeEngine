@@ -1,4 +1,4 @@
-﻿namespace GreenCake;
+namespace GreenCake;
 
 using System;
 using System.Collections.Generic;
@@ -24,9 +24,7 @@ public class World
     {
         ulong entityId = entity.ID;
         InternalCalls.Native_DestroyEntity(entityId);
-
-        foreach (var set in _componentSets.Values)
-            set.Remove(entityId);
+        RemoveEntityLocal(entityId);
     }
 
     public void AddComponent<T>(ulong entity, T component) where T : Component
@@ -54,59 +52,71 @@ public class World
         return GetSet<T>().TryGet(entity, out component);
     }
 
+    public bool TryGetComponent(ulong entity, Type componentType, out Component component)
+    {
+        if (componentType is null)
+            throw new ArgumentNullException(nameof(componentType));
+
+        if (!typeof(Component).IsAssignableFrom(componentType))
+            throw new ArgumentException($"{componentType.FullName} does not inherit Component.", nameof(componentType));
+
+        if (_componentSets.TryGetValue(componentType, out var set) && set.TryGetComponent(entity, out component))
+            return true;
+
+        component = null!;
+        return false;
+    }
+
     public void RemoveComponent<T>(ulong entity) where T : Component
     {
         GetSet<T>().Remove(entity);
     }
 
-    public IEnumerable<ulong> Query<T>() where T : Component
+    public IEnumerable<Entity> Query<T>() where T : Component
     {
-        if (!TryGetSet<T>(out var set))
-            yield break;
-
-        foreach (var entity in set.GetEntities())
-            yield return entity;
+        foreach (var entityId in QueryIds<T>())
+            yield return new Entity(entityId);
     }
 
-    public IEnumerable<ulong> Query<T1, T2>()
+    public IEnumerable<Entity> Query<T1, T2>()
         where T1 : Component
         where T2 : Component
     {
-        foreach (var entity in Query(typeof(T1), typeof(T2)))
-            yield return entity;
+        foreach (var entityId in QueryIds(typeof(T1), typeof(T2)))
+            yield return new Entity(entityId);
     }
 
-    public IEnumerable<ulong> Query<T1, T2, T3>()
+    public IEnumerable<Entity> Query<T1, T2, T3>()
         where T1 : Component
         where T2 : Component
         where T3 : Component
     {
-        foreach (var entity in Query(typeof(T1), typeof(T2), typeof(T3)))
-            yield return entity;
+        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3)))
+            yield return new Entity(entityId);
     }
 
-    public IEnumerable<ulong> Query<T1, T2, T3, T4>()
+    public IEnumerable<Entity> Query<T1, T2, T3, T4>()
         where T1 : Component
         where T2 : Component
         where T3 : Component
         where T4 : Component
     {
-        foreach (var entity in Query(typeof(T1), typeof(T2), typeof(T3), typeof(T4)))
-            yield return entity;
+        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4)))
+            yield return new Entity(entityId);
     }
 
-    public IEnumerable<ulong> Query<T1, T2, T3, T4, T5>()
+    public IEnumerable<Entity> Query<T1, T2, T3, T4, T5>()
         where T1 : Component
         where T2 : Component
         where T3 : Component
         where T4 : Component
         where T5 : Component
     {
-        foreach (var entity in Query(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5)))
-            yield return entity;
+        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5)))
+            yield return new Entity(entityId);
     }
 
-    public IEnumerable<ulong> Query<T1, T2, T3, T4, T5, T6>()
+    public IEnumerable<Entity> Query<T1, T2, T3, T4, T5, T6>()
         where T1 : Component
         where T2 : Component
         where T3 : Component
@@ -114,11 +124,11 @@ public class World
         where T5 : Component
         where T6 : Component
     {
-        foreach (var entity in Query(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6)))
-            yield return entity;
+        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6)))
+            yield return new Entity(entityId);
     }
 
-    public IEnumerable<ulong> Query<T1, T2, T3, T4, T5, T6, T7>()
+    public IEnumerable<Entity> Query<T1, T2, T3, T4, T5, T6, T7>()
         where T1 : Component
         where T2 : Component
         where T3 : Component
@@ -127,11 +137,11 @@ public class World
         where T6 : Component
         where T7 : Component
     {
-        foreach (var entity in Query(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7)))
-            yield return entity;
+        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7)))
+            yield return new Entity(entityId);
     }
 
-    public IEnumerable<ulong> Query<T1, T2, T3, T4, T5, T6, T7, T8>()
+    public IEnumerable<Entity> Query<T1, T2, T3, T4, T5, T6, T7, T8>()
         where T1 : Component
         where T2 : Component
         where T3 : Component
@@ -141,11 +151,26 @@ public class World
         where T7 : Component
         where T8 : Component
     {
-        foreach (var entity in Query(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7), typeof(T8)))
+        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7), typeof(T8)))
+            yield return new Entity(entityId);
+    }
+
+    public IEnumerable<Entity> Query(params Type[] componentTypes)
+    {
+        foreach (var entityId in QueryIds(componentTypes))
+            yield return new Entity(entityId);
+    }
+
+    public IEnumerable<ulong> QueryIds<T>() where T : Component
+    {
+        if (!TryGetSet<T>(out var set))
+            yield break;
+
+        foreach (var entity in set.GetEntities())
             yield return entity;
     }
 
-    public IEnumerable<ulong> Query(params Type[] componentTypes)
+    public IEnumerable<ulong> QueryIds(params Type[] componentTypes)
     {
         if (componentTypes is null)
             throw new ArgumentNullException(nameof(componentTypes));
@@ -201,6 +226,21 @@ public class World
             if (matchesAll)
                 yield return entity;
         }
+    }
+
+    internal IEnumerable<Type> GetMonoComponentTypes(ulong entity)
+    {
+        foreach (var (componentType, set) in _componentSets)
+        {
+            if (set.Has(entity))
+                yield return componentType;
+        }
+    }
+
+    internal void RemoveEntityLocal(ulong entityId)
+    {
+        foreach (var set in _componentSets.Values)
+            set.Remove(entityId);
     }
 
     private ComponentSet<T> GetSet<T>() where T : Component

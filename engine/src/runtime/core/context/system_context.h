@@ -1,9 +1,6 @@
-//
 // Created by GreenMuffin on 2025/11/1.
-//
 
-#ifndef DODOE_SYSTEM_CONTEXT_H
-#define DODOE_SYSTEM_CONTEXT_H
+#pragma once
 
 #include "dopch.h"
 
@@ -43,9 +40,9 @@ namespace dodoe {
         static Scope<SystemContext> create(SystemContextCreateInfo create_info);
         static void destroy(Scope<SystemContext>& context);
  
-        void runtime_start();
-        void tick_one_frame();
-        void runtime_finalize();        
+        void startRuntime();
+        void tickOneFrame();
+        void finalizeRuntime();        
     private:
         [[nodiscard]] bool initialize_systems(SystemContextCreateInfo create_info);
         [[nodiscard]] bool shutdown_systems();
@@ -55,5 +52,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif //DODOE_SYSTEM_CONTEXT_H

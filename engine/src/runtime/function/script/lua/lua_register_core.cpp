@@ -26,10 +26,10 @@ namespace dodoe::lua_register_detail {
         });
 
         dodoe_table.set_function("getFps", []() -> int {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return 0;
             }
-            return Application::self().context().time_system->get_fps();
+            return Application::Self().context().time_system->get_fps();
         });
         dodoe_table.new_usertype<TimeSystem>("TimeSystem",
             "deltaTime", &TimeSystem::delta_time,
@@ -41,60 +41,60 @@ namespace dodoe::lua_register_detail {
             "getUnscaledDeltaTime", &TimeSystem::get_unscaled_delta_time
         );
         dodoe_table.set_function("getTimeSystem", []() -> TimeSystem* {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return nullptr;
             }
-            return Application::self().context().time_system.get();
+            return Application::Self().context().time_system.get();
         });
         sol::table time_table = lua.create_table();
         dodoe_table["Time"] = time_table;
         time_table.set_function("getDeltaTime", []() -> float {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return 0.0f;
             }
-            return Application::self().context().time_system->delta_time();
+            return Application::Self().context().time_system->delta_time();
         });
         time_table.set_function("getCurrentTime", []() -> float {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return 0.0f;
             }
-            return Application::self().context().time_system->current_time();
+            return Application::Self().context().time_system->current_time();
         });
         time_table.set_function("getUnscaledDeltaTime", []() -> float {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return 0.0f;
             }
-            return Application::self().context().time_system->get_unscaled_delta_time();
+            return Application::Self().context().time_system->get_unscaled_delta_time();
         });
         time_table.set_function("getFps", []() -> int {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return 0;
             }
-            return Application::self().context().time_system->get_fps();
+            return Application::Self().context().time_system->get_fps();
         });
         time_table.set_function("getTimeScale", []() -> float {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return 1.0f;
             }
-            return Application::self().context().time_system->get_time_scale();
+            return Application::Self().context().time_system->get_time_scale();
         });
         time_table.set_function("setTimeScale", [](const float value) {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return;
             }
-            Application::self().context().time_system->set_time_scale(value);
+            Application::Self().context().time_system->set_time_scale(value);
         });
         time_table.set_function("getTargetFps", []() -> int {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return -1;
             }
-            return Application::self().context().time_system->get_target_fps();
+            return Application::Self().context().time_system->get_target_fps();
         });
         time_table.set_function("setTargetFps", [](const int value) {
-            if (!Application::self().context().time_system) {
+            if (!Application::Self().context().time_system) {
                 return;
             }
-            Application::self().context().time_system->set_target_fps(value);
+            Application::Self().context().time_system->set_target_fps(value);
         });
 
         dodoe_table.new_usertype<Vector2f>("Vector2f",
@@ -227,9 +227,9 @@ namespace dodoe::lua_register_detail {
             {"ButtonRight", MouseCode::ButtonRight}
         });
         dodoe_table.new_usertype<Input>("Input",
-            "isKeyPressed", &Input::is_key_pressed,
-            "isMouseButtonPressed", &Input::is_mouse_button_pressed,
-            "getMousePosition", &Input::get_mouse_position,
+            "isKeyPressed", &Input::IsKeyPressed,
+            "isMouseButtonPressed", &Input::IsMouseButtonPressed,
+            "getMousePosition", &Input::GetMousePosition,
             "getMouseX", &Input::get_mouse_x,
             "getMouseY", &Input::get_mouse_y
         );

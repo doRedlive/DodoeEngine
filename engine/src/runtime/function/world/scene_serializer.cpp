@@ -31,12 +31,12 @@ namespace dodoe {
         X(TagComponent, "TagComponent")             \
         X(TransformComponent, "TransformComponent") \
         X(Camera2dComponent, "Camera2dComponent")   \
+    X(PointLightComponent, "PointLightComponent") \
+    X(SpotLightComponent, "SpotLightComponent")  \
         X(SpriteRendererComponent, "SpriteRendererComponent") \
         X(Rigidbody2dComponent, "Rigidbody2dComponent")       \
         X(BoxCollider2dComponent, "BoxCollider2dComponent")   \
-        X(ModelRendererComponent, "ModelRendererComponent")   \
         X(MeshRendererComponent, "MeshRendererComponent")     \
-        X(MeshComponent, "MeshComponent")           \
         X(Animation2dComponent, "Animation2dComponent")
     } // namespace
 

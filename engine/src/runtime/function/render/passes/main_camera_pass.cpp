@@ -2,19 +2,37 @@
 
 #include "main_camera_pass.h"
 
-#include "../framework/camera.h"
 #include "../render_graph.h"
 
 #include "runtime/core/utils/common.h"
-#include "runtime/resource/resource_manager.h"
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/render/framework/texture_manager.h"
-
-#include "glm/gtc/matrix_inverse.hpp"
+#include "runtime/function/render/render_system.h"
 
 namespace dodoe {
+    namespace {
+        constexpr ui32 kVolatileConstantBufferVersions = 4096;
+		constexpr size_t kGeometryVertexStride = sizeof(Vector3f) + sizeof(ui32) + sizeof(Vector2f);
+		constexpr size_t kGeometryPositionOffset = 0;
+		constexpr size_t kGeometryNormalOffset = sizeof(Vector3f);
+		constexpr size_t kGeometryUvOffset = sizeof(Vector3f) + sizeof(ui32);
 
-	MainCameraPass::MainCameraPass(RhiContext* rhi, Camera* camera, DescriptorTableManager* descriptor_manager)
-		: m_camera(camera), m_descriptor_table(descriptor_manager) {
+        struct MainCameraPassConstants {
+            Matrix4f view_projection{1.0f};
+            Vector4i draw_data{0};
+            Vector4f material_data{0.0f, 1.0f, 1.0f, 0.0f}; // metallic, roughness, ao, reserved
+        };
+
+        TextureManager* GetTextureManager() {
+            auto& app = Application::Self();
+            auto* render_system = app.context().render_system.get();
+            return render_system ? render_system->getTextureManager() : nullptr;
+        }
+    }
+
+	MainCameraPass::MainCameraPass(RhiContext* rhi, DescriptorTableManager* descriptor_manager)
+		: m_descriptor_table(descriptor_manager) {
 		m_rhi = rhi;
 	}
 
@@ -32,54 +50,116 @@ namespace dodoe {
 	}
 
 	void MainCameraPass::cleanup() {
-		draw_vertices_.clear();
-		model_vertex_cache_.clear();
-		m_render_target = nullptr;
-		m_depth_target = nullptr;
-		m_framebuffer = nullptr;
 	}
 
 	void MainCameraPass::execute(size_t index) {
 		(void)index;
 		if (!m_graphics_pipeline) { createGraphicsPipeline(); }
 
-		rebuildDrawVerticesFromScene();
+		auto& scene = g_RenderResource->getRenderScene();
+		const auto& camera = scene.mainCamera();
+		const auto& instances = scene.mainCameraInstances();
 
 		m_cmd_list->open();
-		m_cmd_list->setTextureState(m_render_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
+		m_cmd_list->beginMarker("MainCameraPass");
+		m_cmd_list->setTextureState(m_albedo_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
+		m_cmd_list->setTextureState(m_normal_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
+		m_cmd_list->setTextureState(m_position_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
+		m_cmd_list->setTextureState(m_material_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
 		m_cmd_list->setTextureState(m_depth_target, rhi::AllSubresources, rhi::ResourceStates::DepthWrite);
 		m_cmd_list->commitBarriers();
-		m_cmd_list->clearTextureFloat(m_render_target, rhi::AllSubresources, rhi::Color(0.08f, 0.09f, 0.11f, 1.0f));
+		m_cmd_list->clearTextureFloat(m_albedo_target, rhi::AllSubresources, rhi::Color(0.08f, 0.09f, 0.11f, 1.0f));
+		m_cmd_list->clearTextureFloat(m_normal_target, rhi::AllSubresources, rhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+		m_cmd_list->clearTextureFloat(m_position_target, rhi::AllSubresources, rhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+		m_cmd_list->clearTextureFloat(m_material_target, rhi::AllSubresources, rhi::Color(0.0f, 1.0f, 1.0f, 1.0f));
 		m_cmd_list->clearDepthStencilTexture(m_depth_target, rhi::AllSubresources, true, 1.0f, false, 0);
 
-		if (draw_vertices_.empty()) {
-			m_cmd_list->setTextureState(m_render_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+		if (!camera || !camera->isValid() || instances.empty()) {
+			m_cmd_list->setTextureState(m_albedo_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+			m_cmd_list->setTextureState(m_normal_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+			m_cmd_list->setTextureState(m_position_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+			m_cmd_list->setTextureState(m_material_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
 			m_cmd_list->commitBarriers();
+			m_cmd_list->endMarker();
 			m_cmd_list->close();
 			m_rhi->getDevice()->executeCommandList(m_cmd_list);
 			return;
 		}
 
-		const Matrix4f mvp = m_camera->getViewProjectionMatrix();
-		m_cmd_list->writeBuffer(m_constant_buffer, &mvp, sizeof(Matrix4f));
-		m_cmd_list->writeBuffer(m_vertex_buffer, draw_vertices_.data(), static_cast<ui32>(draw_vertices_.size() * sizeof(MainCameraVertex)));
+		scene.prepareBuffers(m_cmd_list);
 
-		auto graphics_state = rhi::GraphicsState()
-			.setPipeline(m_graphics_pipeline)
-			.setFramebuffer(m_framebuffer)
-			.setViewport(rhi::ViewportState().addViewportAndScissorRect(
-				rhi::Viewport(static_cast<float>(graph().getViewportExtent().x), static_cast<float>(graph().getViewportExtent().y))))
-			.addBindingSet(m_binding_set)
-			.addBindingSet(m_descriptor_table->getDescriptorTable())
-			.addVertexBuffer(rhi::VertexBufferBinding().setBuffer(m_vertex_buffer).setSlot(0).setOffset(0));
-		m_cmd_list->setGraphicsState(graphics_state);
+		MainCameraPassConstants constants{};
+		constants.view_projection = camera->getViewProjectionMatrix();
+		auto viewport_state = rhi::ViewportState().addViewportAndScissorRect(
+			rhi::Viewport(static_cast<float>(graph().getViewportExtent().x), static_cast<float>(graph().getViewportExtent().y)));
 
-		auto draw_args = rhi::DrawArguments()
-			.setVertexCount(static_cast<ui32>(draw_vertices_.size()));
-		m_cmd_list->draw(draw_args);
-		m_cmd_list->setTextureState(m_render_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+		for (size_t begin = 0; begin < instances.size();) {
+			const auto& first_instance = instances[begin];
+			if (!first_instance || !first_instance->getMesh()) {
+				++begin;
+				continue;
+			}
+
+			const auto& mesh = first_instance->getMesh();
+			size_t end = begin + 1;
+			while (end < instances.size()) {
+				const auto& instance = instances[end];
+				if (!instance || instance->getMesh() != mesh) {
+					break;
+				}
+				++end;
+			}
+
+			if (!mesh || !mesh->buffers || !mesh->buffers->vertex_buffer || !mesh->buffers->index_buffer || !mesh->buffers->instance_buffer) {
+				begin = end;
+				continue;
+			}
+
+			for (const auto& geometry : mesh->geometries) {
+				if (!geometry || geometry->index_count == 0) {
+					continue;
+				}
+
+				constants.draw_data.x = static_cast<int>(resolveTextureIndex(geometry));
+				const auto mr_index = resolveMetallicRoughnessTextureIndex(geometry);
+				constants.draw_data.y = static_cast<int>(mr_index);
+				constants.draw_data.z = (geometry && geometry->material && geometry->material->metallic_roughness_texture != 0) ? 1 : 0;
+				constants.material_data = Vector4f(0.0f, 1.0f, 1.0f, 0.0f);
+				if (geometry && geometry->material) {
+					constants.material_data.x = glm::clamp(geometry->material->metallic, 0.0f, 1.0f);
+					constants.material_data.y = glm::clamp(geometry->material->roughness, 0.04f, 1.0f);
+				}
+				m_cmd_list->writeBuffer(m_constant_buffer, &constants, sizeof(MainCameraPassConstants));
+
+				auto graphics_state = rhi::GraphicsState()
+					.setPipeline(m_graphics_pipeline)
+					.setFramebuffer(m_framebuffer)
+					.setViewport(viewport_state)
+					.addBindingSet(m_binding_set)
+					.addBindingSet(m_descriptor_table->getDescriptorTable())
+					.addVertexBuffer(rhi::VertexBufferBinding().setBuffer(mesh->buffers->vertex_buffer).setSlot(0).setOffset(0))
+					.addVertexBuffer(rhi::VertexBufferBinding().setBuffer(mesh->buffers->instance_buffer).setSlot(1).setOffset(0))
+					.setIndexBuffer(rhi::IndexBufferBinding().setBuffer(mesh->buffers->index_buffer).setFormat(rhi::Format::R32_UINT).setOffset(0));
+				m_cmd_list->setGraphicsState(graphics_state);
+
+				auto draw_args = rhi::DrawArguments()
+					.setVertexCount(geometry->index_count)
+					.setInstanceCount(static_cast<ui32>(end - begin))
+					.setStartIndexLocation(geometry->index_offset)
+					.setStartVertexLocation(geometry->vertex_offset);
+				m_cmd_list->drawIndexed(draw_args);
+			}
+
+			begin = end;
+		}
+
+		m_cmd_list->setTextureState(m_albedo_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+		m_cmd_list->setTextureState(m_normal_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+		m_cmd_list->setTextureState(m_position_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+		m_cmd_list->setTextureState(m_material_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
 		m_cmd_list->commitBarriers();
 
+		m_cmd_list->endMarker();
 		m_cmd_list->close();
 		m_rhi->getDevice()->executeCommandList(m_cmd_list);
 	}
@@ -91,8 +171,8 @@ namespace dodoe {
 	}
 
 	void MainCameraPass::createShaders() {
-		auto vert_source = dodoe::ReadShaderFile("engine/res/shaders/main_camera_pass.vert.spv");
-		auto frag_source = dodoe::ReadShaderFile("engine/res/shaders/main_camera_pass.frag.spv");
+		auto vert_source = dodoe::ReadShaderFile("engine/res/shaders/bin/main_camera_pass.vert.spv");
+		auto frag_source = dodoe::ReadShaderFile("engine/res/shaders/bin/main_camera_pass.frag.spv");
 		m_vertex_shader = m_rhi->getDevice()->createShader(
 			rhi::ShaderDesc().setShaderType(rhi::ShaderType::Vertex).setEntryName("main").setDebugName("MainCameraPass VS"),
 			vert_source.data(), vert_source.size());
@@ -108,18 +188,12 @@ namespace dodoe {
 
 	void MainCameraPass::createBuffers() {
 		auto m_constant_bufferdesc = rhi::BufferDesc()
-			.setByteSize(sizeof(Matrix4f))
+			.setByteSize(sizeof(MainCameraPassConstants))
 			.setIsConstantBuffer(true)
 			.setIsVolatile(true)
-			.setMaxVersions(16);
+			.setMaxVersions(kVolatileConstantBufferVersions)
+			.setDebugName("MainCameraPass Camera Buffer");
 		m_constant_buffer = m_rhi->getDevice()->createBuffer(m_constant_bufferdesc);
-
-		auto vertex_buffer_desc = rhi::BufferDesc()
-			.setByteSize(sizeof(MainCameraVertex) * 1024 * 1024)
-			.setIsVertexBuffer(true)
-			.enableAutomaticStateTracking(rhi::ResourceStates::VertexBuffer)
-			.setDebugName("MainCameraPass Vertex Buffer");
-		m_vertex_buffer = m_rhi->getDevice()->createBuffer(vertex_buffer_desc);
 	}
 
 	void MainCameraPass::createSampler() {
@@ -127,10 +201,10 @@ namespace dodoe {
 	}
 
 	void MainCameraPass::createBindingSet() {
-		auto m_binding_setdesc = rhi::BindingSetDesc()
+		auto binding_set_desc = rhi::BindingSetDesc()
 			.addItem(rhi::BindingSetItem::ConstantBuffer(0, m_constant_buffer))
 			.addItem(rhi::BindingSetItem::Sampler(0, m_sampler));
-		m_binding_set = m_rhi->getDevice()->createBindingSet(m_binding_setdesc, m_binding_layout);
+		m_binding_set = m_rhi->getDevice()->createBindingSet(binding_set_desc, m_binding_layout);
 	}
 	
 	void MainCameraPass::createInputLayout() {
@@ -138,23 +212,46 @@ namespace dodoe {
 			rhi::VertexAttributeDesc()
 				.setName("a_Position")
 				.setFormat(rhi::Format::RGB32_FLOAT)
-				.setOffset(offsetof(MainCameraVertex, position))
-				.setElementStride(sizeof(MainCameraVertex)),
+				.setOffset(kGeometryPositionOffset)
+				.setElementStride(kGeometryVertexStride),
 			rhi::VertexAttributeDesc()
 				.setName("a_Normal")
-				.setFormat(rhi::Format::RGB32_FLOAT)
-				.setOffset(offsetof(MainCameraVertex, normal))
-				.setElementStride(sizeof(MainCameraVertex)),
+				.setFormat(rhi::Format::RGBA8_SNORM)
+				.setOffset(kGeometryNormalOffset)
+				.setElementStride(kGeometryVertexStride),
 			rhi::VertexAttributeDesc()
 				.setName("a_UV")
 				.setFormat(rhi::Format::RG32_FLOAT)
-				.setOffset(offsetof(MainCameraVertex, uv))
-				.setElementStride(sizeof(MainCameraVertex)),
+				.setOffset(kGeometryUvOffset)
+				.setElementStride(kGeometryVertexStride),
 			rhi::VertexAttributeDesc()
-				.setName("a_TexIndex")
-				.setFormat(rhi::Format::R32_UINT)
-				.setOffset(offsetof(MainCameraVertex, texture_index))
-				.setElementStride(sizeof(MainCameraVertex)),
+				.setName("a_Model0")
+				.setFormat(rhi::Format::RGBA32_FLOAT)
+				.setBufferIndex(1)
+				.setOffset(0)
+				.setElementStride(sizeof(Matrix4f))
+				.setIsInstanced(true),
+			rhi::VertexAttributeDesc()
+				.setName("a_Model1")
+				.setFormat(rhi::Format::RGBA32_FLOAT)
+				.setBufferIndex(1)
+				.setOffset(sizeof(Vector4f))
+				.setElementStride(sizeof(Matrix4f))
+				.setIsInstanced(true),
+			rhi::VertexAttributeDesc()
+				.setName("a_Model2")
+				.setFormat(rhi::Format::RGBA32_FLOAT)
+				.setBufferIndex(1)
+				.setOffset(sizeof(Vector4f) * 2)
+				.setElementStride(sizeof(Matrix4f))
+				.setIsInstanced(true),
+			rhi::VertexAttributeDesc()
+				.setName("a_Model3")
+				.setFormat(rhi::Format::RGBA32_FLOAT)
+				.setBufferIndex(1)
+				.setOffset(sizeof(Vector4f) * 3)
+				.setElementStride(sizeof(Matrix4f))
+				.setIsInstanced(true),
 		};
 
 		m_input_layout = m_rhi->getDevice()->createInputLayout(
@@ -195,89 +292,60 @@ namespace dodoe {
 	}
 
 	void MainCameraPass::createFramebuffer() {
-		m_render_target = nullptr;
+		m_albedo_target = nullptr;
+		m_normal_target = nullptr;
+		m_position_target = nullptr;
+		m_material_target = nullptr;
 		m_depth_target = nullptr;
 		m_framebuffer = nullptr;
 
-		m_render_target = getTextureResource(kSceneColorName);
+		m_albedo_target = getTextureResource(kSceneAlbedoName);
+		m_normal_target = getTextureResource(kSceneNormalName);
+		m_position_target = getTextureResource(kScenePositionName);
+		m_material_target = getTextureResource(kSceneMaterialName);
 		m_depth_target = getTextureResource(kSceneDepthName);
-		if (!m_render_target || !m_depth_target) {
+		if (!m_albedo_target || !m_normal_target || !m_position_target || !m_material_target || !m_depth_target) {
 			return;
 		}
 
 		auto framebuffer_desc = rhi::FramebufferDesc()
-			.addColorAttachment(m_render_target)
+			.addColorAttachment(m_albedo_target)
+			.addColorAttachment(m_normal_target)
+			.addColorAttachment(m_position_target)
+			.addColorAttachment(m_material_target)
 			.setDepthAttachment(m_depth_target);
 		m_framebuffer = m_rhi->getDevice()->createFramebuffer(framebuffer_desc);
 	}
 
-	void MainCameraPass::rebuildDrawVerticesFromScene() {
-		draw_vertices_.clear();
+	ui32 MainCameraPass::resolveTextureIndex(const Ref<MeshGeometry>& geometry) const {
+		auto* texture_manager = GetTextureManager();
 
-		const auto& packets = g_RenderResource->mainCameraPackets();
-		for (const auto& packet : packets) {
-			appendModelVertices(packet, draw_vertices_);
+		auto fallback_texture = texture_manager->loadFallbackTexture();
+		ui32 texture_index = 0;
+		if (fallback_texture && fallback_texture->descriptor_index >= 0) {
+			texture_index = static_cast<ui32>(fallback_texture->descriptor_index);
 		}
+
+		if (geometry && geometry->material && geometry->material->base_color_texture != 0) {
+			auto texture = texture_manager->loadTexture(geometry->material->base_color_texture);
+			if (texture && texture->descriptor_index >= 0) {
+				texture_index = static_cast<ui32>(texture->descriptor_index);
+			}
+		}
+
+		return texture_index;
 	}
 
-	void MainCameraPass::appendModelVertices(const MainCameraDrawPacket& packet, std::vector<MainCameraVertex>& out_vertices) {
-		auto cache_it = model_vertex_cache_.find(packet.model_id);
-		if (cache_it == model_vertex_cache_.end()) {
-			auto model = ResourceManager::self().get_model(packet.model_id);
-			if (!model.data) {
-				return;
-			}
-
-			std::vector<MainCameraVertex> cached_vertices{};
-			auto fallback_texture = TextureManager::self().loadFallbackTexture();
-			ui32 fallback_texture_index = 0;
-			if (fallback_texture && fallback_texture->descriptor_index >= 0) {
-				fallback_texture_index = static_cast<ui32>(fallback_texture->descriptor_index);
-			}
-			for (const identifier mesh_id : model.data->meshes) {
-				auto mesh = ResourceManager::self().get_mesh(mesh_id);
-				if (!mesh.data) {
-					continue;
-				}
-
-				ui32 mesh_texture_index = fallback_texture_index;
-				if (!mesh.data->textures.empty()) {
-					auto texture = TextureManager::self().loadTexture(mesh.data->textures.front());
-					if (texture && texture->descriptor_index >= 0) {
-						mesh_texture_index = static_cast<ui32>(texture->descriptor_index);
-					}
-				}
-
-				for (const auto vertex_index : mesh.data->indices) {
-					if (vertex_index >= mesh.data->vertices.size()) {
-						continue;
-					}
-
-					const auto& source_vertex = mesh.data->vertices[vertex_index];
-					cached_vertices.push_back({source_vertex.position, source_vertex.normal, source_vertex.tex_coords, mesh_texture_index});
-				}
-			}
-
-			cache_it = model_vertex_cache_.emplace(packet.model_id, std::move(cached_vertices)).first;
+	ui32 MainCameraPass::resolveMetallicRoughnessTextureIndex(const Ref<MeshGeometry>& geometry) const {
+		auto* texture_manager = GetTextureManager();
+		if (!texture_manager || !geometry || !geometry->material || geometry->material->metallic_roughness_texture == 0) {
+			return 0;
 		}
 
-		const auto& model_vertices = cache_it->second;
-		if (model_vertices.empty()) {
-			return;
+		auto texture = texture_manager->loadTexture(geometry->material->metallic_roughness_texture);
+		if (texture && texture->descriptor_index >= 0) {
+			return static_cast<ui32>(texture->descriptor_index);
 		}
-
-		const auto normal_matrix = glm::inverseTranspose(glm::mat3(packet.model_matrix));
-		const auto tint = packet.color;
-		for (const auto& v : model_vertices) {
-			const Vector4f world_position = packet.model_matrix * Vector4f(v.position, 1.0f);
-			Vector3f world_normal = normal_matrix * v.normal;
-			if (glm::length(world_normal) > std::numeric_limits<float>::epsilon()) {
-				world_normal = glm::normalize(world_normal);
-			}
-
-			const float color_scale = (std::max)(0.0f, (std::min)(1.0f, (tint.x + tint.y + tint.z) / 3.0f));
-			out_vertices.push_back({Vector3f(world_position), world_normal * color_scale, v.uv, v.texture_index});
-		}
+		return 0;
 	}
-
 } // dodoe

@@ -12,24 +12,29 @@
 
 namespace dodoe {
 
-    struct MainCameraMeshSubmitData {
-        identifier entity_id{0};
-        identifier model_id{0};
-        Matrix4f model_matrix{1.0f};
-        Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
-    };
-
     class RenderResource {
         rhi::DeviceHandle device_{};
         RenderScene render_scene_{};
-        std::mutex submit_mutex_{};
+        rhi::TextureHandle skybox_texture_{};
+        mutable std::mutex submit_mutex_{};
+        bool logic_main_camera_dirty_{false};
+        Matrix4f logic_main_camera_view_proj_{1.0f};
+        Vector3f logic_main_camera_position_{0.0f};
     public:
         void initilize(rhi::DeviceHandle device);
         void shutdown();
 
-        void submitMainCamera(const MainCameraMeshSubmitData& context);
-        [[nodiscard]] const std::vector<MainCameraDrawPacket>& mainCameraPackets() const;
+        void submitMainCameraViewProjection(const Matrix4f& view_proj_matrix, const Vector3f& position);
+
+        [[nodiscard]] const RenderScene& renderScene() const;
+        [[nodiscard]] RenderScene& getRenderScene();
+        void rebuildSkyboxTexture();
+        [[nodiscard]] rhi::TextureHandle getSkyboxTexture() const;
+
         void swapLogicRenderContext();
+
+    private:
+        void createSkyboxTextureInternal();
     };
 
     extern RenderResource* g_RenderResource;

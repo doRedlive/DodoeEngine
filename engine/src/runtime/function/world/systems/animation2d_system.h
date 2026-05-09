@@ -48,7 +48,8 @@ namespace dodoe {
                     }
                 }
 
-                sprite_renderer.texture_id = current_animation->frames[anim2d.cur_frame_id].texture_id;
+                sprite_renderer.asset_ref.type = AssetType::Texture;
+                sprite_renderer.asset_ref.path_id = current_animation->frames[anim2d.cur_frame_id].texture_id;
             }
         }
     };

@@ -8,7 +8,7 @@
 #include "dopch.h"
 
 #include "registry.h"
-#include "components.h"
+#include "components/id_component.h"
 
 #include "entt/entt.hpp"
 
@@ -64,7 +64,7 @@ namespace dodoe {
 			GetSceneRegitry_Help(scene_).remove<T>(*this);
 		}
 
-		[[nodiscard]] static entt::entity nullEntity() { return entt::null; }
+		[[nodiscard]] static entt::entity NullEntity() { return entt::null; }
 		[[nodiscard]] entt::entity handle() const { return handle_; }
 		[[nodiscard]] bool valid() const { return handle_ != entt::null; }	
 		[[nodiscard]] Uuid uuid() { return getComponent<IDComponent>().id; }	

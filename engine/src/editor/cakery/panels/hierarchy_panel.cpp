@@ -7,6 +7,9 @@
 #include "../cakery_event.h"
 
 #include "runtime/core/event/event_system.h"
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/script/script_system.h"
 #include "runtime/function/world/components.h"
 
 #include <cstring>
@@ -28,37 +31,66 @@ namespace cakery {
             return;
         }
 
-        for (const auto& entities = context_->getEntities(); const auto& entity : entities) {
-            drawEntityNode(entity);
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
-                dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
+        auto entities = context_->getEntities();
+        std::unordered_set<dodoe::ui32> visited;
+        for (auto entity : entities) {
+            if (!entity || !context_->registry().valid(entity)) {
+                continue;
             }
 
-            if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
-                if (ImGui::MenuItem("Create Entity")) {
-                    context_->createEntity("Entity");
+            if (entity.hasComponent<dodoe::HierarchyComponent>()) {
+                const auto& hierarchy = entity.getComponent<dodoe::HierarchyComponent>();
+                if (hierarchy.parent && hierarchy.parent.valid()) {
+                    continue;
                 }
-                ImGui::EndPopup();
             }
+
+            drawEntityNode(entity, visited);
+        }
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)
+            && ImGui::IsWindowHovered()
+            && !ImGui::IsAnyItemHovered()) {
+            dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
+        }
+
+        if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+            if (ImGui::MenuItem("Create Entity")) {
+                context_->createEntity("Entity");
+            }
+            ImGui::EndPopup();
         }
 
         ImGui::End();
     }
 
-    void HierarchyPanel::drawEntityNode(dodoe::Entity entity) {
+    void HierarchyPanel::drawEntityNode(dodoe::Entity entity, std::unordered_set<dodoe::ui32>& visited) {
         if (!entity || !context_->registry().valid(entity)) {
+            return;
+        }
+
+        const auto entity_id = static_cast<dodoe::ui32>(entity);
+        if (!visited.insert(entity_id).second) {
             return;
         }
 
         const auto& name = entity.name();
         static char edit_name_buf[256]{};
 
-        ImGui::PushID(static_cast<int>(static_cast<dodoe::ui32>(entity)));
+        ImGui::PushID(static_cast<int>(entity_id));
 
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
-        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        const bool has_children = entity.hasComponent<dodoe::HierarchyComponent>()
+            && !entity.getComponent<dodoe::HierarchyComponent>().children.empty();
 
-        ImGui::TreeNodeEx("##entity_node", flags, "%s", name.c_str());
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow
+            | ImGuiTreeNodeFlags_OpenOnDoubleClick
+            | ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_FramePadding;
+        if (!has_children) {
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
+
+        const bool open = ImGui::TreeNodeEx("##entity_node", flags, "%s", name.c_str());
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
             dodoe::EventSystem::enqueueEvent<SelectEntityEvent>(entity);
@@ -99,8 +131,21 @@ namespace cakery {
         }
 
         if (request_delete) {
+            if (auto& app = dodoe::Application::Self(); app.context().script_system) {
+                if (auto* runtime = app.context().script_system->getMonoRuntime()) {
+                    runtime->removeEntityFromManagedWorld(static_cast<uint64_t>(entity.uuid()));
+                }
+            }
             dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
             context_->destroyEntity(entity);
+        }
+
+        if (open && has_children) {
+            auto& hierarchy = entity.getComponent<dodoe::HierarchyComponent>();
+            for (const auto& child : hierarchy.children) {
+                drawEntityNode(child, visited);
+            }
+            ImGui::TreePop();
         }
 
         ImGui::PopID();

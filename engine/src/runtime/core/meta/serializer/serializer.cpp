@@ -42,6 +42,20 @@ namespace dodoe {
     }
 
     template <>
+    Json Serializer::write(const unsigned short& instance) {
+        return Json(static_cast<unsigned int>(instance));
+    }
+    template <>
+    unsigned short& Serializer::read(const Json& json_context, unsigned short& instance) {
+        DO_ASSERT(json_context.is_number_integer() || json_context.is_number_unsigned(),
+                 "Serializer::read<unsigned short> expects integer");
+        const auto value = json_context.get<long long>();
+        DO_ASSERT(value >= 0, "Serializer::read<unsigned short> expects non-negative integer");
+        instance = static_cast<unsigned short>(value);
+        return instance;
+    }
+
+    template <>
     Json Serializer::write(const size_t& instance) {
         return Json(static_cast<uint64_t>(instance));
     }

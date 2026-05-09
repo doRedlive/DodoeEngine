@@ -8,14 +8,12 @@
 #include "../render_resource.h"
 
 namespace dodoe {
-	class Camera;
 	class DescriptorTableManager;
 
 	class SpritePass : public RenderPass {
 		inline static const std::string kInputSceneColorResourceName = "MainCameraColor";
 		inline static const std::string kInputSceneDepthResourceName = "MainCameraDepth";
 
-		Camera* camera_{nullptr};
 		DescriptorTableManager* m_descriptor_table{nullptr};
 
 		rhi::TextureHandle m_scene_color_target{};
@@ -34,7 +32,7 @@ namespace dodoe {
 		rhi::BindingSetHandle m_binding_set{};
 		rhi::SamplerHandle m_sampler{};
 	public:
-		SpritePass(RhiContext* rhi, Camera* camera, DescriptorTableManager* descriptor_table);
+		SpritePass(RhiContext* rhi, DescriptorTableManager* descriptor_table);
 
 		void setup() override;
 		void execute(size_t index) override;
@@ -50,7 +48,7 @@ namespace dodoe {
 		void createBindingSet();
 		void createFramebuffer();
 		void createGraphicsPipeline();
-		void drawQuadBatch(const QuadCpuData& batch, const Matrix4f& view_projection);
+		void drawQuadBatch(const QuadCpuData& batch);
 	};
 
 } // dodoe

@@ -12,17 +12,16 @@
 #include "runtime/resource/resource_type.h"
 
 namespace dodoe {
-	class Camera;
-
 	class MainCameraPass : public RenderPass {
-		inline static const std::string kSceneColorName = "MainCameraColor";
+		inline static const std::string kSceneAlbedoName = "MainCameraAlbedo";
+		inline static const std::string kSceneNormalName = "MainCameraNormal";
+		inline static const std::string kScenePositionName = "MainCameraPosition";
+		inline static const std::string kSceneMaterialName = "MainCameraMaterial";
 		inline static const std::string kSceneDepthName = "MainCameraDepth";
 
-		Camera* m_camera{nullptr};
 		DescriptorTableManager* m_descriptor_table{nullptr};
 
 		rhi::BufferHandle m_constant_buffer{};
-		rhi::BufferHandle m_vertex_buffer{};
 		rhi::ShaderHandle m_vertex_shader{};
 		rhi::ShaderHandle m_pixel_shader{};
 		rhi::SamplerHandle m_sampler{};
@@ -32,21 +31,14 @@ namespace dodoe {
 		rhi::GraphicsPipelineHandle m_graphics_pipeline{};
 		rhi::CommandListHandle m_cmd_list{};
 
-		rhi::TextureHandle m_render_target{};
+		rhi::TextureHandle m_albedo_target{};
+		rhi::TextureHandle m_normal_target{};
+		rhi::TextureHandle m_position_target{};
+		rhi::TextureHandle m_material_target{};
 		rhi::TextureHandle m_depth_target{};
 		rhi::FramebufferHandle m_framebuffer{};
-
-		struct MainCameraVertex {
-			Vector3f position{0.0f};
-			Vector3f normal{0.0f, 0.0f, 1.0f};
-			Vector2f uv{0.0f, 0.0f};
-			ui32 texture_index{0};
-		};
-
-		std::vector<MainCameraVertex> draw_vertices_{};
-		std::unordered_map<identifier, std::vector<MainCameraVertex>> model_vertex_cache_{};
 	public:
-		MainCameraPass(RhiContext* rhi, Camera* camera, DescriptorTableManager* descriptor_manager);
+		MainCameraPass(RhiContext* rhi, DescriptorTableManager* descriptor_manager);
 		~MainCameraPass() override = default;
 
 		void setup() override;
@@ -63,9 +55,8 @@ namespace dodoe {
 		void createBindingSet();
 		void createFramebuffer();
 		void createGraphicsPipeline();
-
-		void rebuildDrawVerticesFromScene();
-		void appendModelVertices(const MainCameraDrawPacket& packet, std::vector<MainCameraVertex>& out_vertices);
+		ui32 resolveTextureIndex(const Ref<MeshGeometry>& geometry) const;
+		ui32 resolveMetallicRoughnessTextureIndex(const Ref<MeshGeometry>& geometry) const;
 	};
 
 } // dodoe

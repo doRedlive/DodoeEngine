@@ -27,6 +27,7 @@ namespace dodoe {
             GetPtrFunc getPtr{ nullptr };
             EditFunc add{ nullptr };
             EditFunc remove{ nullptr };
+            EditFunc markDirty{ nullptr };
 
             bool contains(Entity& entity) const;
             void* get(Entity& entity) const;
@@ -45,6 +46,7 @@ namespace dodoe {
         void* getComponentPtr(Entity& entity, const std::string& name) const;
         bool addComponent(Entity& entity, const std::string& name) const;
         bool removeComponent(Entity& entity, const std::string& name) const;
+        bool markComponentDirty(Entity& entity, const std::string& name) const;
 
     private:
         ComponentDB();

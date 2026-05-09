@@ -11,12 +11,20 @@
 #include "runtime/resource/resource_manager.h"
 
 #include "runtime/function/render/framework/texture_manager.h"
+#include "runtime/function/render/render_system.h"
 
 #include "imgui/imgui.h"
 
 using namespace dodoe;
 
 namespace cakery {
+	namespace {
+		dodoe::TextureManager* GetTextureManager() {
+			auto& app = dodoe::Application::Self();
+			auto* render_system = app.context().render_system.get();
+			return render_system ? render_system->getTextureManager() : nullptr;
+		}
+	}
 
     ProjectPanel::ProjectPanel() {
         base_directory_ = FileSystem::asset_path;
@@ -44,8 +52,9 @@ namespace cakery {
 			return;
 		}
 
-		directory_icon_texture_ = TextureManager::self().loadTexture(directory_icon_.id);
-		file_icon_texture_ = TextureManager::self().loadTexture(file_icon_.id);
+		auto* texture_manager = GetTextureManager();
+		directory_icon_texture_ = texture_manager->loadTexture(directory_icon_.id);
+		file_icon_texture_ = texture_manager->loadTexture(file_icon_.id);
 	}
 
 	Ref<Texture> ProjectPanel::getIconTexture(const bool is_directory) const {
@@ -54,7 +63,10 @@ namespace cakery {
 			return texture;
 		}
 
-		return TextureManager::self().loadFallbackTexture();
+		if (auto* texture_manager = GetTextureManager()) {
+			return texture_manager->loadFallbackTexture();
+		}
+		return nullptr;
 	}
 
 	void ProjectPanel::draw() {

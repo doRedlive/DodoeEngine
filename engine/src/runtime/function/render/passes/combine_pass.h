@@ -11,7 +11,7 @@
 namespace dodoe {
 
     class CombinePass : public RenderPass {
-        inline static const std::string kInputSceneColorResourceName = "MainCameraColor";
+        inline static const std::string kInputSceneColorResourceName = "MainCameraFxaaColor";
         inline static const std::string kInputImGuiColorResourceName = "ImGuiColor";
 
         rhi::ShaderHandle m_vertex_shader{};

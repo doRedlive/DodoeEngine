@@ -1,58 +1,54 @@
-//
-// Created by GreenMuffin on 2025/10/18.
-//
+// do@Redlive
 
 #include "application.h"
-
-#include "dopch.h"
 
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/event/event_system.h"
 
 namespace dodoe {
 
-    Application* Application::instance_ = nullptr;
+    Application* Application::m_instance = nullptr;
 
-    Application::Application(const ApplicationSpecification& spec) : app_spec_(spec) {
-        context_ = SystemContext::create({app_spec_});
-        instance_ = this;
-        running = true;
+    Application::Application(const ApplicationSpecification& spec) : m_app_spec(spec) {
+        m_context = SystemContext::create({m_app_spec});
+        m_instance = this;
+        m_running = true;
     }
 
     Application::~Application() {
-        SystemContext::destroy(context_);
-        instance_ = nullptr;
-        running = false;
+        SystemContext::destroy(m_context);
+        m_instance = nullptr;
+        m_running = false;
     }
 
     SystemContext& Application::context() {
-        return *context_;
+        return *m_context;
     }
 
     const SystemContext& Application::context() const {
-        return *context_;
+        return *m_context;
     }
 
     void Application::run() {
-        EventSystem::subscribe_event<ApplicationQuitEvent, &Application::quit>(this);
-        context_->layer_stack.attach();
-        context_->runtime_start();
+        EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);
+        m_context->layer_stack.attach();
+        m_context->startRuntime();
 
-        while (running) {
-            EventSystem::poll_events();
-            EventSystem::publish_event<BeforeOneTickEvent>();
-            context_->tick_one_frame();
-            EventSystem::publish_event<AfterOneTickEvent>();
-            EventSystem::handle_events();
+        while (m_running) {
+            EventSystem::Poll();
+            EventSystem::Publish<BeforeOneTickEvent>();
+            m_context->tickOneFrame();
+            EventSystem::Publish<AfterOneTickEvent>();
+            EventSystem::Handle();
         }
 
-        context_->runtime_finalize();
-        context_->layer_stack.detach();
-        EventSystem::unsubscribe_event<ApplicationQuitEvent, &Application::quit>(this);
+        m_context->finalizeRuntime();
+        m_context->layer_stack.detach();
+        EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
     }
 
     void Application::quit() {
-        running = false;
+        m_running = false;
     }
 
 } // dodoe

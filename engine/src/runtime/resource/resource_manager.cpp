@@ -5,14 +5,24 @@
 #include "resource_manager.h"
 
 #include "runtime/core/utils/common.h"
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
 
 #include "asset/texture_loader.h"
 #include "asset/shader_library.h"
 #include "asset/animation_library.h"
 #include "asset/mesh_loader.h"
 #include "runtime/function/render/framework/texture_manager.h"
+#include "runtime/function/render/render_system.h"
 
 namespace dodoe {
+    namespace {
+        TextureManager* GetTextureManager() {
+            auto& app = Application::Self();
+            auto* render_system = app.context().render_system.get();
+            return render_system ? render_system->getTextureManager() : nullptr;
+        }
+    }
 
     ResourceManager& ResourceManager::self() {
         static ResourceManager instance;
@@ -23,9 +33,14 @@ namespace dodoe {
         shader_library_ = ShaderLibrary::create({});
         animation_library_ = AnimationLibrary::create({});
         mesh_loader_ = MeshLoader::create();
+        asset_manager_ = AssetManager::Create();
+        if (asset_manager_) {
+            asset_manager_->loadAssets();
+        }
     }
 
     void ResourceManager::shutdown() {
+        AssetManager::Destroy(asset_manager_);
         ShaderLibrary::destroy(shader_library_);
         AnimationLibrary::destroy(animation_library_);
         MeshLoader::destroy(mesh_loader_);
@@ -83,7 +98,9 @@ namespace dodoe {
         res.path = path;
         res.ppu = 10.0f;
 
-        TextureManager::self().loadTexture(res.id, path);
+        if (auto* texture_manager = GetTextureManager()) {
+            (void)texture_manager->loadTexture(res.id, path);
+        }
         return res;
     }
 
@@ -93,7 +110,9 @@ namespace dodoe {
         res.path = id;
         res.ppu = 10.0f;
 
-        TextureManager::self().loadTexture(res.id);
+        if (auto* texture_manager = GetTextureManager()) {
+            (void)texture_manager->loadTexture(res.id);
+        }
         return res;
     }
 

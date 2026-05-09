@@ -11,6 +11,8 @@
 #include "runtime/function/input/mouse_code.h"
 
 #include "GLFW/glfw3.h"
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_glfw.h"
 
 
 namespace dodoe {
@@ -18,10 +20,10 @@ namespace dodoe {
     void WindowManager::initialize(const WindowManagerInitInfo& init_info) {
         glfwInit();
 
-        EventSystem::subscribe_event<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
-        EventSystem::subscribe_event<WindowCloseEvent, &WindowManager::onWindowClose>(this);
-        EventSystem::subscribe_event<WindowResizeEvent, &WindowManager::onWindowResize>(this);
-        EventSystem::subscribe_event<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
+        EventSystem::Subscribe<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
+        EventSystem::Subscribe<WindowCloseEvent, &WindowManager::onWindowClose>(this);
+        EventSystem::Subscribe<WindowResizeEvent, &WindowManager::onWindowResize>(this);
+        EventSystem::Subscribe<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
 
         WindowProperty prop;
         auto spec = init_info.spec;
@@ -37,10 +39,10 @@ namespace dodoe {
     }
 
     void WindowManager::shutdown() {
-        EventSystem::unsubscribe_event<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
-        EventSystem::unsubscribe_event<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
-        EventSystem::unsubscribe_event<WindowCloseEvent, &WindowManager::onWindowClose>(this);
-        EventSystem::unsubscribe_event<WindowResizeEvent, &WindowManager::onWindowResize>(this);
+        EventSystem::Unsubscribe<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
+        EventSystem::Unsubscribe<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
+        EventSystem::Unsubscribe<WindowCloseEvent, &WindowManager::onWindowClose>(this);
+        EventSystem::Unsubscribe<WindowResizeEvent, &WindowManager::onWindowResize>(this);
 
         Window::destroy(window_);
 
@@ -76,6 +78,9 @@ namespace dodoe {
             }
         });
 		glfwSetKeyCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int key, int scancode, int action, int mods) {
+            if (ImGui::GetCurrentContext()) {
+                ImGui_ImplGlfw_KeyCallback(native_window, key, scancode, action, mods);
+            }
 			switch (action) {
 				case GLFW_PRESS: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), false);
@@ -95,15 +100,16 @@ namespace dodoe {
 			}
 		});
 
-		// glfwSetCharCallback(window->native_window(), [](GLFWwindow* native_window, unsigned int keycode)
-		// {
-		// 	WindowData& data = *(WindowData*)glfwGetWindowUserPointer(native_window);
-
-		// 	KeyTypedEvent event(keycode);
-		// 	data.EventCallback(event);
-		// });
+		glfwSetCharCallback(window_->nativeWindow(), [](GLFWwindow* native_window, unsigned int keycode) {
+            if (ImGui::GetCurrentContext()) {
+                ImGui_ImplGlfw_CharCallback(native_window, keycode);
+            }
+		});
 
 		glfwSetMouseButtonCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int button, int action, int mods) {
+            if (ImGui::GetCurrentContext()) {
+                ImGui_ImplGlfw_MouseButtonCallback(native_window, button, action, mods);
+            }
 			switch (action) {
 				case GLFW_PRESS: {
 					MouseButtonPressedEvent event(static_cast<MouseCode>(button));
@@ -119,11 +125,17 @@ namespace dodoe {
 		});
 
 		glfwSetScrollCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_offset, double y_offset) {
-			MouseScrolledEvent event(static_cast<float>(x_offset), static_cast<float>(x_offset));
+            if (ImGui::GetCurrentContext()) {
+                ImGui_ImplGlfw_ScrollCallback(native_window, x_offset, y_offset);
+            }
+			MouseScrolledEvent event(static_cast<float>(x_offset), static_cast<float>(y_offset));
 			EventSystem::enqueueEvent<MouseScrolledEvent>(event);
 		});
 
 		glfwSetCursorPosCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_pos, double y_pos) {
+            if (ImGui::GetCurrentContext()) {
+                ImGui_ImplGlfw_CursorPosCallback(native_window, x_pos, y_pos);
+            }
 			MouseMovedEvent event(static_cast<float>(x_pos), static_cast<float>(y_pos));
 			EventSystem::enqueueEvent<MouseMovedEvent>(event);
 		});
@@ -139,7 +151,7 @@ namespace dodoe {
 
     void WindowManager::onWindowClose(const WindowCloseEvent& event) { 
         glfwSetWindowShouldClose(window_->nativeWindow(), GLFW_TRUE);
-        EventSystem::publish_event<ApplicationQuitEvent>();
+        EventSystem::Publish<ApplicationQuitEvent>();
     }
 
     void WindowManager::onWindowResize(const WindowResizeEvent& event) {

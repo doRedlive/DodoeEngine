@@ -1,9 +1,5 @@
-//
-// Created by Redlive on 2026/3/20.
-//
-
-#ifndef DODOE_CAMERA_H
-#define DODOE_CAMERA_H
+// do@Redlive
+#pragma once
 
 #include "dopch.h"
 
@@ -20,52 +16,19 @@ namespace dodoe {
 
     struct CameraCreateInfo {
         CameraType camera_type{CameraType::Orthographic};
-        Vector2f logical_size{};
+        Vector2f logical_size{640.0f, 360.0f};
         Vector2f window_size{};
         float vertical_fov_radians{Math::radians(60.0f)};
         float near_plane{0.01f};
         float far_plane{1000.0f};
+
+        CameraCreateInfo() = default;
+        CameraCreateInfo(const CameraType type) : camera_type(type) { }
+        CameraCreateInfo(const CameraType type, const Vector2f& logical_size, const Vector2f& window_size) :
+            camera_type(type), logical_size(logical_size), window_size(window_size) { }
     };
 
     class Camera {
-    public:
-        static Scope<Camera> create(CameraCreateInfo create_info);
-        static void destroy(Scope<Camera>& camera);
-
-        void translate(const Vector3f& offset);
-        void zoom(float delta);
-        void rotate(float delta);
-
-        Vector3f world2screen(const Vector3f& world_pos) const;
-        Vector3f screen2world(const Vector3f& screen_pos) const;
-
-        void setCameraType(CameraType type);
-        void setPosition(const Vector3f& position);
-        void setZoom(float zoom);
-        void setRotation(float rotation);
-        void setClearColor(const Color& color);
-        void setViewportSize(const Vector2f& logical_size, const Vector2f& window_size);
-        void setLogicalSize(const Vector2f& logical_size);
-        void setWindowSize(const Vector2f& window_size);
-        void setPerspective(float vertical_fov_radians, float near_plane, float far_plane);
-        void setOrthographic(float near_plane, float far_plane);
-
-        [[nodiscard]] CameraType getCameraType() const;
-        [[nodiscard]] const Vector3f& getPosition() const;
-        [[nodiscard]] float getZoom() const;
-        [[nodiscard]] float getRotation() const;
-        [[nodiscard]] const Color& getClearColor() const;
-    
-        [[nodiscard]] const Vector2f& getLogicalSize() const;
-        [[nodiscard]] const Vector2f& getWindowSize() const;
-        [[nodiscard]] float getVerticalFovRadians() const;
-        [[nodiscard]] float getNearPlane() const;
-        [[nodiscard]] float getFarPlane() const;
-        [[nodiscard]] const Matrix4f& getViewMatrix() const;
-        [[nodiscard]] const Matrix4f& getProjectionMatrix() const;
-        [[nodiscard]] Matrix4f getViewProjectionMatrix() const;
-
-    private:
         CameraType m_camera_type{CameraType::Orthographic};
 
         Vector3f m_position{0.0f, 0.0f, 0.0f};
@@ -81,7 +44,49 @@ namespace dodoe {
 
         Matrix4f m_view_matrix{};
         Matrix4f m_projection_matrix{};
+        Vector3f m_view_direction{0.0f, 0.0f, -1.0f};
+        bool m_use_view_direction{false};
+    public:
+        static Scope<Camera> create(const CameraCreateInfo& create_info);
+        static void destroy(Scope<Camera>& camera);
 
+        void translate(const Vector3f& offset);
+        void zoom(float delta);
+        void rotate(float delta);
+
+        [[nodiscard]] Vector3f world2screen(const Vector3f& world_pos) const;
+        [[nodiscard]] Vector3f screen2world(const Vector3f& screen_pos) const;
+
+        void setCameraType(CameraType type);
+        void setPosition(const Vector3f& position);
+        void setZoom(float zoom);
+        void setRotation(float rotation);
+        void setViewDirection(const Vector3f& direction);
+        void clearViewDirection();
+        void setClearColor(const Color& color);
+        void setViewportSize(const Vector2f& logical_size, const Vector2f& window_size);
+        void setLogicalSize(const Vector2f& logical_size);
+        void setWindowSize(const Vector2f& window_size);
+        void setPerspective(float vertical_fov_radians, float near_plane, float far_plane);
+        void setOrthographic(float near_plane, float far_plane);
+
+        [[nodiscard]] CameraType getCameraType() const;
+        [[nodiscard]] const Vector3f& getPosition() const;
+        [[nodiscard]] float getZoom() const;
+        [[nodiscard]] float getRotation() const;
+        [[nodiscard]] const Vector3f& getViewDirection() const;
+        [[nodiscard]] const Color& getClearColor() const;
+    
+        [[nodiscard]] const Vector2f& getLogicalSize() const;
+        [[nodiscard]] const Vector2f& getWindowSize() const;
+        [[nodiscard]] float getVerticalFovRadians() const;
+        [[nodiscard]] float getNearPlane() const;
+        [[nodiscard]] float getFarPlane() const;
+        [[nodiscard]] const Matrix4f& getViewMatrix() const;
+        [[nodiscard]] const Matrix4f& getProjectionMatrix() const;
+        [[nodiscard]] Matrix4f getViewProjectionMatrix() const;
+
+    private:
         void initialize(const CameraCreateInfo& create_info);
         void shutdown();
 
@@ -90,5 +95,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif//DODOE_CAMERA_H

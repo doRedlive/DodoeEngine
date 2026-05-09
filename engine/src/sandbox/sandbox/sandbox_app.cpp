@@ -15,7 +15,7 @@ public:
     explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
         : dodoe::Application(spec) {
             // context_->layer_stack.push_layer(new OnlyoneLayer("Onlyone"));
-            context_->layer_stack.push_layer(new SandboxLayer("Sandbox"));
+            m_context->layer_stack.push_layer(new SandboxLayer("Sandbox"));
     }
 
     ~SandboxApp() override = default;
@@ -25,7 +25,7 @@ public:
 
 namespace dodoe {
 
-Application* create_application(ApplicationCommandLineArgs cli_args) {
+Application* CreateApplication(ApplicationCommandLineArgs cli_args) {
     ApplicationSpecification sandbox_spec;
     sandbox_spec.name = "dodoe-sandbox";
     sandbox_spec.custom_titlebar = false;

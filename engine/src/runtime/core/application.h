@@ -1,9 +1,5 @@
-//
-// Created by GreenMuffin on 2025/10/18.
-//
-
-#ifndef DODOE_APPLICATION_H
-#define DODOE_APPLICATION_H
+// do@Redlive
+#pragma once
 
 #include "runtime/dopch.h"
 
@@ -32,30 +28,30 @@ namespace dodoe {
     };
 
     class Application {
+        bool m_running {false};
+        static Application* m_instance;
+        ApplicationSpecification m_app_spec{};
+    protected:
+        Scope<SystemContext> m_context{nullptr};
     public:
         explicit Application(const ApplicationSpecification& spec);
         virtual ~Application();
 
-        [[nodiscard]] static Application& self() { return *instance_; }
-        [[nodiscard]] const ApplicationSpecification& specification() { return app_spec_; }
+        Application(const Application&) = delete;
+        Application(Application&&) = delete;
+        Application& operator=(const Application&) = delete;
+        Application& operator=(Application&&) = delete;
+
+        [[nodiscard]] static Application& Self() { return *m_instance; }
+        [[nodiscard]] const ApplicationSpecification& specification() { return m_app_spec; }
         [[nodiscard]] SystemContext& context();
         [[nodiscard]] const SystemContext& context() const;
 
         void run();
-    
-    protected:
-        Scope<SystemContext> context_{nullptr};
 
     private:
-        bool running {false};
-        ApplicationSpecification app_spec_{};
-        static Application* instance_;
-
         void quit();
     };
 
-    Application* create_application(ApplicationCommandLineArgs cli_args);
+    Application* CreateApplication(ApplicationCommandLineArgs cli_args);
 } // dodoe
-
-
-#endif //DODOE_APPLICATION_H

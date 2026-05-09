@@ -33,8 +33,8 @@ namespace dodoe {
 		if (info.enable_validation) {
 			DoInfo("enable validation");
 		}
-        auto extension = getRequiredExtensions();
-		createInstance(extension.data(), static_cast<int>(extension.size()));
+        instance_extensions_ = getRequiredExtensions();
+		createInstance(instance_extensions_.data(), static_cast<int>(instance_extensions_.size()));
 		if (enable_validation_layers_) {
 			DoDebug("Enable Validation Layer");
 			initializeDebugMessenger();
@@ -46,7 +46,6 @@ namespace dodoe {
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createSwapchain(info.window_handle);
-		createSwapchainFences();
 		createCommandPool();
 		createSwapchainImageViews();
 	}
@@ -66,13 +65,6 @@ namespace dodoe {
 				vkDestroyCommandPool(device_, command_pool_, nullptr);
 				command_pool_ = VK_NULL_HANDLE;
 			}
-
-			for (auto fence : swapchain_fences_) {
-				if (fence != VK_NULL_HANDLE) {
-					vkDestroyFence(device_, fence, nullptr);
-				}
-			}
-			swapchain_fences_.clear();
 
 			if (swapchain_ != VK_NULL_HANDLE) {
 				vkDestroySwapchainKHR(device_, swapchain_, nullptr);
@@ -232,6 +224,8 @@ namespace dodoe {
 			"VulkanBackend::createLogicalDevice requires runtimeDescriptorArray support.");
 		DO_ASSERT(supported_vulkan12_features.timelineSemaphore == VK_TRUE,
 			"VulkanBackend::createLogicalDevice requires timelineSemaphore support.");
+		DO_ASSERT(supported_vulkan12_features.bufferDeviceAddress == VK_TRUE,
+			"VulkanBackend::createLogicalDevice requires bufferDeviceAddress support.");
 
 		VkPhysicalDeviceVulkan13Features vulkan13_features{};
 		vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -248,6 +242,8 @@ namespace dodoe {
 		vulkan12_features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 		vulkan12_features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
 		vulkan12_features.timelineSemaphore = VK_TRUE;
+		vulkan12_features.bufferDeviceAddress = VK_TRUE;
+		features.geometryShader = VK_TRUE;
 
 		VkPhysicalDeviceFeatures2 enabled_features2{};
 		enabled_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -395,17 +391,6 @@ namespace dodoe {
 		}
 	}
 
-	void VulkanBackend::createSwapchainFences() {
-		VkFenceCreateInfo fence_info{};
-		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fence_info.pNext = nullptr;
-		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-		swapchain_fences_.resize(swapchain_images_.size());
-		for (auto& fence : swapchain_fences_) {
-			vkCreateFence(device_, &fence_info, nullptr, &fence);
-		}
-	}
-
 	void VulkanBackend::createCommandPool() {
 		VkCommandPoolCreateInfo cmd_pool_info{};
 		cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -416,32 +401,13 @@ namespace dodoe {
 		vkCreateCommandPool(device_, &cmd_pool_info, nullptr, &command_pool_);
 	}
 
-	bool VulkanBackend::acquireNextImage(uint32_t& image_index) {
-		if (device_ == VK_NULL_HANDLE || swapchain_ == VK_NULL_HANDLE || swapchain_fences_.empty()) {
+	bool VulkanBackend::acquireNextImage(uint32_t& image_index, VkSemaphore signal_semaphore) {
+		if (device_ == VK_NULL_HANDLE || swapchain_ == VK_NULL_HANDLE) {
 			return false;
 		}
 
-		VkFence fence = swapchain_fences_[acquire_fence_index_ % static_cast<uint32_t>(swapchain_fences_.size())];
-		VkResult wait_result = vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX);
-		if (wait_result != VK_SUCCESS) {
-			DO_ERROR("VulkanBackend::acquireNextImage wait fence failed with VkResult={}", static_cast<int>(wait_result));
-			return false;
-		}
-
-		VkResult reset_result = vkResetFences(device_, 1, &fence);
-		if (reset_result != VK_SUCCESS) {
-			DO_ERROR("VulkanBackend::acquireNextImage reset fence failed with VkResult={}", static_cast<int>(reset_result));
-			return false;
-		}
-
-		VkResult acquire_result = vkAcquireNextImageKHR(device_, swapchain_, UINT64_MAX, VK_NULL_HANDLE, fence, &image_index);
+		VkResult acquire_result = vkAcquireNextImageKHR(device_, swapchain_, UINT64_MAX, signal_semaphore, VK_NULL_HANDLE, &image_index);
 		if (acquire_result == VK_SUBOPTIMAL_KHR || acquire_result == VK_SUCCESS) {
-			VkResult post_wait_result = vkWaitForFences(device_, 1, &fence, VK_TRUE, UINT64_MAX);
-			if (post_wait_result != VK_SUCCESS) {
-				DO_ERROR("VulkanBackend::acquireNextImage post-wait fence failed with VkResult={}", static_cast<int>(post_wait_result));
-				return false;
-			}
-			++acquire_fence_index_;
 			return true;
 		}
 
@@ -449,15 +415,20 @@ namespace dodoe {
 		return false;
 	}
 
-	bool VulkanBackend::presentImage(uint32_t image_index) {
+	bool VulkanBackend::presentImage(uint32_t image_index, VkSemaphore wait_semaphore) {
 		if (swapchain_ == VK_NULL_HANDLE || present_queue_ == VK_NULL_HANDLE) {
 			return false;
 		}
 
 		VkPresentInfoKHR present_info{};
 		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		present_info.waitSemaphoreCount = 0;
-		present_info.pWaitSemaphores = nullptr;
+		if (wait_semaphore != VK_NULL_HANDLE) {
+			present_info.waitSemaphoreCount = 1;
+			present_info.pWaitSemaphores = &wait_semaphore;
+		} else {
+			present_info.waitSemaphoreCount = 0;
+			present_info.pWaitSemaphores = nullptr;
+		}
 		present_info.swapchainCount = 1;
 		present_info.pSwapchains = &swapchain_;
 		present_info.pImageIndices = &image_index;
@@ -482,23 +453,14 @@ namespace dodoe {
 		}
 		swapchain_imageviews_.clear();
 
-		for (auto fence : swapchain_fences_) {
-			if (fence != VK_NULL_HANDLE) {
-				vkDestroyFence(device_, fence, nullptr);
-			}
-		}
-		swapchain_fences_.clear();
-
 		if (swapchain_ != VK_NULL_HANDLE) {
 			vkDestroySwapchainKHR(device_, swapchain_, nullptr);
 			swapchain_ = VK_NULL_HANDLE;
 		}
 
 		swapchain_images_.clear();
-		acquire_fence_index_ = 0;
 
 		createSwapchain(window_handle);
-		createSwapchainFences();
 		createSwapchainImageViews();
 		return true;
 	}

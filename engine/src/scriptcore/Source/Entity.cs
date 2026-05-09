@@ -1,13 +1,14 @@
 namespace GreenCake;
 
 using System;
+using System.Collections.Generic;
 
 public class Entity
 {
+    public readonly ulong ID;
+
     protected Entity() { ID = 0; }
     internal Entity(ulong id) { ID = id; }
-
-    public readonly ulong ID;
 
     public bool HasComponent<T>() where T : Component
     {
@@ -21,7 +22,8 @@ public class Entity
         if (World.Current != null && World.Current.TryGetComponent<T>(ID, out T component))
             return component;
 
-        throw new InvalidOperationException($"Entity {ID} does not have component {typeof(T).FullName}.");
+        return null;
+        Debug.Log($"Entity {ID} does not have component {typeof(T).FullName}.");
     }
 
     public void AddComponent<T>(T component) where T : Component
@@ -58,5 +60,17 @@ public class Entity
                 return;
             InternalCalls.Native_EntityRemoveComponent(ID, componentType);
         }
+    }
+
+    public Type[] GetAllMonoComponentTypes()
+    {
+        if (World.Current is null)
+            return Array.Empty<Type>();
+
+        var result = new List<Type>();
+        foreach (var type in World.Current.GetMonoComponentTypes(ID))
+            result.Add(type);
+
+        return result.ToArray();
     }
 }

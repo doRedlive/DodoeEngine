@@ -78,6 +78,5 @@ endif()
 target_compile_definitions(${TARGET_NAME}
         PUBLIC GLFW_INCLUDE_NONE
         PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
-        PUBLIC $<$<CONFIG:Debug>:NDEBUG>
         PRIVATE $<$<CONFIG:Debug>:DO_DEBUG>
 )

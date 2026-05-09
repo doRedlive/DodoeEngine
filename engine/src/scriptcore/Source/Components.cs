@@ -179,31 +179,12 @@ public class BoxCollider2dComponent : Component
     }
 }
 
-public class MeshComponent : Component
+public class MeshRendererComponent : Component
 {
     public int Value
     {
-        get => InternalCalls.Native_MeshComponentGetValue(Entity.ID);
-        set => InternalCalls.Native_MeshComponentSetValue(Entity.ID, value);
-    }
-}
-
-public class ModelRendererComponent : Component
-{
-    public uint ModelID
-    {
-        get => InternalCalls.Native_ModelRendererComponentGetModelID(Entity.ID);
-        set => InternalCalls.Native_ModelRendererComponentSetModelID(Entity.ID, value);
-    }
-
-    public Color Color
-    {
-        get
-        {
-            InternalCalls.Native_ModelRendererComponentGetColor(Entity.ID, out Color color);
-            return color;
-        }
-        set => InternalCalls.Native_ModelRendererComponentSetColor(Entity.ID, ref value);
+        get => InternalCalls.Native_MeshRendererComponentGetValue(Entity.ID);
+        set => InternalCalls.Native_MeshRendererComponentSetValue(Entity.ID, value);
     }
 }
 

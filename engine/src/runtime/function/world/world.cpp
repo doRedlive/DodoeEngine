@@ -8,7 +8,8 @@
 
 #include "systems/animation2d_system.h"
 #include "systems/camera2d_system.h"
-#include "systems/model_renderer_system.h"
+#include "systems/light_system.h"
+#include "systems/mesh_renderer_system.h"
 #include "systems/physics2d_system.h"
 #include "systems/sprite_renderer_system.h"
 #include "systems/mono_system.h"
@@ -32,22 +33,24 @@ namespace dodoe {
 
         auto mono = create_ref<MonoSystem>();
         auto camera2d = create_ref<Camera2dSystem>();
+        auto light_system = create_ref<LightSystem>();
         auto physics2d = create_ref<Physics2dSystem>();
         auto animation2d = create_ref<Animation2dSystem>();
-        auto model_renderer = create_ref<ModelRendererSystem>();
+        auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
-
         registerRuntimeSystem(mono);
         registerRuntimeSystem(camera2d);
+        registerRuntimeSystem(light_system);
         registerRuntimeSystem(physics2d);
         registerRuntimeSystem(animation2d);
-        registerRuntimeSystem(model_renderer);
+        registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
 
         registerSimulationSystem(camera2d);
+        registerSimulationSystem(light_system);
         registerSimulationSystem(physics2d);
         registerSimulationSystem(animation2d);
-        registerSimulationSystem(model_renderer);
+        registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
         
         // Read config

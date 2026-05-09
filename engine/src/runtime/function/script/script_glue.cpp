@@ -4,7 +4,10 @@
 
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
+#include "runtime/function/input/input.h"
 #include "runtime/function/script/script_engine.h"
+#include "runtime/function/script/script_system.h"
+#include "runtime/function/time/time_system.h"
 #include "runtime/function/world/components.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
@@ -38,8 +41,7 @@ namespace dodoe {
             Animation2dComponent,
             Camera2dComponent,
             BoxCollider2dComponent,
-            MeshComponent,
-            ModelRendererComponent,
+            MeshRendererComponent,
             Rigidbody2dComponent,
             SpriteRendererComponent
         >;
@@ -102,7 +104,7 @@ namespace dodoe {
         }
 
         static Scene* GetCurrentScene() {
-            auto& app = Application::self();
+            auto& app = Application::Self();
             Scene* scene = app.context().world->getCurrentScene();
             DO_ASSERT(scene);
             return scene;
@@ -110,13 +112,17 @@ namespace dodoe {
 
         static Entity TryGetEntityByUuid(const uint64_t entity_uuid) {
             if (Scene* scene = GetCurrentScene()) {
-                Entity entity = scene->getEntityByUUID(Uuid(entity_uuid));
+                Entity entity = scene->tryGetEntityByUUID(Uuid(entity_uuid));
                 if (entity.valid()) {
                     return entity;
                 }
             }
 
-            DO_ERROR("Entity uuid {} was not found in active scene!", entity_uuid);
+            if (auto& app = Application::Self(); app.context().script_system) {
+                if (auto* runtime = app.context().script_system->getMonoRuntime()) {
+                    runtime->removeEntityFromManagedWorld(entity_uuid);
+                }
+            }
             return {};
         }
 
@@ -488,49 +494,16 @@ namespace dodoe {
             }
         }
 
-        static int32_t Native_MeshComponentGetValue(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<MeshComponent>(entity_uuid)) {
-                return component->value;
+        static int32_t Native_MeshRendererComponentGetValue(uint64_t entity_uuid) {
+            if (auto* component = TryGetComponent<MeshRendererComponent>(entity_uuid)) {
+                return component->mesh ? 1 : 0;
             }
             return 0;
         }
 
-        static void Native_MeshComponentSetValue(uint64_t entity_uuid, int32_t value) {
-            if (auto* component = TryGetComponent<MeshComponent>(entity_uuid)) {
-                component->value = value;
-            }
-        }
-
-        static uint32_t Native_ModelRendererComponentGetModelID(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<ModelRendererComponent>(entity_uuid)) {
-                return component->model_id;
-            }
-            return 0;
-        }
-
-        static void Native_ModelRendererComponentSetModelID(uint64_t entity_uuid, uint32_t model_id) {
-            if (auto* component = TryGetComponent<ModelRendererComponent>(entity_uuid)) {
-                component->model_id = model_id;
-            }
-        }
-
-        static void Native_ModelRendererComponentGetColor(uint64_t entity_uuid, Color* color) {
-            if (color) {
-                *color = {};
-            }
-
-            if (auto* component = TryGetComponent<ModelRendererComponent>(entity_uuid)) {
-                if (color) {
-                    *color = component->color;
-                }
-            }
-        }
-
-        static void Native_ModelRendererComponentSetColor(uint64_t entity_uuid, Color* color) {
-            if (auto* component = TryGetComponent<ModelRendererComponent>(entity_uuid)) {
-                if (color) {
-                    component->color = *color;
-                }
+        static void Native_MeshRendererComponentSetValue(uint64_t entity_uuid, int32_t value) {
+            if (auto* component = TryGetComponent<MeshRendererComponent>(entity_uuid)) {
+                component->dirty = component->dirty || (value != 0);
             }
         }
 
@@ -599,14 +572,15 @@ namespace dodoe {
 
         static uint32_t Native_SpriteRendererComponentGetTextureID(uint64_t entity_uuid) {
             if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                return component->texture_id;
+                return component->asset_ref.path_id;
             }
             return 0;
         }
 
         static void Native_SpriteRendererComponentSetTextureID(uint64_t entity_uuid, uint32_t texture_id) {
             if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                component->texture_id = texture_id;
+                component->asset_ref.type = AssetType::Texture;
+                component->asset_ref.path_id = texture_id;
             }
         }
 
@@ -676,6 +650,19 @@ namespace dodoe {
             }
         }
 
+        static bool Native_IsKeyDown(int key_code) {
+            return Input::IsKeyPressed(static_cast<KeyCode>(key_code));
+        }
+
+        static float Native_TimeGetDeltaTime() {
+            auto& app = Application::Self();
+            auto* time_system = app.context().time_system.get();
+            if (!time_system) {
+                return 0.0f;
+            }
+            return time_system->delta_time();
+        }
+
         static uint64_t Native_CreateEntity(MonoString* name) {
             Scene* scene = GetCurrentScene();
             if (!scene) {
@@ -711,7 +698,13 @@ namespace dodoe {
             }
 
             scene->destroyEntity(entity);
+            if (auto& app = Application::Self(); app.context().script_system) {
+                if (auto* runtime = app.context().script_system->getMonoRuntime()) {
+                    runtime->removeEntityFromManagedWorld(entity_uuid);
+                }
+            }
         }
+
     }
 
     void ScriptGlue::Initialize(ScriptEngine* engine) {
@@ -719,10 +712,17 @@ namespace dodoe {
     }
 
     void ScriptGlue::Shutdown() {
-
+        s_ScriptEngine = nullptr;
+        s_EntityHasComponentFuncUmap.clear();
+        s_EntityAddComponentFuncUmap.clear();
+        s_EntityRemoveComponentFuncUmap.clear();
     }
 
     void ScriptGlue::Register() {
+        if (!s_ScriptEngine) {
+            return;
+        }
+
         RegisterComponents();
         RegisterFunctions();
     }
@@ -741,6 +741,8 @@ namespace dodoe {
         DO_ADD_INTERNAL_CALL(Native_ComponentExists);
         DO_ADD_INTERNAL_CALL(Native_EntityAddComponent);
         DO_ADD_INTERNAL_CALL(Native_EntityRemoveComponent);
+        DO_ADD_INTERNAL_CALL(Native_IsKeyDown);
+        DO_ADD_INTERNAL_CALL(Native_TimeGetDeltaTime);
         DO_ADD_INTERNAL_CALL(Native_IDComponentGetID);
         DO_ADD_INTERNAL_CALL(Native_IDComponentGetName);
         DO_ADD_INTERNAL_CALL(Native_IDComponentSetName);
@@ -778,12 +780,8 @@ namespace dodoe {
         DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetRestitution);
         DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentGetRestitutionThreshold);
         DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetRestitutionThreshold);
-        DO_ADD_INTERNAL_CALL(Native_MeshComponentGetValue);
-        DO_ADD_INTERNAL_CALL(Native_MeshComponentSetValue);
-        DO_ADD_INTERNAL_CALL(Native_ModelRendererComponentGetModelID);
-        DO_ADD_INTERNAL_CALL(Native_ModelRendererComponentSetModelID);
-        DO_ADD_INTERNAL_CALL(Native_ModelRendererComponentGetColor);
-        DO_ADD_INTERNAL_CALL(Native_ModelRendererComponentSetColor);
+        DO_ADD_INTERNAL_CALL(Native_MeshRendererComponentGetValue);
+        DO_ADD_INTERNAL_CALL(Native_MeshRendererComponentSetValue);
         DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentGetType);
         DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentSetType);
         DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentGetGravityScale);

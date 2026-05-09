@@ -25,13 +25,11 @@ namespace dodoe {
     };
 
     class TextureManager {
-        inline static TextureManager* s_instance_{nullptr};
         RhiContext* rhi_{nullptr};
         DescriptorTableManager* descriptor_table_{nullptr};
         Ref<Texture> fallback_texture_{nullptr};
         std::unordered_map<identifier, Ref<Texture>> texture_umap_{};
     public:
-        static TextureManager& self() { return *s_instance_; }
         static Scope<TextureManager> create(const TextureManagerCreateInfo& info);
         static void destroy(Scope<TextureManager>& manager);
  

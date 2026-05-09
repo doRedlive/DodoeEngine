@@ -4,7 +4,10 @@
 
 #include "script_class.h"
 #include "mono/metadata/class.h"
+#include "mono/metadata/debug-helpers.h"
+#include "mono/metadata/reflection.h"
 #include "mono/metadata/object.h"
+#include "mono/utils/mono-publib.h"
 
 namespace dodoe {
 
@@ -43,7 +46,55 @@ namespace dodoe {
 
     }
 
+    void ScriptRuntime::loadMonoComponentClasses() {
+        if (!m_script_engine) {
+            return;
+        }
+
+        m_component_class_umap.clear();
+
+        MonoClass* component_base = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "Component");
+        if (!component_base) {
+            return;
+        }
+
+        const MonoTableInfo* type_def_tables = mono_image_get_table_info(m_script_engine->getAppImage(), MONO_TABLE_TYPEDEF);
+        i32 num_types = mono_table_info_get_rows(type_def_tables);
+        for (i32 i = 0; i < num_types; i++) {
+            ui32 col[MONO_TYPEDEF_SIZE];
+            mono_metadata_decode_row(type_def_tables, i, col, MONO_TYPEDEF_SIZE);
+
+            const char* space_name = mono_metadata_string_heap(m_script_engine->getAppImage(), col[MONO_TYPEDEF_NAMESPACE]);
+            const char* class_name = mono_metadata_string_heap(m_script_engine->getAppImage(), col[MONO_TYPEDEF_NAME]);
+            MonoClass* mono_class = mono_class_from_name(m_script_engine->getAppImage(), space_name, class_name);
+            if (!mono_class) {
+                continue;
+            }
+
+            if (mono_class == component_base) {
+                continue;
+            }
+            if (!mono_class_is_subclass_of(mono_class, component_base, false)) {
+                continue;
+            }
+
+            std::string full_name;
+            if (space_name && strlen(space_name) > 0)
+                full_name = fmt::format("{}.{}", space_name, class_name);
+            else
+                full_name = class_name ? class_name : "";
+
+            if (full_name.empty()) {
+                continue;
+            }
+
+            m_component_class_umap[full_name] = create_ref<ScriptClass>(m_script_engine, space_name ? space_name : "", class_name ? class_name : "");
+        }
+    }
+
     void ScriptRuntime::loadAssemblyClasses() {
+        loadMonoComponentClasses();
+
         const MonoTableInfo* type_def_tables = mono_image_get_table_info(m_script_engine->getAppImage(), MONO_TABLE_TYPEDEF);
         i32 num_types = mono_table_info_get_rows(type_def_tables);
 
@@ -68,8 +119,135 @@ namespace dodoe {
 
             Ref<ScriptClass> script_class = create_ref<ScriptClass>(m_script_engine, space_name, class_name);
             m_system_class_umap[full_name] = script_class;
-            Ref<ScriptInstance> script_instance = create_ref<ScriptInstance>(script_class);
+            Ref<MonoSystemInstance> script_instance = create_ref<MonoSystemInstance>(script_class);
             m_system_instance_umap[full_name] = script_instance;
+        }
+    }
+
+    void ScriptRuntime::loadEntityMonoComponentsFromManaged(uint64_t entity_uuid) {
+        auto& entity_components = m_component_instance_umap[static_cast<ui64>(entity_uuid)];
+        entity_components.clear();
+
+        if (!m_script_engine) {
+            return;
+        }
+
+        MonoClass* external_calls_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "ExternalCalls");
+        if (!external_calls_class) {
+            DO_ERROR("Could not find GreenCake.ExternalCalls in core image.");
+            return;
+        }
+
+        MonoMethod* get_mono_components = mono_class_get_method_from_name(external_calls_class, "GetEntityMonoComponents", 1);
+        if (!get_mono_components) {
+            DO_ERROR("Missing GreenCake.ExternalCalls.GetEntityMonoComponents(ulong).");
+            return;
+        }
+
+        void* call_args[1] = { &entity_uuid };
+        MonoObject* exception = nullptr;
+        MonoObject* raw = mono_runtime_invoke(get_mono_components, nullptr, call_args, &exception);
+        if (exception) {
+            MonoString* ex_str = mono_object_to_string(exception, nullptr);
+            char* utf8 = ex_str ? mono_string_to_utf8(ex_str) : nullptr;
+            DO_ERROR("Managed exception in ExternalCalls.GetEntityMonoComponents: {}", utf8 ? utf8 : "<unknown>");
+            if (utf8) mono_free(utf8);
+            return;
+        }
+
+        MonoArray* component_array = reinterpret_cast<MonoArray*>(raw);
+        if (!component_array) {
+            return;
+        }
+
+        const uintptr_t length = mono_array_length(component_array);
+        for (uintptr_t i = 0; i < length; ++i) {
+            MonoObject* component_object = mono_array_get(component_array, MonoObject*, i);
+            if (!component_object) {
+                continue;
+            }
+
+            MonoClass* mono_component_class = mono_object_get_class(component_object);
+            if (!mono_component_class) {
+                continue;
+            }
+
+            const char* ns = mono_class_get_namespace(mono_component_class);
+            const char* name = mono_class_get_name(mono_component_class);
+            std::string full_name = (ns && strlen(ns) > 0) ? fmt::format("{}.{}", ns, name) : std::string(name ? name : "");
+            if (full_name.empty()) {
+                continue;
+            }
+
+            Ref<ScriptClass> script_class = create_ref<ScriptClass>(m_script_engine, ns ? ns : "", name ? name : "");
+            Ref<MonoComponentInstance> instance = create_ref<MonoComponentInstance>(script_class, component_object);
+            entity_components.emplace_back(std::move(instance));
+        }
+    }
+
+    bool ScriptRuntime::addEntityMonoComponentFromManaged(uint64_t entity_uuid, const std::string& full_name) {
+        if (!m_script_engine) {
+            return false;
+        }
+
+        MonoClass* external_calls_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "ExternalCalls");
+        if (!external_calls_class) {
+            DO_ERROR("Could not find GreenCake.ExternalCalls in core image.");
+            return false;
+        }
+
+        MonoMethod* add_component = mono_class_get_method_from_name(external_calls_class, "AddEntityMonoComponent", 2);
+        if (!add_component) {
+            DO_ERROR("Missing GreenCake.ExternalCalls.AddEntityMonoComponent(ulong,string).");
+            return false;
+        }
+
+        MonoString* component_name = mono_string_new(m_script_engine->getCoreDomain(), full_name.c_str());
+        void* args[2] = { &entity_uuid, component_name };
+
+        MonoObject* exception = nullptr;
+        MonoObject* result = mono_runtime_invoke(add_component, nullptr, args, &exception);
+        if (exception) {
+            MonoString* ex_str = mono_object_to_string(exception, nullptr);
+            char* utf8 = ex_str ? mono_string_to_utf8(ex_str) : nullptr;
+            DO_ERROR("Managed exception in ExternalCalls.AddEntityMonoComponent: {}", utf8 ? utf8 : "<unknown>");
+            if (utf8) mono_free(utf8);
+            return false;
+        }
+
+        if (!result) {
+            return false;
+        }
+        return *static_cast<bool*>(mono_object_unbox(result));
+    }
+
+    void ScriptRuntime::removeEntityFromManagedWorld(uint64_t entity_uuid) {
+        m_component_instance_umap.erase(static_cast<ui64>(entity_uuid));
+
+        if (!m_script_engine) {
+            return;
+        }
+
+        MonoClass* external_calls_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "ExternalCalls");
+        if (!external_calls_class) {
+            DO_ERROR("Could not find GreenCake.ExternalCalls in core image.");
+            return;
+        }
+
+        MonoMethod* remove_entity = mono_class_get_method_from_name(external_calls_class, "RemoveEntityFromManagedWorld", 1);
+        if (!remove_entity) {
+            DO_ERROR("Missing GreenCake.ExternalCalls.RemoveEntityFromManagedWorld(ulong).");
+            return;
+        }
+
+        void* args[1] = { &entity_uuid };
+        MonoObject* exception = nullptr;
+        mono_runtime_invoke(remove_entity, nullptr, args, &exception);
+        if (exception) {
+            MonoString* ex_str = mono_object_to_string(exception, nullptr);
+            char* utf8 = ex_str ? mono_string_to_utf8(ex_str) : nullptr;
+            DO_ERROR("Managed exception in ExternalCalls.RemoveEntityFromManagedWorld: {}", utf8 ? utf8 : "<unknown>");
+            if (utf8) mono_free(utf8);
         }
     }
 

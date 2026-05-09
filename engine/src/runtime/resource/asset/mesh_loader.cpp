@@ -191,7 +191,8 @@ namespace dodoe {
             aiProcess_Triangulate |
             aiProcess_GenSmoothNormals |
             aiProcess_CalcTangentSpace |
-            aiProcess_JoinIdenticalVertices
+            aiProcess_JoinIdenticalVertices |
+            aiProcess_PreTransformVertices
         );
 
         if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || !scene->mRootNode) {

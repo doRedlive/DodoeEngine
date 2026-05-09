@@ -9,7 +9,7 @@ endif()
 add_subdirectory(res)
 
 add_subdirectory(src/runtime)
-add_subdirectory(src/sandbox)
+#add_subdirectory(src/sandbox)
 add_subdirectory(src/editor)
 add_subdirectory(src/metaparser)
 add_subdirectory(src/scriptcore)

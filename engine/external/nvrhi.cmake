@@ -14,10 +14,3 @@ set(NVRHI_WITH_AFTERMATH OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(nvrhi)
 
-if (TARGET nvrhi)
-	target_compile_definitions(nvrhi PRIVATE $<$<CONFIG:Debug>:NDEBUG>)
-endif ()
-
-if (TARGET nvrhi_vk)
-	target_compile_definitions(nvrhi_vk PRIVATE $<$<CONFIG:Debug>:NDEBUG>)
-endif ()

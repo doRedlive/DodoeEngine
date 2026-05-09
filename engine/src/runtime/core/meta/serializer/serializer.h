@@ -15,6 +15,7 @@
 namespace dodoe {
     template <typename...>
     inline constexpr bool always_false = false;
+    struct AssetRef;
 
     class Serializer {
     public:
@@ -115,6 +116,11 @@ namespace dodoe {
     unsigned int& Serializer::read(const Json& json_context, unsigned int& instance);
 
     template<>
+    Json Serializer::write(const unsigned short& instance);
+    template<>
+    unsigned short& Serializer::read(const Json& json_context, unsigned short& instance);
+
+    template<>
     Json Serializer::write(const size_t& instance);
     template<>
     size_t& Serializer::read(const Json& json_context, size_t& instance);
@@ -163,6 +169,11 @@ namespace dodoe {
     Json Serializer::write(const Color& instance);
     template<>
     Color& Serializer::read(const Json& json_context, Color& instance);
+
+    template<>
+    Json Serializer::write(const AssetRef& instance);
+    template<>
+    AssetRef& Serializer::read(const Json& json_context, AssetRef& instance);
 
 } // dodoe
 

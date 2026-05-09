@@ -14,6 +14,7 @@
 #include "runtime/core/utils/tags.h"
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_resource.h"
 #include "runtime/function/render/render_system.h"
 
 namespace dodoe {
@@ -33,14 +34,17 @@ namespace dodoe {
 
                 auto& camera_comp = reg.get<Camera2dComponent>(entity);
                 auto& transform_comp = reg.get<TransformComponent>(entity);
-                auto& camera = Application::self().context().render_system->camera();
-                if (camera_comp.dirty) {
+                auto& camera = Application::Self().context().render_system->getMainCamera();
+                const bool dirty = camera_comp.dirty || transform_comp.dirty;
+                if (dirty) {
                     camera.setCameraType(camera_comp.getCameraType());
                     camera.setPosition(transform_comp.position);
                     camera.setRotation(transform_comp.rotation.z);
                     camera.setZoom(camera_comp.zoom);
                     camera.setClearColor(camera_comp.background);
+                    g_RenderResource->submitMainCameraViewProjection(camera.getViewProjectionMatrix(), camera.getPosition());
                     camera_comp.dirty = false;
+                    transform_comp.dirty = false;
                 }
             }
         }

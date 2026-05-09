@@ -14,28 +14,34 @@
 
 namespace dodoe {
 
-    Scope<RenderSystem> RenderSystem::create(const RenderSystemCreateInfo& info) { 
+    Scope<RenderSystem> RenderSystem::Create(const RenderSystemCreateInfo& info) {
         if (auto context = create_scope<RenderSystem>(); context->initialize(info)) 
             return context;
         return nullptr;
     }
 
-    void RenderSystem::destroy(Scope<RenderSystem>& system) {
+    void RenderSystem::Destroy(Scope<RenderSystem>& system) {
         if (!system) return;
         system->shutdown();
         system.reset();
     }
 
-    bool RenderSystem::initialize(const RenderSystemCreateInfo& init_info) {
-        m_window_manager = init_info.window_manager;
-        m_ui_system = init_info.ui_system;
+    bool RenderSystem::initialize(const RenderSystemCreateInfo& info) {
+        m_window_manager = info.window_manager;
+        m_ui_system = info.ui_system;
 
         auto window = m_window_manager->window();
 
-        RenderApi::initialize({init_info.backend_api});
+        RenderApi::initialize({info.backend_api});
         m_viewport_manager = ViewportManager::create({window});
-        m_rhi = RhiContext::create({window->nativeWindow(), init_info.backend_api, true});
-        m_camera = Camera::create({CameraType::Orthographic, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
+        const bool enable_validation =
+#ifdef DO_DEBUG
+            true;
+#else
+            false;
+#endif
+        m_rhi = RhiContext::Create({window->nativeWindow(), info.backend_api, enable_validation});
+        m_camera = Camera::create({CameraType::Perspective, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
         m_descriptor_table = DescriptorTableManager::create({m_rhi.get()});
         m_texture_manager = TextureManager::create({m_rhi.get(), m_descriptor_table.get()});
 
@@ -50,6 +56,10 @@ namespace dodoe {
     }
 
     void RenderSystem::shutdown() {
+        if (m_rhi && m_rhi->getDevice()) {
+            m_rhi->getDevice()->waitForIdle();
+        }
+
         RenderGraph::destroy(m_render_graph);
         Camera::destroy(m_camera);
         g_RenderResource->shutdown();
@@ -59,7 +69,7 @@ namespace dodoe {
 			m_rhi->getDevice()->waitForIdle();
 			m_rhi->getDevice()->runGarbageCollection();
 		}
-        RhiContext::destroy(m_rhi);
+        RhiContext::Destroy(m_rhi);
     }
 
     void RenderSystem::prepare() {
@@ -69,7 +79,10 @@ namespace dodoe {
             m_render_graph->onViewportResize(m_viewport_manager->viewport());
         }
         if (m_viewport_manager->isWindowDirty()) [[unlikely]] {
-		    m_rhi->recreateSwapchain();
+            if (!m_rhi->recreateSwapchain()) {
+                return;
+            }
+            m_rhi->getDevice()->runGarbageCollection();
             m_camera->setViewportSize(m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize());
             m_render_graph->onWindowResize(m_viewport_manager->getPixelSize());
         }
@@ -86,11 +99,9 @@ namespace dodoe {
 
         m_render_graph->execute(image_index);
 
-        m_rhi->getDevice()->waitForIdle();
-        if (!m_rhi->presentSwapchainImage(image_index)) {
-            return;
+        if (m_rhi->presentSwapchainImage(image_index)) {
+            m_rhi->getDevice()->runGarbageCollection();
         }
-        m_rhi->getDevice()->runGarbageCollection();
     }
 
     void RenderSystem::swapLogicRenderContext() {
@@ -98,4 +109,3 @@ namespace dodoe {
     }
 
 } // dodoe
-

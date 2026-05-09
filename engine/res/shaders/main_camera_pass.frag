@@ -1,9 +1,20 @@
 #version 450 core
 
-layout(location = 0) out vec4 o_Color;
+layout(location = 0) out vec4 o_Albedo;
+layout(location = 1) out vec4 o_Normal;
+layout(location = 2) out vec4 o_Position;
+layout(location = 3) out vec4 o_Material;
+
 layout(location = 0) in vec3 v_Normal;
 layout(location = 1) in vec2 v_UV;
-layout(location = 2) flat in uint v_TexIndex;
+layout(location = 2) in vec3 v_WorldPosition;
+layout(location = 3) flat in uint v_TexIndex;
+
+layout(set = 0, binding = 256) uniform MainCameraPassUBO {
+    mat4 u_ViewProjection;
+    ivec4 u_DrawData;
+    vec4 u_MaterialData;
+};
 
 const uint kMaxTextures = 1024u;
 layout(set = 0, binding = 128) uniform sampler u_TextureSampler;
@@ -12,8 +23,19 @@ layout(set = 1, binding = 0) uniform texture2D u_Textures[kMaxTextures];
 void main()
 {
     vec3 n = normalize(v_Normal);
-    float ndotl = max(dot(n, normalize(vec3(0.3, 0.8, 0.5))), 0.0);
-    vec3 lighting = vec3(0.35 + 0.65 * ndotl);
     vec3 albedo = texture(sampler2D(u_Textures[v_TexIndex], u_TextureSampler), v_UV).rgb;
-    o_Color = vec4(albedo * lighting, 1.0);
+    float metallic = clamp(u_MaterialData.x, 0.0, 1.0);
+    float roughness = clamp(u_MaterialData.y, 0.04, 1.0);
+    float ao = clamp(u_MaterialData.z, 0.0, 1.0);
+    if (u_DrawData.z != 0) {
+        vec4 mr_ao = texture(sampler2D(u_Textures[uint(u_DrawData.y)], u_TextureSampler), v_UV);
+        metallic = clamp(metallic * mr_ao.b, 0.0, 1.0);
+        roughness = clamp(roughness * mr_ao.g, 0.04, 1.0);
+        ao = clamp(ao * mr_ao.r, 0.0, 1.0);
+    }
+    
+    o_Albedo = vec4(albedo, 1.0);
+    o_Normal = vec4(n, 1.0);
+    o_Position = vec4(v_WorldPosition, 1.0);
+    o_Material = vec4(metallic, roughness, ao, 1.0);
 }

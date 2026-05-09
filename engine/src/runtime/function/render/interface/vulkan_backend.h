@@ -45,10 +45,8 @@ namespace dodoe {
 		VkSwapchainKHR swapchain_;
 		std::vector<VkImage> swapchain_images_;
 		std::vector<VkImageView> swapchain_imageviews_;
-		std::vector<VkFence> swapchain_fences_;
 		VkFormat swapchain_image_format_;
 		VkExtent2D swapchain_extent_;
-		uint32_t acquire_fence_index_{0};
 		VkCommandPool command_pool_;
 		VkViewport viewport_;
 		VkRect2D scissor_;	
@@ -57,6 +55,7 @@ namespace dodoe {
 		bool enable_validation_layers_{false};
 
 		const std::vector<const char*> validation_layers_{"VK_LAYER_KHRONOS_validation"};
+		std::vector<const char*> instance_extensions_{};
 		std::vector<const char*> device_extensions_ = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 	public:
 		static Scope<VulkanBackend> create(const VulkanBackendCreateInfo& info);
@@ -66,14 +65,18 @@ namespace dodoe {
 		[[nodiscard]] VkPhysicalDevice getPhysicalDevice() { return physical_device_; }
 		[[nodiscard]] VkDevice getDevice() { return device_; }
 		[[nodiscard]] VkQueue getGraphicsQueue() { return graphics_queue_; }
+		[[nodiscard]] VkQueue getComputeQueue() { return compute_queue_; }
 		[[nodiscard]] uint32_t getGraphicsQueueIndex() { return queue_family_indices_.graphics_family.value(); }
+		[[nodiscard]] int getComputeQueueIndex() const { return queue_family_indices_.compute_family.has_value() ? static_cast<int>(queue_family_indices_.compute_family.value()) : -1; }
+		[[nodiscard]] int getPresentQueueIndex() const { return queue_family_indices_.present_family.has_value() ? static_cast<int>(queue_family_indices_.present_family.value()) : -1; }
+		[[nodiscard]] const std::vector<const char*>& getInstanceExtensions() { return instance_extensions_; }
 		[[nodiscard]] const std::vector<VkImage>& getSwapchainImages() { return swapchain_images_; }
 		[[nodiscard]] const std::vector<VkImageView>& getSwapchainImageViews() { return swapchain_imageviews_; }
 		[[nodiscard]] VkFormat getSwapchainImageFormat() { return swapchain_image_format_; }
 		[[nodiscard]] const std::vector<const char*>& getDeviceExtensions() { return device_extensions_; }
 		[[nodiscard]] Vector2i getSwapchainExtent2d() { return Vector2i(swapchain_extent_.width, swapchain_extent_.height); }
-		[[nodiscard]] bool acquireNextImage(uint32_t& image_index);
-		[[nodiscard]] bool presentImage(uint32_t image_index);
+		[[nodiscard]] bool acquireNextImage(uint32_t& image_index, VkSemaphore signal_semaphore);
+		[[nodiscard]] bool presentImage(uint32_t image_index, VkSemaphore wait_semaphore);
 		[[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle);
 
 	private:
@@ -87,7 +90,6 @@ namespace dodoe {
 		void createSurface(GLFWwindow* window_handle);
 		void createSwapchain(GLFWwindow* window_handle);
 		void createSwapchainImageViews();
-		void createSwapchainFences();
 		void createCommandPool();
 
         std::vector<const char*> getRequiredExtensions();

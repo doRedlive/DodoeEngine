@@ -29,13 +29,13 @@ namespace dodoe {
 
         const auto api_type = RenderApi::apiType();
         if (api_type == RenderApiType::OpenGL) {
-            ImGui_ImplGlfw_InitForOpenGL(window->nativeWindow(), true);
+            ImGui_ImplGlfw_InitForOpenGL(window->nativeWindow(), false);
         } 
         else if (api_type == RenderApiType::Vulkan) {
-            ImGui_ImplGlfw_InitForVulkan(window->nativeWindow(), true);
+            ImGui_ImplGlfw_InitForVulkan(window->nativeWindow(), false);
         }
         else {
-            ImGui_ImplGlfw_InitForOther(window->nativeWindow(), true);
+            ImGui_ImplGlfw_InitForOther(window->nativeWindow(), false);
         }
 
 		ApplyImGuiStyle(window->nativeWindow());
