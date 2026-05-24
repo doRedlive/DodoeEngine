@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 
+#include "runtime/core/utils/json.h"
 #include "mono/metadata/class.h"
 #include "mono/metadata/object.h"
 
@@ -63,6 +64,7 @@ namespace dodoe{
 		[[nodiscard]] MonoMethod* getMethod(const std::string& name, int parameter_count) const;
 		MonoObject* invokeMethod(MonoObject* instance, MonoMethod* method, void** params = nullptr);
 		[[nodiscard]] MonoClass* getMonoClass() const { return m_mono_class; }
+		[[nodiscard]] ScriptEngine* getEngine() const { return m_engine; }
 
 		[[nodiscard]] const std::map<std::string, ScriptField>& getFields() const { return m_fields; }
 	};
@@ -78,9 +80,12 @@ namespace dodoe{
 		explicit MonoComponentInstance(const Ref<ScriptClass>& script_class);
 		MonoComponentInstance(const Ref<ScriptClass>& script_class, MonoObject* instance);
 		[[nodiscard]] const Ref<ScriptClass>& getScriptClass() const { return m_script_class; }
+		[[nodiscard]] MonoObject* getManagedInstance() const { return m_instance; }
+		[[nodiscard]] Json serializeFields() const;
+		bool deserializeFields(const Json& json_context);
 
 		template <typename T>
-		[[nodiscard]] T getFieldValue(const std::string& name) {
+		[[nodiscard]] T getFieldValue(const std::string& name) const {
 			static_assert(sizeof(T) <= 16, "Type too large!");
 			if (!getFieldValueInternal(name, s_field_value_buffer)) {
 				return T();

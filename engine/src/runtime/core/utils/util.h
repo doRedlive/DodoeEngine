@@ -1,12 +1,8 @@
-//
-// Created by GreenMuffin on 2025/11/27.
-//
+// do@Redlive
 
-#ifndef DODOE_UTIL_H
-#define DODOE_UTIL_H
+#pragma once
 
 #include "dopch.h"
-
 
 namespace dodoe {
     struct Color {
@@ -74,5 +70,3 @@ namespace dodoe {
     };
  
 } // dodoe
-
-#endif //DODOE_UTIL_H

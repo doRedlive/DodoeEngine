@@ -4,7 +4,9 @@
 
 #include "runtime/core/project/project.h"
 #include "runtime/core/utils/common.h"
+#include "runtime/function/world/world.h"
 #include "runtime/resource/file/file_system.h"
+#include "runtime/resource/res_type/scene_res.h"
 
 namespace dodoe {
 
@@ -24,22 +26,12 @@ namespace dodoe {
             ".obj",
             ".fbx"
         };
+
+        const std::string k_SceneExt = ".doscn";
     }
 
-    Scope<AssetManager> AssetManager::Create() {
-        if (auto manager = create_scope<AssetManager>(); manager->initialize())
-            return manager;
-        return nullptr;
-    }
-
-    void AssetManager::Destroy(Scope<AssetManager>& manager) {
-        if (!manager) return;
-        manager->shutdown();
-        manager.reset();
-    }
-
-    bool AssetManager::initialize() {
-        if (!loadAssets()) return false;
+    bool AssetManager::initialize(const AssetManagerCreateInfo& info) {
+        (void)info;
         return true;
     }
 
@@ -47,23 +39,19 @@ namespace dodoe {
         m_asset_umap.clear();
     }
 
+    std::filesystem::path AssetManager::getFullPath(const std::string& asset_url) const {
+        return (m_asset_dir / std::filesystem::path(asset_url)).lexically_normal();
+    }
+
     bool AssetManager::loadAssets() {
         m_asset_umap.clear();
 
-        std::vector<std::string> image_paths, model_paths;
-        std::filesystem::path asset_dir = "tests/Projects/OnlyOne/Assets";
-        if (const auto active_project = Project::ActiveProject()) {
-            asset_dir = Project::ProjectDirectory() / active_project->config().asset_directory;
-        }
-        if (!std::filesystem::exists(asset_dir)) {
-            asset_dir = "tests/Projects/OnlyOne/Assets";
-        }
+        const auto active_project = Project::ActiveProject();
+        m_asset_dir = Project::ProjectDirectory() / active_project->config().asset_directory;
 
-        if (!std::filesystem::is_directory(asset_dir)) {
-            return false;
-        }
+        std::vector<std::string> image_paths, model_paths, scene_paths;
         try {
-            for (const fs::directory_entry& entry : fs::recursive_directory_iterator(asset_dir)) {
+            for (const fs::directory_entry& entry : fs::recursive_directory_iterator(m_asset_dir)) {
                 if (!entry.is_regular_file()) {
                     continue;
                 }
@@ -71,22 +59,26 @@ namespace dodoe {
                 std::string ext = entry.path().extension().string();
 
                 if (std::ranges::find(k_ImageExts, ext) != k_ImageExts.end()) {
-                    fs::path relative_path = fs::relative(entry.path(), FileSystem::asset_path);
+                    fs::path relative_path = fs::relative(entry.path(), m_asset_dir);
                     image_paths.emplace_back(relative_path.lexically_normal().generic_string());
                 }
                 if (std::ranges::find(k_ModelExts, ext) != k_ModelExts.end()) {
-                    fs::path relative_path = fs::relative(entry.path(), FileSystem::asset_path);
+                    fs::path relative_path = fs::relative(entry.path(), m_asset_dir);
                     model_paths.emplace_back(relative_path.lexically_normal().generic_string());
+                }
+                if (ext == k_SceneExt) {
+                    fs::path relative_path = fs::relative(entry.path(), m_asset_dir);
+                    scene_paths.emplace_back(relative_path.lexically_normal().generic_string());
                 }
             }
         }
         catch (const fs::filesystem_error& err) {
-            DO_ERROR("Traverse {} error occur : {}", asset_dir.string(), err.what());
+            DO_ERROR("Traverse {} error occur : {}", m_asset_dir.string(), err.what());
             return false;
         }
 
         for (const auto& image_path : image_paths) {
-            const std::filesystem::path absolute_path = (FileSystem::asset_path / std::filesystem::path(image_path)).lexically_normal();
+            const std::filesystem::path absolute_path = (m_asset_dir / std::filesystem::path(image_path)).lexically_normal();
             const std::string normalized_path = absolute_path.generic_string();
             AssetRef ref{
                 AssetHandle(static_cast<uint64_t>(string2hash(normalized_path))),
@@ -97,7 +89,7 @@ namespace dodoe {
             m_asset_umap[ref.handle] = ref;
         }
         for (const auto& model_path : model_paths) {
-            const std::filesystem::path absolute_path = (FileSystem::asset_path / std::filesystem::path(model_path)).lexically_normal();
+            const std::filesystem::path absolute_path = (m_asset_dir / std::filesystem::path(model_path)).lexically_normal();
             const std::string normalized_path = absolute_path.generic_string();
             AssetRef ref{
                 AssetHandle(static_cast<uint64_t>(string2hash(normalized_path))),
@@ -107,6 +99,18 @@ namespace dodoe {
             };
             m_asset_umap[ref.handle] = ref;
         }
+        for (const auto& scene_path : scene_paths) {
+            const std::filesystem::path absolute_path = (m_asset_dir / std::filesystem::path(scene_path)).lexically_normal();
+            const std::string normalized_path = absolute_path.generic_string();
+            AssetRef ref{
+                AssetHandle(static_cast<uint64_t>(string2hash(normalized_path))),
+                AssetType::Scene,
+                normalized_path,
+                string2hash(normalized_path)
+            };
+            m_asset_umap[ref.handle] = ref;
+        }
+
         return true;
     }
 

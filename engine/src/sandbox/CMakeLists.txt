@@ -14,10 +14,6 @@ file(GLOB_RECURSE SANDBOX_HEADERS
 
 set(SANDBOX_ALL_SOURCES ${SANDBOX_SOURCES} ${SANDBOX_HEADERS})
 
-list(APPEND SANDBOX_ALL_SOURCES
-        ${ENGINE_ROOT_DIR}/src/runtime/main.cpp
-)
-
 add_executable(${TARGET_NAME} ${SANDBOX_ALL_SOURCES})
 
 target_link_libraries(${TARGET_NAME}

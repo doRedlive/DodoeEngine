@@ -1,14 +1,12 @@
-//
-// Created by GreenMuffin on 2025/12/7.
-//
+// do@Redlive
 
-#ifndef CAKERY_CAKERY_LAYER_H
-#define CAKERY_CAKERY_LAYER_H
+#pragma once
 
 #include "panels/console_panel.h"
 #include "panels/inspector_panel.h"
 #include "panels/hierarchy_panel.h"
 #include "panels/project_panel.h"
+#include "panels/project_manager_panel.h"
 #include "panels/viewport_panel.h"
 #include "panels/dockspace_panel.h"
 #include "panels/title_bar.h"
@@ -20,7 +18,7 @@ namespace cakery {
     class CakeryLayer final : public dodoe::Layer {
     public:
         explicit CakeryLayer(const std::string& name);
-        ~CakeryLayer() override;
+        ~CakeryLayer() override = default;
 
         void attach() override;
         void detach() override;
@@ -28,22 +26,19 @@ namespace cakery {
         void renderTick() override;
 
     private:
-        dodoe::Window* cakery_window_{ nullptr };
-        bool simulation_frame_context_registered_{false};
-        bool scene_light_created_{false};
-        float fps_accumulated_time_{0.0f};
-        uint32_t fps_frame_counter_{0};
-        std::string base_window_title_{};
+        void enterEditor();
 
-        HierarchyPanel hierarchy_panel_{};
-        ProjectPanel project_panel_{};
-        InspectorPanel inspector_panel_{};
-        ConsolePanel console_panel_{};
-        DockSpacePanel dockspace_panel_{};
-        ViewportPanel viewport_panel_;
-        Titlebar title_bar_{};
+        dodoe::Window* m_window{ nullptr };
+        std::string m_base_title{};
+        bool m_editor_initialized{false};
+
+        ProjectManagerPanel m_project_manager_panel{};
+        HierarchyPanel m_hierarchy_panel{};
+        ProjectPanel m_project_panel{};
+        InspectorPanel m_inspector_panel{};
+        ConsolePanel m_console_panel{};
+        DockSpacePanel m_dockspace_panel{};
+        ViewportPanel m_viewport_panel;
+        Titlebar m_title_bar{};
     };
 } // cakery
-
-
-#endif //CAKERY_CAKERY_LAYER_H

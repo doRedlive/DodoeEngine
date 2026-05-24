@@ -42,6 +42,25 @@
       "problemMatcher": [
         "$msCompile"
       ]
+    },
+    {
+      "label": "Build Cakery (Release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "build",
+        "--config",
+        "Release",
+        "--target",
+        "Cakery"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ]
     }
   ]
 }

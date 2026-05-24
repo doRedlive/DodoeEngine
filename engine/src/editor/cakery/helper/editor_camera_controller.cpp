@@ -22,14 +22,14 @@ namespace cakery {
 
     void EditorCameraController::onUpdate(const float dt) {
         const auto make_forward = [this]() {
-            return dodoe::Math::normalize(dodoe::Vector3f(
+            return dodoe::Math::Normalize(dodoe::Vector3f(
                 std::cos(m_pitch) * std::cos(m_yaw),
                 std::sin(m_pitch),
                 std::cos(m_pitch) * std::sin(m_yaw)
             ));
         };
         const auto make_right = [](const dodoe::Vector3f& forward) {
-            return dodoe::Math::normalize(dodoe::Math::cross(forward, dodoe::Vector3f(0.0f, 1.0f, 0.0f)));
+            return dodoe::Math::Normalize(dodoe::Math::Cross(forward, dodoe::Vector3f(0.0f, 1.0f, 0.0f)));
         };
 
         float speed_scale = 1.0f;
@@ -57,7 +57,7 @@ namespace cakery {
         }
 
         if (move_axis.x != 0.0f || move_axis.y != 0.0f) {
-            move_axis = dodoe::Math::normalize(move_axis);
+            move_axis = dodoe::Math::Normalize(move_axis);
             const dodoe::Vector3f forward = make_forward();
             const dodoe::Vector3f right = make_right(forward);
 
@@ -80,8 +80,8 @@ namespace cakery {
                 const dodoe::Vector2f delta = mouse_position - m_last_mouse_position;
                 m_yaw += delta.x * m_rotate_speed;
                 m_pitch -= delta.y * m_rotate_speed;
-                const float pitch_limit = dodoe::Math::radians(89.0f);
-                m_pitch = dodoe::Math::clamp(m_pitch, -pitch_limit, pitch_limit);
+                const float pitch_limit = dodoe::Math::Radians(89.0f);
+                m_pitch = dodoe::Math::Clamp(m_pitch, -pitch_limit, pitch_limit);
             }
             m_right_dragging = true;
         }
@@ -99,7 +99,7 @@ namespace cakery {
 
     bool EditorCameraController::initialize(const EditorCameraControllerCreateInfo &info) {
         (void)info;
-        m_camera = dodoe::Camera::create({dodoe::CameraType::Perspective});
+        m_camera = dodoe::Camera::Create({dodoe::CameraType::Perspective});
         if (m_camera) {
             m_camera->setPosition(dodoe::Vector3f(0.0f, 0.0f, 5.0f));
             m_camera->setViewDirection(dodoe::Vector3f(0.0f, 0.0f, -1.0f));
@@ -112,7 +112,7 @@ namespace cakery {
 
     void EditorCameraController::shutdown() {
         dodoe::EventSystem::Unsubscribe<dodoe::MouseScrolledEvent, &EditorCameraController::onMouseScrolled>(this);
-        dodoe::Camera::destroy(m_camera);
+        dodoe::Camera::Destroy(m_camera);
     }
 
 } // cakery

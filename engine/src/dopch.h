@@ -1,6 +1,5 @@
-#ifndef DODOE_SRC_DOPCH_H
-#define DODOE_SRC_DOPCH_H
+// do@Redlive
+
+#pragma once
 
 #include "runtime/dopch.h"
-
-#endif

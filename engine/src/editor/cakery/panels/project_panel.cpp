@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2026/2/22.
-//
+// do@Redlive
 
 #include "project_panel.h"
 
@@ -22,30 +20,45 @@ namespace cakery {
 		dodoe::TextureManager* GetTextureManager() {
 			auto& app = dodoe::Application::Self();
 			auto* render_system = app.context().render_system.get();
-			return render_system ? render_system->getTextureManager() : nullptr;
+			return render_system->getTextureManager();
 		}
 	}
 
     ProjectPanel::ProjectPanel() {
-        base_directory_ = FileSystem::asset_path;
+        updateBaseDirectory();
         cur_directory_ = base_directory_;
+        last_base_directory_ = base_directory_;
 
-        directory_icon_ = ResourceManager::self().get_texture("engine/res/pictures/ContentBrowser/DirectoryIcon.png",
+        directory_icon_ = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/DirectoryIcon.png",
 			"engine/res/pictures/ContentBrowser/DirectoryIcon.png");
-        file_icon_ = ResourceManager::self().get_texture("engine/res/pictures/ContentBrowser/FileIcon.png",
+        file_icon_ = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/FileIcon.png",
 			"engine/res/pictures/ContentBrowser/FileIcon.png");
 
 		initializeIconTextures();
     }
 
 	ProjectPanel::~ProjectPanel() {
-		cleanup();
-	}
-
-	void ProjectPanel::cleanup() {
 		directory_icon_texture_ = nullptr;
 		file_icon_texture_ = nullptr;
 	}
+
+    void ProjectPanel::cleanup() {
+        directory_icon_texture_ = nullptr;
+        file_icon_texture_ = nullptr;
+    }
+
+    void ProjectPanel::updateBaseDirectory() {
+        fs::path desired = FileSystem::EngineResPath;
+        if (const auto active_project = Project::ActiveProject()) {
+            desired = Project::ProjectDirectory() / active_project->config().asset_directory;
+        }
+        desired = desired.lexically_normal();
+
+        base_directory_ = desired;
+        if (!fs::exists(base_directory_) || !fs::is_directory(base_directory_)) {
+            base_directory_ = FileSystem::EngineResPath;
+        }
+    }
 
 	void ProjectPanel::initializeIconTextures() {
 		if (directory_icon_texture_ && file_icon_texture_) {
@@ -70,6 +83,12 @@ namespace cakery {
 	}
 
 	void ProjectPanel::draw() {
+        updateBaseDirectory();
+        if (base_directory_ != last_base_directory_) {
+            cur_directory_ = base_directory_;
+            last_base_directory_ = base_directory_;
+        }
+
 		ImGui::Begin("Content Browser");
 
 		if (cur_directory_ != fs::path(base_directory_)) {

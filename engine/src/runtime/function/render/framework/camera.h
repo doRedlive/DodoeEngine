@@ -18,7 +18,7 @@ namespace dodoe {
         CameraType camera_type{CameraType::Orthographic};
         Vector2f logical_size{640.0f, 360.0f};
         Vector2f window_size{};
-        float vertical_fov_radians{Math::radians(60.0f)};
+        float vertical_fov_radians{Math::Radians(60.0f)};
         float near_plane{0.01f};
         float far_plane{1000.0f};
 
@@ -28,14 +28,15 @@ namespace dodoe {
             camera_type(type), logical_size(logical_size), window_size(window_size) { }
     };
 
-    class Camera {
+    class Camera : public Managed<Camera, CameraCreateInfo> {
+        friend class Managed<Camera, CameraCreateInfo>;
         CameraType m_camera_type{CameraType::Orthographic};
 
         Vector3f m_position{0.0f, 0.0f, 0.0f};
         float m_zoom{1.0f};
         float m_rotation{0.0f};
         Color m_background{Color::white()};
-        float m_vertical_fov_radians{Math::radians(60.0f)};
+        float m_vertical_fov_radians{Math::Radians(60.0f)};
         float m_near_plane{0.01f};
         float m_far_plane{1000.0f};
 
@@ -47,8 +48,6 @@ namespace dodoe {
         Vector3f m_view_direction{0.0f, 0.0f, -1.0f};
         bool m_use_view_direction{false};
     public:
-        static Scope<Camera> create(const CameraCreateInfo& create_info);
-        static void destroy(Scope<Camera>& camera);
 
         void translate(const Vector3f& offset);
         void zoom(float delta);
@@ -87,7 +86,7 @@ namespace dodoe {
         [[nodiscard]] Matrix4f getViewProjectionMatrix() const;
 
     private:
-        void initialize(const CameraCreateInfo& create_info);
+        bool initialize(const CameraCreateInfo& create_info);
         void shutdown();
 
         void updateViewMatrix();

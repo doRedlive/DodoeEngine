@@ -19,7 +19,7 @@ namespace dodoe::lua_register_detail {
             LOG_INFO("Lua: {}", msg);
         });
         dodoe_table.set_function("logWarn", [](const std::string& msg) {
-            LogWarn("Lua: {}", msg);
+            LOG_WARN("Lua: {}", msg);
         });
         dodoe_table.set_function("logError", [](const std::string& msg) {
             LOG_ERROR("Lua: {}", msg);

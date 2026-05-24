@@ -9581,7 +9581,7 @@ PUGI_IMPL_NS_BEGIN
 		xpath_node n;
 		size_t position, size;
 
-		xpath_context(const xpath_node& n_, size_t position_, size_t size_): n(n_), position(position_), size(size_)
+		xpath_context(const xpath_node& n_, size_t m_position, size_t size_): n(n_), position(m_position), size(size_)
 		{
 		}
 	};

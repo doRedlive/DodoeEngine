@@ -21,7 +21,8 @@ namespace dodoe {
         ViewportManagerCreateInfo(Window* in_window_handle) : window_handle(in_window_handle) { }
     };
 
-    class ViewportManager {
+    class ViewportManager : public Managed<ViewportManager, ViewportManagerCreateInfo> {
+        friend class Managed<ViewportManager, ViewportManagerCreateInfo>;
         struct LetterboxMetrics {
             Rect viewport{};
             float scale{1.0f};
@@ -39,8 +40,6 @@ namespace dodoe {
         bool m_viewport_dirty{false};
 
     public:
-        static Scope<ViewportManager> create(const ViewportManagerCreateInfo& info);
-        static void destroy(Scope<ViewportManager>& viewport_manager);
 
         void update();
         void clearDirtyFlags();
@@ -60,7 +59,7 @@ namespace dodoe {
         [[nodiscard]] const Rect& viewport() const { return m_viewport; }
         
     private:        
-        void initialize(const ViewportManagerCreateInfo& info);
+        bool initialize(const ViewportManagerCreateInfo& info);
         void shutdown();
         LetterboxMetrics computeLetterboxMetrics(const Vector2i& pixel_size, const Vector2f& logical_size);
     };

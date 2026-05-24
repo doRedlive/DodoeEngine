@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2025/11/15.
-//
+// do@Redlive
 
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/layer/layer.h"
@@ -8,52 +6,52 @@
 namespace dodoe {
 
     LayerStack::~LayerStack() {
-        clear_layers();
+        clearLayers();
     }
 
     void LayerStack::attach() {
-        for (auto& layer : layers_) {
+        for (auto& layer : m_layers) {
             layer->attach();
         }
     }
 
     void LayerStack::detach() {
-        for (auto& layer : layers_) {
+        for (auto& layer : m_layers) {
             layer->detach();
         }
     }
 
-    void LayerStack::clear_layers() {
-        for (auto* layer : layers_) {
+    void LayerStack::clearLayers() {
+        for (auto* layer : m_layers) {
             delete layer;
         }
-        layers_.clear();
-        layer_insert_index_ = 0;
+        m_layers.clear();
+        m_layer_insert_index = 0;
     }
 
-    void LayerStack::push_layer(Layer *layer) {
-        layers_.emplace(layers_.begin() + layer_insert_index_, layer);
-        layer_insert_index_++;
+    void LayerStack::pushLayer(Layer *layer) {
+        m_layers.emplace(m_layers.begin() + m_layer_insert_index, layer);
+        m_layer_insert_index++;
     }
 
-    void LayerStack::push_over_layer(Layer *layer) {
-        layers_.emplace_back(layer);
+    void LayerStack::pushOverLayer(Layer *layer) {
+        m_layers.emplace_back(layer);
     }
 
-    void LayerStack::pop_layer(Layer *layer) {
-        if (const auto it = std::find(layers_.begin(), layers_.begin() + layer_insert_index_, layer);
-            it != layers_.begin() + layer_insert_index_) {
+    void LayerStack::popLayer(Layer *layer) {
+        if (const auto it = std::find(m_layers.begin(), m_layers.begin() + m_layer_insert_index, layer);
+            it != m_layers.begin() + m_layer_insert_index) {
                 delete *it;
-                layers_.erase(it);
-                layer_insert_index_--;
+                m_layers.erase(it);
+                m_layer_insert_index--;
         }
     }
 
-    void LayerStack::pop_over_layer(Layer *layer) {
-        if (const auto it = std::find(layers_.begin() + layer_insert_index_, layers_.end(), layer);
-            it != layers_.end()) {
+    void LayerStack::popOverLayer(Layer *layer) {
+        if (const auto it = std::find(m_layers.begin() + m_layer_insert_index, m_layers.end(), layer);
+            it != m_layers.end()) {
                 delete *it;
-                layers_.erase(it);
+                m_layers.erase(it);
         }
     }
 

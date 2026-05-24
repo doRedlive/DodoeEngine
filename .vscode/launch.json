@@ -40,6 +40,17 @@
       "args": [],
       "stopAtEntry": false,
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Cakery (Release, cppvsdbg)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "preLaunchTask": "Build Cakery (Release)",
+      "program": "${workspaceFolder}/bin/Cakery.exe",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "stopAtEntry": false,
+      "console": "integratedTerminal"
     }
   ]
 }

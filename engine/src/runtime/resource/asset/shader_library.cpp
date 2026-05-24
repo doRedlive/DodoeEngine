@@ -32,23 +32,9 @@ namespace {
 
 namespace dodoe {
 
-    Scope<ShaderLibrary> ShaderLibrary::create(ShaderLibraryCreateInfo create_info) {
-        auto context = create_scope<ShaderLibrary>();
-        context->initialize(create_info);
-        return context;
-    }
-
-    void ShaderLibrary::destroy(Scope<ShaderLibrary>& shader_library) {
-        if (!shader_library) {
-            return;
-        }
-
-        shader_library->shutdown();
-        shader_library.reset();
-    }
-
-    void ShaderLibrary::initialize(ShaderLibraryCreateInfo init_info) {
-
+    bool ShaderLibrary::initialize(const ShaderLibraryCreateInfo& init_info) {
+        (void)init_info;
+        return true;
     }
 
     void ShaderLibrary::shutdown() {

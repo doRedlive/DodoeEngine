@@ -23,7 +23,7 @@ namespace dodoe {
         void initialize(const WindowManagerInitInfo& init_info);
         void shutdown();
 
-        [[nodiscard]] Window* window() const { return window_.get(); };
+        [[nodiscard]] Window* getWindow() const { return window_.get(); };
         void swapBuffers();
 
     private:

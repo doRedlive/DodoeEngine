@@ -21,7 +21,8 @@ namespace dodoe {
 		DescriptorTableManager* descriptor_manager{nullptr};
 	};
 
-	class RenderGraph {
+	class RenderGraph : public Managed<RenderGraph, RenderGraphCreateInfo> {
+		friend class Managed<RenderGraph, RenderGraphCreateInfo>;
 		enum class ResourceRebuildMode {
 			All,
 			ViewportRelativeOnly,
@@ -41,8 +42,7 @@ namespace dodoe {
 		std::vector<RenderGraphPass*> m_sorted_passes{};
 		std::unordered_map<std::string, RenderGraphResource> m_graph_render_res_umap{};
 	public:
-		static Scope<RenderGraph> create(const RenderGraphCreateInfo& info);
-		static void destroy(Scope<RenderGraph>& graph);
+
 
 		RenderGraphPass& addPass(const std::string& name, Ref<RenderPass> pass_implementation);
 		[[nodiscard]] RenderGraphPass* findPass(const std::string& name);
@@ -57,7 +57,6 @@ namespace dodoe {
 		void onViewportResize(const Rect& viewport);
 		void onWindowResize(const Vector2i& size);
 		
-		void setup();
 		void compile();
 		void execute(uint32_t swapchain_image_index = 0);
 			

@@ -348,4 +348,5 @@ namespace dodoe {
 		}
 		return 0;
 	}
+
 } // dodoe

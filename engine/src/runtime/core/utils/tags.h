@@ -1,9 +1,6 @@
-//
-// Created by Redlive on 2026/3/24.
-//
+// do@Redlive
 
-#ifndef DODOE_TAGS_H
-#define DODOE_TAGS_H
+#pragma once
 
 #include "dopch.h"
 
@@ -18,5 +15,3 @@ namespace dodoe {
     } // tag
 
 } // dodoe
-
-#endif//DODOE_TAGS_H

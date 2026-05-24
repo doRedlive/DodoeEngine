@@ -33,7 +33,7 @@ namespace dodoe {
 		}
 
 		SkyboxPushConstants constants{};
-		constants.inv_view_projection = Math::inverse(camera->getViewProjectionMatrix());
+		constants.inv_view_projection = Math::Inverse(camera->getViewProjectionMatrix());
 
 		m_cmd_list->open();
 		m_cmd_list->beginMarker("SkyboxPass");

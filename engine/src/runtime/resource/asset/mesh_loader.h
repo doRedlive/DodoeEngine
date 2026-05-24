@@ -8,14 +8,16 @@
 
 namespace dodoe {
 
-    class MeshLoader {
+    struct MeshLoaderCreateInfo {
+    };
+
+    class MeshLoader : public Managed<MeshLoader, MeshLoaderCreateInfo> {
+        friend class Managed<MeshLoader, MeshLoaderCreateInfo>;
         std::unordered_map<identifier, ModelRes> model_umap_{};
         std::unordered_map<identifier, MeshRes> mesh_umap_{};
         identifier next_mesh_id_{1};
 
     public:
-        static Scope<MeshLoader> create();
-        static void destroy(Scope<MeshLoader>& loader);
 
         ModelRes loadModel(identifier id, const std::string& path);
         ModelRes loadModel(const std::string& id, const std::string& path);
@@ -29,7 +31,7 @@ namespace dodoe {
         [[nodiscard]] ModelRes getModel(const std::string& id, const std::string& path);
 
     private:
-        void initialize();
+        bool initialize(const MeshLoaderCreateInfo& info);
         void shutdown();
         identifier allocateMeshId();
     };

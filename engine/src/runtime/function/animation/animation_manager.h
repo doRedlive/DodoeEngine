@@ -15,16 +15,15 @@ namespace dodoe {
 
     };
 
-    class AnimationManager {
+    class AnimationManager : public Managed<AnimationManager, AnimationManagerCreateInfo> {
+        friend class Managed<AnimationManager, AnimationManagerCreateInfo>;
     public:
-        static Scope<AnimationManager> create(const AnimationManagerCreateInfo& create_info);
-        static void destroy(Scope<AnimationManager>& animation_manager);
 
         // MARK: TODO: using sprite instead of texture
         AnimClip2d create_anim_clip2d(const std::vector<identifier>& texture_ids);
 
     private:
-        void initialize(const AnimationManagerCreateInfo& create_info);
+        bool initialize(const AnimationManagerCreateInfo& create_info);
         void shutdown();
 
     };

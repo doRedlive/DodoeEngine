@@ -16,29 +16,35 @@ namespace dodoe {
 
     };
 
-    class ScriptEngine {
+    class ScriptEngine : public Managed<ScriptEngine, ScriptEngineCreateInfo> {
+        friend class Managed<ScriptEngine, ScriptEngineCreateInfo>;
         MonoDomain* m_root_domain{nullptr};
         MonoDomain* m_core_domain{nullptr};
         MonoAssembly* m_core_assembly{nullptr};
         MonoAssembly* m_app_assembly{nullptr};
         MonoImage* m_core_image{nullptr};
         MonoImage* m_app_image{nullptr};
-    public:
-        static Scope<ScriptEngine> create(const ScriptEngineCreateInfo& info);
-        static void destroy(Scope<ScriptEngine>& engine);
+        std::string m_script_sources_fingerprint{};
 
+    public:
         [[nodiscard]] MonoDomain* getCoreDomain() const { return m_core_domain; }
         [[nodiscard]] MonoImage* getCoreImage() const { return m_core_image; }
         [[nodiscard]] MonoImage* getAppImage()  const { return m_app_image;  }
+
+        bool reloadScripts();
 
     private:
         bool initialize(const ScriptEngineCreateInfo& info);
         void shutdown();
 
         bool setupMono();
-        bool loadCoreAssembly(const std::string& path);
-        bool loadAppAssembly(const std::string& path);
         void cleanupMono();
+        void unloadManagedDomain();
+
+        bool loadCoreAssembly(const std::string& path);
+        bool loadAppAssembly();
+
+        bool buildScrptAssembly();
     };
 
 } // dodoe

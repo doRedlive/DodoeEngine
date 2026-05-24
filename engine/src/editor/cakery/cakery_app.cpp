@@ -10,7 +10,7 @@ namespace cakery {
     class CakeryApp final : public dodoe::Application {
     public:
         explicit CakeryApp(const dodoe::ApplicationSpecification& spec) : dodoe::Application(spec) {
-            m_context->layer_stack.push_layer(new CakeryLayer("Cakery"));
+            m_context->layer_stack.pushLayer(new CakeryLayer("Cakery"));
         }
 
         ~CakeryApp() override = default;
@@ -19,6 +19,14 @@ namespace cakery {
 } // cakery
 
 namespace dodoe {
+    bool IsEditorApplication() {
+#ifdef DODOE_EDITOR
+        return true;
+#else
+        return false;
+#endif
+    }
+
     Application* CreateApplication(const ApplicationCommandLineArgs cli_args) {
         ApplicationSpecification cakery_spec;
         cakery_spec.name = "Cakery";

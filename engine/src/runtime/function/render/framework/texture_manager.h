@@ -24,15 +24,14 @@ namespace dodoe {
         DescriptorTableManager* descriptor_table{nullptr};
     };
 
-    class TextureManager {
+    class TextureManager : public Managed<TextureManager, TextureManagerCreateInfo> {
+        friend class Managed<TextureManager, TextureManagerCreateInfo>;
         RhiContext* rhi_{nullptr};
         DescriptorTableManager* descriptor_table_{nullptr};
         Ref<Texture> fallback_texture_{nullptr};
         std::unordered_map<identifier, Ref<Texture>> texture_umap_{};
     public:
-        static Scope<TextureManager> create(const TextureManagerCreateInfo& info);
-        static void destroy(Scope<TextureManager>& manager);
- 
+
         [[nodiscard]] Ref<Texture> loadTexture(identifier id, const std::string& path);
         [[nodiscard]] Ref<Texture> loadTexture(const std::string& path);
         [[nodiscard]] Ref<Texture> loadTexture(identifier id);

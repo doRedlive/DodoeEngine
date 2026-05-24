@@ -5,6 +5,7 @@
 #include "entt/entt.hpp"
 
 #include "dopch.h"
+#include "runtime/core/utils/json.h"
 
 #include <cstddef>
 
@@ -17,6 +18,8 @@ namespace dodoe {
         using HasFunc = bool (*)(Entity&);
         using GetPtrFunc = void* (*)(Entity&);
         using EditFunc = void (*)(Entity&);
+        using WriteJsonFunc = Json (*)(void*);
+        using ReadJsonFunc = bool (*)(void*, const Json&);
 
         struct Entry {
             entt::id_type type{};
@@ -28,6 +31,8 @@ namespace dodoe {
             EditFunc add{ nullptr };
             EditFunc remove{ nullptr };
             EditFunc markDirty{ nullptr };
+            WriteJsonFunc writeJson{ nullptr };
+            ReadJsonFunc readJson{ nullptr };
 
             bool contains(Entity& entity) const;
             void* get(Entity& entity) const;

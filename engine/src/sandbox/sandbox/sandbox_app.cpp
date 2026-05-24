@@ -15,7 +15,7 @@ public:
     explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
         : dodoe::Application(spec) {
             // context_->layer_stack.push_layer(new OnlyoneLayer("Onlyone"));
-            m_context->layer_stack.push_layer(new SandboxLayer("Sandbox"));
+            m_context->layer_stack.pushLayer(new SandboxLayer("Sandbox"));
     }
 
     ~SandboxApp() override = default;
@@ -24,6 +24,10 @@ public:
 } // namespace sandbox
 
 namespace dodoe {
+
+bool IsEditorApplication() {
+    return false;
+}
 
 Application* CreateApplication(ApplicationCommandLineArgs cli_args) {
     ApplicationSpecification sandbox_spec;

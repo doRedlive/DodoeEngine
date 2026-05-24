@@ -1,9 +1,5 @@
-//
-// Created by Redlive on 2026/4/5.
-//
-
-#ifndef DODOE_VULKAN_BACKEND_H
-#define DODOE_VULKAN_BACKEND_H
+// do@Redlive
+#pragma once
 
 #include "dopch.h"
 
@@ -20,7 +16,8 @@ namespace dodoe {
 		bool enable_validation{true};
 	};
 
-	class VulkanBackend {
+	class VulkanBackend : public Managed<VulkanBackend, VulkanBackendCreateInfo> {
+        friend class Managed<VulkanBackend, VulkanBackendCreateInfo>;
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphics_family;
 			std::optional<uint32_t> present_family;
@@ -35,7 +32,7 @@ namespace dodoe {
 			std::vector<VkPresentModeKHR>   present_modes;
 		};
 
-		VkInstance instance_;
+		VkInstance m_instance;
 		VkSurfaceKHR surface_;
 		VkPhysicalDevice physical_device_;
 		VkDevice device_;
@@ -58,10 +55,8 @@ namespace dodoe {
 		std::vector<const char*> instance_extensions_{};
 		std::vector<const char*> device_extensions_ = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 	public:
-		static Scope<VulkanBackend> create(const VulkanBackendCreateInfo& info);
-		static void destroy(Scope<VulkanBackend>& context);
 
-		[[nodiscard]] VkInstance getInstance() { return instance_; }
+		[[nodiscard]] VkInstance getInstance() { return m_instance; }
 		[[nodiscard]] VkPhysicalDevice getPhysicalDevice() { return physical_device_; }
 		[[nodiscard]] VkDevice getDevice() { return device_; }
 		[[nodiscard]] VkQueue getGraphicsQueue() { return graphics_queue_; }
@@ -80,7 +75,7 @@ namespace dodoe {
 		[[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle);
 
 	private:
-		void initialize(const VulkanBackendCreateInfo& info);
+		bool initialize(const VulkanBackendCreateInfo& info);
 		void shutdown();
 
 		bool checkValidationLayerSupport();
@@ -101,5 +96,3 @@ namespace dodoe {
 	};
 
 } // dodoe
-
-#endif//DODOE_VULKAN_BACKEND_H

@@ -23,7 +23,8 @@ namespace dodoe {
         Runtime,
     };
 
-    class World {
+    class World : public Managed<World, WorldCreateInfo> {
+        friend class Managed<World, WorldCreateInfo>;
         friend class WorldManager;
         friend class Scene;
 
@@ -39,8 +40,6 @@ namespace dodoe {
         std::vector<Ref<System>> m_runtime_systems{};
         std::vector<Ref<System>> m_simulation_systems{};
     public:
-        static Scope<World> create(const WorldCreateInfo& create_info);
-        static void destroy(Scope<World>& world);
 
         [[nodiscard]] const std::string& getName() const { return m_name; }
 
@@ -57,6 +56,7 @@ namespace dodoe {
 
         void loadScene(const std::string& name);
         void unloadScene(const std::string& name);
+        bool activateStartScene();
 
         [[nodiscard]] Scene* getScene(const std::string& name) const;
 
@@ -67,8 +67,14 @@ namespace dodoe {
         void registerSimulationSystem(Ref<System> system);
 
     private:
-        void initialize(const WorldCreateInfo& create_info);
+        bool initialize(const WorldCreateInfo& create_info);
         void shutdown();
+
+        bool setupScenes();
+        void cleanupScenes();
+
+        bool setupSystems();
+        void cleanupSystems();
 
         void onRuntimeStart(Registry& reg);
         void onRuntimeUpdate(Registry& reg, float dt);

@@ -1,9 +1,6 @@
-//
-// Created by Redlive on 2026/3/20.
-//
+// do@Redlive
 
-#ifndef DODOE_REFLECTION_REGISTER_H
-#define DODOE_REFLECTION_REGISTER_H
+#pragma once
 
 #include "dopch.h"
 
@@ -13,6 +10,5 @@ namespace dodoe {
         static void meta_register();
         static void meta_unregister();
     };
-} // dodoe
 
-#endif//DODOE_REFLECTION_REGISTER_H
+} // dodoe

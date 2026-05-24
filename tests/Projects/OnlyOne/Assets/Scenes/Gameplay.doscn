@@ -1,21 +1,73 @@
 {
-    "Entities": {
-        "Entity": {
-            "UUID" {
-                "ID": 11111111
-            },
-            "Components": {
-                "TagComponents": {
-                    "Tag": "default"
+    "m_name": "Gameplay",
+    "m_entities": [
+        {
+            "m_uuid": 1001,
+            "m_name": "Primary Camera",
+            "m_native_components": [
+                {
+                    "m_type_name": "TagComponent",
+                    "m_component": "{\"tag\":\"PrimaryCamera\"}"
                 },
-                "TransformComponents: {
-                    "Position": {
-                        "x": 0.0,
-                        "y": 0.0,
-                        "z": 0.0
-                    }
+                {
+                    "m_type_name": "TransformComponent",
+                    "m_component": "{\"position\":[0.0,2.5,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}"
+                },
+                {
+                    "m_type_name": "Camera2dComponent",
+                    "m_component": "{\"type\":0,\"zoom\":4.0,\"background\":[1.0,1.0,1.0,1.0]}"
                 }
-            }
+            ],
+            "m_mono_components": []
+        },
+        {
+            "m_uuid": 1002,
+            "m_name": "Player",
+            "m_native_components": [
+                {
+                    "m_type_name": "TagComponent",
+                    "m_component": "{\"tag\":\"Player\"}"
+                },
+                {
+                    "m_type_name": "TransformComponent",
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}"
+                }
+            ],
+            "m_mono_components": []
+        },
+        {
+            "m_uuid": 1003,
+            "m_name": "Fill Light",
+            "m_native_components": [
+                {
+                    "m_type_name": "TagComponent",
+                    "m_component": "{\"tag\":\"FillLight\"}"
+                },
+                {
+                    "m_type_name": "TransformComponent",
+                    "m_component": "{\"position\":[2.0,3.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}"
+                },
+                {
+                    "m_type_name": "PointLightComponent",
+                    "m_component": "{\"color\":[1.0,0.95,0.8,1.0],\"intensity\":2.0,\"radius\":0.0,\"range\":12.0}"
+                }
+            ],
+            "m_mono_components": []
+        },
+        {
+            "m_uuid": 1004,
+            "m_name": "Crate",
+            "m_native_components": [
+                {
+                    "m_type_name": "TagComponent",
+                    "m_component": "{\"tag\":\"Crate\"}"
+                },
+                {
+                    "m_type_name": "TransformComponent",
+                    "m_component": "{\"position\":[-2.0,-1.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.5,1.5,1.0]}"
+                }
+            ],
+            "m_mono_components": []
         }
-    }
+    ]
 }

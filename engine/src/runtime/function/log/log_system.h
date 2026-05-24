@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2025/10/7.
-//
+// do@Redlive
 
-#ifndef DODOE_LOG_H
-#define DODOE_LOG_H
+#pragma once
 
 #include "dopch.h"
 #include "spdlog/spdlog.h"
@@ -22,39 +19,45 @@ namespace dodoe {
 
     struct LogMessage {
         std::string content;
+        std::string payload;
+        std::string logger_name;
         LogLevel level{ LogLevel::Trace };
+        uint32_t repeat_count{1};
+        uint64_t sequence{0};
     };
 
     class Log {
     public:
-        static Ref<spdlog::logger> get_core_logger()   { return core_logger_; }
-        static Ref<spdlog::logger> get_client_logger() { return client_logger_; }
-        static void initialize();
-        static void set_logger_level(const Ref<spdlog::logger>& logger, LogLevel level);
-        static const std::vector<LogMessage>& get_all_client_logs();
-        static const std::vector<LogMessage>& getCoreLogs();
+        static void Initialize();
+
+        static Ref<spdlog::logger> GetCoreLogger()   { return m_core_logger; }
+        static Ref<spdlog::logger> GetClientLogger() { return m_client_logger; }
+
+        static void SetLoggerLevel(const Ref<spdlog::logger>& logger, LogLevel level);
+
+        static std::vector<LogMessage> GetCoreLogs();
+        static std::vector<LogMessage> GetClientLogs();
+        static void ClearClientLogs();
+        static void ClearCoreLogs();
 
     private:
-        static Ref<spdlog::logger> core_logger_;
-        static Ref<spdlog::logger> client_logger_;
+        static Ref<spdlog::logger> m_core_logger;
+        static Ref<spdlog::logger> m_client_logger;
     };
 
 
-#define DoTrace(...)       dodoe::Log::get_core_logger()->trace(__VA_ARGS__)
-#define DoDebug(...)       dodoe::Log::get_core_logger()->debug(__VA_ARGS__)
-#define DoInfo(...)        dodoe::Log::get_core_logger()->info(__VA_ARGS__)
-#define DoWarn(...)        dodoe::Log::get_core_logger()->warn(__VA_ARGS__)
-#define DO_ERROR(...)       dodoe::Log::get_core_logger()->error(__VA_ARGS__)
-#define DoCritical(...)    dodoe::Log::get_core_logger()->critical(__VA_ARGS__)
+#define DO_TRACE(...)       dodoe::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define DO_DEBUG(...)       dodoe::Log::GetCoreLogger()->debug(__VA_ARGS__)
+#define DO_INFO(...)        dodoe::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define DO_WARN(...)        dodoe::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define DO_ERROR(...)       dodoe::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define DO_CRITICAL(...)    dodoe::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
-#define LogTrace(...)      dodoe::Log::get_client_logger()->trace(__VA_ARGS__)
-#define LogDebug(...)      dodoe::Log::get_client_logger()->debug(__VA_ARGS__)
-#define LOG_INFO(...)       dodoe::Log::get_client_logger()->info(__VA_ARGS__)
-#define LogWarn(...)       dodoe::Log::get_client_logger()->warn(__VA_ARGS__)
-#define LOG_ERROR(...)      dodoe::Log::get_client_logger()->error(__VA_ARGS__)
-#define LogCritical(...)   dodoe::Log::get_client_logger()->critical(__VA_ARGS__)
+#define LOG_TRACE(...)      dodoe::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define LOG_DEBUG(...)      dodoe::Log::GetClientLogger()->debug(__VA_ARGS__)
+#define LOG_INFO(...)       dodoe::Log::GetClientLogger()->info(__VA_ARGS__)
+#define LOG_WARN(...)       dodoe::Log::GetClientLogger()->warn(__VA_ARGS__)
+#define LOG_ERROR(...)      dodoe::Log::GetClientLogger()->error(__VA_ARGS__)
+#define LOG_CRITICAL(...)   dodoe::Log::GetClientLogger()->critical(__VA_ARGS__)
     
-}
-
-
-#endif //DODOE_LOG_H
+} // dodoe

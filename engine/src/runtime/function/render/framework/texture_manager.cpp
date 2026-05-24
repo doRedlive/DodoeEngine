@@ -8,20 +8,6 @@
 
 namespace dodoe {
 
-	Scope<TextureManager> TextureManager::create(const TextureManagerCreateInfo& info) {
-		if (auto context = create_scope<TextureManager>(); context->initialize(info)) {
-			return context;
-		}
-		DO_ERROR("Failed to create TextureManager!");
-		return nullptr;
-	}
-
-	void TextureManager::destroy(Scope<TextureManager>& manager) {
-		if (!manager) return;
-		manager->shutdown();
-		manager.reset();
-	}
-
 	bool TextureManager::initialize(const TextureManagerCreateInfo& info) {
 		rhi_ = info.rhi;
         descriptor_table_ = info.descriptor_table;

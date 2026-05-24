@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2025/11/24.
-//
+// do@Redlive
 
 #include "event_system.h"
 
@@ -8,19 +6,15 @@
 
 namespace dodoe {
 
-    static Scope<entt::dispatcher> g_event_dispatcher{};
+    static Scope<entt::dispatcher> g_EventDispatcher{};
 
-    bool EventSystem::initialized_() {
-        return static_cast<bool>(g_event_dispatcher);
+    entt::dispatcher& EventSystem::GetDispatcher() {
+        DO_ASSERT(g_EventDispatcher, "EventSystem not initialized");
+        return *g_EventDispatcher;
     }
 
-    entt::dispatcher& EventSystem::dispatcher_() {
-        DO_ASSERT(g_event_dispatcher, "EventSystem not initialized");
-        return *g_event_dispatcher;
-    }
-
-    void EventSystem::initialize() {
-        g_event_dispatcher = create_scope<entt::dispatcher>();
+    void EventSystem::Initialize() {
+        g_EventDispatcher = create_scope<entt::dispatcher>();
     }
 
     void EventSystem::Poll() {
@@ -28,14 +22,11 @@ namespace dodoe {
     }
 
     void EventSystem::Handle() {
-        if (!initialized_()) {
-            return;
-        }
-        dispatcher_().update();
+        GetDispatcher().update();
     }
 
-    void EventSystem::shutdown() {
-        g_event_dispatcher.reset();
+    void EventSystem::Shutdown() {
+        g_EventDispatcher.reset();
     }
 
 } // dodoe

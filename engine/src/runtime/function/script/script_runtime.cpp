@@ -11,18 +11,6 @@
 
 namespace dodoe {
 
-    Scope<ScriptRuntime> ScriptRuntime::create(const ScriptRuntimeCreateInfo &info) {
-        if (auto context = create_scope<ScriptRuntime>(); context->initialize(info))
-            return context;
-        return nullptr;
-    }
-
-    void ScriptRuntime::destroy(Scope<ScriptRuntime> &runtime) {
-        if (!runtime) { return; }
-        runtime->shutdown();
-        runtime.reset();
-    }
-
     bool ScriptRuntime::initialize(const ScriptRuntimeCreateInfo &info) {
         m_script_engine = info.script_engine;
 
@@ -93,6 +81,13 @@ namespace dodoe {
     }
 
     void ScriptRuntime::loadAssemblyClasses() {
+        m_system_class_umap.clear();
+        m_system_instance_umap.clear();
+
+        if (!m_script_engine || !m_script_engine->getAppImage()) {
+            return;
+        }
+
         loadMonoComponentClasses();
 
         const MonoTableInfo* type_def_tables = mono_image_get_table_info(m_script_engine->getAppImage(), MONO_TABLE_TYPEDEF);
@@ -122,6 +117,25 @@ namespace dodoe {
             Ref<MonoSystemInstance> script_instance = create_ref<MonoSystemInstance>(script_class);
             m_system_instance_umap[full_name] = script_instance;
         }
+    }
+
+    void ScriptRuntime::reloadAssemblyClasses() {
+        m_component_instance_umap.clear();
+        m_component_class_umap.clear();
+        m_system_class_umap.clear();
+        m_system_instance_umap.clear();
+
+        if (!m_script_engine || !m_script_engine->getCoreImage()) {
+            m_class_system = nullptr;
+            return;
+        }
+
+        m_class_system = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "DoSystem");
+        if (!m_class_system || !m_script_engine->getAppImage()) {
+            return;
+        }
+
+        loadAssemblyClasses();
     }
 
     void ScriptRuntime::loadEntityMonoComponentsFromManaged(uint64_t entity_uuid) {

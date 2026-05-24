@@ -19,21 +19,6 @@ namespace dodoe {
         constexpr float kDefaultOrthographicFar = 1000.0f;
     }
 
-    Scope<Camera> Camera::create(const CameraCreateInfo& create_info) {
-        auto context = create_scope<Camera>();
-        context->initialize(create_info);
-        return context;
-    }
-
-    void Camera::destroy(Scope<Camera>& camera) {
-        if (!camera) {
-            return;
-        }
-
-        camera->shutdown();
-        camera.reset();
-    }
-
     void Camera::translate(const Vector3f& offset) {
         setPosition(m_position + offset);
     }
@@ -72,7 +57,7 @@ namespace dodoe {
         const float ndc_x = screen_pos.x / m_logical_size.x * 2.0f - 1.0f;
         const float ndc_y = screen_pos.y / m_logical_size.y * 2.0f - 1.0f;
         const Vector4f clip(ndc_x, ndc_y, 0.0f, 1.0f);
-        const Matrix4f inv_vp = Math::inverse(getViewProjectionMatrix());
+        const Matrix4f inv_vp = Math::Inverse(getViewProjectionMatrix());
         const Vector4f world = inv_vp * clip;
         if (world.w == 0.0f) {
             return screen_pos;
@@ -111,8 +96,8 @@ namespace dodoe {
     }
 
     void Camera::setViewDirection(const Vector3f& direction) {
-        const float length = Math::length(direction);
-        if (length <= Math::epsilon<float>()) {
+        const float length = Math::Length(direction);
+        if (length <= Math::Epsilon<float>()) {
             return;
         }
         m_view_direction = direction / length;
@@ -216,7 +201,7 @@ namespace dodoe {
         return m_projection_matrix * m_view_matrix;
     }
 
-    void Camera::initialize(const CameraCreateInfo& create_info) {
+    bool Camera::initialize(const CameraCreateInfo& create_info) {
         m_camera_type = create_info.camera_type;
         m_logical_size = create_info.logical_size;
         m_window_size = create_info.window_size;
@@ -245,7 +230,8 @@ namespace dodoe {
         m_zoom = 1.0f;
         updateProjectionMatrix();
         updateViewMatrix();
-    }
+            return true;
+}
 
     void Camera::shutdown() {
     }
@@ -253,19 +239,19 @@ namespace dodoe {
     void Camera::updateViewMatrix() {
         if (m_camera_type == CameraType::Perspective && m_use_view_direction) {
             Vector3f up(0.0f, 1.0f, 0.0f);
-            if (std::abs(Math::dot(m_view_direction, up)) > 0.999f) {
+            if (std::abs(Math::Dot(m_view_direction, up)) > 0.999f) {
                 up = Vector3f(0.0f, 0.0f, 1.0f);
             }
-            m_view_matrix = Math::lookAt(m_position, m_position + m_view_direction, up);
+            m_view_matrix = Math::LookAt(m_position, m_position + m_view_direction, up);
             return;
         }
 
         auto view = Matrix4f(1.0f);
-        if (!Math::epsilonEqual(m_rotation, 0.0f, Math::epsilon<float>())) {
-            view = Math::rotate(view, -m_rotation, Vector3f(0.0f, 0.0f, 1.0f));
+        if (!Math::EpsilonEqual(m_rotation, 0.0f, Math::Epsilon<float>())) {
+            view = Math::Rotate(view, -m_rotation, Vector3f(0.0f, 0.0f, 1.0f));
         }
 
-        m_view_matrix = Math::translate(view, Vector3f(-m_position.x, -m_position.y, -m_position.z));
+        m_view_matrix = Math::Translate(view, Vector3f(-m_position.x, -m_position.y, -m_position.z));
     }
 
     void Camera::updateProjectionMatrix() {
@@ -277,13 +263,13 @@ namespace dodoe {
         const float far_plane = (std::max)(m_far_plane, near_plane + 0.001f);
 
         if (m_camera_type == CameraType::Perspective) {
-            const float vertical_fov = Math::clamp(m_vertical_fov_radians / zoom, kMinPerspectiveFov, kMaxPerspectiveFov);
-            m_projection_matrix = Math::perspective(vertical_fov, aspect, (std::max)(near_plane, 0.001f), far_plane);
+            const float vertical_fov = Math::Clamp(m_vertical_fov_radians / zoom, kMinPerspectiveFov, kMaxPerspectiveFov);
+            m_projection_matrix = Math::Perspective(vertical_fov, aspect, (std::max)(near_plane, 0.001f), far_plane);
         }
         else {
             const float half_width = logical_width * 0.5f / zoom;
             const float half_height = logical_height * 0.5f / zoom;
-            m_projection_matrix = Math::ortho(-half_width, half_width, -half_height, half_height, near_plane, far_plane);
+            m_projection_matrix = Math::Ortho(-half_width, half_width, -half_height, half_height, near_plane, far_plane);
         }
 
         // Vulkan clip-space has inverted Y compared with OpenGL.

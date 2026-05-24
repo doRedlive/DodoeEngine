@@ -14,7 +14,7 @@ namespace dodoe {
 
     class ResourceManager {
     public:
-        static ResourceManager& self();
+        static ResourceManager& Self();
 
         ResourceManager(const ResourceManager&) = delete;
         ResourceManager& operator=(const ResourceManager&) = delete;
@@ -36,7 +36,7 @@ namespace dodoe {
         [[nodiscard]] MeshRes get_mesh(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(identifier id);
         [[nodiscard]] AnimClip2dRes get_anim_clip2d(const std::string& name);
-        [[nodiscard]] AssetManager* asset_manager() const { return asset_manager_.get(); }
+        [[nodiscard]] AssetManager* getAssetManager() const { return asset_manager_.get(); }
 
         AnimClip2dRes create_anim_clip2d(const std::string& name, const std::vector<identifier>& texture_ids, bool loop = false, float frame_ms = 100.0f);
         bool destroy_anim_clip2d(identifier id);

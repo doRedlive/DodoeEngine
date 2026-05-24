@@ -1,4 +1,4 @@
-// do->Redlive
+// do@Redlive
 
 #pragma once
 
@@ -9,7 +9,7 @@
 #include <condition_variable>
 #include <functional>
 
-namespace dolearn {
+namespace dodoe {
 
     class ThreadPool {
         std::vector<std::thread> threads_;
@@ -59,4 +59,4 @@ namespace dolearn {
         }
     };
 
-} // dolearn
+} // dodoe

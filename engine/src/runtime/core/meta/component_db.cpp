@@ -1,5 +1,10 @@
+// do@Redlive
+
 #include "component_db.h"
 
+#include "_generated/serializer/all_serializer.ipp"
+
+#include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/function/world/components.h"
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/scene.h"
@@ -143,6 +148,19 @@ namespace dodoe {
             entry.markDirty = nullptr;
         }
 
+        if constexpr (!std::is_empty_v<T>) {
+            entry.writeJson = +[](void* component) -> Json {
+                return Serializer::write(*static_cast<T*>(component));
+            };
+            entry.readJson = +[](void* component, const Json& json) -> bool {
+                Serializer::read(json, *static_cast<T*>(component));
+                return true;
+            };
+        } else {
+            entry.writeJson = nullptr;
+            entry.readJson = nullptr;
+        }
+
         const std::size_t index = m_entries.size();
         m_entries.push_back(std::move(entry));
         m_name2index.emplace(m_entries[index].name, index);
@@ -169,4 +187,4 @@ namespace dodoe {
         registerComponent<SpriteRendererComponent>("SpriteRendererComponent");
     }
 
-} // namespace dodoe
+} // dodoe

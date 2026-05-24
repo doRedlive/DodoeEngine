@@ -153,6 +153,9 @@ namespace dodoe {
     void CombinePass::refreshInputResources() {
         m_scene_target = getTextureResource(kInputSceneColorResourceName);
         m_imgui_target = getTextureResource(kInputImGuiColorResourceName);
+        if (!m_imgui_target) {
+            m_imgui_target = m_scene_target;
+        }
     }
 
     void CombinePass::createSampler() {

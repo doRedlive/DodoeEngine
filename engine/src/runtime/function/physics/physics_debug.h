@@ -23,10 +23,9 @@ namespace dodoe {
         float axis_length{0.5f};
     };
 
-    class PhysicsDebugger {
+    class PhysicsDebugger : public Managed<PhysicsDebugger, PhysicsDebuggerCreateInfo> {
+        friend class Managed<PhysicsDebugger, PhysicsDebuggerCreateInfo>;
     public:
-        static Scope<PhysicsDebugger> create(const PhysicsDebuggerCreateInfo& create_info);
-        static void destroy(Scope<PhysicsDebugger>& debugger);
 
         [[nodiscard]] b2DebugDraw* native_debug_draw() { return &debug_draw_; }
 
@@ -34,7 +33,7 @@ namespace dodoe {
         b2DebugDraw debug_draw_{};
         DebugDrawContext debug_draw_context_{};
 
-        void initialize(const PhysicsDebuggerCreateInfo& create_info);
+        bool initialize(const PhysicsDebuggerCreateInfo& create_info);
         void shutdown();
 
     };

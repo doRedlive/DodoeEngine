@@ -7,27 +7,195 @@
 #include "world.h"
 #include "entity.h"
 
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/core/meta/component_db.h"
+#include "runtime/core/project/project.h"
 #include "runtime/core/utils/common.h"
+#include "runtime/function/script/script_class.h"
+#include "runtime/function/script/script_runtime.h"
 #include "runtime/function/world/components.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/res_type/scene_res.h"
+
+#include "mono/metadata/class.h"
 
 namespace dodoe {
 
+    namespace {
+
+        ScriptRuntime* GetScriptRuntime() {
+            auto& app = Application::Self();
+            if (!app.context().script_system) {
+                return nullptr;
+            }
+            return app.context().script_system->getMonoRuntime();
+        }
+
+        std::string GetMonoComponentFullName(const ScriptClass& script_class) {
+            MonoClass* mono_class = script_class.getMonoClass();
+            if (!mono_class) {
+                return {};
+            }
+
+            const char* name = mono_class_get_name(mono_class);
+            const char* ns = mono_class_get_namespace(mono_class);
+            if (!name) {
+                return {};
+            }
+
+            if (ns && ns[0] != '\0') {
+                return std::string(ns) + "." + name;
+            }
+            return std::string(name);
+        }
+
+        bool ParseJsonText(const std::string& json_text, Json& out_json) {
+            try {
+                out_json = Json::parse(json_text);
+                return true;
+            }
+            catch (const Json::exception&) {
+                return false;
+            }
+        }
+
+        std::vector<ComponentRes> SerializeNativeComponents(Entity entity) {
+            std::vector<ComponentRes> components;
+            auto& component_db = ComponentDB::self();
+            for (const auto& entry : component_db.entries()) {
+                if (!entry.contains(entity) || !entry.writeJson) {
+                    continue;
+                }
+
+                void* component_ptr = entry.get(entity);
+                if (!component_ptr) {
+                    continue;
+                }
+
+                ComponentRes component_res;
+                component_res.m_type_name = entry.name;
+                component_res.m_component = entry.writeJson(component_ptr).dump();
+                components.push_back(std::move(component_res));
+            }
+            return components;
+        }
+
+        std::vector<ComponentRes> SerializeMonoComponents(Entity entity) {
+            std::vector<ComponentRes> components;
+            ScriptRuntime* runtime = GetScriptRuntime();
+            if (!runtime) {
+                return components;
+            }
+
+            runtime->loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
+            const auto& mono_instances = runtime->getComponentInstanceUmap();
+            const auto it = mono_instances.find(static_cast<ui64>(entity.uuid()));
+            if (it == mono_instances.end()) {
+                return components;
+            }
+
+            for (const auto& instance_ref : it->second) {
+                if (!instance_ref || !instance_ref->getScriptClass()) {
+                    continue;
+                }
+
+                ComponentRes component_res;
+                component_res.m_type_name = GetMonoComponentFullName(*instance_ref->getScriptClass());
+                component_res.m_component = instance_ref->serializeFields().dump();
+                components.push_back(std::move(component_res));
+            }
+
+            return components;
+        }
+
+        void DeserializeNativeComponents(const std::vector<ComponentRes>& components, Entity entity) {
+            auto& component_db = ComponentDB::self();
+            for (const auto& component_res : components) {
+                const auto* entry = component_db.find(component_res.m_type_name);
+                if (!entry || !entry->readJson) {
+                    continue;
+                }
+
+                if (!entry->contains(entity) && entry->add) {
+                    entry->add(entity);
+                }
+
+                void* component_ptr = entry->get(entity);
+                if (!component_ptr) {
+                    continue;
+                }
+
+                Json component_json;
+                if (!ParseJsonText(component_res.m_component, component_json)) {
+                    continue;
+                }
+
+                (void)entry->readJson(component_ptr, component_json);
+            }
+        }
+
+        void DeserializeMonoComponents(const std::vector<ComponentRes>& components, Entity entity) {
+            ScriptRuntime* runtime = GetScriptRuntime();
+            if (!runtime) {
+                return;
+            }
+
+            for (const auto& component_res : components) {
+                (void)runtime->addEntityMonoComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
+            }
+
+            runtime->loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
+            const auto& mono_instances = runtime->getComponentInstanceUmap();
+            const auto it = mono_instances.find(static_cast<ui64>(entity.uuid()));
+            if (it == mono_instances.end()) {
+                return;
+            }
+
+            std::unordered_map<std::string, MonoComponentInstance*> mono_component_map;
+            for (const auto& instance_ref : it->second) {
+                if (!instance_ref || !instance_ref->getScriptClass()) {
+                    continue;
+                }
+                mono_component_map.emplace(GetMonoComponentFullName(*instance_ref->getScriptClass()), instance_ref.get());
+            }
+
+            for (const auto& component_res : components) {
+                const auto found = mono_component_map.find(component_res.m_type_name);
+                if (found == mono_component_map.end() || !found->second) {
+                    continue;
+                }
+
+                Json component_json;
+                if (!ParseJsonText(component_res.m_component, component_json)) {
+                    continue;
+                }
+
+                (void)found->second->deserializeFields(component_json);
+            }
+        }
+
+    } // namespace
+
+    Scene::Scene(const SceneCreateInfo& info) : Scene(info.world, info.name) { }
+
     Scene::Scene(World& world, const std::string& name) : m_world(world), m_name(name), m_reg(this) { }
 
-    Scope<Scene> Scene::create(const SceneCreateInfo& info) {
-        auto scene = create_scope<Scene>(info.world, info.name);
-        if (!scene->initialize()) return nullptr;
-        return scene;
-    }
-
-    void Scene::destroy(Scope<Scene>& scene) {
-        if (!scene) return;
-        scene->shutdown();
-        scene.reset();
-    }
-
     void Scene::save() {
+        const auto active_project = Project::ActiveProject();
+        if (!active_project) {
+            DO_ERROR("Cannot save scene '{}' without active project.", m_name);
+            return;
+        }
 
+        auto* asset_manager = ResourceManager::Self().getAssetManager();
+        if (!asset_manager) {
+            DO_ERROR("Cannot save scene '{}' because AssetManager is not initialized.", m_name);
+            return;
+        }
+
+        const std::string asset_url = (std::filesystem::path("Scenes") / (m_name + ".doscn")).generic_string();
+        (void)asset_manager->saveAsset(serialize(), asset_url);
     }
 
     void Scene::onCreate() {
@@ -38,7 +206,8 @@ namespace dodoe {
 
     }
 
-    bool Scene::initialize() {
+    bool Scene::initialize(const SceneCreateInfo& info) {
+        (void)info;
         auto entity = createEntity("Primary Camera"); 
         auto& camera = entity.addComponent<Camera2dComponent>();
         entity.getComponent<TagComponent>().setTag("PrimaryCamera");
@@ -72,6 +241,41 @@ namespace dodoe {
 
     void Scene::onSimulationUpdate(const float dt) {
         m_world.onSimulationUpdate(m_reg, dt);
+    }
+
+    SceneRes Scene::serialize() const {
+        SceneRes scene_res;
+        scene_res.m_name = getName();
+
+        for (Entity entity : const_cast<Scene*>(this)->getEntities()) {
+            EntityRes entity_res;
+            entity_res.m_uuid = entity.uuid();
+            entity_res.m_name = entity.name();
+            entity_res.m_native_components = SerializeNativeComponents(entity);
+            entity_res.m_mono_components = SerializeMonoComponents(entity);
+            scene_res.m_entities.push_back(std::move(entity_res));
+        }
+
+        return scene_res;
+    }
+
+    void Scene::deserialize(const SceneRes& scene_res) {
+        ScriptRuntime* runtime = GetScriptRuntime();
+        const std::vector<Entity> entities = getEntities();
+        for (Entity entity : entities) {
+            if (runtime) {
+                runtime->removeEntityFromManagedWorld(static_cast<uint64_t>(entity.uuid()));
+            }
+            destroyEntity(entity);
+        }
+
+        setName(scene_res.m_name);
+
+        for (const auto& entity_res : scene_res.m_entities) {
+            Entity entity = createEntity(entity_res.m_uuid, entity_res.m_name);
+            DeserializeNativeComponents(entity_res.m_native_components, entity);
+            DeserializeMonoComponents(entity_res.m_mono_components, entity);
+        }
     }
 
     Entity Scene::createEntity(const std::string& name) {

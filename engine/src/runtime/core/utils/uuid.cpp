@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2026/1/22.
-//
+// do@Redlive
 
 #include "uuid.h"
 
@@ -12,15 +10,15 @@ namespace dodoe {
     static std::mt19937_64 engine(random_device());
     static std::uniform_int_distribution<uint64_t> distribution;
 
-    UUID::UUID() : uuid_(distribution(engine)) {
+    UUID::UUID() : m_uuid(distribution(engine)) {
 
     }
 
-    UUID::UUID(const uint64_t value) : uuid_(value) {
+    UUID::UUID(const uint64_t value) : m_uuid(value) {
 
     }
 
     UUID::operator uint64_t() const {
-        return uuid_;
+        return m_uuid;
     }
 } // dodoe

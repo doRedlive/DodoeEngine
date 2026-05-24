@@ -10,6 +10,7 @@
 
 #include "runtime/core/layer/layer.h"
 #include "runtime/core/layer/layer_stack.h"
+#include "runtime/core/project/project.h"
 
 #include "runtime/function/time/time_system.h"
 
@@ -35,57 +36,45 @@ namespace dodoe {
 
     SystemContext::~SystemContext() = default;
 
-    Scope<SystemContext> SystemContext::create(SystemContextCreateInfo create_info) {
-        auto context = create_scope<SystemContext>();
-        DO_ASSERT(context->initialize_systems(create_info), "System initialize failed!");
-        return context;
+    bool SystemContext::initialize(SystemContextCreateInfo create_info) {
+        return initializeSystems(std::move(create_info));
     }
 
-    void SystemContext::destroy(Scope<SystemContext>& context) {
-        if (!context) return;
-        DO_ASSERT(context->shutdown_systems(), "System shutdown failed!");
-        context.reset();
+    void SystemContext::shutdown() {
+        DO_ASSERT(shutdownSystems(), "System shutdown failed!");
     }
 
-    bool SystemContext::initialize_systems(SystemContextCreateInfo create_info) {
+    bool SystemContext::initializeSystems(SystemContextCreateInfo create_info) {
         window_manager = create_scope<WindowManager>();
         input_manager  = create_scope<InputManager>();
         time_system    = create_scope<TimeSystem>();
         ui_system      = create_scope<UiSystem>();
         // ---------------------CORE-------------------------
-        Log::initialize();
-        EventSystem::initialize();
+        Log::Initialize();
+        EventSystem::Initialize();
         TypeMetaRegister::meta_register();
         // ---------------------RESOURCE-------------------------
-        ResourceManager::self().initialize();
+        ResourceManager::Self().initialize();
         // ---------------------RENDER-------------------------
         window_manager->initialize({create_info.spec});
         RenderApi::initialize({create_info.spec.render_api_type});
         ui_system->initialize(window_manager.get());
-        render_system = RenderSystem::Create({window_manager.get(), ui_system.get(), create_info.spec.render_api_type});
+        render_system = RenderSystem::Create({window_manager.get(), ui_system.get(), create_info.spec.render_api_type, create_info.spec.render_graph_mode});
         DO_ASSERT(render_system, "RenderSystem initialize failed!");
-        
-        // ---------------------GAME-------------------------
-        world = World::create({"Main"});
 
         input_manager->initialize({render_system->getViewportManager()});
-        physics_system = PhysicsSystem::create({});
-        script_system  = ScriptSystem::create({});
  
         return true;
     }
 
-    bool SystemContext::shutdown_systems() {
-        layer_stack.clear_layers();
+    bool SystemContext::shutdownSystems() {
+        layer_stack.clearLayers();
 
         // ---------------------GAME-------------------------
-        World::destroy(world);
-        ScriptSystem::destroy(script_system);
-        PhysicsSystem::destroy(physics_system);
         input_manager->shutdown();
         input_manager.reset();
         // ---------------------RESOURCE-------------------------
-        ResourceManager::self().shutdown();
+        ResourceManager::Self().shutdown();
         // ---------------------RENDER-------------------------
         RenderSystem::Destroy(render_system);
         ui_system->shutdown();
@@ -95,34 +84,57 @@ namespace dodoe {
         // ---------------------CORE-------------------------
         time_system.reset();
         TypeMetaRegister::meta_unregister();
-        EventSystem::shutdown();
+        EventSystem::Shutdown();
         return true;
     }
 
     void SystemContext::startRuntime() {
+        ResourceManager::Self().getAssetManager()->loadAssets();
+
+        script_system = ScriptSystem::Create({});
+        DO_ASSERT(script_system, "ScriptSystem initialize failed!");
+        (void)script_system->reloadScripts();
+
+        physics_system = PhysicsSystem::Create({});
+        DO_ASSERT(physics_system, "PhysicsSystem initialize failed!");
+
+        world = World::Create({"Main"});
+        DO_ASSERT(world, "World initialize failed!");
+
+        DO_ASSERT(world->activateStartScene(), "World active start scene failed!");
+
         world->start();
+        m_runtime_started = true;
     }
 
     void SystemContext::tickOneFrame() {
-        update_tick(time_system->delta_time());
-        render_tick();
+        updateTick(time_system->delta_time());
+        renderTick();
     }
 
     void SystemContext::finalizeRuntime() {
         world->finalize();
+
+        World::Destroy(world);
+        ScriptSystem::Destroy(script_system);
+        PhysicsSystem::Destroy(physics_system);
     }
 
-    void SystemContext::update_tick(const float delta_time) {
+    void SystemContext::updateTick(const float delta_time) {
         for (auto& layer : layer_stack) {
             layer->updateTick(delta_time);
         }
 
         input_manager->update();
-        world->update(delta_time);
-        physics_system->step(delta_time);
+        if (world) {
+            world->update(delta_time);
+        }
+        if (physics_system) {
+            physics_system->step(delta_time);
+        }
     }
 
-    void SystemContext::render_tick() {
+    void SystemContext::renderTick() {
         render_system->prepare();
         ui_system->prepare();
 

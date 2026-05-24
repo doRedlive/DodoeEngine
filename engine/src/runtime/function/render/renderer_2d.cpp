@@ -143,7 +143,7 @@ namespace dodoe {
             }
 
             const Vector2f delta = line.end - line.start;
-            const float length = Math::length(delta);
+            const float length = Math::Length(delta);
             const float half_thickness = line.thickness * 0.5f;
 
             out_rotation = line.rotation;
@@ -164,7 +164,7 @@ namespace dodoe {
                 length,
                 line.thickness
             };
-            out_rotation.z += Math::rad2deg(std::atan2(delta.y, delta.x));
+            out_rotation.z += Math::Rad2Deg(std::atan2(delta.y, delta.x));
             return true;
         }
 
@@ -237,7 +237,18 @@ namespace dodoe {
 
     void Renderer2d::drawSprite(const identifier texture, const Vector2f& pos, 
             const Vector2f& size, const Vector3f& rotation, const Color& color) {
-        SubmitQuad(texture, {pos.x, pos.y, size.x, size.y}, {0.0f, 0.0f, 1.0f, 1.0f}, rotation, color.to_vec4());
+        drawSprite(texture, pos, size, rotation, {0.0f, 0.0f, 1.0f, 1.0f}, color);
+    }
+
+    void Renderer2d::drawSprite(
+        const identifier texture,
+        const Vector2f& pos,
+        const Vector2f& size,
+        const Vector3f& rotation,
+        const Vector4f& uv,
+        const Color& color
+    ) {
+        SubmitQuad(texture, {pos.x, pos.y, size.x, size.y}, uv, rotation, color.to_vec4());
     }
 
     void Renderer2d::drawRect(const Vector2f& pos, const Vector2f& size, const Vector3f& rotation, const Color& color,  float thickness) {

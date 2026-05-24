@@ -8,28 +8,15 @@
 
 namespace dodoe {
 
-    Scope<AnimationLibrary> AnimationLibrary::create(AnimationLibraryCreateInfo create_info) {
-        auto context = create_scope<AnimationLibrary>();
-        context->initialize(create_info);
-        return context;
-    }
-
-    void AnimationLibrary::destroy(Scope<AnimationLibrary>& animation_library) {
-        if (!animation_library) {
-            return;
-        }
-        animation_library->shutdown();
-        animation_library.reset();
-    }
-
-    void AnimationLibrary::initialize(AnimationLibraryCreateInfo create_info) {
+    bool AnimationLibrary::initialize(const AnimationLibraryCreateInfo& create_info) {
         (void)create_info;
-        anim_manager_ = AnimationManager::create({});
+        anim_manager_ = AnimationManager::Create({});
+        return anim_manager_ != nullptr;
     }
 
     void AnimationLibrary::shutdown() {
         anim_clip2d_umap_.clear();
-        AnimationManager::destroy(anim_manager_);
+        AnimationManager::Destroy(anim_manager_);
     }
 
     AnimClip2dRes AnimationLibrary::create_clip(const std::string& name, const std::vector<identifier>& texture_ids, bool loop, float frame_ms) {

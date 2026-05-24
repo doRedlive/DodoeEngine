@@ -1,7 +1,7 @@
 #pragma once
 
 #include "runtime/core/meta/reflection/reflection.h"
-#include "runtime/core/meta/json.h"
+#include "runtime/core/utils/json.h"
 #include "runtime/core/meta/serializer/serializer.h"
 
 {{#include_headfiles}}
@@ -76,7 +76,7 @@ public:
                 },
                 []() -> const char* { return "{{class_name}}"; },
                 []() -> const char* { return "{{class_field_name}}"; },
-                []() -> const char* { return "{{class_field_type}}"; },
+                []() -> const char* { return "{{{class_field_type}}}"; },
                 []() -> bool { return {{#class_field_is_vector}}true{{/class_field_is_vector}}{{^class_field_is_vector}}false{{/class_field_is_vector}}; }
             )
         );
@@ -84,22 +84,22 @@ public:
 
         {{#vector_defines}}
         dodoe::TypeMetaRegisterInterface::register2arraymap(
-            "{{vector_type_name}}",
+            "{{{vector_type_name}}}",
             new dodoe::ArrayFuncTuple(
                 [](int index, void* instance, void* element_value) {
-                    auto* vec = static_cast<{{vector_type_name}}*>(instance);
-                    (*vec)[index] = *static_cast<{{vector_element_type_name}}*>(element_value);
+                    auto* vec = static_cast<{{{vector_type_name}}}*>(instance);
+                    (*vec)[index] = *static_cast<{{{vector_element_type_name}}}*>(element_value);
                 },
                 [](int index, void* instance) -> void* {
-                    auto* vec = static_cast<{{vector_type_name}}*>(instance);
+                    auto* vec = static_cast<{{{vector_type_name}}}*>(instance);
                     return &((*vec)[index]);
                 },
                 [](void* instance) -> int {
-                    auto* vec = static_cast<{{vector_type_name}}*>(instance);
+                    auto* vec = static_cast<{{{vector_type_name}}}*>(instance);
                     return static_cast<int>(vec->size());
                 },
-                []() -> const char* { return "{{vector_type_name}}"; },
-                []() -> const char* { return "{{vector_element_type_name}}"; }
+                []() -> const char* { return "{{{vector_type_name}}}"; },
+                []() -> const char* { return "{{{vector_element_type_name}}}"; }
             )
         );
         {{/vector_defines}}

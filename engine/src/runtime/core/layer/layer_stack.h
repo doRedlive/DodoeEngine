@@ -1,37 +1,33 @@
-//
-// Created by GreenMuffin on 2025/11/15.
-//
+// do@Redlive
 
-#ifndef DODOE_LAYER_STACK_H
-#define DODOE_LAYER_STACK_H
+#pragma once
+
 #include "dopch.h"
 
 namespace dodoe {
+
     class Layer;
 
     class LayerStack {
     public:
-        LayerStack() = default;
         ~LayerStack();
 
         void attach();
         void detach();
 
-        void clear_layers();
+        void clearLayers();
 
-        void push_layer(Layer* layer);
-        void push_over_layer(Layer* layer);
-        void pop_layer(Layer* layer);
-        void pop_over_layer(Layer* layer);
+        void pushLayer(Layer* layer);
+        void pushOverLayer(Layer* layer);
+        void popLayer(Layer* layer);
+        void popOverLayer(Layer* layer);
 
-        std::vector<Layer*>::iterator begin() { return layers_.begin(); }
-        std::vector<Layer*>::iterator end() { return layers_.end(); }
+        std::vector<Layer*>::iterator begin() { return m_layers.begin(); }
+        std::vector<Layer*>::iterator end() { return m_layers.end(); }
 
     private:
-        std::vector<Layer*> layers_ {};
-        unsigned int layer_insert_index_ {0};
+        std::vector<Layer*> m_layers{};
+        uint m_layer_insert_index{0};
     };
+
 } // dodoe
-
-
-#endif //DODOE_LAYER_STACK_H

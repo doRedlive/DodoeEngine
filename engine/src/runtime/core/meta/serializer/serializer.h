@@ -1,20 +1,21 @@
-//
-// Created by Redlive on 2026/3/20.
-//
+// do@Redlive
 
-#ifndef DODOE_SERIALIZER_H
-#define DODOE_SERIALIZER_H
+#pragma once
 
 #include "dopch.h"
 
-#include "runtime/core/meta/json.h"
 #include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/utils/json.h"
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
 
 namespace dodoe {
     template <typename...>
     inline constexpr bool always_false = false;
+    template <typename T>
+    struct is_std_vector : std::false_type { };
+    template <typename T, typename Allocator>
+    struct is_std_vector<std::vector<T, Allocator>> : std::true_type { };
     struct AssetRef;
 
     class Serializer {
@@ -74,6 +75,13 @@ namespace dodoe {
             else if constexpr (std::is_enum_v<T>) {
                 return Json(static_cast<std::underlying_type_t<T>>(instance));
             }
+            else if constexpr (is_std_vector<T>::value) {
+                Json json = Json::array();
+                for (const auto& item : instance) {
+                    json.push_back(Serializer::write(item));
+                }
+                return json;
+            }
             else {
                 static_assert(always_false<T>, "Serializer::write<T> has not been implemented yet!");
                 return Json();
@@ -90,6 +98,18 @@ namespace dodoe {
                 Underlying value{};
                 read(json_context, value);
                 instance = static_cast<T>(value);
+                return instance;
+            }
+            else if constexpr (is_std_vector<T>::value) {
+                using ValueType = typename T::value_type;
+                DO_ASSERT(json_context.is_array(), "Serializer::read<std::vector<T>> expects array");
+                instance.clear();
+                instance.reserve(json_context.size());
+                for (const auto& item_json : json_context) {
+                    ValueType value{};
+                    read(item_json, value);
+                    instance.push_back(std::move(value));
+                }
                 return instance;
             }
             else {
@@ -176,5 +196,3 @@ namespace dodoe {
     AssetRef& Serializer::read(const Json& json_context, AssetRef& instance);
 
 } // dodoe
-
-#endif // DODOE_SERIALIZER_H

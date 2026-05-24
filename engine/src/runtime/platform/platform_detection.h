@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2026/3/5.
-//
+// do@Redlive
 
-#ifndef DODOE_PLATFORM_DETECTION_H
-#define DODOE_PLATFORM_DETECTION_H
+#pragma once
 
 #ifdef _WIN32
     #ifdef _WIN64
@@ -29,6 +26,3 @@
 #else
     #error "unknown platform"
 #endif//Platform detection
-
-
-#endif//DODOE_PLATFORM_DETECTION_H

@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2026/3/5.
-//
+// do@Redlive
 
-#ifndef DODOE_ASSERT_H
-#define DODOE_ASSERT_H
+#pragma once
 
 #include "core.h"
 
@@ -36,5 +33,3 @@
     #define IN_ASSERT(...)
 
 #endif//DO_ENABLE_ASSERTS
-
-#endif//DODOE_ASSERT_H

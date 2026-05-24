@@ -39,6 +39,15 @@ namespace dodoe {
             const Color& color = Color::white()
         );
 
+        static void drawSprite(
+            identifier texture,
+            const Vector2f& pos,
+            const Vector2f& size,
+            const Vector3f& rotation,
+            const Vector4f& uv,
+            const Color& color
+        );
+
         // static void drawTexture(
         //     identifier texture,
         //     const Vector2f& pos,

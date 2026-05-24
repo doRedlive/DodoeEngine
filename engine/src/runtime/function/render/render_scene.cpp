@@ -16,8 +16,8 @@ namespace dodoe {
 
 		FrustumPlane NormalizePlane(const Vector4f& plane) {
 			const Vector3f normal(plane.x, plane.y, plane.z);
-			const float length = Math::length(normal);
-			if (length <= Math::epsilon<float>()) {
+			const float length = Math::Length(normal);
+			if (length <= Math::Epsilon<float>()) {
 				return {};
 			}
 
@@ -46,7 +46,7 @@ namespace dodoe {
 					std::abs(plane.normal.x) * extents.x +
 					std::abs(plane.normal.y) * extents.y +
 					std::abs(plane.normal.z) * extents.z;
-				const float signed_distance = Math::dot(plane.normal, center) + plane.distance;
+				const float signed_distance = Math::Dot(plane.normal, center) + plane.distance;
 				if (signed_distance + projected_radius < 0.0f) {
 					return false;
 				}

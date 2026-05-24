@@ -53,7 +53,7 @@ namespace dodoe {
 
         window_handle_ = create_info.window_handle;
 
-        vulkan_backend_ = VulkanBackend::create({create_info.window_handle, create_info.enable_validation});
+        vulkan_backend_ = VulkanBackend::Create({create_info.window_handle, create_info.enable_validation});
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(vulkan_backend_->getInstance()));
@@ -100,7 +100,7 @@ namespace dodoe {
 		}
         destroySwapchainSemaphores();
         device_ = nullptr;
-        VulkanBackend::destroy(vulkan_backend_);
+        VulkanBackend::Destroy(vulkan_backend_);
     }
 
     void RhiContext::createSwapchainTextures() {

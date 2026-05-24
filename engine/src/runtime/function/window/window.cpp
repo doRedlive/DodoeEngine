@@ -9,19 +9,7 @@
 
 namespace dodoe {
 
-    Scope<Window> Window::create(const WindowProperty& props) {
-        auto context = create_scope<Window>();
-        context->initialize(props);
-        return context;
-    }
-
-    void Window::destroy(Scope<Window>& window) {
-        if (!window) return;
-        window->shutdown();
-        window.reset();
-    }
-
-    void Window::initialize(const WindowProperty& prop) {
+    bool Window::initialize(const WindowProperty& prop) {
         prop_ = prop;
         if (prop_.backend_api == RenderApiType::OpenGL) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
@@ -43,7 +31,8 @@ namespace dodoe {
 
         if (prop_.custom_titlebar) {
             glfwSetTitlebarHitTestCallback(window_, [](GLFWwindow* native_window, int x, int y, int* hit) {});
-        } 
+        }
+        return window_ != nullptr;
     }
 
     void Window::swapBuffers() {

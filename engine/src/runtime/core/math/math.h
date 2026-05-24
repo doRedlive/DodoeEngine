@@ -1,9 +1,6 @@
-//
-// Created by Redlive on 2026/3/21.
-//
+// do@Redlive
 
-#ifndef DODOE_MATH_H
-#define DODOE_MATH_H
+#pragma once
 
 #include "dopch.h"
 
@@ -19,71 +16,69 @@ namespace dodoe {
     public:
         static constexpr float PI = 3.1415926535f;
 
-        static float rad2deg(float rad) {
+        static float Rad2Deg(float rad) {
             return rad * 180.0f / PI;
         }
 
         template <typename... Args>
-        [[nodiscard]] static auto max(Args&&... args) { return glm::max(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Max(Args&&... args) { return (glm::max)(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto min(Args&&... args) { return glm::min(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Min(Args&&... args) { return (glm::min)(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto clamp(Args&&... args) { return glm::clamp(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Clamp(Args&&... args) { return glm::clamp(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto ortho(Args&&... args) { return glm::ortho(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Ortho(Args&&... args) { return glm::ortho(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto perspective(Args&&... args) { return glm::perspective(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Perspective(Args&&... args) { return glm::perspective(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto lookAt(Args&&... args) { return glm::lookAt(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto LookAt(Args&&... args) { return glm::lookAt(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto translate(Args&&... args) { return glm::translate(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Translate(Args&&... args) { return glm::translate(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto scale(Args&&... args) { return glm::scale(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Scale(Args&&... args) { return glm::scale(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto rotate(Args&&... args) { return glm::rotate(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Rotate(Args&&... args) { return glm::rotate(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto radians(Args&&... args) { return glm::radians(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Radians(Args&&... args) { return glm::radians(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto degrees(Args&&... args) { return glm::degrees(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Degrees(Args&&... args) { return glm::degrees(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto dot(Args&&... args) { return glm::dot(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Dot(Args&&... args) { return glm::dot(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto cross(Args&&... args) { return glm::cross(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Cross(Args&&... args) { return glm::cross(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto length(Args&&... args) { return glm::length(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Length(Args&&... args) { return glm::length(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto normalize(Args&&... args) { return glm::normalize(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Normalize(Args&&... args) { return glm::normalize(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto distance(Args&&... args) { return glm::distance(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Distance(Args&&... args) { return glm::distance(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto inverse(Args&&... args) { return glm::inverse(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Inverse(Args&&... args) { return glm::inverse(std::forward<Args>(args)...); }
 
         template <typename... Args>
-        [[nodiscard]] static auto transpose(Args&&... args) { return glm::transpose(std::forward<Args>(args)...); }
+        [[nodiscard]] static auto Transpose(Args&&... args) { return glm::transpose(std::forward<Args>(args)...); }
 
         template <typename T>
-        [[nodiscard]] static constexpr T epsilon() { return glm::epsilon<T>(); }
+        [[nodiscard]] static constexpr T Epsilon() { return glm::epsilon<T>(); }
 
         template <typename T>
-        [[nodiscard]] static auto epsilonEqual(const T& x, const T& y, const T& epsilon) { return glm::epsilonEqual(x, y, epsilon); }
+        [[nodiscard]] static auto EpsilonEqual(const T& x, const T& y, const T& epsilon) { return glm::epsilonEqual(x, y, epsilon); }
     };
 
 } // dodoe
-
-#endif//DODOE_MATH_H

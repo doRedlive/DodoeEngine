@@ -3,11 +3,167 @@
 #include "script_class.h"
 
 #include "script_engine.h"
+#include "runtime/core/meta/serializer/serializer.h"
 #include "mono/metadata/debug-helpers.h"
 #include "mono/metadata/attrdefs.h"
+#include "mono/metadata/class.h"
 #include "mono/utils/mono-publib.h"
 
 namespace dodoe {
+
+    namespace {
+
+        Json WriteScriptFieldValue(const MonoComponentInstance& instance, const ScriptField& field) {
+            switch (field.type) {
+                case ScriptFieldType::Float:  return Json(instance.getFieldValue<float>(field.name));
+                case ScriptFieldType::Double: return Json(instance.getFieldValue<double>(field.name));
+                case ScriptFieldType::Bool:   return Json(instance.getFieldValue<bool>(field.name));
+                case ScriptFieldType::Char:   return Json(instance.getFieldValue<char>(field.name));
+                case ScriptFieldType::Byte:   return Json(instance.getFieldValue<int8_t>(field.name));
+                case ScriptFieldType::Short:  return Json(instance.getFieldValue<int16_t>(field.name));
+                case ScriptFieldType::Int:    return Json(instance.getFieldValue<int32_t>(field.name));
+                case ScriptFieldType::Long:   return Json(instance.getFieldValue<int64_t>(field.name));
+                case ScriptFieldType::UByte:  return Json(instance.getFieldValue<uint8_t>(field.name));
+                case ScriptFieldType::UShort: return Json(instance.getFieldValue<uint16_t>(field.name));
+                case ScriptFieldType::UInt:   return Json(instance.getFieldValue<uint32_t>(field.name));
+                case ScriptFieldType::ULong:  return Json(instance.getFieldValue<uint64_t>(field.name));
+                case ScriptFieldType::Vector2:return Serializer::write(instance.getFieldValue<Vector2f>(field.name));
+                case ScriptFieldType::Vector3:return Serializer::write(instance.getFieldValue<Vector3f>(field.name));
+                case ScriptFieldType::Vector4:return Serializer::write(instance.getFieldValue<Vector4f>(field.name));
+                case ScriptFieldType::Entity: {
+                    MonoObject* entity_object = nullptr;
+                    mono_field_get_value(instance.getManagedInstance(), field.mono_field, &entity_object);
+                    if (!entity_object) {
+                        return Json(nullptr);
+                    }
+
+                    MonoClass* entity_class = mono_object_get_class(entity_object);
+                    MonoClassField* id_field = entity_class ? mono_class_get_field_from_name(entity_class, "ID") : nullptr;
+                    uint64_t entity_id = 0;
+                    if (id_field) {
+                        mono_field_get_value(entity_object, id_field, &entity_id);
+                    }
+                    return Json(entity_id);
+                }
+                case ScriptFieldType::None:
+                default:
+                    return Json();
+            }
+        }
+
+        bool ReadScriptFieldValue(MonoComponentInstance& instance, const ScriptField& field, const Json& json_context) {
+            switch (field.type) {
+                case ScriptFieldType::Float: {
+                    float value = json_context.get<float>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Double: {
+                    double value = json_context.get<double>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Bool: {
+                    bool value = json_context.get<bool>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Char: {
+                    char value = json_context.get<char>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Byte: {
+                    int8_t value = json_context.get<int8_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Short: {
+                    int16_t value = json_context.get<int16_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Int: {
+                    int32_t value = json_context.get<int32_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Long: {
+                    int64_t value = json_context.get<int64_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::UByte: {
+                    uint8_t value = json_context.get<uint8_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::UShort: {
+                    uint16_t value = json_context.get<uint16_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::UInt: {
+                    uint32_t value = json_context.get<uint32_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::ULong: {
+                    uint64_t value = json_context.get<uint64_t>();
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Vector2: {
+                    Vector2f value{};
+                    Serializer::read(json_context, value);
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Vector3: {
+                    Vector3f value{};
+                    Serializer::read(json_context, value);
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Vector4: {
+                    Vector4f value{};
+                    Serializer::read(json_context, value);
+                    instance.setFieldValue(field.name, value);
+                    return true;
+                }
+                case ScriptFieldType::Entity: {
+                    MonoObject* entity_object = nullptr;
+                    if (!json_context.is_null()) {
+                        const uint64_t entity_id = json_context.get<uint64_t>();
+                        if (entity_id != 0) {
+                            MonoClass* entity_class = mono_class_from_name(instance.getScriptClass()->getEngine()->getCoreImage(), "GreenCake", "Entity");
+                            if (!entity_class) {
+                                return false;
+                            }
+
+                            entity_object = mono_object_new(instance.getScriptClass()->getEngine()->getCoreDomain(), entity_class);
+                            if (!entity_object) {
+                                return false;
+                            }
+
+                            MonoClassField* id_field = mono_class_get_field_from_name(entity_class, "ID");
+                            if (!id_field) {
+                                return false;
+                            }
+                            mono_field_set_value(entity_object, id_field, const_cast<uint64_t*>(&entity_id));
+                        }
+                    }
+
+                    mono_field_set_value(instance.getManagedInstance(), field.mono_field, entity_object);
+                    return true;
+                }
+                case ScriptFieldType::None:
+                default:
+                    return false;
+            }
+        }
+
+    } // namespace
 
     ScriptFieldType MonoType2ScriptFieldType(MonoType* mono_type) {
         const auto mono_type_name = std::string(mono_type_get_name(mono_type));
@@ -102,6 +258,36 @@ namespace dodoe {
 
     MonoComponentInstance::MonoComponentInstance(const Ref<ScriptClass>& script_class, MonoObject* instance) :
         m_script_class(script_class), m_instance(instance) {
+    }
+
+    Json MonoComponentInstance::serializeFields() const {
+        Json json = Json::object();
+        if (!m_instance || !m_script_class) {
+            return json;
+        }
+
+        for (const auto& [field_name, field] : m_script_class->getFields()) {
+            json[field_name] = WriteScriptFieldValue(*this, field);
+        }
+
+        return json;
+    }
+
+    bool MonoComponentInstance::deserializeFields(const Json& json_context) {
+        if (!m_instance || !m_script_class || !json_context.is_object()) {
+            return false;
+        }
+
+        for (const auto& [field_name, field] : m_script_class->getFields()) {
+            if (!json_context.contains(field_name)) {
+                continue;
+            }
+            if (!ReadScriptFieldValue(*this, field, json_context.at(field_name))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool MonoComponentInstance::getFieldValueInternal(const std::string& name, void* buffer) const {

@@ -19,6 +19,7 @@ namespace dodoe {
     public:
         static void Initialize(ScriptEngine* engine);
         static void Shutdown();
+
         static void Register();
 
     private:

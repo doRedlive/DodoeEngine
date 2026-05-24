@@ -114,19 +114,7 @@ namespace dodoe {
 
     }
 
-    Scope<PhysicsDebugger> PhysicsDebugger::create(const PhysicsDebuggerCreateInfo& create_info) {
-        auto context = create_scope<PhysicsDebugger>();
-        context->initialize(create_info);
-        return context;
-    }
-
-    void PhysicsDebugger::destroy(Scope<PhysicsDebugger>& debugger) {
-        if (!debugger) return;
-        debugger->shutdown();
-        debugger.reset();
-    }
-
-    void PhysicsDebugger::initialize(const PhysicsDebuggerCreateInfo& create_info) {
+    bool PhysicsDebugger::initialize(const PhysicsDebuggerCreateInfo& create_info) {
         debug_draw_context_.line_thickness = std::max(create_info.line_thickness, 0.1f);
         debug_draw_context_.point_size = std::max(create_info.point_size, 0.1f);
         debug_draw_context_.axis_length = std::max(create_info.axis_length, 0.1f);
@@ -156,6 +144,7 @@ namespace dodoe {
         debug_draw_.drawFrictionImpulses = false;
         debug_draw_.drawIslands = false;
         debug_draw_.context = &debug_draw_context_;
+        return true;
     }
 
     void PhysicsDebugger::shutdown() {

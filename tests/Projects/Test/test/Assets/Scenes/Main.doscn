@@ -1,0 +1,28 @@
+{
+    "m_entities": [
+        {
+            "m_mono_components": [],
+            "m_name": "Primary Camera",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2211349612122983034,\"name\":\"Primary Camera\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"id\":1711541906,\"tag\":\"PrimaryCamera\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"background\":[1.0,1.0,1.0,1.0],\"type\":2,\"zoom\":1.0}",
+                    "m_type_name": "Camera2dComponent"
+                }
+            ],
+            "m_uuid": 2211349612122983034
+        }
+    ],
+    "m_name": "Main"
+}

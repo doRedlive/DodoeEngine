@@ -37,19 +37,18 @@ namespace dodoe {
             : width(w), height(h), title(t), custom_titlebar(custom_titlebar), resizeable(resizeable) , backend_api(RenderApiType::None) {}
     };
 
-    class Window {
+    class Window : public Managed<Window, WindowProperty> {
+        friend class Managed<Window, WindowProperty>;
         friend class WindowManager;
         GLFWwindow* window_ {nullptr};
         WindowProperty prop_ {};
     public:
-        static Scope<Window> create(const WindowProperty& prop);
-        static void destroy(Scope<Window>& window);
 
-        [[nodiscard]] void initialize(const WindowProperty& prop);
+        [[nodiscard]] bool initialize(const WindowProperty& prop);
         void shutdown();
         void swapBuffers();
 
-        [[nodiscard]] GLFWwindow* nativeWindow() const { return window_;}
+        [[nodiscard]] GLFWwindow* getNativeWindow() const { return window_;}
         [[nodiscard]] HWND handle() const;
         [[nodiscard]] int width() const { return prop_.width; }
         [[nodiscard]] int height() const { return prop_.height; }

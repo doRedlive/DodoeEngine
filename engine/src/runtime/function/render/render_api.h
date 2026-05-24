@@ -16,6 +16,11 @@ namespace dodoe {
         DX12,
     };
 
+    enum class RenderGraphMode {
+        ThreeD,
+        TwoD,
+    };
+
     struct RenderApiInitInfo {
         RenderApiType api_type;
     };

@@ -13,6 +13,8 @@
 #include "framework/descriptor_table_manager.h"
 #include "framework/viewport_manager.h"
 
+#include "render_api.h"
+
 #include "runtime/function/ui/ui_system.h"
 #include "runtime/function/window/window_manager.h"
 
@@ -22,6 +24,7 @@ namespace dodoe {
         WindowManager* window_manager;
         UiSystem* ui_system;
         RenderApiType backend_api;
+        RenderGraphMode render_graph_mode{ RenderGraphMode::ThreeD };
     };
 
     class RenderSystem {
@@ -34,6 +37,7 @@ namespace dodoe {
 
         WindowManager* m_window_manager{nullptr};
         UiSystem* m_ui_system{nullptr};
+        RenderGraphMode m_render_graph_mode{ RenderGraphMode::ThreeD };
     public:
         static Scope<RenderSystem> Create(const RenderSystemCreateInfo& create_info);
         static void Destroy(Scope<RenderSystem>& system);
@@ -50,6 +54,9 @@ namespace dodoe {
         bool initialize(const RenderSystemCreateInfo& info);
         void shutdown();
         void swapLogicRenderContext();
+        void buildRenderGraph(RenderGraphMode mode);
+        void buildRenderGraph3D();
+        void buildRenderGraph2D();
     };
 
 }

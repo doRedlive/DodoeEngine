@@ -27,6 +27,7 @@ set(DODOE_EDITOR_HEADS "${_DODOE_EDITOR_HEADS}" CACHE STRING "Editor headers for
 add_executable(Cakery EXCLUDE_FROM_ALL ${CAKERY_ALL_SOURCES})
 
 target_link_libraries(Cakery PRIVATE DodoeRuntime)
+target_compile_definitions(Cakery PRIVATE DODOE_EDITOR)
 
 if(TARGET GreenCake)
     add_dependencies(Cakery GreenCake)

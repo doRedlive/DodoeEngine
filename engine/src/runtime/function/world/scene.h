@@ -10,13 +10,15 @@
 
 namespace dodoe {
     class World;
+    class SceneRes;
 
     struct SceneCreateInfo {
         World& world;
         std::string name;
     };
 
-    class Scene {
+    class Scene : public Managed<Scene, SceneCreateInfo> {
+        friend class Managed<Scene, SceneCreateInfo>;
         friend class World;
         friend class Entity;
         template<typename T>
@@ -27,9 +29,8 @@ namespace dodoe {
         std::string m_name;
         std::unordered_map<Uuid, Entity> m_entity_umap{};
     public: 
-        static Scope<Scene> create(const SceneCreateInfo& info);
-        static void destroy(Scope<Scene>& scene);
-        
+
+        Scene(const SceneCreateInfo& info);
         Scene(World& world, const std::string& name);
         ~Scene() = default;
         Scene(const Scene&) = delete;
@@ -48,6 +49,8 @@ namespace dodoe {
         void onSimulationStart();
         void onSimulationStop();
         void onSimulationUpdate(float delta_time);
+        [[nodiscard]] SceneRes serialize() const;
+        void deserialize(const SceneRes& scene_res);
 
         [[nodiscard]] const std::string& getName() const { return m_name; }
         void setName(const std::string& name) { m_name = name; }
@@ -69,7 +72,7 @@ namespace dodoe {
         template<typename T>
         void onComponentAdd(Entity entity, T& component) { }
 
-        bool initialize();
+        bool initialize(const SceneCreateInfo& info);
         void shutdown();
     };
 

@@ -24,26 +24,23 @@ namespace dodoe {
         }
     }
 
-    ResourceManager& ResourceManager::self() {
+    ResourceManager& ResourceManager::Self() {
         static ResourceManager instance;
         return instance;
     }
 
     void ResourceManager::initialize() {        
-        shader_library_ = ShaderLibrary::create({});
-        animation_library_ = AnimationLibrary::create({});
-        mesh_loader_ = MeshLoader::create();
-        asset_manager_ = AssetManager::Create();
-        if (asset_manager_) {
-            asset_manager_->loadAssets();
-        }
+        shader_library_ = ShaderLibrary::Create({});
+        animation_library_ = AnimationLibrary::Create({});
+        mesh_loader_ = MeshLoader::Create({});
+        asset_manager_ = AssetManager::Create({});
     }
 
     void ResourceManager::shutdown() {
         AssetManager::Destroy(asset_manager_);
-        ShaderLibrary::destroy(shader_library_);
-        AnimationLibrary::destroy(animation_library_);
-        MeshLoader::destroy(mesh_loader_);
+        ShaderLibrary::Destroy(shader_library_);
+        AnimationLibrary::Destroy(animation_library_);
+        MeshLoader::Destroy(mesh_loader_);
     }
 
     Ref<Shader> ResourceManager::load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path) {

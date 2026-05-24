@@ -11,12 +11,21 @@ namespace fs = std::filesystem;
 namespace dodoe {
     class FileSystem {
     public:
-        static fs::path asset_path;
-        static fs::path ScriptModulePath;
+        inline static fs::path EngineRootPath = fs::path(DODOE_ROOT).make_preferred();
+        inline static fs::path EngineResPath = EngineRootPath / "engine" / "res";;
 
-        static std::vector<char> readFile(const std::string& path);
+        [[nodiscard]] static const std::string& GetCWD();
+        [[nodiscard]] static const fs::path& GetDocumentsPath();
+        [[nodiscard]] static const std::string GetDocumentsPathString();
+        [[nodiscard]] static const fs::path& GetEngineRootPath();
+        [[nodiscard]] static const std::string GetEngineRootPathString();
+        [[nodiscard]] static const fs::path& GetEngineResPath();
+        [[nodiscard]] static const std::string GetEngineResPathString();
 
-        static const std::string& cwd();
+        [[nodiscard]] static bool FileExists(const fs::path& path);
+        [[nodisacrd]] static bool DirExists(const fs::path& path);
+
+        [[nodiscard]] static std::string NormalizePath(const std::filesystem::path& path);
 
         static std::string str2normalize_path(const std::string& str);
 
@@ -26,6 +35,7 @@ namespace dodoe {
         static bool TraverseDirectory(std::vector<std::string>& out_paths, const fs::path& target_dir, const std::vector<std::string>& extensions, bool case_sensitive = false);
 
     private:
-        static std::string cwd_;
+        static std::string s_cwd;
+        static fs::path s_documents_path;
     };
 } // dodoe

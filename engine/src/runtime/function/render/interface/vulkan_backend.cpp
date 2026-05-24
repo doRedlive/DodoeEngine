@@ -1,6 +1,4 @@
-//
-// Created by Redlive on 2026/4/5.
-//
+// do@Redlive
 
 #include "vulkan_backend.h"
 
@@ -11,43 +9,23 @@ namespace dodoe {
                                                         VkDebugUtilsMessageTypeFlagsEXT,
                                                         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                         void*) {
-		DO_ERROR("Validation layer: {}.", pCallbackData->pMessage);
-        return VK_FALSE;
+			DO_ERROR("Validation layer: {}.", pCallbackData->pMessage);
+			return VK_FALSE;
 		}
 	}
 
-	Scope<VulkanBackend> VulkanBackend::create(const VulkanBackendCreateInfo& info) {
-		auto context = std::make_unique<VulkanBackend>();
-		context->initialize(info);
-		return context;
-	}
-
-	void VulkanBackend::destroy(Scope<VulkanBackend>& context) {
-		if (!context) return;
-		context->shutdown();
-		context.reset();
-	}
-
-	void VulkanBackend::initialize(const VulkanBackendCreateInfo& info) {
+	bool VulkanBackend::initialize(const VulkanBackendCreateInfo& info) {
 		enable_validation_layers_ = info.enable_validation && checkValidationLayerSupport();
-		if (info.enable_validation) {
-			DoInfo("enable validation");
-		}
         instance_extensions_ = getRequiredExtensions();
 		createInstance(instance_extensions_.data(), static_cast<int>(instance_extensions_.size()));
-		if (enable_validation_layers_) {
-			DoDebug("Enable Validation Layer");
-			initializeDebugMessenger();
-		}
-		else {
-			DoDebug("Don't enable validation layer");
-		}
+		if (enable_validation_layers_) { initializeDebugMessenger(); }
 		createSurface(info.window_handle);
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createSwapchain(info.window_handle);
 		createCommandPool();
 		createSwapchainImageViews();
+		return true;
 	}
 
 	void VulkanBackend::shutdown() {
@@ -76,22 +54,22 @@ namespace dodoe {
 		}
 
 		if (surface_ != VK_NULL_HANDLE) {
-			vkDestroySurfaceKHR(instance_, surface_, nullptr);
+			vkDestroySurfaceKHR(m_instance, surface_, nullptr);
 			surface_ = VK_NULL_HANDLE;
 		}
 
 		if (debug_messenger_ != VK_NULL_HANDLE) {
 			auto destroy_debug = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-				vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+				vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT"));
 			if (destroy_debug) {
-				destroy_debug(instance_, debug_messenger_, nullptr);
+				destroy_debug(m_instance, debug_messenger_, nullptr);
 			}
 			debug_messenger_ = VK_NULL_HANDLE;
 		}
 
-		if (instance_ != VK_NULL_HANDLE) {
-			vkDestroyInstance(instance_, nullptr);
-			instance_ = VK_NULL_HANDLE;
+		if (m_instance != VK_NULL_HANDLE) {
+			vkDestroyInstance(m_instance, nullptr);
+			m_instance = VK_NULL_HANDLE;
 		}
 	}
 
@@ -99,12 +77,12 @@ namespace dodoe {
 		uint32_t count;
 		vkEnumerateInstanceLayerProperties(&count, nullptr);
 
-		std::vector<VkLayerProperties> available_layers_(count);
-		vkEnumerateInstanceLayerProperties(&count, available_layers_.data());
+		std::vector<VkLayerProperties> available_layers(count);
+		vkEnumerateInstanceLayerProperties(&count, available_layers.data());
 
 		for (auto& valid : validation_layers_) {
 			bool found{false};
-			for (const auto& avail : available_layers_) {
+			for (const auto& avail : available_layers) {
 				if (strcmp(valid, avail.layerName) == 0) {
 					found = true;
 					break;
@@ -151,22 +129,22 @@ namespace dodoe {
 			create_info.pNext = nullptr;
 		}
 
-		VkResult result = vkCreateInstance(&create_info, nullptr, &instance_);
+		VkResult result = vkCreateInstance(&create_info, nullptr, &m_instance);
 		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createInstance failed with VkResult={}", static_cast<int>(result));
 	}
 
 	void VulkanBackend::createSurface(GLFWwindow* window_handle) {
-		VkResult result = glfwCreateWindowSurface(instance_, window_handle, nullptr, &surface_);
+		VkResult result = glfwCreateWindowSurface(m_instance, window_handle, nullptr, &surface_);
 		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createSurface failed with VkResult={}", static_cast<int>(result));
 	}
 
 	void VulkanBackend::pickPhysicalDevice() {
 		uint32_t gpu_count;
-		vkEnumeratePhysicalDevices(instance_, &gpu_count, nullptr);
+		vkEnumeratePhysicalDevices(m_instance, &gpu_count, nullptr);
 		DO_ASSERT(gpu_count > 0, "No available GPU found!");
 
 		std::vector<VkPhysicalDevice> gpus(gpu_count);
-		vkEnumeratePhysicalDevices(instance_, &gpu_count, gpus.data());
+		vkEnumeratePhysicalDevices(m_instance, &gpu_count, gpus.data());
 
 		int use_gpu = 0;
 		for (int i = 0; i < gpu_count; i++) {
@@ -485,9 +463,9 @@ namespace dodoe {
 		create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 		create_info.pfnUserCallback = VulkanDebugCallback;
 
-		auto fun = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT");
+		auto fun = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
 		if (fun) {
-			fun(instance_, &create_info, nullptr, &debug_messenger_);
+			fun(m_instance, &create_info, nullptr, &debug_messenger_);
 		}
 		else {
 			DO_ERROR("Create debug messenger failed!");

@@ -34,7 +34,7 @@ namespace dodoe {
     void TimeSystem::set_time_scale(float time_scale) {
         if (time_scale < 0.0f) {
             time_scale = 1.0f;
-            DoWarn("TimeSystem scale cannot be negative. Resetting to 1.0f.");
+            DO_WARN("TimeSystem scale cannot be negative. Resetting to 1.0f.");
         }
         time_scale_ = time_scale;
     }

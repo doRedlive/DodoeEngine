@@ -77,7 +77,7 @@ namespace dodoe {
             }
             resolved_path = resolved_path.lexically_normal();
 
-            const auto texture_res = ResourceManager::self().get_texture(resolved_path.string(), resolved_path.string());
+            const auto texture_res = ResourceManager::Self().get_texture(resolved_path.string(), resolved_path.string());
             return texture_res.id;
         }
 

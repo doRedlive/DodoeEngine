@@ -16,7 +16,8 @@ namespace dodoe {
         ScriptEngine* script_engine;
     };
 
-    class ScriptRuntime {
+    class ScriptRuntime : public Managed<ScriptRuntime, ScriptRuntimeCreateInfo> {
+        friend class Managed<ScriptRuntime, ScriptRuntimeCreateInfo>;
         ScriptEngine* m_script_engine{nullptr};
 
         MonoClass* m_class_system{nullptr};
@@ -25,11 +26,10 @@ namespace dodoe {
         std::unordered_map<std::string, Ref<ScriptClass>> m_component_class_umap;
         std::unordered_map<ui64, std::vector<Ref<MonoComponentInstance>>> m_component_instance_umap;
     public:
-        static Scope<ScriptRuntime> create(const ScriptRuntimeCreateInfo& info);
-        static void destroy(Scope<ScriptRuntime>& runtime);
 
         void loadMonoComponentClasses();
         void loadAssemblyClasses();
+        void reloadAssemblyClasses();
 
         void loadEntityMonoComponentsFromManaged(uint64_t entity_uuid);
         bool addEntityMonoComponentFromManaged(uint64_t entity_uuid, const std::string& full_name);

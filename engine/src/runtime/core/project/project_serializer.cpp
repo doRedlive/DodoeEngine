@@ -5,6 +5,7 @@
 #include "project_serializer.h"
 
 #include <fstream>
+#include <filesystem>
 #include <nlohmann/json.hpp>
 
 using Json = nlohmann::json;
@@ -14,13 +15,16 @@ namespace dodoe {
 
 	bool ProjectSerializer::serialize(const std::filesystem::path& file_path) {
 		const auto& config = project_->config();
+		const std::filesystem::path configured_project_path = config.project_path.empty() ? file_path.filename() : config.project_path;
+		const std::filesystem::path project_path =
+			configured_project_path.is_absolute() ? configured_project_path.filename() : configured_project_path;
 
 		Json root;
 		root["Project"] = {
 			{"Name", config.name},
-			{"StartScene", config.start_scene_path.string()},
+			{"ProjectPath", project_path.generic_string()},
 			{"AssetDirectory", config.asset_directory.string()},
-			{"ScriptModulePath", config.script_module_path.string()}
+			{"StartSceneName", config.start_scene_name}
 		};
 
 		std::ofstream fout(file_path);
@@ -57,16 +61,25 @@ namespace dodoe {
 
 		const auto& project_node = data["Project"];
 
-		if (!project_node.contains("Name") || !project_node.contains("StartScene") ||
-			!project_node.contains("AssetDirectory") || !project_node.contains("ScriptModulePath")) {
+		if (!project_node.contains("Name") || !project_node.contains("AssetDirectory")) {
 			DO_ERROR("Project file missing required fields: {}", file_path.string());
 			return false;
 		}
 
 		config.name = project_node["Name"].get<std::string>();
-		config.start_scene_path = project_node["StartScene"].get<std::string>();
+		if (project_node.contains("ProjectPath") && project_node["ProjectPath"].is_string()) {
+			config.project_path = project_node["ProjectPath"].get<std::string>();
+		} else {
+			config.project_path = file_path.lexically_normal();
+		}
 		config.asset_directory = project_node["AssetDirectory"].get<std::string>();
-		config.script_module_path = project_node["ScriptModulePath"].get<std::string>();
+		if (project_node.contains("StartSceneName") && project_node["StartSceneName"].is_string()) {
+			config.start_scene_name = project_node["StartSceneName"].get<std::string>();
+		} else if (project_node.contains("StartScene") && project_node["StartScene"].is_string()) {
+			config.start_scene_name = std::filesystem::path(project_node["StartScene"].get<std::string>()).stem().string();
+		} else {
+			config.start_scene_name.clear();
+		}
 
 		return true;
 	}

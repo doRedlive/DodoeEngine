@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2026/1/22.
-//
+// do@Redlive
 
-#ifndef DODOE_COMMON_H
-#define DODOE_COMMON_H
+#pragma once
 
 #include "dopch.h"
 #include "entt/entt.hpp"
@@ -37,5 +34,3 @@ namespace dodoe {
 
 
 } // dodoe
-
-#endif //DODOE_COMMON_H

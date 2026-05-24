@@ -1,5 +1,7 @@
 // do: GreenMuffin
 
+#ifdef DODOE_EDITOR
+
 #include "imgui_pass.h"
 
 #include "../interface/rhi_context.h"
@@ -378,3 +380,5 @@ namespace dodoe {
 	}
 
 } // dodoe
+
+#endif

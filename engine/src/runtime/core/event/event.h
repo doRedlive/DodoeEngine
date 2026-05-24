@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2025/10/18.
-//
+// do@Redlive
 
-#ifndef DODOE_EVENT_H
-#define DODOE_EVENT_H
+#pragma once
 
 #include "dopch.h"
 
@@ -64,13 +61,5 @@ namespace dodoe {
     struct BeforeOneTickEvent {};
     struct AfterOneTickEvent {};
 
-    // struct ViewportChangedEvent {
-    //     Vector2f window_size;
-    //     Vector2f pixel_size;
-
-    //     ViewportChangedEvent(const Vector2f& window, const Vector2f& pixel) : window_size(window), pixel_size(pixel) { }
-    // };
 
 }; // dodoe
-
-#endif //DODOE_EVENT_H

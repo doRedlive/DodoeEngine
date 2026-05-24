@@ -76,7 +76,7 @@ namespace cakery {
         }
 
         std::vector<dodoe::AssetRef> CollectAssetsByType(const dodoe::AssetType type) {
-            auto* asset_manager = dodoe::ResourceManager::self().asset_manager();
+            auto* asset_manager = dodoe::ResourceManager::Self().getAssetManager();
             if (!asset_manager) {
                 return {};
             }
@@ -487,13 +487,13 @@ namespace cakery {
 
         auto* comp_ptr = dodoe::ComponentDB::self().getComponentPtr(m_selected_entity, comp_name);
         if (!comp_ptr) {
-            DoDebug("Could not found {} component value ptr", comp_name);
+            DO_DEBUG("Could not found {} component value ptr", comp_name);
             return;
         }
 
         auto comp_meta = dodoe::TypeMeta::newMetaFromName(comp_name);
         if (!comp_meta.isValid()) {
-            DoDebug("Could not found {} reflection meta type.", comp_name);
+            DO_DEBUG("Could not found {} reflection meta type.", comp_name);
             return;
         }
 

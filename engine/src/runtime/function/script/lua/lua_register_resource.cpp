@@ -61,25 +61,25 @@ namespace dodoe::lua_register_detail {
         dodoe_table["ResourceManager"] = resource_manager_table;
         resource_manager_table.set_function("loadTexture", sol::overload(
             [](const std::string& path) -> TextureRes {
-                return ResourceManager::self().get_texture(path, path);
+                return ResourceManager::Self().get_texture(path, path);
             },
             [](const std::string& id, const std::string& path) -> TextureRes {
-                return ResourceManager::self().get_texture(id, path);
+                return ResourceManager::Self().get_texture(id, path);
             }
         ));
         resource_manager_table.set_function("getTexture", sol::overload(
             [](const std::string& id) -> TextureRes {
-                return ResourceManager::self().get_texture(id);
+                return ResourceManager::Self().get_texture(id);
             },
             [](const std::string& id, const std::string& path) -> TextureRes {
-                return ResourceManager::self().get_texture(id, path);
+                return ResourceManager::Self().get_texture(id, path);
             }
         ));
         resource_manager_table.set_function("loadShader", [](const std::string& name, const std::string& vert_path, const std::string& frag_path) -> Shader* {
-            return ResourceManager::self().load_shader(name, vert_path, frag_path).get();
+            return ResourceManager::Self().load_shader(name, vert_path, frag_path).get();
         });
         resource_manager_table.set_function("getShader", [](const std::string& name) -> Shader* {
-            return ResourceManager::self().get_shader(name).get();
+            return ResourceManager::Self().get_shader(name).get();
         });
 
         resource_manager_table.set_function("createAnimClip2d", sol::overload(
@@ -96,7 +96,7 @@ namespace dodoe::lua_register_detail {
                         ids.push_back(static_cast<identifier>(string2hash(obj.as<std::string>())));
                     }
                 }
-                return ResourceManager::self().create_anim_clip2d(name, ids, false, 100.0f);
+                return ResourceManager::Self().create_anim_clip2d(name, ids, false, 100.0f);
             },
             [](const std::string& name, const sol::table& texture_ids, const bool loop, const float frame_ms) -> AnimClip2dRes {
                 std::vector<identifier> ids;
@@ -111,23 +111,23 @@ namespace dodoe::lua_register_detail {
                         ids.push_back(static_cast<identifier>(string2hash(obj.as<std::string>())));
                     }
                 }
-                return ResourceManager::self().create_anim_clip2d(name, ids, loop, frame_ms);
+                return ResourceManager::Self().create_anim_clip2d(name, ids, loop, frame_ms);
             }
         ));
         resource_manager_table.set_function("getAnimClip2d", sol::overload(
             [](const std::string& name) -> AnimClip2dRes {
-                return ResourceManager::self().get_anim_clip2d(name);
+                return ResourceManager::Self().get_anim_clip2d(name);
             },
             [](const uint32_t id) -> AnimClip2dRes {
-                return ResourceManager::self().get_anim_clip2d(static_cast<identifier>(id));
+                return ResourceManager::Self().get_anim_clip2d(static_cast<identifier>(id));
             }
         ));
         resource_manager_table.set_function("destroyAnimClip2d", sol::overload(
             [](const uint32_t id) -> bool {
-                return ResourceManager::self().destroy_anim_clip2d(static_cast<identifier>(id));
+                return ResourceManager::Self().destroy_anim_clip2d(static_cast<identifier>(id));
             },
             [](const std::string& name) -> bool {
-                return ResourceManager::self().destroy_anim_clip2d(name);
+                return ResourceManager::Self().destroy_anim_clip2d(name);
             }
         ));
     }

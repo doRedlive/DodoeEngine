@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2026/2/20.
-//
+// do@Redlive
 
-#ifndef DODOE_PROJECT_H
-#define DODOE_PROJECT_H
+#pragma once
 
 #include "dopch.h"
 
@@ -12,36 +9,42 @@ namespace dodoe {
 	struct ProjectConfig {
 		std::string name{ "Untitled" };
 
-		std::filesystem::path start_scene_path;
-		std::filesystem::path asset_directory{"tests/Projects/OnlyOne/Assets"};
-		std::filesystem::path script_module_path;
+		std::filesystem::path project_path;
+		std::filesystem::path asset_directory;
+		std::string start_scene_name;
 	};
 
 	class Project {
 	public:
 		static const std::filesystem::path& ProjectDirectory() {
-			return active_project_->project_directory_;
+			return m_active_project->m_project_directory;
 		}
 
 		static std::filesystem::path AssetDirectory() {
-			return ProjectDirectory() / active_project_->config_.asset_directory;
+			return ProjectDirectory() / m_active_project->m_config.asset_directory;
 		}
 
-		ProjectConfig& config() { return config_; }
+		static std::filesystem::path BinariesDirectory() {
+			return ProjectDirectory() / "Binaries";
+		}
 
-		static Ref<Project> ActiveProject() { return active_project_; }
+		static std::filesystem::path ScriptAssemblyPath() {
+			return BinariesDirectory() / (m_active_project->m_config.name + ".dll");
+		}
+
+		ProjectConfig& config() { return m_config; }
+
+		static Ref<Project> ActiveProject() { return m_active_project; }
 
 		static Ref<Project> Create();
 		static Ref<Project> Load(const std::filesystem::path& path);
 		static bool 		Save(const std::filesystem::path& path);
 
 	private:
-		ProjectConfig config_{};
-		std::filesystem::path project_directory_;
+		ProjectConfig m_config{};
+		std::filesystem::path m_project_directory;
 
-		inline static Ref<Project> active_project_;
+		inline static Ref<Project> m_active_project;
 	};
-}
 
-
-#endif//DODOE_PROJECT_H
+} // dodoe

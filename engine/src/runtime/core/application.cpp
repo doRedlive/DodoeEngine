@@ -10,13 +10,13 @@ namespace dodoe {
     Application* Application::m_instance = nullptr;
 
     Application::Application(const ApplicationSpecification& spec) : m_app_spec(spec) {
-        m_context = SystemContext::create({m_app_spec});
+        m_context = SystemContext::Create({m_app_spec});
         m_instance = this;
         m_running = true;
     }
 
     Application::~Application() {
-        SystemContext::destroy(m_context);
+        SystemContext::Destroy(m_context);
         m_instance = nullptr;
         m_running = false;
     }
@@ -31,8 +31,10 @@ namespace dodoe {
 
     void Application::run() {
         EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);
+        if (!IsEditorApplication()) {
+            m_context->startRuntime();
+        }
         m_context->layer_stack.attach();
-        m_context->startRuntime();
 
         while (m_running) {
             EventSystem::Poll();
@@ -42,8 +44,10 @@ namespace dodoe {
             EventSystem::Handle();
         }
 
-        m_context->finalizeRuntime();
         m_context->layer_stack.detach();
+        if (!IsEditorApplication()) {
+            m_context->finalizeRuntime();
+        }
         EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
     }
 

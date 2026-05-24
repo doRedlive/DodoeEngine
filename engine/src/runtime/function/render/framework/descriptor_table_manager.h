@@ -14,7 +14,8 @@ namespace dodoe {
         RhiContext* rhi;
     };
 
-    class DescriptorTableManager {
+    class DescriptorTableManager : public Managed<DescriptorTableManager, DescriptorTableManagerCreateInfo> {
+        friend class Managed<DescriptorTableManager, DescriptorTableManagerCreateInfo>;
         struct BindingSetItemHasher {
             std::size_t operator()(const rhi::BindingSetItem& item) const {
                 size_t hash = 0;
@@ -41,21 +42,18 @@ namespace dodoe {
         rhi::DescriptorTableHandle descriptor_table_{};
         std::vector<rhi::BindingSetItem> descriptors_{};
         std::unordered_map<rhi::BindingSetItem, DescriptorIndex, BindingSetItemHasher, BindingSetItemsEqual> descriptor_index_umap_{};
-        std::vector<bool> m_AllocatedDescriptors{};
         std::vector<bool> allocated_descriptors_{};
         int search_start_ = 0;
 
         RhiContext* rhi_{nullptr};
 
     public:
-        static Scope<DescriptorTableManager> create(const DescriptorTableManagerCreateInfo& info);
-        static void destroy(Scope<DescriptorTableManager>& manager);
 
         DescriptorIndex createDescriptor(rhi::BindingSetItem item);
         [[nodiscard]] rhi::IDescriptorTable* getDescriptorTable() const { return descriptor_table_; }
 
     private:
-        void initialize(const DescriptorTableManagerCreateInfo& info);
+        bool initialize(const DescriptorTableManagerCreateInfo& info);
         void shutdown();
     };
 

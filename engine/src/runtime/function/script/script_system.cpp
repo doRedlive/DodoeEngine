@@ -9,18 +9,6 @@
 
 namespace dodoe {
 
-    Scope<ScriptSystem> ScriptSystem::create(const ScriptSystemCreateInfo& info) {
-        if (auto context = create_scope<ScriptSystem>(); context->initialize(std::move(info)))
-            return context;
-        return nullptr;
-    }
-
-    void ScriptSystem::destroy(Scope<ScriptSystem>& system) {
-        if (!system) return;
-        system->shutdown();
-        system.reset();
-    }
-
     bool ScriptSystem::executeLua(const std::filesystem::path& script_file) const {
         if (m_lua_engine) {
             return m_lua_engine->execute(script_file);
@@ -28,20 +16,33 @@ namespace dodoe {
         return false;
     }
 
-    bool ScriptSystem::initialize(const ScriptSystemCreateInfo& create_info) {
-        m_script_engine = ScriptEngine::create({});
-        if (m_script_engine) {
-            m_script_runtime = ScriptRuntime::create({m_script_engine.get()});
-            ScriptGlue::Initialize(m_script_engine.get());
-            ScriptGlue::Register();
-
-            if (m_script_runtime) {
-                m_script_runtime->loadAssemblyClasses();
-            }
-        } else {
-            ScriptGlue::Initialize(nullptr);
-            DoWarn("ScriptEngine failed to initialize. Managed scripting will be disabled.");
+    bool ScriptSystem::reloadScripts() {
+        const bool reloaded = m_script_engine->reloadScripts();
+        if (!reloaded) {
+            return false;
         }
+
+        m_script_runtime->reloadAssemblyClasses();
+        ScriptGlue::Register();
+        return true;
+    }
+
+    bool ScriptSystem::initialize(const ScriptSystemCreateInfo& create_info) {
+        m_script_engine = ScriptEngine::Create({});
+        if (!m_script_engine) {
+            DO_ASSERT(false, "SriptEngine initialize failed!");
+            return false;
+        }
+        m_script_runtime = ScriptRuntime::Create({m_script_engine.get()});
+        if (!m_script_runtime) {
+            DO_ASSERT(false, "ScriptRuntime initialize failed!"); 
+            return false;
+        }
+
+        ScriptGlue::Initialize(m_script_engine.get());
+        ScriptGlue::Register();
+
+        m_script_runtime->reloadAssemblyClasses();
 
         m_lua_engine = create_scope<LuaScriptEngine>();
         m_lua_engine->initialize();
@@ -51,8 +52,8 @@ namespace dodoe {
 
     void ScriptSystem::shutdown() {
         ScriptGlue::Shutdown();
-        ScriptRuntime::destroy(m_script_runtime);
-        ScriptEngine::destroy(m_script_engine);
+        ScriptRuntime::Destroy(m_script_runtime);
+        ScriptEngine::Destroy(m_script_engine);
         if (m_lua_engine) {
             m_lua_engine->shutdown();
             m_lua_engine.reset();

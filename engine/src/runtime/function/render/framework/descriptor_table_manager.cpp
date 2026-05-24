@@ -6,19 +6,7 @@
 
 namespace dodoe {
 
-    Scope<DescriptorTableManager> DescriptorTableManager::create(const DescriptorTableManagerCreateInfo& info) {
-        auto manager = create_scope<DescriptorTableManager>();
-        manager->initialize(info);
-        return manager;
-    }
-
-    void DescriptorTableManager::destroy(Scope<DescriptorTableManager>& manager) {
-        if (!manager) return;
-        manager->shutdown();
-        manager.reset();
-    }
-
-    void DescriptorTableManager::initialize(const DescriptorTableManagerCreateInfo& info) {
+    bool DescriptorTableManager::initialize(const DescriptorTableManagerCreateInfo& info) {
         rhi_ = info.rhi;
 
         rhi::BindlessLayoutDesc bindless_layout_desc;
@@ -35,6 +23,7 @@ namespace dodoe {
         allocated_descriptors_.resize(capacity);
         descriptors_.resize(capacity);
         memset(descriptors_.data(), 0, sizeof(rhi::BindingSetItem) * capacity);
+        return descriptor_table_ != nullptr;
     }
 
     void DescriptorTableManager::shutdown() {
@@ -47,7 +36,6 @@ namespace dodoe {
         descriptors_.clear();
         descriptor_index_umap_.clear();
         allocated_descriptors_.clear();
-        m_AllocatedDescriptors.clear();
         search_start_ = 0;
         descriptor_table_ = nullptr;
         rhi_ = nullptr;

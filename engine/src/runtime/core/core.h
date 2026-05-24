@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2026/3/5.
-//
+// do@Redlive
 
-#ifndef DODOE_MACROS_H
-#define DODOE_MACROS_H
+#pragma once
 
 #include "runtime/platform/platform_detection.h"
 
@@ -25,5 +22,3 @@
 
 #define DO_EXPAND_MACRO(x) x
 #define DO_STRINGIFY_MACRO(x) #x
-
-#endif//DODOE_MACROS_H

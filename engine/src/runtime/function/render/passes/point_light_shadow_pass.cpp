@@ -36,6 +36,7 @@ namespace dodoe {
 			return;
 		}
 
+		// TODO: FIXME;
 		std::vector<Ref<PointLight>> point_lights;
 		std::vector<Vector3f> point_light_positions;
 		point_lights.reserve(kMaxPointLightCount);
@@ -167,9 +168,7 @@ namespace dodoe {
 
 	void PointLightShadowPass::onViewportResize(const Vector2i& viewport_extent) {
 		(void)viewport_extent;
-		if (m_shadow_target) {
-			createFramebuffer();
-		}
+		if (m_shadow_target) { createFramebuffer(); }
 		m_graphics_pipeline = nullptr;
 	}
 

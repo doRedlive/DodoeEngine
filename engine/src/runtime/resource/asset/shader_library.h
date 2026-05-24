@@ -73,11 +73,10 @@ namespace dodoe {
 
     };
 
-    class ShaderLibrary {
+    class ShaderLibrary : public Managed<ShaderLibrary, ShaderLibraryCreateInfo> {
+        friend class Managed<ShaderLibrary, ShaderLibraryCreateInfo>;
     public:
-        static Scope<ShaderLibrary> create(ShaderLibraryCreateInfo create_info);
-        static void destroy(Scope<ShaderLibrary>& shader_library);
-        
+
         Ref<Shader> load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path);
         
         [[nodiscard]] Ref<Shader> get_shader(const std::string& name);
@@ -86,7 +85,7 @@ namespace dodoe {
         std::unordered_map<identifier, ShaderRes> shader_umap_;
 
         void shutdown();
-        void initialize(ShaderLibraryCreateInfo init_info);
+        bool initialize(const ShaderLibraryCreateInfo& init_info);
     };
 
 }

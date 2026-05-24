@@ -22,11 +22,10 @@ namespace dodoe {
 		int sub_step_count{4};
 	};
 
-	class PhysicsSystem {
+	class PhysicsSystem : public Managed<PhysicsSystem, PhysicsSystemCreateInfo> {
+        friend class Managed<PhysicsSystem, PhysicsSystemCreateInfo>;
 		friend class Physics2dSystem;
 	public:
-		static Scope<PhysicsSystem> create(const PhysicsSystemCreateInfo& create_info);
-		static void destroy(Scope<PhysicsSystem>& physics_system);
 
 		void step(float dt);
 
@@ -36,7 +35,7 @@ namespace dodoe {
 
 		Scope<PhysicsDebugger> debugger_{nullptr};
 
-		void initialize(const PhysicsSystemCreateInfo& create_info);
+		bool initialize(const PhysicsSystemCreateInfo& create_info);
 		void shutdown();
 		
 	};

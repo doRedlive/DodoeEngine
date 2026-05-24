@@ -17,19 +17,19 @@ namespace dodoe {
 
     };
 
-    class ScriptSystem {
+    class ScriptSystem : public Managed<ScriptSystem, ScriptSystemCreateInfo> {
+        friend class Managed<ScriptSystem, ScriptSystemCreateInfo>;
         Scope<ScriptEngine> m_script_engine;
         Scope<ScriptRuntime> m_script_runtime;
 
         Scope<LuaScriptEngine> m_lua_engine;
     public:
-        static Scope<ScriptSystem> create(const ScriptSystemCreateInfo& info);
-        static void destroy(Scope<ScriptSystem>& system);
 
         [[nodiscard]] ScriptEngine* getMonoEngine() const { return m_script_engine.get(); }
         [[nodiscard]] ScriptRuntime* getMonoRuntime() const { return m_script_runtime.get(); }
         [[nodiscard]] LuaScriptEngine* getLuaEngine() const { return m_lua_engine.get(); }
         [[nodiscard]] bool executeLua(const std::filesystem::path& script_file) const;
+        bool reloadScripts();
 
     private:
         bool initialize(const ScriptSystemCreateInfo& create_info);

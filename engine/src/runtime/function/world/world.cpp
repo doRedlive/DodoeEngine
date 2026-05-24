@@ -1,10 +1,12 @@
-//
-// Created by GreenMuffin on 2026/2/6.
-//
+// do@Redlive
 
 #include "world.h"
 
 #include "scene.h"
+#include "runtime/core/project/project.h"
+#include "runtime/resource/res_type/scene_res.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/asset/asset_manager.h"
 
 #include "systems/animation2d_system.h"
 #include "systems/camera2d_system.h"
@@ -16,21 +18,42 @@
 
 namespace dodoe {
 
-    Scope<World> World::create(const WorldCreateInfo& create_info) {
-        auto context = create_scope<World>();
-        context->initialize(create_info);
-        return context;
-    }
-
-    void World::destroy(Scope<World>& world) {
-        if (!world) return;
-        world->shutdown();
-        world.reset();
-    }
-
-    void World::initialize(const WorldCreateInfo& create_info) {
+    bool World::initialize(const WorldCreateInfo& create_info) {
         m_name = create_info.name;
+        if (!setupScenes()) return false;
+        if (!setupSystems()) return false;
+        return true;
+    }
 
+    void World::shutdown() {
+        cleanupScenes();
+        cleanupSystems();
+        for (auto& scene : m_scenes) {
+            Scene::Destroy(scene);
+        }
+    }
+
+    bool World::setupScenes() {
+        auto asset_manager = ResourceManager::Self().getAssetManager();
+        for (const auto& asset : asset_manager->getAssetsByType(AssetType::Scene)) {
+            SceneRes scene_res;
+            if (!asset_manager->loadAsset(asset.path, scene_res)) {
+                return false;
+            }
+
+            const std::string scene_name =
+                scene_res.m_name.empty() ? std::filesystem::path(asset.path).stem().string() : scene_res.m_name;
+            Scene* scene = createScene(scene_name);
+            scene->deserialize(scene_res);
+        }
+        return true;
+    }
+
+    void World::cleanupScenes() {
+        m_active_scenes.clear();
+    }
+
+    bool World::setupSystems() {
         auto mono = create_ref<MonoSystem>();
         auto camera2d = create_ref<Camera2dSystem>();
         auto light_system = create_ref<LightSystem>();
@@ -52,23 +75,13 @@ namespace dodoe {
         registerSimulationSystem(animation2d);
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
-        
-        // Read config
-        auto* scene = getCurrentScene();
-        if (!scene) {
-            scene = createScene("default");
-            loadScene("default");
-        }
+
+        return true;
     }
 
-    void World::shutdown() {
-        m_active_scenes.clear();
+    void World::cleanupSystems() {
         m_runtime_systems.clear();
         m_simulation_systems.clear();
-
-        for (auto& scene : m_scenes) {
-            Scene::destroy(scene);
-        }
     }
 
     void World::start() {
@@ -117,11 +130,13 @@ namespace dodoe {
     }
 
     Scene* World::createScene(const std::string& name) { 
-        if (auto* existing_scene = getScene(name)) {
-            return existing_scene;
+        for (const auto& existing_scene : m_scenes) {
+            if (existing_scene && existing_scene->getName() == name) {
+                return existing_scene.get();
+            }
         }
 
-        auto scene = Scene::create({*this, name});
+        auto scene = Scene::Create({*this, name});
         scene->onCreate();
         Scene* created_scene = scene.get();
         m_scenes.push_back(std::move(scene));
@@ -157,7 +172,6 @@ namespace dodoe {
                 return scene.get();
             }
         }
-        DoWarn("Scene with name '{}' does not exist. Returning nullptr.", name);
         return nullptr;
     }
 
@@ -201,6 +215,23 @@ namespace dodoe {
 
         m_active_scenes.erase(it);
 
+    }
+
+    bool World::activateStartScene() {
+        const auto active_project = Project::ActiveProject();
+        if (active_project->config().start_scene_name.empty()) {
+            DO_ASSERT(false, "StartSceneName is empty!");
+            return false;
+        }
+
+        Scene* start_scene = getScene(active_project->config().start_scene_name);
+        if (!start_scene) {
+            return false;
+        }
+
+        loadScene(start_scene->getName());
+        setCurrentScene(start_scene);
+        return true;
     }
 
     void World::registerRuntimeSystem(Ref<System> system) {

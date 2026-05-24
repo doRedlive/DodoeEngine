@@ -1,6 +1,8 @@
 {
     "Project": {
         "Name": "OnlyOne",
-        "StartScene": "
+        "ProjectPath": "OnlyOne.doproj",
+        "AssetDirectory": "Assets",
+        "StartSceneName": "Gameplay"
     }
 }

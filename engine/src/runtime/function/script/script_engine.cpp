@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <windows.h>
 
+#include "runtime/core/project/project.h"
+#include "runtime/platform/platform_tool.h"
+
 #include "mono/jit/jit.h"
 #include "mono/jit/mono-private-unstable.h"
 #include "mono/metadata/assembly.h"
@@ -18,6 +21,43 @@ namespace dodoe {
     namespace fs = std::filesystem;
 
     namespace {
+
+        bool BuildScriptSourceFingerprint(const fs::path& asset_directory, std::string& out_fingerprint) {
+            out_fingerprint.clear();
+            if (!fs::exists(asset_directory) || !fs::is_directory(asset_directory)) {
+                return false;
+            }
+
+            std::vector<fs::path> script_files;
+            for (const auto& entry : fs::recursive_directory_iterator(asset_directory)) {
+                if (!entry.is_regular_file() || entry.path().extension() != ".cs") {
+                    continue;
+                }
+                script_files.push_back(entry.path().lexically_normal());
+            }
+
+            if (script_files.empty()) {
+                return false;
+            }
+
+            std::ranges::sort(script_files);
+            std::ostringstream stream;
+            for (const auto& script_file : script_files) {
+                std::error_code ec;
+                const auto relative_path = fs::relative(script_file, asset_directory, ec);
+                const auto last_write_time = fs::last_write_time(script_file, ec);
+                const auto file_size = fs::file_size(script_file, ec);
+                stream << (ec ? script_file.lexically_normal().generic_string() : relative_path.lexically_normal().generic_string())
+                    << '|'
+                    << (ec ? 0ull : static_cast<unsigned long long>(file_size))
+                    << '|'
+                    << (ec ? 0ll : static_cast<long long>(last_write_time.time_since_epoch().count()))
+                    << '\n';
+            }
+
+            out_fingerprint = stream.str();
+            return true;
+        }
 
         fs::path GetExeDir() {
             std::array<char, 256> buffer{};
@@ -44,28 +84,59 @@ namespace dodoe {
         }
     }
 
+    bool ScriptEngine::reloadScripts() {
+        const auto active_project = Project::ActiveProject();
+        if (!active_project) {
+            return false;
+        }
 
-    Scope<ScriptEngine> ScriptEngine::create(const ScriptEngineCreateInfo& info) {
-        if (auto engine = create_scope<ScriptEngine>(); engine->initialize(info))
-            return engine;
-        return nullptr;
-    }
+        std::string script_sources_fingerprint;
+        if (!BuildScriptSourceFingerprint(Project::AssetDirectory(), script_sources_fingerprint)) {
+            m_script_sources_fingerprint.clear();
+            return false;
+        }
 
-    void ScriptEngine::destroy(Scope<ScriptEngine>& engine) {
-        if (!engine) return;
-        engine->shutdown();
-        engine.reset();
+        if (m_app_image && script_sources_fingerprint == m_script_sources_fingerprint) {
+            return false;
+        }
+
+        if (!buildScrptAssembly()) {
+            return false;
+        }
+
+        unloadManagedDomain();
+        if (!loadCoreAssembly("")) {
+            return false;
+        }
+        if (!loadAppAssembly()) {
+            return false;
+        }
+
+        m_script_sources_fingerprint = std::move(script_sources_fingerprint);
+        return true;
     }
 
     bool ScriptEngine::initialize(const ScriptEngineCreateInfo& info) {
         if (!setupMono()) return false;
         if (!loadCoreAssembly("")) return false;
-        if (!loadAppAssembly("")) return false;
         return true;
     }
 
     void ScriptEngine::shutdown() {
+        unloadManagedDomain();
         cleanupMono();
+    }
+
+    bool ScriptEngine::buildScrptAssembly() {
+        const auto active_project = Project::ActiveProject();
+        if (!active_project) {
+            return false;
+        }
+		if (PlatformTool::BuildCSharpAssembly(Project::AssetDirectory(), Project::BinariesDirectory(), active_project->config().name)) {
+            return true;
+        }
+        DO_ERROR("ScriptEngine build script assembly failed!");
+        return false;
     }
 
     bool ScriptEngine::setupMono() {
@@ -103,7 +174,23 @@ namespace dodoe {
         return true;
     }
 
+    void ScriptEngine::unloadManagedDomain() {
+        m_core_assembly = nullptr;
+        m_app_assembly = nullptr;
+        m_core_image = nullptr;
+        m_app_image = nullptr;
+
+        if (!m_core_domain) {
+            return;
+        }
+
+        mono_domain_set(mono_get_root_domain(), false);
+        mono_domain_unload(m_core_domain);
+        m_core_domain = nullptr;
+    }
+
     bool ScriptEngine::loadCoreAssembly(const std::string& path) {
+        (void)path;
         m_core_domain = mono_domain_create_appdomain(const_cast<char*>("DodoeScriptRuntime"), nullptr);
         mono_domain_set(m_core_domain, true);
 
@@ -117,14 +204,23 @@ namespace dodoe {
         return true;
     }
 
-    bool ScriptEngine::loadAppAssembly(const std::string& path) {
-        const fs::path assembly_path = R"(C:\Users\33235\Redlive\dodoe\tests\Projects\OnlyOne\Assets\Scripts\Binaries\OnlyOne.dll)";
-        m_app_assembly = mono_domain_assembly_open(m_core_domain, assembly_path.string().c_str());
+    bool ScriptEngine::loadAppAssembly() {
+        const auto active_project = Project::ActiveProject();
+        if (!active_project) {
+            return false;
+        }
+
+        m_app_assembly = mono_domain_assembly_open(m_core_domain, Project::ScriptAssemblyPath().string().c_str());
         DO_ASSERT(m_app_assembly);
+        if (!m_app_assembly) {
+            return false;
+        }
 
         m_app_image = mono_assembly_get_image(m_app_assembly);
-        DO_ASSERT(m_app_assembly);
-
+        DO_ASSERT(m_app_image);
+        if (!m_app_image) {
+            return false;
+        }
         return true;
     }
 

@@ -67,7 +67,7 @@ namespace {
 
                 std::filesystem::path resolved = model_directory / std::filesystem::path(texture_path.C_Str());
                 resolved = resolved.lexically_normal();
-                auto texture_res = dodoe::ResourceManager::self().get_texture(resolved.string(), resolved.string());
+                auto texture_res = dodoe::ResourceManager::Self().get_texture(resolved.string(), resolved.string());
                 if (texture_res.id != 0) {
                     texture_ids.push_back(texture_res.id);
                 }
@@ -139,22 +139,9 @@ namespace {
 
 namespace dodoe {
 
-    Scope<MeshLoader> MeshLoader::create() {
-        auto loader = create_scope<MeshLoader>();
-        loader->initialize();
-        return loader;
-    }
-
-    void MeshLoader::destroy(Scope<MeshLoader>& loader) {
-        if (!loader) {
-            return;
-        }
-
-        loader->shutdown();
-        loader.reset();
-    }
-
-    void MeshLoader::initialize() {
+    bool MeshLoader::initialize(const MeshLoaderCreateInfo& info) {
+        (void)info;
+        return true;
     }
 
     void MeshLoader::shutdown() {

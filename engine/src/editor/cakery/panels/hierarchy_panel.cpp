@@ -51,7 +51,7 @@ namespace cakery {
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)
             && ImGui::IsWindowHovered()
             && !ImGui::IsAnyItemHovered()) {
-            dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
+            dodoe::EventSystem::Enqueue<NonSelectEntityEvent>();
         }
 
         if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
@@ -93,7 +93,7 @@ namespace cakery {
         const bool open = ImGui::TreeNodeEx("##entity_node", flags, "%s", name.c_str());
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-            dodoe::EventSystem::enqueueEvent<SelectEntityEvent>(entity);
+            dodoe::EventSystem::Enqueue<SelectEntityEvent>(entity);
         }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -136,7 +136,7 @@ namespace cakery {
                     runtime->removeEntityFromManagedWorld(static_cast<uint64_t>(entity.uuid()));
                 }
             }
-            dodoe::EventSystem::enqueueEvent<NonSelectEntityEvent>();
+            dodoe::EventSystem::Enqueue<NonSelectEntityEvent>();
             context_->destroyEntity(entity);
         }
 

@@ -11,8 +11,11 @@
 #include "runtime/function/input/mouse_code.h"
 
 #include "GLFW/glfw3.h"
+
+#ifdef DODOE_EDITOR
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
+#endif
 
 
 namespace dodoe {
@@ -34,7 +37,7 @@ namespace dodoe {
         prop.custom_titlebar = spec.custom_titlebar;
         prop.backend_api = spec.render_api_type;
 
-        window_ = Window::create(prop);
+        window_ = Window::Create(prop);
         bindEventCallback();
     }
 
@@ -44,7 +47,7 @@ namespace dodoe {
         EventSystem::Unsubscribe<WindowCloseEvent, &WindowManager::onWindowClose>(this);
         EventSystem::Unsubscribe<WindowResizeEvent, &WindowManager::onWindowResize>(this);
 
-        Window::destroy(window_);
+        Window::Destroy(window_);
 
         glfwTerminate();
     }
@@ -54,90 +57,100 @@ namespace dodoe {
     }
 
     void WindowManager::bindEventCallback() {
-        glfwSetWindowSizeCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int width, int height) {
+        glfwSetWindowSizeCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, int width, int height) {
             WindowResizeEvent event(width, height);
-            EventSystem::enqueueEvent<WindowResizeEvent>(event);
+            EventSystem::Enqueue<WindowResizeEvent>(event);
         });
-        glfwSetFramebufferSizeCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int width, int height) {
+        glfwSetFramebufferSizeCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, int width, int height) {
             (void)native_window;
             (void)width;
             (void)height;
         });
-        glfwSetWindowCloseCallback(window_->nativeWindow(), [](GLFWwindow* native_window) {
+        glfwSetWindowCloseCallback(window_->getNativeWindow(), [](GLFWwindow* native_window) {
             WindowCloseEvent event;
-            EventSystem::enqueueEvent<WindowCloseEvent>(event);
+            EventSystem::Enqueue<WindowCloseEvent>(event);
         });
-        glfwSetWindowFocusCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int focused) {
+        glfwSetWindowFocusCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, int focused) {
             if (static_cast<bool>(focused)) {
                 WindowFocusEvent event;
-                EventSystem::enqueueEvent<WindowFocusEvent>(event);
+                EventSystem::Enqueue<WindowFocusEvent>(event);
             }
             else {
                 WindowLostFocusEvent event;
-                EventSystem::enqueueEvent<WindowLostFocusEvent>(event);
+                EventSystem::Enqueue<WindowLostFocusEvent>(event);
             }
         });
-		glfwSetKeyCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int key, int scancode, int action, int mods) {
+		glfwSetKeyCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, int key, int scancode, int action, int mods) {
+#ifdef DODOE_EDITOR
             if (ImGui::GetCurrentContext()) {
                 ImGui_ImplGlfw_KeyCallback(native_window, key, scancode, action, mods);
             }
+#endif
 			switch (action) {
 				case GLFW_PRESS: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), false);
-                    EventSystem::enqueueEvent<KeyPressedEvent>(event);
+                    EventSystem::Enqueue<KeyPressedEvent>(event);
                     break;
 				}
 				case GLFW_RELEASE: {
 					KeyReleasedEvent event(static_cast<KeyCode>(key));
-					EventSystem::enqueueEvent<KeyReleasedEvent>(event);
+					EventSystem::Enqueue<KeyReleasedEvent>(event);
 					break;
 				}
 				case GLFW_REPEAT: {
 					KeyPressedEvent event(static_cast<KeyCode>(key), true);
-					EventSystem::enqueueEvent<KeyPressedEvent>(event);
+					EventSystem::Enqueue<KeyPressedEvent>(event);
 					break;
 				}
 			}
 		});
 
-		glfwSetCharCallback(window_->nativeWindow(), [](GLFWwindow* native_window, unsigned int keycode) {
+		glfwSetCharCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, unsigned int keycode) {
+#ifdef DODOE_EDITOR
             if (ImGui::GetCurrentContext()) {
                 ImGui_ImplGlfw_CharCallback(native_window, keycode);
             }
+#endif
 		});
 
-		glfwSetMouseButtonCallback(window_->nativeWindow(), [](GLFWwindow* native_window, int button, int action, int mods) {
+		glfwSetMouseButtonCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, int button, int action, int mods) {
+#ifdef DODOE_EDITOR
             if (ImGui::GetCurrentContext()) {
                 ImGui_ImplGlfw_MouseButtonCallback(native_window, button, action, mods);
             }
+#endif
 			switch (action) {
 				case GLFW_PRESS: {
 					MouseButtonPressedEvent event(static_cast<MouseCode>(button));
-					EventSystem::enqueueEvent<MouseButtonPressedEvent>(event);
+					EventSystem::Enqueue<MouseButtonPressedEvent>(event);
 					break;
 				}
 				case GLFW_RELEASE: {
 					MouseButtonReleasedEvent event(static_cast<MouseCode>(button));
-					EventSystem::enqueueEvent<MouseButtonReleasedEvent>(event);
+					EventSystem::Enqueue<MouseButtonReleasedEvent>(event);
 					break;
 				}
 			}
 		});
 
-		glfwSetScrollCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_offset, double y_offset) {
+		glfwSetScrollCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, double x_offset, double y_offset) {
+#ifdef DODOE_EDITOR
             if (ImGui::GetCurrentContext()) {
                 ImGui_ImplGlfw_ScrollCallback(native_window, x_offset, y_offset);
             }
+#endif
 			MouseScrolledEvent event(static_cast<float>(x_offset), static_cast<float>(y_offset));
-			EventSystem::enqueueEvent<MouseScrolledEvent>(event);
+			EventSystem::Enqueue<MouseScrolledEvent>(event);
 		});
 
-		glfwSetCursorPosCallback(window_->nativeWindow(), [](GLFWwindow* native_window, double x_pos, double y_pos) {
+		glfwSetCursorPosCallback(window_->getNativeWindow(), [](GLFWwindow* native_window, double x_pos, double y_pos) {
+#ifdef DODOE_EDITOR
             if (ImGui::GetCurrentContext()) {
                 ImGui_ImplGlfw_CursorPosCallback(native_window, x_pos, y_pos);
             }
+#endif
 			MouseMovedEvent event(static_cast<float>(x_pos), static_cast<float>(y_pos));
-			EventSystem::enqueueEvent<MouseMovedEvent>(event);
+			EventSystem::Enqueue<MouseMovedEvent>(event);
 		});
     }
 
@@ -150,7 +163,7 @@ namespace dodoe {
     }
 
     void WindowManager::onWindowClose(const WindowCloseEvent& event) { 
-        glfwSetWindowShouldClose(window_->nativeWindow(), GLFW_TRUE);
+        glfwSetWindowShouldClose(window_->getNativeWindow(), GLFW_TRUE);
         EventSystem::Publish<ApplicationQuitEvent>();
     }
 
@@ -159,7 +172,7 @@ namespace dodoe {
         window_->prop_.height = static_cast<uint>(event.height);
 
         int fb_width = 0, fb_height = 0;
-        glfwGetFramebufferSize(window_->nativeWindow(), &fb_width, &fb_height);
+        glfwGetFramebufferSize(window_->getNativeWindow(), &fb_width, &fb_height);
     }
 
 }

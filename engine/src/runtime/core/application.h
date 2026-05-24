@@ -6,6 +6,8 @@
 #include "runtime/function/render/render_api.h"
 
 namespace dodoe {
+    [[nodiscard]] bool IsEditorApplication();
+
     class SystemContext;
 
     struct ApplicationCommandLineArgs {
@@ -22,7 +24,8 @@ namespace dodoe {
         bool window_resizeable{ true };
         bool custom_titlebar{ false };
 
-        RenderApiType render_api_type{ RenderApiType::OpenGL };
+        RenderApiType render_api_type{ RenderApiType::Vulkan };
+        RenderGraphMode render_graph_mode{ RenderGraphMode::ThreeD };
 
         ApplicationCommandLineArgs cli_args{};
     };

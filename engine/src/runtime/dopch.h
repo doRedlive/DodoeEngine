@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2025/11/16.
-//
+// do@Redlive
 
-#ifndef DODOE_DOPCH_H
-#define DODOE_DOPCH_H
+#pragma once
 
 #include <iostream>
 #include <memory>
@@ -28,6 +25,5 @@
 
 #include "runtime/core/base.h"
 #include "runtime/core/asserts.h"
+#include "runtime/core/memory/managed.h"
 #include "runtime/function/log/log_system.h"
-
-#endif //DODOE_DOPCH_H

@@ -1,14 +1,12 @@
-//
-// Created by GreenMuffin on 2025/11/15.
-//
+// do@Redlive
 
-#ifndef DODOE_LAYER_H
-#define DODOE_LAYER_H
+#pragma once
+
 #include "dopch.h"
 
 namespace dodoe {
     class Layer {
-        std::string name_;
+        std::string m_name;
     public:
         explicit Layer(std::string name);
 
@@ -20,9 +18,7 @@ namespace dodoe {
         virtual void renderTick() = 0;
 
         [[nodiscard]]
-        const std::string& name() const { return name_; }
+        const std::string& name() const { return m_name; }
     };
+
 } // dodoe
-
-
-#endif //DODOE_LAYER_H

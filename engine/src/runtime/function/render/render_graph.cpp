@@ -2,35 +2,12 @@
 
 #include "render_graph.h"
 
-#include "passes/main_camera_pass.h"
-#include "passes/skybox_pass.h"
-#include "passes/directional_light_shadow_pass.h"
-#include "passes/deferred_light_pass.h"
-#include "passes/tone_mapping_pass.h"
-#include "passes/color_grading_pass.h"
-#include "passes/point_light_shadow_pass.h"
-#include "passes/sprite_pass.h"
-#include "passes/fxaa_pass.h"
-#include "passes/imgui_pass.h"
-#include "passes/combine_pass.h"
 #include "framework/camera.h"
 
 #include "runtime/core/utils/common.h"
 
 namespace dodoe {
 		
-	Scope<RenderGraph> RenderGraph::create(const RenderGraphCreateInfo& info) {
-		if (auto graph = create_scope<RenderGraph>(); graph->initialize(info)) 
-			return graph;
-		return nullptr;
-	}
-
-	void RenderGraph::destroy(Scope<RenderGraph>& graph) {
-		if (!graph) { return; }
-		graph->shutdown();
-		graph.reset();
-	}
-
 	bool RenderGraph::initialize(const RenderGraphCreateInfo& info) {
 		m_rhi = info.rhi;
 		m_camera = info.camera;
@@ -90,135 +67,6 @@ namespace dodoe {
 		m_registered_passes.clear();
 		m_graph_render_res_umap.clear();
 		m_pass_map.clear();
-	}
-
-	void RenderGraph::setup() {
-		TextureResourceDesc main_camera_color_desc{};
-		main_camera_color_desc.format = rhi::Format::RGBA8_UNORM;
-		main_camera_color_desc.viewport_relative = true;
-		main_camera_color_desc.shader_resource = true;
-		main_camera_color_desc.render_target = true;
-		main_camera_color_desc.debug_name = "MainCameraPass Scene Target";
-
-		TextureResourceDesc main_camera_hdr_color_desc{};
-		main_camera_hdr_color_desc.format = rhi::Format::RGBA16_FLOAT;
-		main_camera_hdr_color_desc.viewport_relative = true;
-		main_camera_hdr_color_desc.shader_resource = true;
-		main_camera_hdr_color_desc.render_target = true;
-		main_camera_hdr_color_desc.debug_name = "MainCameraPass HDR Color Target";
-
-		TextureResourceDesc main_camera_tonemapped_color_desc{};
-		main_camera_tonemapped_color_desc.format = rhi::Format::RGBA8_UNORM;
-		main_camera_tonemapped_color_desc.viewport_relative = true;
-		main_camera_tonemapped_color_desc.shader_resource = true;
-		main_camera_tonemapped_color_desc.render_target = true;
-		main_camera_tonemapped_color_desc.debug_name = "MainCameraPass ToneMapped Color Target";
-
-		TextureResourceDesc main_camera_fxaa_color_desc{};
-		main_camera_fxaa_color_desc.format = rhi::Format::RGBA8_UNORM;
-		main_camera_fxaa_color_desc.viewport_relative = true;
-		main_camera_fxaa_color_desc.shader_resource = true;
-		main_camera_fxaa_color_desc.render_target = true;
-		main_camera_fxaa_color_desc.debug_name = "MainCameraPass FXAA Color Target";
-
-		TextureResourceDesc main_camera_albedo_desc{};
-		main_camera_albedo_desc.format = rhi::Format::RGBA8_UNORM;
-		main_camera_albedo_desc.viewport_relative = true;
-		main_camera_albedo_desc.shader_resource = true;
-		main_camera_albedo_desc.render_target = true;
-		main_camera_albedo_desc.debug_name = "MainCameraPass Albedo Target";
-
-		TextureResourceDesc main_camera_normal_desc{};
-		main_camera_normal_desc.format = rhi::Format::RGBA16_FLOAT;
-		main_camera_normal_desc.viewport_relative = true;
-		main_camera_normal_desc.shader_resource = true;
-		main_camera_normal_desc.render_target = true;
-		main_camera_normal_desc.debug_name = "MainCameraPass Normal Target";
-
-		TextureResourceDesc main_camera_position_desc{};
-		main_camera_position_desc.format = rhi::Format::RGBA32_FLOAT;
-		main_camera_position_desc.viewport_relative = true;
-		main_camera_position_desc.shader_resource = true;
-		main_camera_position_desc.render_target = true;
-		main_camera_position_desc.debug_name = "MainCameraPass Position Target";
-
-		TextureResourceDesc main_camera_material_desc{};
-		main_camera_material_desc.format = rhi::Format::RGBA8_UNORM;
-		main_camera_material_desc.viewport_relative = true;
-		main_camera_material_desc.shader_resource = true;
-		main_camera_material_desc.render_target = true;
-		main_camera_material_desc.debug_name = "MainCameraPass Material Target";
-
-		TextureResourceDesc main_camera_depth_desc{};
-		main_camera_depth_desc.format = rhi::Format::D32;
-		main_camera_depth_desc.viewport_relative = true;
-		main_camera_depth_desc.render_target = true;
-		main_camera_depth_desc.depth_stencil = true;
-		main_camera_depth_desc.shader_resource = true;
-		main_camera_depth_desc.debug_name = "MainCameraPass Depth Target";
-
-		TextureResourceDesc directional_shadow_desc{};
-		directional_shadow_desc.format = rhi::Format::D32;
-		directional_shadow_desc.viewport_relative = true;
-		directional_shadow_desc.render_target = true;
-		directional_shadow_desc.depth_stencil = true;
-		directional_shadow_desc.shader_resource = true;
-		directional_shadow_desc.debug_name = "DirectionalLightShadowPass Depth Target";
-
-		TextureResourceDesc imgui_color_desc{};
-		imgui_color_desc.format = rhi::Format::RGBA8_UNORM;
-		imgui_color_desc.backbuffer_relative = true;
-		imgui_color_desc.render_target = true;
-		imgui_color_desc.depth_stencil = false;
-		imgui_color_desc.shader_resource = true;
-		imgui_color_desc.debug_name = "ImGuiPass Color Target";
-
-		addPass("MainCameraPass", create_ref<MainCameraPass>(m_rhi, m_descriptor_manager))
-			.addTextureWrite("MainCameraAlbedo", main_camera_albedo_desc)
-			.addTextureWrite("MainCameraNormal", main_camera_normal_desc)
-			.addTextureWrite("MainCameraPosition", main_camera_position_desc)
-			.addTextureWrite("MainCameraMaterial", main_camera_material_desc)
-			.addTextureWrite("MainCameraDepth", main_camera_depth_desc);
-
-		addPass("DirectionalLightShadowPass", create_ref<DirectionalLightShadowPass>(m_rhi))
-			.addTextureWrite("ShadowMap", directional_shadow_desc);
-
-		addPass("PointLightShadowPass", create_ref<PointLightShadowPass>(m_rhi));
-
-		addPass("SkyboxPass", create_ref<SkyboxPass>(m_rhi))
-			.addTextureRead("MainCameraDepth", main_camera_depth_desc)
-			.addTextureWrite("MainCameraHdrColor", main_camera_hdr_color_desc);
-
-		addPass("DeferredLightPass", create_ref<DeferredLightPass>(m_rhi))
-			.addTextureRead("MainCameraAlbedo", main_camera_albedo_desc)
-			.addTextureRead("MainCameraNormal", main_camera_normal_desc)
-			.addTextureRead("MainCameraPosition", main_camera_position_desc)
-			.addTextureRead("MainCameraMaterial", main_camera_material_desc)
-			.addTextureRead("ShadowMap", directional_shadow_desc)
-			.addTextureWrite("MainCameraHdrColor", main_camera_hdr_color_desc);
-
-		addPass("ToneMappingPass", create_ref<ToneMappingPass>(m_rhi))
-			.addTextureRead("MainCameraHdrColor", main_camera_hdr_color_desc)
-			.addTextureWrite("MainCameraToneMappedColor", main_camera_tonemapped_color_desc);
-
-		addPass("ColorGradingPass", create_ref<ColorGradingPass>(m_rhi))
-			.addTextureRead("MainCameraToneMappedColor", main_camera_tonemapped_color_desc)
-			.addTextureWrite("MainCameraColor", main_camera_color_desc);
-
-		addPass("SpritePass", create_ref<SpritePass>(m_rhi, m_descriptor_manager))
-			.addTextureWrite("MainCameraColor", main_camera_color_desc)
-			.addTextureRead("MainCameraDepth", main_camera_depth_desc); // For depth test
-
-		addPass("FXAAPass", create_ref<FXAAPass>(m_rhi))
-			.addTextureRead("MainCameraColor", main_camera_color_desc)
-			.addTextureWrite("MainCameraFxaaColor", main_camera_fxaa_color_desc);
-
-		addPass("ImGuiPass", create_ref<ImGuiPass>(m_rhi))
-			.addTextureWrite("ImGuiColor", imgui_color_desc);
-
-		addPass("CombinePass", create_ref<CombinePass>(m_rhi))
-			.addTextureRead("MainCameraFxaaColor", main_camera_fxaa_color_desc)
-			.addTextureRead("ImGuiColor", imgui_color_desc);
 	}
 
 	void RenderGraph::compile() {

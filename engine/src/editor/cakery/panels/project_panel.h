@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2026/2/22.
-//
+// do@Redlive
 
-#ifndef CAKERY_PROJECT_PANEL_H
-#define CAKERY_PROJECT_PANEL_H
+#pragma once
 
 #include "dopch.h"
 
@@ -16,6 +13,7 @@ namespace cakery {
 	class ProjectPanel {
 		fs::path cur_directory_;
 		fs::path base_directory_;
+        fs::path last_base_directory_;
 		dodoe::TextureRes directory_icon_;
 		dodoe::TextureRes file_icon_;
 		dodoe::Ref<dodoe::Texture> directory_icon_texture_{nullptr};
@@ -24,11 +22,11 @@ namespace cakery {
 		ProjectPanel();
 		~ProjectPanel();
 		void draw();
-		void cleanup();
+        void cleanup();
 	private:
+        void updateBaseDirectory();
 		void initializeIconTextures();
 		[[nodiscard]] dodoe::Ref<dodoe::Texture> getIconTexture(bool is_directory) const;
 	};
-}
 
-#endif//CAKERY_PROJECT_PANEL_H
+} // cakery

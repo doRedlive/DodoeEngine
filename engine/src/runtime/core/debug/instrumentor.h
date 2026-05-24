@@ -1,3 +1,5 @@
+// do@Redlive
+
 #pragma once
 
 #include <algorithm>
@@ -10,7 +12,7 @@
 #include <mutex>
 #include <sstream>
 
-namespace doogl {
+namespace dodoe {
 
     using FloatingPointMicroseconds = std::chrono::duration<double, std::micro>;
 
@@ -26,28 +28,28 @@ namespace doogl {
     };
 
     class Instrumentor {
-        std::mutex mutex_;
-        InstrumentationSession* cur_session_;
-        std::ofstream output_stream_;
+        std::mutex m_mutex;
+        InstrumentationSession* m_cur_session;
+        std::ofstream m_output_stream;
     public:
         Instrumentor(const Instrumentor&) = delete;
         Instrumentor(Instrumentor&&) = delete;
 
-        static Instrumentor& self() {
+        static Instrumentor& Self() {
             static Instrumentor instance;
             return instance;
         }
 
         void beginSession(const std::string& name, const std::string& file_path = "result.json") {
-            std::lock_guard lock(mutex_);
-            if (cur_session_) {
+            std::lock_guard lock(m_mutex);
+            if (m_cur_session) {
                 std::cerr << "Instrumentor::beginSession error\n";
                 internalEndSession();
             }
 
-            output_stream_.open(file_path);
-            if (output_stream_.is_open()) {
-                cur_session_ = new InstrumentationSession({name});
+            m_output_stream.open(file_path);
+            if (m_output_stream.is_open()) {
+                m_cur_session = new InstrumentationSession({name});
                 writeHeader();
             }
             else {
@@ -56,7 +58,7 @@ namespace doogl {
         }
 
         void endSession() {
-            std::lock_guard lock(mutex_);
+            std::lock_guard lock(m_mutex);
             internalEndSession();
         }
 
@@ -73,62 +75,59 @@ namespace doogl {
 			json << "\"ts\":" << result.start.count();
 			json << "}";
 
-            std::lock_guard lock(mutex_);
-            if (cur_session_) {
-                output_stream_ << json.str();
-                output_stream_.flush();
+            std::lock_guard lock(m_mutex);
+            if (m_cur_session) {
+                m_output_stream << json.str();
+                m_output_stream.flush();
             }
         }
     private:
-        Instrumentor() : cur_session_(nullptr) { }
+        Instrumentor() : m_cur_session(nullptr) { }
         ~Instrumentor() { endSession(); }
 
         void internalEndSession() {
-            if (cur_session_) {
+            if (m_cur_session) {
                 writeFooter();
-                output_stream_.close();
-                delete cur_session_;
-                cur_session_ = nullptr;
+                m_output_stream.close();
+                delete m_cur_session;
+                m_cur_session = nullptr;
             }
         }
 
         void writeHeader() {
-            output_stream_ << "{\"otherData\": {}, \"traceEvents\":[{}";
-            output_stream_.flush();
+            m_output_stream << "{\"otherData\": {}, \"traceEvents\":[{}";
+            m_output_stream.flush();
         }
 
         void writeFooter() {
-            output_stream_ << "]}";
-            output_stream_.flush();
+            m_output_stream << "]}";
+            m_output_stream.flush();
         }
         
     };
 
-	class InstrumentationTimer
-	{
+	class InstrumentationTimer {
 	public:
 		InstrumentationTimer(const char* name)
-			: name_(name), stopped_(false)
-		{
+			: name_(name), stopped_(false) {
 			start_timepoint_ = std::chrono::steady_clock::now();
 		}
 
-		~InstrumentationTimer()
-		{
+		~InstrumentationTimer() {
 			if (!stopped_)
 				stop();
 		}
 
-		void stop()
-		{
+		void stop() {
 			auto end_timepoint = std::chrono::steady_clock::now();
 			auto high_res_start = FloatingPointMicroseconds{ start_timepoint_.time_since_epoch() };
 			auto elapsed_time = std::chrono::time_point_cast<std::chrono::microseconds>(end_timepoint).time_since_epoch() - std::chrono::time_point_cast<std::chrono::microseconds>(start_timepoint_).time_since_epoch();
 
-			Instrumentor::self().writeProfile({ name_, high_res_start, elapsed_time, std::this_thread::get_id() });
+			Instrumentor::Self().writeProfile({ name_, high_res_start, elapsed_time, std::this_thread::get_id() });
 
 			stopped_ = true;
 		}
+
 	private:
 		const char* name_;
 		std::chrono::time_point<std::chrono::steady_clock> start_timepoint_;
@@ -143,7 +142,7 @@ namespace doogl {
 		};
 
 		template <size_t N, size_t K>
-		consteval auto cleanupOutputString(const char(&expr)[N], const char(&remove)[K]) {
+		consteval auto CleanupOutputString(const char(&expr)[N], const char(&remove)[K]) {
 			ChangeResult<N> result = {};
 
 			size_t src_index = 0;
@@ -185,10 +184,10 @@ namespace doogl {
 		#define DO_FUNC_SIG "DO_FUNC_SIG unknown!"
 	#endif
 
-	#define DO_PROFILE_BEGIN_SESSION(name, filepath) ::doogl::Instrumentor::self().beginSession(name, filepath)
-	#define DO_PROFILE_END_SESSION() ::doogl::Instrumentor::self().endSession()
-	#define DO_PROFILE_SCOPE_LINE2(name, line) constexpr auto fixedName##line = ::doogl::InstrumentorUtils::cleanupOutputString(name, "__cdecl ");\
-										   ::doogl::InstrumentationTimer timer##line(fixedName##line.Data)
+	#define DO_PROFILE_BEGIN_SESSION(name, filepath) ::dodoe::Instrumentor::Self().beginSession(name, filepath)
+	#define DO_PROFILE_END_SESSION() ::dodoe::Instrumentor::Self().endSession()
+	#define DO_PROFILE_SCOPE_LINE2(name, line) constexpr auto fixedName##line = ::dodoe::InstrumentorUtils::CleanupOutputString(name, "__cdecl ");\
+										   ::dodoe::InstrumentationTimer timer##line(fixedName##line.Data)
 	#define DO_PROFILE_SCOPE_LINE(name, line) DO_PROFILE_SCOPE_LINE2(name, line)
 	#define DO_PROFILE_SCOPE(name) DO_PROFILE_SCOPE_LINE(name, __LINE__)
 	#define DO_PROFILE_FUNCTION() DO_PROFILE_SCOPE(DO_FUNC_SIG)
