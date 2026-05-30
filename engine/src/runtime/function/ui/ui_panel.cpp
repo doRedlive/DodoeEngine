@@ -1,14 +1,13 @@
 #include "ui_panel.h"
 #include "ui_imgui_utils.h"
-#include "engine/core/context.h"
 
 
 namespace dodoe {
 
 UIPanel::UIPanel(Vector2f position, Vector2f size,
                  std::optional<Color> background_color,
-                 std::optional<engine::render::Image> skin_image,
-                 std::optional<engine::render::NineSliceMargins> skin_margins)
+                 std::optional<Image> skin_image,
+                 std::optional<NineSliceMargins> skin_margins)
     : UIElement(std::move(position), std::move(size)),
       background_color_(std::move(background_color)),
       skin_image_(std::move(skin_image))
@@ -19,7 +18,7 @@ UIPanel::UIPanel(Vector2f position, Vector2f size,
     }
 }
 
-void UIPanel::setSkinImage(engine::render::Image image) {
+void UIPanel::setSkinImage(Image image) {
     skin_image_ = std::move(image);
 }
 
@@ -27,13 +26,13 @@ void UIPanel::clearSkinImage() {
     skin_image_.reset();
 }
 
-void UIPanel::setNineSliceMargins(std::optional<engine::render::NineSliceMargins> margins) {
+void UIPanel::setNineSliceMargins(std::optional<NineSliceMargins> margins) {
     if (skin_image_) {
         skin_image_->setNineSliceMargins(std::move(margins));
     }
 }
 
-void UIPanel::renderSelf(engine::core::Context& context) {
+void UIPanel::renderSelf(Context& context) {
     (void)context;
     if (background_color_) {
         ui::drawFilledRect(getBounds(), *background_color_);
@@ -51,11 +50,11 @@ bool UIPanel::hasNineSliceSkin() const {
     return skin_image_.has_value() && skin_image_->hasNineSlice();
 }
 
-const engine::render::Image* UIPanel::getSkinImage() const {
+const Image* UIPanel::getSkinImage() const {
     return skin_image_ ? &*skin_image_ : nullptr;
 }
 
-const engine::render::NineSliceMargins* UIPanel::getNineSliceMargins() const {
+const NineSliceMargins* UIPanel::getNineSliceMargins() const {
     if (skin_image_ && skin_image_->getNineSliceMargins()) {
         return &*skin_image_->getNineSliceMargins();
     }
@@ -69,3 +68,5 @@ void UIPanel::markNineSliceDirty() {
 }
 
 } // namespace dodoe 
+
+

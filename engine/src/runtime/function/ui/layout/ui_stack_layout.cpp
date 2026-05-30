@@ -30,10 +30,10 @@ void UIStackLayout::setContentAlignment(Alignment alignment) {
 }
 
 void UIStackLayout::onLayout() {
-    if (children_.empty()) return;
+    if (m_children.empty()) return;
 
-    Vector2f content_start = {padding_.left, padding_.top};
-    Vector2f content_size = layout_size_ - Vector2f(padding_.width(), padding_.height());
+    Vector2f content_start = {m_padding.left, m_padding.top};
+    Vector2f content_size = m_layout_size - Vector2f(m_padding.width(), m_padding.height());
     
     content_size = Math::Max(content_size, Vector2f(0.0f));
 
@@ -41,7 +41,7 @@ void UIStackLayout::onLayout() {
     bool is_vertical = (orientation_ == Orientation::Vertical);
 
     float total_content_length = 0.0f;
-    for (const auto& child : children_) {
+    for (const auto& child : m_children) {
         if (!child->isVisible()) continue;
         
         Vector2f child_size = child->getRequestedSize(); 
@@ -51,7 +51,7 @@ void UIStackLayout::onLayout() {
     }
     
     int visible_count = 0;
-    for (const auto& child : children_) {
+    for (const auto& child : m_children) {
         if (child->isVisible()) ++visible_count;
     }
     if (visible_count > 1) {
@@ -75,7 +75,7 @@ void UIStackLayout::onLayout() {
     float start_offset_x = content_start.x;
     float start_offset_y = content_start.y;
 
-    for (auto& child : children_) {
+    for (auto& child : m_children) {
         if (!child->isVisible()) continue;
 
         Vector2f child_pos = child->getPosition();
@@ -101,17 +101,18 @@ void UIStackLayout::onLayout() {
     }
 
     if (auto_resize_) {
-        Vector2f new_size = layout_size_;
+        Vector2f new_size = m_layout_size;
         if (is_vertical) {
-            new_size.y = total_content_length + padding_.top + padding_.bottom;
+            new_size.y = total_content_length + m_padding.top + m_padding.bottom;
         } else {
-            new_size.x = total_content_length + padding_.left + padding_.right; 
+            new_size.x = total_content_length + m_padding.left + m_padding.right; 
         }
         
-        if (glm::distance(size_, new_size) > 0.001f) {
+        if (glm::distance(m_size, new_size) > 0.001f) {
             setSizeInternal(new_size); // Update self size
         }
     }
 }
 
 } // namespace dodoe
+

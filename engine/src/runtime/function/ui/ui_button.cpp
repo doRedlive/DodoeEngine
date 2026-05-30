@@ -3,10 +3,8 @@
 #include "state/ui_normal_state.h"
 #include "ui_preset_manager.h"
 
-#include "engine/core/context.h"
-#include "engine/render/text_renderer.h"
+#include "ui_compat.h"
 #include "runtime/function/render/renderer_2d.h"
-#include "engine/resource/resource_manager.h"
 #include "runtime/core/utils/util.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -112,9 +110,9 @@ struct ResolvedLabelVisual {
             return result;
         }
         result.color = Color{
-            std::min(1.0f, result.color.r * 1.15f),
-            std::min(1.0f, result.color.g * 1.15f),
-            std::min(1.0f, result.color.b * 1.15f),
+            (std::min)(1.0f, result.color.r * 1.15f),
+            (std::min)(1.0f, result.color.g * 1.15f),
+            (std::min)(1.0f, result.color.b * 1.15f),
             result.color.a
         };
         return result;
@@ -149,12 +147,12 @@ Scope<UIButton> UIButton::Create(engine::core::Context& context,
                                  std::function<void()> click_callback,
                                  std::function<void()> hover_enter_callback,
                                  std::function<void()> hover_leave_callback) {
-    auto button = create_scope<UIButton>(context,
-                                         position,
-                                         size,
-                                         std::move(click_callback),
-                                         std::move(hover_enter_callback),
-                                         std::move(hover_leave_callback));
+    auto button = Scope<UIButton>(new UIButton(context,
+                                               position,
+                                               size,
+                                               std::move(click_callback),
+                                               std::move(hover_enter_callback),
+                                               std::move(hover_leave_callback)));
     if (!button->initFromPreset(preset_id)) {
         return nullptr;
     }
@@ -254,11 +252,11 @@ void UIButton::setLabelText(std::string text) {
 }
 
 void UIButton::setTextLayoutFixed() {
-    m_text_layout_mode = TextLayoutMode::Fixed;
+    m_text_layout_mode = UIButton::TextLayoutMode::Fixed;
 }
 
 void UIButton::setTextLayoutScaleToFit(const Thickness& padding) {
-    m_text_layout_mode = TextLayoutMode::ScaleToFit;
+    m_text_layout_mode = UIButton::TextLayoutMode::ScaleToFit;
     m_text_padding = padding;
 }
 
@@ -344,7 +342,7 @@ void UIButton::renderSelf(engine::core::Context& context) {
     }
 
     const Vector2f position = getScreenPosition();
-    Renderer2d::drawSprite(
+    Renderer2D::DrawSprite(
         image_to_draw->getTextureId(),
         position,
         size,
@@ -368,24 +366,24 @@ void UIButton::renderLabel(engine::core::Context& context, const UIButtonSkin& s
     Vector2f text_size = m_base_text_size;
     bool can_draw_text = m_base_text_size.x > 0.0f && m_base_text_size.y > 0.0f;
 
-    if (m_text_layout_mode == TextLayoutMode::ScaleToFit) {
+    if (m_text_layout_mode == UIButton::TextLayoutMode::ScaleToFit) {
         Vector2f available{
-            std::max(0.0f, size.x - m_text_padding.width()),
-            std::max(0.0f, size.y - m_text_padding.height())
+            (std::max)(0.0f, size.x - m_text_padding.width()),
+            (std::max)(0.0f, size.y - m_text_padding.height())
         };
         float text_scale = 1.0f;
         if (available.x <= 0.0f || available.y <= 0.0f || !can_draw_text) {
             can_draw_text = false;
         } else {
-            text_scale = std::min(available.x / m_base_text_size.x, available.y / m_base_text_size.y);
+            text_scale = (std::min)(available.x / m_base_text_size.x, available.y / m_base_text_size.y);
             if (text_scale <= 0.0f) {
                 can_draw_text = false;
             } else {
                 text_size = m_base_text_size * text_scale;
                 Vector2f content_origin = position + Vector2f{m_text_padding.left, m_text_padding.top};
                 Vector2f centered_offset{
-                    std::max(0.0f, (available.x - text_size.x) * 0.5f),
-                    std::max(0.0f, (available.y - text_size.y) * 0.5f)
+                    (std::max)(0.0f, (available.x - text_size.x) * 0.5f),
+                    (std::max)(0.0f, (available.y - text_size.y) * 0.5f)
                 };
                 draw_position = content_origin + centered_offset + visual.offset;
             }
@@ -400,8 +398,8 @@ void UIButton::renderLabel(engine::core::Context& context, const UIButtonSkin& s
     } else {
         if (can_draw_text) {
             Vector2f centered_offset{
-                std::max(0.0f, (size.x - text_size.x) * 0.5f),
-                std::max(0.0f, (size.y - text_size.y) * 0.5f)
+                (std::max)(0.0f, (size.x - text_size.x) * 0.5f),
+                (std::max)(0.0f, (size.y - text_size.y) * 0.5f)
             };
             draw_position = position + centered_offset + visual.offset;
         }
@@ -416,4 +414,5 @@ void UIButton::renderLabel(engine::core::Context& context, const UIButtonSkin& s
 }
 
 } // namespace dodoe
+
 

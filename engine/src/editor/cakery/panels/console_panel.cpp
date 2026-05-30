@@ -86,7 +86,12 @@ namespace cakery {
 
     } // namespace
 
-    void ConsolePanel::draw() {
+    ConsolePanel::ConsolePanel(EditorPanelDescriptor descriptor)
+        : EditorPanel(std::move(descriptor)) {
+    }
+
+    void ConsolePanel::onDraw(const EditorPanelContext& context) {
+        (void)context;
         ImGui::Begin("Console");
 
         const char* filter_items[] = {

@@ -2,8 +2,9 @@
 
 namespace dodoe {
 
-UIInputBlocker::UIInputBlocker(engine::core::Context& context, Vector2f position, Vector2f size)
+UIInputBlocker::UIInputBlocker(Context& context, Vector2f position, Vector2f size)
     : UIInteractive(context, position, size) {
 }
 
 } // namespace dodoe
+

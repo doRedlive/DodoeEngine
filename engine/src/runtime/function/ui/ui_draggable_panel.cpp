@@ -1,14 +1,13 @@
 #include "ui_draggable_panel.h"
-#include "engine/core/context.h"
 
 namespace dodoe {
 
-UIDraggablePanel::UIDraggablePanel(engine::core::Context& context,
+UIDraggablePanel::UIDraggablePanel(Context& context,
                                    Vector2f position,
                                    Vector2f size,
                                    std::optional<Color> background_color,
-                                   std::optional<engine::render::Image> skin_image,
-                                   std::optional<engine::render::NineSliceMargins> skin_margins)
+                                   std::optional<Image> skin_image,
+                                   std::optional<NineSliceMargins> skin_margins)
     : UIInteractive(context, std::move(position), std::move(size)) {
     auto panel = create_scope<UIPanel>(Vector2f{0.0f, 0.0f},
                                        size,
@@ -51,3 +50,5 @@ void UIDraggablePanel::setTopLeftByScreen(const Vector2f& screen_pos) {
 }
 
 } // namespace dodoe
+
+

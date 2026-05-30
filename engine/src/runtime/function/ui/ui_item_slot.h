@@ -10,7 +10,7 @@ namespace dodoe {
 struct SlotItem {
     identifier item_id{entt::null};
     int count{0};
-    engine::render::Image icon{};
+    Image icon{};
 };
 
 class UIItemSlot final : public UIInteractive {
@@ -25,16 +25,16 @@ private:
     std::optional<SlotItem> slot_item_{};
 
 public:
-    UIItemSlot(engine::core::Context& context,
+    UIItemSlot(Context& context,
                Vector2f position = {0.0f, 0.0f},
                Vector2f size = {0.0f, 0.0f});
 
-    void setItem(const engine::render::Image& icon, int count = 1);
-    void setSlotItem(identifier item_id, int count, const engine::render::Image& icon);
+    void setItem(const Image& icon, int count = 1);
+    void setSlotItem(identifier item_id, int count, const Image& icon);
     void setSlotItem(const SlotItem& item);
     std::optional<SlotItem> getSlotItem() const { return slot_item_; }
     void clearSlotItem() { clearItem(); }
-    void setItemIcon(const engine::render::Image& icon);
+    void setItemIcon(const Image& icon);
     Vector2f getIconLayoutSize() const;
     void setItemCount(int count);
     void clearItem();
@@ -45,8 +45,8 @@ public:
     void setCooldown(float percent);
     float getCooldown() const { return cooldown_percent_; }
 
-    void setSelectionImage(const engine::render::Image& image);
-    void setBackgroundImage(const engine::render::Image& image);
+    void setSelectionImage(const Image& image);
+    void setBackgroundImage(const Image& image);
 
     void applyStateVisual(identifier state_id) override;
     
@@ -55,3 +55,4 @@ protected:
 };
 
 } // namespace dodoe
+

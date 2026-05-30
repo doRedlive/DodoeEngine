@@ -92,19 +92,28 @@ namespace cakery {
 
     } // namespace
 
-    bool ProjectManagerPanel::initialize(const ProjectManagerPanelCreateInfo& info) {
+    ProjectManagerPanel::ProjectManagerPanel(EditorPanelDescriptor descriptor)
+        : EditorPanel(std::move(descriptor)) {
         readConfig();
-        return true;
     }
 
-    void ProjectManagerPanel::shutdown() {
+    ProjectManagerPanel::~ProjectManagerPanel() = default;
 
+    void ProjectManagerPanel::onDraw(const EditorPanelContext& context) {
+        (void)context;
+        if (drawImpl()) {
+            if (context.request_enter_editor) {
+                context.request_enter_editor();
+            }
+        }
     }
 
-    bool ProjectManagerPanel::draw() {
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        const ImVec2 window_pos = viewport ? viewport->WorkPos : ImVec2(0.0f, 0.0f);
-        const ImVec2 window_size = viewport ? viewport->WorkSize : ImVec2(1280.0f, 720.0f);
+    bool ProjectManagerPanel::drawImpl() {
+        const ImGuiIO& io = ImGui::GetIO();
+        const ImVec2 window_pos(0.0f, 0.0f);
+        const ImVec2 window_size = (io.DisplaySize.x > 0.0f && io.DisplaySize.y > 0.0f)
+            ? io.DisplaySize
+            : ImVec2(1280.0f, 720.0f);
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
         ImGui::SetNextWindowSize(window_size, ImGuiCond_Always);
 
@@ -117,9 +126,12 @@ namespace cakery {
         drawSearchBar();
         ImGui::Spacing();
 
-        drawProjectList();
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float footer_height = ImGui::GetFrameHeightWithSpacing() + style.ItemSpacing.y + style.WindowPadding.y * 2.0f;
+
+        drawProjectList(footer_height);
         ImGui::SameLine();
-        drawProjectDetails();
+        drawProjectDetails(footer_height);
         ImGui::Separator();
         drawActions();
         drawPopups();
@@ -438,9 +450,9 @@ namespace cakery {
         }
     }
 
-    void ProjectManagerPanel::drawProjectList() {
+    void ProjectManagerPanel::drawProjectList(float footer_height) {
         constexpr float kLeftWidth = 360.0f;
-        ImGui::BeginChild("##ProjectList", ImVec2(kLeftWidth, -46.0f), true);
+        ImGui::BeginChild("##ProjectList", ImVec2(kLeftWidth, -footer_height), true);
         ImGui::TextUnformatted(LangConfig::TR("PM_RECENT"));
         ImGui::Separator();
 
@@ -460,8 +472,8 @@ namespace cakery {
         ImGui::EndChild();
     }
 
-    void ProjectManagerPanel::drawProjectDetails() {
-        ImGui::BeginChild("##ProjectDetail", ImVec2(0.0f, -46.0f), true);
+    void ProjectManagerPanel::drawProjectDetails(float footer_height) {
+        ImGui::BeginChild("##ProjectDetail", ImVec2(0.0f, -footer_height), true);
         ImGui::TextUnformatted(LangConfig::TR("PM_DETAILS"));
         ImGui::Separator();
 

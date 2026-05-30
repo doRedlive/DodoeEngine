@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2026/2/22.
-//
+// do@Redlive
 
 #include "viewport_panel.h"
 
@@ -14,17 +12,30 @@
 using namespace dodoe;
 
 namespace cakery {
+
+	ViewportPanel::ViewportPanel(EditorPanelDescriptor descriptor)
+		: EditorPanel(std::move(descriptor)) {
+	}
+
 	ViewportPanel::~ViewportPanel() {
-		cleanup();
+
 	}
 
-	void ViewportPanel::initialize() {
+	void ViewportPanel::onWorkspaceActivated(const EditorPanelContext& context) {
+		(void)context;
 	}
 
-	void ViewportPanel::update() {
+	void ViewportPanel::onWorkspaceDeactivated(const EditorPanelContext& context) {
+		(void)context;
 	}
 
-	void ViewportPanel::draw() {
+	void ViewportPanel::onUpdate(const EditorPanelContext& context, float delta_time) {
+		(void)context;
+		(void)delta_time;
+	}
+
+	void ViewportPanel::onDraw(const EditorPanelContext& context) {
+		(void)context;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -56,9 +67,6 @@ namespace cakery {
 		ImGui::End();
 		ImGui::PopStyleColor(2);
 		ImGui::PopStyleVar();
-	}
-
-	void ViewportPanel::cleanup() {
 	}
 
 } // cakery

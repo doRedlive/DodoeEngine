@@ -1,20 +1,23 @@
-//
-// Created by GreenMuffin on 2025/11/08.
-//
+// do@Redlive
 
-#ifndef DODOE_UI_SYSTEM_H
-#define DODOE_UI_SYSTEM_H
+#pragma once
+
+#include "dopch.h"
+
+#include "runtime/function/window/window_manager.h"
 
 namespace dodoe {
-    class WindowManager;
 
-    class UiSystem {
+    struct UISystemCreateInfo { 
+        WindowManager* window_manager; 
+    };
+
+    class UISystem : public Managed<UISystem, UISystemCreateInfo> {
     public:
-        void initialize(WindowManager* window_manager);
+        bool initialize(const UISystemCreateInfo& info);
         void shutdown();
 
         void prepare();
     };
-} // dodoe
 
-#endif // DODOE_UI_SYSTEM_H
+} // dodoe

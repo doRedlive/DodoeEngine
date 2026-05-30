@@ -4,20 +4,19 @@
 #include <string>
 #include <glm/geometric.hpp>
 
-#include "engine/core/context.h"
 
 namespace dodoe {
 
-UIProgressBar::UIProgressBar(engine::core::Context& context, Vector2f position, Vector2f size)
+UIProgressBar::UIProgressBar(Context& context, Vector2f position, Vector2f size)
     : UIElement(position, size) {
 
-    auto bg = create_scope<UIImage>(engine::render::Image{});
+    auto bg = create_scope<UIImage>(Image{});
     bg->setOrderIndex(0);
     bg->setAnchor({0, 0}, {1, 1});
     background_image_ = bg.get();
     addChild(std::move(bg));
 
-    auto fill = create_scope<UIImage>(engine::render::Image{});
+    auto fill = create_scope<UIImage>(Image{});
     fill->setOrderIndex(1);
     fill->setAnchor({0, 0}, {1, 1});
     fill_image_ = fill.get();
@@ -39,13 +38,13 @@ void UIProgressBar::setValue(float value) {
     }
 }
 
-void UIProgressBar::setBackground(const engine::render::Image& image) {
+void UIProgressBar::setBackground(const Image& image) {
     if (background_image_) {
         background_image_->setImage(image);
     }
 }
 
-void UIProgressBar::setFill(const engine::render::Image& image) {
+void UIProgressBar::setFill(const Image& image) {
     if (fill_image_) {
         fill_image_->setImage(image);
         updateFillVisual();
@@ -100,3 +99,5 @@ void UIProgressBar::onLayout() {
 }
 
 } // namespace dodoe
+
+

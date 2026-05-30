@@ -4,7 +4,7 @@
 
 #include "dopch.h"
 #include "ui_interactive.h"
-#include "engine/render/nine_slice.h"
+#include "ui_compat.h"
 
 namespace dodoe {
 
@@ -30,11 +30,11 @@ struct UIButtonLabelOverrides {
 };
 
 struct UIButtonSkin {
-    std::optional<engine::render::Image> normal_image{};
-    std::optional<engine::render::Image> hover_image{};
-    std::optional<engine::render::Image> pressed_image{};
-    std::optional<engine::render::Image> disabled_image{};
-    std::optional<engine::render::NineSliceMargins> nine_slice_margins{};
+    std::optional<Image> normal_image{};
+    std::optional<Image> hover_image{};
+    std::optional<Image> pressed_image{};
+    std::optional<Image> disabled_image{};
+    std::optional<NineSliceMargins> nine_slice_margins{};
 
     std::optional<UIButtonLabelStyle> normal_label{};
     std::optional<UIButtonLabelOverrides> hover_label{};
@@ -69,7 +69,7 @@ private:
     int m_label_font_size{0};
 
 public:
-    [[nodiscard]] static Scope<UIButton> Create(engine::core::Context& context,
+    [[nodiscard]] static Scope<UIButton> Create(Context& context,
                                                  identifier preset_id,
                                                  Vector2f position = {0.0f, 0.0f},
                                                  Vector2f size = {0.0f, 0.0f},
@@ -77,7 +77,7 @@ public:
                                                  std::function<void()> hover_enter_callback = nullptr,
                                                  std::function<void()> hover_leave_callback = nullptr);
 
-    [[nodiscard]] static Scope<UIButton> Create(engine::core::Context& context,
+    [[nodiscard]] static Scope<UIButton> Create(Context& context,
                                                  std::string_view preset_key,
                                                  Vector2f position = {0.0f, 0.0f},
                                                  Vector2f size = {0.0f, 0.0f},
@@ -87,7 +87,7 @@ public:
 
     ~UIButton() override = default;
 
-    void update(float delta_time, engine::core::Context& context) override;
+    void update(float delta_time, Context& context) override;
     void applyStateVisual(identifier state_id) override;
 
     void clicked() override { if (m_click_callback) m_click_callback(); }
@@ -101,13 +101,13 @@ public:
     void setTextLayoutScaleToFit(const Thickness& padding = {});
 
 private:
-    void renderSelf(engine::core::Context& context) override;
-    void renderLabel(engine::core::Context& context, const UIButtonSkin& skin,
+    void renderSelf(Context& context) override;
+    void renderLabel(Context& context, const UIButtonSkin& skin,
                      const Vector2f& position, const Vector2f& size);
 
     [[nodiscard]] const UIButtonSkin* getPreset() const;
 
-    UIButton(engine::core::Context& context,
+    UIButton(Context& context,
              Vector2f position,
              Vector2f size,
              std::function<void()> click_callback,
@@ -121,4 +121,6 @@ private:
 };
 
 } // namespace dodoe
+
+
 

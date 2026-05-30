@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2025/12/7.
-//
+// do@Redlive
 
 #include "hierarchy_panel.h"
 
@@ -19,22 +17,34 @@
 
 namespace cakery {
 
-    void HierarchyPanel::setContext(dodoe::Scene* context) {
-        context_ = context;
+    HierarchyPanel::HierarchyPanel(EditorPanelDescriptor descriptor)
+        : EditorPanel(std::move(descriptor)) {
     }
 
-    void HierarchyPanel::draw() {
+    void HierarchyPanel::onWorkspaceActivated(const EditorPanelContext& context) {
+        if (context.system_context.world) {
+            m_context = context.system_context.world->getCurrentScene();
+        }
+    }
+
+    void HierarchyPanel::onWorkspaceDeactivated(const EditorPanelContext& context) {
+        (void)context;
+        m_context = nullptr;
+    }
+
+    void HierarchyPanel::onDraw(const EditorPanelContext& context) {
+        (void)context;
         ImGui::Begin("Hierarchy");
 
-        if (!context_) {
+        if (!m_context) {
             ImGui::End();
             return;
         }
 
-        auto entities = context_->getEntities();
+        auto entities = m_context->getEntities();
         std::unordered_set<dodoe::ui32> visited;
         for (auto entity : entities) {
-            if (!entity || !context_->registry().valid(entity)) {
+            if (!entity || !m_context->registry().valid(entity)) {
                 continue;
             }
 
@@ -56,7 +66,7 @@ namespace cakery {
 
         if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
             if (ImGui::MenuItem("Create Entity")) {
-                context_->createEntity("Entity");
+                m_context->createEntity("Entity");
             }
             ImGui::EndPopup();
         }
@@ -65,7 +75,7 @@ namespace cakery {
     }
 
     void HierarchyPanel::drawEntityNode(dodoe::Entity entity, std::unordered_set<dodoe::ui32>& visited) {
-        if (!entity || !context_->registry().valid(entity)) {
+        if (!entity || !m_context->registry().valid(entity)) {
             return;
         }
 
@@ -97,7 +107,7 @@ namespace cakery {
         }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-            editing_handle_ = static_cast<dodoe::ui32>(entity);
+            m_editing_handle = static_cast<dodoe::ui32>(entity);
             {
                 const size_t copy_len = (std::min)(name.size(), sizeof(edit_name_buf) - 1);
                 std::memcpy(edit_name_buf, name.data(), copy_len);
@@ -114,7 +124,7 @@ namespace cakery {
             ImGui::EndPopup();
         }
 
-        if (editing_handle_ == static_cast<dodoe::ui32>(entity) && ImGui::BeginPopup("EditEntityPopup")) {
+        if (m_editing_handle == static_cast<dodoe::ui32>(entity) && ImGui::BeginPopup("EditEntityPopup")) {
             ImGui::SetKeyboardFocusHere(0);
             const bool name_changed = ImGui::InputText("##edit_name", edit_name_buf, sizeof(edit_name_buf), ImGuiInputTextFlags_EnterReturnsTrue);
             if (name_changed || ImGui::IsItemDeactivatedAfterEdit()) {
@@ -122,12 +132,12 @@ namespace cakery {
             }
 
             if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-                editing_handle_ = 0;
+                m_editing_handle = 0;
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
-        } else if (editing_handle_ == static_cast<dodoe::ui32>(entity) && !ImGui::IsPopupOpen("EditEntityPopup")) {
-            editing_handle_ = 0;
+        } else if (m_editing_handle == static_cast<dodoe::ui32>(entity) && !ImGui::IsPopupOpen("EditEntityPopup")) {
+            m_editing_handle = 0;
         }
 
         if (request_delete) {
@@ -137,7 +147,7 @@ namespace cakery {
                 }
             }
             dodoe::EventSystem::Enqueue<NonSelectEntityEvent>();
-            context_->destroyEntity(entity);
+            m_context->destroyEntity(entity);
         }
 
         if (open && has_children) {
@@ -151,4 +161,4 @@ namespace cakery {
         ImGui::PopID();
     }
 
-}
+} // cakery

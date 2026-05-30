@@ -27,3 +27,4 @@ protected:
 };
 
 } // namespace dodoe
+

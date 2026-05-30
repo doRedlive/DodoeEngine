@@ -4,25 +4,25 @@
 #include "ui_element.h"
 #include "ui_defaults.h"
 #include "runtime/core/utils/util.h"
-#include "engine/render/text_renderer.h"
+#include "ui_compat.h"
 
 namespace dodoe {
 
 class UILabel final : public UIElement {
 private:
-    engine::render::TextRenderer& text_renderer_;
+    TextRenderer& text_renderer_;
 
     std::string text_;
     std::string font_path_;
     identifier font_id_;
     int font_size_;
     identifier style_id_{entt::null};
-    using TextRenderOverrides = engine::utils::TextRenderOverrides;
+    using TextRenderOverrides = TextRenderOverrides;
     TextRenderOverrides overrides_{};
     std::uint64_t last_layout_revision_{0};
 
 public:
-    UILabel(engine::render::TextRenderer& text_renderer,
+    UILabel(TextRenderer& text_renderer,
             std::string_view text,
             std::string_view font_path = DEFAULT_UI_FONT_PATH,
             int font_size = DEFAULT_UI_FONT_SIZE_PX,
@@ -53,8 +53,8 @@ public:
     void clearOverrides();
     
 protected:
-    void update(float delta_time, engine::core::Context& context) override;
-    void renderSelf(engine::core::Context& context) override;
+    void update(float delta_time, Context& context) override;
+    void renderSelf(Context& context) override;
 
 private:
     void refreshSize();
@@ -62,3 +62,5 @@ private:
 
 
 } // namespace dodoe
+
+

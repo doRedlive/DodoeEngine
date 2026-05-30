@@ -58,7 +58,7 @@ namespace dodoe {
                 const Vector2f pivot_offset = world_size * sr.pivot;
                 const Vector2f bl_pos = anchor_pos - pivot_offset;
 
-                Renderer2d::drawSprite(
+                Renderer2D::DrawSprite(
                     draw_texture_id,
                     bl_pos,
                     world_size,

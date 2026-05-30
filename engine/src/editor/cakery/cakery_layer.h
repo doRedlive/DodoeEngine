@@ -2,14 +2,9 @@
 
 #pragma once
 
-#include "panels/console_panel.h"
-#include "panels/inspector_panel.h"
-#include "panels/hierarchy_panel.h"
-#include "panels/project_panel.h"
-#include "panels/project_manager_panel.h"
-#include "panels/viewport_panel.h"
-#include "panels/dockspace_panel.h"
-#include "panels/title_bar.h"
+#include "dopch.h"
+
+#include "cakery/framework/editor_panel_manager.h"
 
 #include "runtime/core/layer/layer.h"
 #include "runtime/function/window/window.h"
@@ -27,18 +22,13 @@ namespace cakery {
 
     private:
         void enterEditor();
+        [[nodiscard]] EditorPanelContext buildPanelContext(bool workspace_active);
 
         dodoe::Window* m_window{ nullptr };
         std::string m_base_title{};
         bool m_editor_initialized{false};
 
-        ProjectManagerPanel m_project_manager_panel{};
-        HierarchyPanel m_hierarchy_panel{};
-        ProjectPanel m_project_panel{};
-        InspectorPanel m_inspector_panel{};
-        ConsolePanel m_console_panel{};
-        DockSpacePanel m_dockspace_panel{};
-        ViewportPanel m_viewport_panel;
-        Titlebar m_title_bar{};
+        EditorPanelManager m_panel_manager{};
     };
+
 } // cakery

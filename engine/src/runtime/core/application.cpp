@@ -31,9 +31,11 @@ namespace dodoe {
 
     void Application::run() {
         EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);
-        if (!IsEditorApplication()) {
-            m_context->startRuntime();
-        }
+
+#ifdef DODOE_EDITOR
+        m_context->startRuntime();
+#endif//DODOE_EDITOR
+
         m_context->layer_stack.attach();
 
         while (m_running) {
@@ -45,9 +47,11 @@ namespace dodoe {
         }
 
         m_context->layer_stack.detach();
-        if (!IsEditorApplication()) {
-            m_context->finalizeRuntime();
-        }
+
+#ifdef DODOE_EDITOR
+        m_context->finalizeRuntime();
+#endif//DODOE_EDITOR
+
         EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
     }
 

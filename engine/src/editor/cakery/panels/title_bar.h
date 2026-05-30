@@ -1,11 +1,10 @@
-////
-//// Created by GreenMuffin on 2026/3/4.
-////
+// do@Redlive
 
-#ifndef CAKERY_TITLE_BAR_H
-#define CAKERY_TITLE_BAR_H
+#pragma once
 
 #include "dopch.h"
+
+#include "cakery/framework/editor_panel.h"
 
 namespace dodoe {
 	class Window;
@@ -14,9 +13,12 @@ namespace dodoe {
 
 namespace cakery {
 
-	class Titlebar {
+	class EditorPanelManager;
+
+	class Titlebar : public EditorPanel {
 	public:
-		void draw(dodoe::Window* cakery_window);
+		explicit Titlebar(EditorPanelDescriptor descriptor);
+		void onDraw(const EditorPanelContext& context) override;
 
 	private:
 		void ensureButtonTextures();
@@ -31,5 +33,3 @@ namespace cakery {
 	};
 
 } // cakery
-
-#endif // CAKERY_TITLE_BAR_H

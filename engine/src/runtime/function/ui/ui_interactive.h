@@ -6,7 +6,7 @@
 #include "ui_element.h"
 #include "state/ui_state.h"
 #include "behavior/interaction_behavior.h"
-#include "engine/render/image.h"
+#include "ui_compat.h"
 
 namespace dodoe {
 
@@ -20,10 +20,10 @@ namespace dodoe {
 
     class UIInteractive : public UIElement {
     protected:
-        engine::core::Context& m_context;
+        Context& m_context;
         Scope<UIState> m_state;
         Scope<UIState> m_next_state;
-        std::unordered_map<identifier, engine::render::Image> m_images;
+        std::unordered_map<identifier, Image> m_images;
         std::unordered_map<identifier, identifier> m_sound_overrides;
         identifier m_current_image_id = entt::null;
         bool m_interactive = true;
@@ -33,14 +33,14 @@ namespace dodoe {
         Vector2f m_last_mouse_pos{0.0f, 0.0f};
 
     public:
-        UIInteractive(engine::core::Context& context, Vector2f position = {0.0f, 0.0f}, Vector2f size = {0.0f, 0.0f});
+        UIInteractive(Context& context, Vector2f position = {0.0f, 0.0f}, Vector2f size = {0.0f, 0.0f});
         ~UIInteractive() override;
 
         virtual void clicked() {}
         virtual void hover_enter() {}
         virtual void hover_leave() {}
 
-        void addImage(identifier name_id, engine::render::Image image);
+        void addImage(identifier name_id, Image image);
         void setCurrentImage(identifier name_id);
         virtual void applyStateVisual(identifier state_id);
 
@@ -58,7 +58,7 @@ namespace dodoe {
         void clearHoverSoundOverride() { clearSoundEventOverride(UI_SOUND_EVENT_HOVER_ID); }
         void clearClickSoundOverride() { clearSoundEventOverride(UI_SOUND_EVENT_CLICK_ID); }
 
-        engine::core::Context& getContext() const { return m_context; }
+        Context& getContext() const { return m_context; }
         void setState(Scope<UIState> state);
         void setNextState(Scope<UIState> state);
         UIState* getState() const { return m_state.get(); }
@@ -81,9 +81,11 @@ namespace dodoe {
         void mousePressed();
         void mouseReleased(bool is_inside);
 
-        void update(float delta_time, engine::core::Context& context) override;
+        void update(float delta_time, Context& context) override;
     protected:
-        void renderSelf(engine::core::Context& context) override;
+        void renderSelf(Context& context) override;
     };
 
 } // namespace dodoe
+
+

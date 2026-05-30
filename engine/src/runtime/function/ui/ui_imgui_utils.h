@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dopch.h"
+#include "ui_compat.h"
 
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
@@ -8,13 +9,9 @@
 #include "runtime/function/render/renderer_2d.h"
 #include "runtime/function/render/framework/texture_manager.h"
 
-namespace engine::render {
-    class Image;
-}
-
 namespace dodoe::ui {
 
-[[nodiscard]] inline Ref<Texture> resolveTexture(const engine::render::Image& image) {
+[[nodiscard]] inline Ref<Texture> resolveTexture(const Image& image) {
     auto* render_system = Application::Self().context().render_system.get();
     auto* texture_manager = render_system ? render_system->getTextureManager() : nullptr;
     if (!texture_manager) {
@@ -33,7 +30,7 @@ namespace dodoe::ui {
     return texture;
 }
 
-    [[nodiscard]] inline Vector4f resolveUvRect(const engine::render::Image& image) {
+    [[nodiscard]] inline Vector4f resolveUvRect(const Image& image) {
         Vector4f uv{0.0f, 0.0f, 1.0f, 1.0f};
         const auto texture = resolveTexture(image);
         if (!texture) {
@@ -66,10 +63,10 @@ namespace dodoe::ui {
     inline void drawFilledRect(const Rect& rect,
                                const Color& color,
                                float /*rounding*/ = 0.0f) {
-        Renderer2d::drawSprite(0, rect.pos, rect.size, Vector3f{0.0f, 0.0f, 0.0f}, color);
+        Renderer2D::DrawSprite(0, rect.pos, rect.size, Vector3f{0.0f, 0.0f, 0.0f}, color);
     }
 
-inline void drawImage(const engine::render::Image& image,
+inline void drawImage(const Image& image,
                       const Vector2f& position,
                       const Vector2f& size,
                       const Color& tint = Color::white()) {
@@ -78,7 +75,7 @@ inline void drawImage(const engine::render::Image& image,
             return;
         }
 
-        Renderer2d::drawSprite(
+        Renderer2D::DrawSprite(
             texture->id,
             position,
             size,
@@ -88,7 +85,7 @@ inline void drawImage(const engine::render::Image& image,
         );
 }
 
-inline void drawImageForeground(const engine::render::Image& image,
+inline void drawImageForeground(const Image& image,
                                 const Vector2f& position,
                                 const Vector2f& size,
                                 const Color& tint = Color::white()) {
@@ -96,3 +93,4 @@ inline void drawImageForeground(const engine::render::Image& image,
 }
 
 } // namespace dodoe::ui
+

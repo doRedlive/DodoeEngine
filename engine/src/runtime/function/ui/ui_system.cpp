@@ -1,72 +1,38 @@
-//
-// Created by GreenMuffin on 2025/11/08.
-//
+// do@Redlive
 
 #include "dopch.h"
 
 #include "ui_system.h"
 
-#include "runtime/function/window/window_manager.h"
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/core/layer/layer_stack.h"
 
 #ifdef DODOE_EDITOR
-#include "runtime/function/render/render_api.h"
-#include "editor/cakery/style/imgui_style.h"
-
-#include "imgui/imgui.h"
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
+#include "runtime/function/ui/imgui/imgui_builder.h"
 #endif
 
 namespace dodoe {
 
-    void UiSystem::initialize(WindowManager* window_manager) {
+    bool UISystem::initialize(const UISystemCreateInfo& info) {
+        auto* window = info.window_manager->getWindow();
+
 #ifdef DODOE_EDITOR
-        auto* window = window_manager->getWindow();
+        ImGuiBuilder::SetupImGui(window->getNativeWindow());
+#endif
+        return true;
+    }
 
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-
-        ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-        const auto api_type = RenderApi::apiType();
-        if (api_type == RenderApiType::OpenGL) {
-            ImGui_ImplGlfw_InitForOpenGL(window->getNativeWindow(), false);
-        }
-        else if (api_type == RenderApiType::Vulkan) {
-            ImGui_ImplGlfw_InitForVulkan(window->getNativeWindow(), false);
-        }
-        else {
-            ImGui_ImplGlfw_InitForOther(window->getNativeWindow(), false);
-        }
-
-        ApplyImGuiStyle(window->getNativeWindow());
-#else
-        (void)window_manager;
+    void UISystem::prepare() {
+#ifdef DODOE_EDITOR
+        ImGuiBuilder::PrepareImGui();
 #endif
     }
 
-    void UiSystem::prepare() {
+    void UISystem::shutdown() {
 #ifdef DODOE_EDITOR
-        if (!ImGui::GetCurrentContext()) {
-            return;
-        }
-
-        ImGui_ImplGlfw_NewFrame();
-        if (RenderApi::apiType() == RenderApiType::OpenGL) {
-            ImGui_ImplOpenGL3_NewFrame();
-        }
-        ImGui::NewFrame();
+        ImGuiBuilder::CleanupImGui();
 #endif
     }
 
-    void UiSystem::shutdown() {
-#ifdef DODOE_EDITOR
-        if (ImGui::GetCurrentContext()) {
-            ImGui_ImplGlfw_Shutdown();
-            ImGui::DestroyContext();
-        }
-#endif
-    }
-};
+} // dodoe

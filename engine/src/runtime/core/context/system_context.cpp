@@ -48,7 +48,6 @@ namespace dodoe {
         window_manager = create_scope<WindowManager>();
         input_manager  = create_scope<InputManager>();
         time_system    = create_scope<TimeSystem>();
-        ui_system      = create_scope<UiSystem>();
         // ---------------------CORE-------------------------
         Log::Initialize();
         EventSystem::Initialize();
@@ -58,8 +57,8 @@ namespace dodoe {
         // ---------------------RENDER-------------------------
         window_manager->initialize({create_info.spec});
         RenderApi::initialize({create_info.spec.render_api_type});
-        ui_system->initialize(window_manager.get());
-        render_system = RenderSystem::Create({window_manager.get(), ui_system.get(), create_info.spec.render_api_type, create_info.spec.render_graph_mode});
+        ui_system = UISystem::Create({window_manager.get()});
+        render_system = RenderSystem::Create({window_manager.get(), create_info.spec.render_api_type, create_info.spec.render_graph_mode});
         DO_ASSERT(render_system, "RenderSystem initialize failed!");
 
         input_manager->initialize({render_system->getViewportManager()});
@@ -77,8 +76,7 @@ namespace dodoe {
         ResourceManager::Self().shutdown();
         // ---------------------RENDER-------------------------
         RenderSystem::Destroy(render_system);
-        ui_system->shutdown();
-        ui_system.reset();
+        UISystem::Destroy(ui_system);
         window_manager->shutdown();
         window_manager.reset();
         // ---------------------CORE-------------------------

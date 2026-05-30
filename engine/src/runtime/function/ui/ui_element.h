@@ -7,9 +7,7 @@
 
 namespace dodoe {
 
-    namespace core {
-        class Context;
-    }
+    class Context;
 
     class UIInteractive;
 
@@ -51,8 +49,8 @@ namespace dodoe {
         explicit UIElement(Vector2f position = {0.0f, 0.0f}, Vector2f size = {0.0f, 0.0f});
         virtual ~UIElement() = default;
 
-        virtual void update(float delta_time, engine::core::Context& context);
-        virtual void render(engine::core::Context& context);
+        virtual void update(float delta_time, Context& context);
+        virtual void render(Context& context);
 
         void addChild(Scope<UIElement> child, int order_index = -1);
         Scope<UIElement> removeChild(UIElement* child_ptr);
@@ -104,7 +102,7 @@ namespace dodoe {
         UIElement& operator=(UIElement&&) = delete;
 
     protected:
-        virtual void renderSelf(engine::core::Context& context);
+        virtual void renderSelf(Context& context);
         virtual void onLayout() {}
 
         void invalidateLayout(bool propagate = true);
@@ -114,3 +112,4 @@ namespace dodoe {
     };
 
 } // dodoe
+

@@ -1,8 +1,5 @@
 #pragma once
-
-namespace engine::core {
-    class Context;
-}
+#include "../ui_compat.h"
 
 namespace dodoe {
     class UIInteractive;
@@ -30,7 +27,7 @@ public:
 
 protected:
     virtual void enter() = 0;
-    virtual void update(float, engine::core::Context&) {}
+    virtual void update(float, Context&) {}
     
     virtual void onMouseEnter() {}
     virtual void onMouseExit() {}
@@ -39,3 +36,4 @@ protected:
 };
 
 } // namespace dodoe
+

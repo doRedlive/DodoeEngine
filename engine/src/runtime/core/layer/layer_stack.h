@@ -22,6 +22,8 @@ namespace dodoe {
         void popLayer(Layer* layer);
         void popOverLayer(Layer* layer);
 
+        [[nodiscard]] Layer* getLayer(const std::string& name);
+
         std::vector<Layer*>::iterator begin() { return m_layers.begin(); }
         std::vector<Layer*>::iterator end() { return m_layers.end(); }
 

@@ -34,3 +34,4 @@ protected:
 };
 
 } // namespace dodoe
+

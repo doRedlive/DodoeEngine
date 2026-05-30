@@ -109,7 +109,8 @@ namespace cakery {
         }
     }
 
-    InspectorPanel::InspectorPanel() {
+    InspectorPanel::InspectorPanel(EditorPanelDescriptor descriptor)
+        : EditorPanel(std::move(descriptor)) {
         dodoe::EventSystem::Subscribe<SelectEntityEvent, &InspectorPanel::onSelectEntity>(this);
         dodoe::EventSystem::Subscribe<NonSelectEntityEvent, &InspectorPanel::onNonSelectEntity>(this);
         initializeComponentDrawers();
@@ -120,15 +121,8 @@ namespace cakery {
         dodoe::EventSystem::Unsubscribe<NonSelectEntityEvent, &InspectorPanel::onNonSelectEntity>(this);
     }
 
-    void InspectorPanel::markCurrentComponentDirty() {
-        if (!m_selected_entity.valid() || m_current_component_name.empty()) {
-            return;
-        }
-
-        (void)dodoe::ComponentDB::self().markComponentDirty(m_selected_entity, m_current_component_name);
-    }
-
-    void InspectorPanel::draw() {
+    void InspectorPanel::onDraw(const EditorPanelContext& context) {
+        (void)context;
         ImGui::Begin("Inspector");
 
         drawComponents();
@@ -136,7 +130,15 @@ namespace cakery {
         ImGui::End();
     }
 
-    void InspectorPanel::drawComponents() {
+    void InspectorPanel::markCurrentComponentDirty() {
+        if (!m_selected_entity.valid() || m_current_component_name.empty()) {
+             return;
+         }
+
+         (void)dodoe::ComponentDB::self().markComponentDirty(m_selected_entity, m_current_component_name);
+     }
+
+     void InspectorPanel::drawComponents() {
         if (!m_selected_entity.valid()) {
             return;
         }

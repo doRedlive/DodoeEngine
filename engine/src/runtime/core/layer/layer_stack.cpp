@@ -55,4 +55,13 @@ namespace dodoe {
         }
     }
 
+    Layer* LayerStack::getLayer(const std::string& name) {
+        for (auto layer : m_layers) {
+            if (layer->getName() == name) {
+                return layer;
+            }
+        }
+        return nullptr;
+    }
+
 } // dodoe

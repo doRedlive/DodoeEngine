@@ -1,16 +1,15 @@
 #include "ui_label.h"
-#include "engine/core/context.h"
-#include "engine/render/text_renderer.h"
+#include "ui_compat.h"
 #include <entt/core/hashed_string.hpp>
 
 namespace dodoe {
 
 namespace {
 
-using LayoutOptions = engine::utils::LayoutOptions;
-using TextRenderOverrides = engine::utils::TextRenderOverrides;
+using LayoutOptions = LayoutOptions;
+using TextRenderOverrides = TextRenderOverrides;
 
-[[nodiscard]] LayoutOptions resolveLabelLayout(const engine::render::TextRenderer& renderer,
+[[nodiscard]] LayoutOptions resolveLabelLayout(const TextRenderer& renderer,
                                               identifier style_id,
                                               const TextRenderOverrides& overrides) {
     const identifier resolved_style =
@@ -24,7 +23,7 @@ using TextRenderOverrides = engine::utils::TextRenderOverrides;
 
 } // namespace
 
-UILabel::UILabel(engine::render::TextRenderer& text_renderer,
+UILabel::UILabel(TextRenderer& text_renderer,
                  std::string_view text,
                  std::string_view font_path,
                  int font_size,
@@ -45,7 +44,7 @@ UILabel::UILabel(engine::render::TextRenderer& text_renderer,
     DO_TRACE("UILabel created.");
 }
 
-void UILabel::update(float delta_time, engine::core::Context& context) {
+void UILabel::update(float delta_time, Context& context) {
     const auto revision = text_renderer_.getLayoutRevision();
     if (revision != last_layout_revision_) {
         refreshSize();
@@ -55,7 +54,7 @@ void UILabel::update(float delta_time, engine::core::Context& context) {
     UIElement::update(delta_time, context);
 }
 
-void UILabel::renderSelf(engine::core::Context& /*context*/) {
+void UILabel::renderSelf(Context& /*context*/) {
     if (text_.empty()) {
         return;
     }
@@ -127,3 +126,5 @@ void UILabel::refreshSize() {
 }
 
 } // namespace dodoe
+
+

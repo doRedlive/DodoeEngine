@@ -1,6 +1,5 @@
 #include "ui_image.h"
 #include "ui_imgui_utils.h"
-#include "engine/core/context.h"
 
 #include <entt/core/hashed_string.hpp>
 
@@ -34,7 +33,7 @@ UIImage::UIImage(identifier texture_id,
     DO_TRACE("UIImage created.");
 }
 
-UIImage::UIImage(engine::render::Image image,
+UIImage::UIImage(Image image,
                  Vector2f position,
                  Vector2f size)
     : UIElement(std::move(position), std::move(size)),
@@ -43,7 +42,7 @@ UIImage::UIImage(engine::render::Image image,
     DO_TRACE("UIImage created.");
 }
 
-void UIImage::renderSelf(engine::core::Context& context) {
+void UIImage::renderSelf(Context& context) {
     if (image_.getTextureId() == entt::null) {
         return;
     }
@@ -58,3 +57,5 @@ void UIImage::renderSelf(engine::core::Context& context) {
 }
 
 } // namespace dodoe 
+
+

@@ -4,16 +4,13 @@
 
 #include "dopch.h"
 
+#include "cakery/framework/editor_panel.h"
+
 #include "runtime/resource/file/file_system.h"
 
 namespace cakery {
 
-    struct ProjectManagerPanelCreateInfo {
-
-    };
-
-    class ProjectManagerPanel : public dodoe::Managed<ProjectManagerPanel, ProjectManagerPanelCreateInfo> {
-        friend class dodoe::Managed<ProjectManagerPanel, ProjectManagerPanelCreateInfo>;
+    class ProjectManagerPanel : public EditorPanel {
 
         struct ProjectEntry {
             std::string name;
@@ -40,12 +37,12 @@ namespace cakery {
             dodoe::FileSystem::EngineResPath / "configs" / "project_manager_config.json";
 
     public:
-        [[nodiscard]] bool draw();
+        explicit ProjectManagerPanel(EditorPanelDescriptor descriptor);
+        ~ProjectManagerPanel() override;
+
+        void onDraw(const EditorPanelContext& context) override;
 
     private:
-        bool initialize(const ProjectManagerPanelCreateInfo& info);
-        void shutdown();
-
         bool readConfig();
         void writeConfig() const;
 
@@ -54,10 +51,11 @@ namespace cakery {
         void openProject();
 
         void drawSearchBar();
-        void drawProjectList();
-        void drawProjectDetails();
+        void drawProjectList(float footer_height);
+        void drawProjectDetails(float footer_height);
         void drawActions();
         void drawPopups();
+        bool drawImpl();
 
         [[nodiscard]] bool hasSelection() const;
         [[nodiscard]] size_t selectedProjectIndex() const;

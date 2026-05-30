@@ -1,14 +1,8 @@
 #pragma once
-#include "ui_element.h"
+#include "../ui_element.h"
 
 namespace dodoe {
 
-/**
- * @brief 布局容器基类
- * 
- * 为子类提供通用的布局属性（如内边距已在基类支持，这里可以扩展间距、对齐等）。
- * 需要子类实现 onLayout() 来具体安排子元素的位置和大小。
- */
 class UILayout : public UIElement {
 public:
     using UIElement::UIElement; // 使用基类构造函数
@@ -27,3 +21,4 @@ public:
 };
 
 } // namespace dodoe
+

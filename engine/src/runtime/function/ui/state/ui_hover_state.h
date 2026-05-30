@@ -12,7 +12,7 @@ public:
 
 private:
     void enter() override;
-    void update(float, engine::core::Context&) override {}
+    void update(float, Context&) override {}
     
     void onMouseExit() override;
     void onMousePressed() override;

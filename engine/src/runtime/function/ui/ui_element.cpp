@@ -1,7 +1,6 @@
 #include "ui_element.h"
 #include "ui_interactive.h"
 #include "ui_imgui_utils.h"
-#include "engine/core/context.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,7 +15,7 @@ UIElement::UIElement(Vector2f position, Vector2f size)
     m_layout_size = m_size;
 }
 
-void UIElement::update(float delta_time, engine::core::Context& context) {
+void UIElement::update(float delta_time, Context& context) {
     ensureLayout();
 
     if (!m_visible) return; 
@@ -31,7 +30,7 @@ void UIElement::update(float delta_time, engine::core::Context& context) {
     }
 }
 
-void UIElement::render(engine::core::Context& context) {
+void UIElement::render(Context& context) {
     ensureLayout();
 
     if (!m_visible) return;
@@ -198,7 +197,7 @@ UIInteractive* UIElement::findInteractiveAt(const Vector2f& point) {
     return const_cast<UIInteractive*>(std::as_const(*this).findInteractiveAt(point));
 }
 
-void UIElement::renderSelf(engine::core::Context& /*context*/) {
+void UIElement::renderSelf(Context& /*context*/) {
 }
 
 void UIElement::invalidateLayout(bool propagate) {
@@ -238,8 +237,8 @@ void UIElement::ensureLayout() const {
     Vector2f final_size = m_size;
     if (stretched) {
         final_size = available_size;
-        final_size.x = std::max(0.0f, final_size.x - m_margin.width());
-        final_size.y = std::max(0.0f, final_size.y - m_margin.height());
+        final_size.x = (std::max)(0.0f, final_size.x - m_margin.width());
+        final_size.y = (std::max)(0.0f, final_size.y - m_margin.height());
     }
     m_layout_size = final_size;
 
@@ -264,3 +263,5 @@ void UIElement::setSizeInternal(Vector2f size) {
 }
 
 } // namespace dodoe
+
+

@@ -4,12 +4,16 @@ file(GLOB_RECURSE CAKERY_SOURCES
         CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/cakery/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/cakery/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/cakery/**/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/cakery/**/*.c
 )
 
 file(GLOB_RECURSE CAKERY_HEADERS
         CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/cakery/*.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/cakery/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/cakery/**/*.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/cakery/**/*.h
 )
 
 set(CAKERY_ALL_SOURCES ${CAKERY_SOURCES} ${CAKERY_HEADERS})
@@ -28,6 +32,7 @@ add_executable(Cakery EXCLUDE_FROM_ALL ${CAKERY_ALL_SOURCES})
 
 target_link_libraries(Cakery PRIVATE DodoeRuntime)
 target_compile_definitions(Cakery PRIVATE DODOE_EDITOR)
+target_compile_definitions(DodoeRuntime PRIVATE DODOE_EDITOR)
 
 if(TARGET GreenCake)
     add_dependencies(Cakery GreenCake)

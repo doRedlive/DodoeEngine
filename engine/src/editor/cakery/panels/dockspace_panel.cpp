@@ -4,7 +4,12 @@
 
 namespace cakery {
 
-void DockSpacePanel::draw() {
+DockspacePanel::DockspacePanel(EditorPanelDescriptor descriptor)
+    : EditorPanel(std::move(descriptor)) {
+}
+
+void DockspacePanel::onDraw(const EditorPanelContext& context) {
+    (void)context;
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
     window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
@@ -21,9 +26,9 @@ void DockSpacePanel::draw() {
     ImGui::Begin("##DockSpaceHost", nullptr, window_flags);
     ImGui::PopStyleVar(3);
 
-    const ImGuiID dockspace_id = ImGui::GetID("DockSpaceHostID");
-    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+    m_dockspace_id = ImGui::GetID("DockSpaceHostID");
+    ImGui::DockSpace(m_dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
     ImGui::End();
-}
+} // cakery
 
-} // namespace cakery
+}

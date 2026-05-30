@@ -1,10 +1,6 @@
 #include "ui_interactive.h"
 #include "state/ui_state.h"
 #include "ui_imgui_utils.h"
-#include "engine/core/context.h"
-#include "engine/resource/resource_manager.h"
-#include "engine/audio/audio_player.h"
-#include "engine/input/input_manager.h"
 #include <glm/geometric.hpp>
 #include <entt/core/hashed_string.hpp>
 
@@ -28,7 +24,7 @@ namespace {
 
 UIInteractive::~UIInteractive() = default;
 
-UIInteractive::UIInteractive(engine::core::Context &context, Vector2f position, Vector2f size)
+UIInteractive::UIInteractive(Context &context, Vector2f position, Vector2f size)
     : UIElement(std::move(position), std::move(size)), m_context(context)
 {
     DO_TRACE("UIInteractive created.");
@@ -51,7 +47,7 @@ void UIInteractive::setNextState(Scope<UIState> state)
     m_next_state = std::move(state);
 }
 
-void UIInteractive::addImage(identifier name_id, engine::render::Image image)
+void UIInteractive::addImage(identifier name_id, Image image)
 {
     if (m_size.x == 0.0f && m_size.y == 0.0f) {
         auto texture_size = m_context.getResourceManager().getTextureSize(image.getTextureId(), image.getTexturePath());
@@ -141,7 +137,7 @@ void UIInteractive::playSoundEvent(identifier event_id)
     }
 }
 
-void UIInteractive::update(float delta_time, engine::core::Context &context)
+void UIInteractive::update(float delta_time, Context &context)
 {
     UIElement::update(delta_time, context);
 
@@ -167,7 +163,7 @@ void UIInteractive::update(float delta_time, engine::core::Context &context)
     }
 }
 
-void UIInteractive::renderSelf(engine::core::Context &context)
+void UIInteractive::renderSelf(Context &context)
 {
     if (m_current_image_id == entt::null) {
         return;
@@ -267,3 +263,5 @@ void UIInteractive::setPositionByScreen(const Vector2f& screen_pos) {
 }
 
 } // namespace dodoe
+
+

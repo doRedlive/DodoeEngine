@@ -31,11 +31,15 @@ namespace dodoe {
         Scope<InputManager>  input_manager  {nullptr};
         Scope<ScriptSystem>  script_system  {nullptr};
         Scope<TimeSystem>    time_system    {nullptr};
-        Scope<UiSystem>      ui_system      {nullptr};
+        Scope<UISystem>      ui_system      {nullptr};
         Scope<World>         world          {nullptr};
         LayerStack layer_stack{};
         bool m_runtime_started{false};
 
+        [[nodiscard]] WindowManager* getWindowManager() const { return window_manager.get(); }
+        [[nodiscard]] RenderSystem*  getRenderSystem() const { return render_system.get(); }
+        [[nodiscard]] InputManager*  getInputManager() const { return input_manager.get(); }
+        [[nodiscard]] const LayerStack& getLayerStack() const { return layer_stack; }
 
         void startRuntime();
         void tickOneFrame();

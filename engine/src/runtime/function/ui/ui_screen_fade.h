@@ -21,7 +21,7 @@ private:
     float timer_{0.0f};
 
 public:
-    explicit UIScreenFade(engine::core::Context& context);
+    explicit UIScreenFade(Context& context);
 
     void fadeOut(float seconds);
     void fadeIn(float seconds);
@@ -33,11 +33,12 @@ public:
     [[nodiscard]] float alpha() const { return alpha_; }
     [[nodiscard]] Phase phase() const { return phase_; }
 
-    void update(float delta_time, engine::core::Context& context) override;
+    void update(float delta_time, Context& context) override;
 
 protected:
-    void renderSelf(engine::core::Context& context) override;
+    void renderSelf(Context& context) override;
     void startFade(Phase next_phase, float target_alpha, float seconds);
 };
 
 } // namespace dodoe
+

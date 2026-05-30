@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 #include "cakery/cakery_event.h"
+#include "cakery/framework/editor_panel.h"
 
 #include "runtime/function/world/entity.h"
 
@@ -23,16 +24,16 @@ namespace dodoe {
 }
 
 namespace cakery {
-   class InspectorPanel {
+   class InspectorPanel : public EditorPanel {
        std::unordered_map<std::string, std::function<void(std::string, void*)>> m_component_ui_drawer{};
        std::vector<std::pair<std::string, bool>> m_node_state_array {};
        int m_node_depth {-1};
        std::string m_current_component_name{};
        dodoe::Entity m_selected_entity;
    public:
-       InspectorPanel();
-       ~InspectorPanel();
-       void draw();
+       explicit InspectorPanel(EditorPanelDescriptor descriptor);
+       ~InspectorPanel() override;
+       void onDraw(const EditorPanelContext& context) override;
 
    private:
        void initializeComponentDrawers();

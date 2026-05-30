@@ -7,6 +7,11 @@
 
 namespace dodoe {
 
+UIPresetManager& UIPresetManager::Self() {
+    static UIPresetManager instance;
+    return instance;
+}
+
 namespace {
 
 [[nodiscard]] float jsonToFloat(const nlohmann::json& value, float fallback) {
@@ -27,7 +32,7 @@ namespace {
         return static_cast<int>(*v);
     }
     if (const auto* v = value.get_ptr<const nlohmann::json::number_unsigned_t*>()) {
-        if (*v <= static_cast<nlohmann::json::number_unsigned_t>(std::numeric_limits<int>::max())) {
+        if (*v <= static_cast<nlohmann::json::number_unsigned_t>((std::numeric_limits<int>::max)())) {
             return static_cast<int>(*v);
         }
     }
@@ -266,7 +271,7 @@ const UIButtonSkin* UIPresetManager::getButtonPreset(identifier preset_id) const
     return nullptr;
 }
 
-const engine::render::Image* UIPresetManager::getImagePreset(identifier preset_id) const {
+const Image* UIPresetManager::getImagePreset(identifier preset_id) const {
     if (auto it = image_presets_.find(preset_id); it != image_presets_.end()) {
         return &it->second;
     }
@@ -281,7 +286,7 @@ UIButtonSkin* UIPresetManager::getButtonPresetMutable(identifier preset_id) {
     return nullptr;
 }
 
-engine::render::Image* UIPresetManager::getImagePresetMutable(identifier preset_id) {
+Image* UIPresetManager::getImagePresetMutable(identifier preset_id) {
     if (auto it = image_presets_.find(preset_id); it != image_presets_.end()) {
         return &it->second;
     }
@@ -356,7 +361,7 @@ bool UIPresetManager::registerButtonPreset(identifier preset_id, UIButtonSkin sk
     return true;
 }
 
-bool UIPresetManager::registerImagePreset(identifier preset_id, engine::render::Image image, bool overwrite) {
+bool UIPresetManager::registerImagePreset(identifier preset_id, Image image, bool overwrite) {
     if (preset_id == entt::null) {
         DO_WARN("UIPresetManager: ignored empty image preset id registration.");
         return false;
@@ -375,7 +380,7 @@ bool UIPresetManager::registerImagePreset(identifier preset_id, engine::render::
     return true;
 }
 
-std::optional<engine::render::Image> UIPresetManager::parseImageDefinition(const nlohmann::json& json_value) {
+std::optional<Image> UIPresetManager::parseImageDefinition(const nlohmann::json& json_value) {
     if (!json_value.is_object()) {
         return std::nullopt;
     }
@@ -420,23 +425,23 @@ std::optional<engine::render::Image> UIPresetManager::parseImageDefinition(const
 
     if (texture_path) {
         if (texture_id != entt::null) {
-            return engine::render::Image(*texture_path, texture_id, source_rect, flipped);
+            return Image(*texture_path, texture_id, source_rect, flipped);
         }
-        return engine::render::Image(*texture_path, source_rect, flipped);
+        return Image(*texture_path, source_rect, flipped);
     }
 
     if (texture_id != entt::null) {
-        return engine::render::Image(texture_id, source_rect, flipped);
+        return Image(texture_id, source_rect, flipped);
     }
 
     return std::nullopt;
 }
 
-std::optional<engine::render::NineSliceMargins> UIPresetManager::parseNineSlice(const nlohmann::json& json_value) {
+std::optional<NineSliceMargins> UIPresetManager::parseNineSlice(const nlohmann::json& json_value) {
     if (!json_value.is_object()) {
         return std::nullopt;
     }
-    engine::render::NineSliceMargins margins{};
+    NineSliceMargins margins{};
     if (auto it = json_value.find("left"); it != json_value.end()) {
         margins.left = jsonToFloat(*it, 0.0f);
     }
@@ -510,3 +515,4 @@ std::optional<UIButtonLabelOverrides> UIPresetManager::parseLabelOverrides(const
 }
 
 } // namespace dodoe
+

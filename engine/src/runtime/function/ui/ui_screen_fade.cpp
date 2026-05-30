@@ -1,104 +1,105 @@
+// do@Redlive
+
 #include "ui_screen_fade.h"
 
-#include "engine/core/context.h"
-#include "engine/render/renderer.h"
 #include "runtime/core/utils/util.h"
-#include <algorithm>
 
 namespace dodoe {
 
-namespace {
+    namespace {
 
-constexpr float ALPHA_EPSILON = 1.0e-4f;
+    constexpr float ALPHA_EPSILON = 1.0e-4f;
 
-[[nodiscard]] float clamp01(float value) {
-    return std::clamp(value, 0.0f, 1.0f);
-}
+    [[nodiscard]] float clamp01(float value) {
+        return std::clamp(value, 0.0f, 1.0f);
+    }
 
-} // namespace
+    } // namespace
 
-UIScreenFade::UIScreenFade(engine::core::Context& context)
-    : UIInteractive(context, Vector2f{0.0f, 0.0f}, Vector2f{0.0f, 0.0f}) {
-    setAnchor(Vector2f{0.0f, 0.0f}, Vector2f{1.0f, 1.0f});
-    setPivot(Vector2f{0.0f, 0.0f});
-    setPosition(Vector2f{0.0f, 0.0f});
-    setVisible(false);
-    setInteractive(false);
-}
-
-void UIScreenFade::fadeOut(float seconds) {
-    startFade(Phase::FadingOut, 1.0f, seconds);
-}
-
-void UIScreenFade::fadeIn(float seconds) {
-    startFade(Phase::FadingIn, 0.0f, seconds);
-}
-
-bool UIScreenFade::isFullyOpaque() const {
-    return alpha_ >= 1.0f - ALPHA_EPSILON;
-}
-
-bool UIScreenFade::isFullyTransparent() const {
-    return alpha_ <= ALPHA_EPSILON;
-}
-
-void UIScreenFade::startFade(Phase next_phase, float target_alpha, float seconds) {
-    phase_ = next_phase;
-    from_alpha_ = clamp01(alpha_);
-    to_alpha_ = clamp01(target_alpha);
-    duration_ = std::max(0.0f, seconds);
-    timer_ = 0.0f;
-    setVisible(true);
-    setInteractive(true);
-}
-
-void UIScreenFade::update(float delta_time, engine::core::Context& context) {
-    UIInteractive::update(delta_time, context);
-
-    if (phase_ == Phase::Idle) {
-        alpha_ = 0.0f;
+    UIScreenFade::UIScreenFade(Context& context)
+        : UIInteractive(context, Vector2f{0.0f, 0.0f}, Vector2f{0.0f, 0.0f}) {
+        setAnchor(Vector2f{0.0f, 0.0f}, Vector2f{1.0f, 1.0f});
+        setPivot(Vector2f{0.0f, 0.0f});
+        setPosition(Vector2f{0.0f, 0.0f});
         setVisible(false);
         setInteractive(false);
-        return;
     }
 
-    if (phase_ == Phase::Holding) {
-        alpha_ = 1.0f;
-        return;
+    void UIScreenFade::fadeOut(float seconds) {
+        startFade(Phase::FadingOut, 1.0f, seconds);
     }
 
-    timer_ += std::max(0.0f, delta_time);
-    float t = 1.0f;
-    if (duration_ > 0.0f) {
-        t = clamp01(timer_ / duration_);
+    void UIScreenFade::fadeIn(float seconds) {
+        startFade(Phase::FadingIn, 0.0f, seconds);
     }
 
-    alpha_ = clamp01(from_alpha_ + (to_alpha_ - from_alpha_) * t);
+    bool UIScreenFade::isFullyOpaque() const {
+        return alpha_ >= 1.0f - ALPHA_EPSILON;
+    }
 
-    if (t >= 1.0f - ALPHA_EPSILON) {
-        alpha_ = to_alpha_;
-        if (phase_ == Phase::FadingOut) {
-            phase_ = Phase::Holding;
-            return;
-        }
+    bool UIScreenFade::isFullyTransparent() const {
+        return alpha_ <= ALPHA_EPSILON;
+    }
 
-        if (phase_ == Phase::FadingIn) {
-            phase_ = Phase::Idle;
+    void UIScreenFade::startFade(Phase next_phase, float target_alpha, float seconds) {
+        phase_ = next_phase;
+        from_alpha_ = clamp01(alpha_);
+        to_alpha_ = clamp01(target_alpha);
+        duration_ = (std::max)(0.0f, seconds);
+        timer_ = 0.0f;
+        setVisible(true);
+        setInteractive(true);
+    }
+
+    void UIScreenFade::update(float delta_time, Context& context) {
+        UIInteractive::update(delta_time, context);
+
+        if (phase_ == Phase::Idle) {
             alpha_ = 0.0f;
             setVisible(false);
             setInteractive(false);
+            return;
+        }
+
+        if (phase_ == Phase::Holding) {
+            alpha_ = 1.0f;
+            return;
+        }
+
+        timer_ += (std::max)(0.0f, delta_time);
+        float t = 1.0f;
+        if (duration_ > 0.0f) {
+            t = clamp01(timer_ / duration_);
+        }
+
+        alpha_ = clamp01(from_alpha_ + (to_alpha_ - from_alpha_) * t);
+
+        if (t >= 1.0f - ALPHA_EPSILON) {
+            alpha_ = to_alpha_;
+            if (phase_ == Phase::FadingOut) {
+                phase_ = Phase::Holding;
+                return;
+            }
+
+            if (phase_ == Phase::FadingIn) {
+                phase_ = Phase::Idle;
+                alpha_ = 0.0f;
+                setVisible(false);
+                setInteractive(false);
+            }
         }
     }
-}
 
-void UIScreenFade::renderSelf(engine::core::Context& context) {
-    if (alpha_ <= 0.0f) {
-        return;
+    void UIScreenFade::renderSelf(Context& context) {
+        if (alpha_ <= 0.0f) {
+            return;
+        }
+
+        ColorOptions params{};
+        params.start_color = Color{0.0f, 0.0f, 0.0f, clamp01(alpha_)};
+        context.getRenderer().drawUIFilledRect(getBounds(), &params);
     }
 
-    engine::utils::ColorOptions params{};
-    params.start_color = Color{0.0f, 0.0f, 0.0f, clamp01(alpha_)};
-    context.getRenderer().drawUIFilledRect(getBounds(), &params);
-}
-
 } // namespace dodoe
+
+

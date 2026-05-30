@@ -1,3 +1,5 @@
+// do@Redlive
+
 #pragma once
 
 #include "dopch.h"
@@ -13,26 +15,23 @@
 namespace cakery {
 
     class SimulationFrameContextSystem final : public dodoe::System {
-        dodoe::Scope<EditorCameraController> editor_camera_controller_{nullptr};
+        dodoe::Scope<EditorCameraController> m_editor_camera_controller{nullptr};
     public:
         ~SimulationFrameContextSystem() override {
-            EditorCameraController::Destroy(editor_camera_controller_);
+            EditorCameraController::Destroy(m_editor_camera_controller);
         }
 
         void update(dodoe::Registry& reg, float dt) override {
             (void)reg;
-            ensureController();
-            if (!editor_camera_controller_) {
-                return;
-            }
-            auto* editor_camera = editor_camera_controller_->camera();
-            if (!editor_camera) {
-                return;
-            }
+            if (!m_editor_camera_controller) 
+                m_editor_camera_controller = EditorCameraController::Create({});
 
-            auto* render_system = dodoe::Application::Self().context().render_system.get();
+            auto* editor_camera = m_editor_camera_controller->getCamera();
+            if (!editor_camera) return;
+
+            auto render_system = dodoe::Application::Self().context().getRenderSystem();
             if (render_system) {
-                auto* viewport_manager = render_system->getViewportManager();
+                auto viewport_manager = render_system->getViewportManager();
                 if (viewport_manager) {
                     editor_camera->setViewportSize(
                         viewport_manager->getLogicalSize(),
@@ -41,16 +40,9 @@ namespace cakery {
                 }
             }
 
-            editor_camera_controller_->onUpdate(dt);
+            m_editor_camera_controller->onUpdate(dt);
 
             dodoe::g_RenderResource->submitMainCameraViewProjection(editor_camera->getViewProjectionMatrix(), editor_camera->getPosition());
-        }
-
-    private:
-        void ensureController() {
-            if (!editor_camera_controller_) {
-                editor_camera_controller_ = EditorCameraController::Create({});
-            }
         }
     };
 

@@ -1,4 +1,5 @@
 // do@Redlive
+
 #pragma once
 
 #include "runtime/dopch.h"
@@ -6,7 +7,6 @@
 #include "runtime/function/render/render_api.h"
 
 namespace dodoe {
-    [[nodiscard]] bool IsEditorApplication();
 
     class SystemContext;
 
@@ -25,14 +25,14 @@ namespace dodoe {
         bool custom_titlebar{ false };
 
         RenderApiType render_api_type{ RenderApiType::Vulkan };
-        RenderGraphMode render_graph_mode{ RenderGraphMode::ThreeD };
+        RenderGraphMode render_graph_mode{ RenderGraphMode::TwoD };
 
         ApplicationCommandLineArgs cli_args{};
     };
 
     class Application {
-        bool m_running {false};
         static Application* m_instance;
+        Bool m_running {false};
         ApplicationSpecification m_app_spec{};
     protected:
         Scope<SystemContext> m_context{nullptr};

@@ -24,7 +24,8 @@ namespace cakery {
 		}
 	}
 
-    ProjectPanel::ProjectPanel() {
+    ProjectPanel::ProjectPanel(EditorPanelDescriptor descriptor)
+        : EditorPanel(std::move(descriptor)) {
         updateBaseDirectory();
         cur_directory_ = base_directory_;
         last_base_directory_ = base_directory_;
@@ -42,9 +43,86 @@ namespace cakery {
 		file_icon_texture_ = nullptr;
 	}
 
-    void ProjectPanel::cleanup() {
+    void ProjectPanel::onWorkspaceDeactivated(const EditorPanelContext& context) {
+        (void)context;
         directory_icon_texture_ = nullptr;
         file_icon_texture_ = nullptr;
+    }
+
+    void ProjectPanel::onDraw(const EditorPanelContext& context) {
+        (void)context;
+        updateBaseDirectory();
+        if (base_directory_ != last_base_directory_) {
+            cur_directory_ = base_directory_;
+            last_base_directory_ = base_directory_;
+        }
+
+		ImGui::Begin("Content Browser");
+
+        if (cur_directory_ != fs::path(base_directory_)) {
+            if (ImGui::Button("<-")) {
+                cur_directory_ = cur_directory_.parent_path();
+            }
+        }
+
+        static float padding = 16.0f;
+        static float thumbnail_size = 128.0f;
+        float cellSize = thumbnail_size + padding;
+
+        float panel_width = ImGui::GetContentRegionAvail().x;
+        int column_count = (int)(panel_width / cellSize);
+        if (column_count < 1)
+            column_count = 1;
+
+        ImGui::Columns(column_count, 0, false);
+
+        for (auto& directory_entry : fs::directory_iterator(cur_directory_)) {
+            const auto& path = directory_entry.path();
+            std::string file_name = path.filename().string();
+            const bool is_directory = directory_entry.is_directory();
+
+            ImGui::PushID(file_name.c_str());
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            if (!directory_icon_texture_ || !file_icon_texture_) {
+                initializeIconTextures();
+            }
+
+            auto icon_texture = getIconTexture(is_directory);
+            if (icon_texture && icon_texture->handle) {
+                const ImTextureRef icon_ref(reinterpret_cast<ImTextureID>(icon_texture->handle.Get()));
+                ImGui::ImageButton(file_name.c_str(), icon_ref, ImVec2(thumbnail_size, thumbnail_size), ImVec2(0, 1), ImVec2(1, 0));
+            } else {
+                ImGui::Button(file_name.c_str(), ImVec2(thumbnail_size, thumbnail_size));
+            }
+
+            if (ImGui::BeginDragDropSource())
+            {
+                fs::path relative_path(path);
+                const std::string item_path = relative_path.string();
+                ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", item_path.c_str(), item_path.size() + 1);
+                ImGui::EndDragDropSource();
+            }
+
+            ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            {
+                if (is_directory)
+                    cur_directory_ /= path.filename();
+
+            }
+            ImGui::TextWrapped("%s", file_name.c_str());
+
+            ImGui::NextColumn();
+
+            ImGui::PopID();
+        }
+
+        ImGui::Columns(1);
+
+        ImGui::SliderFloat("Thumbnail Size", &thumbnail_size, 16, 512);
+        ImGui::SliderFloat("Padding", &padding, 0, 32);
+
+        ImGui::End();
     }
 
     void ProjectPanel::updateBaseDirectory() {
@@ -80,81 +158,6 @@ namespace cakery {
 			return texture_manager->loadFallbackTexture();
 		}
 		return nullptr;
-	}
-
-	void ProjectPanel::draw() {
-        updateBaseDirectory();
-        if (base_directory_ != last_base_directory_) {
-            cur_directory_ = base_directory_;
-            last_base_directory_ = base_directory_;
-        }
-
-		ImGui::Begin("Content Browser");
-
-		if (cur_directory_ != fs::path(base_directory_)) {
-			if (ImGui::Button("<-")) {
-				cur_directory_ = cur_directory_.parent_path();
-			}
-		}
-
-		static float padding = 16.0f;
-		static float thumbnail_size = 128.0f;
-		float cellSize = thumbnail_size + padding;
-
-		float panel_width = ImGui::GetContentRegionAvail().x;
-		int column_count = (int)(panel_width / cellSize);
-		if (column_count < 1)
-			column_count = 1;
-
-		ImGui::Columns(column_count, 0, false);
-
-		for (auto& directory_entry : fs::directory_iterator(cur_directory_)) {
-			const auto& path = directory_entry.path();
-			std::string file_name = path.filename().string();
-			const bool is_directory = directory_entry.is_directory();
-
-			ImGui::PushID(file_name.c_str());
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-			if (!directory_icon_texture_ || !file_icon_texture_) {
-				initializeIconTextures();
-			}
-
-			auto icon_texture = getIconTexture(is_directory);
-			if (icon_texture && icon_texture->handle) {
-				const ImTextureRef icon_ref(reinterpret_cast<ImTextureID>(icon_texture->handle.Get()));
-				ImGui::ImageButton(file_name.c_str(), icon_ref, ImVec2(thumbnail_size, thumbnail_size), ImVec2(0, 1), ImVec2(1, 0));
-			} else {
-				ImGui::Button(file_name.c_str(), ImVec2(thumbnail_size, thumbnail_size));
-			}
-
-			if (ImGui::BeginDragDropSource())
-			{
-				fs::path relative_path(path);
-				const std::string item_path = relative_path.string();
-				ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", item_path.c_str(), item_path.size() + 1);
-				ImGui::EndDragDropSource();
-			}
-
-			ImGui::PopStyleColor();
-			if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-			{
-				if (is_directory)
-					cur_directory_ /= path.filename();
-
-			}
-			ImGui::TextWrapped("%s", file_name.c_str());
-
-			ImGui::NextColumn();
-
-			ImGui::PopID();
-		}
-
-		ImGui::Columns(1);
-
-		ImGui::SliderFloat("Thumbnail Size", &thumbnail_size, 16, 512);
-		ImGui::SliderFloat("Padding", &padding, 0, 32);
-
-		ImGui::End();
 	}
 
 } // cakery

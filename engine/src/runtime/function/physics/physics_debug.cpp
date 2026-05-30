@@ -13,7 +13,7 @@ namespace dodoe {
         void draw_debug_line(const b2Vec2 p0, const b2Vec2 p1, const b2HexColor color, void* context) {
             auto* draw_context = static_cast<DebugDrawContext*>(context);
             const float line_thickness = draw_context ? draw_context->line_thickness : 1.0f;
-            Renderer2d::drawLine(
+            Renderer2D::DrawLine(
                 {p0.x, p0.y},
                 {p1.x, p1.y},
                 {0.0f, 0.0f, 0.0f},
@@ -97,7 +97,7 @@ namespace dodoe {
             const float point_size = draw_context ? draw_context->point_size : 4.0f;
             const float draw_size = std::max(size, point_size);
             const float half = draw_size * 0.5f;
-            Renderer2d::drawRect(
+            Renderer2D::DrawRect(
                 {p.x - half, p.y - half},
                 {draw_size, draw_size},
                 {0.0f, 0.0f, 0.0f},

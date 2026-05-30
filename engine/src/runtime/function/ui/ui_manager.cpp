@@ -4,12 +4,19 @@
 #include "ui_interactive.h"
 #include "ui_imgui_utils.h"
 #include "ui_preset_manager.h"
-#include "engine/core/context.h"
-#include "engine/input/input_manager.h"
-#include "engine/resource/resource_manager.h"
 #include "ui_drag_preview.h"
+
+#include "runtime/function/input/input.h"
+#include "runtime/function/input/mouse_code.h"
+
 #include <entt/core/hashed_string.hpp>
+
+#if __has_include(<SDL3/SDL.h>)
 #include <SDL3/SDL.h>
+#define DODOE_UI_HAS_SDL3 1
+#else
+#define DODOE_UI_HAS_SDL3 0
+#endif
 
 using namespace entt::literals;
 
@@ -17,6 +24,30 @@ namespace dodoe {
 
 namespace {
 int g_hidden_system_cursor_count = 0;
+
+bool tryShowSystemCursor() {
+#if DODOE_UI_HAS_SDL3
+    return SDL_ShowCursor();
+#else
+    return false;
+#endif
+}
+
+bool tryHideSystemCursor() {
+#if DODOE_UI_HAS_SDL3
+    return SDL_HideCursor();
+#else
+    return false;
+#endif
+}
+
+const char* getCursorBackendError() {
+#if DODOE_UI_HAS_SDL3
+    return SDL_GetError();
+#else
+    return "SDL3/SDL.h is unavailable";
+#endif
+}
 } // namespace
 
 UIManager::~UIManager()
@@ -29,15 +60,15 @@ UIManager::~UIManager()
         }
 
         if (g_hidden_system_cursor_count == 0) {
-            if (!SDL_ShowCursor()) {
-                DO_WARN("UIManager: SDL_ShowCursor failed: {}", SDL_GetError());
+            if (!tryShowSystemCursor()) {
+                DO_WARN("UIManager: SDL_ShowCursor failed: {}", getCursorBackendError());
             }
         }
     }
     drag_preview_ = nullptr;
 }
 
-UIManager::UIManager(engine::core::Context& context, const Vector2f& window_size) : context_(context)
+UIManager::UIManager(Context& context, const Vector2f& window_size) : context_(context)
 {
     root_element_ = create_scope<UIPanel>(Vector2f{0.0f, 0.0f}, window_size);
     registerMouseEvents();
@@ -62,7 +93,15 @@ void UIManager::clearElements() {
     }
 }
 
-void UIManager::update(float delta_time, engine::core::Context& context) {
+void UIManager::update(float delta_time, Context& context) {
+    const bool mouse_down = Input::IsMouseButtonPressed(MouseCode::ButtonLeft);
+    if (mouse_down && !was_mouse_down_) {
+        onMousePressed();
+    } else if (!mouse_down && was_mouse_down_) {
+        onMouseReleased();
+    }
+    was_mouse_down_ = mouse_down;
+
     processMouseHover();
 
     if (root_element_ && root_element_->isVisible()) {
@@ -70,14 +109,14 @@ void UIManager::update(float delta_time, engine::core::Context& context) {
     }
 }
 
-void UIManager::render(engine::core::Context& context) {
+void UIManager::render(Context& context) {
     if (root_element_ && root_element_->isVisible()) {
         root_element_->render(context);
     }
     renderCursor(context);
 }
 
-void UIManager::beginDragPreview(const engine::render::Image& image,
+void UIManager::beginDragPreview(const Image& image,
                                  int count,
                                  const Vector2f& slot_size,
                                  float alpha,
@@ -235,15 +274,15 @@ void UIManager::initCursor() {
         return;
     }
 
-    if (SDL_HideCursor()) {
+    if (tryHideSystemCursor()) {
         hid_system_cursor_ = true;
         ++g_hidden_system_cursor_count;
     } else {
-        DO_WARN("UIManager: SDL_HideCursor failed: {}", SDL_GetError());
+        DO_WARN("UIManager: SDL_HideCursor failed: {}", getCursorBackendError());
     }
 }
 
-void UIManager::renderCursor(engine::core::Context& context) {
+void UIManager::renderCursor(Context& context) {
     if (!cursor_image_) {
         return;
     }
@@ -257,17 +296,13 @@ void UIManager::renderCursor(engine::core::Context& context) {
 }
 
 void UIManager::registerMouseEvents() {
-    auto& input_manager = context_.getInputManager();
-    input_manager.onAction("mouse_left"_hs, engine::input::ActionState::PRESSED).connect<&UIManager::onMousePressed>(this);
-    input_manager.onAction("mouse_left"_hs, engine::input::ActionState::RELEASED).connect<&UIManager::onMouseReleased>(this);
+    was_mouse_down_ = false;
 }
 
 void UIManager::unregisterMouseEvents() {
-    auto& input_manager = context_.getInputManager();
-    input_manager.onAction("mouse_left"_hs, engine::input::ActionState::PRESSED)
-        .disconnect<&UIManager::onMousePressed>(this);
-    input_manager.onAction("mouse_left"_hs, engine::input::ActionState::RELEASED)
-        .disconnect<&UIManager::onMouseReleased>(this);
+    was_mouse_down_ = false;
 }
 
 } // namespace dodoe 
+
+

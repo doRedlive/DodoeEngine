@@ -3,15 +3,14 @@
 #include <memory>
 #include <string>
 #include <glm/geometric.hpp>
-#include "engine/core/context.h"
 #include "state/ui_normal_state.h"
 
 namespace dodoe {
 
-UIItemSlot::UIItemSlot(engine::core::Context& context, Vector2f position, Vector2f size)
+UIItemSlot::UIItemSlot(Context& context, Vector2f position, Vector2f size)
     : UIInteractive(context, position, size) {
     
-    auto icon = create_scope<UIImage>(engine::render::Image{});
+    auto icon = create_scope<UIImage>(Image{});
     icon->setOrderIndex(1);
     icon->setAnchor({0.1f, 0.1f}, {0.9f, 0.9f});
     icon->setVisible(false);
@@ -34,7 +33,7 @@ UIItemSlot::UIItemSlot(engine::core::Context& context, Vector2f position, Vector
     count_label_ = lbl.get();
     addChild(std::move(lbl));
 
-    auto sel = create_scope<UIImage>(engine::render::Image{});
+    auto sel = create_scope<UIImage>(Image{});
     sel->setOrderIndex(4);
     sel->setAnchor({0, 0}, {1, 1});
     sel->setVisible(false);
@@ -47,11 +46,11 @@ UIItemSlot::UIItemSlot(engine::core::Context& context, Vector2f position, Vector
     setState(create_scope<UINormalState>(this));
 }
 
-void UIItemSlot::setItem(const engine::render::Image& icon, int count) {
+void UIItemSlot::setItem(const Image& icon, int count) {
     setSlotItem(entt::null, count, icon);
 }
 
-void UIItemSlot::setSlotItem(identifier item_id, int count, const engine::render::Image& icon) {
+void UIItemSlot::setSlotItem(identifier item_id, int count, const Image& icon) {
     if (count <= 0) {
         slot_item_.reset();
         clearItem();
@@ -66,7 +65,7 @@ void UIItemSlot::setSlotItem(const SlotItem& item) {
     setSlotItem(item.item_id, item.count, item.icon);
 }
 
-void UIItemSlot::setItemIcon(const engine::render::Image& icon) {
+void UIItemSlot::setItemIcon(const Image& icon) {
     if (icon_image_) {
         icon_image_->setImage(icon);
         icon_image_->setVisible(true);
@@ -98,7 +97,7 @@ void UIItemSlot::setItemCount(int count) {
         invalidateLayout();
     }
     if (slot_item_) {
-        slot_item_->count = std::max(count, 0);
+        slot_item_->count = (std::max)(count, 0);
     }
 }
 
@@ -128,13 +127,13 @@ void UIItemSlot::setCooldown(float percent) {
     }
 }
 
-void UIItemSlot::setSelectionImage(const engine::render::Image& image) {
+void UIItemSlot::setSelectionImage(const Image& image) {
     if (selection_frame_) {
         selection_frame_->setImage(image);
     }
 }
 
-void UIItemSlot::setBackgroundImage(const engine::render::Image& image) {
+void UIItemSlot::setBackgroundImage(const Image& image) {
     addImage(UI_IMAGE_NORMAL_ID, image);
     setCurrentImage(UI_IMAGE_NORMAL_ID);
 }
@@ -176,3 +175,5 @@ void UIItemSlot::onLayout() {
 }
 
 } // namespace dodoe
+
+

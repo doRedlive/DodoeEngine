@@ -22,15 +22,15 @@ class UIProgressBar : public UIElement {
     UILabel* label_{nullptr};
 
 public:
-    UIProgressBar(engine::core::Context& context,
+    UIProgressBar(Context& context,
                   Vector2f position = {0.0f, 0.0f},
                   Vector2f size = {0.0f, 0.0f});
 
     void setValue(float value);
     float getValue() const { return value_; }
 
-    void setBackground(const engine::render::Image& image);
-    void setFill(const engine::render::Image& image);
+    void setBackground(const Image& image);
+    void setFill(const Image& image);
 
     void showLabel(bool show);
     void setLabelText(std::string_view text);
@@ -44,3 +44,4 @@ protected:
 };
 
 } // namespace dodoe
+

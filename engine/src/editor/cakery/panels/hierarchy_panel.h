@@ -1,28 +1,22 @@
-//
-// Created by GreenMuffin on 2025/12/7.
-//
-
-#ifndef CAKERY_HIERARCHY_PANEL_H
-#define CAKERY_HIERARCHY_PANEL_H
+// do@Redlive
 
 #include "dopch.h"
 
-#include <unordered_set>
+#include "cakery/framework/editor_panel.h"
 
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
 
 namespace cakery {
-    class HierarchyPanel {
-        dodoe::Scene* context_ {nullptr};
-        dodoe::ui32 editing_handle_{0};
+    class HierarchyPanel : public EditorPanel {
+        dodoe::Scene* m_context {nullptr};
+        dodoe::ui32 m_editing_handle{0};
     public:
-        void draw();
-        void setContext(dodoe::Scene* context);
+        explicit HierarchyPanel(EditorPanelDescriptor descriptor);
+        void onWorkspaceActivated(const EditorPanelContext& context) override;
+        void onWorkspaceDeactivated(const EditorPanelContext& context) override;
+        void onDraw(const EditorPanelContext& context) override;
     private:
         void drawEntityNode(dodoe::Entity entity, std::unordered_set<dodoe::ui32>& visited);
     };
 } // cakery
-
-
-#endif//CAKERY_HIERARCHY_PANEL_H

@@ -3,12 +3,9 @@
 // do@Redlive
 
 #include "dopch.h"
-#include "engine/render/image.h"
+#include "ui_compat.h"
 #include "ui_defaults.h"
 
-namespace engine::core {
-    class Context;
-}
 namespace dodoe {
     class UIElement;
     class UIPanel;
@@ -20,18 +17,19 @@ namespace dodoe {
 
 class UIManager final {
 private:
-    engine::core::Context& context_;
+    Context& context_;
     dodoe::Scope<UIPanel> root_element_;
     UIInteractive* hovered_element_{nullptr};
     UIInteractive* pressed_element_{nullptr};
     UIDragPreview* drag_preview_{nullptr};
-    std::optional<engine::render::Image> cursor_image_{};
+    std::optional<Image> cursor_image_{};
     Vector2f cursor_size_{0.0f, 0.0f};
     Vector2f cursor_hotspot_{0.0f, 0.0f};
     bool hid_system_cursor_{false};
+    bool was_mouse_down_{false};
     
 public:
-    UIManager(engine::core::Context& context, const Vector2f& window_size);
+    UIManager(Context& context, const Vector2f& window_size);
 
     ~UIManager();
 
@@ -39,10 +37,10 @@ public:
     UIPanel* getRootElement() const;
     void clearElements();
 
-    void update(float delta_time, engine::core::Context&);
-    void render(engine::core::Context&);
+    void update(float delta_time, Context&);
+    void render(Context&);
 
-    void beginDragPreview(const engine::render::Image& image,
+    void beginDragPreview(const Image& image,
                           int count,
                           const Vector2f& slot_size,
                           float alpha = 0.6f,
@@ -63,7 +61,7 @@ private:
     void updateHovered(UIInteractive* target);
     void clearMouseState();
     void initCursor();
-    void renderCursor(engine::core::Context& context);
+    void renderCursor(Context& context);
 
     bool onMousePressed();
     bool onMouseReleased();
@@ -74,3 +72,5 @@ private:
 };
 
 } // namespace dodoe
+
+

@@ -29,14 +29,14 @@ void UIGridLayout::setCellSize(Vector2f size) {
 }
 
 void UIGridLayout::onLayout() {
-    if (children_.empty()) return;
+    if (m_children.empty()) return;
 
-    Vector2f start_offset = {padding_.left, padding_.top};
+    Vector2f start_offset = {m_padding.left, m_padding.top};
     
     int current_col = 0;
     int current_row = 0;
 
-    for (auto& child : children_) {
+    for (auto& child : m_children) {
         if (!child->isVisible()) continue;
 
         // 确定当前子元素大小（优先使用固定 Cell Size）
@@ -69,3 +69,4 @@ void UIGridLayout::onLayout() {
 }
 
 } // namespace dodoe
+

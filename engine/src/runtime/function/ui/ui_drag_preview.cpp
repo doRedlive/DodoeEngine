@@ -14,7 +14,7 @@ constexpr float DEFAULT_ALPHA = 0.6f;
 constexpr Vector2f COUNT_PADDING{2.0f, 2.0f};
 } // namespace
 
-UIDragPreview::UIDragPreview(engine::core::Context& context,
+UIDragPreview::UIDragPreview(Context& context,
                              std::string_view font_path,
                              int font_size,
                              Vector2f size)
@@ -28,10 +28,10 @@ UIDragPreview::UIDragPreview(engine::core::Context& context,
 
     setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
     setPivot({0.5f, 0.5f});
-    setOrderIndex(std::numeric_limits<int>::max() / 2);
+    setOrderIndex((std::numeric_limits<int>::max)() / 2);
 }
 
-void UIDragPreview::setContent(const engine::render::Image& image, int count, Vector2f slot_size) {
+void UIDragPreview::setContent(const Image& image, int count, Vector2f slot_size) {
     image_ = image;
     setSize(slot_size);
 
@@ -56,7 +56,7 @@ void UIDragPreview::setFontPath(std::string_view font_path) {
     }
 }
 
-void UIDragPreview::renderSelf(engine::core::Context& context) {
+void UIDragPreview::renderSelf(Context& context) {
     if (image_.getTextureId() == entt::null) {
         DO_WARN("UIDragPreview: image is invalid.");
         return;
@@ -85,3 +85,4 @@ void UIDragPreview::onLayout() {
 }
 
 } // namespace dodoe
+

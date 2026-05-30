@@ -33,7 +33,7 @@ namespace cakery {
         static void Destroy(dodoe::Scope<EditorCameraController>& controller);
 
         void onUpdate(float dt);
-        [[nodiscard]] dodoe::Camera* camera() const { return m_camera.get(); }
+        [[nodiscard]] dodoe::Camera* getCamera() const { return m_camera.get(); }
 
     private:
         void onMouseScrolled(const dodoe::MouseScrolledEvent& event);

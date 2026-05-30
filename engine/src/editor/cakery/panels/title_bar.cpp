@@ -4,6 +4,8 @@
 
 #include "title_bar.h"
 
+#include "cakery/framework/editor_panel_manager.h"
+
 #include "runtime/core/application.h"
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
@@ -18,6 +20,10 @@ namespace cakery {
 	namespace {
 		constexpr const char* kPlayButtonPath = "engine/res/pictures/Buttons/PlayButton.png";
 		constexpr const char* kStopButtonPath = "engine/res/pictures/Buttons/StopButton.png";
+	}
+
+	Titlebar::Titlebar(EditorPanelDescriptor descriptor)
+		: EditorPanel(std::move(descriptor)) {
 	}
 
 	void Titlebar::ensureButtonTextures() {
@@ -89,8 +95,7 @@ namespace cakery {
 		}
 	}
 
-	void Titlebar::draw(dodoe::Window* cakery_window) {
-		(void)cakery_window;
+    void Titlebar::onDraw(const EditorPanelContext& context) {
 		if (!ImGui::BeginMainMenuBar()) {
 			return;
 		}
@@ -103,6 +108,10 @@ namespace cakery {
 		}
 
 		if (ImGui::BeginMenu("View")) {
+			if (context.panel_manager) {
+				context.panel_manager->drawViewMenuItems();
+			}
+			ImGui::Separator();
 			ImGui::MenuItem("ImGui Demo", nullptr, &show_imgui_demo_);
 			ImGui::EndMenu();
 		}
@@ -134,6 +143,6 @@ namespace cakery {
 		if (show_imgui_demo_) {
 			ImGui::ShowDemoWindow(&show_imgui_demo_);
 		}
-	}
+    }
 
 } // cakery

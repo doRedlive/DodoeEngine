@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <memory>
-
 #include "glm/vec2.hpp"
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
@@ -11,6 +9,13 @@
 #include "glm/ext/matrix_float4x4.hpp"
 
 #include "entt/entt.hpp"
+
+#include <string>
+#include <string_view>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <memory>
 
 namespace dodoe {
 
@@ -43,6 +48,35 @@ namespace dodoe {
     using ui32 = uint32_t;
     using ui64 = uint64_t;
 
+    using Int = int;
+    using UInt = unsigned int;
+    using Byte = char;
+    using UByte = unsigned char;
+    using Bool = bool;
+    using Size_t = size_t;
+
+    using Int8 = int8_t;
+    using Int16 = int16_t;
+    using Int32 = int32_t;
+    using Int64 = int64_t;
+    using UInt8  = uint8_t;
+    using UInt16 = uint16_t;
+    using UInt32 = uint32_t;
+    using UInt64 = uint64_t;
+
+    using String = std::string;
+    using StringView = std::string_view;
+
+    template <typename T>
+    using DynamicArray = std::vector<T>;
+
+    template <typename TKey, typename TValue>
+    using UnorderedMap = std::unordered_map<TKey, TValue>;
+
+    template <typename TKey, typename TValue>
+    using Dictionary = UnorderedMap<TKey, TValue> ;
+
+
     using Vector2f = glm::vec2;
     using Vector2i = glm::ivec2;
     using Vector3f = glm::vec3;
@@ -53,5 +87,6 @@ namespace dodoe {
     using Matrix4f = glm::mat4;
 
     using identifier = entt::id_type;
+    using Identifier = entt::id_type;
 
 } // dodoe

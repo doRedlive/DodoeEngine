@@ -18,7 +18,7 @@ namespace dodoe {
         virtual void renderTick() = 0;
 
         [[nodiscard]]
-        const std::string& name() const { return m_name; }
+        const std::string& getName() const { return m_name; }
     };
 
 } // dodoe

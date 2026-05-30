@@ -19,13 +19,6 @@ namespace cakery {
 } // cakery
 
 namespace dodoe {
-    bool IsEditorApplication() {
-#ifdef DODOE_EDITOR
-        return true;
-#else
-        return false;
-#endif
-    }
 
     Application* CreateApplication(const ApplicationCommandLineArgs cli_args) {
         ApplicationSpecification cakery_spec;
@@ -38,5 +31,6 @@ namespace dodoe {
         cakery_spec.cli_args = cli_args;
         return new cakery::CakeryApp(cakery_spec);
     }
+
 } // dodoe
 
