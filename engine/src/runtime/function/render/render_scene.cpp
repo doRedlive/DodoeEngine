@@ -201,11 +201,18 @@ namespace dodoe {
 			}
 
 			std::vector<Matrix4f> instance_data;
+			std::vector<ui32> instance_ids;
 			instance_data.reserve(end - begin);
+			instance_ids.reserve(end - begin);
 			for (size_t i = begin; i < end; ++i) {
-				if (instances[i]) {
-					instance_data.push_back(instances[i]->getModelMatrix());
+				const auto& instance = instances[i];
+				if (!instance) {
+					continue;
 				}
+				instance_data.push_back(instance->getModelMatrix());
+				auto* node = instance->getNode();
+				const uint64_t uuid_value = node ? static_cast<uint64_t>(node->getEntityUuid()) : 0;
+				instance_ids.push_back(static_cast<ui32>(uuid_value & 0xFFFFFFFFu));
 			}
 
 			if (!instance_data.empty()) {
@@ -213,6 +220,13 @@ namespace dodoe {
 					mesh->buffers->instance_buffer,
 					instance_data.data(),
 					sizeof(Matrix4f) * instance_data.size()
+				);
+			}
+			if (!instance_ids.empty() && mesh->buffers->instance_id_buffer) {
+				cmd_list->writeBuffer(
+					mesh->buffers->instance_id_buffer,
+					instance_ids.data(),
+					sizeof(ui32) * instance_ids.size()
 				);
 			}
 
@@ -283,6 +297,16 @@ namespace dodoe {
 					.enableAutomaticStateTracking(rhi::ResourceStates::VertexBuffer)
 					.setDebugName(fmt::format("RenderScene Instance Buffer {}", mesh->name));
 				mesh->buffers->instance_buffer = m_device->createBuffer(instance_buffer_desc);
+			}
+			const size_t instance_id_byte_size = sizeof(ui32) * std::max<ui32>(instance_count, 1);
+			const bool need_instance_id_buffer = !mesh->buffers->instance_id_buffer || mesh->buffers->instance_id_buffer->getDesc().byteSize < instance_id_byte_size;
+			if (need_instance_id_buffer) {
+				auto instance_id_desc = rhi::BufferDesc()
+					.setByteSize(instance_id_byte_size)
+					.setIsVertexBuffer(true)
+					.enableAutomaticStateTracking(rhi::ResourceStates::VertexBuffer)
+					.setDebugName(fmt::format("RenderScene InstanceId Buffer {}", mesh->name));
+				mesh->buffers->instance_id_buffer = m_device->createBuffer(instance_id_desc);
 			}
 		}
 	}

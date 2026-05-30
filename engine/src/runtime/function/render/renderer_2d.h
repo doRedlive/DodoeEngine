@@ -1,6 +1,4 @@
-//
-// Created by Redlive on 2026/3/17.
-//
+// do@Redlive
 
 #pragma once
 
@@ -27,20 +25,20 @@ namespace dodoe {
         }
     };
 
-    class Renderer2d {
+    class Renderer2D {
     public:
-        static constexpr ui32 MaxQuadCount = 2048;
+        static constexpr UInt32 kMaxQuadCount = 2048;
 
-        static void drawSprite(
-            identifier texture,
-            const Vector2f& pos, 
+        static void DrawSprite(
+            Identifier texture,
+            const Vector2f& pos,
             const Vector2f& size,
-            const Vector3f& rotation, 
+            const Vector3f& rotation,
             const Color& color = Color::white()
         );
 
-        static void drawSprite(
-            identifier texture,
+        static void DrawSprite(
+            Identifier texture,
             const Vector2f& pos,
             const Vector2f& size,
             const Vector3f& rotation,
@@ -48,34 +46,26 @@ namespace dodoe {
             const Color& color
         );
 
-        // static void drawTexture(
-        //     identifier texture,
-        //     const Vector2f& pos,
-        //     const Vector2f& size,
-        //     const Vector3f& rotation,
-        //     const Color& color = Color::white()
-        // );
-
-        static void drawRect(
-            const Vector2f& pos, 
+        static void DrawRect(
+            const Vector2f& pos,
             const Vector2f& size,
-            const Vector3f& rotation, 
-            const Color& color = Color::white(), 
+            const Vector3f& rotation,
+            const Color& color = Color::white(),
             float thickness = 1.0f
         );
 
-        static void drawLine(
-            const Vector2f& start, 
-            const Vector2f& end, 
+        static void DrawLine(
+            const Vector2f& start,
+            const Vector2f& end,
             const Vector3f& rotation,
-            float thickness = 1.0f, 
+            float thickness = 1.0f,
             const Color& color = Color::white()
         );
 
-        static void drawText();
+        static void DrawText();
 
-        static const std::vector<QuadCpuData>& swapQuadCpuBatches();
-        static void clearBatches();
+        static const std::vector<QuadCpuData>& GetQuadCpuBatches();
+        static void ClearBatches();
     };
 
 } // dodoe

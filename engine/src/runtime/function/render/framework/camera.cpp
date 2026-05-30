@@ -5,7 +5,7 @@
 #include "camera.h"
 
 #include "runtime/core/math/math.h"
-#include "runtime/function/render/render_api.h"
+#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
 
@@ -273,7 +273,7 @@ namespace dodoe {
         }
 
         // Vulkan clip-space has inverted Y compared with OpenGL.
-        if (RenderApi::apiType() == RenderApiType::Vulkan) {
+        if (RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::Vulkan) {
             m_projection_matrix[1][1] *= -1.0f;
         }
     }

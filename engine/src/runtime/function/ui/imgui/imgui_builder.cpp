@@ -5,7 +5,7 @@
 #include "imgui_builder.h"
 
 #include "imgui_style.h"
-#include "runtime/function/render/render_api.h"
+#include "runtime/function/render/render_settings.h"
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
@@ -23,11 +23,11 @@ namespace dodoe {
 
         ApplyImGuiStyle(window->getNativeWindow());
 
-        const auto api_type = RenderApi::apiType();
-        if (api_type == RenderApiType::OpenGL) {
+        const auto api_type = RenderSettings::GetRenderBackendApiType();
+        if (api_type == RenderBackendApiType::OpenGL) {
             ImGui_ImplGlfw_InitForOpenGL(window, false);
         }
-        else if (api_type == RenderApiType::Vulkan) {
+        else if (api_type == RenderBackendApiType::Vulkan) {
             ImGui_ImplGlfw_InitForVulkan(window, false);
         }
         else {
@@ -41,7 +41,7 @@ namespace dodoe {
         }
 
         ImGui_ImplGlfw_NewFrame();
-        if (RenderApi::apiType() == RenderApiType::OpenGL) {
+        if (RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
             ImGui_ImplOpenGL3_NewFrame();
         }
         ImGui::NewFrame();

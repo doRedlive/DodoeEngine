@@ -11,13 +11,12 @@ namespace dodoe {
 
 	class Camera;
 	class RhiContext;
-	class UiSystem;
+	class UISystem;
 	class DescriptorTableManager;
 
 	struct RenderGraphCreateInfo {
 		RhiContext* rhi{nullptr};
 		Camera* camera{nullptr};
-		UiSystem* ui_system{nullptr};
 		DescriptorTableManager* descriptor_manager{nullptr};
 	};
 

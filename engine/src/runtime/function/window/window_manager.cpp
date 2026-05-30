@@ -35,7 +35,7 @@ namespace dodoe {
         prop.height = static_cast<int>(spec.height);
         prop.resizeable = spec.window_resizeable;
         prop.custom_titlebar = spec.custom_titlebar;
-        prop.backend_api = spec.render_api_type;
+        prop.backend_api = spec.render_settings.api;
 
         window_ = Window::Create(prop);
         bindEventCallback();

@@ -4,7 +4,7 @@
 
 #include "runtime/dopch.h"
 
-#include "runtime/function/render/render_api.h"
+#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
 
@@ -24,8 +24,7 @@ namespace dodoe {
         bool window_resizeable{ true };
         bool custom_titlebar{ false };
 
-        RenderApiType render_api_type{ RenderApiType::Vulkan };
-        RenderGraphMode render_graph_mode{ RenderGraphMode::TwoD };
+        RenderSettingsInitInfo render_settings{};
 
         ApplicationCommandLineArgs cli_args{};
     };

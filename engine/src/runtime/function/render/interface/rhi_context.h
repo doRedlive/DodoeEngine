@@ -11,11 +11,11 @@ struct GLFWwindow;
 
 namespace dodoe {
 
-    enum class RenderApiType;
+    enum class RenderBackendApiType;
 
     struct RhiBackendCreateInfo {
         GLFWwindow* window_handle{nullptr};
-        RenderApiType api_type{};
+        RenderBackendApiType api_type{};
         bool enable_validation{true};
     };
 

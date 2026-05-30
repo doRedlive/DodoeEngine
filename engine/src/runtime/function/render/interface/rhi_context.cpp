@@ -4,7 +4,7 @@
 
 #include "rhi_context.h"
 
-#include "../render_api.h"
+#include "../render_settings.h"
 
 #include "vulkan/vulkan.hpp"
 
@@ -47,7 +47,7 @@ namespace dodoe {
     }
     
     void RhiContext::initialize(const RhiBackendCreateInfo& create_info) {
-        if (create_info.api_type != RenderApiType::Vulkan) {
+        if (create_info.api_type != RenderBackendApiType::Vulkan) {
             return;
         }
 

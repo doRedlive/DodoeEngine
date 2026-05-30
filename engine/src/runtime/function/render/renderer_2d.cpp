@@ -1,6 +1,4 @@
-//
-// Created by Redlive 2026/3/17.
-//
+// do@Redlive
 
 #include "renderer_2d.h"
 
@@ -178,7 +176,7 @@ namespace dodoe {
 
         void EnsureBatchRoomForOneQuad(std::vector<QuadCpuData>& out, QuadCpuData& batch) {
             const size_t quad_count = batch.vertices.size() / 4;
-            if (quad_count >= static_cast<size_t>(Renderer2d::MaxQuadCount)) {
+            if (quad_count >= static_cast<size_t>(Renderer2D::kMaxQuadCount)) {
                 FlushBatch(out, batch);
             }
         }
@@ -208,7 +206,7 @@ namespace dodoe {
 
             QuadCpuData batch{};
             const size_t submit_count = s_Data.quads.size() + s_Data.lines.size();
-            const size_t reserve_quads = (std::min)(submit_count, static_cast<size_t>(Renderer2d::MaxQuadCount));
+            const size_t reserve_quads = (std::min)(submit_count, static_cast<size_t>(Renderer2D::kMaxQuadCount));
             batch.vertices.reserve(reserve_quads * 4);
             batch.indices.reserve(reserve_quads * 6);
 
@@ -233,14 +231,15 @@ namespace dodoe {
 
             FlushBatch(out, batch);
         }
-    }
 
-    void Renderer2d::drawSprite(const identifier texture, const Vector2f& pos, 
+    } // namespace
+
+    void Renderer2D::DrawSprite(const identifier texture, const Vector2f& pos,
             const Vector2f& size, const Vector3f& rotation, const Color& color) {
-        drawSprite(texture, pos, size, rotation, {0.0f, 0.0f, 1.0f, 1.0f}, color);
+        DrawSprite(texture, pos, size, rotation, {0.0f, 0.0f, 1.0f, 1.0f}, color);
     }
 
-    void Renderer2d::drawSprite(
+    void Renderer2D::DrawSprite(
         const identifier texture,
         const Vector2f& pos,
         const Vector2f& size,
@@ -251,7 +250,7 @@ namespace dodoe {
         SubmitQuad(texture, {pos.x, pos.y, size.x, size.y}, uv, rotation, color.to_vec4());
     }
 
-    void Renderer2d::drawRect(const Vector2f& pos, const Vector2f& size, const Vector3f& rotation, const Color& color,  float thickness) {
+    void Renderer2D::DrawRect(const Vector2f& pos, const Vector2f& size, const Vector3f& rotation, const Color& color,  float thickness) {
         if (thickness <= 0.0f || size.x <= 0.0f || size.y <= 0.0f) return;
 
         const float h_thickness = (thickness < size.y) ? thickness : size.y;
@@ -267,14 +266,14 @@ namespace dodoe {
         SubmitQuad(0, {left, bottom, size.x, h_thickness}, uv, rotation, color_v);
         if (h_thickness < size.y) {
             SubmitQuad(0, {left, top - h_thickness, size.x, h_thickness}, uv, rotation, color_v);
-        } 
+        }
         SubmitQuad(0, {left, bottom, v_thickness, size.y}, uv, rotation, color_v);
-        if (v_thickness < size.x) { 
+        if (v_thickness < size.x) {
             SubmitQuad(0, {right - v_thickness, bottom, v_thickness, size.y}, uv, rotation, color_v);
         }
     }
 
-    void Renderer2d::drawLine(const Vector2f& start, const Vector2f& end, const Vector3f& rotation, const float thickness, const Color& color) {
+    void Renderer2D::DrawLine(const Vector2f& start, const Vector2f& end, const Vector3f& rotation, const float thickness, const Color& color) {
         if (thickness <= 0.0f) return;
 
         LineDrawCommand line{};
@@ -288,11 +287,11 @@ namespace dodoe {
         s_Data.dirty = true;
     }
 
-    void Renderer2d::drawText() {
+    void Renderer2D::DrawText() {
 
     }
 
-    const std::vector<QuadCpuData>& Renderer2d::swapQuadCpuBatches() {
+    const std::vector<QuadCpuData>& Renderer2D::GetQuadCpuBatches() {
         if (!s_Data.dirty) {
             return s_Data.quad_batches;
         }
@@ -304,7 +303,7 @@ namespace dodoe {
         return s_Data.quad_batches;
     }
 
-    void Renderer2d::clearBatches() {
+    void Renderer2D::ClearBatches() {
         s_Data.clear();
     }
 

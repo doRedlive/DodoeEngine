@@ -11,7 +11,7 @@ namespace dodoe {
 
     bool Window::initialize(const WindowProperty& prop) {
         prop_ = prop;
-        if (prop_.backend_api == RenderApiType::OpenGL) {
+        if (prop_.backend_api == RenderBackendApiType::OpenGL) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);

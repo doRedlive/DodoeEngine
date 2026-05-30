@@ -6,27 +6,28 @@
 
 #include "../interface/rhi.h"
 #include "../render_pass.h"
-#include "../render_resource.h"
 #include "../mesh_draw/mesh_pass_processor.h"
 
 namespace dodoe {
 
-    class DirectionalLightShadowPass : public RenderPass {
-        inline static const String kSceneShadowMapName = "ShadowMap";
+    class PickPass : public RenderPass {
+        inline static const String kPickColorName = "PickColor";
+        inline static const String kPickDepthName = "PickDepth";
 
-        struct DirectionalLightShadowPassConstants {
-            Matrix4f light_view_projection{1.0f};
+        struct PickPassConstants {
+            Matrix4f view_projection{1.0f};
         };
 
         MeshPassProcessor m_mesh_processor;
 
         rhi::CommandListHandle m_cmd_list{};
-        rhi::TextureHandle m_shadow_target{};
+        rhi::TextureHandle m_pick_target{};
+        rhi::TextureHandle m_depth_target{};
         rhi::FramebufferHandle m_framebuffer{};
 
     public:
-        explicit DirectionalLightShadowPass(RhiContext* rhi);
-        ~DirectionalLightShadowPass() override = default;
+        explicit PickPass(RhiContext* rhi) { m_rhi = rhi; }
+        ~PickPass() override = default;
 
         void setup() override;
         void execute(size_t index) override;

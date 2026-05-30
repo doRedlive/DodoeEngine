@@ -36,6 +36,10 @@ namespace dodoe {
 	}
 
 	void ImGuiPass::execute(size_t index) {
+		if (!m_font_texture && ImGui::GetCurrentContext()) {
+			createFontTexture();
+		}
+
 		ImGui::Render();
 		(void)index;
 

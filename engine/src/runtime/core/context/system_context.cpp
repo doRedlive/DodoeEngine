@@ -22,7 +22,7 @@
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/render_system.h"
-#include "runtime/function/render/render_api.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/function/ui/ui_system.h"
 
 // game
@@ -56,9 +56,9 @@ namespace dodoe {
         ResourceManager::Self().initialize();
         // ---------------------RENDER-------------------------
         window_manager->initialize({create_info.spec});
-        RenderApi::initialize({create_info.spec.render_api_type});
+        DO_ASSERT(RenderSettings::Initialize(create_info.spec.render_settings), "RenderSettings initialize failed!");
         ui_system = UISystem::Create({window_manager.get()});
-        render_system = RenderSystem::Create({window_manager.get(), create_info.spec.render_api_type, create_info.spec.render_graph_mode});
+        render_system = RenderSystem::Create({window_manager.get()});
         DO_ASSERT(render_system, "RenderSystem initialize failed!");
 
         input_manager->initialize({render_system->getViewportManager()});

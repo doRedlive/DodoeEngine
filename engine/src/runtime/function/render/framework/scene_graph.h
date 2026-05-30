@@ -240,13 +240,13 @@ namespace dodoe {
     class SceneGraph : public std::enable_shared_from_this<SceneGraph> {
         Ref<SceneGraphNode> m_root{nullptr};
         Ref<SceneGraphNode> m_main_camera_node{nullptr};
-        std::unordered_map<Uuid, Ref<SceneGraphNode>> m_entity_nodes;
+        UnorderedMap<Uuid, Ref<SceneGraphNode>> m_entity_nodes;
         ResourceTracker<Material> m_materials;
         ResourceTracker<Mesh> m_meshes;
-        size_t m_geometry_count{0};
-        std::vector<Ref<MeshInstance>> m_instances{};
-        std::vector<Ref<SceneCamera>> m_cameras{};
-        std::vector<Ref<Light>> m_lights{};
+        Size_t m_geometry_count{0};
+        DynamicArray<Ref<MeshInstance>> m_instances{};
+        DynamicArray<Ref<SceneCamera>> m_cameras{};
+        DynamicArray<Ref<Light>> m_lights{};
     public:
         static Ref<SceneGraph> Create();
 

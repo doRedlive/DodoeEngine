@@ -2,7 +2,7 @@
 
 #include "viewport_panel.h"
 
-#include "runtime/function/render/render_api.h"
+
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/render/render_system.h"

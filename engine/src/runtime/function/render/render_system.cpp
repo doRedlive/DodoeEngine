@@ -5,8 +5,8 @@
 
 #include "render_system.h"
 
-#include "render_api.h"
 #include "render_resource.h"
+#include "render_settings.h"
 
 #include "passes/color_grading_pass.h"
 #include "passes/combine_pass.h"
@@ -20,6 +20,7 @@
 #include "passes/tone_mapping_pass.h"
 #ifdef DODOE_EDITOR
 #include "passes/imgui_pass.h"
+#include "passes/pick_pass.h"
 #endif
 
 #include "framework/texture_manager.h"
@@ -28,25 +29,12 @@
 
 namespace dodoe {
 
-    Scope<RenderSystem> RenderSystem::Create(const RenderSystemCreateInfo& info) {
-        if (auto context = create_scope<RenderSystem>(); context->initialize(info)) 
-            return context;
-        return nullptr;
-    }
-
-    void RenderSystem::Destroy(Scope<RenderSystem>& system) {
-        if (!system) return;
-        system->shutdown();
-        system.reset();
-    }
-
     bool RenderSystem::initialize(const RenderSystemCreateInfo& info) {
         m_window_manager = info.window_manager;
-        m_ui_system = info.ui_system;
 
         auto window = m_window_manager->getWindow();
+        auto backend_api = RenderSettings::GetRenderBackendApiType();
 
-        RenderApi::initialize({info.backend_api});
         m_viewport_manager = ViewportManager::Create({window});
         const bool enable_validation =
 #ifdef DO_DEBUG
@@ -54,17 +42,16 @@ namespace dodoe {
 #else
             false;
 #endif
-        m_rhi = RhiContext::Create({window->getNativeWindow(), info.backend_api, enable_validation});
+        m_rhi = RhiContext::Create({window->getNativeWindow(), backend_api, enable_validation});
         m_camera = Camera::Create({CameraType::Perspective, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
         m_descriptor_table = DescriptorTableManager::Create({m_rhi.get()});
         m_texture_manager = TextureManager::Create({m_rhi.get(), m_descriptor_table.get()});
 
         g_RenderResource->initilize(m_rhi->getDevice());
 
-        m_render_graph = RenderGraph::Create({m_rhi.get(), m_camera.get(), m_ui_system, m_descriptor_table.get()});
+        m_render_graph = RenderGraph::Create({m_rhi.get(), m_camera.get(), m_descriptor_table.get()});
 
-        m_render_graph_mode = info.render_graph_mode;
-        buildRenderGraph(m_render_graph_mode);
+        buildRenderGraph();
         m_render_graph->compile();
 
         return m_camera && m_descriptor_table && m_texture_manager && m_render_graph;
@@ -80,10 +67,10 @@ namespace dodoe {
         g_RenderResource->shutdown();
         TextureManager::Destroy(m_texture_manager);
         DescriptorTableManager::Destroy(m_descriptor_table);
-		if (m_rhi && m_rhi->getDevice()) {
-			m_rhi->getDevice()->waitForIdle();
-			m_rhi->getDevice()->runGarbageCollection();
-		}
+        if (m_rhi && m_rhi->getDevice()) {
+            m_rhi->getDevice()->waitForIdle();
+            m_rhi->getDevice()->runGarbageCollection();
+        }
         RhiContext::Destroy(m_rhi);
     }
 
@@ -123,20 +110,29 @@ namespace dodoe {
         g_RenderResource->swapLogicRenderContext();
     }
 
-    void RenderSystem::buildRenderGraph(RenderGraphMode mode) {
+    void RenderSystem::buildRenderGraph() {
         if (!m_render_graph) {
             return;
         }
 
-        if (mode == RenderGraphMode::TwoD) {
-            buildRenderGraph2D();
-        }
-        else {
-            buildRenderGraph3D();
+        auto pipeline = RenderSettings::GetRenderingPipelineType();
+
+        switch (pipeline) {
+        case RenderingPipelineType::Only2D:
+            buildOnly2DPipeline();
+            break;
+        case RenderingPipelineType::Forward:
+        case RenderingPipelineType::ForwardPlus:
+        case RenderingPipelineType::DeferredPlus:
+            // TODO: implement additional pipeline types
+        case RenderingPipelineType::Deferred:
+        default:
+            buildDeferredPipeline();
+            break;
         }
     }
 
-    void RenderSystem::buildRenderGraph3D() {
+    void RenderSystem::buildDeferredPipeline() {
         TextureResourceDesc main_camera_color_desc{};
         main_camera_color_desc.format = rhi::Format::RGBA8_UNORM;
         main_camera_color_desc.viewport_relative = true;
@@ -210,6 +206,21 @@ namespace dodoe {
         directional_shadow_desc.debug_name = "DirectionalLightShadowPass Depth Target";
 
 #ifdef DODOE_EDITOR
+        TextureResourceDesc pick_color_desc{};
+        pick_color_desc.format = rhi::Format::R32_UINT;
+        pick_color_desc.viewport_relative = true;
+        pick_color_desc.shader_resource = true;
+        pick_color_desc.render_target = true;
+        pick_color_desc.debug_name = "PickPass Target";
+
+        TextureResourceDesc pick_depth_desc{};
+        pick_depth_desc.format = rhi::Format::D32;
+        pick_depth_desc.viewport_relative = true;
+        pick_depth_desc.render_target = true;
+        pick_depth_desc.depth_stencil = true;
+        pick_depth_desc.shader_resource = true;
+        pick_depth_desc.debug_name = "PickPass Depth Target";
+
         TextureResourceDesc imgui_color_desc{};
         imgui_color_desc.format = rhi::Format::RGBA8_UNORM;
         imgui_color_desc.viewport_relative = true;
@@ -224,6 +235,12 @@ namespace dodoe {
             .addTextureWrite("MainCameraPosition", main_camera_position_desc)
             .addTextureWrite("MainCameraMaterial", main_camera_material_desc)
             .addTextureWrite("MainCameraDepth", main_camera_depth_desc);
+
+#ifdef DODOE_EDITOR
+        m_render_graph->addPass("PickPass", create_ref<PickPass>(m_rhi.get()))
+            .addTextureWrite("PickColor", pick_color_desc)
+            .addTextureWrite("PickDepth", pick_depth_desc);
+#endif
 
         m_render_graph->addPass("DirectionalLightShadowPass", create_ref<DirectionalLightShadowPass>(m_rhi.get()))
             .addTextureWrite("ShadowMap", directional_shadow_desc);
@@ -252,7 +269,7 @@ namespace dodoe {
 
         m_render_graph->addPass("SpritePass", create_ref<SpritePass>(m_rhi.get(), m_descriptor_table.get()))
             .addTextureWrite("MainCameraColor", main_camera_color_desc)
-            .addTextureRead("MainCameraDepth", main_camera_depth_desc); // For depth test
+            .addTextureRead("MainCameraDepth", main_camera_depth_desc);
 
         m_render_graph->addPass("FXAAPass", create_ref<FXAAPass>(m_rhi.get()))
             .addTextureRead("MainCameraColor", main_camera_color_desc)
@@ -270,20 +287,13 @@ namespace dodoe {
 #endif
     }
 
-    void RenderSystem::buildRenderGraph2D() {
+    void RenderSystem::buildOnly2DPipeline() {
         TextureResourceDesc main_camera_color_desc{};
         main_camera_color_desc.format = rhi::Format::RGBA8_UNORM;
         main_camera_color_desc.viewport_relative = true;
         main_camera_color_desc.shader_resource = true;
         main_camera_color_desc.render_target = true;
         main_camera_color_desc.debug_name = "SpritePass Scene Target";
-
-        TextureResourceDesc main_camera_fxaa_color_desc{};
-        main_camera_fxaa_color_desc.format = rhi::Format::RGBA8_UNORM;
-        main_camera_fxaa_color_desc.viewport_relative = true;
-        main_camera_fxaa_color_desc.shader_resource = true;
-        main_camera_fxaa_color_desc.render_target = true;
-        main_camera_fxaa_color_desc.debug_name = "SpritePass FXAA Color Target";
 
         TextureResourceDesc main_camera_depth_desc{};
         main_camera_depth_desc.format = rhi::Format::D32;
@@ -294,6 +304,21 @@ namespace dodoe {
         main_camera_depth_desc.debug_name = "SpritePass Depth Target";
 
 #ifdef DODOE_EDITOR
+        TextureResourceDesc pick_color_desc{};
+        pick_color_desc.format = rhi::Format::R32_UINT;
+        pick_color_desc.viewport_relative = true;
+        pick_color_desc.shader_resource = true;
+        pick_color_desc.render_target = true;
+        pick_color_desc.debug_name = "PickPass Target";
+
+        TextureResourceDesc pick_depth_desc{};
+        pick_depth_desc.format = rhi::Format::D32;
+        pick_depth_desc.viewport_relative = true;
+        pick_depth_desc.render_target = true;
+        pick_depth_desc.depth_stencil = true;
+        pick_depth_desc.shader_resource = true;
+        pick_depth_desc.debug_name = "PickPass Depth Target";
+
         TextureResourceDesc imgui_color_desc{};
         imgui_color_desc.format = rhi::Format::RGBA8_UNORM;
         imgui_color_desc.viewport_relative = true;
@@ -306,9 +331,11 @@ namespace dodoe {
             .addTextureWrite("MainCameraColor", main_camera_color_desc)
             .addTextureRead("MainCameraDepth", main_camera_depth_desc);
 
-        m_render_graph->addPass("FXAAPass", create_ref<FXAAPass>(m_rhi.get()))
-            .addTextureRead("MainCameraColor", main_camera_color_desc)
-            .addTextureWrite("MainCameraFxaaColor", main_camera_fxaa_color_desc);
+#ifdef DODOE_EDITOR
+        m_render_graph->addPass("PickPass", create_ref<PickPass>(m_rhi.get()))
+            .addTextureWrite("PickColor", pick_color_desc)
+            .addTextureWrite("PickDepth", pick_depth_desc);
+#endif
 
 #ifdef DODOE_EDITOR
         m_render_graph->addPass("ImGuiPass", create_ref<ImGuiPass>(m_rhi.get()))
@@ -316,7 +343,7 @@ namespace dodoe {
 #endif
 
         auto& combine_pass = m_render_graph->addPass("CombinePass", create_ref<CombinePass>(m_rhi.get()))
-            .addTextureRead("MainCameraFxaaColor", main_camera_fxaa_color_desc);
+            .addTextureRead("MainCameraColor", main_camera_color_desc);
 #ifdef DODOE_EDITOR
         combine_pass.addTextureRead("ImGuiColor", imgui_color_desc);
 #endif

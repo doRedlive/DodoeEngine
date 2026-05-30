@@ -36,7 +36,8 @@ Application* CreateApplication(ApplicationCommandLineArgs cli_args) {
     sandbox_spec.window_resizeable = true;
     sandbox_spec.width = 1600;
     sandbox_spec.height = 900;
-    sandbox_spec.render_api_type = RenderApiType::Vulkan;
+    sandbox_spec.render_settings.api = RenderBackendApiType::Vulkan;
+    sandbox_spec.render_settings.pipeline = RenderingPipelineType::Only2D;
     sandbox_spec.cli_args = cli_args;
 
     return new sandbox::SandboxApp(sandbox_spec);

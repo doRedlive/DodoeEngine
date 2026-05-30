@@ -16,7 +16,7 @@
 #define GLFW_EXPOSE_NATIVE_WAYLAND
 #endif // DO_PLATFORMS
 
-#include "runtime/function/render/render_api.h"
+#include "runtime/function/render/render_settings.h"
 
 #include "entt/entt.hpp"
 
@@ -31,10 +31,10 @@ namespace dodoe {
         const char* title;
         bool custom_titlebar;
         bool resizeable;
-        RenderApiType backend_api;
+        RenderBackendApiType backend_api{ RenderBackendApiType::None };
 
         explicit WindowProperty(const int w = 800, const int h = 600, const char* t = "dodoe", const bool custom_titlebar = false, const bool resizeable = true)
-            : width(w), height(h), title(t), custom_titlebar(custom_titlebar), resizeable(resizeable) , backend_api(RenderApiType::None) {}
+            : width(w), height(h), title(t), custom_titlebar(custom_titlebar), resizeable(resizeable) {}
     };
 
     class Window : public Managed<Window, WindowProperty> {
