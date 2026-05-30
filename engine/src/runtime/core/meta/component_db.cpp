@@ -185,6 +185,8 @@ namespace dodoe {
         registerComponent<MeshRendererComponent>("MeshRendererComponent");
         registerComponent<Rigidbody2dComponent>("Rigidbody2dComponent");
         registerComponent<SpriteRendererComponent>("SpriteRendererComponent");
+        registerComponent<TilemapComponent>("TilemapComponent", false);
+        registerComponent<TileLayerComponent>("TileLayerComponent");
     }
 
 } // dodoe

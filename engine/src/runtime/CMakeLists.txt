@@ -77,6 +77,8 @@ endif()
 
 target_compile_definitions(${TARGET_NAME}
         PUBLIC GLFW_INCLUDE_NONE
+        PUBLIC NOMINMAX
+        PUBLIC WIN32_LEAN_AND_MEAN
         PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
         PRIVATE $<$<CONFIG:Debug>:DO_DEBUG>
 )

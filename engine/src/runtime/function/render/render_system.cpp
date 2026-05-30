@@ -63,6 +63,7 @@ namespace dodoe {
         }
 
         RenderGraph::Destroy(m_render_graph);
+        MeshPassProcessor::Cleanup();
         Camera::Destroy(m_camera);
         g_RenderResource->shutdown();
         TextureManager::Destroy(m_texture_manager);
@@ -223,7 +224,7 @@ namespace dodoe {
 
         TextureResourceDesc imgui_color_desc{};
         imgui_color_desc.format = rhi::Format::RGBA8_UNORM;
-        imgui_color_desc.viewport_relative = true;
+        imgui_color_desc.backbuffer_relative = true;
         imgui_color_desc.shader_resource = true;
         imgui_color_desc.render_target = true;
         imgui_color_desc.debug_name = "ImGuiPass Color Target";
@@ -321,7 +322,7 @@ namespace dodoe {
 
         TextureResourceDesc imgui_color_desc{};
         imgui_color_desc.format = rhi::Format::RGBA8_UNORM;
-        imgui_color_desc.viewport_relative = true;
+        imgui_color_desc.backbuffer_relative = true;
         imgui_color_desc.shader_resource = true;
         imgui_color_desc.render_target = true;
         imgui_color_desc.debug_name = "ImGuiPass Color Target";

@@ -2,6 +2,9 @@
 
 #include "log_system.h"
 
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+
 #include <atomic>
 
 #include "spdlog/sinks/basic_file_sink.h"
@@ -22,6 +25,15 @@ namespace dodoe {
         {spdlog::level::warn, LogLevel::Warn},
         {spdlog::level::err, LogLevel::Error},
         {spdlog::level::critical, LogLevel::Critical},
+    };
+
+    const auto kSpdlogLevelUmap = std::unordered_map<LogLevel, spdlog::level::level_enum>{
+        {LogLevel::Trace, spdlog::level::trace},
+        {LogLevel::Debug, spdlog::level::debug},
+        {LogLevel::Info, spdlog::level::info},
+        {LogLevel::Warn, spdlog::level::warn},
+        {LogLevel::Error, spdlog::level::err},
+        {LogLevel::Critical, spdlog::level::critical},
     };
 
     template<typename Mutex>
@@ -75,8 +87,10 @@ namespace dodoe {
 
     using MemSinkMt = MemorySink<std::mutex>;
 
-    Ref<spdlog::logger> Log::m_core_logger   = spdlog::stdout_color_mt("Engine");
-    Ref<spdlog::logger> Log::m_client_logger = spdlog::stdout_color_mt("Client");
+    std::shared_ptr<spdlog::logger> Log::m_core_logger   = spdlog::stdout_color_mt("Engine");
+    std::shared_ptr<spdlog::logger> Log::m_client_logger = spdlog::stdout_color_mt("Client");
+    LogLevel Log::m_core_level   = LogLevel::Trace;
+    LogLevel Log::m_client_level = LogLevel::Debug;
     Ref<MemSinkMt> s_editor_console_sink = create_ref<MemSinkMt>();
     Ref<MemSinkMt> s_engine_console_sink = create_ref<MemSinkMt>();
 
@@ -107,28 +121,22 @@ namespace dodoe {
         m_client_logger->sinks().push_back(s_editor_console_sink);
     }
 
-    void Log::SetLoggerLevel(const Ref<spdlog::logger>& logger, const LogLevel level) {
-        switch (level) {
-            case LogLevel::Trace:
-                logger->set_level(spdlog::level::trace);
-                break;
-            case LogLevel::Debug:
-                logger->set_level(spdlog::level::debug);
-                break;
-            case LogLevel::Info:
-                logger->set_level(spdlog::level::info);
-                break;
-            case LogLevel::Warn:
-                logger->set_level(spdlog::level::warn);
-                break;
-            case LogLevel::Error:
-                logger->set_level(spdlog::level::err);
-                break;
-            case LogLevel::Critical:
-                logger->set_level(spdlog::level::critical);
-                break;
-            default: ;
+    void Log::SetLoggerLevel(const std::shared_ptr<spdlog::logger>& logger, const LogLevel level) {
+        logger->set_level(kSpdlogLevelUmap.at(level));
+
+        if (logger == m_core_logger) {
+            m_core_level = level;
+        } else if (logger == m_client_logger) {
+            m_client_level = level;
         }
+    }
+
+    void Log::CoreLog(LogLevel level, std::string_view message) {
+        m_core_logger->log(kSpdlogLevelUmap.at(level), "{}", message);
+    }
+
+    void Log::ClientLog(LogLevel level, std::string_view message) {
+        m_client_logger->log(kSpdlogLevelUmap.at(level), "{}", message);
     }
 
     std::vector<LogMessage> Log::GetCoreLogs() {

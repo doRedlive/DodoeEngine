@@ -1,11 +1,17 @@
 {
-    "lastOpened": "C:/Users/33235/Redlive/dodoe/tests/Projects/Test/test/test.doproj",
+    "lastOpened": "C:/Users/33235/Redlive/dodoe/tests/Projects/OnlyOne/OnlyOne.doproj",
     "projects": [
         {
             "lastOpened": 1778671966,
             "name": "test",
             "pinned": false,
             "projectFile": "C:/Users/33235/Redlive/dodoe/tests/Projects/Test/test/test.doproj"
+        },
+        {
+            "lastOpened": 1780140891,
+            "name": "OnlyOne",
+            "pinned": false,
+            "projectFile": "C:/Users/33235/Redlive/dodoe/tests/Projects/OnlyOne/OnlyOne.doproj"
         }
     ],
     "version": 1

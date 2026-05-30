@@ -47,6 +47,10 @@ namespace dodoe {
         m_asset_umap.clear();
 
         const auto active_project = Project::ActiveProject();
+        if (!active_project) {
+            DO_WARN("AssetManager::loadAssets called but no project is active");
+            return false;
+        }
         m_asset_dir = Project::ProjectDirectory() / active_project->config().asset_directory;
 
         std::vector<std::string> image_paths, model_paths, scene_paths;

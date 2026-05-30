@@ -25,6 +25,9 @@ namespace dodoe {
         MeshPassProcessor() = default;
         ~MeshPassProcessor() = default;
 
+        static void Setup() {};
+        static void Cleanup() { s_input_layout_cache.clear(); }
+
         Bool initialize(RhiContext* rhi, const MeshPipelineStateDesc& desc);
         void shutdown();
 

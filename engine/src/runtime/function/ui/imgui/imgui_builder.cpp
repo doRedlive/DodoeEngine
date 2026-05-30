@@ -21,7 +21,7 @@ namespace dodoe {
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-        ApplyImGuiStyle(window->getNativeWindow());
+        ApplyImGuiStyle(window);
 
         const auto api_type = RenderSettings::GetRenderBackendApiType();
         if (api_type == RenderBackendApiType::OpenGL) {

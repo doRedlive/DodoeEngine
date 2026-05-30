@@ -6,6 +6,10 @@
 
 #include "runtime/core/utils/util.h"
 
+#ifdef DrawText
+#undef DrawText
+#endif
+
 namespace dodoe {
 
     struct QuadVertex {

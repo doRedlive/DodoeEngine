@@ -205,4 +205,81 @@ internal static class InternalCalls
 
 	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	internal extern static void Native_DestroyEntity(ulong entityId);
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TilemapSetData(ulong entityId, int mapWidth, int mapHeight, int tileWidth, int tileHeight);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TilemapAddTileset(ulong entityId, string tilesetJson);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerSetData(ulong entityId, uint[] tiles, int width, int height, string name, bool visible, float opacity, int offsetX, int offsetY);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_EntitySetParent(ulong childEntityId, ulong parentEntityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static uint Native_TilemapComponentGetMapWidth(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TilemapComponentSetMapWidth(ulong entityId, uint value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static uint Native_TilemapComponentGetMapHeight(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TilemapComponentSetMapHeight(ulong entityId, uint value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static uint Native_TilemapComponentGetTileWidth(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TilemapComponentSetTileWidth(ulong entityId, uint value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static uint Native_TilemapComponentGetTileHeight(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TilemapComponentSetTileHeight(ulong entityId, uint value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static string Native_TileLayerComponentGetLayerName(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerComponentSetLayerName(ulong entityId, string value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static uint Native_TileLayerComponentGetLayerWidth(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerComponentSetLayerWidth(ulong entityId, uint value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static uint Native_TileLayerComponentGetLayerHeight(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerComponentSetLayerHeight(ulong entityId, uint value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static bool Native_TileLayerComponentGetVisible(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerComponentSetVisible(ulong entityId, bool value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static float Native_TileLayerComponentGetOpacity(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerComponentSetOpacity(ulong entityId, float value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static int Native_TileLayerComponentGetOffsetX(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerComponentSetOffsetX(ulong entityId, int value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static int Native_TileLayerComponentGetOffsetY(ulong entityId);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static void Native_TileLayerComponentSetOffsetY(ulong entityId, int value);
 }

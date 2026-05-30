@@ -15,6 +15,7 @@
 #include "systems/physics2d_system.h"
 #include "systems/sprite_renderer_system.h"
 #include "systems/mono_system.h"
+#include "systems/tilemap_renderer_system.h"
 
 namespace dodoe {
 
@@ -61,6 +62,7 @@ namespace dodoe {
         auto animation2d = create_ref<Animation2dSystem>();
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
+        auto tilemap_renderer = create_ref<TilemapRendererSystem>();
         registerRuntimeSystem(mono);
         registerRuntimeSystem(camera2d);
         registerRuntimeSystem(light_system);
@@ -68,6 +70,7 @@ namespace dodoe {
         registerRuntimeSystem(animation2d);
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
+        registerRuntimeSystem(tilemap_renderer);
 
         registerSimulationSystem(camera2d);
         registerSimulationSystem(light_system);
@@ -75,6 +78,7 @@ namespace dodoe {
         registerSimulationSystem(animation2d);
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
+        registerSimulationSystem(tilemap_renderer);
 
         return true;
     }

@@ -161,28 +161,28 @@ namespace cakery {
 
         void RegisterDefaultEditorPanels() {
             RegisterPanel(MakeDockspaceDescriptor(), []() {
-                return Scope<DockspacePanel>(MakeDockspaceDescriptor());
+                return create_scope<DockspacePanel>(MakeDockspaceDescriptor());
             });
             RegisterPanel(MakeProjectManagerDescriptor(), []() {
-                return Scope<ProjectManagerPanel>(MakeProjectManagerDescriptor());
+                return create_scope<ProjectManagerPanel>(MakeProjectManagerDescriptor());
             });
             RegisterPanel(MakeTitlebarDescriptor(), []() {
-                return Scope<Titlebar>(MakeTitlebarDescriptor());
+                return create_scope<Titlebar>(MakeTitlebarDescriptor());
             });
             RegisterPanel(MakeHierarchyDescriptor(), []() {
-                return Scope<HierarchyPanel>(MakeHierarchyDescriptor());
+                return create_scope<HierarchyPanel>(MakeHierarchyDescriptor());
             });
             RegisterPanel(MakeInspectorDescriptor(), []() {
-                return Scope<InspectorPanel>(MakeInspectorDescriptor());
+                return create_scope<InspectorPanel>(MakeInspectorDescriptor());
             });
             RegisterPanel(MakeProjectDescriptor(), []() {
-                return Scope<ProjectPanel>(MakeProjectDescriptor());
+                return create_scope<ProjectPanel>(MakeProjectDescriptor());
             });
             RegisterPanel(MakeConsoleDescriptor(), []() {
-                return Scope<ConsolePanel>(MakeConsoleDescriptor());
+                return create_scope<ConsolePanel>(MakeConsoleDescriptor());
             });
             RegisterPanel(MakeViewportDescriptor(), []() {
-                return Scope<ViewportPanel>(MakeViewportDescriptor());
+                return create_scope<ViewportPanel>(MakeViewportDescriptor());
             });
         }
     } // 

@@ -12,6 +12,8 @@
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
+#include "runtime/function/world/components/tilemap/tileset_asset.h"
+#include "runtime/core/utils/json.h"
 
 #include "mono/metadata/class.h"
 #include "mono/metadata/image.h"
@@ -43,7 +45,9 @@ namespace dodoe {
             BoxCollider2dComponent,
             MeshRendererComponent,
             Rigidbody2dComponent,
-            SpriteRendererComponent
+            SpriteRendererComponent,
+            TilemapComponent,
+            TileLayerComponent
         >;
 
         template<typename TComponent>
@@ -705,6 +709,261 @@ namespace dodoe {
             }
         }
 
+        static void Native_TilemapSetData(uint64_t entity_uuid, int map_width, int map_height, int tile_width, int tile_height) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (!entity.valid()) {
+                return;
+            }
+
+            if (!entity.hasComponent<TilemapComponent>()) {
+                entity.addComponent<TilemapComponent>();
+            }
+
+            auto& map = entity.getComponent<TilemapComponent>();
+            map.map_width = static_cast<uint32_t>(map_width);
+            map.map_height = static_cast<uint32_t>(map_height);
+            map.tile_width = static_cast<uint32_t>(tile_width);
+            map.tile_height = static_cast<uint32_t>(tile_height);
+            map.dirty = true;
+        }
+
+        static void Native_TilemapAddTileset(uint64_t entity_uuid, MonoString* tileset_json) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (!entity.valid() || !entity.hasComponent<TilemapComponent>()) {
+                return;
+            }
+
+            std::string json_str = MonoStringToStdString(tileset_json);
+            if (json_str.empty()) {
+                return;
+            }
+
+            auto& map = entity.getComponent<TilemapComponent>();
+            auto ts = create_ref<TilesetAsset>();
+
+            try {
+                Json j = Json::parse(json_str);
+                if (j.contains("Name")) ts->name = j["Name"].get<std::string>();
+                if (j.contains("FirstGid")) ts->first_gid = j["FirstGid"].get<UInt32>();
+                if (j.contains("TileWidth")) ts->tile_width = j["TileWidth"].get<UInt32>();
+                if (j.contains("TileHeight")) ts->tile_height = j["TileHeight"].get<UInt32>();
+                if (j.contains("Columns")) ts->columns = j["Columns"].get<UInt32>();
+                if (j.contains("TileCount")) ts->tile_count = j["TileCount"].get<UInt32>();
+                if (j.contains("ImagePath")) ts->image_path = j["ImagePath"].get<std::string>();
+                if (j.contains("TextureId")) ts->texture_id = j["TextureId"].get<UInt32>();
+            } catch (const std::exception& e) {
+                DO_ERROR("Native_TilemapAddTileset: JSON parse error: {}", e.what());
+                return;
+            }
+
+            map.tilesets.push_back(std::move(ts));
+            map.dirty = true;
+        }
+
+        static void Native_TileLayerSetData(uint64_t entity_uuid, MonoArray* tiles_array,
+                int width, int height, MonoString* name, bool visible, float opacity, int offset_x, int offset_y) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (!entity.valid()) {
+                return;
+            }
+
+            if (!entity.hasComponent<TileLayerComponent>()) {
+                entity.addComponent<TileLayerComponent>();
+            }
+
+            auto& layer = entity.getComponent<TileLayerComponent>();
+            layer.layer_width = static_cast<uint32_t>(width);
+            layer.layer_height = static_cast<uint32_t>(height);
+            layer.layer_name = MonoStringToStdString(name);
+            layer.visible = visible;
+            layer.opacity = opacity;
+            layer.offset_x = static_cast<int32_t>(offset_x);
+            layer.offset_y = static_cast<int32_t>(offset_y);
+
+            if (tiles_array) {
+                uintptr_t length = mono_array_length(tiles_array);
+                layer.tiles.resize(length);
+                for (uintptr_t i = 0; i < length; ++i) {
+                    layer.tiles[i] = mono_array_get(tiles_array, uint32_t, i);
+                }
+            }
+        }
+
+        static void Native_EntitySetParent(uint64_t child_uuid, uint64_t parent_uuid) {
+            Entity child = TryGetEntityByUuid(child_uuid);
+            Entity parent = TryGetEntityByUuid(parent_uuid);
+            if (!child.valid() || !parent.valid()) {
+                return;
+            }
+
+            if (!child.hasComponent<HierarchyComponent>()) {
+                child.addComponent<HierarchyComponent>();
+            }
+            if (!parent.hasComponent<HierarchyComponent>()) {
+                parent.addComponent<HierarchyComponent>();
+            }
+
+            auto& child_hier = child.getComponent<HierarchyComponent>();
+            auto& parent_hier = parent.getComponent<HierarchyComponent>();
+
+            child_hier.parent_uuid = parent.uuid();
+            child_hier.parent = parent;
+            child_hier.dirty = true;
+
+            parent_hier.children.push_back(child);
+            parent_hier.child_count = static_cast<int>(parent_hier.children.size());
+            parent_hier.dirty = true;
+        }
+
+        static uint32_t Native_TilemapComponentGetMapWidth(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TilemapComponent>()
+                ? entity.getComponent<TilemapComponent>().map_width : 0u;
+        }
+
+        static void Native_TilemapComponentSetMapWidth(uint64_t entity_uuid, uint32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
+                entity.getComponent<TilemapComponent>().map_width = value;
+                entity.getComponent<TilemapComponent>().dirty = true;
+            }
+        }
+
+        static uint32_t Native_TilemapComponentGetMapHeight(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TilemapComponent>()
+                ? entity.getComponent<TilemapComponent>().map_height : 0u;
+        }
+
+        static void Native_TilemapComponentSetMapHeight(uint64_t entity_uuid, uint32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
+                entity.getComponent<TilemapComponent>().map_height = value;
+                entity.getComponent<TilemapComponent>().dirty = true;
+            }
+        }
+
+        static uint32_t Native_TilemapComponentGetTileWidth(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TilemapComponent>()
+                ? entity.getComponent<TilemapComponent>().tile_width : 16u;
+        }
+
+        static void Native_TilemapComponentSetTileWidth(uint64_t entity_uuid, uint32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
+                entity.getComponent<TilemapComponent>().tile_width = value;
+                entity.getComponent<TilemapComponent>().dirty = true;
+            }
+        }
+
+        static uint32_t Native_TilemapComponentGetTileHeight(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TilemapComponent>()
+                ? entity.getComponent<TilemapComponent>().tile_height : 16u;
+        }
+
+        static void Native_TilemapComponentSetTileHeight(uint64_t entity_uuid, uint32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
+                entity.getComponent<TilemapComponent>().tile_height = value;
+                entity.getComponent<TilemapComponent>().dirty = true;
+            }
+        }
+
+        static MonoString* Native_TileLayerComponentGetLayerName(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                return StdStringToMonoString(entity.getComponent<TileLayerComponent>().layer_name);
+            }
+            return StdStringToMonoString("");
+        }
+
+        static void Native_TileLayerComponentSetLayerName(uint64_t entity_uuid, MonoString* value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                entity.getComponent<TileLayerComponent>().layer_name = MonoStringToStdString(value);
+            }
+        }
+
+        static uint32_t Native_TileLayerComponentGetLayerWidth(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TileLayerComponent>()
+                ? entity.getComponent<TileLayerComponent>().layer_width : 0u;
+        }
+
+        static void Native_TileLayerComponentSetLayerWidth(uint64_t entity_uuid, uint32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                entity.getComponent<TileLayerComponent>().layer_width = value;
+            }
+        }
+
+        static uint32_t Native_TileLayerComponentGetLayerHeight(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TileLayerComponent>()
+                ? entity.getComponent<TileLayerComponent>().layer_height : 0u;
+        }
+
+        static void Native_TileLayerComponentSetLayerHeight(uint64_t entity_uuid, uint32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                entity.getComponent<TileLayerComponent>().layer_height = value;
+            }
+        }
+
+        static bool Native_TileLayerComponentGetVisible(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TileLayerComponent>()
+                && entity.getComponent<TileLayerComponent>().visible;
+        }
+
+        static void Native_TileLayerComponentSetVisible(uint64_t entity_uuid, bool value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                entity.getComponent<TileLayerComponent>().visible = value;
+            }
+        }
+
+        static float Native_TileLayerComponentGetOpacity(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TileLayerComponent>()
+                ? entity.getComponent<TileLayerComponent>().opacity : 1.0f;
+        }
+
+        static void Native_TileLayerComponentSetOpacity(uint64_t entity_uuid, float value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                entity.getComponent<TileLayerComponent>().opacity = value;
+            }
+        }
+
+        static int32_t Native_TileLayerComponentGetOffsetX(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TileLayerComponent>()
+                ? entity.getComponent<TileLayerComponent>().offset_x : 0;
+        }
+
+        static void Native_TileLayerComponentSetOffsetX(uint64_t entity_uuid, int32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                entity.getComponent<TileLayerComponent>().offset_x = value;
+            }
+        }
+
+        static int32_t Native_TileLayerComponentGetOffsetY(uint64_t entity_uuid) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            return entity.valid() && entity.hasComponent<TileLayerComponent>()
+                ? entity.getComponent<TileLayerComponent>().offset_y : 0;
+        }
+
+        static void Native_TileLayerComponentSetOffsetY(uint64_t entity_uuid, int32_t value) {
+            Entity entity = TryGetEntityByUuid(entity_uuid);
+            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
+                entity.getComponent<TileLayerComponent>().offset_y = value;
+            }
+        }
+
     }
 
     void ScriptGlue::Initialize(ScriptEngine* engine) {
@@ -803,6 +1062,32 @@ namespace dodoe {
         DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentSetColor);
         DO_ADD_INTERNAL_CALL(Native_CreateEntity);
         DO_ADD_INTERNAL_CALL(Native_DestroyEntity);
+        DO_ADD_INTERNAL_CALL(Native_TilemapSetData);
+        DO_ADD_INTERNAL_CALL(Native_TilemapAddTileset);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerSetData);
+        DO_ADD_INTERNAL_CALL(Native_EntitySetParent);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetMapWidth);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetMapWidth);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetMapHeight);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetMapHeight);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetTileWidth);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetTileWidth);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetTileHeight);
+        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetTileHeight);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetLayerName);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetLayerName);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetLayerWidth);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetLayerWidth);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetLayerHeight);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetLayerHeight);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetVisible);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetVisible);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetOpacity);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOpacity);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetOffsetX);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOffsetX);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetOffsetY);
+        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOffsetY);
 
     }
 

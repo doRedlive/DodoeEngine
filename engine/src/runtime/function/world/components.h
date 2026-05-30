@@ -12,5 +12,7 @@
 #include "runtime/function/world/components/tag_component.h"
 #include "runtime/function/world/components/transform_component.h"
 #include "runtime/function/world/components/hierarchy_component.h"
+#include "runtime/function/world/components/tilemap/tilemap_component.h"
+#include "runtime/function/world/components/tilemap/tile_layer_component.h"
 
 #endif//DODOE_COMPONENTS_H

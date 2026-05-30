@@ -271,3 +271,75 @@ public class SpriteRendererComponent : Component
         set => InternalCalls.Native_SpriteRendererComponentSetColor(Entity.ID, ref value);
     }
 }
+
+public class TilemapComponent : Component
+{
+    public uint MapWidth
+    {
+        get => InternalCalls.Native_TilemapComponentGetMapWidth(Entity.ID);
+        set => InternalCalls.Native_TilemapComponentSetMapWidth(Entity.ID, value);
+    }
+
+    public uint MapHeight
+    {
+        get => InternalCalls.Native_TilemapComponentGetMapHeight(Entity.ID);
+        set => InternalCalls.Native_TilemapComponentSetMapHeight(Entity.ID, value);
+    }
+
+    public uint TileWidth
+    {
+        get => InternalCalls.Native_TilemapComponentGetTileWidth(Entity.ID);
+        set => InternalCalls.Native_TilemapComponentSetTileWidth(Entity.ID, value);
+    }
+
+    public uint TileHeight
+    {
+        get => InternalCalls.Native_TilemapComponentGetTileHeight(Entity.ID);
+        set => InternalCalls.Native_TilemapComponentSetTileHeight(Entity.ID, value);
+    }
+}
+
+public class TileLayerComponent : Component
+{
+    public string LayerName
+    {
+        get => InternalCalls.Native_TileLayerComponentGetLayerName(Entity.ID);
+        set => InternalCalls.Native_TileLayerComponentSetLayerName(Entity.ID, value);
+    }
+
+    public uint LayerWidth
+    {
+        get => InternalCalls.Native_TileLayerComponentGetLayerWidth(Entity.ID);
+        set => InternalCalls.Native_TileLayerComponentSetLayerWidth(Entity.ID, value);
+    }
+
+    public uint LayerHeight
+    {
+        get => InternalCalls.Native_TileLayerComponentGetLayerHeight(Entity.ID);
+        set => InternalCalls.Native_TileLayerComponentSetLayerHeight(Entity.ID, value);
+    }
+
+    public bool Visible
+    {
+        get => InternalCalls.Native_TileLayerComponentGetVisible(Entity.ID);
+        set => InternalCalls.Native_TileLayerComponentSetVisible(Entity.ID, value);
+    }
+
+    public float Opacity
+    {
+        get => InternalCalls.Native_TileLayerComponentGetOpacity(Entity.ID);
+        set => InternalCalls.Native_TileLayerComponentSetOpacity(Entity.ID, value);
+    }
+
+    public int OffsetX
+    {
+        get => InternalCalls.Native_TileLayerComponentGetOffsetX(Entity.ID);
+        set => InternalCalls.Native_TileLayerComponentSetOffsetX(Entity.ID, value);
+    }
+
+    public int OffsetY
+    {
+        get => InternalCalls.Native_TileLayerComponentGetOffsetY(Entity.ID);
+        set => InternalCalls.Native_TileLayerComponentSetOffsetY(Entity.ID, value);
+    }
+}

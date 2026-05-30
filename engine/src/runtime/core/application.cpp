@@ -32,7 +32,7 @@ namespace dodoe {
     void Application::run() {
         EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);
 
-#ifdef DODOE_EDITOR
+#ifndef DODOE_EDITOR
         m_context->startRuntime();
 #endif//DODOE_EDITOR
 
@@ -48,7 +48,7 @@ namespace dodoe {
 
         m_context->layer_stack.detach();
 
-#ifdef DODOE_EDITOR
+#ifndef DODOE_EDITOR
         m_context->finalizeRuntime();
 #endif//DODOE_EDITOR
 

@@ -287,11 +287,14 @@ namespace dodoe {
         s_Data.dirty = true;
     }
 
+#ifdef DrawText
+#undef DrawText
+#endif
     void Renderer2D::DrawText() {
 
     }
 
-    const std::vector<QuadCpuData>& Renderer2D::GetQuadCpuBatches() {
+    const DynamicArray<QuadCpuData>& Renderer2D::GetQuadCpuBatches() {
         if (!s_Data.dirty) {
             return s_Data.quad_batches;
         }
