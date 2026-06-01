@@ -13,6 +13,17 @@ namespace dodoe {
 
 namespace cakery {
 
+    using dodoe::Bool;
+    using dodoe::String;
+    using dodoe::Int32;
+    using dodoe::UInt32;
+    using dodoe::UInt64;
+    using dodoe::Size_t;
+    using dodoe::DynamicArray;
+    using dodoe::UnorderedMap;
+    using dodoe::Scope;
+    using dodoe::Ref;
+
     enum class EditorPanelStage {
         Startup,
         Workspace,
@@ -58,15 +69,15 @@ namespace cakery {
     class EditorPanel {
     protected:
         EditorPanelDescriptor m_descriptor;
-        bool m_is_open{true};
+        Bool m_is_open{true};
 
     public:
         explicit EditorPanel(EditorPanelDescriptor descriptor);
         virtual ~EditorPanel() = default;
 
         [[nodiscard]] const EditorPanelDescriptor& getDescriptor() const { return m_descriptor; }
-        [[nodiscard]] bool isOpen() const { return m_is_open; }
-        void setOpen(const bool is_open) { m_is_open = is_open; }
+        [[nodiscard]] Bool isOpen() const { return m_is_open; }
+        void setOpen(const Bool open) { m_is_open = open; }
 
         virtual void onAttach(const EditorPanelContext& context);
         virtual void onDetach(const EditorPanelContext& context);

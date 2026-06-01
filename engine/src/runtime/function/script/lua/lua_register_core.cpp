@@ -32,7 +32,7 @@ namespace dodoe::lua_register_detail {
             return Application::Self().context().time_system->get_fps();
         });
         dodoe_table.new_usertype<TimeSystem>("TimeSystem",
-            "deltaTime", &TimeSystem::delta_time,
+            "deltaTime", &TimeSystem::getDeltaTime,
             "getTimeScale", &TimeSystem::get_time_scale,
             "setTimeScale", &TimeSystem::set_time_scale,
             "getTargetFps", &TimeSystem::get_target_fps,
@@ -52,7 +52,7 @@ namespace dodoe::lua_register_detail {
             if (!Application::Self().context().time_system) {
                 return 0.0f;
             }
-            return Application::Self().context().time_system->delta_time();
+            return Application::Self().context().time_system->getDeltaTime();
         });
         time_table.set_function("getCurrentTime", []() -> float {
             if (!Application::Self().context().time_system) {

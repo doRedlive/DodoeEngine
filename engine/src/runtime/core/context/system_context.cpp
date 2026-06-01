@@ -62,12 +62,18 @@ namespace dodoe {
         DO_ASSERT(render_system, "RenderSystem initialize failed!");
 
         input_manager->initialize({render_system->getViewportManager()});
- 
+
+        m_render_thread = create_scope<RenderThread>();
+        m_render_thread->start([this] { tickRenderingTask(); });
+
         return true;
     }
 
     bool SystemContext::shutdownSystems() {
         layer_stack.clearLayers();
+
+        m_render_thread->stop();
+        m_render_thread.reset();
 
         // ---------------------GAME-------------------------
         input_manager->shutdown();
@@ -106,7 +112,7 @@ namespace dodoe {
     }
 
     void SystemContext::tickOneFrame() {
-        updateTick(time_system->delta_time());
+        updateTick(time_system->getDeltaTime());
         renderTick();
     }
 
@@ -133,12 +139,18 @@ namespace dodoe {
     }
 
     void SystemContext::renderTick() {
-        render_system->prepare();
         ui_system->prepare();
 
         for (auto& layer : layer_stack) {
             layer->renderTick();
         }
+
+        m_render_thread->submitAndWait();
+    }
+
+    void SystemContext::tickRenderingTask() {
+        render_system->prepare();
         render_system->present();
     }
+
 } // dodoe

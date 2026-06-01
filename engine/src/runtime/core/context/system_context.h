@@ -6,6 +6,7 @@
 
 #include "runtime/core/application.h"
 #include "runtime/core/layer/layer_stack.h"
+#include "runtime/core/thread/render_thread.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/physics/physics_system.h"
@@ -22,9 +23,12 @@ namespace dodoe {
 
     class SystemContext : public Managed<SystemContext, SystemContextCreateInfo> {
         friend class Managed<SystemContext, SystemContextCreateInfo>;
+
+        Scope<RenderThread> m_render_thread{nullptr};
+
     public:
         ~SystemContext();
-        
+
         Scope<WindowManager> window_manager {nullptr};
         Scope<PhysicsSystem> physics_system {nullptr};
         Scope<RenderSystem>  render_system  {nullptr};
@@ -34,7 +38,7 @@ namespace dodoe {
         Scope<UISystem>      ui_system      {nullptr};
         Scope<World>         world          {nullptr};
         LayerStack layer_stack{};
-        bool m_runtime_started{false};
+        Bool m_runtime_started{false};
 
         [[nodiscard]] WindowManager* getWindowManager() const { return window_manager.get(); }
         [[nodiscard]] RenderSystem*  getRenderSystem() const { return render_system.get(); }
@@ -43,16 +47,19 @@ namespace dodoe {
 
         void startRuntime();
         void tickOneFrame();
-        void finalizeRuntime();        
+        void finalizeRuntime();
+
     private:
         [[nodiscard]] bool initialize(SystemContextCreateInfo create_info);
         void shutdown();
 
         [[nodiscard]] bool initializeSystems(SystemContextCreateInfo create_info);
         [[nodiscard]] bool shutdownSystems();
-        
+
         void updateTick(float dt);
         void renderTick();
+
+        void tickRenderingTask();
     };
 
 } // dodoe

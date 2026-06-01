@@ -4,6 +4,7 @@
 
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/event/event_system.h"
+#include "runtime/core/thread/task_scheduler.h"
 
 namespace dodoe {
 
@@ -30,6 +31,8 @@ namespace dodoe {
     }
 
     void Application::run() {
+        TaskScheduler::Self();
+
         EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);
 
 #ifndef DODOE_EDITOR

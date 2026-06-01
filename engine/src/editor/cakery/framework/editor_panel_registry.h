@@ -8,26 +8,26 @@
 
 namespace cakery {
 
-    class EditorPanel;
-    class EditorPanelManager;
+	class EditorPanel;
+	class EditorPanelManager;
 
-    using EditorPanelFactory = std::function<dodoe::Scope<EditorPanel>()>;
+	using EditorPanelFactory = std::function<dodoe::Scope<EditorPanel>()>;
 
-    class EditorPanelRegistry {
-    public:
-        static EditorPanelRegistry& Self();
+	class EditorPanelRegistry {
+	private:
+		struct PanelEntry {
+			EditorPanelDescriptor descriptor{};
+			EditorPanelFactory factory{};
+		};
 
-        bool registerPanel(EditorPanelDescriptor descriptor, EditorPanelFactory factory);
-        void instantiatePanels(EditorPanelManager& manager) const;
+		DynamicArray<String> m_order{};
+		UnorderedMap<String, PanelEntry> m_entries{};
 
-    private:
-        struct PanelEntry {
-            EditorPanelDescriptor descriptor{};
-            EditorPanelFactory factory{};
-        };
+	public:
+		static EditorPanelRegistry& Self();
 
-        std::vector<std::string> m_order{};
-        std::unordered_map<std::string, PanelEntry> m_entries{};
-    };
+		Bool registerPanel(EditorPanelDescriptor descriptor, EditorPanelFactory factory);
+		void instantiatePanels(EditorPanelManager& manager) const;
+	};
 
 } // cakery

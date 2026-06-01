@@ -23,8 +23,10 @@ namespace cakery {
 
         void update(dodoe::Registry& reg, float dt) override {
             (void)reg;
-            if (!m_editor_camera_controller) 
-                m_editor_camera_controller = EditorCameraController::Create({});
+            if (!m_editor_camera_controller) {
+                auto& main_camera = dodoe::Application::Self().context().getRenderSystem()->getMainCamera();
+                m_editor_camera_controller = EditorCameraController::Create({&main_camera});
+            }
 
             auto* editor_camera = m_editor_camera_controller->getCamera();
             if (!editor_camera) return;

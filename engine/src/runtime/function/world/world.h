@@ -21,6 +21,7 @@ namespace dodoe {
     enum class WorldState {
         Simulation,
         Runtime,
+        Pause,
     };
 
     class World : public Managed<World, WorldCreateInfo> {

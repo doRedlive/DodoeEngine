@@ -278,8 +278,16 @@ namespace dodoe {
 		}
 		VkExtent2D chosen_extent;
 		{
-			if (swapchain_details.capabilities.currentExtent.width != UINT32_MAX) {
-				chosen_extent = swapchain_details.capabilities.currentExtent;	
+			if (swapchain_details.capabilities.currentExtent.width != UINT32_MAX
+				&& swapchain_details.capabilities.currentExtent.width > 0
+				&& swapchain_details.capabilities.currentExtent.height > 0) {
+				chosen_extent = swapchain_details.capabilities.currentExtent;
+				chosen_extent.width = std::clamp(chosen_extent.width,
+					swapchain_details.capabilities.minImageExtent.width,
+					swapchain_details.capabilities.maxImageExtent.width);
+				chosen_extent.height = std::clamp(chosen_extent.height,
+					swapchain_details.capabilities.minImageExtent.height,
+					swapchain_details.capabilities.maxImageExtent.height);
 			}
 			else {
 				int width, height;
@@ -422,6 +430,13 @@ namespace dodoe {
 	}
 
 	bool VulkanBackend::recreateSwapchain(GLFWwindow* window_handle) {
+		// Skip swapchain recreation when window is minimized (framebuffer size is zero)
+		int fb_width = 0, fb_height = 0;
+		glfwGetFramebufferSize(window_handle, &fb_width, &fb_height);
+		if (fb_width == 0 || fb_height == 0) {
+			return false;
+		}
+
 		vkDeviceWaitIdle(device_);
 
 		for (auto image_view : swapchain_imageviews_) {

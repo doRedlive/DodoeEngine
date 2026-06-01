@@ -3,6 +3,7 @@
 #include "world.h"
 
 #include "scene.h"
+
 #include "runtime/core/project/project.h"
 #include "runtime/resource/res_type/scene_res.h"
 #include "runtime/resource/resource_manager.h"
@@ -100,6 +101,8 @@ namespace dodoe {
                     scene->onSimulationStart();
                 }
             break;
+            case WorldState::Pause:
+            break;
         }
     }
 
@@ -115,6 +118,8 @@ namespace dodoe {
                     scene->onSimulationUpdate(dt);
                 }
             break;
+            case WorldState::Pause:
+            break;
         }
     }
 
@@ -129,6 +134,8 @@ namespace dodoe {
                 for (auto& scene : m_active_scenes) {
                     scene->onSimulationStop();
                 }
+            break;
+            case WorldState::Pause:
             break;
         }
     }

@@ -86,16 +86,26 @@ namespace dodoe {
     void SpritePass::execute(size_t index) {
         (void)index;
 
-        const auto& batches = Renderer2D::GetQuadCpuBatches();
-        if (batches.empty()) {
-            return;
-        }
-
         m_cmd_list->open();
         m_cmd_list->beginMarker("SpritePass");
         m_cmd_list->setTextureState(m_scene_color_target, rhi::AllSubresources, rhi::ResourceStates::RenderTarget);
         m_cmd_list->setTextureState(m_scene_depth_target, rhi::AllSubresources, rhi::ResourceStates::DepthWrite);
         m_cmd_list->commitBarriers();
+
+        if (m_clear_targets) {
+            m_cmd_list->clearTextureFloat(m_scene_color_target, rhi::AllSubresources, rhi::Color(0.19f, 0.19f, 0.19f, 1.0f));
+            m_cmd_list->clearDepthStencilTexture(m_scene_depth_target, rhi::AllSubresources, true, 1.0f, false, 0);
+        }
+
+        const auto& batches = Renderer2D::GetQuadCpuBatches();
+        if (batches.empty()) {
+            m_cmd_list->setTextureState(m_scene_color_target, rhi::AllSubresources, rhi::ResourceStates::ShaderResource);
+            m_cmd_list->commitBarriers();
+            m_cmd_list->endMarker();
+            m_cmd_list->close();
+            m_rhi->getDevice()->executeCommandList(m_cmd_list);
+            return;
+        }
 
         const auto& camera = g_RenderResource->getRenderScene().mainCamera();
         if (!camera || !camera->isValid()) {

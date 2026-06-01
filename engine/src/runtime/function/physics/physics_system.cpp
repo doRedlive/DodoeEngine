@@ -4,6 +4,8 @@
 
 #include "physics_system.h"
 
+#include <thread>
+
 #include "runtime/function/world/scene.h"
 
 namespace dodoe {
@@ -24,6 +26,9 @@ namespace dodoe {
 		b2WorldDef world_def = b2DefaultWorldDef();
 		world_def.gravity.x = 0.0f;
 		world_def.gravity.y = create_info.gravity;
+		world_def.workerCount = static_cast<i32>(
+			std::max(1u, std::thread::hardware_concurrency() - 2));
+		world_def.enableSleep = true;
 		world_id_ = b2CreateWorld(&world_def);
 
 		debugger_ = PhysicsDebugger::Create({});

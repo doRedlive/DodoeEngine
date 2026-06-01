@@ -664,7 +664,7 @@ namespace dodoe {
             if (!time_system) {
                 return 0.0f;
             }
-            return time_system->delta_time();
+            return time_system->getDeltaTime();
         }
 
         static uint64_t Native_CreateEntity(MonoString* name) {

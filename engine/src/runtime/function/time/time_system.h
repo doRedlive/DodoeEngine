@@ -14,7 +14,7 @@ namespace dodoe {
         TimeSystem() = default;
         ~TimeSystem() = default;
 
-        [[nodiscard]] float delta_time();
+        [[nodiscard]] float getDeltaTime();
         [[nodiscard]] float current_time() const;
         [[nodiscard]] float get_time_scale() const;
         [[nodiscard]] int   get_target_fps() const;

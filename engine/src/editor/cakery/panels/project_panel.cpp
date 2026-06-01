@@ -16,6 +16,7 @@
 using namespace dodoe;
 
 namespace cakery {
+
 	namespace {
 		dodoe::TextureManager* GetTextureManager() {
 			auto& app = dodoe::Application::Self();
@@ -24,132 +25,119 @@ namespace cakery {
 		}
 	}
 
-    ProjectPanel::ProjectPanel(EditorPanelDescriptor descriptor)
-        : EditorPanel(std::move(descriptor)) {
-        updateBaseDirectory();
-        cur_directory_ = base_directory_;
-        last_base_directory_ = base_directory_;
+	ProjectPanel::ProjectPanel(EditorPanelDescriptor descriptor)
+		: EditorPanel(std::move(descriptor)) {
+		updateBaseDirectory();
+		m_cur_directory = m_base_directory;
+		m_last_base_directory = m_base_directory;
 
-        directory_icon_ = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/DirectoryIcon.png",
+		m_directory_icon = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/DirectoryIcon.png",
 			"engine/res/pictures/ContentBrowser/DirectoryIcon.png");
-        file_icon_ = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/FileIcon.png",
+		m_file_icon = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/FileIcon.png",
 			"engine/res/pictures/ContentBrowser/FileIcon.png");
 
 		initializeIconTextures();
-    }
-
-	ProjectPanel::~ProjectPanel() {
-		directory_icon_texture_ = nullptr;
-		file_icon_texture_ = nullptr;
 	}
 
-    void ProjectPanel::onWorkspaceDeactivated(const EditorPanelContext& context) {
-        (void)context;
-        directory_icon_texture_ = nullptr;
-        file_icon_texture_ = nullptr;
-    }
+	ProjectPanel::~ProjectPanel() {
+		m_directory_icon_texture = nullptr;
+		m_file_icon_texture = nullptr;
+	}
 
-    void ProjectPanel::onDraw(const EditorPanelContext& context) {
-        (void)context;
-        updateBaseDirectory();
-        if (base_directory_ != last_base_directory_) {
-            cur_directory_ = base_directory_;
-            last_base_directory_ = base_directory_;
-        }
+	void ProjectPanel::onWorkspaceDeactivated(const EditorPanelContext& context) {
+		(void)context;
+		m_directory_icon_texture = nullptr;
+		m_file_icon_texture = nullptr;
+	}
 
-		ImGui::Begin("Content Browser");
+	void ProjectPanel::onDraw(const EditorPanelContext& context) {
+		(void)context;
+		updateBaseDirectory();
+		if (m_base_directory != m_last_base_directory) {
+			m_cur_directory = m_base_directory;
+			m_last_base_directory = m_base_directory;
+		}
 
-        if (cur_directory_ != fs::path(base_directory_)) {
-            if (ImGui::Button("<-")) {
-                cur_directory_ = cur_directory_.parent_path();
-            }
-        }
+		ImGui::Begin("Project");
 
-        static float padding = 16.0f;
-        static float thumbnail_size = 128.0f;
-        float cellSize = thumbnail_size + padding;
+		std::error_code ec;
+		for (auto& directory_entry : fs::directory_iterator(m_cur_directory, ec)) {
+			const auto& path = directory_entry.path();
+			const String file_name = path.filename().string();
+			const Bool is_directory = directory_entry.is_directory();
 
-        float panel_width = ImGui::GetContentRegionAvail().x;
-        int column_count = (int)(panel_width / cellSize);
-        if (column_count < 1)
-            column_count = 1;
+			ImGui::PushID(file_name.c_str());
 
-        ImGui::Columns(column_count, 0, false);
+			if (!m_directory_icon_texture || !m_file_icon_texture) {
+				initializeIconTextures();
+			}
 
-        for (auto& directory_entry : fs::directory_iterator(cur_directory_)) {
-            const auto& path = directory_entry.path();
-            std::string file_name = path.filename().string();
-            const bool is_directory = directory_entry.is_directory();
+			constexpr float kItemHeight = 40.0f;
+			const Bool selected = ImGui::Selectable("##project_item", false,
+				ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap,
+				ImVec2(0, kItemHeight));
 
-            ImGui::PushID(file_name.c_str());
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            if (!directory_icon_texture_ || !file_icon_texture_) {
-                initializeIconTextures();
-            }
+			if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+				if (is_directory) {
+					m_cur_directory /= path.filename();
+				}
+			}
 
-            auto icon_texture = getIconTexture(is_directory);
-            if (icon_texture && icon_texture->handle) {
-                const ImTextureRef icon_ref(reinterpret_cast<ImTextureID>(icon_texture->handle.Get()));
-                ImGui::ImageButton(file_name.c_str(), icon_ref, ImVec2(thumbnail_size, thumbnail_size), ImVec2(0, 1), ImVec2(1, 0));
-            } else {
-                ImGui::Button(file_name.c_str(), ImVec2(thumbnail_size, thumbnail_size));
-            }
+			ImGui::SameLine();
+			auto icon_tex = getIconTexture(is_directory);
+			if (icon_tex && icon_tex->handle) {
+				constexpr float kIconSize = 28.0f;
+				const float icon_offset_y = (kItemHeight - kIconSize) * 0.5f;
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + icon_offset_y);
+				const ImTextureRef icon_ref(reinterpret_cast<ImTextureID>(icon_tex->handle.Get()));
+				ImGui::Image(icon_ref, ImVec2(kIconSize, kIconSize), ImVec2(0, 1), ImVec2(1, 0));
+			}
+			ImGui::SameLine();
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (kItemHeight - ImGui::GetTextLineHeight()) * 0.5f);
+			ImGui::TextUnformatted(file_name.c_str());
 
-            if (ImGui::BeginDragDropSource())
-            {
-                fs::path relative_path(path);
-                const std::string item_path = relative_path.string();
-                ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", item_path.c_str(), item_path.size() + 1);
-                ImGui::EndDragDropSource();
-            }
+			if (selected) {
+				(void)is_directory;
+			}
 
-            ImGui::PopStyleColor();
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-            {
-                if (is_directory)
-                    cur_directory_ /= path.filename();
+			ImGui::PopID();
+		}
 
-            }
-            ImGui::TextWrapped("%s", file_name.c_str());
+		if (m_cur_directory != m_base_directory) {
+			ImGui::Separator();
+			if (ImGui::Button("<- Back")) {
+				m_cur_directory = m_cur_directory.parent_path();
+			}
+		}
 
-            ImGui::NextColumn();
+		ImGui::End();
+	}
 
-            ImGui::PopID();
-        }
+	void ProjectPanel::updateBaseDirectory() {
+		fs::path desired = FileSystem::EngineResPath;
+		if (const auto active_project = Project::ActiveProject()) {
+			desired = Project::ProjectDirectory() / active_project->config().asset_directory;
+		}
+		desired = desired.lexically_normal();
 
-        ImGui::Columns(1);
-
-        ImGui::SliderFloat("Thumbnail Size", &thumbnail_size, 16, 512);
-        ImGui::SliderFloat("Padding", &padding, 0, 32);
-
-        ImGui::End();
-    }
-
-    void ProjectPanel::updateBaseDirectory() {
-        fs::path desired = FileSystem::EngineResPath;
-        if (const auto active_project = Project::ActiveProject()) {
-            desired = Project::ProjectDirectory() / active_project->config().asset_directory;
-        }
-        desired = desired.lexically_normal();
-
-        base_directory_ = desired;
-        if (!fs::exists(base_directory_) || !fs::is_directory(base_directory_)) {
-            base_directory_ = FileSystem::EngineResPath;
-        }
-    }
+		m_base_directory = desired;
+		if (!fs::exists(m_base_directory) || !fs::is_directory(m_base_directory)) {
+			m_base_directory = FileSystem::EngineResPath;
+		}
+	}
 
 	void ProjectPanel::initializeIconTextures() {
-		if (directory_icon_texture_ && file_icon_texture_) {
+		if (m_directory_icon_texture && m_file_icon_texture) {
 			return;
 		}
 
 		auto* texture_manager = GetTextureManager();
-		directory_icon_texture_ = texture_manager->loadTexture(directory_icon_.id);
-		file_icon_texture_ = texture_manager->loadTexture(file_icon_.id);
+		m_directory_icon_texture = texture_manager->loadTexture(m_directory_icon.id);
+		m_file_icon_texture = texture_manager->loadTexture(m_file_icon.id);
 	}
 
-	Ref<Texture> ProjectPanel::getIconTexture(const bool is_directory) const {
-		auto texture = is_directory ? directory_icon_texture_ : file_icon_texture_;
+	Ref<Texture> ProjectPanel::getIconTexture(const Bool is_directory) const {
+		auto texture = is_directory ? m_directory_icon_texture : m_file_icon_texture;
 		if (texture && texture->handle) {
 			return texture;
 		}

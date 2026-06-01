@@ -6,6 +6,7 @@
 
 #include "asset.h"
 #include "runtime/core/meta/serializer/serializer.h"
+#include "runtime/core/thread/task_scheduler.h"
 
 namespace dodoe {
     class World;
@@ -46,6 +47,16 @@ namespace dodoe {
 
             Serializer::read(asset_json, out_asset);
             return true;
+        }
+
+        template<typename AssetType>
+        [[nodiscard]] auto loadAssetAsync(const String& asset_url) const
+            -> std::future<AssetType> {
+            return TaskScheduler::Self().async([this, asset_url]() {
+                AssetType asset;
+                loadAsset(asset_url, asset);
+                return asset;
+            });
         }
 
         template<typename AssetType>

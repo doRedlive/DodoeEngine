@@ -10,25 +10,26 @@
 #include "runtime/function/window/window.h"
 
 namespace cakery {
-    class CakeryLayer final : public dodoe::Layer {
-    public:
-        explicit CakeryLayer(const std::string& name);
-        ~CakeryLayer() override = default;
 
-        void attach() override;
-        void detach() override;
-        void updateTick(float delta_time) override;
-        void renderTick() override;
+	class CakeryLayer final : public dodoe::Layer {
+	private:
+		dodoe::Window* m_window{nullptr};
+		String m_base_title{};
+		Bool m_editor_initialized{false};
+		EditorPanelManager m_panel_manager{};
 
-    private:
-        void enterEditor();
-        [[nodiscard]] EditorPanelContext buildPanelContext(bool workspace_active);
+	public:
+		explicit CakeryLayer(const String& name);
+		~CakeryLayer() override = default;
 
-        dodoe::Window* m_window{ nullptr };
-        std::string m_base_title{};
-        bool m_editor_initialized{false};
+		void attach() override;
+		void detach() override;
+		void updateTick(float delta_time) override;
+		void renderTick() override;
 
-        EditorPanelManager m_panel_manager{};
-    };
+	private:
+		void enterEditor();
+		[[nodiscard]] EditorPanelContext buildPanelContext(Bool workspace_active);
+	};
 
 } // cakery

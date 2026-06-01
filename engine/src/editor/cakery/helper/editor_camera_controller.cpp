@@ -21,6 +21,50 @@ namespace cakery {
     }
 
     void EditorCameraController::onUpdate(const float dt) {
+        if (!m_camera) return;
+
+        if (m_camera->getCameraType() == dodoe::CameraType::Orthographic) {
+            update2D(dt);
+        } else {
+            update3D(dt);
+        }
+    }
+
+    void EditorCameraController::update2D(const float dt) {
+        (void)dt;
+
+        const dodoe::Vector2f mouse_position = dodoe::Input::GetMouseWindowPosition();
+        const bool middle_pressed = dodoe::Input::IsMouseButtonPressed(dodoe::MouseCode::ButtonMiddle);
+        const bool right_pressed = dodoe::Input::IsMouseButtonPressed(dodoe::MouseCode::ButtonRight);
+        const bool dragging = middle_pressed || right_pressed;
+
+        if (dragging) {
+            if (m_middle_dragging) {
+                const dodoe::Vector2f delta = mouse_position - m_last_mouse_position;
+                const float zoom = m_camera->getZoom();
+                const auto& logical_size = m_camera->getLogicalSize();
+                const auto& window_size = m_camera->getWindowSize();
+                const float scale_x = logical_size.x / (window_size.x > 0 ? static_cast<float>(window_size.x) : 1.0f);
+                const float scale_y = logical_size.y / (window_size.y > 0 ? static_cast<float>(window_size.y) : 1.0f);
+                m_camera->translate(dodoe::Vector3f(-delta.x * scale_x / zoom, delta.y * scale_y / zoom, 0.0f));
+            }
+            m_middle_dragging = true;
+        } else {
+            m_middle_dragging = false;
+        }
+
+        if (m_scroll_delta_y != 0.0f) {
+            const float zoom = m_camera->getZoom();
+            const float zoom_factor = 1.0f + m_scroll_delta_y * 0.1f;
+            const float new_zoom = std::clamp(zoom * zoom_factor, 0.01f, 100.0f);
+            m_camera->setZoom(new_zoom);
+            m_scroll_delta_y = 0.0f;
+        }
+
+        m_last_mouse_position = mouse_position;
+    }
+
+    void EditorCameraController::update3D(const float dt) {
         const auto make_forward = [this]() {
             return dodoe::Math::Normalize(dodoe::Vector3f(
                 std::cos(m_pitch) * std::cos(m_yaw),
@@ -98,21 +142,18 @@ namespace cakery {
     }
 
     bool EditorCameraController::initialize(const EditorCameraControllerCreateInfo &info) {
-        (void)info;
-        m_camera = dodoe::Camera::Create({dodoe::CameraType::Perspective});
-        if (m_camera) {
-            m_camera->setPosition(dodoe::Vector3f(0.0f, 0.0f, 5.0f));
-            m_camera->setViewDirection(dodoe::Vector3f(0.0f, 0.0f, -1.0f));
+        m_camera = info.camera;
+        if (!m_camera) {
+            return false;
         }
         m_last_mouse_position = dodoe::Input::GetMouseWindowPosition();
         dodoe::EventSystem::Subscribe<dodoe::MouseScrolledEvent, &EditorCameraController::onMouseScrolled>(this);
 
-        return m_camera != nullptr;
+        return true;
     }
 
     void EditorCameraController::shutdown() {
         dodoe::EventSystem::Unsubscribe<dodoe::MouseScrolledEvent, &EditorCameraController::onMouseScrolled>(this);
-        dodoe::Camera::Destroy(m_camera);
     }
 
 } // cakery

@@ -32,25 +32,25 @@
 namespace cakery {
 
     namespace {
-        std::string GetMonoClassShortName(const dodoe::ScriptClass& script_class) {
+        String GetMonoClassShortName(const dodoe::ScriptClass& script_class) {
             MonoClass* mono_class = script_class.getMonoClass();
             if (!mono_class) {
                 return "<UnknownMonoComponent>";
             }
 
             const char* name = mono_class_get_name(mono_class);
-            return name ? std::string(name) : "<UnknownMonoComponent>";
+            return name ? String(name) : "<UnknownMonoComponent>";
         }
 
-        std::string GetShortTypeName(const std::string& full_name) {
+        String GetShortTypeName(const String& full_name) {
             const size_t pos = full_name.find_last_of('.');
-            if (pos == std::string::npos) {
+            if (pos == String::npos) {
                 return full_name;
             }
             return full_name.substr(pos + 1);
         }
 
-        std::string GetMonoClassFullName(const dodoe::ScriptClass& script_class) {
+        String GetMonoClassFullName(const dodoe::ScriptClass& script_class) {
             MonoClass* mono_class = script_class.getMonoClass();
             if (!mono_class) {
                 return "<UnknownMonoComponent>";
@@ -62,7 +62,7 @@ namespace cakery {
                 return "<UnknownMonoComponent>";
             }
 
-            return (ns && strlen(ns) > 0) ? fmt::format("{}.{}", ns, name) : std::string(name);
+            return (ns && strlen(ns) > 0) ? fmt::format("{}.{}", ns, name) : String(name);
         }
 
         const char* AssetTypeToString(const dodoe::AssetType type) {
@@ -75,7 +75,7 @@ namespace cakery {
             }
         }
 
-        std::vector<dodoe::AssetRef> CollectAssetsByType(const dodoe::AssetType type) {
+        DynamicArray<dodoe::AssetRef> CollectAssetsByType(const dodoe::AssetType type) {
             auto* asset_manager = dodoe::ResourceManager::Self().getAssetManager();
             if (!asset_manager) {
                 return {};
@@ -150,27 +150,98 @@ namespace cakery {
             return;
         }
 
-        // Name
+        // ---- Search bar (matching editor_ref.html) ----
         {
-            char buffer[256];
-            std::snprintf(buffer, sizeof(buffer), "%s", m_selected_entity.name().c_str());
-            if (ImGui::InputText("Name", buffer, sizeof(buffer))) {
-                m_selected_entity.getComponent<dodoe::IDComponent>().setName(std::string(buffer));
-            }
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.11f, 0.11f, 0.13f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.24f, 0.27f, 1.0f));
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            ImGui::InputTextWithHint("##InspectorSearch", "Search...", m_search_buffer, sizeof(m_search_buffer));
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar();
         }
 
-        // Tag
+        ImGui::Spacing();
+
+        // ---- Entity name (simple property group) ----
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.24f, 0.27f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.14f, 0.15f, 0.17f, 1.0f));
+
+            ImGui::BeginChild("##NameGroup", ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
+
+            // Group title
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.20f, 0.22f, 0.25f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));
+            const bool name_open = ImGui::CollapsingHeader("Entity", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+            ImGui::PopStyleColor(3);
+
+            if (name_open) {
+                ImGui::Spacing();
+                char buffer[256];
+                std::snprintf(buffer, sizeof(buffer), "%s", m_selected_entity.name().c_str());
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                if (ImGui::InputText("##EntityName", buffer, sizeof(buffer))) {
+                    m_selected_entity.getComponent<dodoe::IDComponent>().setName(String(buffer));
+                }
+            }
+
+            ImGui::EndChild();
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(2);
+        }
+
+        ImGui::Spacing();
+
+        // ---- Tag (simple property group) ----
         if (m_selected_entity.hasComponent<dodoe::TagComponent>()) {
-            auto& tag_comp = m_selected_entity.getComponent<dodoe::TagComponent>();
-            char buffer[256];
-            std::snprintf(buffer, sizeof(buffer), "%s", tag_comp.tag.c_str());
-            if (ImGui::InputText("Tag", buffer, sizeof(buffer))) {
-                //TODO: COMMAND;
-                tag_comp.tag = std::string(buffer);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.24f, 0.27f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.14f, 0.15f, 0.17f, 1.0f));
+
+            ImGui::BeginChild("##TagGroup", ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
+
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.20f, 0.22f, 0.25f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));
+            const bool tag_open = ImGui::CollapsingHeader("Tag", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+            ImGui::PopStyleColor(3);
+
+            if (tag_open) {
+                ImGui::Spacing();
+                auto& tag_comp = m_selected_entity.getComponent<dodoe::TagComponent>();
+                char buffer[256];
+                std::snprintf(buffer, sizeof(buffer), "%s", tag_comp.tag.c_str());
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                if (ImGui::InputText("##TagValue", buffer, sizeof(buffer))) {
+                    tag_comp.tag = String(buffer);
+                }
             }
+
+            ImGui::EndChild();
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(2);
+
+            ImGui::Spacing();
         }
 
-        // Other components
+        // ---- Search filter predicate ----
+        const String search_filter(m_search_buffer);
+        const Bool has_search = !search_filter.empty();
+        auto matches_search = [&](const String& name) -> bool {
+            if (!has_search) return true;
+            String lower_name = name;
+            String lower_filter = search_filter;
+            std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+            std::transform(lower_filter.begin(), lower_filter.end(), lower_filter.begin(), ::tolower);
+            return lower_name.find(lower_filter) != String::npos;
+        };
+
+        // ---- Other components as styled groups ----
         for (const auto& entry : dodoe::ComponentDB::self().entries()) {
             if (!entry.contains(m_selected_entity)) {
                 continue;
@@ -180,10 +251,15 @@ namespace cakery {
                 continue;
             }
 
-            const std::string comp_name = entry.name;
-            m_component_ui_drawer["TreeNodePush"]("<" + comp_name + ">", nullptr);
-            drawNode(comp_name);
-            m_component_ui_drawer["TreeNodePop"]("<" + comp_name + ">", nullptr);
+            const String comp_name = entry.name;
+
+            // Apply search filter
+            if (!matches_search(comp_name)) {
+                continue;
+            }
+
+            ImGui::Spacing();
+            drawComponentGroup(comp_name);
         }
 
         drawMonoComponents();
@@ -192,223 +268,159 @@ namespace cakery {
         drawButtons(m_selected_entity);
     }
 
+    void InspectorPanel::drawComponentGroup(const String& comp_name) {
+        // Group container matching editor_ref.html .group style
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.24f, 0.27f, 1.0f));   // #373d46
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.14f, 0.15f, 0.17f, 1.0f));
+
+        ImGui::BeginChild((comp_name + "_grp").c_str(), ImVec2(0, 0),
+                          ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
+
+        // Collapsible group title matching editor_ref.html .group-title style
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));         // #2b3037
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.20f, 0.22f, 0.25f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));
+        const bool expanded = ImGui::CollapsingHeader(comp_name.c_str(),
+                                                      ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+        ImGui::PopStyleColor(3);
+
+        // Right-click context menu for component removal
+        if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::MenuItem("Remove Component")) {
+                dodoe::ComponentDB::self().removeComponent(m_selected_entity, comp_name);
+                ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+                ImGui::EndChild();
+                ImGui::PopStyleVar(2);
+                ImGui::PopStyleColor(2);
+                return;
+            }
+            ImGui::EndPopup();
+        }
+
+        if (expanded) {
+            ImGui::Spacing();
+            drawNode(comp_name);
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(2);
+    }
+
+    void InspectorPanel::drawPropertyLabel(const String& label) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.78f, 0.80f, 1.0f));
+        ImGui::Text("%s", label.c_str());
+        ImGui::PopStyleColor();
+    }
+
     void InspectorPanel::initializeComponentDrawers() {
-        m_component_ui_drawer["TreeNodePush"] = [this](const std::string& name, void* value) -> void {
-            static ImGuiTableFlags flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings;
-            bool node_state = false;
-            m_node_depth++;
-            if (m_node_depth > 0) {
-                if (m_node_state_array[m_node_depth - 1].second) {
-                    node_state = ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth);
-                } else {
-                    m_node_state_array.emplace_back(std::pair(name.c_str(), node_state));
-                    return;
-                }
-            } else {
-                node_state = ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth);
-            }
-            m_node_state_array.emplace_back(std::pair(name.c_str(), node_state));
-        };
-
-        m_component_ui_drawer["TreeNodePop"] = [this](const std::string& name, void* value) -> void {
-            if (m_node_state_array[m_node_depth].second) {
-                ImGui::TreePop();
-            }
-            m_node_state_array.pop_back();
-            m_node_depth--;
-        };
-
-        m_component_ui_drawer["bool"] = [this](const std::string& name, void* value)  -> void {
-            if(m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::Checkbox(label.c_str(), static_cast<bool*>(value))) {
-                    markCurrentComponentDirty();
-                }
-            } else {
-                if(m_node_state_array[m_node_depth].second) {
-                    const std::string full_label = "##" /*+ getLeafUINodeParentLabel() */+ name;
-                    ImGui::Text("%s", name.c_str());
-                    if (ImGui::Checkbox(full_label.c_str(), static_cast<bool*>(value))) {
-                        markCurrentComponentDirty();
-                    }
-                }
+        // ---- bool ----
+        m_component_ui_drawer["bool"] = [this](const String& name, void* value) -> void {
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::Checkbox(("##" + name).c_str(), static_cast<bool*>(value))) {
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["int"] = [this](const std::string& name, void* value) -> void {
-            if (m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::InputInt(label.c_str(), static_cast<int*>(value))) {
-                    markCurrentComponentDirty();
-                }
-            } else {
-                if (m_node_state_array[m_node_depth].second) {
-                    const std::string full_label = "##" /*+ getLeafUINodeParentLabel() */+ name;
-                    ImGui::Text("%s", (name + ":").c_str());
-                    if (ImGui::InputInt(full_label.c_str(), static_cast<int*>(value))) {
-                        markCurrentComponentDirty();
-                    }
-                }
+        // ---- int ----
+        m_component_ui_drawer["int"] = [this](const String& name, void* value) -> void {
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::InputInt(("##" + name).c_str(), static_cast<int*>(value))) {
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["float"] = [this](const std::string& name, void* value) -> void {
-            if (m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::InputFloat(label.c_str(), static_cast<float*>(value))) {
-                    markCurrentComponentDirty();
-                }
-            } else {
-                if (m_node_state_array[m_node_depth].second) {
-                    const std::string full_label = "##" /*+ getLeafUINodeParentLabel() */+ name;
-                    ImGui::Text("%s", (name + ":").c_str());
-                    if (ImGui::InputFloat(full_label.c_str(), static_cast<float*>(value))) {
-                        markCurrentComponentDirty();
-                    }
-                }
+        // ---- float ----
+        m_component_ui_drawer["float"] = [this](const String& name, void* value) -> void {
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::InputFloat(("##" + name).c_str(), static_cast<float*>(value))) {
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["string"] = [this](const std::string& name, void* value) -> void {
-            auto* target = static_cast<std::string*>(value);
+        // ---- string ----
+        m_component_ui_drawer["string"] = [this](const String& name, void* value) -> void {
+            auto* target = static_cast<String*>(value);
             char buffer[256];
             std::snprintf(buffer, sizeof(buffer), "%s", target->c_str());
-            if (m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::InputText(label.c_str(), buffer, sizeof(buffer))) {
-                    *target = std::string(buffer);
-                    markCurrentComponentDirty();
-                }
-            } else {
-                if (m_node_state_array[m_node_depth].second) {
-                    const std::string full_label = "##" /*+ getLeafUINodeParentLabel() */+ name;
-                    ImGui::Text("%s", (name + ":").c_str());
-                    if (ImGui::InputText(full_label.c_str(), buffer, sizeof(buffer))) {
-                        *target = std::string(buffer);
-                        markCurrentComponentDirty();
-                    }
-                }
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::InputText(("##" + name).c_str(), buffer, sizeof(buffer))) {
+                *target = String(buffer);
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["Vector2f"] = [this](const std::string& name, void* value) -> void {
+        // ---- Vector2f ----
+        m_component_ui_drawer["Vector2f"] = [this](const String& name, void* value) -> void {
             auto* v2 = static_cast<dodoe::Vector2f*>(value);
             float arr[2] = { v2->x, v2->y };
-            if (m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::InputFloat2(label.c_str(), arr)) {
-                    v2->x = arr[0]; v2->y = arr[1];
-                    markCurrentComponentDirty();
-                }
-            }
-            else {
-                if (m_node_state_array[m_node_depth].second) {
-                    const std::string full_label = "##" + name;
-                    ImGui::Text("%s", (name + ":").c_str());
-                    if (ImGui::InputFloat2(full_label.c_str(), arr)) {
-                        v2->x = arr[0]; v2->y = arr[1];
-                        markCurrentComponentDirty();
-                    }
-                }
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::InputFloat2(("##" + name).c_str(), arr)) {
+                v2->x = arr[0]; v2->y = arr[1];
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["Vector3f"] = [this](const std::string& name, void* value) -> void {
+        // ---- Vector3f ----
+        m_component_ui_drawer["Vector3f"] = [this](const String& name, void* value) -> void {
             auto* v3 = static_cast<dodoe::Vector3f*>(value);
             float arr[3] = { v3->x, v3->y, v3->z };
-            if (m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::InputFloat3(label.c_str(), arr)) {
-                    v3->x = arr[0]; v3->y = arr[1]; v3->z = arr[2];
-                    markCurrentComponentDirty();
-                }
-            } else {
-                if (m_node_state_array[m_node_depth].second) {
-                    const std::string full_label = "##" + name;
-                    ImGui::Text("%s", (name + ":").c_str());
-                    if (ImGui::InputFloat3(full_label.c_str(), arr)) {
-                        v3->x = arr[0]; v3->y = arr[1]; v3->z = arr[2];
-                        markCurrentComponentDirty();
-                    }
-                }
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::InputFloat3(("##" + name).c_str(), arr)) {
+                v3->x = arr[0]; v3->y = arr[1]; v3->z = arr[2];
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["Uuid"] = [this](const std::string& name, void* value) -> void {
+        // ---- Uuid ----
+        m_component_ui_drawer["Uuid"] = [this](const String& name, void* value) -> void {
             auto* uuid = static_cast<dodoe::Uuid*>(value);
             if (!uuid) {
                 return;
             }
-
             uint64_t raw = static_cast<uint64_t>(*uuid);
-            if (m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &raw)) {
-                    *uuid = dodoe::Uuid(raw);
-                    markCurrentComponentDirty();
-                }
-            } else if (m_node_state_array[m_node_depth].second) {
-                const std::string full_label = "##" + name;
-                ImGui::Text("%s", (name + ":").c_str());
-                if (ImGui::InputScalar(full_label.c_str(), ImGuiDataType_U64, &raw)) {
-                    *uuid = dodoe::Uuid(raw);
-                    markCurrentComponentDirty();
-                }
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::InputScalar(("##" + name).c_str(), ImGuiDataType_U64, &raw)) {
+                *uuid = dodoe::Uuid(raw);
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["Color"] = [this](const std::string& name, void* value) -> void {
+        // ---- Color ----
+        m_component_ui_drawer["Color"] = [this](const String& name, void* value) -> void {
             auto* color = static_cast<dodoe::Color*>(value);
             float arr[4] = { color->r, color->g, color->b, color->a };
-            if (m_node_depth == -1) {
-                const std::string label = "##" + name;
-                ImGui::Text("%s", name.c_str());
-                ImGui::SameLine();
-                if (ImGui::ColorEdit4(label.c_str(), arr)) {
-                    color->r = arr[0]; color->g = arr[1]; color->b = arr[2]; color->a = arr[3];
-                    markCurrentComponentDirty();
-                }
-            } else {
-                if (m_node_state_array[m_node_depth].second) {
-                    const std::string full_label = "##" + name;
-                    ImGui::Text("%s", (name + ":").c_str());
-                    if (ImGui::ColorEdit4(full_label.c_str(), arr)) {
-                        color->r = arr[0]; color->g = arr[1]; color->b = arr[2]; color->a = arr[3];
-                        markCurrentComponentDirty();
-                    }
-                }
+            drawPropertyLabel(name);
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            if (ImGui::ColorEdit4(("##" + name).c_str(), arr)) {
+                color->r = arr[0]; color->g = arr[1]; color->b = arr[2]; color->a = arr[3];
+                markCurrentComponentDirty();
             }
         };
 
-        m_component_ui_drawer["AssetRef"] = [this](const std::string& name, void* value) -> void {
+        // ---- AssetRef ----
+        m_component_ui_drawer["AssetRef"] = [this](const String& name, void* value) -> void {
             auto* asset_ref = static_cast<dodoe::AssetRef*>(value);
             if (!asset_ref) {
                 return;
             }
 
-            if (m_node_depth >= 0 && !m_node_state_array[m_node_depth].second) {
-                return;
-            }
+            const String type_label = "##AssetType_" + name;
+            const String picker_popup = "##AssetPicker_" + name;
+            const String select_button = "Select Asset##" + name;
 
-            const std::string type_label = "##AssetType_" + name;
-            const std::string picker_popup = "##AssetPicker_" + name;
-            const std::string select_button = "Select Asset##" + name;
+            drawPropertyLabel(name);
 
-            ImGui::Text("%s", (name + ":").c_str());
             if (ImGui::BeginCombo(type_label.c_str(), AssetTypeToString(asset_ref->type))) {
                 const dodoe::AssetType options[] = {
                     dodoe::AssetType::None,
@@ -419,7 +431,7 @@ namespace cakery {
                 };
 
                 for (const auto option : options) {
-                    const bool selected = (asset_ref->type == option);
+                    const Bool selected = (asset_ref->type == option);
                     if (ImGui::Selectable(AssetTypeToString(option), selected)) {
                         if (asset_ref->type != option) {
                             asset_ref->type = option;
@@ -436,8 +448,8 @@ namespace cakery {
                 ImGui::EndCombo();
             }
 
-            const std::string current_label = asset_ref->path.empty()
-                                                  ? std::string("<None>")
+            const String current_label = asset_ref->path.empty()
+                                                  ? String("<None>")
                                                   : std::filesystem::path(asset_ref->path).filename().string();
             ImGui::Text("Current: %s", current_label.c_str());
 
@@ -462,8 +474,8 @@ namespace cakery {
                     ImGui::Separator();
                     const auto assets = CollectAssetsByType(dodoe::AssetType::Texture);
                     for (const auto& asset : assets) {
-                        const std::string filename = std::filesystem::path(asset.path).filename().string();
-                        const std::string option_label = filename + "##" + asset.path;
+                        const String filename = std::filesystem::path(asset.path).filename().string();
+                        const String option_label = filename + "##" + asset.path;
                         if (ImGui::Selectable(option_label.c_str(), asset_ref->path == asset.path)) {
                             asset_ref->type = dodoe::AssetType::Texture;
                             asset_ref->path = asset.path;
@@ -482,7 +494,7 @@ namespace cakery {
         };
     }
 
-    void InspectorPanel::drawNode(const std::string& comp_name) {
+    void InspectorPanel::drawNode(const String& comp_name) {
         if (!m_selected_entity.valid()) {
             return;
         }
@@ -516,11 +528,11 @@ namespace cakery {
                 continue;
             }
 
-            std::string field_name = field_name_cstr;
-            std::string field_type = field_type_cstr;
+            String field_name = field_name_cstr;
+            String field_type = field_type_cstr;
 
             dodoe::NameRemoveNamespace(field_type);
-            if (field_type.find("string") != std::string::npos) {
+            if (field_type.find("string") != String::npos) {
                 field_type = "string";
             }
 
@@ -529,6 +541,7 @@ namespace cakery {
 
             const auto it = m_component_ui_drawer.find(field_type);
             if (it != m_component_ui_drawer.end()) {
+                ImGui::Spacing();
                 it->second(field_name, field_ptr);
             }
         }
@@ -562,6 +575,10 @@ namespace cakery {
             return;
         }
 
+        // Search filter
+        const String search_filter(m_search_buffer);
+        const Bool has_search = !search_filter.empty();
+
         for (auto& instance_ref : it->second) {
             if (!instance_ref) {
                 continue;
@@ -572,31 +589,67 @@ namespace cakery {
                 continue;
             }
 
-            const std::string component_name = GetMonoClassShortName(*script_class);
-            m_component_ui_drawer["TreeNodePush"]("<" + component_name + ">", nullptr);
-            drawMonoNode(component_name, *instance_ref, *script_class);
-            m_component_ui_drawer["TreeNodePop"]("<" + component_name + ">", nullptr);
+            const String component_name = GetMonoClassShortName(*script_class);
+
+            // Apply search filter
+            if (has_search) {
+                String lower_name = component_name;
+                String lower_filter = search_filter;
+                std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+                std::transform(lower_filter.begin(), lower_filter.end(), lower_filter.begin(), ::tolower);
+                if (lower_name.find(lower_filter) == String::npos) {
+                    continue;
+                }
+            }
+
+            ImGui::Spacing();
+
+            // Group container matching editor_ref.html .group style
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.24f, 0.27f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.14f, 0.15f, 0.17f, 1.0f));
+
+            ImGui::BeginChild((component_name + "_grp").c_str(), ImVec2(0, 0),
+                              ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
+
+            // Collapsible group title
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.20f, 0.22f, 0.25f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.17f, 0.19f, 0.22f, 1.0f));
+            const bool expanded = ImGui::CollapsingHeader(component_name.c_str(),
+                                                          ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+            ImGui::PopStyleColor(3);
+
+            if (expanded) {
+                ImGui::Spacing();
+                drawMonoNode(component_name, *instance_ref, *script_class);
+            }
+
+            ImGui::EndChild();
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(2);
         }
     }
 
-    void InspectorPanel::drawMonoNode(const std::string& comp_name, dodoe::MonoComponentInstance& component_instance, dodoe::ScriptClass& script_class) {
+    void InspectorPanel::drawMonoNode(const String& comp_name, dodoe::MonoComponentInstance& component_instance, dodoe::ScriptClass& script_class) {
         (void)comp_name;
-        if (m_node_depth >= 0 && m_node_depth < static_cast<int>(m_node_state_array.size())
-            && !m_node_state_array[m_node_depth].second) {
-            return;
-        }
 
         const auto& fields = script_class.getFields();
         for (const auto& [field_name, field] : fields) {
-            const std::string label = "##Mono_" + field_name;
+            const String label = "##Mono_" + field_name;
+
+            ImGui::Spacing();
+            drawPropertyLabel(field_name);
+
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
             switch (field.type) {
                 case dodoe::ScriptFieldType::Bool: {
-                    bool value = component_instance.getFieldValue<bool>(field_name);
+                    Bool value = component_instance.getFieldValue<bool>(field_name);
                     if (ImGui::Checkbox(label.c_str(), &value)) {
                         component_instance.setFieldValue<bool>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::Float: {
@@ -604,8 +657,6 @@ namespace cakery {
                     if (ImGui::InputFloat(label.c_str(), &value)) {
                         component_instance.setFieldValue<float>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::Double: {
@@ -613,8 +664,6 @@ namespace cakery {
                     if (ImGui::InputDouble(label.c_str(), &value)) {
                         component_instance.setFieldValue<double>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::Int:
@@ -624,8 +673,6 @@ namespace cakery {
                     if (ImGui::InputInt(label.c_str(), &value)) {
                         component_instance.setFieldValue<int>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::UInt:
@@ -635,8 +682,6 @@ namespace cakery {
                     if (ImGui::InputInt(label.c_str(), &value)) {
                         component_instance.setFieldValue<uint32_t>(field_name, static_cast<uint32_t>(value < 0 ? 0 : value));
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::Long: {
@@ -644,8 +689,6 @@ namespace cakery {
                     if (ImGui::InputScalar(label.c_str(), ImGuiDataType_S64, &value)) {
                         component_instance.setFieldValue<int64_t>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::ULong:
@@ -654,8 +697,6 @@ namespace cakery {
                     if (ImGui::InputScalar(label.c_str(), ImGuiDataType_U64, &value)) {
                         component_instance.setFieldValue<uint64_t>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::Vector2: {
@@ -666,8 +707,6 @@ namespace cakery {
                         value.y = arr[1];
                         component_instance.setFieldValue<dodoe::Vector2f>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 case dodoe::ScriptFieldType::Vector3: {
@@ -679,8 +718,6 @@ namespace cakery {
                         value.z = arr[2];
                         component_instance.setFieldValue<dodoe::Vector3f>(field_name, value);
                     }
-                    ImGui::SameLine();
-                    ImGui::Text("%s", field_name.c_str());
                     break;
                 }
                 default:
@@ -695,9 +732,21 @@ namespace cakery {
             return;
         }
 
-        if (ImGui::Button("Add Component")) {
+        ImGui::Spacing();
+
+        // Full-width "Add Component" button matching reference style
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.22f, 0.27f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.27f, 0.32f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.17f, 0.19f, 0.24f, 1.0f));
+
+        const float btn_width = ImGui::GetContentRegionAvail().x;
+        if (ImGui::Button("Add Component", ImVec2(btn_width, 0))) {
             ImGui::OpenPopup("AddComponent_Popup");
         }
+
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar();
 
         if (ImGui::BeginPopup("AddComponent_Popup")) {
             for (const auto& [comp_type, name] : dodoe::ComponentDB::self().allComponents()) {
@@ -715,7 +764,7 @@ namespace cakery {
                     const uint64_t entity_uuid = static_cast<uint64_t>(entity.uuid());
                     runtime->loadEntityMonoComponentsFromManaged(entity_uuid);
                     const auto& mono_components = runtime->getComponentInstanceUmap();
-                    std::unordered_set<std::string> exists;
+                    std::unordered_set<String> exists;
                     if (auto it = mono_components.find(entity_uuid); it != mono_components.end()) {
                         for (const auto& instance_ref : it->second) {
                             if (!instance_ref) {
@@ -734,7 +783,7 @@ namespace cakery {
                             continue;
                         }
 
-                        const std::string display_name = GetShortTypeName(full_name);
+                        const String display_name = GetShortTypeName(full_name);
                         if (ImGui::MenuItem(display_name.c_str())) {
                             if (runtime->addEntityMonoComponentFromManaged(entity_uuid, full_name)) {
                                 runtime->loadEntityMonoComponentsFromManaged(entity_uuid);

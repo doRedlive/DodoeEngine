@@ -6,7 +6,7 @@
 
 namespace dodoe {
 
-    float TimeSystem::delta_time() {
+    float TimeSystem::getDeltaTime() {
         calculate_time();
         return delta_time_ * time_scale_;
     }

@@ -14,6 +14,7 @@
 #include "cakery/panels/project_manager_panel.h"
 #include "cakery/panels/title_bar.h"
 #include "cakery/panels/viewport_panel.h"
+#include "cakery/panels/game_panel.h"
 
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
@@ -86,7 +87,7 @@ namespace cakery {
             descriptor.title = "Hierarchy";
             descriptor.category = "Scene";
             descriptor.stage = EditorPanelStage::Workspace;
-            descriptor.default_dock = {EditorDockPlacement::Left, 0.22f};
+            descriptor.default_dock = {EditorDockPlacement::Left, 0.50f};
             descriptor.default_open = true;
             descriptor.closable = true;
             descriptor.requires_runtime = true;
@@ -113,10 +114,10 @@ namespace cakery {
         static EditorPanelDescriptor MakeProjectDescriptor() {
             EditorPanelDescriptor descriptor{};
             descriptor.id = "project";
-            descriptor.title = "Content Browser";
+            descriptor.title = "Project";
             descriptor.category = "Assets";
             descriptor.stage = EditorPanelStage::Workspace;
-            descriptor.default_dock = {EditorDockPlacement::Bottom, 0.28f};
+            descriptor.default_dock = {EditorDockPlacement::Left, 0.50f};
             descriptor.default_open = true;
             descriptor.closable = true;
             descriptor.requires_runtime = false;
@@ -128,7 +129,7 @@ namespace cakery {
         static EditorPanelDescriptor MakeConsoleDescriptor() {
             EditorPanelDescriptor descriptor{};
             descriptor.id = "console";
-            descriptor.title = "Console";
+            descriptor.title = "Output";
             descriptor.category = "Debug";
             descriptor.stage = EditorPanelStage::Workspace;
             descriptor.default_dock = {EditorDockPlacement::Bottom, 0.28f};
@@ -143,7 +144,7 @@ namespace cakery {
         static EditorPanelDescriptor MakeViewportDescriptor() {
             EditorPanelDescriptor descriptor{};
             descriptor.id = "viewport";
-            descriptor.title = "Viewport";
+            descriptor.title = "Scene";
             descriptor.category = "View";
             descriptor.stage = EditorPanelStage::Workspace;
             descriptor.default_dock = {EditorDockPlacement::Center, 0.25f};
@@ -152,6 +153,21 @@ namespace cakery {
             descriptor.requires_runtime = true;
             descriptor.show_in_view_menu = true;
             descriptor.order = 50;
+            return descriptor;
+        }
+
+        static EditorPanelDescriptor MakeGameDescriptor() {
+            EditorPanelDescriptor descriptor{};
+            descriptor.id = "game";
+            descriptor.title = "Game";
+            descriptor.category = "View";
+            descriptor.stage = EditorPanelStage::Workspace;
+            descriptor.default_dock = {EditorDockPlacement::Center, 0.25f};
+            descriptor.default_open = true;
+            descriptor.closable = true;
+            descriptor.requires_runtime = true;
+            descriptor.show_in_view_menu = true;
+            descriptor.order = 55;
             return descriptor;
         }
 
@@ -184,10 +200,13 @@ namespace cakery {
             RegisterPanel(MakeViewportDescriptor(), []() {
                 return create_scope<ViewportPanel>(MakeViewportDescriptor());
             });
+            RegisterPanel(MakeGameDescriptor(), []() {
+                return create_scope<GamePanel>(MakeGameDescriptor());
+            });
         }
     } // 
 
-    CakeryLayer::CakeryLayer(const std::string& name) : Layer(name) { }
+    CakeryLayer::CakeryLayer(const String& name) : Layer(name) { }
 
     void CakeryLayer::enterEditor() {
         if (m_editor_initialized) {
@@ -204,7 +223,7 @@ namespace cakery {
         m_panel_manager.setWorkspaceActive(true, panel_context);
     }
 
-    EditorPanelContext CakeryLayer::buildPanelContext(const bool workspace_active) {
+    EditorPanelContext CakeryLayer::buildPanelContext(const Bool workspace_active) {
         auto& system_context = Application::Self().context();
 
         EditorPanelContext context{

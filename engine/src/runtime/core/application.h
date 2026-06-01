@@ -16,13 +16,16 @@ namespace dodoe {
     };
 
     struct ApplicationSpecification {
-        std::string name{ "Dodoe Engine" };
+        String name{ "Dodoe Engine" };
 
         ui32 width{ 1920 };
         ui32 height{ 1080 };
 
-        bool window_resizeable{ true };
-        bool custom_titlebar{ false };
+        Bool window_resizeable{ true };
+        Bool custom_titlebar{ false };
+
+        Size_t thread_pool_size{ 0 };
+        Bool enable_async_loading{ false };
 
         RenderSettingsInitInfo render_settings{};
 

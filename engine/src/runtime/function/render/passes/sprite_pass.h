@@ -26,6 +26,7 @@ namespace dodoe {
         rhi::BufferHandle m_index_buffer{};
         rhi::SamplerHandle m_sampler{};
         rhi::CommandListHandle m_cmd_list{};
+        bool m_clear_targets{false};
 
     public:
         SpritePass(RhiContext* rhi, DescriptorTableManager* descriptor_table);
@@ -34,6 +35,8 @@ namespace dodoe {
         void execute(size_t index) override;
         void cleanup() override;
         void onViewportResize(const Vector2i& viewport_extent) override;
+
+        void setClearTargets(bool clear) { m_clear_targets = clear; }
 
     private:
         void createFramebuffer();

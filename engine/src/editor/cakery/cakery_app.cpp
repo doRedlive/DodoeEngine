@@ -28,7 +28,7 @@ namespace dodoe {
         cakery_spec.width = 1600;
         cakery_spec.height = 900;
         cakery_spec.render_settings.api = RenderBackendApiType::Vulkan;
-        cakery_spec.render_settings.pipeline = RenderingPipelineType::Deferred;
+        cakery_spec.render_settings.pipeline = RenderingPipelineType::Only2D;
         cakery_spec.cli_args = cli_args;
         return new cakery::CakeryApp(cakery_spec);
     }

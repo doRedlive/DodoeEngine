@@ -10,11 +10,11 @@
 namespace cakery {
 
     struct EditorCameraControllerCreateInfo {
-
+        dodoe::Camera* camera{nullptr};
     };
 
     class EditorCameraController {
-        dodoe::Scope<dodoe::Camera> m_camera{nullptr};
+        dodoe::Camera* m_camera{nullptr};
 
         float m_move_speed{5.0f};
         float m_rotate_speed{0.01f};
@@ -26,6 +26,7 @@ namespace cakery {
 
         dodoe::Vector2f m_last_mouse_position{0.0f, 0.0f};
         bool m_right_dragging{false};
+        bool m_middle_dragging{false};
         float m_scroll_delta_y{0.0f};
 
     public:
@@ -33,12 +34,15 @@ namespace cakery {
         static void Destroy(dodoe::Scope<EditorCameraController>& controller);
 
         void onUpdate(float dt);
-        [[nodiscard]] dodoe::Camera* getCamera() const { return m_camera.get(); }
+        [[nodiscard]] dodoe::Camera* getCamera() const { return m_camera; }
 
     private:
         void onMouseScrolled(const dodoe::MouseScrolledEvent& event);
         bool initialize(const EditorCameraControllerCreateInfo& info);
         void shutdown();
+
+        void update2D(float dt);
+        void update3D(float dt);
     };
-    
+
 } // cakery

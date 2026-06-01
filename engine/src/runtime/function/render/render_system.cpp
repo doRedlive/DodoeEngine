@@ -43,7 +43,9 @@ namespace dodoe {
             false;
 #endif
         m_rhi = RhiContext::Create({window->getNativeWindow(), backend_api, enable_validation});
-        m_camera = Camera::Create({CameraType::Perspective, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
+        const auto camera_type = RenderSettings::GetRenderingPipelineType() == RenderingPipelineType::Only2D
+            ? CameraType::Orthographic : CameraType::Perspective;
+        m_camera = Camera::Create({camera_type, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
         m_descriptor_table = DescriptorTableManager::Create({m_rhi.get()});
         m_texture_manager = TextureManager::Create({m_rhi.get(), m_descriptor_table.get()});
 
@@ -328,9 +330,11 @@ namespace dodoe {
         imgui_color_desc.debug_name = "ImGuiPass Color Target";
 #endif
 
-        m_render_graph->addPass("SpritePass", create_ref<SpritePass>(m_rhi.get(), m_descriptor_table.get()))
+        auto sprite_pass_2d = create_ref<SpritePass>(m_rhi.get(), m_descriptor_table.get());
+        sprite_pass_2d->setClearTargets(true);
+        m_render_graph->addPass("SpritePass", std::move(sprite_pass_2d))
             .addTextureWrite("MainCameraColor", main_camera_color_desc)
-            .addTextureRead("MainCameraDepth", main_camera_depth_desc);
+            .addTextureWrite("MainCameraDepth", main_camera_depth_desc);
 
 #ifdef DODOE_EDITOR
         m_render_graph->addPass("PickPass", create_ref<PickPass>(m_rhi.get()))
