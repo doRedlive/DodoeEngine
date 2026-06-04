@@ -3,6 +3,7 @@
 #include "dopch.h"
 
 #include "system_context.h"
+#include "runtime/resource/resource_manager.h"
 // core
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
@@ -93,7 +94,7 @@ namespace dodoe {
     }
 
     void SystemContext::startRuntime() {
-        ResourceManager::Self().getAssetManager()->loadAssets();
+        ResourceManager::Self().loadAssets();
 
         script_system = ScriptSystem::Create({});
         DO_ASSERT(script_system, "ScriptSystem initialize failed!");

@@ -6,6 +6,7 @@
 
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/util.h"
+#include "runtime/core/object/pptr.h"
 #include "tileset_asset.h"
 
 REFLECTION_TYPE(TilemapComponent)

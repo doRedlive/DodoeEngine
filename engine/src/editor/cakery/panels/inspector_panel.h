@@ -40,6 +40,9 @@ namespace cakery {
 		void drawMonoNode(const String& comp_name, dodoe::MonoComponentInstance& component_instance, dodoe::ScriptClass& script_class);
 		void drawPropertyLabel(const String& label);
 		void markCurrentComponentDirty();
+		void drawPPtrField(const String& name, const String& inner_type, void* ptr);
+		void drawNestedField(const String& name, const String& type_name, void* ptr, Int32 depth = 0);
+		String extractPPtrInnerType(const String& field_type);
 
 		void onSelectEntity(const SelectEntityEvent& event);
 		void onNonSelectEntity();

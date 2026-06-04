@@ -20,9 +20,9 @@ namespace dodoe::ui {
 
     Ref<Texture> texture = nullptr;
     if (image.getTextureId() != entt::null && !image.getTexturePath().empty()) {
-        texture = texture_manager->loadTexture(image.getTextureId(), std::string(image.getTexturePath()));
+        texture = Texture::Load(std::string(image.getTexturePath()));
     } else if (image.getTextureId() != entt::null) {
-        texture = texture_manager->loadTexture(image.getTextureId());
+        texture = texture_manager->findTexture(static_cast<InstanceID>(image.getTextureId()));
     } else if (!image.getTexturePath().empty()) {
         texture = texture_manager->loadTexture(std::string(image.getTexturePath()));
     }
@@ -42,15 +42,15 @@ namespace dodoe::ui {
             return uv;
         }
 
-        if (texture->width <= 0 || texture->height <= 0) {
+        if (texture->getWidth() <= 0 || texture->getHeight() <= 0) {
             return uv;
         }
 
         uv = {
-            source_rect.pos.x / static_cast<float>(texture->width),
-            source_rect.pos.y / static_cast<float>(texture->height),
-            (source_rect.pos.x + source_rect.size.x) / static_cast<float>(texture->width),
-            (source_rect.pos.y + source_rect.size.y) / static_cast<float>(texture->height)
+            source_rect.pos.x / static_cast<float>(texture->getWidth()),
+            source_rect.pos.y / static_cast<float>(texture->getHeight()),
+            (source_rect.pos.x + source_rect.size.x) / static_cast<float>(texture->getWidth()),
+            (source_rect.pos.y + source_rect.size.y) / static_cast<float>(texture->getHeight())
         };
 
         if (image.isFlipped()) {
@@ -76,7 +76,7 @@ inline void drawImage(const Image& image,
         }
 
         Renderer2D::DrawSprite(
-            texture->id,
+            texture->getInstanceID(),
             position,
             size,
             Vector3f{0.0f, 0.0f, 0.0f},

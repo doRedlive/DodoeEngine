@@ -3,7 +3,8 @@
 
 #include "dopch.h"
 
-#include "runtime/resource/resource_type.h"
+#include "runtime/function/render/framework/material.h"
+#include "runtime/function/render/framework/mesh.h"
 #include "framework/descriptor_table_manager.h"
 #include "interface/rhi.h"
 

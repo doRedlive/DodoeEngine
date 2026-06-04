@@ -1,13 +1,8 @@
-//
-// Created by Redlive on 2026/3/19.
-//
+// do@Redlive
 
-#ifndef DODOE_TEXTURE_LOADER_H
-#define DODOE_TEXTURE_LOADER_H
+#pragma once
 
 #include "dopch.h"
-
-#include "../resource_type.h"
 
 namespace dodoe {
 
@@ -28,5 +23,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif //DODOE_TEXTURE_LOADER_H

@@ -6,12 +6,12 @@
 
 #include "cakery/framework/editor_panel_manager.h"
 
+#include "runtime/function/render/render_system.h"
 #include "runtime/core/application.h"
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/render/framework/texture_manager.h"
-#include "runtime/function/render/render_system.h"
 #include "runtime/function/world/world.h"
 
 #include "imgui/imgui.h"
@@ -31,21 +31,14 @@ namespace cakery {
 	}
 
 	void Titlebar::ensureButtonTextures() {
-		auto& app = dodoe::Application::Self();
-		auto* render_system = app.context().render_system.get();
-		auto* texture_manager = render_system ? render_system->getTextureManager() : nullptr;
-		if (!texture_manager) {
-			return;
+		if (!m_play_button_texture || !m_play_button_texture->getGpuHandle()) {
+			m_play_button_texture = dodoe::Texture::Load(kPlayButtonPath);
 		}
-
-		if (!m_play_button_texture || !m_play_button_texture->handle) {
-			m_play_button_texture = texture_manager->loadTexture(kPlayButtonPath);
+		if (!m_stop_button_texture || !m_stop_button_texture->getGpuHandle()) {
+			m_stop_button_texture = dodoe::Texture::Load(kStopButtonPath);
 		}
-		if (!m_stop_button_texture || !m_stop_button_texture->handle) {
-			m_stop_button_texture = texture_manager->loadTexture(kStopButtonPath);
-		}
-		if (!m_pause_button_texture || !m_pause_button_texture->handle) {
-			m_pause_button_texture = texture_manager->loadTexture(kPauseButtonPath);
+		if (!m_pause_button_texture || !m_pause_button_texture->getGpuHandle()) {
+			m_pause_button_texture = dodoe::Texture::Load(kPauseButtonPath);
 		}
 	}
 
@@ -67,7 +60,7 @@ namespace cakery {
 		constexpr float kButtonGap = 10.0f;
 
 		auto draw_button = [&](const char* id, const dodoe::Ref<dodoe::Texture>& texture, const Bool enabled, const Bool highlight) -> Bool {
-			if (!texture || !texture->handle) {
+			if (!texture || !texture->getGpuHandle()) {
 				return false;
 			}
 
@@ -79,7 +72,7 @@ namespace cakery {
 			}
 			const Bool clicked = ImGui::ImageButton(
 				id,
-				ImTextureRef(reinterpret_cast<ImTextureID>(texture->handle.Get())),
+				ImTextureRef(reinterpret_cast<ImTextureID>(texture->getGpuHandle().Get())),
 				kButtonSize,
 				ImVec2(0, 1),
 				ImVec2(1, 0));

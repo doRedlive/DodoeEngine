@@ -7,7 +7,8 @@
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
-#include "runtime/resource/asset/asset.h"
+#include "runtime/core/object/pptr.h"
+#include "runtime/function/render/framework/texture.h"
 
 REFLECTION_TYPE(SpriteRendererComponent)
 
@@ -17,7 +18,7 @@ namespace dodoe {
         REFLECTION_BODY(SpriteRendererComponent)
 
         META(Enable)
-        AssetRef asset_ref{};
+        PPtr<Texture> texture{};
         META(Enable)
         bool flip{ false };
         META(Enable)

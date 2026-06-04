@@ -66,9 +66,9 @@ namespace dodoe {
             transform_component.dirty = true;
         }
 
-        identifier ImportTexture(const std::filesystem::path& model_directory, const aiString& texture_path) {
+        FileID ImportTexture(const std::filesystem::path& model_directory, const aiString& texture_path) {
             if (texture_path.length == 0 || texture_path.C_Str()[0] == '*') {
-                return 0;
+                return FileID();
             }
 
             std::filesystem::path resolved_path = std::filesystem::path(texture_path.C_Str());
@@ -77,17 +77,17 @@ namespace dodoe {
             }
             resolved_path = resolved_path.lexically_normal();
 
-            const auto texture_res = ResourceManager::Self().get_texture(resolved_path.string(), resolved_path.string());
-            return texture_res.id;
+            const auto texture_res = ResourceManager::Self().getTexture(resolved_path.string());
+            return texture_res.getFileID();
         }
 
-        identifier LoadMaterialTexture(
+        FileID LoadMaterialTexture(
             const aiMaterial* material,
             const std::filesystem::path& model_directory,
             const aiTextureType primary_type,
             const aiTextureType fallback_type = aiTextureType_NONE) {
             if (!material) {
-                return 0;
+                return FileID();
             }
 
             for (const aiTextureType type : {primary_type, fallback_type}) {
@@ -100,13 +100,13 @@ namespace dodoe {
                     continue;
                 }
 
-                const identifier texture_id = ImportTexture(model_directory, texture_path);
-                if (texture_id != 0) {
+                const FileID texture_id = ImportTexture(model_directory, texture_path);
+                if (texture_id.isValid()) {
                     return texture_id;
                 }
             }
 
-            return 0;
+            return FileID();
         }
 
         Ref<Material> MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const std::filesystem::path& model_directory) {

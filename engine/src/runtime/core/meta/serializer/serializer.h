@@ -8,6 +8,8 @@
 #include "runtime/core/utils/json.h"
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
+#include "runtime/resource/file/file_id.h"
+#include "runtime/resource/asset/asset_handle.h"
 
 namespace dodoe {
     template <typename...>
@@ -16,7 +18,18 @@ namespace dodoe {
     struct is_std_vector : std::false_type { };
     template <typename T, typename Allocator>
     struct is_std_vector<std::vector<T, Allocator>> : std::true_type { };
-    struct AssetRef;
+    template <typename T>
+    class PPtr;
+
+    template <typename T>
+    struct is_pptr : std::false_type { };
+    template <typename T>
+    struct is_pptr<PPtr<T>> : std::true_type {};
+
+    template <typename T>
+    struct is_asset_handle : std::false_type {};
+    template <typename T>
+    struct is_asset_handle<AssetHandle<T>> : std::true_type {};
 
     class Serializer {
     public:
@@ -82,8 +95,19 @@ namespace dodoe {
                 }
                 return json;
             }
+            else if constexpr (is_pptr<T>::value) {
+                Json j = Json::object();
+                Json fid = Json::object();
+                fid["path"] = Serializer::write(instance.getFileID().getPath());
+                fid["file_uuid"] = Serializer::write(instance.getFileID().getUUID());
+                j["file_id"] = fid;
+                j["uuid"] = Serializer::write(instance.getUUID());
+                return j;
+            }
+            else if constexpr (is_asset_handle<T>::value) {
+                return Json{{"file_id", Serializer::write(instance.getFileID())}};
+            }
             else {
-                static_assert(always_false<T>, "Serializer::write<T> has not been implemented yet!");
                 return Json();
             }
         }
@@ -112,8 +136,37 @@ namespace dodoe {
                 }
                 return instance;
             }
+            else if constexpr (is_pptr<T>::value) {
+                if (json_context.is_object()) {
+                    String path{};
+                    UUID file_uuid{};
+                    UUID uuid{};
+                    if (json_context.contains("file_id")) {
+                        const auto& fid = json_context.at("file_id");
+                        if (fid.contains("path")) {
+                            read(fid.at("path"), path);
+                        }
+                        if (fid.contains("file_uuid")) {
+                            read(fid.at("file_uuid"), file_uuid);
+                        }
+                    }
+                    if (json_context.contains("uuid")) {
+                        read(json_context.at("uuid"), uuid);
+                    }
+                    FileID file_id(path);
+                    instance = T(file_id, uuid);
+                }
+                return instance;
+            }
+            else if constexpr (is_asset_handle<T>::value) {
+                if (json_context.is_object() && json_context.contains("file_id")) {
+                    FileID file_id;
+                    read(json_context.at("file_id"), file_id);
+                    instance.setFileID(file_id);
+                }
+                return instance;
+            }
             else {
-                static_assert(always_false<T>, "Serializer::read<T> has not been implemented yet!");
                 return instance;
             }
         }
@@ -134,6 +187,11 @@ namespace dodoe {
     Json Serializer::write(const unsigned int& instance);
     template<>
     unsigned int& Serializer::read(const Json& json_context, unsigned int& instance);
+
+    template<>
+    Json Serializer::write(const Int64& instance);
+    template<>
+    Int64& Serializer::read(const Json& json_context, Int64& instance);
 
     template<>
     Json Serializer::write(const unsigned short& instance);
@@ -191,8 +249,8 @@ namespace dodoe {
     Color& Serializer::read(const Json& json_context, Color& instance);
 
     template<>
-    Json Serializer::write(const AssetRef& instance);
+    Json Serializer::write(const FileID& instance);
     template<>
-    AssetRef& Serializer::read(const Json& json_context, AssetRef& instance);
+    FileID& Serializer::read(const Json& json_context, FileID& instance);
 
 } // dodoe

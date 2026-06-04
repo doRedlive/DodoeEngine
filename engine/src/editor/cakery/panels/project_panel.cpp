@@ -2,6 +2,7 @@
 
 #include "project_panel.h"
 
+#include "runtime/function/render/framework/texture.h"
 #include "runtime/core/project/project.h"
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
@@ -31,10 +32,8 @@ namespace cakery {
 		m_cur_directory = m_base_directory;
 		m_last_base_directory = m_base_directory;
 
-		m_directory_icon = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/DirectoryIcon.png",
-			"engine/res/pictures/ContentBrowser/DirectoryIcon.png");
-		m_file_icon = ResourceManager::Self().get_texture("engine/res/pictures/ContentBrowser/FileIcon.png",
-			"engine/res/pictures/ContentBrowser/FileIcon.png");
+		m_directory_icon_path = "engine/res/pictures/ContentBrowser/DirectoryIcon.png";
+		m_file_icon_path = "engine/res/pictures/ContentBrowser/FileIcon.png";
 
 		initializeIconTextures();
 	}
@@ -85,11 +84,11 @@ namespace cakery {
 
 			ImGui::SameLine();
 			auto icon_tex = getIconTexture(is_directory);
-			if (icon_tex && icon_tex->handle) {
+			if (icon_tex && icon_tex->getGpuHandle()) {
 				constexpr float kIconSize = 28.0f;
 				const float icon_offset_y = (kItemHeight - kIconSize) * 0.5f;
 				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + icon_offset_y);
-				const ImTextureRef icon_ref(reinterpret_cast<ImTextureID>(icon_tex->handle.Get()));
+				const ImTextureRef icon_ref(reinterpret_cast<ImTextureID>(icon_tex->getGpuHandle().Get()));
 				ImGui::Image(icon_ref, ImVec2(kIconSize, kIconSize), ImVec2(0, 1), ImVec2(1, 0));
 			}
 			ImGui::SameLine();
@@ -131,19 +130,14 @@ namespace cakery {
 			return;
 		}
 
-		auto* texture_manager = GetTextureManager();
-		m_directory_icon_texture = texture_manager->loadTexture(m_directory_icon.id);
-		m_file_icon_texture = texture_manager->loadTexture(m_file_icon.id);
+		m_directory_icon_texture = dodoe::Texture::Load(m_directory_icon_path);
+		m_file_icon_texture = dodoe::Texture::Load(m_file_icon_path);
 	}
 
 	Ref<Texture> ProjectPanel::getIconTexture(const Bool is_directory) const {
 		auto texture = is_directory ? m_directory_icon_texture : m_file_icon_texture;
-		if (texture && texture->handle) {
+		if (texture && texture->getGpuHandle()) {
 			return texture;
-		}
-
-		if (auto* texture_manager = GetTextureManager()) {
-			return texture_manager->loadFallbackTexture();
 		}
 		return nullptr;
 	}

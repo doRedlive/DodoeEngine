@@ -5,6 +5,8 @@
 #include "dopch.h"
 
 #include "runtime/core/utils/util.h"
+#include "runtime/core/object/pptr.h"
+#include "runtime/function/render/framework/texture.h"
 
 #ifdef DrawText
 #undef DrawText
@@ -34,7 +36,7 @@ namespace dodoe {
         static constexpr UInt32 kMaxQuadCount = 2048;
 
         static void DrawSprite(
-            Identifier texture,
+            InstanceID texture,
             const Vector2f& pos,
             const Vector2f& size,
             const Vector3f& rotation,
@@ -42,7 +44,24 @@ namespace dodoe {
         );
 
         static void DrawSprite(
-            Identifier texture,
+            InstanceID texture,
+            const Vector2f& pos,
+            const Vector2f& size,
+            const Vector3f& rotation,
+            const Vector4f& uv,
+            const Color& color
+        );
+
+        static void DrawSprite(
+            const PPtr<Texture>& texture,
+            const Vector2f& pos,
+            const Vector2f& size,
+            const Vector3f& rotation,
+            const Color& color = Color::white()
+        );
+
+        static void DrawSprite(
+            const PPtr<Texture>& texture,
             const Vector2f& pos,
             const Vector2f& size,
             const Vector3f& rotation,

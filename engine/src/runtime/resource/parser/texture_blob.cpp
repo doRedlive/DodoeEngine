@@ -1,8 +1,6 @@
-//
-// Created by Redlive on 2026/3/19.
-//
+// do@Redlive
 
-#include "texture_loader.h"
+#include "texture_blob.h"
 
 #include "runtime/core/utils/common.h"
 

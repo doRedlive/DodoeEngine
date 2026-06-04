@@ -5,7 +5,7 @@
 #include "render_resource.h"
 
 #include "runtime/core/utils/common.h"
-#include "runtime/resource/asset/texture_loader.h"
+#include "runtime/resource/parser/texture_blob.h"
 #include "runtime/resource/file/file_system.h"
 
 namespace dodoe {

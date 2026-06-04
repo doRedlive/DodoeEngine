@@ -48,8 +48,13 @@ namespace dodoe {
                     }
                 }
 
-                sprite_renderer.asset_ref.type = AssetType::Texture;
-                sprite_renderer.asset_ref.path_id = current_animation->frames[anim2d.cur_frame_id].texture_id;
+                const auto& current_frame = current_animation->frames[anim2d.cur_frame_id];
+                if (current_frame.texture_id != 0) {
+                    auto* tex = static_cast<Texture*>(Object::FindObjectFromInstanceID(current_frame.texture_id));
+                    if (tex) {
+                        sprite_renderer.texture = PPtr<Texture>(tex->getFileID(), tex->getUUID(), current_frame.texture_id);
+                    }
+                }
             }
         }
     };

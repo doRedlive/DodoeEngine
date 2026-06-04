@@ -143,9 +143,9 @@ Vector2f ResourceManagerFacade::getTextureSize(identifier texture_id, std::strin
 
     Ref<Texture> texture = nullptr;
     if (texture_id != entt::null && !texture_path.empty()) {
-        texture = texture_manager->loadTexture(texture_id, std::string(texture_path));
+        texture = Texture::Load(std::string(texture_path));
     } else if (texture_id != entt::null) {
-        texture = texture_manager->loadTexture(texture_id);
+        texture = texture_manager->findTexture(static_cast<InstanceID>(texture_id));
     } else if (!texture_path.empty()) {
         texture = texture_manager->loadTexture(std::string(texture_path));
     }
@@ -154,7 +154,7 @@ Vector2f ResourceManagerFacade::getTextureSize(identifier texture_id, std::strin
         return {0.0f, 0.0f};
     }
 
-    return {static_cast<float>(texture->width), static_cast<float>(texture->height)};
+    return {static_cast<float>(texture->getWidth()), static_cast<float>(texture->getHeight())};
 }
 
 void ResourceManagerFacade::loadSound(identifier, std::string_view) const {

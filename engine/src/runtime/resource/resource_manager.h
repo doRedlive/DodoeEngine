@@ -4,10 +4,6 @@
 #include "dopch.h"
 
 #include "runtime/core/utils/util.h"
-#include "asset/shader_library.h"
-#include "asset/texture_loader.h"
-#include "asset/animation_library.h"
-#include "asset/mesh_loader.h"
 #include "asset/asset_manager.h"
 
 namespace dodoe {
@@ -24,29 +20,58 @@ namespace dodoe {
         void initialize();
         void shutdown();
 
-        Ref<Shader> load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path);
-        ModelRes load_model(const std::string& name, const std::string& path);
+        [[nodiscard]] AssetManager* getAssetManager() const { return m_assetManager.get(); }
 
-        [[nodiscard]] Ref<Shader> get_shader(const std::string& name);
-        [[nodiscard]] ModelRes get_model(identifier id);
-        [[nodiscard]] ModelRes get_model(const std::string& id);
-        [[nodiscard]] ModelRes get_model(const std::string& id, const std::string& path);
-        [[nodiscard]] TextureRes get_texture(const std::string& id, const std::string& path);
-        [[nodiscard]] TextureRes get_texture(const std::string& id);
-        [[nodiscard]] MeshRes get_mesh(identifier id);
-        [[nodiscard]] AnimClip2dRes get_anim_clip2d(identifier id);
-        [[nodiscard]] AnimClip2dRes get_anim_clip2d(const std::string& name);
-        [[nodiscard]] AssetManager* getAssetManager() const { return asset_manager_.get(); }
+        Bool loadAssets();
+        [[nodiscard]] auto loadAssetsAsync() const { return m_assetManager->loadAssetsAsync(); }
 
-        AnimClip2dRes create_anim_clip2d(const std::string& name, const std::vector<identifier>& texture_ids, bool loop = false, float frame_ms = 100.0f);
-        bool destroy_anim_clip2d(identifier id);
-        bool destroy_anim_clip2d(const std::string& name);
+        template<typename T>
+        [[nodiscard]] DynamicArray<AssetHandle<T>> getAssets() const {
+            return m_assetManager->getAssets<T>();
+        }
+
+        [[nodiscard]] AssetHandle<TextureAsset> getTexture(const String& path);
+        [[nodiscard]] AssetHandle<MeshAsset> getMesh(const String& path);
+        [[nodiscard]] AssetHandle<SceneAsset> loadScene(const String& name);
 
     private:
         ResourceManager() = default;
-        Scope<ShaderLibrary> shader_library_{nullptr};
-        Scope<AnimationLibrary> animation_library_{nullptr};
-        Scope<MeshLoader> mesh_loader_{nullptr};
-        Scope<AssetManager> asset_manager_{nullptr};
+        Scope<AssetManager> m_assetManager{nullptr};
     };
+
+    // AssetHandle template method implementations
+    // (require full AssetManager and ResourceManager definitions)
+
+    template<typename T>
+    T* AssetHandle<T>::get() const {
+        if (!m_file_id.isValid()) {
+            return nullptr;
+        }
+        AssetManager* manager = ResourceManager::Self().getAssetManager();
+        if (!manager) {
+            return nullptr;
+        }
+        Asset* asset = manager->findAsset(m_file_id);
+        if (asset) {
+            return static_cast<T*>(asset);
+        }
+        return nullptr;
+    }
+
+    template<typename T>
+    T* AssetHandle<T>::operator->() const {
+        return get();
+    }
+
+    template<typename T>
+    T& AssetHandle<T>::operator*() const {
+        return *get();
+    }
+
+    template<typename T>
+    Bool AssetHandle<T>::isLoaded() const {
+        T* asset = get();
+        return asset && asset->isLoaded();
+    }
+
 } // dodoe

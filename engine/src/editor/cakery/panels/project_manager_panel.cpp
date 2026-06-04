@@ -335,6 +335,7 @@ namespace cakery {
         const auto assets_root = project_root / "Assets";
         const auto scenes_root = assets_root / "Scenes";
         const auto binaries_dir = project_root / "Binaries";
+        const auto configs_dir = project_root / "Configs";
         const std::string start_scene_name = "Main";
 
         if (dodoe::FileSystem::DirExists(project_root) || dodoe::FileSystem::FileExists(project_file)) {
@@ -345,6 +346,17 @@ namespace cakery {
         std::filesystem::create_directories(assets_root, ec);
         std::filesystem::create_directories(scenes_root, ec);
         std::filesystem::create_directories(binaries_dir, ec);
+        std::filesystem::create_directories(configs_dir, ec);
+
+        {
+            dodoe::Json db;
+            db["version"] = 1;
+            db["assets"] = dodoe::Json::object();
+            std::ofstream db_file(configs_dir / "asset_database.json");
+            if (db_file.is_open()) {
+                db_file << db.dump(4);
+            }
+        }
 
         dodoe::Project::Create();
         auto proj = dodoe::Project::ActiveProject();

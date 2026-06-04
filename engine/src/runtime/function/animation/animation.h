@@ -9,21 +9,26 @@
 
 namespace dodoe {
 
-    // MARK: TODO: using the sprite instead of texture
-    struct AnimFrame2d {
-        identifier texture_id{0};
-        float duration{100.0f}; // ------- ms
+    struct AnimFrame2D {
+        InstanceID texture_id{0};
+        Float duration{100.0f};
 
-        AnimFrame2d() = default;
-        AnimFrame2d(identifier in_texture_id) : texture_id(in_texture_id) { }
+        AnimFrame2D() = default;
+        explicit AnimFrame2D(const InstanceID in_texture_id) : texture_id(in_texture_id) {}
     };
 
-    struct AnimClip2d {
-        std::vector<AnimFrame2d> frames{};
-        bool loop{false};
+    struct AnimClip2D {
+        DynamicArray<AnimFrame2D> frames{};
+        Bool loop{false};
 
-        AnimClip2d() = default;
-        AnimClip2d(const std::vector<AnimFrame2d>& in_frames) :  frames(in_frames) { }
+        AnimClip2D() = default;
+        explicit AnimClip2D(const DynamicArray<AnimFrame2D>& in_frames) : frames(in_frames) {}
+    };
+
+    struct AnimClip2DRes {
+        Ref<AnimClip2D> clip;
+        String name;
+        InstanceID id;
     };
 
     class Animation {

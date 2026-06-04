@@ -2,125 +2,143 @@
 
 #include "texture_manager.h"
 
-#include "../interface/rhi_context.h"
-#include "runtime/core/utils/common.h"
-#include "runtime/resource/asset/texture_loader.h"
+#include "texture.h"
 
+#include "runtime/core/application.h"
+#include "runtime/core/utils/common.h"
+#include "runtime/resource/file/file_id.h"
+#include "runtime/resource/parser/texture_blob.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/render/interface/rhi_context.h"
+#include "runtime/function/render/render_system.h"
 namespace dodoe {
 
-	bool TextureManager::initialize(const TextureManagerCreateInfo& info) {
-		rhi_ = info.rhi;
-        descriptor_table_ = info.descriptor_table;
-		createFallbackTexture();
-		return rhi_ && descriptor_table_;
-	}
+    Ref<Texture> Texture::Load(const String& path) {
+        auto& app = Application::Self();
+        auto* render_system = app.context().render_system.get();
+        if (!render_system) {
+            return nullptr;
+        }
+        auto* texture_manager = render_system->getTextureManager();
+        if (!texture_manager) {
+            return nullptr;
+        }
+        return texture_manager->loadTexture(path);
+    }
 
-	void TextureManager::shutdown() {
-		texture_umap_.clear();
-		fallback_texture_ = nullptr;
-		descriptor_table_ = nullptr;
-		rhi_ = nullptr;
-	}
+    Bool TextureManager::initialize(const TextureManagerCreateInfo& info) {
+        m_rhi = info.rhi;
+        m_descriptor_table = info.descriptor_table;
+        createFallbackTexture();
+        return m_rhi && m_descriptor_table;
+    }
 
-	Ref<Texture> TextureManager::loadTexture(const identifier id, const std::string& path) {
-		if (id == 0) {
-			return loadFallbackTexture();
-		}
+    void TextureManager::shutdown() {
+        m_texture_cache.clear();
+        m_fallback = nullptr;
+        m_descriptor_table = nullptr;
+        m_rhi = nullptr;
+    }
 
-        const auto& it = texture_umap_.find(id);
-        if (it != texture_umap_.end()) { return it->second; }
+    Ref<Texture> TextureManager::loadTexture(const String& path) {
+        const FileID file_id(path);
+        const InstanceID existing = Object::FindInstanceID(file_id);
+        if (existing != 0) {
+            const auto it = m_texture_cache.find(existing);
+            if (it != m_texture_cache.end()) {
+                return it->second;
+            }
+        }
 
-		Ref<Texture> texture = createTexture(path);
-		if (!texture) {
-			return fallback_texture_;
-		}
-		texture->id = id;
-		texture_umap_.emplace(id, texture);
-		return texture;
-	}
+        return createTexture(path);
+    }
 
-	Ref<Texture> TextureManager::loadTexture(const std::string& path) {
-		return loadTexture(string2hash(path), path);
-	}
+    Ref<Texture> TextureManager::findTexture(const InstanceID id) {
+        const auto it = m_texture_cache.find(id);
+        if (it != m_texture_cache.end()) {
+            return it->second;
+        }
+        return m_fallback;
+    }
 
-	Ref<Texture> TextureManager::loadTexture(const identifier id) {
-        const auto& it = texture_umap_.find(id);
-        if (it != texture_umap_.end()) { return it->second; }
-		return fallback_texture_;
-	}
+    Ref<Texture> TextureManager::getFallback() const {
+        return m_fallback;
+    }
 
-	Ref<Texture> TextureManager::loadFallbackTexture() {
-		return fallback_texture_;
-	}
+    void TextureManager::removeTexture(const InstanceID id) {
+        m_texture_cache.erase(id);
+    }
 
-	Ref<Texture> TextureManager::createTexture(const std::string& path) {
-		TextureBlob data(path);
-		if (!data.isValid()) {
-			DO_ERROR("TextureManager: Create texture {} failed!", path);
-			return nullptr;
-		}
+    Ref<Texture> TextureManager::createTexture(const String& path) {
+        TextureBlob data(path);
+        if (!data.isValid()) {
+            DO_ERROR("TextureManager: Create texture {} failed!", path);
+            return nullptr;
+        }
 
-		const auto texture_format = data.is_hdr ? rhi::Format::RGBA32_FLOAT : rhi::Format::RGBA8_UNORM;
-		const size_t bytes_per_channel = data.is_hdr ? sizeof(float) : sizeof(uchar);
+        const auto texture_format = data.is_hdr ? rhi::Format::RGBA32_FLOAT : rhi::Format::RGBA8_UNORM;
+        const Size_t bytes_per_channel = data.is_hdr ? sizeof(Float) : sizeof(UByte);
 
-		auto texture_desc = rhi::TextureDesc()
-			.setDimension(rhi::TextureDimension::Texture2D)
-			.setWidth(data.width)
-			.setHeight(data.height)
-			.setFormat(texture_format)
-			.setMipLevels(1)
-			.enableAutomaticStateTracking(rhi::ResourceStates::ShaderResource)
-			.setDebugName(path);
-		auto handle = rhi_->getDevice()->createTexture(texture_desc);
-		if (!handle) {
-			DO_ERROR("TextureManager::createTexture: createTexture failed for {}.", path);
-			return nullptr;
-		}
+        auto texture_desc = rhi::TextureDesc()
+            .setDimension(rhi::TextureDimension::Texture2D)
+            .setWidth(data.width)
+            .setHeight(data.height)
+            .setFormat(texture_format)
+            .setMipLevels(1)
+            .enableAutomaticStateTracking(rhi::ResourceStates::ShaderResource)
+            .setDebugName(path);
+        auto handle = m_rhi->getDevice()->createTexture(texture_desc);
+        if (!handle) {
+            DO_ERROR("TextureManager::createTexture: createTexture failed for {}.", path);
+            return nullptr;
+        }
 
-		auto cmd = rhi_->getCommandList();
-		const size_t row_pitch = static_cast<size_t>(data.width) * 4u * bytes_per_channel;
-		cmd->open();
-		cmd->writeTexture(handle, 0, 0, data.pixels, row_pitch);
-		cmd->close();
-		rhi_->getDevice()->executeCommandList(cmd);
+        auto cmd = m_rhi->getCommandList();
+        const Size_t row_pitch = static_cast<Size_t>(data.width) * 4u * bytes_per_channel;
+        cmd->open();
+        cmd->writeTexture(handle, 0, 0, data.pixels, row_pitch);
+        cmd->close();
+        m_rhi->getDevice()->executeCommandList(cmd);
 
-		Ref<Texture> texture = create_ref<Texture>();
-		texture->id = string2hash(path);
-		texture->width = data.width;
-		texture->height = data.height;
-		texture->path = path;
-		texture->handle = handle;
-        texture->descriptor_index = descriptor_table_->createDescriptor(rhi::BindingSetItem::Texture_SRV(0, texture->handle));
+        Ref<Texture> texture = create_ref<Texture>();
+        texture->setDimensions(data.width, data.height);
+        texture->setPath(path);
+        texture->setGpuHandle(handle);
+        texture->setDescriptorIndex(m_descriptor_table->createDescriptor(rhi::BindingSetItem::Texture_SRV(0, texture->getGpuHandle())));
 
-		return texture;
-	}
+        const FileID file_id(path);
+        texture->setFileIdentity(file_id, UUID{});
+        Object::AllocateInstanceID(texture.get());
 
-	void TextureManager::createFallbackTexture() {
-		auto texture_desc = rhi::TextureDesc()
-			.setDimension(rhi::TextureDimension::Texture2D)
-			.setWidth(1)
-			.setHeight(1)
-			.setFormat(rhi::Format::RGBA8_UNORM)
-			.setMipLevels(1)
-			.enableAutomaticStateTracking(rhi::ResourceStates::ShaderResource)
-			.setDebugName("Render TextureManager Fallback");
-		auto handle = rhi_->getDevice()->createTexture(texture_desc);
+        m_texture_cache.emplace(texture->getInstanceID(), texture);
+        return texture;
+    }
 
-		auto upload_cmd = rhi_->getCommandList();
-		const unsigned char white[4] = {255, 255, 255, 255};
-		upload_cmd->open();
-		upload_cmd->writeTexture(handle, 0, 0, white, sizeof(white));
-		upload_cmd->close();
-		rhi_->getDevice()->executeCommandList(upload_cmd);
+    void TextureManager::createFallbackTexture() {
+        auto texture_desc = rhi::TextureDesc()
+            .setDimension(rhi::TextureDimension::Texture2D)
+            .setWidth(1)
+            .setHeight(1)
+            .setFormat(rhi::Format::RGBA8_UNORM)
+            .setMipLevels(1)
+            .enableAutomaticStateTracking(rhi::ResourceStates::ShaderResource)
+            .setDebugName("Render TextureManager Fallback");
+        auto handle = m_rhi->getDevice()->createTexture(texture_desc);
 
-		fallback_texture_ = create_ref<Texture>();
-		fallback_texture_->id = 0;
-		fallback_texture_->path = "<fallback>";
-		fallback_texture_->width = 1;
-		fallback_texture_->height = 1;
-		fallback_texture_->handle = handle;
-		fallback_texture_->descriptor_index = descriptor_table_->createDescriptor(rhi::BindingSetItem::Texture_SRV(0, fallback_texture_->handle));
-		DO_ASSERT(fallback_texture_);
-	}
+        auto upload_cmd = m_rhi->getCommandList();
+        const UByte white[4] = {255, 255, 255, 255};
+        upload_cmd->open();
+        upload_cmd->writeTexture(handle, 0, 0, white, sizeof(white));
+        upload_cmd->close();
+        m_rhi->getDevice()->executeCommandList(upload_cmd);
+
+        m_fallback = create_ref<Texture>();
+        m_fallback->setName("<fallback>");
+        m_fallback->setDimensions(1, 1);
+        m_fallback->setGpuHandle(handle);
+        m_fallback->setDescriptorIndex(m_descriptor_table->createDescriptor(rhi::BindingSetItem::Texture_SRV(0, m_fallback->getGpuHandle())));
+        m_fallback->setFileIdentity(FileID("<fallback>"), UUID(0));
+        Object::AllocateInstanceID(m_fallback.get());
+    }
 
 } // dodoe

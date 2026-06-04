@@ -195,7 +195,7 @@ namespace dodoe {
         }
 
         const std::string asset_url = (std::filesystem::path("Scenes") / (m_name + ".doscn")).generic_string();
-        (void)asset_manager->saveAsset(serialize(), asset_url);
+        (void)asset_manager->saveAssetFile(serialize(), asset_url);
     }
 
     void Scene::onCreate() {

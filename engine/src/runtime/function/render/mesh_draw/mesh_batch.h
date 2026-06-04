@@ -5,7 +5,8 @@
 #include "dopch.h"
 
 #include "../interface/rhi.h"
-#include "runtime/resource/resource_type.h"
+#include "runtime/function/render/framework/mesh.h"
+#include "runtime/function/render/framework/material.h"
 
 namespace dodoe {
 

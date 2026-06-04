@@ -4,7 +4,7 @@
 #include "dopch.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
-#include "runtime/resource/asset/asset.h"
+#include "runtime/core/object/pptr.h"
 #include "runtime/function/render/render_types.h"
 
 REFLECTION_TYPE(MeshRendererComponent)

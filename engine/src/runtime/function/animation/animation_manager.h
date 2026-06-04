@@ -20,7 +20,7 @@ namespace dodoe {
     public:
 
         // MARK: TODO: using sprite instead of texture
-        AnimClip2d create_anim_clip2d(const std::vector<identifier>& texture_ids);
+        AnimClip2D CreateAnimClip2D(const DynamicArray<InstanceID>& texture_ids);
 
     private:
         bool initialize(const AnimationManagerCreateInfo& create_info);

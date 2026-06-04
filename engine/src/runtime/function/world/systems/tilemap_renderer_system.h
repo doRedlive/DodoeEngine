@@ -84,26 +84,25 @@ namespace dodoe {
 
                         Ref<Texture> texture = nullptr;
                         if (tileset->texture_id != 0) {
-                            texture = texture_manager->loadTexture(tileset->texture_id);
+                            texture = texture_manager->findTexture(static_cast<InstanceID>(tileset->texture_id));
                         }
                         if (!texture && !tileset->image_path.empty()) {
-                            Identifier path_id = string2hash(tileset->image_path);
-                            texture = texture_manager->loadTexture(path_id, tileset->image_path);
+                            texture = Texture::Load(tileset->image_path);
                         }
                         if (!texture) {
-                            texture = texture_manager->loadFallbackTexture();
+                            texture = texture_manager->getFallback();
                         }
-                        if (!texture || texture->width <= 0 || texture->height <= 0) {
+                        if (!texture || texture->getWidth() <= 0 || texture->getHeight() <= 0) {
                             continue;
                         }
 
-                        const float tex_w = static_cast<float>(texture->width);
-                        const float tex_h = static_cast<float>(texture->height);
+                        const float tex_w = static_cast<float>(texture->getWidth());
+                        const float tex_h = static_cast<float>(texture->getHeight());
 
                         const Vector4f uv_rect(uv_x0 / tex_w, uv_y0 / tex_h, uv_x1 / tex_w, uv_y1 / tex_h);
 
                         Renderer2D::DrawSprite(
-                            texture->id,
+                            texture->getInstanceID(),
                             Vector2f(pos_x, pos_y),
                             Vector2f(tile_w, tile_h),
                             Vector3f(0.0f),

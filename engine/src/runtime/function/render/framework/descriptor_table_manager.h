@@ -50,6 +50,7 @@ namespace dodoe {
     public:
 
         DescriptorIndex createDescriptor(rhi::BindingSetItem item);
+        void releaseDescriptor(DescriptorIndex index);
         [[nodiscard]] rhi::IDescriptorTable* getDescriptorTable() const { return descriptor_table_; }
 
     private:

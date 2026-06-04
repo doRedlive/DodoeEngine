@@ -31,10 +31,8 @@ namespace sandbox {
         transform.position = {0.0f, 0.0f, 0.0f};
         transform.scale = {1.0f, 1.0f, 1.0f};
         auto& sprite_renderer = test_go.addComponent<dodoe::SpriteRendererComponent>();
-        const std::string texture_path = "engine/res/pictures/grm.jpg";
-        sprite_renderer.asset_ref.type = dodoe::AssetType::Texture;
-        sprite_renderer.asset_ref.path = texture_path;
-        sprite_renderer.asset_ref.path_id = dodoe::string2hash(texture_path);
+        const String texture_path = "engine/res/pictures/grm.jpg";
+        sprite_renderer.texture = PPtr<Texture>(FileID(texture_path), UUID(static_cast<UInt64>(string2hash(texture_path))));
         // sprite_renderer.pivot = dodoe::Vector2f(0.5f, 0.5f);
 
     }

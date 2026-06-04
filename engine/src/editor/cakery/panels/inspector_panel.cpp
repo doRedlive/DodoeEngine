@@ -17,7 +17,8 @@
 #include "runtime/function/world/components.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/components/hierarchy_component.h"
-#include "runtime/resource/asset/asset.h"
+#include "runtime/core/object/object.h"
+#include "runtime/core/object/pptr.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/function/render/framework/texture_manager.h"
 #include "runtime/function/render/render_system.h"
@@ -65,46 +66,18 @@ namespace cakery {
             return (ns && strlen(ns) > 0) ? fmt::format("{}.{}", ns, name) : String(name);
         }
 
-        const char* AssetTypeToString(const dodoe::AssetType type) {
-            switch (type) {
-                case dodoe::AssetType::Scene: return "Scene";
-                case dodoe::AssetType::Texture: return "Texture";
-                case dodoe::AssetType::Model: return "Model";
-                case dodoe::AssetType::Shader: return "Shader";
-                default: return "None";
-            }
-        }
-
-        DynamicArray<dodoe::AssetRef> CollectAssetsByType(const dodoe::AssetType type) {
-            auto* asset_manager = dodoe::ResourceManager::Self().getAssetManager();
-            if (!asset_manager) {
-                return {};
-            }
-            return asset_manager->getAssetsByType(type);
-        }
-
         dodoe::TextureManager* GetTextureManager() {
             auto& app = dodoe::Application::Self();
             auto* render_system = app.context().render_system.get();
             return render_system ? render_system->getTextureManager() : nullptr;
         }
 
-        void DrawAssetTexturePreview(const dodoe::AssetRef& asset_ref) {
-            if (asset_ref.type != dodoe::AssetType::Texture || asset_ref.path_id == 0) {
+        void DrawAssetTexturePreview(const dodoe::Texture& texture) {
+            if (!texture.getGpuHandle()) {
                 return;
             }
 
-            auto* texture_manager = GetTextureManager();
-            if (!texture_manager) {
-                return;
-            }
-
-            auto texture = texture_manager->loadTexture(asset_ref.path_id);
-            if (!texture || !texture->handle) {
-                return;
-            }
-
-            const ImTextureRef preview_ref(reinterpret_cast<ImTextureID>(texture->handle.Get()));
+            const ImTextureRef preview_ref(reinterpret_cast<ImTextureID>(texture.getGpuHandle().Get()));
             ImGui::Image(preview_ref, ImVec2(72.0f, 72.0f), ImVec2(0, 1), ImVec2(1, 0));
         }
     }
@@ -408,90 +381,6 @@ namespace cakery {
             }
         };
 
-        // ---- AssetRef ----
-        m_component_ui_drawer["AssetRef"] = [this](const String& name, void* value) -> void {
-            auto* asset_ref = static_cast<dodoe::AssetRef*>(value);
-            if (!asset_ref) {
-                return;
-            }
-
-            const String type_label = "##AssetType_" + name;
-            const String picker_popup = "##AssetPicker_" + name;
-            const String select_button = "Select Asset##" + name;
-
-            drawPropertyLabel(name);
-
-            if (ImGui::BeginCombo(type_label.c_str(), AssetTypeToString(asset_ref->type))) {
-                const dodoe::AssetType options[] = {
-                    dodoe::AssetType::None,
-                    dodoe::AssetType::Texture,
-                    dodoe::AssetType::Scene,
-                    dodoe::AssetType::Model,
-                    dodoe::AssetType::Shader
-                };
-
-                for (const auto option : options) {
-                    const Bool selected = (asset_ref->type == option);
-                    if (ImGui::Selectable(AssetTypeToString(option), selected)) {
-                        if (asset_ref->type != option) {
-                            asset_ref->type = option;
-                            asset_ref->path.clear();
-                            asset_ref->path_id = 0;
-                            asset_ref->handle = dodoe::AssetHandle{};
-                            markCurrentComponentDirty();
-                        }
-                    }
-                    if (selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
-            const String current_label = asset_ref->path.empty()
-                                                  ? String("<None>")
-                                                  : std::filesystem::path(asset_ref->path).filename().string();
-            ImGui::Text("Current: %s", current_label.c_str());
-
-            if (asset_ref->type == dodoe::AssetType::Texture) {
-                DrawAssetTexturePreview(*asset_ref);
-                if (ImGui::Button(select_button.c_str())) {
-                    ImGui::OpenPopup(picker_popup.c_str());
-                }
-
-                if (ImGui::BeginPopupModal(picker_popup.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    if (ImGui::Button("Clear")) {
-                        asset_ref->path.clear();
-                        asset_ref->path_id = 0;
-                        asset_ref->handle = dodoe::AssetHandle{};
-                        markCurrentComponentDirty();
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Close")) {
-                        ImGui::CloseCurrentPopup();
-                    }
-
-                    ImGui::Separator();
-                    const auto assets = CollectAssetsByType(dodoe::AssetType::Texture);
-                    for (const auto& asset : assets) {
-                        const String filename = std::filesystem::path(asset.path).filename().string();
-                        const String option_label = filename + "##" + asset.path;
-                        if (ImGui::Selectable(option_label.c_str(), asset_ref->path == asset.path)) {
-                            asset_ref->type = dodoe::AssetType::Texture;
-                            asset_ref->path = asset.path;
-                            asset_ref->path_id = asset.path_id;
-                            asset_ref->handle = asset.handle;
-                            markCurrentComponentDirty();
-                            ImGui::CloseCurrentPopup();
-                        }
-                    }
-
-                    ImGui::EndPopup();
-                }
-            } else {
-                ImGui::TextDisabled("Current type has no picker yet.");
-            }
-        };
     }
 
     void InspectorPanel::drawNode(const String& comp_name) {
@@ -539,10 +428,18 @@ namespace cakery {
             void* field_ptr = field.get(comp_ptr);
             if (!field_ptr) { continue; }
 
-            const auto it = m_component_ui_drawer.find(field_type);
-            if (it != m_component_ui_drawer.end()) {
+            if (field_type.find("PPtr<") == 0) {
                 ImGui::Spacing();
-                it->second(field_name, field_ptr);
+                drawPPtrField(field_name, extractPPtrInnerType(field_type), field_ptr);
+            } else {
+                const auto it = m_component_ui_drawer.find(field_type);
+                if (it != m_component_ui_drawer.end()) {
+                    ImGui::Spacing();
+                    it->second(field_name, field_ptr);
+                } else {
+                    ImGui::Spacing();
+                    drawNestedField(field_name, field_type, field_ptr);
+                }
             }
         }
 
@@ -794,6 +691,131 @@ namespace cakery {
             }
             ImGui::EndPopup();
         }
+    }
+
+    String InspectorPanel::extractPPtrInnerType(const String& field_type) {
+        const Size_t start = field_type.find('<');
+        const Size_t end = field_type.rfind('>');
+        if (start == String::npos || end == String::npos || start >= end) {
+            return {};
+        }
+        String inner = field_type.substr(start + 1, end - start - 1);
+        dodoe::NameRemoveNamespace(inner);
+        return inner;
+    }
+
+    void InspectorPanel::drawPPtrField(const String& name, const String& inner_type, void* ptr) {
+        if (inner_type == "Texture" || inner_type == "Texture2D") {
+            auto* pptr = static_cast<dodoe::PPtr<dodoe::Texture>*>(ptr);
+            drawPropertyLabel(name);
+
+            const String& current_path = pptr->getFileID().getPath();
+            if (!current_path.empty()) {
+                auto* tm = GetTextureManager();
+                if (tm) {
+                    auto loaded = tm->loadTexture(current_path);
+                    if (loaded) {
+                        DrawAssetTexturePreview(*loaded);
+                    }
+                }
+                ImGui::Text("Current: %s", std::filesystem::path(current_path).filename().string().c_str());
+            } else {
+                ImGui::Text("Current: <None>");
+            }
+
+            if (ImGui::Button(("Select##" + name).c_str())) {
+                ImGui::OpenPopup(("TexturePicker##" + name).c_str());
+            }
+
+            if (ImGui::BeginPopupModal(("TexturePicker##" + name).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                if (ImGui::Button("Clear")) {
+                    *pptr = dodoe::PPtr<dodoe::Texture>{};
+                    markCurrentComponentDirty();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Close")) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::Separator();
+
+                const auto textures = dodoe::ResourceManager::Self().getAssets<dodoe::TextureAsset>();
+                for (const auto& handle : textures) {
+                    const auto& file_id = handle.getFileID();
+                    const String label = std::filesystem::path(file_id.getPath()).filename().string() + "##" + file_id.getPath();
+                    const Bool selected = (pptr->getFileID() == file_id);
+                    if (ImGui::Selectable(label.c_str(), selected)) {
+                        *pptr = dodoe::PPtr<dodoe::Texture>(file_id, {});
+                        markCurrentComponentDirty();
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+                ImGui::EndPopup();
+            }
+        } else {
+            drawPropertyLabel(name);
+            ImGui::TextDisabled("%s (PPtr<%s>)", name.c_str(), inner_type.c_str());
+        }
+    }
+
+    void InspectorPanel::drawNestedField(const String& name, const String& type_name,
+                                          void* ptr, const Int32 depth) {
+        constexpr Int32 kMaxDepth = 5;
+        if (depth >= kMaxDepth) {
+            return;
+        }
+
+        auto meta = dodoe::TypeMeta::newMetaFromName(type_name);
+        if (!meta.isValid()) {
+            ImGui::TextDisabled("%s (unsupported type)", name.c_str());
+            return;
+        }
+
+        dodoe::FieldAccessor* nested_fields = nullptr;
+        const Int32 field_count = meta.get_field_list(nested_fields);
+        if (field_count <= 0 || !nested_fields) {
+            return;
+        }
+
+        ImGui::PushID(ptr);
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if (ImGui::TreeNode(name.c_str())) {
+            for (Int32 i = 0; i < field_count; ++i) {
+                auto& field = nested_fields[i];
+                const char* sub_name_cstr = field.getFieldName();
+                const char* sub_type_cstr = field.getFieldTypeName();
+                if (!sub_name_cstr || !sub_type_cstr) {
+                    continue;
+                }
+
+                String sub_name = sub_name_cstr;
+                String sub_type = sub_type_cstr;
+                dodoe::NameRemoveNamespace(sub_type);
+                if (sub_type.find("string") != String::npos) {
+                    sub_type = "string";
+                }
+
+                void* sub_ptr = field.get(ptr);
+                if (!sub_ptr) {
+                    continue;
+                }
+
+                ImGui::PushID(i);
+                if (sub_type.find("PPtr<") == 0) {
+                    drawPPtrField(sub_name, extractPPtrInnerType(sub_type), sub_ptr);
+                } else {
+                    const auto it = m_component_ui_drawer.find(sub_type);
+                    if (it != m_component_ui_drawer.end()) {
+                        it->second(sub_name, sub_ptr);
+                    } else {
+                        drawNestedField(sub_name, sub_type, sub_ptr, depth + 1);
+                    }
+                }
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+        delete[] nested_fields;
     }
 
     void InspectorPanel::onSelectEntity(const SelectEntityEvent& event) {

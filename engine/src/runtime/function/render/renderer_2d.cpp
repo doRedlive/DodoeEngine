@@ -19,7 +19,7 @@ namespace dodoe {
         }
 
         struct QuadDrawCommand {
-            identifier texture_id{0};
+            InstanceID texture_id{0};
             Vector4f dst_rect{0.0f};
             Vector4f uv_rect{0.0f};
             Vector3f rotation{0.0f};
@@ -50,28 +50,28 @@ namespace dodoe {
 
         static Renderer2dState s_Data;
 
-        ui32 ResolveDescriptorIndex(identifier texture_id) {
+        ui32 ResolveDescriptorIndex(const InstanceID texture_id) {
             auto* texture_manager = GetTextureManager();
             if (!texture_manager) {
                 return 0;
             }
 
-            auto fallback = texture_manager->loadFallbackTexture();
+            auto fallback = texture_manager->getFallback();
             ui32 fallback_index = 0;
-            if (fallback && fallback->descriptor_index >= 0) {
-                fallback_index = static_cast<ui32>(fallback->descriptor_index);
+            if (fallback && fallback->getDescriptorIndex() >= 0) {
+                fallback_index = static_cast<ui32>(fallback->getDescriptorIndex());
             }
 
             if (texture_id == 0) {
                 return fallback_index;
             }
 
-            auto texture = texture_manager->loadTexture(texture_id);
-            if (!texture || texture->descriptor_index < 0) {
+            auto texture = texture_manager->findTexture(texture_id);
+            if (!texture || texture->getDescriptorIndex() < 0) {
                 return fallback_index;
             }
 
-            return static_cast<ui32>(texture->descriptor_index);
+            return static_cast<ui32>(texture->getDescriptorIndex());
         }
 
         void AppendQuad(
@@ -80,7 +80,7 @@ namespace dodoe {
             const Vector4f& uv_rect,
             const Vector3f& rotation,
             const Vector4f& color,
-            ui32 descriptor_index
+            const ui32 desc_index
         ) {
             const float x = dst_rect.x;
             const float y = dst_rect.y;
@@ -106,25 +106,25 @@ namespace dodoe {
                 Vector3f(cx - hx * cos_r + hy * sin_r, cy - hx * sin_r - hy * cos_r, 0.0f),
                 {u0, v0},
                 color,
-                descriptor_index
+                desc_index
             });
             out.vertices.push_back({
                 Vector3f(cx + hx * cos_r + hy * sin_r, cy + hx * sin_r - hy * cos_r, 0.0f),
                 {u1, v0},
                 color,
-                descriptor_index
+                desc_index
             });
             out.vertices.push_back({
                 Vector3f(cx + hx * cos_r - hy * sin_r, cy + hx * sin_r + hy * cos_r, 0.0f),
                 {u1, v1},
                 color,
-                descriptor_index
+                desc_index
             });
             out.vertices.push_back({
                 Vector3f(cx - hx * cos_r - hy * sin_r, cy - hx * sin_r + hy * cos_r, 0.0f),
                 {u0, v1},
                 color,
-                descriptor_index
+                desc_index
             });
 
             out.indices.push_back(base_vertex + 0);
@@ -182,7 +182,7 @@ namespace dodoe {
         }
 
         void SubmitQuad(
-            identifier texture_id,
+            const InstanceID texture_id,
             const Vector4f& dst_rect,
             const Vector4f& uv_rect,
             const Vector3f& rotation,
@@ -212,11 +212,11 @@ namespace dodoe {
 
             for (const auto& quad : s_Data.quads) {
                 EnsureBatchRoomForOneQuad(out, batch);
-                const ui32 descriptor_index = ResolveDescriptorIndex(quad.texture_id);
-                AppendQuad(batch, quad.dst_rect, quad.uv_rect, quad.rotation, quad.color, descriptor_index);
+                const ui32 desc_index = ResolveDescriptorIndex(quad.texture_id);
+                AppendQuad(batch, quad.dst_rect, quad.uv_rect, quad.rotation, quad.color, desc_index);
             }
 
-            const ui32 line_descriptor_index = ResolveDescriptorIndex(0);
+            const ui32 line_desc_index = ResolveDescriptorIndex(0);
 
             for (const auto& line : s_Data.lines) {
                 Vector4f rect{};
@@ -226,7 +226,7 @@ namespace dodoe {
                 }
 
                 EnsureBatchRoomForOneQuad(out, batch);
-                AppendQuad(batch, rect, {0.0f, 0.0f, 1.0f, 1.0f}, line_rotation, line.color, line_descriptor_index);
+                AppendQuad(batch, rect, {0.0f, 0.0f, 1.0f, 1.0f}, line_rotation, line.color, line_desc_index);
             }
 
             FlushBatch(out, batch);
@@ -234,13 +234,13 @@ namespace dodoe {
 
     } // namespace
 
-    void Renderer2D::DrawSprite(const identifier texture, const Vector2f& pos,
+    void Renderer2D::DrawSprite(const InstanceID texture, const Vector2f& pos,
             const Vector2f& size, const Vector3f& rotation, const Color& color) {
         DrawSprite(texture, pos, size, rotation, {0.0f, 0.0f, 1.0f, 1.0f}, color);
     }
 
     void Renderer2D::DrawSprite(
-        const identifier texture,
+        const InstanceID texture,
         const Vector2f& pos,
         const Vector2f& size,
         const Vector3f& rotation,
@@ -248,6 +248,30 @@ namespace dodoe {
         const Color& color
     ) {
         SubmitQuad(texture, {pos.x, pos.y, size.x, size.y}, uv, rotation, color.to_vec4());
+    }
+
+    void Renderer2D::DrawSprite(const PPtr<Texture>& texture, const Vector2f& pos,
+            const Vector2f& size, const Vector3f& rotation, const Color& color) {
+        DrawSprite(texture, pos, size, rotation, {0.0f, 0.0f, 1.0f, 1.0f}, color);
+    }
+
+    void Renderer2D::DrawSprite(
+        const PPtr<Texture>& texture,
+        const Vector2f& pos,
+        const Vector2f& size,
+        const Vector3f& rotation,
+        const Vector4f& uv,
+        const Color& color
+    ) {
+        auto* tex = texture.get();
+        if (!tex) {
+            return;
+        }
+        const InstanceID id = tex->getInstanceID();
+        if (id == 0) {
+            return;
+        }
+        DrawSprite(id, pos, size, rotation, uv, color);
     }
 
     void Renderer2D::DrawRect(const Vector2f& pos, const Vector2f& size, const Vector3f& rotation, const Color& color,  float thickness) {

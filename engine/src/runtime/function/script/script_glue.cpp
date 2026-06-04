@@ -574,17 +574,19 @@ namespace dodoe {
             }
         }
 
-        static uint32_t Native_SpriteRendererComponentGetTextureID(uint64_t entity_uuid) {
+        static Int32 Native_SpriteRendererComponentGetTextureID(UInt64 entity_uuid) {
             if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                return component->asset_ref.path_id;
+                return static_cast<Int32>(component->texture.getInstanceID());
             }
             return 0;
         }
 
-        static void Native_SpriteRendererComponentSetTextureID(uint64_t entity_uuid, uint32_t texture_id) {
+        static void Native_SpriteRendererComponentSetTextureID(UInt64 entity_uuid, Int32 texture_id) {
             if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                component->asset_ref.type = AssetType::Texture;
-                component->asset_ref.path_id = texture_id;
+                auto* tex = static_cast<Texture*>(Object::FindObjectFromInstanceID(texture_id));
+                if (tex) {
+                    component->texture = PPtr<Texture>(tex->getFileID(), tex->getUUID(), texture_id);
+                }
             }
         }
 

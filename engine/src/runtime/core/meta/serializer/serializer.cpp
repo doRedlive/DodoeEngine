@@ -1,6 +1,7 @@
 // do@Redlive
 
 #include "serializer.h"
+#include "runtime/resource/file/file_id.h"
 
 namespace dodoe {
 
@@ -37,6 +38,17 @@ namespace dodoe {
         const auto value = json_context.get<long long>();
         DO_ASSERT(value >= 0, "Serializer::read<unsigned int> expects non-negative integer");
         return instance = static_cast<unsigned int>(value);
+    }
+
+    template <>
+    Json Serializer::write(const Int64& instance) {
+        return Json(instance);
+    }
+    template <>
+    Int64& Serializer::read(const Json& json_context, Int64& instance) {
+        DO_ASSERT(json_context.is_number_integer() || json_context.is_number_unsigned(),
+                 "Serializer::read<Int64> expects integer");
+        return instance = json_context.get<Int64>();
     }
 
     template <>
@@ -171,6 +183,30 @@ namespace dodoe {
         instance.g = json_context.at(1).get<float>();
         instance.b = json_context.at(2).get<float>();
         instance.a = json_context.at(3).get<float>();
+        return instance;
+    }
+
+    template <>
+    Json Serializer::write(const FileID& instance) {
+        Json j = Json::object();
+        j["path"] = Serializer::write(instance.getPath());
+        j["uuid"] = Serializer::write(instance.getUUID());
+        return j;
+    }
+    template <>
+    FileID& Serializer::read(const Json& json_context, FileID& instance) {
+        DO_ASSERT(json_context.is_object(), "Serializer::read<FileID> expects object");
+        if (json_context.contains("path")) {
+            String path;
+            Serializer::read(json_context.at("path"), path);
+            if (json_context.contains("uuid")) {
+                UUID uuid;
+                Serializer::read(json_context.at("uuid"), uuid);
+                instance = FileID(path, uuid);
+            } else {
+                instance = FileID(path);
+            }
+        }
         return instance;
     }
 

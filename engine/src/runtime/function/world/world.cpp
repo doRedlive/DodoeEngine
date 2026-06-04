@@ -7,7 +7,8 @@
 #include "runtime/core/project/project.h"
 #include "runtime/resource/res_type/scene_res.h"
 #include "runtime/resource/resource_manager.h"
-#include "runtime/resource/asset/asset_manager.h"
+#include "runtime/resource/file/file_system.h"
+#include "runtime/core/meta/serializer/serializer.h"
 
 #include "systems/animation2d_system.h"
 #include "systems/camera2d_system.h"
@@ -35,16 +36,15 @@ namespace dodoe {
         }
     }
 
-    bool World::setupScenes() {
-        auto asset_manager = ResourceManager::Self().getAssetManager();
-        for (const auto& asset : asset_manager->getAssetsByType(AssetType::Scene)) {
-            SceneRes scene_res;
-            if (!asset_manager->loadAsset(asset.path, scene_res)) {
-                return false;
-            }
-
-            const std::string scene_name =
-                scene_res.m_name.empty() ? std::filesystem::path(asset.path).stem().string() : scene_res.m_name;
+    Bool World::setupScenes() {
+        const auto scene_assets = ResourceManager::Self().getAssets<SceneAsset>();
+        for (const auto& scene_handle : scene_assets) {
+            SceneAsset* scene_asset = scene_handle.get();
+            if (!scene_asset) continue;
+            const auto& scene_res = scene_asset->getSceneRes();
+            const String scene_name = scene_res.m_name.empty()
+                ? "Untitled"
+                : scene_res.m_name;
             Scene* scene = createScene(scene_name);
             scene->deserialize(scene_res);
         }

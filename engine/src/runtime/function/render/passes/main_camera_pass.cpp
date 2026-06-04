@@ -107,7 +107,7 @@ namespace dodoe {
                 if (batch.material) {
                     constants.draw_data.x = static_cast<Int32>(resolveTextureIndex(batch.material));
                     constants.draw_data.y = static_cast<Int32>(resolveMetallicRoughnessTextureIndex(batch.material));
-                    constants.draw_data.z = (batch.material->metallic_roughness_texture != 0) ? 1 : 0;
+                    constants.draw_data.z = batch.material->metallic_roughness_texture.isValid() ? 1 : 0;
                     constants.material_data.x = glm::clamp(batch.material->metallic, 0.0f, 1.0f);
                     constants.material_data.y = glm::clamp(batch.material->roughness, 0.04f, 1.0f);
                 }
@@ -162,16 +162,16 @@ namespace dodoe {
     UInt32 MainCameraPass::resolveTextureIndex(const Ref<Material>& material) const {
         auto* texture_manager = GetTextureManager();
 
-        auto fallback_texture = texture_manager->loadFallbackTexture();
+        auto fallback_texture = texture_manager->getFallback();
         UInt32 texture_index = 0;
-        if (fallback_texture && fallback_texture->descriptor_index >= 0) {
-            texture_index = static_cast<UInt32>(fallback_texture->descriptor_index);
+        if (fallback_texture && fallback_texture->getDescriptorIndex() >= 0) {
+            texture_index = static_cast<UInt32>(fallback_texture->getDescriptorIndex());
         }
 
-        if (material && material->base_color_texture != 0) {
-            auto texture = texture_manager->loadTexture(material->base_color_texture);
-            if (texture && texture->descriptor_index >= 0) {
-                texture_index = static_cast<UInt32>(texture->descriptor_index);
+        if (material && material->base_color_texture.isValid()) {
+            auto texture = texture_manager->findTexture(static_cast<InstanceID>(material->base_color_texture.getID()));
+            if (texture && texture->getDescriptorIndex() >= 0) {
+                texture_index = static_cast<UInt32>(texture->getDescriptorIndex());
             }
         }
 
@@ -180,13 +180,13 @@ namespace dodoe {
 
     UInt32 MainCameraPass::resolveMetallicRoughnessTextureIndex(const Ref<Material>& material) const {
         auto* texture_manager = GetTextureManager();
-        if (!texture_manager || !material || material->metallic_roughness_texture == 0) {
+        if (!texture_manager || !material || !material->metallic_roughness_texture.isValid()) {
             return 0;
         }
 
-        auto texture = texture_manager->loadTexture(material->metallic_roughness_texture);
-        if (texture && texture->descriptor_index >= 0) {
-            return static_cast<UInt32>(texture->descriptor_index);
+        auto texture = texture_manager->findTexture(static_cast<InstanceID>(material->metallic_roughness_texture.getID()));
+        if (texture && texture->getDescriptorIndex() >= 0) {
+            return static_cast<UInt32>(texture->getDescriptorIndex());
         }
         return 0;
     }

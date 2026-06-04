@@ -79,6 +79,33 @@ namespace dodoe {
         descriptors_[index] = item;
         descriptor_index_umap_.emplace(cache_key, index);
 
-        return index; 
+        return index;
     }
+
+    void DescriptorTableManager::releaseDescriptor(const DescriptorIndex index) {
+        if (index < 0 || index >= static_cast<Int32>(allocated_descriptors_.size())) {
+            return;
+        }
+        if (!allocated_descriptors_[index]) {
+            return;
+        }
+
+        allocated_descriptors_[index] = false;
+
+        if (descriptors_[index].resourceHandle) {
+            descriptors_[index].resourceHandle->Release();
+        }
+
+        for (auto it = descriptor_index_umap_.begin(); it != descriptor_index_umap_.end(); ++it) {
+            if (it->second == index) {
+                descriptor_index_umap_.erase(it);
+                break;
+            }
+        }
+
+        if (index < search_start_) {
+            search_start_ = index;
+        }
+    }
+
 } // dodoe

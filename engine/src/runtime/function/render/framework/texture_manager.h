@@ -4,20 +4,11 @@
 
 #include "dopch.h"
 
-#include "../interface/rhi.h"
-#include "descriptor_table_manager.h"
+#include "texture.h"
 
 namespace dodoe {
 
     class RhiContext;
-
-    struct Texture {
-        identifier id;
-        std::string path;
-        int width, height;
-        rhi::TextureHandle handle;
-        DescriptorIndex descriptor_index;
-    };
 
     struct TextureManagerCreateInfo {
         RhiContext* rhi{nullptr};
@@ -26,23 +17,23 @@ namespace dodoe {
 
     class TextureManager : public Managed<TextureManager, TextureManagerCreateInfo> {
         friend class Managed<TextureManager, TextureManagerCreateInfo>;
-        RhiContext* rhi_{nullptr};
-        DescriptorTableManager* descriptor_table_{nullptr};
-        Ref<Texture> fallback_texture_{nullptr};
-        std::unordered_map<identifier, Ref<Texture>> texture_umap_{};
-    public:
 
-        [[nodiscard]] Ref<Texture> loadTexture(identifier id, const std::string& path);
-        [[nodiscard]] Ref<Texture> loadTexture(const std::string& path);
-        [[nodiscard]] Ref<Texture> loadTexture(identifier id);
-        [[nodiscard]] Ref<Texture> loadFallbackTexture();
+        RhiContext* m_rhi{nullptr};
+        DescriptorTableManager* m_descriptor_table{nullptr};
+        Ref<Texture> m_fallback{};
+        UnorderedMap<InstanceID, Ref<Texture>> m_texture_cache{};
 
-    private:
-        bool initialize(const TextureManagerCreateInfo& info);
+        Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        Ref<Texture> createTexture(const std::string& path);
+        Ref<Texture> createTexture(const String& path);
         void createFallbackTexture();
+
+    public:
+        [[nodiscard]] Ref<Texture> loadTexture(const String& path);
+        [[nodiscard]] Ref<Texture> findTexture(InstanceID id);
+        [[nodiscard]] Ref<Texture> getFallback() const;
+        void removeTexture(InstanceID id);
     };
 
 } // dodoe

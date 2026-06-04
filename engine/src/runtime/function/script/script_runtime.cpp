@@ -27,6 +27,13 @@ namespace dodoe {
         }
         mono_runtime_object_init(world_instance);
 
+        MonoClass* mb_sys_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "MonoBehaviourSystem");
+        if (mb_sys_class && mono_class_is_subclass_of(mb_sys_class, m_class_system, false)) {
+            auto script_class = create_ref<ScriptClass>(m_script_engine, "GreenCake", "MonoBehaviourSystem", true);
+            auto instance = create_ref<MonoSystemInstance>(script_class);
+            m_system_instance_umap["GreenCake.MonoBehaviourSystem"] = std::move(instance);
+        }
+
         return true;
     }
 

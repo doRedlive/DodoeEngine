@@ -10,7 +10,7 @@
 #include "../framework/descriptor_table_manager.h"
 #include "../mesh_draw/mesh_pass_processor.h"
 
-#include "runtime/resource/resource_type.h"
+#include "runtime/function/render/framework/material.h"
 
 namespace dodoe {
 

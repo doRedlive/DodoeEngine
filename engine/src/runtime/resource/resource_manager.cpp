@@ -4,161 +4,52 @@
 
 #include "resource_manager.h"
 
-#include "runtime/core/utils/common.h"
-#include "runtime/core/application.h"
-#include "runtime/core/context/system_context.h"
-
-#include "asset/texture_loader.h"
-#include "asset/shader_library.h"
-#include "asset/animation_library.h"
-#include "asset/mesh_loader.h"
-#include "runtime/function/render/framework/texture_manager.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/resource/file/file_system.h"
 
 namespace dodoe {
-    namespace {
-        TextureManager* GetTextureManager() {
-            auto& app = Application::Self();
-            auto* render_system = app.context().render_system.get();
-            return render_system ? render_system->getTextureManager() : nullptr;
-        }
-    }
 
     ResourceManager& ResourceManager::Self() {
         static ResourceManager instance;
         return instance;
     }
 
-    void ResourceManager::initialize() {        
-        shader_library_ = ShaderLibrary::Create({});
-        animation_library_ = AnimationLibrary::Create({});
-        mesh_loader_ = MeshLoader::Create({});
-        asset_manager_ = AssetManager::Create({});
+    void ResourceManager::initialize() {
+        m_assetManager = AssetManager::Create({});
     }
 
     void ResourceManager::shutdown() {
-        AssetManager::Destroy(asset_manager_);
-        ShaderLibrary::Destroy(shader_library_);
-        AnimationLibrary::Destroy(animation_library_);
-        MeshLoader::Destroy(mesh_loader_);
+        AssetManager::Destroy(m_assetManager);
     }
 
-    Ref<Shader> ResourceManager::load_shader(const std::string& name, const std::string& vert_path, const std::string& frag_path) {
-        if (!shader_library_) {
-            DO_ERROR("ShaderLibrary is not initialized!");
-            return nullptr;
+    Bool ResourceManager::loadAssets() {
+        return m_assetManager->loadAssets();
+    }
+
+    AssetHandle<TextureAsset> ResourceManager::getTexture(const String& path) {
+        AssetHandle<TextureAsset> handle = m_assetManager->getHandleByPath<TextureAsset>(path);
+        if (!handle.isValid()) {
+            String normalized = FileSystem::NormalizePath(path);
+            handle = m_assetManager->getHandleByPath<TextureAsset>(normalized);
         }
-
-        return shader_library_->load_shader(name, vert_path, frag_path);
+        return handle;
     }
 
-    ModelRes ResourceManager::load_model(const std::string& name, const std::string& path) {
-        if (!mesh_loader_) {
-            DO_ERROR("MeshLoader is not initialized!");
-            return {};
+    AssetHandle<MeshAsset> ResourceManager::getMesh(const String& path) {
+        AssetHandle<MeshAsset> handle = m_assetManager->getHandleByPath<MeshAsset>(path);
+        if (!handle.isValid()) {
+            String normalized = FileSystem::NormalizePath(path);
+            handle = m_assetManager->getHandleByPath<MeshAsset>(normalized);
         }
-
-        return mesh_loader_->loadModel(name, path);
+        return handle;
     }
 
-    Ref<Shader> ResourceManager::get_shader(const std::string& name) {
-        return shader_library_->get_shader(name);
-    }
-
-    ModelRes ResourceManager::get_model(const identifier id) {
-        if (!mesh_loader_) {
-            DO_ERROR("MeshLoader is not initialized!");
-            return {};
+    AssetHandle<SceneAsset> ResourceManager::loadScene(const String& path) {
+        AssetHandle<SceneAsset> handle = m_assetManager->getHandleByPath<SceneAsset>(path);
+        if (!handle.isValid()) {
+            return AssetHandle<SceneAsset>();
         }
-        return mesh_loader_->getModel(id);
+        m_assetManager->loadAssetSync<SceneAsset>(handle.getFileID());
+        return handle;
     }
 
-    ModelRes ResourceManager::get_model(const std::string& id) {
-        if (!mesh_loader_) {
-            DO_ERROR("MeshLoader is not initialized!");
-            return {};
-        }
-        return mesh_loader_->getModel(id);
-    }
-
-    ModelRes ResourceManager::get_model(const std::string& id, const std::string& path) {
-        if (!mesh_loader_) {
-            DO_ERROR("MeshLoader is not initialized!");
-            return {};
-        }
-        return mesh_loader_->getModel(id, path);
-    }
-
-    TextureRes ResourceManager::get_texture(const std::string& id, const std::string& path) {
-        TextureRes res{};
-        res.id = string2hash(id);
-        res.path = path;
-        res.ppu = 10.0f;
-
-        if (auto* texture_manager = GetTextureManager()) {
-            (void)texture_manager->loadTexture(res.id, path);
-        }
-        return res;
-    }
-
-    TextureRes ResourceManager::get_texture(const std::string& id) {
-        TextureRes res{};
-        res.id = string2hash(id);
-        res.path = id;
-        res.ppu = 10.0f;
-
-        if (auto* texture_manager = GetTextureManager()) {
-            (void)texture_manager->loadTexture(res.id);
-        }
-        return res;
-    }
-
-    MeshRes ResourceManager::get_mesh(const identifier id) {
-        if (!mesh_loader_) {
-            DO_ERROR("MeshLoader is not initialized!");
-            return {};
-        }
-        return mesh_loader_->getMesh(id);
-    }
-
-    AnimClip2dRes ResourceManager::get_anim_clip2d(const identifier id) {
-        if (!animation_library_) {
-            DO_ERROR("AnimationLibrary is not initialized!");
-            return {};
-        }
-        return animation_library_->get_clip(id);
-    }
-
-    AnimClip2dRes ResourceManager::get_anim_clip2d(const std::string& name) {
-        if (!animation_library_) {
-            DO_ERROR("AnimationLibrary is not initialized!");
-            return {};
-        }
-        return animation_library_->get_clip(name);
-    }
-
-    AnimClip2dRes ResourceManager::create_anim_clip2d(const std::string& name, const std::vector<identifier>& texture_ids, const bool loop, const float frame_ms) {
-        if (!animation_library_) {
-            DO_ERROR("AnimationLibrary is not initialized!");
-            return {};
-        }
-        return animation_library_->create_clip(name, texture_ids, loop, frame_ms);
-    }
-
-    bool ResourceManager::destroy_anim_clip2d(const identifier id) {
-        if (!animation_library_) {
-            DO_ERROR("AnimationLibrary is not initialized!");
-            return false;
-        }
-        return animation_library_->destroy_clip(id);
-    }
-
-    bool ResourceManager::destroy_anim_clip2d(const std::string& name) {
-        if (!animation_library_) {
-            DO_ERROR("AnimationLibrary is not initialized!");
-            return false;
-        }
-        return animation_library_->destroy_clip(name);
-    }
-
-} // dodoe 
+} // dodoe

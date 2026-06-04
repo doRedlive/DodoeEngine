@@ -8,7 +8,7 @@
 
 namespace dodoe {
 	class Window;
-	struct Texture;
+	class Texture;
 }
 
 namespace cakery {

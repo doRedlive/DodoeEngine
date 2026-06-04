@@ -50,6 +50,7 @@ namespace dodoe {
 
     using Int = int;
     using UInt = unsigned int;
+    using Float = float;
     using Byte = char;
     using UByte = unsigned char;
     using Bool = bool;
@@ -88,5 +89,7 @@ namespace dodoe {
 
     using identifier = entt::id_type;
     using Identifier = entt::id_type;
+
+    using InstanceID = Int32;
 
 } // dodoe

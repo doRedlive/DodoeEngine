@@ -36,12 +36,11 @@ namespace dodoe {
                 auto& tr = reg.get<TransformComponent>(entity);
 
                 Ref<Texture> texture = nullptr;
-                identifier draw_texture_id = 0;
-                if (!sr.asset_ref.path.empty()) {
-                    texture = texture_manager->loadTexture(sr.asset_ref.path_id, sr.asset_ref.path);
-                    draw_texture_id = sr.asset_ref.path_id;
+                const String& tex_path = sr.texture.getFileID().getPath();
+                if (!tex_path.empty()) {
+                    texture = Texture::Load(tex_path);
                 } else {
-                    texture = texture_manager->loadFallbackTexture();
+                    texture = texture_manager->getFallback();
                 }
                 if (!texture) {
                     continue;
@@ -49,8 +48,8 @@ namespace dodoe {
 
                 constexpr float ppu = 10.0f;
                 const Vector2f tex_size(
-                    static_cast<float>(texture->width),
-                    static_cast<float>(texture->height)
+                    static_cast<float>(texture->getWidth()),
+                    static_cast<float>(texture->getHeight())
                 );
                 const Vector2f world_size = (tex_size / ppu) * Vector2f(tr.scale.x, tr.scale.y);
 
@@ -59,7 +58,7 @@ namespace dodoe {
                 const Vector2f bl_pos = anchor_pos - pivot_offset;
 
                 Renderer2D::DrawSprite(
-                    draw_texture_id,
+                    sr.texture,
                     bl_pos,
                     world_size,
                     tr.rotation,

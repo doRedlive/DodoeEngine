@@ -28,10 +28,13 @@ list(REMOVE_DUPLICATES _DODOE_EDITOR_HEADS)
 set(DODOE_EDITOR_HEADS "${_DODOE_EDITOR_HEADS}" CACHE STRING "Editor headers for DodoePreCompile" FORCE)
 
 
-add_executable(Cakery EXCLUDE_FROM_ALL ${CAKERY_ALL_SOURCES})
+add_executable(Cakery EXCLUDE_FROM_ALL ${CAKERY_ALL_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/native_api/dodoe_api.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/dodoe_wrap.cxx
+)
 
 target_link_libraries(Cakery PRIVATE DodoeRuntime)
-target_compile_definitions(Cakery PRIVATE DODOE_EDITOR)
+target_compile_definitions(Cakery PRIVATE DODOE_EDITOR DODOE_BUILD_DLL)
 target_compile_definitions(DodoeRuntime PRIVATE DODOE_EDITOR)
 
 if(TARGET GreenCake)
