@@ -2,8 +2,7 @@
 
 #include "component_db.h"
 
-#include "_generated/serializer/all_serializer.ipp"
-
+#include "_generated/serializer/all_serializer.h"
 #include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/function/world/components.h"
 #include "runtime/function/world/entity.h"

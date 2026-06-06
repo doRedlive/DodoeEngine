@@ -29,6 +29,11 @@ namespace dodoe {
         friend class WorldManager;
         friend class Scene;
 
+        World(const World&) = delete;
+        World& operator=(const World&) = delete;
+        World(World&&) = default;
+        World& operator=(World&&) = default;
+
         std::string m_name;
         Uuid m_uuid{};
 
@@ -41,6 +46,7 @@ namespace dodoe {
         std::vector<Ref<System>> m_runtime_systems{};
         std::vector<Ref<System>> m_simulation_systems{};
     public:
+        World() = default;
 
         [[nodiscard]] const std::string& getName() const { return m_name; }
 

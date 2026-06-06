@@ -6,7 +6,7 @@ namespace dodoe {
 
 {{#class_defines}}
 template<>
-inline Json Serializer::write(const {{class_name}}& instance) {
+Json Serializer::write(const {{class_name}}& instance) {
     Json j = Json::object();
     {{#class_field_defines}}
     j["{{class_field_name}}"] = Serializer::write(instance.{{class_field_name}});
@@ -15,7 +15,7 @@ inline Json Serializer::write(const {{class_name}}& instance) {
 }
 
 template<>
-inline {{class_name}}& Serializer::read(const Json& json_context, {{class_name}}& instance) {
+{{class_name}}& Serializer::read(const Json& json_context, {{class_name}}& instance) {
     if (json_context.is_object()) {
         {{#class_field_defines}}
         if (json_context.contains("{{class_field_name}}")) {

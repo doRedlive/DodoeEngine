@@ -1,5 +1,7 @@
 set(ENGINE_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
+option(DODOE_EDITOR "Build the Cakery editor" ON)
+
 add_subdirectory(external)
 
 if(DEFINED DODOE_MONO_INCLUDE_DIR AND EXISTS "${DODOE_MONO_INCLUDE_DIR}")
@@ -9,8 +11,9 @@ endif()
 add_subdirectory(res)
 
 add_subdirectory(src/runtime)
-#add_subdirectory(src/sandbox)
-add_subdirectory(src/editor)
+if(DODOE_EDITOR)
+	add_subdirectory(src/editor)
+endif()
 add_subdirectory(src/metaparser)
 add_subdirectory(src/scriptcore)
 

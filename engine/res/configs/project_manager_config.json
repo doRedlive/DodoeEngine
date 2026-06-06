@@ -1,18 +1,40 @@
 {
-    "lastOpened": "C:/Users/33235/Redlive/dodoe/tests/Projects/OnlyOne/OnlyOne.doproj",
-    "projects": [
-        {
-            "lastOpened": 1778671966,
-            "name": "test",
-            "pinned": false,
-            "projectFile": "C:/Users/33235/Redlive/dodoe/tests/Projects/Test/test/test.doproj"
-        },
-        {
-            "lastOpened": 1780577818,
-            "name": "OnlyOne",
-            "pinned": false,
-            "projectFile": "C:/Users/33235/Redlive/dodoe/tests/Projects/OnlyOne/OnlyOne.doproj"
-        }
-    ],
-    "version": 1
+  "Version": 1,
+  "Projects": [
+    {
+      "Name": "NewProject",
+      "ProjectFile": "C:\\Users\\33235\\Documents\\DodoeProjects\\NewProject\\NewProject.doproj",
+      "Pinned": false,
+      "LastOpenedUnix": 1780669954,
+      "LastModifiedUnix": 1780669940,
+      "IconPath": null,
+      "Tags": [],
+      "Description": null,
+      "EngineVersion": null
+    },
+    {
+      "Name": "OnlyOne",
+      "ProjectFile": "C:\\Users\\33235\\Redlive\\dodoe\\tests\\Projects\\OnlyOne\\OnlyOne.doproj",
+      "Pinned": false,
+      "LastOpenedUnix": 0,
+      "LastModifiedUnix": 1778380482,
+      "IconPath": null,
+      "Tags": [],
+      "Description": null,
+      "EngineVersion": null
+    },
+    {
+      "Name": "test",
+      "ProjectFile": "C:\\Users\\33235\\Redlive\\dodoe\\tests\\Projects\\Test\\test\\test.doproj",
+      "Pinned": false,
+      "LastOpenedUnix": 0,
+      "LastModifiedUnix": 1778399606,
+      "IconPath": null,
+      "Tags": [],
+      "Description": null,
+      "EngineVersion": null
+    }
+  ],
+  "LastOpened": "C:\\Users\\33235\\Documents\\DodoeProjects\\NewProject\\NewProject.doproj",
+  "LastSortOption": "LastEdited"
 }

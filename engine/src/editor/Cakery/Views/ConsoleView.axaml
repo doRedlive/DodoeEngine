@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Cakery.ViewModels"
+             x:Class="Cakery.Views.ConsoleView"
+             x:DataType="vm:ConsoleViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="4">
+        <TextBlock Grid.Row="0" Text="Console" FontWeight="Bold" Margin="0,0,0,2"/>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,4">
+            <TextBox Text="{Binding SearchText}" PlaceholderText="Filter..." Width="120" FontSize="12"/>
+            <Button Content="Clear" Command="{Binding ClearCommand}" Width="40" Height="22" FontSize="11"/>
+            <TextBlock Text="{Binding ErrorCount}" Foreground="Red" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+            <TextBlock Text="errors" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding WarnCount}" Foreground="#DAA520" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+            <TextBlock Text="warnings" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
+
+            <ComboBox SelectedIndex="{Binding SeverityFilter}" Width="70" FontSize="11">
+                <ComboBoxItem>All</ComboBoxItem>
+                <ComboBoxItem>Trace</ComboBoxItem>
+                <ComboBoxItem>Debug</ComboBoxItem>
+                <ComboBoxItem>Info</ComboBoxItem>
+                <ComboBoxItem>Warn</ComboBoxItem>
+                <ComboBoxItem>Error</ComboBoxItem>
+                <ComboBoxItem>Critical</ComboBoxItem>
+            </ComboBox>
+
+            <CheckBox Content="Collapse" IsChecked="{Binding CollapseRepeats}" FontSize="11"/>
+            <CheckBox Content="Auto-scroll" IsChecked="{Binding AutoScroll}" FontSize="11"/>
+        </StackPanel>
+
+        <!-- Log entries -->
+        <ListBox Grid.Row="2" ItemsSource="{Binding Entries}"
+                 FontFamily="Consolas" FontSize="12">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}"
+                                   Foreground="Gray" FontSize="11"/>
+                        <TextBlock Text="{Binding Level}" FontWeight="Bold" Width="36" FontSize="11"/>
+                        <TextBlock Text="{Binding Message}" FontSize="11"/>
+                        <TextBlock Text="{Binding RepeatCount, StringFormat='(x{0})'}"
+                                   Foreground="Gray" FontSize="10"
+                                   IsVisible="{Binding RepeatCount, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>

@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Cakery.ViewModels"
+             x:Class="Cakery.Views.HierarchyView"
+             x:DataType="vm:HierarchyViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="4">
+        <TextBlock Grid.Row="0" Text="Hierarchy" FontWeight="Bold" Margin="0,0,0,4"/>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,4">
+            <TextBox Text="{Binding SearchText}" PlaceholderText="Search..." Width="140" FontSize="12"/>
+            <Button Content="+" ToolTip.Tip="Create Entity" Command="{Binding CreateEntityCommand}" Width="24" Height="24"/>
+            <Button Content="-" ToolTip.Tip="Delete Selected" Command="{Binding DeleteSelectedCommand}" Width="24" Height="24"/>
+        </StackPanel>
+
+        <TreeView Grid.Row="2" ItemsSource="{Binding Entities}"
+                  SelectedItem="{Binding SelectedEntity, Mode=TwoWay}">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate ItemsSource="{Binding Children}">
+                    <TextBlock Text="{Binding Name}"
+                               PointerPressed="OnEntityPointerPressed"/>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </Grid>
+</UserControl>

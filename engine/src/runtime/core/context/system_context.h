@@ -17,11 +17,11 @@
 #include "runtime/function/window/window_manager.h"
 
 namespace dodoe {
-    struct SystemContextCreateInfo {
+    struct DODOE_API SystemContextCreateInfo {
         ApplicationSpecification spec{};
     };
 
-    class SystemContext : public Managed<SystemContext, SystemContextCreateInfo> {
+    class DODOE_API SystemContext : public Managed<SystemContext, SystemContextCreateInfo> {
         friend class Managed<SystemContext, SystemContextCreateInfo>;
 
         Scope<RenderThread> m_render_thread{nullptr};

@@ -10,12 +10,12 @@ namespace dodoe {
 
     class SystemContext;
 
-    struct ApplicationCommandLineArgs {
+    struct DODOE_API ApplicationCommandLineArgs {
         int argc{ 0 };
         char** args{ nullptr };
     };
 
-    struct ApplicationSpecification {
+    struct DODOE_API ApplicationSpecification {
         String name{ "Dodoe Engine" };
 
         ui32 width{ 1920 };
@@ -32,7 +32,7 @@ namespace dodoe {
         ApplicationCommandLineArgs cli_args{};
     };
 
-    class Application {
+    class DODOE_API Application {
         static Application* m_instance;
         Bool m_running {false};
         ApplicationSpecification m_app_spec{};
@@ -53,8 +53,6 @@ namespace dodoe {
         [[nodiscard]] const SystemContext& context() const;
 
         void run();
-
-    private:
         void quit();
     };
 

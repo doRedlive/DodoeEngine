@@ -19,6 +19,13 @@ file(GLOB_RECURSE HEADER_FILES
 
 set(DODOE_ALL_SOURCES ${SOURCE_FILES} ${HEADER_FILES})
 
+if(DODOE_EDITOR)
+    list(APPEND DODOE_ALL_SOURCES
+        ${ENGINE_ROOT_DIR}/src/editor/bindings/native_api/dodoe_api.cpp
+        ${ENGINE_ROOT_DIR}/src/editor/bindings/dodoe_wrap.cxx
+    )
+endif()
+
 set(_DODOE_RUNTIME_HEADS "")
 foreach(_header_file IN LISTS HEADER_FILES)
     file(RELATIVE_PATH _rel "${ENGINE_ROOT_DIR}/src" "${_header_file}")
@@ -28,9 +35,10 @@ endforeach()
 list(REMOVE_DUPLICATES _DODOE_RUNTIME_HEADS)
 set(DODOE_RUNTIME_HEADS "${_DODOE_RUNTIME_HEADS}" CACHE STRING "Runtime headers for DodoePreCompile" FORCE)
 
-add_library(${TARGET_NAME} STATIC ${DODOE_ALL_SOURCES})
+add_library(${TARGET_NAME} SHARED ${DODOE_ALL_SOURCES})
+target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_BUILD_DLL)
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${DODOE_ALL_SOURCES})
+source_group(TREE ${ENGINE_ROOT_DIR}/src FILES ${DODOE_ALL_SOURCES})
 
 target_include_directories(${TARGET_NAME}
         PUBLIC
@@ -52,6 +60,13 @@ target_include_directories(${TARGET_NAME}
                 ${ENGINE_ROOT_DIR}/src/runtime
 )
 
+if(DODOE_EDITOR)
+    target_include_directories(${TARGET_NAME} PRIVATE
+        ${ENGINE_ROOT_DIR}/src/editor/bindings
+        ${ENGINE_ROOT_DIR}/src/editor
+    )
+    target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_EDITOR)
+endif()
 target_precompile_headers(${TARGET_NAME} PUBLIC dopch.h)
 
 target_link_libraries(${TARGET_NAME}
@@ -64,15 +79,20 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC EnTT::EnTT
         PUBLIC box2d
         PUBLIC assimp
-        PUBLIC sol2::sol2
-        PUBLIC lua_static
         PUBLIC nvrhi
         PUBLIC nvrhi_vk
+        PUBLIC pybind11::embed
         PUBLIC ${Vulkan_LIBRARIES}
 )
 
+target_link_directories(${TARGET_NAME} PRIVATE "${ENGINE_ROOT_DIR}/external/python/libs")
+
 if(TARGET mono::mono)
     target_link_libraries(${TARGET_NAME} PUBLIC mono::mono)
+endif()
+
+if(TARGET mono::mono)
+    target_link_options(${TARGET_NAME} PRIVATE /DELAYLOAD:coreclr.dll)
 endif()
 
 target_compile_definitions(${TARGET_NAME}
@@ -82,3 +102,12 @@ target_compile_definitions(${TARGET_NAME}
         PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
         PRIVATE $<$<CONFIG:Debug>:DO_DEBUG>
 )
+
+if(DODOE_EDITOR)
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:${TARGET_NAME}>
+            "${BINARY_ROOT_DIR}/"
+        COMMENT "Copy DodoeRuntime.dll -> ${BINARY_ROOT_DIR}/"
+    )
+endif()

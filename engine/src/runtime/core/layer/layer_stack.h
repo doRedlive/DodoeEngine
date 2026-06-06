@@ -8,7 +8,7 @@ namespace dodoe {
 
     class Layer;
 
-    class LayerStack {
+    class DODOE_API LayerStack {
     public:
         ~LayerStack();
 

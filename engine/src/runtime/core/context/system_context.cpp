@@ -30,7 +30,6 @@
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/script/script_system.h"
-#include "runtime/function/script/lua/lua_script_runtime.h"
 #include "runtime/function/physics/physics_system.h"
 
 namespace dodoe {

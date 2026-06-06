@@ -2,36 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "DodoeSandbox (LLDB)",
-      "type": "lldb",
-      "request": "launch",
-      "preLaunchTask": "Build DodoeSandbox (Debug)",
-      "program": "${workspaceFolder}/bin/DodoeSandbox.exe",
-      "cwd": "${workspaceFolder}",
-      "args": []
-    },
-    {
-      "name": "DodoeSandbox (cppvsdbg)",
-      "type": "cppvsdbg",
-      "request": "launch",
-      "preLaunchTask": "Build DodoeSandbox (Debug)",
-      "program": "${workspaceFolder}/bin/DodoeSandbox.exe",
-      "cwd": "${workspaceFolder}",
-      "args": [],
-      "stopAtEntry": false,
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Cakery (LLDB)",
-      "type": "lldb",
-      "request": "launch",
-      "preLaunchTask": "Build Cakery (Debug)",
-      "program": "${workspaceFolder}/bin/Cakery.exe",
-      "cwd": "${workspaceFolder}",
-      "args": []
-    },
-    {
-      "name": "Cakery (cppvsdbg)",
+      "name": "Cakery Debug (cppvsdbg)",
       "type": "cppvsdbg",
       "request": "launch",
       "preLaunchTask": "Build Cakery (Debug)",
@@ -42,7 +13,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Cakery (Release, cppvsdbg)",
+      "name": "Cakery Release (cppvsdbg)",
       "type": "cppvsdbg",
       "request": "launch",
       "preLaunchTask": "Build Cakery (Release)",

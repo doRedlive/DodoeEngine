@@ -1,6 +1,4 @@
-// 
-// Created by GreenMuffin on 2026/3/20.
-//
+// do@Redlive
 
 #pragma once
 
@@ -8,8 +6,6 @@
 
 #include "script_engine.h"
 #include "script_runtime.h"
-
-#include "lua/lua_script_runtime.h"
 
 namespace dodoe {
 
@@ -22,17 +18,23 @@ namespace dodoe {
         Scope<ScriptEngine> m_script_engine;
         Scope<ScriptRuntime> m_script_runtime;
 
-        Scope<LuaScriptEngine> m_lua_engine;
+        struct ToolInterpreter;
+        ToolInterpreter* m_tool_interp = nullptr;
+
     public:
+        ScriptSystem();
+        ~ScriptSystem();
 
         [[nodiscard]] ScriptEngine* getMonoEngine() const { return m_script_engine.get(); }
         [[nodiscard]] ScriptRuntime* getMonoRuntime() const { return m_script_runtime.get(); }
-        [[nodiscard]] LuaScriptEngine* getLuaEngine() const { return m_lua_engine.get(); }
-        [[nodiscard]] bool executeLua(const std::filesystem::path& script_file) const;
-        bool reloadScripts();
+
+        Bool reloadScripts();
+
+        // Execute script by extension: .py
+        [[nodiscard]] Bool Execute(const std::filesystem::path& path);
 
     private:
-        bool initialize(const ScriptSystemCreateInfo& create_info);
+        Bool initialize(const ScriptSystemCreateInfo& create_info);
         void shutdown();
     };
 

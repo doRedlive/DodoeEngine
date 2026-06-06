@@ -22,3 +22,17 @@
 
 #define DO_EXPAND_MACRO(x) x
 #define DO_STRINGIFY_MACRO(x) #x
+
+#ifdef DODOE_BUILD_DLL
+    #ifdef _WIN32
+        #define DODOE_API __declspec(dllexport)
+    #else
+        #define DODOE_API
+    #endif
+#else
+    #ifdef _WIN32
+        #define DODOE_API __declspec(dllimport)
+    #else
+        #define DODOE_API
+    #endif
+#endif

@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Cakery.ViewModels"
+             x:Class="Cakery.Views.ProjectView"
+             x:DataType="vm:ProjectViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="4">
+        <TextBlock Grid.Row="0" Text="Project" FontWeight="Bold" Margin="0,0,0,4"/>
+
+        <!-- Path bar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,4">
+            <Button Content="▲" ToolTip.Tip="Up" Command="{Binding NavigateUpCommand}" Width="24" Height="20" FontSize="10"/>
+            <Button Content="R" ToolTip.Tip="Refresh" Command="{Binding RefreshCommand}" Width="24" Height="20" FontSize="10"/>
+            <TextBlock Text="{Binding CurrentPath}" FontSize="11" VerticalAlignment="Center" Foreground="Gray"
+                       TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+
+        <!-- File list -->
+        <ListBox Grid.Row="2" ItemsSource="{Binding Files}"
+                 SelectedItem="{Binding SelectedFile, Mode=TwoWay}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                Background="Transparent"
+                                PointerPressed="OnFilePointerPressed">
+                        <TextBlock Text="{Binding IsDirectory, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                   Width="16" FontSize="12"/>
+                        <TextBlock Text="{Binding Name}" FontSize="12"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>

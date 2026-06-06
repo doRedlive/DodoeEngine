@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 namespace dodoe {
-    class Layer {
+    class DODOE_API Layer {
         std::string m_name;
     public:
         explicit Layer(std::string name);

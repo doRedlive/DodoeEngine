@@ -7,6 +7,7 @@
 
 extern dodoe::Application* dodoe::CreateApplication(ApplicationCommandLineArgs args);
 
+#ifndef DODOE_BUILD_DLL
 int main(int argc, char** args) {
     DO_PROFILE_BEGIN_SESSION("StartUp", "DodoeProfile-StartUp.json");
     const auto app = dodoe::CreateApplication({argc, args});
@@ -20,3 +21,4 @@ int main(int argc, char** args) {
     delete app;
     DO_PROFILE_END_SESSION();
 }
+#endif // DODOE_BUILD_DLL

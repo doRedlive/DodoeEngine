@@ -37,6 +37,6 @@ namespace dodoe {
         void createSkyboxTextureInternal();
     };
 
-    extern RenderResource* g_RenderResource;
+    extern DODOE_API RenderResource* g_RenderResource;
 
 } // dodoe
