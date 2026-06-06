@@ -76,17 +76,7 @@ if (NOT TARGET json)
     endif ()
 endif()
 
-if (NOT TARGET sol2)
-    option(SOL2_BUILD_TEST "" OFF)
-    option(SOL2_BUILD_DOC "" OFF)
-    option(SOL2_BUILD_INSTALL "" OFF)
-    add_subdirectory(sol2)
-endif()
-
-if(NOT TARGET lua)
-    include(lua.cmake)
-endif()
-
+# Mono's coreclr.dll conflicts with .NET 10 runtime.
 if(NOT TARGET mono::mono)
     include(mono.cmake)
 endif()
@@ -99,5 +89,24 @@ endif()
 if(NOT TARGET nvrhi)
     include(nvrhi.cmake)
     set_target_properties(nvrhi PROPERTIES FLODER ${external_folder}/nvrhi)
+endif()
+
+if(NOT TARGET pybind11::pybind11)
+    set(Python_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/python")
+    if(NOT Python_FOUND AND NOT Python3_FOUND)
+        find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development)
+    endif()
+    add_subdirectory(pybind11)
+    set_target_properties(pybind11_headers PROPERTIES FOLDER ${external_folder}/pybind11)
+
+    # Copy python3*.dll to output directory for runtime
+    file(GLOB PYTHON_DLL "${Python_ROOT_DIR}/python3*.dll")
+    list(FILTER PYTHON_DLL EXCLUDE REGEX "_d\\.(dll|pdb)$")  # skip debug builds
+    add_custom_target(DodoePythonRuntimeFiles ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${PYTHON_DLL}
+            "${BINARY_ROOT_DIR}/"
+        COMMENT "Copying python3*.dll to output directory"
+    )
 endif()
 
