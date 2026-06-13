@@ -9,61 +9,104 @@
     {
       "name": "windows-base",
       "hidden": true,
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
       "binaryDir": "${sourceDir}/build",
       "installDir": "${sourceDir}/bin",
       "cacheVariables": {
         "CMAKE_CXX_STANDARD": "20",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "BUILD_SHARED_LIBS": "OFF"
+        "BUILD_SHARED_LIBS": "OFF",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/msvc2022_64"
       }
     },
     {
-      "name": "windows-debug",
-      "displayName": "doDebug-Windows",
+      "name": "msvc-debug",
+      "displayName": "MSVC Debug",
       "inherits": "windows-base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "windows-release",
-      "displayName": "doRelease-Windows",
+      "name": "msvc-release",
+      "displayName": "MSVC Release",
       "inherits": "windows-base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "ninja-debug",
+      "displayName": "Ninja Debug",
+      "inherits": "windows-base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe"
+      }
+    },
+    {
+      "name": "ninja-release",
+      "displayName": "Ninja Release",
+      "inherits": "windows-base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "build-debug-sandbox",
-      "displayName": "Debug Sandbox",
-      "configurePreset": "windows-debug",
-      "targets": "DodoeSandbox",
-      "cleanFirst": false
+      "name": "msvc-debug-cakery",
+      "displayName": "MSVC Debug Cakery",
+      "configurePreset": "msvc-debug",
+      "targets": "Cakery"
     },
     {
-      "name": "build-release-sandbox",
-      "displayName": "Release Sandbox",
-      "configurePreset": "windows-release",
-      "targets": "DodoeSandbox",
-      "cleanFirst": false
+      "name": "msvc-release-cakery",
+      "displayName": "MSVC Release Cakery",
+      "configurePreset": "msvc-release",
+      "targets": "Cakery"
     },
     {
-      "name": "build-debug-cakery",
-      "displayName": "Debug Cakery",
-      "configurePreset": "windows-debug",
-      "targets": "Cakery",
-      "cleanFirst": false
+      "name": "ninja-debug-cakery",
+      "displayName": "Ninja Debug Cakery",
+      "configurePreset": "ninja-debug",
+      "targets": "Cakery"
     },
     {
-      "name": "build-release-cakery",
-      "displayName": "Release Cakery",
-      "configurePreset": "windows-release",
-      "targets": "Cakery",
-      "cleanFirst": false
+      "name": "ninja-release-cakery",
+      "displayName": "Ninja Release Cakery",
+      "configurePreset": "ninja-release",
+      "targets": "Cakery"
+    },
+    {
+      "name": "msvc-debug-sandbox",
+      "displayName": "MSVC Debug Sandbox",
+      "configurePreset": "msvc-debug",
+      "targets": "DodoeSandbox"
+    },
+    {
+      "name": "msvc-release-sandbox",
+      "displayName": "MSVC Release Sandbox",
+      "configurePreset": "msvc-release",
+      "targets": "DodoeSandbox"
+    },
+    {
+      "name": "ninja-debug-sandbox",
+      "displayName": "Ninja Debug Sandbox",
+      "configurePreset": "ninja-debug",
+      "targets": "DodoeSandbox"
+    },
+    {
+      "name": "ninja-release-sandbox",
+      "displayName": "Ninja Release Sandbox",
+      "configurePreset": "ninja-release",
+      "targets": "DodoeSandbox"
     }
   ]
 }

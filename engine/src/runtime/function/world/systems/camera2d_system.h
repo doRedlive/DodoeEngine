@@ -34,7 +34,7 @@ namespace dodoe {
 
                 auto& camera_comp = reg.get<Camera2dComponent>(entity);
                 auto& transform_comp = reg.get<TransformComponent>(entity);
-                auto& camera = Application::Self().context().render_system->getMainCamera();
+                auto& camera = GetRenderSystem()->getMainCamera();
                 const bool dirty = camera_comp.dirty || transform_comp.dirty;
                 if (dirty) {
                     camera.setCameraType(camera_comp.getCameraType());

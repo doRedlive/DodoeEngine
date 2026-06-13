@@ -18,12 +18,12 @@
 #include "systems/sprite_renderer_system.h"
 #include "systems/mono_system.h"
 #include "systems/tilemap_renderer_system.h"
+#include "systems/runtime_frame_context_system.h"
 
 namespace dodoe {
 
     bool World::initialize(const WorldCreateInfo& create_info) {
         m_name = create_info.name;
-        if (!setupScenes()) return false;
         if (!setupSystems()) return false;
         return true;
     }
@@ -64,6 +64,7 @@ namespace dodoe {
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
         auto tilemap_renderer = create_ref<TilemapRendererSystem>();
+        auto runtime_frame_context = create_ref<RuntimeFrameContextSystem>();
         registerRuntimeSystem(mono);
         registerRuntimeSystem(camera2d);
         registerRuntimeSystem(light_system);
@@ -72,6 +73,7 @@ namespace dodoe {
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
         registerRuntimeSystem(tilemap_renderer);
+        registerRuntimeSystem(runtime_frame_context);
 
         registerSimulationSystem(camera2d);
         registerSimulationSystem(light_system);
@@ -80,6 +82,7 @@ namespace dodoe {
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
         registerSimulationSystem(tilemap_renderer);
+        registerSimulationSystem(runtime_frame_context);
 
         return true;
     }
@@ -229,6 +232,7 @@ namespace dodoe {
     }
 
     bool World::activateStartScene() {
+        setupScenes();
         const auto active_project = Project::ActiveProject();
         if (active_project->config().start_scene_name.empty()) {
             DO_ASSERT(false, "StartSceneName is empty!");

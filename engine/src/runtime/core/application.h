@@ -18,14 +18,12 @@ namespace dodoe {
     struct DODOE_API ApplicationSpecification {
         String name{ "Dodoe Engine" };
 
-        ui32 width{ 1920 };
-        ui32 height{ 1080 };
+        UInt32 width{ 1920 };
+        UInt32 height{ 1080 };
 
         Bool window_resizeable{ true };
-        Bool custom_titlebar{ false };
 
-        Size_t thread_pool_size{ 0 };
-        Bool enable_async_loading{ false };
+        void* host_handle{ nullptr };
 
         RenderSettingsInitInfo render_settings{};
 

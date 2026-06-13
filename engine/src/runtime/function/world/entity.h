@@ -29,8 +29,8 @@ namespace dodoe {
 		friend Entity CreateEntityByScene_Help(Scene* scene, entt::entity handle);
 	public:
 		Entity() = default;
-		Entity(entt::entity entity);
-		Entity(Scene* scene, entt::entity entity);
+		Entity(entt::entity entity) : handle_(entity) {}
+		Entity(Scene* scene, entt::entity entity) : scene_(scene), handle_(entity) {}
 
 		template<typename T, typename...Args>
 		T& addComponent(Args&&... args) {

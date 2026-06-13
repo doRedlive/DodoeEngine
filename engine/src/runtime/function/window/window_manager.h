@@ -1,39 +1,35 @@
-//
-// Created by GreenMuffin on 2025/11/22.
-//
+// do@Redlive
 
-#ifndef DODOE_WINDOWMANAGER_H
-#define DODOE_WINDOWMANAGER_H
+#pragma once
+
 #include "dopch.h"
+
+#include "window_types.h"
 #include "window.h"
 
 #include "runtime/core/application.h"
-
 #include "runtime/core/event/event.h"
+#include "runtime/core/memory/managed.h"
 
 namespace dodoe {
 
-    struct WindowManagerInitInfo {
-        ApplicationSpecification spec;
-    };
-    
-    class WindowManager {
-        Scope<Window> window_;
-    public:
-        void initialize(const WindowManagerInitInfo& init_info);
-        void shutdown();
+    class WindowManager : public Managed<WindowManager, WindowManagerCreateInfo> {
+        friend class Managed<WindowManager, WindowManagerCreateInfo>;
 
-        [[nodiscard]] Window* getWindow() const { return window_.get(); };
+        Scope<Window> m_window;
+    public:
+        [[nodiscard]] Window* getWindow() const { return m_window.get(); };
         void swapBuffers();
 
     private:
+        [[nodiscard]] Bool initialize(const WindowManagerCreateInfo& info);
+        void shutdown();
+
         void onWindowFocus(const WindowFocusEvent& event);
         void onWindowLostFocus(const WindowLostFocusEvent& event);
         void onWindowClose(const WindowCloseEvent& event);
         void onWindowResize(const WindowResizeEvent& event);
         void bindEventCallback();
     };
-}
 
-
-#endif //DODOE_WINDOWMANAGER_H
+} // dodoe

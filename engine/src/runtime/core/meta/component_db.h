@@ -13,7 +13,7 @@ namespace dodoe {
 
     class Entity;
 
-    class ComponentDB {
+    class DODOE_API ComponentDB {
     public:
         using HasFunc = bool (*)(Entity&);
         using GetPtrFunc = void* (*)(Entity&);

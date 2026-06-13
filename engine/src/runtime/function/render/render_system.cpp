@@ -42,7 +42,7 @@ namespace dodoe {
 #else
             false;
 #endif
-        m_rhi = RhiContext::Create({window->getNativeWindow(), backend_api, enable_validation});
+        m_rhi = RhiContext::Create({window->getNativeWindow(), backend_api, enable_validation, window->isHostMode() ? window->getNativeHandle() : nullptr});
         const auto camera_type = RenderSettings::GetRenderingPipelineType() == RenderingPipelineType::Only2D
             ? CameraType::Orthographic : CameraType::Perspective;
         m_camera = Camera::Create({camera_type, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});

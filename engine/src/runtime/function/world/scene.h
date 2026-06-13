@@ -17,7 +17,7 @@ namespace dodoe {
         std::string name;
     };
 
-    class Scene : public Managed<Scene, SceneCreateInfo> {
+    class DODOE_API Scene : public Managed<Scene, SceneCreateInfo> {
         friend class Managed<Scene, SceneCreateInfo>;
         friend class World;
         friend class Entity;
@@ -79,6 +79,10 @@ namespace dodoe {
 } // dodoe
 
 namespace dodoe {
+    inline entt::entity GetEntityHandle_Help(const Entity& entity) { return entity.handle_; }
+    inline Entity CreateEntityByScene_Help(Scene* scene, entt::entity handle) { return Entity(scene, handle); }
+    inline Registry& GetSceneRegitry_Help(Scene* scene) { return scene->registry(); }
+
     template<typename T>
     void OnComponentAdd_Help(Scene* scene, Entity entity, T& component) {
         DO_ASSERT(scene);

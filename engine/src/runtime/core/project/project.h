@@ -14,7 +14,7 @@ namespace dodoe {
 		std::string start_scene_name;
 	};
 
-	class Project {
+	class DODOE_API Project {
 	public:
 		static const std::filesystem::path& ProjectDirectory() {
 			return m_active_project->m_project_directory;

@@ -6,7 +6,7 @@
 #include <functional>
 
 namespace dodoe {
-    class UUID {
+    class DODOE_API UUID {
     public:
         UUID();
         explicit UUID(uint64_t value);

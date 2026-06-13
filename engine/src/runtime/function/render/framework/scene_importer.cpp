@@ -268,7 +268,7 @@ namespace dodoe {
     }
 
     void SceneImporter::ImportModel(const std::string& path) {
-        auto cur_scene = Application::Self().context().world->getCurrentScene();
+        auto cur_scene = Application::Self().context().getWorld()->getCurrentScene();
         DO_ASSERT(cur_scene);
 
         Assimp::Importer importer;

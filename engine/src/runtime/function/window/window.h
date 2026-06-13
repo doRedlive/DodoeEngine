@@ -1,11 +1,10 @@
-//
-// Created by GreenMuffin on 2025/10/16.
-//
+// do@Redlive
 
-#ifndef DODOE_WINDOW_H
-#define DODOE_WINDOW_H
+#pragma once
 
 #include "dopch.h"
+
+#include "window_types.h"
 
 #if defined(DO_PLATFORM_WINDOWS)
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -16,50 +15,36 @@
 #define GLFW_EXPOSE_NATIVE_WAYLAND
 #endif // DO_PLATFORMS
 
-#include "runtime/function/render/render_settings.h"
-
 #include "entt/entt.hpp"
-
 #include "GLFW/glfw3.h"
 #include "GLFW/glfw3native.h"
 
 namespace dodoe {
 
-    struct WindowProperty {
-        int width;
-        int height;
-        const char* title;
-        bool custom_titlebar;
-        bool resizeable;
-        RenderBackendApiType backend_api{ RenderBackendApiType::None };
-
-        explicit WindowProperty(const int w = 800, const int h = 600, const char* t = "dodoe", const bool custom_titlebar = false, const bool resizeable = true)
-            : width(w), height(h), title(t), custom_titlebar(custom_titlebar), resizeable(resizeable) {}
-    };
-
-    class Window : public Managed<Window, WindowProperty> {
-        friend class Managed<Window, WindowProperty>;
+    class DODOE_API Window : public Managed<Window, WindowManagerCreateInfo> {
+        friend class Managed<Window, WindowManagerCreateInfo>;
         friend class WindowManager;
-        GLFWwindow* window_ {nullptr};
-        WindowProperty prop_ {};
-    public:
 
-        [[nodiscard]] bool initialize(const WindowProperty& prop);
+        WindowProperty m_prop{};
+
+        GLFWwindow* m_glfw_window{nullptr};
+        void* m_host_handle{nullptr};
+    public:
+        [[nodiscard]] bool initialize(const WindowManagerCreateInfo& info);
         void shutdown();
         void swapBuffers();
 
-        [[nodiscard]] GLFWwindow* getNativeWindow() const { return window_;}
-        [[nodiscard]] HWND handle() const;
-        [[nodiscard]] int width() const { return prop_.width; }
-        [[nodiscard]] int height() const { return prop_.height; }
-        [[nodiscard]] Vector2i pixelSize() const;
-        [[nodiscard]] bool is_maximized() const;
+        [[nodiscard]] GLFWwindow* getNativeWindow() const { return m_glfw_window; }
+        [[nodiscard]] void* getNativeHandle() const;
+        [[nodiscard]] bool isHostMode() const { return m_host_handle != nullptr; }
+        [[nodiscard]] Int getWidth() const { return m_prop.width; }
+        [[nodiscard]] Int getHeight() const { return m_prop.height; }
+        [[nodiscard]] Vector2i getPixelSize() const;
+        [[nodiscard]] bool isMaximized() const;
+
         void maximize();
         void restore();
+        void setSize(Int width, Int height);
     };
 
 } // dodoe
-
-
-
-#endif //DODOE_WINDOW_H

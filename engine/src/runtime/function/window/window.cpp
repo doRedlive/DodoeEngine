@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2025/10/16.
-//
+// do@Redlive
 
 #include "window.h"
 
@@ -9,9 +7,15 @@
 
 namespace dodoe {
 
-    bool Window::initialize(const WindowProperty& prop) {
-        prop_ = prop;
-        if (prop_.backend_api == RenderBackendApiType::OpenGL) {
+    Bool Window::initialize(const WindowManagerCreateInfo& info) {
+        m_prop = info.prop;
+        m_host_handle = info.host_handle;
+        if (isHostMode) {
+            m_glfw_window = nullptr;
+            return true;
+        }
+
+        if (m_prop.backend_api == RenderBackendApiType::OpenGL) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
@@ -20,60 +24,72 @@ namespace dodoe {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         }
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-        if (prop_.resizeable) glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-        if (prop_.custom_titlebar) glfwWindowHint(GLFW_TITLEBAR, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-        window_ = glfwCreateWindow(prop_.width, prop_.height, prop_.title, nullptr, nullptr);
-        DO_ASSERT(window_, "The window create failed!");
+        m_glfw_window = glfwCreateWindow(m_prop.width, m_prop.height, m_prop.title, nullptr, nullptr);
+        DO_ASSERT(m_glfw_window, "The window create failed!");
 
-        int fb_width, fb_height;
-        glfwGetFramebufferSize(window_, &fb_width, &fb_height);
+        Int fb_width, fb_height;
+        glfwGetFramebufferSize(m_glfw_window, &fb_width, &fb_height);
 
-        if (prop_.custom_titlebar) {
-            glfwSetTitlebarHitTestCallback(window_, [](GLFWwindow* native_window, int x, int y, int* hit) {});
-        }
-        return window_ != nullptr;
+        return m_glfw_window != nullptr;
     }
 
     void Window::swapBuffers() {
-        glfwSwapBuffers(window_);
+        if (isHostMode()) return;
+        if (m_glfw_window) glfwSwapBuffers(m_glfw_window);
     }
 
     void Window::shutdown() {
-        if (window_) {
-            glfwDestroyWindow(window_);
-            window_ = nullptr;
+        if (isHostMode()) {
+            m_host_handle = nullptr;
+            return;
+        }
+        if (m_glfw_window) {
+            glfwDestroyWindow(m_glfw_window);
+            m_glfw_window = nullptr;
         }
     }
 
-    HWND Window::handle() const {
-#if defined (DO_PLATFORM_WINDOWS)
-        return glfwGetWin32Window(window_);
-#elif defined (DO_PLATFORM_MACOS)
-        return glfwGetCocoaWindow(window_);
-#elif defined (DO_PLATFORM_LINUX)
-        return glfwGetX11Window(window_);
-#endif //DO_PLATFORMS
-
+    void* Window::getNativeHandle() const {
+        if (isHostMode()) return m_host_handle;
+        if (!m_glfw_window) return nullptr;
+#if defined(DO_PLATFORM_WINDOWS)
+        return static_cast<void*>(glfwGetWin32Window(m_glfw_window));
+#elif defined(DO_PLATFORM_MACOS)
+        return static_cast<void*>(glfwGetCocoaWindow(window_));
+#elif defined(DO_PLATFORM_LINUX)
+        return static_cast<void*>(glfwGetX11Window(window_));
+#else
+        return nullptr;
+#endif
     }
 
-    Vector2i Window::pixelSize() const {
-        int w = 0, h = 0;
-        glfwGetFramebufferSize(window_, &w, &h);
+    void Window::setSize(Int width, Int height) {
+        m_prop.width = width;
+        m_prop.height = height;
+        if (!isHostMode() && m_glfw_window) glfwSetWindowSize(m_glfw_window, width, height);
+    }
+
+    Vector2i Window::getPixelSize() const {
+        if (isHostMode()) return Vector2i(m_prop.width, m_prop.height);
+        Int w = 0, h = 0;
+        glfwGetFramebufferSize(m_glfw_window, &w, &h);
         return Vector2i(w, h);
     }
 
-    bool Window::is_maximized() const {
-        return static_cast<bool>(glfwGetWindowAttrib(window_, GLFW_MAXIMIZED));
+    Bool Window::isMaximized() const {
+        if (isHostMode()) return false;
+        return static_cast<Bool>(glfwGetWindowAttrib(m_glfw_window, GLFW_MAXIMIZED));
     }
 
     void Window::maximize() {
-        if (is_maximized()) { return; }
-        glfwMaximizeWindow(window_);
+        if (isHostMode() || isMaximized()) return;
+        glfwMaximizeWindow(m_glfw_window);
     }
 
     void Window::restore() {
-        glfwRestoreWindow(window_);
+        if (!isHostMode()) glfwRestoreWindow(m_glfw_window);
     }
 
 }

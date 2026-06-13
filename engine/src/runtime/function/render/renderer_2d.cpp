@@ -14,7 +14,7 @@ namespace dodoe {
     namespace {
         TextureManager* GetTextureManager() {
             auto& app = Application::Self();
-            auto* render_system = app.context().render_system.get();
+            auto* render_system = app.context().getRenderSystem();
             return render_system ? render_system->getTextureManager() : nullptr;
         }
 

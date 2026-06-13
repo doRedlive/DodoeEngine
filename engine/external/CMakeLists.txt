@@ -86,6 +86,10 @@ if(NOT TARGET assimp)
     set_target_properties(assimp PROPERTIES FOLDER ${external_folder}/assimp)
 endif()
 
+if(NOT TARGET ads::qtadvanceddocking-qt6)
+    include(qt-ads.cmake)
+endif()
+
 if(NOT TARGET nvrhi)
     include(nvrhi.cmake)
     set_target_properties(nvrhi PROPERTIES FLODER ${external_folder}/nvrhi)
@@ -101,7 +105,6 @@ if(NOT TARGET pybind11::pybind11)
 
     # Copy python3*.dll to output directory for runtime
     file(GLOB PYTHON_DLL "${Python_ROOT_DIR}/python3*.dll")
-    list(FILTER PYTHON_DLL EXCLUDE REGEX "_d\\.(dll|pdb)$")  # skip debug builds
     add_custom_target(DodoePythonRuntimeFiles ALL
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${PYTHON_DLL}

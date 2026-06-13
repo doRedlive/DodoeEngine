@@ -19,7 +19,7 @@ namespace dodoe {
             (void)reg;
             (void)dt;
 
-            auto* render_system = Application::Self().context().render_system.get();
+            auto* render_system = Application::Self().context().getRenderSystem();
             if (!render_system) {
                 return;
             }

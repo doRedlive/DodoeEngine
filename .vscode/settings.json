@@ -1,4 +1,14 @@
 {
-  "cmake.generator": "Visual Studio 18 2026",
-  "cmake.platform": "x64"
+  "cmake.configurePreset": "msvc-debug",
+  "cmake.buildPreset": "msvc-debug-cakery",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/engine/src",
+    "${workspaceFolder}/engine/src/runtime",
+    "${workspaceFolder}/engine/src/editor/cakery",
+    "C:/Qt/6.11.1/msvc2022_64/include",
+    "C:/Qt/6.11.1/msvc2022_64/include/QtCore",
+    "C:/Qt/6.11.1/msvc2022_64/include/QtGui",
+    "C:/Qt/6.11.1/msvc2022_64/include/QtWidgets"
+  ]
 }

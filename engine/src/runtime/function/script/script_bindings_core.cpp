@@ -15,10 +15,7 @@ namespace dodoe::script_bindings {
 namespace {
 
     TimeSystem* GetTimeSystem() {
-        if (!Application::Self().context().time_system) {
-            return nullptr;
-        }
-        return Application::Self().context().time_system.get();
+        return dodoe::GetTimeSystem();
     }
 
     void BindVec2f(py::module_& m) {

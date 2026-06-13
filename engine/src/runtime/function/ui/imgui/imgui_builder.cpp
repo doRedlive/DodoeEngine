@@ -6,6 +6,8 @@
 
 #include "imgui_style.h"
 #include "runtime/function/render/render_settings.h"
+#include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
@@ -23,6 +25,8 @@ namespace dodoe {
 
         ApplyImGuiStyle(window);
 
+        if (!window) return;  // Host mode: no GLFW window, skip backend init
+
         const auto api_type = RenderSettings::GetRenderBackendApiType();
         if (api_type == RenderBackendApiType::OpenGL) {
             ImGui_ImplGlfw_InitForOpenGL(window, false);
@@ -33,6 +37,7 @@ namespace dodoe {
         else {
             ImGui_ImplGlfw_InitForOther(window, false);
         }
+        s_glfwBackendInit = true;
     }
 
     void ImGuiBuilder::PrepareImGui() {
@@ -40,18 +45,30 @@ namespace dodoe {
             return;
         }
 
-        ImGui_ImplGlfw_NewFrame();
-        if (RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
-            ImGui_ImplOpenGL3_NewFrame();
+        if (s_glfwBackendInit) {
+            ImGui_ImplGlfw_NewFrame();
+            if (RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
+                ImGui_ImplOpenGL3_NewFrame();
+            }
+        } else {
+            auto& io = ImGui::GetIO();
+            auto* window = Application::Self().context().getWindowManager()->getWindow();
+            if (window) {
+                io.DisplaySize = ImVec2(static_cast<float>(window->getWidth()),
+                                        static_cast<float>(window->getHeight()));
+                io.DeltaTime = Application::Self().context().getTimeSystem()->getDeltaTime();
+            }
         }
         ImGui::NewFrame();
     }
 
     void ImGuiBuilder::CleanupImGui() {
-        if (ImGui::GetCurrentContext()) {
+        if (!ImGui::GetCurrentContext()) return;
+        if (s_glfwBackendInit) {
             ImGui_ImplGlfw_Shutdown();
-            ImGui::DestroyContext();
+            s_glfwBackendInit = false;
         }
+        ImGui::DestroyContext();
     }
 
 } // dodoe

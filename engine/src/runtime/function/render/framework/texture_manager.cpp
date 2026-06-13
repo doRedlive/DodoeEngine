@@ -15,7 +15,7 @@ namespace dodoe {
 
     Ref<Texture> Texture::Load(const String& path) {
         auto& app = Application::Self();
-        auto* render_system = app.context().render_system.get();
+        auto* render_system = app.context().getRenderSystem();
         if (!render_system) {
             return nullptr;
         }

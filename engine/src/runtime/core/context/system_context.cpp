@@ -1,4 +1,4 @@
-// Created by GreenMuffin on 2025/11/1.
+// do@Redlive
 
 #include "dopch.h"
 
@@ -37,120 +37,124 @@ namespace dodoe {
     SystemContext::~SystemContext() = default;
 
     bool SystemContext::initialize(SystemContextCreateInfo create_info) {
-        return initializeSystems(std::move(create_info));
+        m_init_info = create_info;
+        Bool success = preInit();
+        return success;
     }
 
     void SystemContext::shutdown() {
-        DO_ASSERT(shutdownSystems(), "System shutdown failed!");
+
     }
 
-    bool SystemContext::initializeSystems(SystemContextCreateInfo create_info) {
-        window_manager = create_scope<WindowManager>();
-        input_manager  = create_scope<InputManager>();
-        time_system    = create_scope<TimeSystem>();
-        // ---------------------CORE-------------------------
+    Bool SystemContext::preInit() {
         Log::Initialize();
         EventSystem::Initialize();
-        TypeMetaRegister::meta_register();
-        // ---------------------RESOURCE-------------------------
-        ResourceManager::Self().initialize();
-        // ---------------------RENDER-------------------------
-        window_manager->initialize({create_info.spec});
-        DO_ASSERT(RenderSettings::Initialize(create_info.spec.render_settings), "RenderSettings initialize failed!");
-        ui_system = UISystem::Create({window_manager.get()});
-        render_system = RenderSystem::Create({window_manager.get()});
-        DO_ASSERT(render_system, "RenderSystem initialize failed!");
+        TypeMetaRegister::MetaRegister();
+        return true;
+    }
 
-        input_manager->initialize({render_system->getViewportManager()});
+    Bool SystemContext::initializeModules() {
+        m_time_system = TimeSystem::Create({});
+        DO_ASSERT(m_time_system, "TimeSystem init failed!");
+
+        ResourceManager::Self().initialize({});
+
+        WindowManagerCreateInfo window_manager_create_info;
+        window_manager_create_info.host_handle = m_init_info.spec.host_handle;
+        window_manager_create_info.prop.title = m_init_info.spec.name.c_str();
+        window_manager_create_info.prop.width = m_init_info.spec.width;
+        window_manager_create_info.prop.height = m_init_info.spec.height;
+        window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;
+        m_window_manager = WindowManager::Create(window_manager_create_info);
+
+        RenderSettingsInitInfo render_settings_init_info;
+        render_settings_init_info.api      = m_init_info.spec.render_settings.api;
+        render_settings_init_info.pipeline = m_init_info.spec.render_settings.pipeline;
+        DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
+
+        m_ui_system     = UISystem::Create({m_window_manager.get()});
+        m_render_system = RenderSystem::Create({m_window_manager.get()});
+        DO_ASSERT(m_render_system, "RenderSystem init failed");
+
+        m_input_manager = InputManager::Create({m_render_system->getViewportManager()});
+
+        m_script_system = ScriptSystem::Create({});
+        DO_ASSERT(m_script_system, "ScriptSystem init failed");
+        (void)m_script_system->reloadScripts();
+
+        m_physics_system = PhysicsSystem::Create({});
+        DO_ASSERT(m_physics_system, "PhysicsSystem init failed");
+
+        m_world = World::Create({"Main"});
+        DO_ASSERT(m_world, "World init failed");
 
         m_render_thread = create_scope<RenderThread>();
         m_render_thread->start([this] { tickRenderingTask(); });
-
-        return true;
-    }
-
-    bool SystemContext::shutdownSystems() {
-        layer_stack.clearLayers();
-
-        m_render_thread->stop();
-        m_render_thread.reset();
-
-        // ---------------------GAME-------------------------
-        input_manager->shutdown();
-        input_manager.reset();
-        // ---------------------RESOURCE-------------------------
-        ResourceManager::Self().shutdown();
-        // ---------------------RENDER-------------------------
-        RenderSystem::Destroy(render_system);
-        UISystem::Destroy(ui_system);
-        window_manager->shutdown();
-        window_manager.reset();
-        // ---------------------CORE-------------------------
-        time_system.reset();
-        TypeMetaRegister::meta_unregister();
-        EventSystem::Shutdown();
-        return true;
     }
 
     void SystemContext::startRuntime() {
-        ResourceManager::Self().loadAssets();
+        ResourceManager::Self().loadAssetsAsync();
 
-        script_system = ScriptSystem::Create({});
-        DO_ASSERT(script_system, "ScriptSystem initialize failed!");
-        (void)script_system->reloadScripts();
+        // need to wait load assets;
+        // Project::Load();
+        DO_ASSERT(m_world->activateStartScene(), "World activate start scene failed");
+        m_world->start();
+    }
 
-        physics_system = PhysicsSystem::Create({});
-        DO_ASSERT(physics_system, "PhysicsSystem initialize failed!");
+    void SystemContext::finalizeModules() {
 
-        world = World::Create({"Main"});
-        DO_ASSERT(world, "World initialize failed!");
+        m_world->finalize();
 
-        DO_ASSERT(world->activateStartScene(), "World active start scene failed!");
+        World::Destroy(m_world);
+        ScriptSystem::Destroy(m_script_system);
+        PhysicsSystem::Destroy(m_physics_system);
 
-        world->start();
-        m_runtime_started = true;
+        m_layer_stack.clearLayers();
+
+        m_render_thread->stop();
+        m_render_thread.reset();
+        InputManager::Destroy(m_input_manager);
+
+        ResourceManager::Self().shutdown();
+        RenderSystem::Destroy(m_render_system);
+        UISystem::Destroy(m_ui_system);
+        WindowManager::Destroy(m_window_manager);
+
+        TimeSystem::Destroy(m_time_system);
+        TypeMetaRegister::MetaUnregister();
+        EventSystem::Shutdown();
     }
 
     void SystemContext::tickOneFrame() {
-        updateTick(time_system->getDeltaTime());
+        updateTick(m_time_system->getDeltaTime());
         renderTick();
     }
 
-    void SystemContext::finalizeRuntime() {
-        world->finalize();
-
-        World::Destroy(world);
-        ScriptSystem::Destroy(script_system);
-        PhysicsSystem::Destroy(physics_system);
-    }
-
     void SystemContext::updateTick(const float delta_time) {
-        for (auto& layer : layer_stack) {
+        for (auto& layer : m_layer_stack) {
             layer->updateTick(delta_time);
         }
 
-        input_manager->update();
-        if (world) {
-            world->update(delta_time);
+        m_input_manager->update();
+        if (m_world) {
+            m_world->update(delta_time);
         }
-        if (physics_system) {
-            physics_system->step(delta_time);
+        if (m_physics_system) {
+            m_physics_system->step(delta_time);
         }
     }
 
     void SystemContext::renderTick() {
-        ui_system->prepare();
-
-        for (auto& layer : layer_stack) {
-            layer->renderTick();
-        }
-
-        m_render_thread->submitAndWait();
+        if (m_ui_system) { m_ui_system->prepare(); }
+        for (auto& layer : m_layer_stack) { layer->renderTick(); }
+        if (m_render_thread) { m_render_thread->submitAndWait(); }
     }
 
     void SystemContext::tickRenderingTask() {
-        render_system->prepare();
-        render_system->present();
+        if (m_render_system) {
+            m_render_system->prepare();
+            m_render_system->present();
+        }
     }
 
 } // dodoe

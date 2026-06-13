@@ -21,7 +21,7 @@ namespace dodoe {
         void update(Registry& reg, const float dt) override {
             (void)dt;
 
-            auto* texture_manager = Application::Self().context().render_system->getTextureManager();
+            auto* texture_manager = Application::Self().context().getRenderSystem()->getTextureManager();
             if (!texture_manager) {
                 return;
             }

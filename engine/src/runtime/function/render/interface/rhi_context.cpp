@@ -53,7 +53,7 @@ namespace dodoe {
 
         window_handle_ = create_info.window_handle;
 
-        vulkan_backend_ = VulkanBackend::Create({create_info.window_handle, create_info.enable_validation});
+        vulkan_backend_ = VulkanBackend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation});
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(vulkan_backend_->getInstance()));

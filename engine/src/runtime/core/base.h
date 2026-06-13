@@ -52,7 +52,9 @@ namespace dodoe {
     using UInt = unsigned int;
     using Float = float;
     using Byte = char;
+    using Char = char;
     using UByte = unsigned char;
+    using UChar = unsigned char;
     using Bool = bool;
     using Size_t = size_t;
 

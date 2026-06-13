@@ -14,6 +14,7 @@ add_subdirectory(src/runtime)
 if(DODOE_EDITOR)
 	add_subdirectory(src/editor)
 endif()
+add_subdirectory(src/sandbox)
 add_subdirectory(src/metaparser)
 add_subdirectory(src/scriptcore)
 

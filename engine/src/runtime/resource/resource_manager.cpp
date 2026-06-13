@@ -1,9 +1,8 @@
-//
-// Created by GreenMuffin on 2025/10/28.
-//
+// do@Redlive
 
 #include "resource_manager.h"
 
+#include "runtime/core/project/project.h"
 #include "runtime/resource/file/file_system.h"
 
 namespace dodoe {
@@ -13,7 +12,7 @@ namespace dodoe {
         return instance;
     }
 
-    void ResourceManager::initialize() {
+    void ResourceManager::initialize(const ResourceManagerInitInfo& info) {
         m_assetManager = AssetManager::Create({});
     }
 

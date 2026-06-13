@@ -9,7 +9,7 @@
 #include "entt/entt.hpp"
 
 namespace dodoe {
-    class EventSystem {
+    class DODOE_API EventSystem {
     public:
         static void Initialize();
         static void Shutdown();

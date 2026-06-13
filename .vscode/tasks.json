@@ -2,14 +2,12 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build Cakery (Debug)",
+      "label": "Build Cakery",
       "type": "shell",
       "command": "cmake",
       "args": [
         "--build",
         "build",
-        "--config",
-        "Debug",
         "--target",
         "Cakery"
       ],
@@ -19,25 +17,6 @@
       "group": {
         "kind": "build",
         "isDefault": true
-      },
-      "problemMatcher": [
-        "$msCompile"
-      ]
-    },
-    {
-      "label": "Build Cakery (Release)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "--build",
-        "build",
-        "--config",
-        "Release",
-        "--target",
-        "Cakery"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [
         "$msCompile"

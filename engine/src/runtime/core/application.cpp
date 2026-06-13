@@ -4,6 +4,7 @@
 
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/event/event_system.h"
+#include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/thread/task_scheduler.h"
 
 namespace dodoe {
@@ -35,11 +36,11 @@ namespace dodoe {
 
         EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);
 
-#ifndef DODOE_EDITOR
-        m_context->startRuntime();
-#endif//DODOE_EDITOR
+        m_context->initializeModules();
 
-        m_context->layer_stack.attach();
+        m_context->startRuntime();
+
+        m_context->getLayerStack().attach();
 
         while (m_running) {
             EventSystem::Poll();
@@ -49,11 +50,11 @@ namespace dodoe {
             EventSystem::Handle();
         }
 
-        m_context->layer_stack.detach();
+        m_context->getLayerStack().detach();
 
-#ifndef DODOE_EDITOR
-        m_context->finalizeRuntime();
-#endif//DODOE_EDITOR
+        m_context->stopRuntime();
+
+        m_context->finalizeModules();
 
         EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
     }

@@ -26,40 +26,55 @@ namespace dodoe {
 
         Scope<RenderThread> m_render_thread{nullptr};
 
+        SystemContextCreateInfo m_init_info{};
+
+        Scope<WindowManager> m_window_manager {nullptr};
+        Scope<PhysicsSystem> m_physics_system {nullptr};
+        Scope<RenderSystem>  m_render_system  {nullptr};
+        Scope<InputManager>  m_input_manager  {nullptr};
+        Scope<ScriptSystem>  m_script_system  {nullptr};
+        Scope<TimeSystem>    m_time_system    {nullptr};
+        Scope<UISystem>      m_ui_system      {nullptr};
+        Scope<World>         m_world          {nullptr};
+        LayerStack m_layer_stack{};
     public:
         ~SystemContext();
 
-        Scope<WindowManager> window_manager {nullptr};
-        Scope<PhysicsSystem> physics_system {nullptr};
-        Scope<RenderSystem>  render_system  {nullptr};
-        Scope<InputManager>  input_manager  {nullptr};
-        Scope<ScriptSystem>  script_system  {nullptr};
-        Scope<TimeSystem>    time_system    {nullptr};
-        Scope<UISystem>      ui_system      {nullptr};
-        Scope<World>         world          {nullptr};
-        LayerStack layer_stack{};
-        Bool m_runtime_started{false};
+        [[nodiscard]] WindowManager* getWindowManager() const { return m_window_manager.get(); }
+        [[nodiscard]] RenderSystem*  getRenderSystem()  const { return m_render_system.get(); }
+        [[nodiscard]] PhysicsSystem* getPhysicsSystem() const { return m_physics_system.get(); }
+        [[nodiscard]] InputManager*  getInputManager()  const { return m_input_manager.get(); }
+        [[nodiscard]] ScriptSystem*  getScriptSystem()  const { return m_script_system.get(); }
+        [[nodiscard]] TimeSystem*    getTimeSystem()    const { return m_time_system.get(); }
+        [[nodiscard]] World*         getWorld()         const { return m_world.get(); }
+        [[nodiscard]] LayerStack& getLayerStack() { return m_layer_stack; }
+        [[nodiscard]] const LayerStack& getLayerStack() const { return m_layer_stack; }
 
-        [[nodiscard]] WindowManager* getWindowManager() const { return window_manager.get(); }
-        [[nodiscard]] RenderSystem*  getRenderSystem() const { return render_system.get(); }
-        [[nodiscard]] InputManager*  getInputManager() const { return input_manager.get(); }
-        [[nodiscard]] const LayerStack& getLayerStack() const { return layer_stack; }
-
+        Bool preInit();
+        Bool initializeModules();
         void startRuntime();
+
+        void finalizeModules();
+        void stopRuntime();
+
         void tickOneFrame();
-        void finalizeRuntime();
 
     private:
         [[nodiscard]] bool initialize(SystemContextCreateInfo create_info);
         void shutdown();
-
-        [[nodiscard]] bool initializeSystems(SystemContextCreateInfo create_info);
-        [[nodiscard]] bool shutdownSystems();
 
         void updateTick(float dt);
         void renderTick();
 
         void tickRenderingTask();
     };
+
+    inline RenderSystem*  GetRenderSystem()  { return Application::Self().context().getRenderSystem(); }
+    inline WindowManager* GetWindowManager() { return Application::Self().context().getWindowManager(); }
+    inline TimeSystem*    GetTimeSystem()    { return Application::Self().context().getTimeSystem(); }
+    inline World*         GetWorld()         { return Application::Self().context().getWorld(); }
+    inline ScriptSystem*  GetScriptSystem()  { return Application::Self().context().getScriptSystem(); }
+    inline PhysicsSystem* GetPhysicsSystem() { return Application::Self().context().getPhysicsSystem(); }
+    inline InputManager*  GetInputManager()  { return Application::Self().context().getInputManager(); }
 
 } // dodoe

@@ -17,9 +17,17 @@ namespace dodoe {
         Scope<py::scoped_interpreter> guard;
 
         Bool Initialize() {
-            guard = create_scope<py::scoped_interpreter>();
-            py::module_::import("dodoe");
-            return true;
+            try {
+                guard = create_scope<py::scoped_interpreter>();
+                py::module_::import("dodoe");
+                return true;
+            } catch (const std::exception& e) {
+                DO_ERROR("ToolInterpreter failed to initialize Python: {}", e.what());
+                return false;
+            } catch (...) {
+                DO_ERROR("ToolInterpreter failed to initialize Python (unknown error)");
+                return false;
+            }
         }
 
         void Shutdown() {
@@ -81,10 +89,15 @@ namespace dodoe {
 
         m_script_runtime->reloadAssemblyClasses();
 
-        m_tool_interp = new ToolInterpreter();
-        m_tool_interp->Initialize();
+        // TODO: 暂时禁用 Python
+        // m_tool_interp = new ToolInterpreter();
+        // if (!m_tool_interp->Initialize()) {
+        //     delete m_tool_interp;
+        //     m_tool_interp = nullptr;
+        //     LOG_WARN("Python scripting unavailable — engine will run without it");
+        // }
 
-        return m_tool_interp != nullptr;
+        return true;
     }
 
     void ScriptSystem::shutdown() {

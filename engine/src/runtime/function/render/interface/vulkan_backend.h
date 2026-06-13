@@ -12,8 +12,9 @@
 namespace dodoe {
 
 	struct VulkanBackendCreateInfo {
-        GLFWwindow* window_handle;
-		bool enable_validation{true};
+        GLFWwindow* window_handle{nullptr};
+        void*       host_handle{nullptr};
+		bool        enable_validation{true};
 	};
 
 	class VulkanBackend : public Managed<VulkanBackend, VulkanBackendCreateInfo> {
@@ -50,6 +51,7 @@ namespace dodoe {
 		VkDebugUtilsMessengerEXT debug_messenger_;
 		QueueFamilyIndices queue_family_indices_;
 		bool enable_validation_layers_{false};
+		void* host_handle_{nullptr};
 
 		const std::vector<const char*> validation_layers_{"VK_LAYER_KHRONOS_validation"};
 		std::vector<const char*> instance_extensions_{};
@@ -61,6 +63,7 @@ namespace dodoe {
 		[[nodiscard]] VkDevice getDevice() { return device_; }
 		[[nodiscard]] VkQueue getGraphicsQueue() { return graphics_queue_; }
 		[[nodiscard]] VkQueue getComputeQueue() { return compute_queue_; }
+		[[nodiscard]] VkCommandPool getCommandPool() { return command_pool_; }
 		[[nodiscard]] uint32_t getGraphicsQueueIndex() { return queue_family_indices_.graphics_family.value(); }
 		[[nodiscard]] int getComputeQueueIndex() const { return queue_family_indices_.compute_family.has_value() ? static_cast<int>(queue_family_indices_.compute_family.value()) : -1; }
 		[[nodiscard]] int getPresentQueueIndex() const { return queue_family_indices_.present_family.has_value() ? static_cast<int>(queue_family_indices_.present_family.value()) : -1; }
@@ -82,7 +85,7 @@ namespace dodoe {
 		void createInstance(const char** extension, int extension_count);
 		void pickPhysicalDevice();
 		void createLogicalDevice();
-		void createSurface(GLFWwindow* window_handle);
+		void createSurface(GLFWwindow* window_handle, void* host_handle);
 		void createSwapchain(GLFWwindow* window_handle);
 		void createSwapchainImageViews();
 		void createCommandPool();

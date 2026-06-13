@@ -8,6 +8,10 @@
 
 namespace dodoe {
 
+    struct ResourceManagerInitInfo {
+        std::filesystem::path project_path;
+    };
+
     class ResourceManager {
     public:
         static ResourceManager& Self();
@@ -17,7 +21,7 @@ namespace dodoe {
         ResourceManager(ResourceManager&&) = delete;
         ResourceManager& operator=(ResourceManager&&) = delete;
 
-        void initialize();
+        void initialize(const ResourceManagerInitInfo& info);
         void shutdown();
 
         [[nodiscard]] AssetManager* getAssetManager() const { return m_assetManager.get(); }

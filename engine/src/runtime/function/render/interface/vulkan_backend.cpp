@@ -16,10 +16,11 @@ namespace dodoe {
 
 	bool VulkanBackend::initialize(const VulkanBackendCreateInfo& info) {
 		enable_validation_layers_ = info.enable_validation && checkValidationLayerSupport();
+		host_handle_ = info.host_handle;
         instance_extensions_ = getRequiredExtensions();
 		createInstance(instance_extensions_.data(), static_cast<int>(instance_extensions_.size()));
 		if (enable_validation_layers_) { initializeDebugMessenger(); }
-		createSurface(info.window_handle);
+		createSurface(info.window_handle, info.host_handle);
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createSwapchain(info.window_handle);
@@ -133,11 +134,26 @@ namespace dodoe {
 		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createInstance failed with VkResult={}", static_cast<int>(result));
 	}
 
-	void VulkanBackend::createSurface(GLFWwindow* window_handle) {
-		VkResult result = glfwCreateWindowSurface(m_instance, window_handle, nullptr, &surface_);
-		DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createSurface failed with VkResult={}", static_cast<int>(result));
-	}
+	void VulkanBackend::createSurface(GLFWwindow* window_handle, void* host_handle) {
+		if (host_handle != nullptr) {
+#if defined(DO_PLATFORM_WINDOWS)
+			VkWin32SurfaceCreateInfoKHR surfaceInfo{};
+			surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+			surfaceInfo.hwnd = static_cast<HWND>(host_handle);
+			surfaceInfo.hinstance = GetModuleHandle(nullptr);
+			VkResult result = vkCreateWin32SurfaceKHR(m_instance, &surfaceInfo, nullptr, &surface_);
+			DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createSurface(host) failed");
+#else
+			DO_ASSERT(false, "createSurface: host unsupported platform");
+#endif
+		} else if (window_handle != nullptr) {
+			VkResult result = glfwCreateWindowSurface(m_instance, window_handle, nullptr, &surface_);
+			DO_ASSERT(result == VK_SUCCESS, "VulkanBackend::createSurface GLFW failed");
+		} else {
+			DO_ASSERT(false, "createSurface: no handle");
+		}
 
+	}
 	void VulkanBackend::pickPhysicalDevice() {
 		uint32_t gpu_count;
 		vkEnumeratePhysicalDevices(m_instance, &gpu_count, nullptr);
@@ -291,7 +307,14 @@ namespace dodoe {
 			}
 			else {
 				int width, height;
-				glfwGetFramebufferSize(window_handle, &width, &height);
+				if (host_handle_ != nullptr) {
+					RECT rect;
+					GetClientRect(static_cast<HWND>(host_handle_), &rect);
+					width = rect.right - rect.left;
+					height = rect.bottom - rect.top;
+				} else {
+					glfwGetFramebufferSize(window_handle, &width, &height);
+				}
 				VkExtent2D actual_extent{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 				actual_extent.width = std::clamp(actual_extent.width, swapchain_details.capabilities.minImageExtent.width, swapchain_details.capabilities.maxImageExtent.width); 
 				actual_extent.height = std::clamp(actual_extent.height, swapchain_details.capabilities.minImageExtent.height, swapchain_details.capabilities.maxImageExtent.height);
@@ -432,7 +455,14 @@ namespace dodoe {
 	bool VulkanBackend::recreateSwapchain(GLFWwindow* window_handle) {
 		// Skip swapchain recreation when window is minimized (framebuffer size is zero)
 		int fb_width = 0, fb_height = 0;
-		glfwGetFramebufferSize(window_handle, &fb_width, &fb_height);
+		if (host_handle_ != nullptr) {
+			RECT rect;
+			GetClientRect(static_cast<HWND>(host_handle_), &rect);
+			fb_width = rect.right - rect.left;
+			fb_height = rect.bottom - rect.top;
+		} else {
+			glfwGetFramebufferSize(window_handle, &fb_width, &fb_height);
+		}
 		if (fb_width == 0 || fb_height == 0) {
 			return false;
 		}

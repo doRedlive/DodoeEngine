@@ -27,7 +27,7 @@ namespace dodoe {
 
             auto view = reg.view<SpriteRendererComponent, TransformComponent>();
             view.use<SpriteRendererComponent>();
-            auto* texture_manager = Application::Self().context().render_system->getTextureManager();
+            auto* texture_manager = Application::Self().context().getRenderSystem()->getTextureManager();
             if (!texture_manager) {
                 return;
             }

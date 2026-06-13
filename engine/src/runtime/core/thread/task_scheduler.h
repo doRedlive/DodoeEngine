@@ -10,7 +10,7 @@
 
 namespace dodoe {
 
-    class TaskScheduler {
+    class DODOE_API TaskScheduler {
         DynamicArray<std::thread> m_threads{};
         std::queue<std::function<void()>> m_tasks{};
         std::mutex m_queue_mutex{};

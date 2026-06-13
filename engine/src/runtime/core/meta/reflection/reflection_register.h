@@ -7,8 +7,8 @@
 namespace dodoe {
     class TypeMetaRegister {
     public:
-        static void meta_register();
-        static void meta_unregister();
+        static void MetaRegister();
+        static void MetaUnregister();
     };
 
 } // dodoe

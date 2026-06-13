@@ -21,7 +21,7 @@ namespace dodoe {
         ViewportManagerCreateInfo(Window* in_window_handle) : window_handle(in_window_handle) { }
     };
 
-    class ViewportManager : public Managed<ViewportManager, ViewportManagerCreateInfo> {
+    class DODOE_API ViewportManager : public Managed<ViewportManager, ViewportManagerCreateInfo> {
         friend class Managed<ViewportManager, ViewportManagerCreateInfo>;
         struct LetterboxMetrics {
             Rect viewport{};

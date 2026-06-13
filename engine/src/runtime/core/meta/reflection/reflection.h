@@ -80,7 +80,7 @@ namespace dodoe {
             static void register2methodmap(const char* name, MethodFuncTuple* value);
         };
 
-        class TypeMeta {
+        class DODOE_API TypeMeta {
             friend class FieldAccessor;
             friend class ArrayAccessor;
             friend class TypeMetaRegisterInterface;
@@ -114,7 +114,7 @@ namespace dodoe {
             explicit TypeMeta(const std::string& type_name);
         };
 
-        class FieldAccessor {
+        class DODOE_API FieldAccessor {
             friend class TypeMeta;
 
         public:
@@ -137,7 +137,7 @@ namespace dodoe {
             explicit FieldAccessor(FieldFuncTuple* functions);
         };
 
-        class MethodAccessor {
+        class DODOE_API MethodAccessor {
             friend class TypeMeta;
 
         public:
@@ -154,7 +154,7 @@ namespace dodoe {
             explicit MethodAccessor(MethodFuncTuple* functions);
         };
 
-        class ArrayAccessor {
+        class DODOE_API ArrayAccessor {
             friend class TypeMeta;
 
         public:

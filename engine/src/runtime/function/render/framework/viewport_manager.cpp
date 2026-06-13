@@ -28,8 +28,8 @@ namespace dodoe {
     }
 
     void ViewportManager::update() {
-        const Vector2i new_window_size(m_window->width(), m_window->height());
-        const Vector2i new_pixel_size = m_window->pixelSize();
+        const Vector2i new_window_size(m_window->getWidth(), m_window->getHeight());
+        const Vector2i new_pixel_size = m_window->getPixelSize();
 
         if (new_window_size.x != m_window_size.x || new_window_size.y != m_window_size.y) {
             setWindowSize(new_window_size);

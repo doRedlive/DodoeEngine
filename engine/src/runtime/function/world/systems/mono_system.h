@@ -30,7 +30,7 @@ namespace dodoe {
         }
     private:
         ScriptRuntime* getMonoRuntime() {
-            return Application::Self().context().script_system->getMonoRuntime();
+            return Application::Self().context().getScriptSystem()->getMonoRuntime();
         }
     };
 

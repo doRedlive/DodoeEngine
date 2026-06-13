@@ -19,4 +19,3 @@ set(BINARY_ROOT_DIR "${CMAKE_INSTALL_PREFIX}")
 add_compile_definitions(DODOE_ROOT="${DODOE_ROOT_DIR}")
 
 add_subdirectory(engine)
-

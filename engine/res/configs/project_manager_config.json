@@ -2,21 +2,10 @@
   "Version": 1,
   "Projects": [
     {
-      "Name": "NewProject",
-      "ProjectFile": "C:\\Users\\33235\\Documents\\DodoeProjects\\NewProject\\NewProject.doproj",
-      "Pinned": false,
-      "LastOpenedUnix": 1780669954,
-      "LastModifiedUnix": 1780669940,
-      "IconPath": null,
-      "Tags": [],
-      "Description": null,
-      "EngineVersion": null
-    },
-    {
       "Name": "OnlyOne",
       "ProjectFile": "C:\\Users\\33235\\Redlive\\dodoe\\tests\\Projects\\OnlyOne\\OnlyOne.doproj",
       "Pinned": false,
-      "LastOpenedUnix": 0,
+      "LastOpenedUnix": 1780721332,
       "LastModifiedUnix": 1778380482,
       "IconPath": null,
       "Tags": [],
@@ -27,12 +16,23 @@
       "Name": "test",
       "ProjectFile": "C:\\Users\\33235\\Redlive\\dodoe\\tests\\Projects\\Test\\test\\test.doproj",
       "Pinned": false,
-      "LastOpenedUnix": 0,
+      "LastOpenedUnix": 1780712956,
       "LastModifiedUnix": 1778399606,
       "IconPath": null,
       "Tags": [],
       "Description": null,
       "EngineVersion": null
+    },
+    {
+      "Name": "NewProject",
+      "ProjectFile": "C:\\Users\\33235\\Documents\\DodoeProjects\\NewProject\\NewProject.doproj",
+      "Pinned": false,
+      "LastOpenedUnix": 1780747854,
+      "LastModifiedUnix": 1780721412,
+      "IconPath": null,
+      "Tags": [],
+      "Description": null,
+      "EngineVersion": "1.0"
     }
   ],
   "LastOpened": "C:\\Users\\33235\\Documents\\DodoeProjects\\NewProject\\NewProject.doproj",

@@ -19,12 +19,7 @@ file(GLOB_RECURSE HEADER_FILES
 
 set(DODOE_ALL_SOURCES ${SOURCE_FILES} ${HEADER_FILES})
 
-if(DODOE_EDITOR)
-    list(APPEND DODOE_ALL_SOURCES
-        ${ENGINE_ROOT_DIR}/src/editor/bindings/native_api/dodoe_api.cpp
-        ${ENGINE_ROOT_DIR}/src/editor/bindings/dodoe_wrap.cxx
-    )
-endif()
+# bindings/ directory removed — editor links directly to runtime API
 
 set(_DODOE_RUNTIME_HEADS "")
 foreach(_header_file IN LISTS HEADER_FILES)
@@ -61,10 +56,6 @@ target_include_directories(${TARGET_NAME}
 )
 
 if(DODOE_EDITOR)
-    target_include_directories(${TARGET_NAME} PRIVATE
-        ${ENGINE_ROOT_DIR}/src/editor/bindings
-        ${ENGINE_ROOT_DIR}/src/editor
-    )
     target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_EDITOR)
 endif()
 target_precompile_headers(${TARGET_NAME} PUBLIC dopch.h)
@@ -100,14 +91,35 @@ target_compile_definitions(${TARGET_NAME}
         PUBLIC NOMINMAX
         PUBLIC WIN32_LEAN_AND_MEAN
         PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
+        PUBLIC $<$<CONFIG:Debug>:ENTT_DISABLE_ASSERT>
         PRIVATE $<$<CONFIG:Debug>:DO_DEBUG>
 )
 
 if(DODOE_EDITOR)
+    add_dependencies(${TARGET_NAME} DodoeMonoRuntimeFiles DodoePythonRuntimeFiles)
+
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:${TARGET_NAME}>
             "${BINARY_ROOT_DIR}/"
         COMMENT "Copy DodoeRuntime.dll -> ${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ENGINE_ROOT_DIR}/external/python/python313_d.dll"
+            "${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ENGINE_ROOT_DIR}/external/python/python3_d.dll"
+            "${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ENGINE_ROOT_DIR}/external/python/python313.dll"
+            "${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ENGINE_ROOT_DIR}/external/python/python3.dll"
+            "${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ENGINE_ROOT_DIR}/external/mono/bin/coreclr.dll"
+            "${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ENGINE_ROOT_DIR}/external/mono/bin/System.Private.CoreLib.dll"
+            "${BINARY_ROOT_DIR}/"
     )
 endif()

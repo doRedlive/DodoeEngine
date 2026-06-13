@@ -28,7 +28,7 @@ namespace dodoe {
             camera_type(type), logical_size(logical_size), window_size(window_size) { }
     };
 
-    class Camera : public Managed<Camera, CameraCreateInfo> {
+    class DODOE_API Camera : public Managed<Camera, CameraCreateInfo> {
         friend class Managed<Camera, CameraCreateInfo>;
         CameraType m_camera_type{CameraType::Orthographic};
 

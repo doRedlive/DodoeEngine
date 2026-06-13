@@ -108,8 +108,7 @@ namespace dodoe {
         }
 
         static Scene* GetCurrentScene() {
-            auto& app = Application::Self();
-            Scene* scene = app.context().world->getCurrentScene();
+            Scene* scene = GetWorld()->getCurrentScene();
             DO_ASSERT(scene);
             return scene;
         }
@@ -122,8 +121,8 @@ namespace dodoe {
                 }
             }
 
-            if (auto& app = Application::Self(); app.context().script_system) {
-                if (auto* runtime = app.context().script_system->getMonoRuntime()) {
+            if (GetScriptSystem()) {
+                if (auto* runtime = GetScriptSystem()->getMonoRuntime()) {
                     runtime->removeEntityFromManagedWorld(entity_uuid);
                 }
             }
@@ -661,8 +660,7 @@ namespace dodoe {
         }
 
         static float Native_TimeGetDeltaTime() {
-            auto& app = Application::Self();
-            auto* time_system = app.context().time_system.get();
+            auto* time_system = GetTimeSystem();
             if (!time_system) {
                 return 0.0f;
             }
@@ -704,8 +702,8 @@ namespace dodoe {
             }
 
             scene->destroyEntity(entity);
-            if (auto& app = Application::Self(); app.context().script_system) {
-                if (auto* runtime = app.context().script_system->getMonoRuntime()) {
+            if (GetScriptSystem()) {
+                if (auto* runtime = GetScriptSystem()->getMonoRuntime()) {
                     runtime->removeEntityFromManagedWorld(entity_uuid);
                 }
             }

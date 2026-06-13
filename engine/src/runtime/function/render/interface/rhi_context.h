@@ -17,6 +17,7 @@ namespace dodoe {
         GLFWwindow* window_handle{nullptr};
         RenderBackendApiType api_type{};
         bool enable_validation{true};
+        void* host_handle{nullptr};
     };
 
     class RhiContext {

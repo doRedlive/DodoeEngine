@@ -10,11 +10,11 @@
 
 namespace dodoe {
 
-    void TypeMetaRegister::meta_register() {
+    void TypeMetaRegister::MetaRegister() {
         TypeFieldReflectionOperator::RegisterAllReflection();
     }
 
-    void TypeMetaRegister::meta_unregister() {
+    void TypeMetaRegister::MetaUnregister() {
         TypeMetaRegisterInterface::unregister_all();
     }
 

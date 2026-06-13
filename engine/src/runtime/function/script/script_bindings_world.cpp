@@ -38,7 +38,7 @@ namespace dodoe::script_bindings {
             .def("load_scene", &World::loadScene);
 
         m.def("get_world", []() -> World* {
-            return Application::Self().context().world.get();
+            return dodoe::GetWorld();
         }, py::return_value_policy::reference);
     }
 

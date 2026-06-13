@@ -24,7 +24,7 @@ namespace dodoe {
         Pause,
     };
 
-    class World : public Managed<World, WorldCreateInfo> {
+    class DODOE_API World : public Managed<World, WorldCreateInfo> {
         friend class Managed<World, WorldCreateInfo>;
         friend class WorldManager;
         friend class Scene;

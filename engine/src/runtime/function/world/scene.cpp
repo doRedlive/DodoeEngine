@@ -25,11 +25,10 @@ namespace dodoe {
     namespace {
 
         ScriptRuntime* GetScriptRuntime() {
-            auto& app = Application::Self();
-            if (!app.context().script_system) {
+            if (!GetScriptSystem()) {
                 return nullptr;
             }
-            return app.context().script_system->getMonoRuntime();
+            return GetScriptSystem()->getMonoRuntime();
         }
 
         std::string GetMonoComponentFullName(const ScriptClass& script_class) {

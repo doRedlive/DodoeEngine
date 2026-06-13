@@ -1,11 +1,11 @@
-//
-// Created by GreenMuffin on 2025/11/08.
-//
-#ifndef DODOE_INPUT_MANAGER_H
-#define DODOE_INPUT_MANAGER_H
+// do@Redlive
+
+#pragma once
+
 #include "dopch.h"
 
 #include "runtime/core/event/event.h"
+#include "runtime/core/memory/managed.h"
 #include "runtime/function/input/key_code.h"
 #include "runtime/function/input/mouse_code.h"
 
@@ -35,14 +35,17 @@ namespace dodoe {
         ViewportManager* viewport_manager;
     };
 
-    class InputManager {
+    class InputManager : public Managed<InputManager, InputManagerInitInfo> {
         friend class Input;
+        friend class Managed<InputManager, InputManagerInitInfo>;
+
     public:
-        void initialize(const InputManagerInitInfo& init_info);
-        void shutdown();
         void update();
 
     private:
+        [[nodiscard]] bool initialize(const InputManagerInitInfo& init_info);
+        void shutdown();
+
         std::unordered_map<KeyCode, KeyInfo> key_map_{};
         MouseInfo mouse_info_{};
 
@@ -57,5 +60,4 @@ namespace dodoe {
         Vector2f window2world(const Vector2f& window_pos) const;
     };
 
-}
-#endif // DODOE_INPUT_MANAGER_H
+} // dodoe

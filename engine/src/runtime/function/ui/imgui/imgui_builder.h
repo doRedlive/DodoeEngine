@@ -13,6 +13,9 @@ namespace dodoe {
         static void SetupImGui(GLFWwindow* window);
         static void PrepareImGui();
         static void CleanupImGui();
+
+    private:
+        static inline bool s_glfwBackendInit = false;
     };
 
 } // dodoe
