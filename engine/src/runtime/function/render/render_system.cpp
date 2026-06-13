@@ -5,27 +5,45 @@
 
 #include "render_system.h"
 
-#include "render_resource.h"
 #include "render_settings.h"
+#include "runtime/resource/parser/texture_blob.h"
+#include "runtime/resource/file/file_system.h"
 
-#include "passes/color_grading_pass.h"
-#include "passes/combine_pass.h"
-#include "passes/deferred_light_pass.h"
-#include "passes/directional_light_shadow_pass.h"
-#include "passes/fxaa_pass.h"
-#include "passes/main_camera_pass.h"
-#include "passes/point_light_shadow_pass.h"
-#include "passes/skybox_pass.h"
-#include "passes/sprite_pass.h"
-#include "passes/tone_mapping_pass.h"
-#ifdef DODOE_EDITOR
-#include "passes/imgui_pass.h"
-#include "passes/pick_pass.h"
-#endif
+namespace {
+    std::vector<float> rotateFace90Clockwise(const float* src, const int width, const int height) {
+        std::vector<float> dst(static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                const int src_x = y;
+                const int src_y = height - 1 - x;
+                const size_t src_index = (static_cast<size_t>(src_y) * static_cast<size_t>(width) + static_cast<size_t>(src_x)) * 4u;
+                const size_t dst_index = (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)) * 4u;
+                dst[dst_index + 0] = src[src_index + 0];
+                dst[dst_index + 1] = src[src_index + 1];
+                dst[dst_index + 2] = src[src_index + 2];
+                dst[dst_index + 3] = src[src_index + 3];
+            }
+        }
+        return dst;
+    }
 
-#include "framework/texture_manager.h"
-
-#include "runtime/core/utils/util.h"
+    std::vector<float> rotateFace90CounterClockwise(const float* src, const int width, const int height) {
+        std::vector<float> dst(static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                const int src_x = width - 1 - y;
+                const int src_y = x;
+                const size_t src_index = (static_cast<size_t>(src_y) * static_cast<size_t>(width) + static_cast<size_t>(src_x)) * 4u;
+                const size_t dst_index = (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)) * 4u;
+                dst[dst_index + 0] = src[src_index + 0];
+                dst[dst_index + 1] = src[src_index + 1];
+                dst[dst_index + 2] = src[src_index + 2];
+                dst[dst_index + 3] = src[src_index + 3];
+            }
+        }
+        return dst;
+    }
+}
 
 namespace dodoe {
 
@@ -42,54 +60,56 @@ namespace dodoe {
 #else
             false;
 #endif
-        m_rhi = RhiContext::Create({window->getNativeWindow(), backend_api, enable_validation});
+        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation});
         const auto camera_type = RenderSettings::GetRenderingPipelineType() == RenderingPipelineType::Only2D
             ? CameraType::Orthographic : CameraType::Perspective;
         m_camera = Camera::Create({camera_type, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
-        m_descriptor_table = DescriptorTableManager::Create({m_rhi.get()});
-        m_texture_manager = TextureManager::Create({m_rhi.get(), m_descriptor_table.get()});
+        m_descriptor_table = DescriptorTableManager::Create({m_gfx.get()});
+        m_texture_manager = TextureManager::Create({m_gfx.get(), m_descriptor_table.get()});
 
-        g_RenderResource->initilize(m_rhi->getDevice());
+        m_renderer = Renderer::Create({m_gfx->getDevice(), m_camera.get(), m_texture_manager.get()});
+        if (!m_renderer) {
+            return false;
+        }
+        createSkyboxTextureInternal();
+        m_rendering_pipeline = RenderingPipeline::Create({
+            std::thread::hardware_concurrency(),
+            m_gfx.get(),
+            m_descriptor_table.get(),
+            m_texture_manager.get()
+        });
 
-        m_render_graph = RenderGraph::Create({m_rhi.get(), m_camera.get(), m_descriptor_table.get()});
-
-        buildRenderGraph();
-        m_render_graph->compile();
-
-        return m_camera && m_descriptor_table && m_texture_manager && m_render_graph;
+        return m_camera && m_descriptor_table && m_texture_manager && m_rendering_pipeline && m_renderer;
     }
 
     void RenderSystem::shutdown() {
-        if (m_rhi && m_rhi->getDevice()) {
-            m_rhi->getDevice()->waitForIdle();
+        if (m_gfx && m_gfx->getDevice()) {
+            m_gfx->getDevice()->waitForIdle();
         }
 
-        RenderGraph::Destroy(m_render_graph);
-        MeshPassProcessor::Cleanup();
+        RenderingPipeline::Destroy(m_rendering_pipeline);
+        Renderer::Destroy(m_renderer);
         Camera::Destroy(m_camera);
-        g_RenderResource->shutdown();
         TextureManager::Destroy(m_texture_manager);
         DescriptorTableManager::Destroy(m_descriptor_table);
-        if (m_rhi && m_rhi->getDevice()) {
-            m_rhi->getDevice()->waitForIdle();
-            m_rhi->getDevice()->runGarbageCollection();
+        if (m_gfx && m_gfx->getDevice()) {
+            m_gfx->getDevice()->waitForIdle();
+            m_gfx->getDevice()->runGarbageCollection();
         }
-        RhiContext::Destroy(m_rhi);
+        GfxContext::Destroy(m_gfx);
     }
 
     void RenderSystem::prepare() {
         m_viewport_manager->update();
         if (m_viewport_manager->isViewportDirty()) [[unlikely]] {
             m_camera->setViewportSize(m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize());
-            m_render_graph->onViewportResize(m_viewport_manager->viewport());
         }
         if (m_viewport_manager->isWindowDirty()) [[unlikely]] {
-            if (!m_rhi->recreateSwapchain()) {
+            if (!m_gfx->recreateSwapchain()) {
                 return;
             }
-            m_rhi->getDevice()->runGarbageCollection();
+            m_gfx->getDevice()->runGarbageCollection();
             m_camera->setViewportSize(m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize());
-            m_render_graph->onWindowResize(m_viewport_manager->getPixelSize());
         }
         m_viewport_manager->clearDirtyFlags();
 
@@ -98,260 +118,124 @@ namespace dodoe {
 
     void RenderSystem::present() {
         uint32_t image_index = 0;
-        if (!m_rhi->acquireNextSwapchainImage(image_index)) {
+        if (!m_gfx->acquireNextSwapchainImage(image_index)) {
             return;
         }
 
-        m_render_graph->execute(image_index);
+        if (!m_rendering_pipeline) {
+            return;
+        }
 
-        if (m_rhi->presentSwapchainImage(image_index)) {
-            m_rhi->getDevice()->runGarbageCollection();
+        auto upload_command_list = m_gfx->getDevice()->createCommandList();
+        upload_command_list->open();
+        m_renderer->prepareBuffers(upload_command_list);
+        upload_command_list->close();
+        m_gfx->getDevice()->executeCommandList(upload_command_list);
+
+        RenderViewFamily view_family{};
+        RenderView main_view(Identifier{});
+        const auto viewport_size = m_viewport_manager->getPixelSize();
+        main_view.setViewportRect(Vector4i(0, 0, viewport_size.x, viewport_size.y));
+        main_view.setMatrices(m_camera->getViewMatrix(), m_camera->getProjectionMatrix());
+        view_family.addView(main_view);
+
+        auto frame_command_list = m_rendering_pipeline->render(view_family, m_renderer->getRenderScene(), image_index);
+        frame_command_list.execute(m_gfx->getCommandList());
+        m_gfx->getDevice()->executeCommandList(m_gfx->getCommandList());
+
+        if (m_gfx->presentSwapchainImage(image_index)) {
+            m_gfx->getDevice()->runGarbageCollection();
         }
     }
 
     void RenderSystem::swapLogicRenderContext() {
-        g_RenderResource->swapLogicRenderContext();
+        std::scoped_lock lock(m_submit_mutex);
+        if (m_logic_main_camera_dirty_ && m_renderer) {
+            m_renderer->setMainCameraViewProjection(m_logic_main_camera_view_proj_, m_logic_main_camera_position_);
+            m_logic_main_camera_dirty_ = false;
+        }
     }
 
-    void RenderSystem::buildRenderGraph() {
-        if (!m_render_graph) {
+    gfx::TextureHandle RenderSystem::getSkyboxTexture() const {
+        std::scoped_lock lock(m_submit_mutex);
+        return m_renderer ? m_renderer->getSkyboxTexture() : nullptr;
+    }
+
+    void RenderSystem::createSkyboxTextureInternal() {
+        std::scoped_lock lock(m_submit_mutex);
+        if (!m_gfx || !m_gfx->getDevice()) {
+            if (m_renderer) {
+                m_renderer->setSkyboxTexture(nullptr);
+            }
             return;
         }
 
-        auto pipeline = RenderSettings::GetRenderingPipelineType();
+        constexpr ui32 kSkyboxFaceCount = 6;
+        constexpr const char* kSkyboxFacePaths[kSkyboxFaceCount] = {
+            "pictures/Skybox/skybox_specular_Y-.hdr",
+            "pictures/Skybox/skybox_specular_Y+.hdr",
+            "pictures/Skybox/skybox_specular_Z+.hdr",
+            "pictures/Skybox/skybox_specular_Z-.hdr",
+            "pictures/Skybox/skybox_specular_X+.hdr",
+            "pictures/Skybox/skybox_specular_X-.hdr",
+        };
 
-        switch (pipeline) {
-        case RenderingPipelineType::Only2D:
-            buildOnly2DPipeline();
-            break;
-        case RenderingPipelineType::Forward:
-        case RenderingPipelineType::ForwardPlus:
-        case RenderingPipelineType::DeferredPlus:
-            // TODO: implement additional pipeline types
-        case RenderingPipelineType::Deferred:
-        default:
-            buildDeferredPipeline();
-            break;
+        std::array<TextureBlob, kSkyboxFaceCount> faces{};
+        for (ui32 face_index = 0; face_index < kSkyboxFaceCount; ++face_index) {
+            const auto face_path = FileSystem::relative2absolute(kSkyboxFacePaths[face_index]);
+            faces[face_index].load(face_path, false);
+            if (!faces[face_index].isValid() || faces[face_index].width != faces[face_index].height) {
+                if (m_renderer) {
+                    m_renderer->setSkyboxTexture(nullptr);
+                }
+                return;
+            }
         }
-    }
 
-    void RenderSystem::buildDeferredPipeline() {
-        TextureResourceDesc main_camera_color_desc{};
-        main_camera_color_desc.format = rhi::Format::RGBA8_UNORM;
-        main_camera_color_desc.viewport_relative = true;
-        main_camera_color_desc.shader_resource = true;
-        main_camera_color_desc.render_target = true;
-        main_camera_color_desc.debug_name = "MainCameraPass Scene Target";
+        auto texture_desc = gfx::TextureDesc()
+            .setDimension(gfx::TextureDimension::TextureCube)
+            .setWidth(faces[0].width)
+            .setHeight(faces[0].height)
+            .setArraySize(kSkyboxFaceCount)
+            .setMipLevels(1)
+            .setFormat(gfx::Format::RGBA32_FLOAT)
+            .enableAutomaticStateTracking(gfx::ResourceStates::ShaderResource)
+            .setDebugName("RenderSystem Skybox Cubemap");
+        auto skybox_texture = m_gfx->getDevice()->createTexture(texture_desc);
+        if (!skybox_texture) {
+            if (m_renderer) {
+                m_renderer->setSkyboxTexture(nullptr);
+            }
+            return;
+        }
 
-        TextureResourceDesc main_camera_hdr_color_desc{};
-        main_camera_hdr_color_desc.format = rhi::Format::RGBA16_FLOAT;
-        main_camera_hdr_color_desc.viewport_relative = true;
-        main_camera_hdr_color_desc.shader_resource = true;
-        main_camera_hdr_color_desc.render_target = true;
-        main_camera_hdr_color_desc.debug_name = "MainCameraPass HDR Color Target";
-
-        TextureResourceDesc main_camera_tonemapped_color_desc{};
-        main_camera_tonemapped_color_desc.format = rhi::Format::RGBA8_UNORM;
-        main_camera_tonemapped_color_desc.viewport_relative = true;
-        main_camera_tonemapped_color_desc.shader_resource = true;
-        main_camera_tonemapped_color_desc.render_target = true;
-        main_camera_tonemapped_color_desc.debug_name = "MainCameraPass ToneMapped Color Target";
-
-        TextureResourceDesc main_camera_fxaa_color_desc{};
-        main_camera_fxaa_color_desc.format = rhi::Format::RGBA8_UNORM;
-        main_camera_fxaa_color_desc.viewport_relative = true;
-        main_camera_fxaa_color_desc.shader_resource = true;
-        main_camera_fxaa_color_desc.render_target = true;
-        main_camera_fxaa_color_desc.debug_name = "MainCameraPass FXAA Color Target";
-
-        TextureResourceDesc main_camera_albedo_desc{};
-        main_camera_albedo_desc.format = rhi::Format::RGBA8_UNORM;
-        main_camera_albedo_desc.viewport_relative = true;
-        main_camera_albedo_desc.shader_resource = true;
-        main_camera_albedo_desc.render_target = true;
-        main_camera_albedo_desc.debug_name = "MainCameraPass Albedo Target";
-
-        TextureResourceDesc main_camera_normal_desc{};
-        main_camera_normal_desc.format = rhi::Format::RGBA16_FLOAT;
-        main_camera_normal_desc.viewport_relative = true;
-        main_camera_normal_desc.shader_resource = true;
-        main_camera_normal_desc.render_target = true;
-        main_camera_normal_desc.debug_name = "MainCameraPass Normal Target";
-
-        TextureResourceDesc main_camera_position_desc{};
-        main_camera_position_desc.format = rhi::Format::RGBA32_FLOAT;
-        main_camera_position_desc.viewport_relative = true;
-        main_camera_position_desc.shader_resource = true;
-        main_camera_position_desc.render_target = true;
-        main_camera_position_desc.debug_name = "MainCameraPass Position Target";
-
-        TextureResourceDesc main_camera_material_desc{};
-        main_camera_material_desc.format = rhi::Format::RGBA8_UNORM;
-        main_camera_material_desc.viewport_relative = true;
-        main_camera_material_desc.shader_resource = true;
-        main_camera_material_desc.render_target = true;
-        main_camera_material_desc.debug_name = "MainCameraPass Material Target";
-
-        TextureResourceDesc main_camera_depth_desc{};
-        main_camera_depth_desc.format = rhi::Format::D32;
-        main_camera_depth_desc.viewport_relative = true;
-        main_camera_depth_desc.render_target = true;
-        main_camera_depth_desc.depth_stencil = true;
-        main_camera_depth_desc.shader_resource = true;
-        main_camera_depth_desc.debug_name = "MainCameraPass Depth Target";
-
-        TextureResourceDesc directional_shadow_desc{};
-        directional_shadow_desc.format = rhi::Format::D32;
-        directional_shadow_desc.viewport_relative = true;
-        directional_shadow_desc.render_target = true;
-        directional_shadow_desc.depth_stencil = true;
-        directional_shadow_desc.shader_resource = true;
-        directional_shadow_desc.debug_name = "DirectionalLightShadowPass Depth Target";
-
-#ifdef DODOE_EDITOR
-        TextureResourceDesc pick_color_desc{};
-        pick_color_desc.format = rhi::Format::R32_UINT;
-        pick_color_desc.viewport_relative = true;
-        pick_color_desc.shader_resource = true;
-        pick_color_desc.render_target = true;
-        pick_color_desc.debug_name = "PickPass Target";
-
-        TextureResourceDesc pick_depth_desc{};
-        pick_depth_desc.format = rhi::Format::D32;
-        pick_depth_desc.viewport_relative = true;
-        pick_depth_desc.render_target = true;
-        pick_depth_desc.depth_stencil = true;
-        pick_depth_desc.shader_resource = true;
-        pick_depth_desc.debug_name = "PickPass Depth Target";
-
-        TextureResourceDesc imgui_color_desc{};
-        imgui_color_desc.format = rhi::Format::RGBA8_UNORM;
-        imgui_color_desc.backbuffer_relative = true;
-        imgui_color_desc.shader_resource = true;
-        imgui_color_desc.render_target = true;
-        imgui_color_desc.debug_name = "ImGuiPass Color Target";
-#endif
-
-        m_render_graph->addPass("MainCameraPass", create_ref<MainCameraPass>(m_rhi.get(), m_descriptor_table.get()))
-            .addTextureWrite("MainCameraAlbedo", main_camera_albedo_desc)
-            .addTextureWrite("MainCameraNormal", main_camera_normal_desc)
-            .addTextureWrite("MainCameraPosition", main_camera_position_desc)
-            .addTextureWrite("MainCameraMaterial", main_camera_material_desc)
-            .addTextureWrite("MainCameraDepth", main_camera_depth_desc);
-
-#ifdef DODOE_EDITOR
-        m_render_graph->addPass("PickPass", create_ref<PickPass>(m_rhi.get()))
-            .addTextureWrite("PickColor", pick_color_desc)
-            .addTextureWrite("PickDepth", pick_depth_desc);
-#endif
-
-        m_render_graph->addPass("DirectionalLightShadowPass", create_ref<DirectionalLightShadowPass>(m_rhi.get()))
-            .addTextureWrite("ShadowMap", directional_shadow_desc);
-
-        m_render_graph->addPass("PointLightShadowPass", create_ref<PointLightShadowPass>(m_rhi.get()));
-
-        m_render_graph->addPass("SkyboxPass", create_ref<SkyboxPass>(m_rhi.get()))
-            .addTextureRead("MainCameraDepth", main_camera_depth_desc)
-            .addTextureWrite("MainCameraHdrColor", main_camera_hdr_color_desc);
-
-        m_render_graph->addPass("DeferredLightPass", create_ref<DeferredLightPass>(m_rhi.get()))
-            .addTextureRead("MainCameraAlbedo", main_camera_albedo_desc)
-            .addTextureRead("MainCameraNormal", main_camera_normal_desc)
-            .addTextureRead("MainCameraPosition", main_camera_position_desc)
-            .addTextureRead("MainCameraMaterial", main_camera_material_desc)
-            .addTextureRead("ShadowMap", directional_shadow_desc)
-            .addTextureWrite("MainCameraHdrColor", main_camera_hdr_color_desc);
-
-        m_render_graph->addPass("ToneMappingPass", create_ref<ToneMappingPass>(m_rhi.get()))
-            .addTextureRead("MainCameraHdrColor", main_camera_hdr_color_desc)
-            .addTextureWrite("MainCameraToneMappedColor", main_camera_tonemapped_color_desc);
-
-        m_render_graph->addPass("ColorGradingPass", create_ref<ColorGradingPass>(m_rhi.get()))
-            .addTextureRead("MainCameraToneMappedColor", main_camera_tonemapped_color_desc)
-            .addTextureWrite("MainCameraColor", main_camera_color_desc);
-
-        m_render_graph->addPass("SpritePass", create_ref<SpritePass>(m_rhi.get(), m_descriptor_table.get()))
-            .addTextureWrite("MainCameraColor", main_camera_color_desc)
-            .addTextureRead("MainCameraDepth", main_camera_depth_desc);
-
-        m_render_graph->addPass("FXAAPass", create_ref<FXAAPass>(m_rhi.get()))
-            .addTextureRead("MainCameraColor", main_camera_color_desc)
-            .addTextureWrite("MainCameraFxaaColor", main_camera_fxaa_color_desc);
-
-#ifdef DODOE_EDITOR
-        m_render_graph->addPass("ImGuiPass", create_ref<ImGuiPass>(m_rhi.get()))
-            .addTextureWrite("ImGuiColor", imgui_color_desc);
-#endif
-
-        auto& combine_pass = m_render_graph->addPass("CombinePass", create_ref<CombinePass>(m_rhi.get()))
-            .addTextureRead("MainCameraFxaaColor", main_camera_fxaa_color_desc);
-#ifdef DODOE_EDITOR
-        combine_pass.addTextureRead("ImGuiColor", imgui_color_desc);
-#endif
-    }
-
-    void RenderSystem::buildOnly2DPipeline() {
-        TextureResourceDesc main_camera_color_desc{};
-        main_camera_color_desc.format = rhi::Format::RGBA8_UNORM;
-        main_camera_color_desc.viewport_relative = true;
-        main_camera_color_desc.shader_resource = true;
-        main_camera_color_desc.render_target = true;
-        main_camera_color_desc.debug_name = "SpritePass Scene Target";
-
-        TextureResourceDesc main_camera_depth_desc{};
-        main_camera_depth_desc.format = rhi::Format::D32;
-        main_camera_depth_desc.viewport_relative = true;
-        main_camera_depth_desc.render_target = true;
-        main_camera_depth_desc.depth_stencil = true;
-        main_camera_depth_desc.shader_resource = true;
-        main_camera_depth_desc.debug_name = "SpritePass Depth Target";
-
-#ifdef DODOE_EDITOR
-        TextureResourceDesc pick_color_desc{};
-        pick_color_desc.format = rhi::Format::R32_UINT;
-        pick_color_desc.viewport_relative = true;
-        pick_color_desc.shader_resource = true;
-        pick_color_desc.render_target = true;
-        pick_color_desc.debug_name = "PickPass Target";
-
-        TextureResourceDesc pick_depth_desc{};
-        pick_depth_desc.format = rhi::Format::D32;
-        pick_depth_desc.viewport_relative = true;
-        pick_depth_desc.render_target = true;
-        pick_depth_desc.depth_stencil = true;
-        pick_depth_desc.shader_resource = true;
-        pick_depth_desc.debug_name = "PickPass Depth Target";
-
-        TextureResourceDesc imgui_color_desc{};
-        imgui_color_desc.format = rhi::Format::RGBA8_UNORM;
-        imgui_color_desc.backbuffer_relative = true;
-        imgui_color_desc.shader_resource = true;
-        imgui_color_desc.render_target = true;
-        imgui_color_desc.debug_name = "ImGuiPass Color Target";
-#endif
-
-        auto sprite_pass_2d = create_ref<SpritePass>(m_rhi.get(), m_descriptor_table.get());
-        sprite_pass_2d->setClearTargets(true);
-        m_render_graph->addPass("SpritePass", std::move(sprite_pass_2d))
-            .addTextureWrite("MainCameraColor", main_camera_color_desc)
-            .addTextureWrite("MainCameraDepth", main_camera_depth_desc);
-
-#ifdef DODOE_EDITOR
-        m_render_graph->addPass("PickPass", create_ref<PickPass>(m_rhi.get()))
-            .addTextureWrite("PickColor", pick_color_desc)
-            .addTextureWrite("PickDepth", pick_depth_desc);
-#endif
-
-#ifdef DODOE_EDITOR
-        m_render_graph->addPass("ImGuiPass", create_ref<ImGuiPass>(m_rhi.get()))
-            .addTextureWrite("ImGuiColor", imgui_color_desc);
-#endif
-
-        auto& combine_pass = m_render_graph->addPass("CombinePass", create_ref<CombinePass>(m_rhi.get()))
-            .addTextureRead("MainCameraColor", main_camera_color_desc);
-#ifdef DODOE_EDITOR
-        combine_pass.addTextureRead("ImGuiColor", imgui_color_desc);
-#endif
+        auto cmd = m_gfx->getDevice()->createCommandList();
+        cmd->open();
+        std::vector<float> top_face_rotated_pixels{};
+        std::vector<float> bottom_face_rotated_pixels{};
+        for (ui32 face_index = 0; face_index < kSkyboxFaceCount; ++face_index) {
+            const size_t row_pitch = static_cast<size_t>(faces[face_index].width) * 4u * sizeof(float);
+            const void* upload_pixels = faces[face_index].pixels;
+            if (face_index == 2) {
+                top_face_rotated_pixels = rotateFace90Clockwise(
+                    static_cast<const float*>(faces[face_index].pixels),
+                    faces[face_index].width,
+                    faces[face_index].height);
+                upload_pixels = top_face_rotated_pixels.data();
+            } else if (face_index == 3) {
+                bottom_face_rotated_pixels = rotateFace90CounterClockwise(
+                    static_cast<const float*>(faces[face_index].pixels),
+                    faces[face_index].width,
+                    faces[face_index].height);
+                upload_pixels = bottom_face_rotated_pixels.data();
+            }
+            cmd->writeTexture(skybox_texture, face_index, 0, upload_pixels, row_pitch);
+        }
+        cmd->close();
+        m_gfx->getDevice()->executeCommandList(cmd);
+        if (m_renderer) {
+            m_renderer->setSkyboxTexture(skybox_texture);
+        }
     }
 
 } // dodoe

@@ -9,11 +9,13 @@ layout(location = 0) in vec3 v_Normal;
 layout(location = 1) in vec2 v_UV;
 layout(location = 2) in vec3 v_WorldPosition;
 layout(location = 3) flat in uint v_TexIndex;
+layout(location = 4) in vec4 v_ColorTint;
 
 layout(set = 0, binding = 256) uniform MainCameraPassUBO {
     mat4 u_ViewProjection;
     ivec4 u_DrawData;
     vec4 u_MaterialData;
+    vec4 u_TimeData;
 };
 
 const uint kMaxTextures = 1024u;
@@ -24,6 +26,7 @@ void main()
 {
     vec3 n = normalize(v_Normal);
     vec3 albedo = texture(sampler2D(u_Textures[v_TexIndex], u_TextureSampler), v_UV).rgb;
+    albedo *= v_ColorTint.rgb;
     float metallic = clamp(u_MaterialData.x, 0.0, 1.0);
     float roughness = clamp(u_MaterialData.y, 0.04, 1.0);
     float ao = clamp(u_MaterialData.z, 0.0, 1.0);

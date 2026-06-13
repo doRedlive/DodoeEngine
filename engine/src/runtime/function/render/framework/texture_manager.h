@@ -8,17 +8,17 @@
 
 namespace dodoe {
 
-    class RhiContext;
+    class GfxContext;
 
     struct TextureManagerCreateInfo {
-        RhiContext* rhi{nullptr};
+        GfxContext* gfx{nullptr};
         DescriptorTableManager* descriptor_table{nullptr};
     };
 
     class TextureManager : public Managed<TextureManager, TextureManagerCreateInfo> {
         friend class Managed<TextureManager, TextureManagerCreateInfo>;
 
-        RhiContext* m_rhi{nullptr};
+        GfxContext* m_gfx{nullptr};
         DescriptorTableManager* m_descriptor_table{nullptr};
         Ref<Texture> m_fallback{};
         UnorderedMap<InstanceID, Ref<Texture>> m_texture_cache{};

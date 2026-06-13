@@ -5,6 +5,7 @@
 
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/object/pptr.h"
+#include "runtime/function/render/framework/primitive_scene_info.h"
 #include "runtime/function/render/render_types.h"
 
 REFLECTION_TYPE(MeshRendererComponent)
@@ -14,7 +15,16 @@ namespace dodoe {
 	STRUCT(MeshRendererComponent, WhiteListFields) {
 		REFLECTION_BODY(MeshRendererComponent)
 
+        META(Enable)
 		Ref<Mesh> mesh;
+        META(Enable)
+        DynamicArray<Ref<Material>> override_materials{};
+        META(Enable)
+        bool visible{true};
+        META(Enable)
+        bool cast_shadow{true};
+        META(Enable)
+        PrimitiveMobility mobility{PrimitiveMobility::Static};
         bool dirty{true};
 
 	};

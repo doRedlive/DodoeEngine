@@ -7,44 +7,44 @@
 
 namespace dodoe {
 
-    Bool MeshPassProcessor::initialize(RhiContext* rhi, const MeshPipelineStateDesc& desc) {
-        m_rhi = rhi;
+    Bool MeshPassProcessor::initialize(GfxContext* gfx, const MeshPipelineStateDesc& desc) {
+        m_gfx = gfx;
 
         auto state = create_scope<MeshPipelineState>();
         state->m_desc = desc;
 
-        auto device = m_rhi->getDevice();
+        auto device = m_gfx->getDevice();
 
         auto vert_source = ReadShaderFile(desc.vertex_shader_path);
         auto frag_source = ReadShaderFile(desc.pixel_shader_path);
         state->m_vertex_shader = device->createShader(
-            rhi::ShaderDesc().setShaderType(rhi::ShaderType::Vertex)
+            gfx::ShaderDesc().setShaderType(gfx::ShaderType::Vertex)
                 .setEntryName("main").setDebugName((desc.debug_name + " VS").c_str()),
             vert_source.data(), vert_source.size());
         state->m_pixel_shader = device->createShader(
-            rhi::ShaderDesc().setShaderType(rhi::ShaderType::Pixel)
+            gfx::ShaderDesc().setShaderType(gfx::ShaderType::Pixel)
                 .setEntryName("main").setDebugName((desc.debug_name + " PS").c_str()),
             frag_source.data(), frag_source.size());
 
         if (!desc.geometry_shader_path.empty()) {
             auto geom_source = ReadShaderFile(desc.geometry_shader_path);
             state->m_geometry_shader = device->createShader(
-                rhi::ShaderDesc().setShaderType(rhi::ShaderType::Geometry)
+                gfx::ShaderDesc().setShaderType(gfx::ShaderType::Geometry)
                     .setEntryName("main").setDebugName((desc.debug_name + " GS").c_str()),
                 geom_source.data(), geom_source.size());
         }
 
         state->m_input_layout = createStandardInputLayout(state->m_vertex_shader, desc);
 
-        auto binding_layout_desc = rhi::BindingLayoutDesc()
-            .setVisibility(rhi::ShaderType::All)
-            .addItem(rhi::BindingLayoutItem::VolatileConstantBuffer(0));
+        auto binding_layout_desc = gfx::BindingLayoutDesc()
+            .setVisibility(gfx::ShaderType::All)
+            .addItem(gfx::BindingLayoutItem::VolatileConstantBuffer(0));
         for (const auto& item : desc.extra_binding_items) {
             binding_layout_desc.addItem(item);
         }
         state->m_binding_layout = device->createBindingLayout(binding_layout_desc);
 
-        auto buffer_desc = rhi::BufferDesc()
+        auto buffer_desc = gfx::BufferDesc()
             .setByteSize(static_cast<UInt32>(desc.constant_buffer_size))
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
@@ -52,8 +52,8 @@ namespace dodoe {
             .setDebugName((desc.debug_name + " ConstantBuffer").c_str());
         state->m_constant_buffer = device->createBuffer(buffer_desc);
 
-        auto binding_set_desc = rhi::BindingSetDesc()
-            .addItem(rhi::BindingSetItem::ConstantBuffer(0, state->m_constant_buffer));
+        auto binding_set_desc = gfx::BindingSetDesc()
+            .addItem(gfx::BindingSetItem::ConstantBuffer(0, state->m_constant_buffer));
         for (const auto& item : desc.extra_binding_set_items) {
             binding_set_desc.addItem(item);
         }
@@ -66,10 +66,10 @@ namespace dodoe {
     void MeshPassProcessor::shutdown() {
         m_command_cache.clear();
         m_pipeline_state = nullptr;
-        m_rhi = nullptr;
+        m_gfx = nullptr;
     }
 
-    void MeshPassProcessor::createGraphicsPipeline(rhi::FramebufferHandle framebuffer) {
+    void MeshPassProcessor::createGraphicsPipeline(gfx::FramebufferHandle framebuffer) {
         if (!m_pipeline_state) {
             return;
         }
@@ -83,7 +83,7 @@ namespace dodoe {
 
         auto framebuffer_info = framebuffer->getFramebufferInfo();
 
-        auto pipeline_desc = rhi::GraphicsPipelineDesc()
+        auto pipeline_desc = gfx::GraphicsPipelineDesc()
             .setVertexShader(m_pipeline_state->m_vertex_shader)
             .setPixelShader(m_pipeline_state->m_pixel_shader)
             .addBindingLayout(m_pipeline_state->m_binding_layout)
@@ -105,64 +105,29 @@ namespace dodoe {
             pipeline_desc.setGeometryShader(m_pipeline_state->m_geometry_shader);
         }
 
-        m_pipeline_state->m_pipeline = m_rhi->getDevice()->createGraphicsPipeline(
+        m_pipeline_state->m_pipeline = m_gfx->getDevice()->createGraphicsPipeline(
             pipeline_desc, framebuffer_info);
     }
 
     DynamicArray<MeshBatch> MeshPassProcessor::buildMeshBatches(
-        const DynamicArray<Ref<MeshInstance>>& visible_instances) const
+        const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
+        const MeshPassType pass_type) const
     {
         DynamicArray<MeshBatch> batches;
 
-        for (Size_t begin = 0; begin < visible_instances.size();) {
-            const auto& first = visible_instances[begin];
-            if (!first || !first->getMesh()) {
-                ++begin;
+        for (Size_t primitive_index = 0; primitive_index < visible_primitives.size(); primitive_index++) {
+            const auto* primitive = visible_primitives[primitive_index];
+            if (!primitive) {
                 continue;
             }
 
-            const auto& mesh = first->getMesh();
-            Size_t end = begin + 1;
-            while (end < visible_instances.size()) {
-                const auto& instance = visible_instances[end];
-                if (!instance || instance->getMesh() != mesh) {
-                    break;
+            const auto& primitive_batches = primitive->getMeshBatches();
+            batches.reserve(batches.size() + primitive_batches.size());
+            for (const auto& batch : primitive_batches) {
+                if (batch.isValid() && batch.isRelevant(pass_type)) {
+                    batches.push_back(batch);
                 }
-                ++end;
             }
-
-            if (!mesh->buffers || !mesh->buffers->vertex_buffer ||
-                !mesh->buffers->index_buffer || !mesh->buffers->instance_buffer) {
-                begin = end;
-                continue;
-            }
-
-            const auto& buffers = mesh->buffers;
-            auto instance_count = static_cast<UInt32>(end - begin);
-
-            for (const auto& geometry : mesh->geometries) {
-                if (!geometry || geometry->index_count == 0) {
-                    continue;
-                }
-
-                MeshBatchElement element;
-                element.index_count = geometry->index_count;
-                element.index_offset = geometry->index_offset;
-                element.vertex_offset = geometry->vertex_offset;
-                element.first_instance = 0;
-                element.num_instances = instance_count;
-                element.vertex_buffers[0] = buffers->vertex_buffer;
-                element.vertex_buffers[1] = buffers->instance_buffer;
-                element.vertex_buffers[2] = buffers->instance_id_buffer;
-                element.index_buffer = buffers->index_buffer;
-
-                MeshBatch batch;
-                batch.material = geometry->material;
-                batch.elements.push_back(element);
-                batches.push_back(batch);
-            }
-
-            begin = end;
         }
 
         return batches;
@@ -170,7 +135,7 @@ namespace dodoe {
 
     DynamicArray<MeshDrawCommand> MeshPassProcessor::buildDrawCommands(
         const DynamicArray<MeshBatch>& batches,
-        rhi::CommandListHandle cmd_list,
+        gfx::CommandListHandle cmd_list,
         const PerBatchConstantsFn& per_batch_fn)
     {
         DynamicArray<MeshDrawCommand> commands;
@@ -191,7 +156,10 @@ namespace dodoe {
 
             if (!m_pipeline_state->m_desc.disable_caching) {
                 MeshDrawCommandCacheKey cache_key;
-                cache_key.batch_hash = reinterpret_cast<Size_t>(element.vertex_buffers[0].Get());
+                cache_key.batch_hash =
+                    reinterpret_cast<Size_t>(element.vertex_buffer.Get()) ^
+                    (static_cast<Size_t>(batch.primitive_id) << 1) ^
+                    (static_cast<Size_t>(element.section_index) << 9);
                 cache_key.material_hash = batch.material
                     ? reinterpret_cast<Size_t>(batch.material.get()) : 0;
                 cache_key.pass_hash = pass_hash;
@@ -201,8 +169,10 @@ namespace dodoe {
                     if (per_batch_fn) {
                         per_batch_fn(cmd_list, batch, m_pipeline_state->m_constant_buffer);
                     }
-                    cache_it->second.draw_args.instanceCount = element.num_instances;
+                    cache_it->second.draw_args.instanceCount = 1;
                     cache_it->second.draw_args.vertexCount = element.index_count;
+                    cache_it->second.draw_args.startIndexLocation = element.index_offset;
+                    cache_it->second.draw_args.startVertexLocation = element.vertex_offset;
                     commands.push_back(cache_it->second);
                     continue;
                 }
@@ -216,27 +186,23 @@ namespace dodoe {
                 auto* table = m_pipeline_state->m_desc.descriptor_table->getDescriptorTable();
                 if (table) {
                     command.binding_sets.push_back(
-                        rhi::BindingSetHandle(table));
+                        gfx::BindingSetHandle(table));
                 }
             }
 
-            for (UInt32 slot = 0; slot < MeshBatchElement::kMaxVertexBufferSlots; ++slot) {
-                if (element.vertex_buffers[slot]) {
-                    command.vertex_bindings.push_back(
-                        rhi::VertexBufferBinding()
-                            .setBuffer(element.vertex_buffers[slot])
-                            .setSlot(slot).setOffset(0));
-                }
-            }
+            command.vertex_bindings.push_back(
+                gfx::VertexBufferBinding()
+                    .setBuffer(element.vertex_buffer)
+                    .setSlot(0).setOffset(0));
 
-            command.index_binding = rhi::IndexBufferBinding()
+            command.index_binding = gfx::IndexBufferBinding()
                 .setBuffer(element.index_buffer)
-                .setFormat(rhi::Format::R32_UINT)
+                .setFormat(gfx::Format::R32_UINT)
                 .setOffset(0);
 
-            command.draw_args = rhi::DrawArguments()
+            command.draw_args = gfx::DrawArguments()
                 .setVertexCount(element.index_count)
-                .setInstanceCount(element.num_instances)
+                .setInstanceCount(1)
                 .setStartIndexLocation(element.index_offset)
                 .setStartVertexLocation(element.vertex_offset);
 
@@ -248,7 +214,10 @@ namespace dodoe {
 
             if (!m_pipeline_state->m_desc.disable_caching) {
                 MeshDrawCommandCacheKey cache_key;
-                cache_key.batch_hash = reinterpret_cast<Size_t>(element.vertex_buffers[0].Get());
+                cache_key.batch_hash =
+                    reinterpret_cast<Size_t>(element.vertex_buffer.Get()) ^
+                    (static_cast<Size_t>(batch.primitive_id) << 1) ^
+                    (static_cast<Size_t>(element.section_index) << 9);
                 cache_key.material_hash = batch.material
                     ? reinterpret_cast<Size_t>(batch.material.get()) : 0;
                 cache_key.pass_hash = pass_hash;
@@ -267,22 +236,22 @@ namespace dodoe {
 
     void MeshPassProcessor::submitDrawCommands(
         const DynamicArray<MeshDrawCommand>& commands,
-        rhi::FramebufferHandle framebuffer,
+        gfx::FramebufferHandle framebuffer,
         const Vector2i& viewport_extent,
-        rhi::CommandListHandle cmd_list) const
+        gfx::CommandListHandle cmd_list) const
     {
         if (commands.empty()) {
             return;
         }
 
-        auto viewport_state = rhi::ViewportState().addViewportAndScissorRect(
-            rhi::Viewport(static_cast<float>(viewport_extent.x),
+        auto viewport_state = gfx::ViewportState().addViewportAndScissorRect(
+            gfx::Viewport(static_cast<float>(viewport_extent.x),
                           static_cast<float>(viewport_extent.y)));
 
-        rhi::GraphicsPipelineHandle current_pipeline = nullptr;
+        gfx::GraphicsPipelineHandle current_pipeline = nullptr;
 
         for (const auto& cmd : commands) {
-            auto graphics_state = rhi::GraphicsState()
+            auto graphics_state = gfx::GraphicsState()
                 .setFramebuffer(framebuffer)
                 .setViewport(viewport_state);
 
@@ -318,19 +287,19 @@ namespace dodoe {
         m_command_cache.clear();
     }
 
-    rhi::BufferHandle MeshPassProcessor::getConstantBuffer() const {
+    gfx::BufferHandle MeshPassProcessor::getConstantBuffer() const {
         if (m_pipeline_state) {
             return m_pipeline_state->m_constant_buffer;
         }
         return nullptr;
     }
 
-    rhi::InputLayoutHandle MeshPassProcessor::createStandardInputLayout(
-        rhi::ShaderHandle vertex_shader,
+    gfx::InputLayoutHandle MeshPassProcessor::createStandardInputLayout(
+        gfx::ShaderHandle vertex_shader,
         const MeshPipelineStateDesc& desc)
     {
         if (!desc.vertex_attributes.empty()) {
-            return m_rhi->getDevice()->createInputLayout(
+            return m_gfx->getDevice()->createInputLayout(
                 desc.vertex_attributes.data(),
                 static_cast<UInt32>(desc.vertex_attributes.size()),
                 vertex_shader);
@@ -347,30 +316,30 @@ namespace dodoe {
         constexpr Size_t kTexCoordOff    = sizeof(Vector3f) + sizeof(UInt32);
         constexpr Size_t kInstanceStride = sizeof(Matrix4f);
 
-        DynamicArray<rhi::VertexAttributeDesc> attributes = {
-            rhi::VertexAttributeDesc()
-                .setName("a_Position").setFormat(rhi::Format::RGB32_FLOAT)
+        DynamicArray<gfx::VertexAttributeDesc> attributes = {
+            gfx::VertexAttributeDesc()
+                .setName("a_Position").setFormat(gfx::Format::RGB32_FLOAT)
                 .setOffset(kPositionOff).setElementStride(kVertexStride),
-            rhi::VertexAttributeDesc()
-                .setName("a_Normal").setFormat(rhi::Format::RGBA8_SNORM)
+            gfx::VertexAttributeDesc()
+                .setName("a_Normal").setFormat(gfx::Format::RGBA8_SNORM)
                 .setOffset(kNormalOff).setElementStride(kVertexStride),
-            rhi::VertexAttributeDesc()
-                .setName("a_UV").setFormat(rhi::Format::RG32_FLOAT)
+            gfx::VertexAttributeDesc()
+                .setName("a_UV").setFormat(gfx::Format::RG32_FLOAT)
                 .setOffset(kTexCoordOff).setElementStride(kVertexStride),
-            rhi::VertexAttributeDesc()
-                .setName("a_Model0").setFormat(rhi::Format::RGBA32_FLOAT)
+            gfx::VertexAttributeDesc()
+                .setName("a_Model0").setFormat(gfx::Format::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(0)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
-            rhi::VertexAttributeDesc()
-                .setName("a_Model1").setFormat(rhi::Format::RGBA32_FLOAT)
+            gfx::VertexAttributeDesc()
+                .setName("a_Model1").setFormat(gfx::Format::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f))
                 .setElementStride(kInstanceStride).setIsInstanced(true),
-            rhi::VertexAttributeDesc()
-                .setName("a_Model2").setFormat(rhi::Format::RGBA32_FLOAT)
+            gfx::VertexAttributeDesc()
+                .setName("a_Model2").setFormat(gfx::Format::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f) * 2)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
-            rhi::VertexAttributeDesc()
-                .setName("a_Model3").setFormat(rhi::Format::RGBA32_FLOAT)
+            gfx::VertexAttributeDesc()
+                .setName("a_Model3").setFormat(gfx::Format::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f) * 3)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
         };
@@ -379,7 +348,7 @@ namespace dodoe {
             attributes.push_back(attr);
         }
 
-        auto input_layout = m_rhi->getDevice()->createInputLayout(
+        auto input_layout = m_gfx->getDevice()->createInputLayout(
             attributes.data(),
             static_cast<UInt32>(attributes.size()),
             vertex_shader);

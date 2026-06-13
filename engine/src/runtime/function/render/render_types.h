@@ -6,18 +6,15 @@
 #include "runtime/function/render/framework/material.h"
 #include "runtime/function/render/framework/mesh.h"
 #include "framework/descriptor_table_manager.h"
-#include "interface/rhi.h"
+#include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
 
     struct BufferGroup {
-        rhi::BufferHandle index_buffer;
-        rhi::BufferHandle vertex_buffer;
-        rhi::BufferHandle instance_buffer;
-        rhi::BufferHandle instance_id_buffer;
+        gfx::BufferHandle index_buffer;
+        gfx::BufferHandle vertex_buffer;
         DescriptorIndex index_buffer_descriptor;
         DescriptorIndex vertex_buffer_descriptor;
-        DescriptorIndex instance_buffer_descriptor;
         DynamicArray<UInt32> index_data;
         DynamicArray<Vector3f> position_data;
         DynamicArray<Vector2f> texcoord1_data;

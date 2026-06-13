@@ -4,7 +4,7 @@
 
 #include "dopch.h"
 
-#include "../interface/rhi.h"
+#include "runtime/function/graphics/gfx.h"
 #include "../framework/descriptor_table_manager.h"
 
 namespace dodoe {
@@ -17,15 +17,15 @@ namespace dodoe {
         Size_t constant_buffer_size{256};
         UInt32 constant_buffer_max_versions{4096};
 
-        DynamicArray<rhi::BindingLayoutItem> extra_binding_items;
-        DynamicArray<rhi::BindingSetItem> extra_binding_set_items;
+        DynamicArray<gfx::BindingLayoutItem> extra_binding_items;
+        DynamicArray<gfx::BindingSetItem> extra_binding_set_items;
         DescriptorTableManager* descriptor_table{nullptr};
 
-        DynamicArray<rhi::VertexAttributeDesc> extra_vertex_attributes;
-        DynamicArray<rhi::VertexAttributeDesc> vertex_attributes;
+        DynamicArray<gfx::VertexAttributeDesc> extra_vertex_attributes;
+        DynamicArray<gfx::VertexAttributeDesc> vertex_attributes;
 
-        rhi::RenderState render_state;
-        rhi::PrimitiveType primitive_type{rhi::PrimitiveType::TriangleList};
+        gfx::RenderState render_state;
+        gfx::PrimitiveType primitive_type{gfx::PrimitiveType::TriangleList};
         Bool disable_caching{false};
         String debug_name;
     };
@@ -35,20 +35,20 @@ namespace dodoe {
 
         MeshPipelineStateDesc m_desc;
 
-        rhi::ShaderHandle m_vertex_shader;
-        rhi::ShaderHandle m_pixel_shader;
-        rhi::ShaderHandle m_geometry_shader;
-        rhi::InputLayoutHandle m_input_layout;
-        rhi::BindingLayoutHandle m_binding_layout;
-        rhi::BindingSetHandle m_binding_set;
-        rhi::BufferHandle m_constant_buffer;
-        rhi::GraphicsPipelineHandle m_pipeline;
+        gfx::ShaderHandle m_vertex_shader;
+        gfx::ShaderHandle m_pixel_shader;
+        gfx::ShaderHandle m_geometry_shader;
+        gfx::InputLayoutHandle m_input_layout;
+        gfx::BindingLayoutHandle m_binding_layout;
+        gfx::BindingSetHandle m_binding_set;
+        gfx::BufferHandle m_constant_buffer;
+        gfx::GraphicsPipelineHandle m_pipeline;
     public:
-        [[nodiscard]] const rhi::GraphicsPipelineHandle& getPipeline() const { return m_pipeline; }
-        [[nodiscard]] const rhi::BindingSetHandle& getBindingSet() const { return m_binding_set; }
-        [[nodiscard]] const rhi::InputLayoutHandle& getInputLayout() const { return m_input_layout; }
-        [[nodiscard]] const rhi::BindingLayoutHandle& getBindingLayout() const { return m_binding_layout; }
-        [[nodiscard]] rhi::BufferHandle getConstantBuffer() const { return m_constant_buffer; }
+        [[nodiscard]] const gfx::GraphicsPipelineHandle& getPipeline() const { return m_pipeline; }
+        [[nodiscard]] const gfx::BindingSetHandle& getBindingSet() const { return m_binding_set; }
+        [[nodiscard]] const gfx::InputLayoutHandle& getInputLayout() const { return m_input_layout; }
+        [[nodiscard]] const gfx::BindingLayoutHandle& getBindingLayout() const { return m_binding_layout; }
+        [[nodiscard]] gfx::BufferHandle getConstantBuffer() const { return m_constant_buffer; }
         [[nodiscard]] const MeshPipelineStateDesc& getDesc() const { return m_desc; }
 
     };

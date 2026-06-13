@@ -12,6 +12,7 @@
 
 #include "systems/animation2d_system.h"
 #include "systems/camera2d_system.h"
+#include "systems/foliage_renderer_system.h"
 #include "systems/light_system.h"
 #include "systems/mesh_renderer_system.h"
 #include "systems/physics2d_system.h"
@@ -61,6 +62,7 @@ namespace dodoe {
         auto light_system = create_ref<LightSystem>();
         auto physics2d = create_ref<Physics2dSystem>();
         auto animation2d = create_ref<Animation2dSystem>();
+        auto foliage_renderer = create_ref<FoliageRendererSystem>();
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
         auto tilemap_renderer = create_ref<TilemapRendererSystem>();
@@ -69,6 +71,7 @@ namespace dodoe {
         registerRuntimeSystem(light_system);
         registerRuntimeSystem(physics2d);
         registerRuntimeSystem(animation2d);
+        registerRuntimeSystem(foliage_renderer);
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
         registerRuntimeSystem(tilemap_renderer);
@@ -77,6 +80,7 @@ namespace dodoe {
         registerSimulationSystem(light_system);
         registerSimulationSystem(physics2d);
         registerSimulationSystem(animation2d);
+        registerSimulationSystem(foliage_renderer);
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
         registerSimulationSystem(tilemap_renderer);

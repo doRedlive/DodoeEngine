@@ -13,11 +13,11 @@ namespace dodoe {
 
     class System {
     public:
-        virtual ~System() = default;
+        virtual ~System();
 
-        virtual void start(Registry& reg) { (void)reg; }
-        virtual void update(Registry& reg, float dt) { (void)reg; (void)dt; }
-        virtual void finalize(Registry& reg) { (void)reg; }
+        virtual void start(Registry& reg);
+        virtual void update(Registry& reg, float dt);
+        virtual void finalize(Registry& reg);
     };
 
 } // dodoe

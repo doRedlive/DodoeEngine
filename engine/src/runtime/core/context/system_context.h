@@ -42,6 +42,7 @@ namespace dodoe {
 
         [[nodiscard]] WindowManager* getWindowManager() const { return window_manager.get(); }
         [[nodiscard]] RenderSystem*  getRenderSystem() const { return render_system.get(); }
+        [[nodiscard]] Renderer* getRenderer() const { return render_system ? render_system->getRenderer() : nullptr; }
         [[nodiscard]] InputManager*  getInputManager() const { return input_manager.get(); }
         [[nodiscard]] const LayerStack& getLayerStack() const { return layer_stack; }
 
