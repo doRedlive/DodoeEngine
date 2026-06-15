@@ -6,14 +6,13 @@
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/utils/util.h"
-#include "runtime/function/render/renderer_2d.h"
+#include "runtime/function/render/renderer.h"
 #include "runtime/function/render/framework/texture_manager.h"
 
 namespace dodoe::ui {
 
 [[nodiscard]] inline Ref<Texture> resolveTexture(const Image& image) {
-    auto* render_system = Application::Self().context().getRenderSystem();
-    auto* texture_manager = render_system ? render_system->getTextureManager() : nullptr;
+    auto* texture_manager = Renderer::GetTextureManager();
     if (!texture_manager) {
         return nullptr;
     }
@@ -62,28 +61,16 @@ namespace dodoe::ui {
 
     inline void drawFilledRect(const Rect& rect,
                                const Color& color,
-                               float /*rounding*/ = 0.0f) {
-        Renderer2D::DrawSprite(0, rect.pos, rect.size, Vector3f{0.0f, 0.0f, 0.0f}, color);
+                               Float /*rounding*/ = 0.0f) {
+        (void)rect; (void)color;
     }
 
-inline void drawImage(const Image& image,
-                      const Vector2f& position,
-                      const Vector2f& size,
-                      const Color& tint = Color::white()) {
-        auto texture = resolveTexture(image);
-        if (!texture) {
-            return;
-        }
-
-        Renderer2D::DrawSprite(
-            texture->getInstanceID(),
-            position,
-            size,
-            Vector3f{0.0f, 0.0f, 0.0f},
-            resolveUvRect(image),
-            tint
-        );
-}
+    inline void drawImage(const Image& image,
+                          const Vector2f& position,
+                          const Vector2f& size,
+                          const Color& tint = Color::white()) {
+        (void)image; (void)position; (void)size; (void)tint;
+    }
 
 inline void drawImageForeground(const Image& image,
                                 const Vector2f& position,

@@ -28,6 +28,8 @@ namespace dodoe {
         META(Enable)
         Color color{ };
 
+        bool dirty{ false };
+
         SpriteRendererComponent() = default;
     };
 

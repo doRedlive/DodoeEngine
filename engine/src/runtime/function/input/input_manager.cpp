@@ -13,7 +13,7 @@
 
 namespace dodoe {
 
-    bool InputManager::initialize(const InputManagerInitInfo& init_info) {
+    void InputManager::initialize(const InputManagerInitInfo& init_info) {
         viewport_manager_ = init_info.viewport_manager;
 
         EventSystem::Subscribe<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
@@ -23,7 +23,6 @@ namespace dodoe {
         EventSystem::Subscribe<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
 
         Input::initialize(this);
-        return true;
     }
 
     void InputManager::update() {
@@ -126,8 +125,8 @@ namespace dodoe {
             0.0f
         };
 
-        auto& camera = Application::Self().context().getRenderSystem()->getMainCamera();
-        const auto world_pos = camera.screen2world(logical_pos);
+        auto* camera = Renderer::GetMainCamera();
+        const auto world_pos = camera ? camera->screen2world(logical_pos) : logical_pos;
         return Vector2f(world_pos.x, world_pos.y);
     }
 

@@ -24,8 +24,7 @@ AudioPlayerFacade g_audio_player{};
 RendererFacade g_renderer{};
 
 TextureManager* getTextureManager() {
-    auto* render_system = Application::Self().context().getRenderSystem();
-    return render_system ? render_system->getTextureManager() : nullptr;
+    return Renderer::GetTextureManager();
 }
 
 } // namespace

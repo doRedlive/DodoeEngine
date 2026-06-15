@@ -4,7 +4,7 @@
 #include "ui_preset_manager.h"
 
 #include "ui_compat.h"
-#include "runtime/function/render/renderer_2d.h"
+#include "runtime/function/render/renderer.h"
 #include "runtime/core/utils/util.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -341,17 +341,7 @@ void UIButton::renderSelf(engine::core::Context& context) {
         return;
     }
 
-    const Vector2f position = getScreenPosition();
-    Renderer2D::DrawSprite(
-        image_to_draw->getTextureId(),
-        position,
-        size,
-        Vector3f{0.0f, 0.0f, 0.0f},
-        resolveImageUvRect(*image_to_draw, context),
-        Color::white()
-    );
-
-    renderLabel(context, *skin, position, size);
+    (void)size; (void)context; (void)image_to_draw;
 }
 
 void UIButton::renderLabel(engine::core::Context& context, const UIButtonSkin& skin,

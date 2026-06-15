@@ -14,24 +14,14 @@ namespace dodoe {
 
     class MonoSystem : public System {
     public: 
-        ~MonoSystem() override = default;
+        ~MonoSystem() override;
 
-        void start(Registry& reg) override {
-            getMonoRuntime()->onRuntimeStart();
-        }
+        void start(Registry& reg) override;
+        void update(Registry& reg, float dt) override;
+        void finalize(Registry& reg) override;
 
-        void update(Registry& reg, const float dt) override {
-            (void)dt;
-            getMonoRuntime()->onRuntimeUpdate();
-        }
-
-        void finalize(Registry& reg) override {
-            getMonoRuntime()->onRuntimeFinalize();
-        }
     private:
-        ScriptRuntime* getMonoRuntime() {
-            return Application::Self().context().getScriptSystem()->getMonoRuntime();
-        }
+        ScriptRuntime* getMonoRuntime();
     };
 
 } // dodoe

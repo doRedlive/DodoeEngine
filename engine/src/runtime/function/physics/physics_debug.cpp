@@ -4,21 +4,14 @@
 
 #include "physics_debug.h"
 
-#include "runtime/function/render/renderer_2d.h"
+#include "runtime/function/render/renderer.h"
 
 namespace dodoe {
 
     namespace {
 
         void draw_debug_line(const b2Vec2 p0, const b2Vec2 p1, const b2HexColor color, void* context) {
-            auto* draw_context = static_cast<DebugDrawContext*>(context);
-            const float line_thickness = draw_context ? draw_context->line_thickness : 1.0f;
-            Renderer2D::DrawLine(
-                {p0.x, p0.y},
-                {p1.x, p1.y},
-                {0.0f, 0.0f, 0.0f},
-                line_thickness,
-                Color(static_cast<uint32_t>(color), 1.0f));
+            (void)context; (void)color; (void)p0; (void)p1;
         }
 
         void DrawPolygon(const b2Vec2* vertices, int vertex_count, b2HexColor color, void* context) {
@@ -97,12 +90,7 @@ namespace dodoe {
             const float point_size = draw_context ? draw_context->point_size : 4.0f;
             const float draw_size = std::max(size, point_size);
             const float half = draw_size * 0.5f;
-            Renderer2D::DrawRect(
-                {p.x - half, p.y - half},
-                {draw_size, draw_size},
-                {0.0f, 0.0f, 0.0f},
-                Color(static_cast<uint32_t>(color), 1.0f),
-                draw_size);
+            (void)p; (void)size; (void)color;
         }
 
         void DrawString(b2Vec2 p, const char* s, b2HexColor color, void* context) {

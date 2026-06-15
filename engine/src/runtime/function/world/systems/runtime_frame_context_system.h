@@ -4,29 +4,13 @@
 
 #include "system.h"
 
-#include "runtime/core/application.h"
-#include "runtime/core/context/system_context.h"
-#include "runtime/function/render/render_resource.h"
-#include "runtime/function/render/render_system.h"
-
 namespace dodoe {
 
     class RuntimeFrameContextSystem final : public System {
     public:
-        ~RuntimeFrameContextSystem() override = default;
+        ~RuntimeFrameContextSystem() override;
 
-        void update(Registry& reg, float dt) override {
-            (void)reg;
-            (void)dt;
-
-            auto* render_system = Application::Self().context().getRenderSystem();
-            if (!render_system) {
-                return;
-            }
-
-            const auto& camera = render_system->getMainCamera();
-            g_RenderResource->submitMainCameraViewProjection(camera.getViewProjectionMatrix(), camera.getPosition());
-        }
+        void update(Registry& reg, float dt) override;
     };
 
 } // dodoe

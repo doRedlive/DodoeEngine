@@ -145,74 +145,69 @@ namespace dodoe {
             return material;
         }
 
-        Ref<Mesh> MakeMesh(
+        struct MeshImportResult {
+            MeshUploadData upload_data{};
+            DynamicArray<MeshLODData> lods{};
+        };
+
+        MeshImportResult MakeMesh(
             const aiMesh& source_mesh,
             const aiScene* imported_scene,
             const std::filesystem::path& model_directory,
             const uint mesh_index,
             const std::string& fallback_name) {
-            Ref<Mesh> mesh = create_ref<Mesh>();
-            mesh->name = source_mesh.mName.length > 0 ? source_mesh.mName.C_Str() : fallback_name;
-            mesh->type = MeshType::Triangles;
-            mesh->mesh_index = static_cast<int>(mesh_index);
-            mesh->vertex_count = source_mesh.mNumVertices;
-            mesh->buffers = create_ref<BufferGroup>();
+            MeshImportResult result{};
+            result.upload_data.name = source_mesh.mName.length > 0 ? source_mesh.mName.C_Str() : fallback_name;
 
-            ui32 index_count = 0;
+            const uint vertex_count = source_mesh.mNumVertices;
+            result.upload_data.position_data.reserve(vertex_count);
+            result.upload_data.normal_data.reserve(vertex_count);
+
+            uint index_count = 0;
             for (uint face_index = 0; face_index < source_mesh.mNumFaces; ++face_index) {
                 index_count += source_mesh.mFaces[face_index].mNumIndices;
             }
-            mesh->index_count = index_count;
 
-            mesh->buffers->position_data.reserve(source_mesh.mNumVertices);
-            mesh->buffers->texcoord1_data.reserve(source_mesh.mNumVertices);
-            mesh->buffers->normal_data.reserve(source_mesh.mNumVertices);
-            mesh->buffers->tangent_data.reserve(source_mesh.mNumVertices);
-            for (uint vertex_index = 0; vertex_index < source_mesh.mNumVertices; ++vertex_index) {
+            for (uint vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
                 const auto& position = source_mesh.mVertices[vertex_index];
-                mesh->buffers->position_data.push_back({position.x, position.y, position.z});
+                result.upload_data.position_data.push_back({position.x, position.y, position.z});
 
                 if (source_mesh.HasNormals()) {
                     const auto& normal = source_mesh.mNormals[vertex_index];
                     const auto packed_normal = glm::packSnorm4x8(Vector4f(normal.x, normal.y, normal.z, 0.0f));
-                    mesh->buffers->normal_data.push_back(packed_normal);
+                    result.upload_data.normal_data.push_back(packed_normal);
                 } else {
-                    mesh->buffers->normal_data.push_back(0);
-                }
-
-                if (source_mesh.HasTangentsAndBitangents()) {
-                    const auto& tangent = source_mesh.mTangents[vertex_index];
-                    const auto packed_tangent = glm::packSnorm4x8(Vector4f(tangent.x, tangent.y, tangent.z, 0.0f));
-                    mesh->buffers->tangent_data.push_back(packed_tangent);
-                } else {
-                    mesh->buffers->tangent_data.push_back(0);
+                    result.upload_data.normal_data.push_back(0);
                 }
 
                 if (source_mesh.HasTextureCoords(0)) {
                     const auto& uv = source_mesh.mTextureCoords[0][vertex_index];
-                    mesh->buffers->texcoord1_data.push_back({uv.x, uv.y});
+                    result.upload_data.texcoord_data.push_back({uv.x, uv.y});
                 } else {
-                    mesh->buffers->texcoord1_data.push_back(Vector2f(0.0f));
+                    result.upload_data.texcoord_data.push_back(Vector2f(0.0f));
                 }
             }
 
-            mesh->buffers->index_data.reserve(index_count);
+            result.upload_data.index_data.reserve(index_count);
             for (uint face_index = 0; face_index < source_mesh.mNumFaces; ++face_index) {
                 const auto& face = source_mesh.mFaces[face_index];
                 for (uint index_offset = 0; index_offset < face.mNumIndices; ++index_offset) {
-                    mesh->buffers->index_data.push_back(face.mIndices[index_offset]);
+                    result.upload_data.index_data.push_back(face.mIndices[index_offset]);
                 }
             }
 
-            auto geometry = create_ref<MeshGeometry>();
-            geometry->geometry_index = 0;
-            geometry->vertex_count = mesh->vertex_count;
-            geometry->index_count = mesh->index_count;
-            geometry->type = MeshGeometryPrimitiveType::Triangles;
-            geometry->material = MakeMaterial(imported_scene, source_mesh, model_directory);
-            mesh->geometries.push_back(std::move(geometry));
+            MeshSection section{};
+            section.section_index = 0;
+            section.vertex_count = vertex_count;
+            section.index_count = index_count;
+            section.primitive_type = MeshGeometryPrimitiveType::Triangles;
+            section.material = MakeMaterial(imported_scene, source_mesh, model_directory);
 
-            return mesh;
+            MeshLODData lod{};
+            lod.sections.push_back(std::move(section));
+            result.lods.push_back(std::move(lod));
+
+            return result;
         }
 
         void AttachMeshComponent(
@@ -228,8 +223,10 @@ namespace dodoe {
             const aiMesh* source_mesh = imported_scene->mMeshes[mesh_index];
             if (!source_mesh) { return; }
 
+            auto result = MakeMesh(*source_mesh, imported_scene, model_directory, mesh_index, fallback_name);
             auto& mesh_component = entity.addComponent<MeshRendererComponent>();
-            mesh_component.mesh = MakeMesh(*source_mesh, imported_scene, model_directory, mesh_index, fallback_name);
+            mesh_component.upload_data = std::move(result.upload_data);
+            mesh_component.lods = std::move(result.lods);
         }
 
         void ProcessNode(

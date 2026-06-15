@@ -7,17 +7,17 @@
 #include "mesh_batch.h"
 #include "mesh_draw_command.h"
 #include "mesh_pipeline_state.h"
-#include "../interface/rhi.h"
-#include "../interface/rhi_context.h"
+#include "runtime/function/graphics/gfx.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
 
-    class MeshInstance;
+    class PrimitiveSceneInfo;
 
     class MeshPassProcessor {
-        inline static UnorderedMap<rhi::ShaderHandle, rhi::InputLayoutHandle> s_input_layout_cache;
+        inline static UnorderedMap<GfxShaderHandle, GfxInputLayoutHandle> s_input_layout_cache;
 
-        RhiContext* m_rhi{nullptr};
+        GfxContext* m_gfx{nullptr};
         Scope<MeshPipelineState> m_pipeline_state;
         UnorderedMap<MeshDrawCommandCacheKey, MeshDrawCommand> m_command_cache;
 
@@ -28,40 +28,41 @@ namespace dodoe {
         static void Setup() {};
         static void Cleanup() { s_input_layout_cache.clear(); }
 
-        Bool initialize(RhiContext* rhi, const MeshPipelineStateDesc& desc);
+        Bool initialize(GfxContext* gfx, const MeshPipelineStateDesc& desc);
         void shutdown();
 
         DynamicArray<MeshBatch> buildMeshBatches(
-            const DynamicArray<Ref<MeshInstance>>& visible_instances) const;
+            const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
+            MeshPassType pass_type) const;
 
         using PerBatchConstantsFn = std::function<void(
-            rhi::CommandListHandle cmd_list,
+            GfxCommandListHandle cmd_list,
             const MeshBatch& batch,
-            rhi::BufferHandle constant_buffer)>;
+            GfxBufferHandle constant_buffer)>;
 
         DynamicArray<MeshDrawCommand> buildDrawCommands(
             const DynamicArray<MeshBatch>& batches,
-            rhi::CommandListHandle cmd_list,
+            GfxCommandListHandle cmd_list,
             const PerBatchConstantsFn& per_batch_fn = {});
 
         void submitDrawCommands(
             const DynamicArray<MeshDrawCommand>& commands,
-            rhi::FramebufferHandle framebuffer,
+            GfxFramebufferHandle framebuffer,
             const Vector2i& viewport_extent,
-            rhi::CommandListHandle cmd_list) const;
+            GfxCommandListHandle cmd_list) const;
 
-        void createGraphicsPipeline(rhi::FramebufferHandle framebuffer);
+        void createGraphicsPipeline(GfxFramebufferHandle framebuffer);
         void invalidatePipeline();
         void invalidateCache();
 
         [[nodiscard]] MeshPipelineState* getPipelineState() { return m_pipeline_state.get(); }
         [[nodiscard]] const MeshPipelineState* getPipelineState() const { return m_pipeline_state.get(); }
-        [[nodiscard]] rhi::BufferHandle getConstantBuffer() const;
+        [[nodiscard]] GfxBufferHandle getConstantBuffer() const;
         [[nodiscard]] Size_t getCacheSize() const { return m_command_cache.size(); }
 
     private:
-        rhi::InputLayoutHandle createStandardInputLayout(
-            rhi::ShaderHandle vertex_shader,
+        GfxInputLayoutHandle createStandardInputLayout(
+            GfxShaderHandle vertex_shader,
             const MeshPipelineStateDesc& desc);
     };
 

@@ -12,9 +12,13 @@
 
 #include "systems/animation2d_system.h"
 #include "systems/camera2d_system.h"
+#include "systems/foliage_renderer_system.h"
 #include "systems/light_system.h"
+#include "systems/line_renderer_system.h"
+#include "systems/sky_light_system.h"
 #include "systems/mesh_renderer_system.h"
 #include "systems/physics2d_system.h"
+#include "systems/rect_renderer_system.h"
 #include "systems/sprite_renderer_system.h"
 #include "systems/mono_system.h"
 #include "systems/tilemap_renderer_system.h"
@@ -59,30 +63,41 @@ namespace dodoe {
         auto mono = create_ref<MonoSystem>();
         auto camera2d = create_ref<Camera2dSystem>();
         auto light_system = create_ref<LightSystem>();
+        auto sky_light = create_ref<SkyLightSystem>();
         auto physics2d = create_ref<Physics2dSystem>();
         auto animation2d = create_ref<Animation2dSystem>();
+        auto foliage_renderer = create_ref<FoliageRendererSystem>();
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
         auto tilemap_renderer = create_ref<TilemapRendererSystem>();
         auto runtime_frame_context = create_ref<RuntimeFrameContextSystem>();
+        auto rect_renderer = create_ref<RectRendererSystem>();
+        auto line_renderer = create_ref<LineRendererSystem>();
         registerRuntimeSystem(mono);
         registerRuntimeSystem(camera2d);
         registerRuntimeSystem(light_system);
+        registerRuntimeSystem(sky_light);
         registerRuntimeSystem(physics2d);
         registerRuntimeSystem(animation2d);
+        registerRuntimeSystem(foliage_renderer);
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
         registerRuntimeSystem(tilemap_renderer);
         registerRuntimeSystem(runtime_frame_context);
+        registerRuntimeSystem(rect_renderer);
+        registerRuntimeSystem(line_renderer);
 
         registerSimulationSystem(camera2d);
         registerSimulationSystem(light_system);
         registerSimulationSystem(physics2d);
         registerSimulationSystem(animation2d);
+        registerSimulationSystem(foliage_renderer);
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
         registerSimulationSystem(tilemap_renderer);
         registerSimulationSystem(runtime_frame_context);
+        registerSimulationSystem(rect_renderer);
+        registerSimulationSystem(line_renderer);
 
         return true;
     }
