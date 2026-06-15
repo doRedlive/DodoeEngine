@@ -2,7 +2,8 @@
 
 #include "gbuffer_mesh_processor.h"
 
-#include "../render_object.h"
+#include "../render_scene/primitive_render_object.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
     namespace {
@@ -92,15 +93,15 @@ namespace dodoe {
         const auto device = gfx_context.getDevice();
         DO_ASSERT(device != nullptr, "GBufferMeshProcessor device is null");
 
-        m_sampler = device->createSampler(SamplerDesc());
+        m_sampler = device->createSampler(GfxSamplerDesc());
         m_binding_layout = device->createBindingLayout(
-            BindingLayoutDesc()
-                .setVisibility(ShaderType::All)
-                .addItem(BindingLayoutItem::VolatileConstantBuffer(0))
-                .addItem(BindingLayoutItem::Sampler(0))
+            GfxBindingLayoutDesc()
+                .setVisibility(GfxShaderType::All)
+                .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
+                .addItem(GfxBindingLayoutItem::Sampler(0))
         );
         m_constant_buffer = device->createBuffer(
-            BufferDesc()
+            GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(GBufferMeshDrawShaderData)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
@@ -108,9 +109,9 @@ namespace dodoe {
                 .setDebugName("GBufferMeshProcessor ConstantBuffer")
         );
         m_binding_set = device->createBindingSet(
-            BindingSetDesc()
-                .addItem(BindingSetItem::ConstantBuffer(0, m_constant_buffer))
-                .addItem(BindingSetItem::Sampler(0, m_sampler)),
+            GfxBindingSetDesc()
+                .addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer))
+                .addItem(GfxBindingSetItem::Sampler(0, m_sampler)),
             m_binding_layout
         );
     }
@@ -125,21 +126,25 @@ namespace dodoe {
     }
 
     void GBufferMeshProcessor::buildCommands(
-        const ViewMeshDrawContext& view_context,
-        const RenderView& view,
-        ViewMeshDrawContext& out_view_context) const
+        const ViewMeshVisibilityData& visibility_data,
+        const ViewMeshInstanceData& instance_data,
+        const ViewMeshPassData& view_pass_data,
+        const ViewMeshShaderData& view_shader_data,
+        const Matrix4f& view_projection,
+        ViewMeshPassData& out_pass_data,
+        ViewMeshShaderData& out_shader_data) const
     {
-        auto& commands = out_view_context.getMeshPassCommands(MeshPassType::GBuffer);
-        auto& shader_data = out_view_context.gbuffer_shader_data;
-        const auto& visible_primitives = view_context.visible_primitives;
-        const auto& relevant_primitive_indices = view_context.getMeshPassPrimitiveIndices(MeshPassType::GBuffer);
+        auto& commands = out_pass_data.getMeshPassCommands(MeshPassType::GBuffer);
+        auto& shader_data = out_shader_data.gbuffer_shader_data;
+        const auto& visible_primitives = visibility_data.visible_primitives;
+        const auto& relevant_primitive_indices = view_pass_data.getMeshPassPrimitiveIndices(MeshPassType::GBuffer);
         commands.clear();
         shader_data.clear();
         commands.reserve(relevant_primitive_indices.size());
         shader_data.reserve(relevant_primitive_indices.size());
 
         const auto descriptor_binding_set = descriptorTableBindingSet(m_descriptor_table);
-        const auto frustum_planes = extractFrustumPlanes(view.getViewProjectionMatrix());
+        const auto frustum_planes = extractFrustumPlanes(view_projection);
 
         for (const UInt32 primitive_index : relevant_primitive_indices) {
             DO_ASSERT(primitive_index < visible_primitives.size(), "GBufferMeshProcessor primitive index out of range");
@@ -149,11 +154,11 @@ namespace dodoe {
             }
 
             const auto* render_object = primitive->getRenderObject();
-            const UInt32 first_instance = primitive_index < view_context.primitive_first_instance_offsets.size()
-                ? view_context.primitive_first_instance_offsets[primitive_index]
+            const UInt32 first_instance = primitive_index < instance_data.primitive_first_instance_offsets.size()
+                ? instance_data.primitive_first_instance_offsets[primitive_index]
                 : 0;
             const auto batches = render_object
-                ? render_object->buildMeshBatches(primitive->getId(), primitive->getMaterials(), first_instance)
+                ? static_cast<const PrimitiveRenderObject*>(render_object)->buildMeshBatches(primitive->getId(), primitive->getMaterials(), first_instance)
                 : primitive->getMeshBatches();
             for (const auto& batch : batches) {
                 if (!batch.isValid() || !batch.isRelevant(MeshPassType::GBuffer) || batch.elements.empty()) {
@@ -177,8 +182,8 @@ namespace dodoe {
                 }
 
                 GBufferMeshDrawShaderData draw_shader_data{};
-                draw_shader_data.view_projection = view.getViewProjectionMatrix();
-                draw_shader_data.time_data = view_context.frame_time_data;
+                draw_shader_data.view_projection = view_projection;
+                draw_shader_data.time_data = view_shader_data.frame_time_data;
                 const Ref<Material>& material = batch.material;
                 if (material) {
                     draw_shader_data.draw_data.x = static_cast<Int32>(resolveTextureIndex(m_texture_manager, material));
@@ -199,13 +204,13 @@ namespace dodoe {
                 if (descriptor_binding_set) {
                     command.binding_sets.push_back(descriptor_binding_set);
                 }
-                command.vertex_bindings.push_back(VertexBufferBinding().setBuffer(element.vertex_buffer).setSlot(0).setOffset(0));
+                command.vertex_bindings.push_back(GfxVertexBufferBinding().setBuffer(element.vertex_buffer).setSlot(0).setOffset(0));
                 command.setPrimitiveSceneBufferBinding(1, static_cast<UInt64>(element.first_instance) * sizeof(InstanceSceneData));
-                command.index_binding = IndexBufferBinding()
+                command.index_binding = GfxIndexBufferBinding()
                     .setBuffer(element.index_buffer)
-                    .setFormat(Format::R32_UINT)
+                    .setFormat(GfxFormat::R32_UINT)
                     .setOffset(0);
-                command.draw_args = DrawArguments()
+                command.draw_args = GfxDrawArguments()
                     .setVertexCount(element.index_count)
                     .setInstanceCount(element.instance_count)
                     .setStartIndexLocation(element.index_offset)

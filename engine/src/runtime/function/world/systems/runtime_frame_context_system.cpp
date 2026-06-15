@@ -1,6 +1,7 @@
 #include "runtime_frame_context_system.h"
 
-#include "render_system_bridge.h"
+#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/framework/camera.h"
 
 namespace dodoe {
 
@@ -10,12 +11,12 @@ namespace dodoe {
         (void)reg;
         (void)dt;
 
-        auto* camera = TryGetMainCamera();
+        auto* camera = Renderer::GetMainCamera();
         if (!camera) {
             return;
         }
 
-        SubmitMainCameraViewProjection(camera->getViewProjectionMatrix(), camera->getPosition());
+        Renderer::SetMainCameraViewProjection(camera->getViewProjectionMatrix(), camera->getPosition());
     }
 
 } // dodoe

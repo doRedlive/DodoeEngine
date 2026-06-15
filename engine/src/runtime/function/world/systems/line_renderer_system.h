@@ -1,0 +1,28 @@
+// do@Redlive
+
+#pragma once
+
+#include "dopch.h"
+
+#include "system.h"
+#include "runtime/function/world/entity.h"
+#include "runtime/function/world/components.h"
+
+namespace dodoe {
+
+    class LineRendererSystem : public System {
+        std::unordered_set<UUID> m_submitted{};
+
+    public:
+        ~LineRendererSystem() override;
+
+        void update(Registry& reg, Float dt) override;
+
+    private:
+        Bool syncLine(Entity entity);
+        void pruneRemoved(const std::unordered_set<UUID>& active);
+        Bool needsSync(Entity entity) const;
+        Matrix4f buildWorldMatrix(const TransformComponent& transform, const LineRendererComponent& line) const;
+    };
+
+} // dodoe

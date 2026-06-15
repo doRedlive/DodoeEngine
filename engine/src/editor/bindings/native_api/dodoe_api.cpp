@@ -52,7 +52,7 @@ inline Scene* currentScene(void* ctx) {
 inline TextureManager* TM(void* ctx) {
     auto* sc = SC(ctx);
     if (!sc || !sc->render_system) return nullptr;
-    return sc->render_system->getTextureManager();
+    return Renderer::GetTextureManager();
 }
 
 inline entt::entity toEntt(DodoeHandle h) { return static_cast<entt::entity>(static_cast<UInt32>(h)); }

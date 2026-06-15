@@ -7,6 +7,7 @@
 #include "runtime/core/application.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/thread/render_thread.h"
+#include "runtime/core/thread/draw_thread.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/physics/physics_system.h"
@@ -25,6 +26,7 @@ namespace dodoe {
         friend class Managed<SystemContext, SystemContextCreateInfo>;
 
         Scope<RenderThread> m_render_thread{nullptr};
+        Scope<DrawThread> m_draw_thread{nullptr};
 
     public:
         ~SystemContext();
@@ -42,7 +44,6 @@ namespace dodoe {
 
         [[nodiscard]] WindowManager* getWindowManager() const { return window_manager.get(); }
         [[nodiscard]] RenderSystem*  getRenderSystem() const { return render_system.get(); }
-        [[nodiscard]] Renderer* getRenderer() const { return render_system ? render_system->getRenderer() : nullptr; }
         [[nodiscard]] InputManager*  getInputManager() const { return input_manager.get(); }
         [[nodiscard]] const LayerStack& getLayerStack() const { return layer_stack; }
 
@@ -59,8 +60,6 @@ namespace dodoe {
 
         void updateTick(float dt);
         void renderTick();
-
-        void tickRenderingTask();
     };
 
 } // dodoe

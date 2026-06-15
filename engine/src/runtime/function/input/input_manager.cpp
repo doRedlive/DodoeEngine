@@ -125,8 +125,8 @@ namespace dodoe {
             0.0f
         };
 
-        auto& camera = Application::Self().context().render_system->getMainCamera();
-        const auto world_pos = camera.screen2world(logical_pos);
+        auto* camera = Renderer::GetMainCamera();
+        const auto world_pos = camera ? camera->screen2world(logical_pos) : logical_pos;
         return Vector2f(world_pos.x, world_pos.y);
     }
 

@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "../framework/primitive_scene_info.h"
+#include "runtime/function/graphics/gfx_context.h"
 #include "view_mesh_draw_context.h"
 
 namespace dodoe {
@@ -23,9 +24,11 @@ namespace dodoe {
         [[nodiscard]] const GfxBufferHandle& getConstantBuffer() const { return m_constant_buffer; }
 
         void buildCommands(
-            const ViewMeshDrawContext& view_context,
+            const ViewMeshVisibilityData& visibility_data,
+            const ViewMeshInstanceData& instance_data,
+            const ViewMeshPassData& view_pass_data,
             const Matrix4f& light_view_projection,
-            ViewMeshDrawContext& out_view_context) const;
+            ViewMeshPassData& out_pass_data) const;
     };
 
 } // dodoe

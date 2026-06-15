@@ -2,7 +2,7 @@
 
 #include "mesh_pass_processor.h"
 
-#include "../render_scene.h"
+#include "../render_scene/render_scene.h"
 #include "runtime/core/utils/common.h"
 
 namespace dodoe {
@@ -18,33 +18,33 @@ namespace dodoe {
         auto vert_source = ReadShaderFile(desc.vertex_shader_path);
         auto frag_source = ReadShaderFile(desc.pixel_shader_path);
         state->m_vertex_shader = device->createShader(
-            gfx::ShaderDesc().setShaderType(gfx::ShaderType::Vertex)
+            GfxShaderDesc().setShaderType(GfxShaderType::Vertex)
                 .setEntryName("main").setDebugName((desc.debug_name + " VS").c_str()),
             vert_source.data(), vert_source.size());
         state->m_pixel_shader = device->createShader(
-            gfx::ShaderDesc().setShaderType(gfx::ShaderType::Pixel)
+            GfxShaderDesc().setShaderType(GfxShaderType::Pixel)
                 .setEntryName("main").setDebugName((desc.debug_name + " PS").c_str()),
             frag_source.data(), frag_source.size());
 
         if (!desc.geometry_shader_path.empty()) {
             auto geom_source = ReadShaderFile(desc.geometry_shader_path);
             state->m_geometry_shader = device->createShader(
-                gfx::ShaderDesc().setShaderType(gfx::ShaderType::Geometry)
+                GfxShaderDesc().setShaderType(GfxShaderType::Geometry)
                     .setEntryName("main").setDebugName((desc.debug_name + " GS").c_str()),
                 geom_source.data(), geom_source.size());
         }
 
         state->m_input_layout = createStandardInputLayout(state->m_vertex_shader, desc);
 
-        auto binding_layout_desc = gfx::BindingLayoutDesc()
-            .setVisibility(gfx::ShaderType::All)
-            .addItem(gfx::BindingLayoutItem::VolatileConstantBuffer(0));
+        auto binding_layout_desc = GfxBindingLayoutDesc()
+            .setVisibility(GfxShaderType::All)
+            .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0));
         for (const auto& item : desc.extra_binding_items) {
             binding_layout_desc.addItem(item);
         }
         state->m_binding_layout = device->createBindingLayout(binding_layout_desc);
 
-        auto buffer_desc = gfx::BufferDesc()
+        auto buffer_desc = GfxBufferDesc()
             .setByteSize(static_cast<UInt32>(desc.constant_buffer_size))
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
@@ -52,8 +52,8 @@ namespace dodoe {
             .setDebugName((desc.debug_name + " ConstantBuffer").c_str());
         state->m_constant_buffer = device->createBuffer(buffer_desc);
 
-        auto binding_set_desc = gfx::BindingSetDesc()
-            .addItem(gfx::BindingSetItem::ConstantBuffer(0, state->m_constant_buffer));
+        auto binding_set_desc = GfxBindingSetDesc()
+            .addItem(GfxBindingSetItem::ConstantBuffer(0, state->m_constant_buffer));
         for (const auto& item : desc.extra_binding_set_items) {
             binding_set_desc.addItem(item);
         }
@@ -69,7 +69,7 @@ namespace dodoe {
         m_gfx = nullptr;
     }
 
-    void MeshPassProcessor::createGraphicsPipeline(gfx::FramebufferHandle framebuffer) {
+    void MeshPassProcessor::createGraphicsPipeline(GfxFramebufferHandle framebuffer) {
         if (!m_pipeline_state) {
             return;
         }
@@ -83,7 +83,7 @@ namespace dodoe {
 
         auto framebuffer_info = framebuffer->getFramebufferInfo();
 
-        auto pipeline_desc = gfx::GraphicsPipelineDesc()
+        auto pipeline_desc = GfxGraphicsPipelineDesc()
             .setVertexShader(m_pipeline_state->m_vertex_shader)
             .setPixelShader(m_pipeline_state->m_pixel_shader)
             .addBindingLayout(m_pipeline_state->m_binding_layout)
@@ -135,7 +135,7 @@ namespace dodoe {
 
     DynamicArray<MeshDrawCommand> MeshPassProcessor::buildDrawCommands(
         const DynamicArray<MeshBatch>& batches,
-        gfx::CommandListHandle cmd_list,
+        GfxCommandListHandle cmd_list,
         const PerBatchConstantsFn& per_batch_fn)
     {
         DynamicArray<MeshDrawCommand> commands;
@@ -186,21 +186,21 @@ namespace dodoe {
                 auto* table = m_pipeline_state->m_desc.descriptor_table->getDescriptorTable();
                 if (table) {
                     command.binding_sets.push_back(
-                        gfx::BindingSetHandle(table));
+                        GfxBindingSetHandle(table));
                 }
             }
 
             command.vertex_bindings.push_back(
-                gfx::VertexBufferBinding()
+                GfxVertexBufferBinding()
                     .setBuffer(element.vertex_buffer)
                     .setSlot(0).setOffset(0));
 
-            command.index_binding = gfx::IndexBufferBinding()
+            command.index_binding = GfxIndexBufferBinding()
                 .setBuffer(element.index_buffer)
-                .setFormat(gfx::Format::R32_UINT)
+                .setFormat(GfxFormat::R32_UINT)
                 .setOffset(0);
 
-            command.draw_args = gfx::DrawArguments()
+            command.draw_args = GfxDrawArguments()
                 .setVertexCount(element.index_count)
                 .setInstanceCount(1)
                 .setStartIndexLocation(element.index_offset)
@@ -236,22 +236,22 @@ namespace dodoe {
 
     void MeshPassProcessor::submitDrawCommands(
         const DynamicArray<MeshDrawCommand>& commands,
-        gfx::FramebufferHandle framebuffer,
+        GfxFramebufferHandle framebuffer,
         const Vector2i& viewport_extent,
-        gfx::CommandListHandle cmd_list) const
+        GfxCommandListHandle cmd_list) const
     {
         if (commands.empty()) {
             return;
         }
 
-        auto viewport_state = gfx::ViewportState().addViewportAndScissorRect(
-            gfx::Viewport(static_cast<float>(viewport_extent.x),
+        auto viewport_state = GfxViewportState().addViewportAndScissorRect(
+            GfxViewport(static_cast<float>(viewport_extent.x),
                           static_cast<float>(viewport_extent.y)));
 
-        gfx::GraphicsPipelineHandle current_pipeline = nullptr;
+        GfxGraphicsPipelineHandle current_pipeline = nullptr;
 
         for (const auto& cmd : commands) {
-            auto graphics_state = gfx::GraphicsState()
+            auto graphics_state = GfxGraphicsState()
                 .setFramebuffer(framebuffer)
                 .setViewport(viewport_state);
 
@@ -287,15 +287,15 @@ namespace dodoe {
         m_command_cache.clear();
     }
 
-    gfx::BufferHandle MeshPassProcessor::getConstantBuffer() const {
+    GfxBufferHandle MeshPassProcessor::getConstantBuffer() const {
         if (m_pipeline_state) {
             return m_pipeline_state->m_constant_buffer;
         }
         return nullptr;
     }
 
-    gfx::InputLayoutHandle MeshPassProcessor::createStandardInputLayout(
-        gfx::ShaderHandle vertex_shader,
+    GfxInputLayoutHandle MeshPassProcessor::createStandardInputLayout(
+        GfxShaderHandle vertex_shader,
         const MeshPipelineStateDesc& desc)
     {
         if (!desc.vertex_attributes.empty()) {
@@ -316,30 +316,30 @@ namespace dodoe {
         constexpr Size_t kTexCoordOff    = sizeof(Vector3f) + sizeof(UInt32);
         constexpr Size_t kInstanceStride = sizeof(Matrix4f);
 
-        DynamicArray<gfx::VertexAttributeDesc> attributes = {
-            gfx::VertexAttributeDesc()
-                .setName("a_Position").setFormat(gfx::Format::RGB32_FLOAT)
+        DynamicArray<GfxVertexAttributeDesc> attributes = {
+            GfxVertexAttributeDesc()
+                .setName("a_Position").setFormat(GfxFormat::RGB32_FLOAT)
                 .setOffset(kPositionOff).setElementStride(kVertexStride),
-            gfx::VertexAttributeDesc()
-                .setName("a_Normal").setFormat(gfx::Format::RGBA8_SNORM)
+            GfxVertexAttributeDesc()
+                .setName("a_Normal").setFormat(GfxFormat::RGBA8_SNORM)
                 .setOffset(kNormalOff).setElementStride(kVertexStride),
-            gfx::VertexAttributeDesc()
-                .setName("a_UV").setFormat(gfx::Format::RG32_FLOAT)
+            GfxVertexAttributeDesc()
+                .setName("a_UV").setFormat(GfxFormat::RG32_FLOAT)
                 .setOffset(kTexCoordOff).setElementStride(kVertexStride),
-            gfx::VertexAttributeDesc()
-                .setName("a_Model0").setFormat(gfx::Format::RGBA32_FLOAT)
+            GfxVertexAttributeDesc()
+                .setName("a_Model0").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(0)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
-            gfx::VertexAttributeDesc()
-                .setName("a_Model1").setFormat(gfx::Format::RGBA32_FLOAT)
+            GfxVertexAttributeDesc()
+                .setName("a_Model1").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f))
                 .setElementStride(kInstanceStride).setIsInstanced(true),
-            gfx::VertexAttributeDesc()
-                .setName("a_Model2").setFormat(gfx::Format::RGBA32_FLOAT)
+            GfxVertexAttributeDesc()
+                .setName("a_Model2").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f) * 2)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
-            gfx::VertexAttributeDesc()
-                .setName("a_Model3").setFormat(gfx::Format::RGBA32_FLOAT)
+            GfxVertexAttributeDesc()
+                .setName("a_Model3").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f) * 3)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
         };

@@ -1,4 +1,6 @@
 // do@Redlive
+#include "runtime/function/graphics/gfx.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 #pragma once
 
@@ -12,19 +14,20 @@ namespace dodoe {
     class MeshDrawCommandDispatcher {
     public:
         static void uploadInstanceTransforms(
-            const ViewMeshDrawContext& view_context,
+            const ViewMeshInstanceData& instance_data,
             const RenderGraphBufferHandle& primitive_scene_data,
             RenderGraphCommandList& command_list);
 
         static void dispatch(
             const MeshPassType pass_type,
-            const ViewMeshDrawContext& view_context,
+            const ViewMeshShaderData& shader_data,
+            const ViewMeshPassData& pass_data,
             const DynamicArray<MeshDrawCommand>& commands,
-            const FramebufferHandle& framebuffer,
-            const ViewportState& viewport_state,
-            const GraphicsPipelineHandle& pass_pipeline,
-            const GfxBufferHandle& primitive_scene_buffer,
-            const GfxBufferHandle& pass_constant_buffer,
+            const GfxFramebufferHandle& framebuffer,
+            const GfxViewportState& viewport_state,
+            const GfxGraphicsPipelineHandle& pass_pipeline,
+            const RenderGraphBufferHandle& primitive_scene_buffer,
+            const RenderGraphBufferHandle& pass_constant_buffer,
             RenderGraphCommandList& command_list);
     };
 

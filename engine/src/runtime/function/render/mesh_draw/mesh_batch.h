@@ -30,8 +30,8 @@ namespace dodoe {
         Bool uses_instance_range{false};
         UInt32 first_instance{0};
         UInt32 instance_count{1};
-        gfx::BufferHandle vertex_buffer;
-        gfx::BufferHandle index_buffer;
+        GfxBufferHandle vertex_buffer;
+        GfxBufferHandle index_buffer;
 
         [[nodiscard]] Bool isValid() const {
             return index_count > 0 && instance_count > 0 && vertex_buffer && index_buffer;

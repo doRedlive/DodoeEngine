@@ -11,7 +11,7 @@ namespace dodoe {
 
     struct GraphicsPipelineCacheKey {
         MeshPassType pass_type{MeshPassType::GBuffer};
-        PrimitiveType primitive_type{PrimitiveType::TriangleList};
+        GfxPrimitiveType primitive_type{GfxPrimitiveType::TriangleList};
         UInt32 patch_control_points{0};
         GfxInputLayout* input_layout{nullptr};
         GfxShader* vertex_shader{nullptr};
@@ -20,9 +20,9 @@ namespace dodoe {
         GfxShader* geometry_shader{nullptr};
         GfxShader* pixel_shader{nullptr};
         DynamicArray<GfxBindingLayout*> binding_layouts{};
-        RenderState render_state{};
-        nvrhi::VariableRateShadingState shading_rate_state{};
-        nvrhi::FramebufferInfo framebuffer_info{};
+        GfxRenderState render_state{};
+        GfxVariableRateShadingState shading_rate_state{};
+        GfxFramebufferInfo framebuffer_info{};
 
         [[nodiscard]] Bool operator==(const GraphicsPipelineCacheKey& other) const;
     };

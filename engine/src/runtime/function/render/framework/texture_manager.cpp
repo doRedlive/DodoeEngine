@@ -4,22 +4,15 @@
 
 #include "texture.h"
 
-#include "runtime/core/application.h"
 #include "runtime/core/utils/common.h"
 #include "runtime/resource/file/file_id.h"
 #include "runtime/resource/parser/texture_blob.h"
-#include "runtime/core/context/system_context.h"
-#include "runtime/function/render/interface/gfx_context.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/render/renderer.h"
 namespace dodoe {
 
     Ref<Texture> Texture::Load(const String& path) {
-        auto& app = Application::Self();
-        auto* render_system = app.context().render_system.get();
-        if (!render_system) {
-            return nullptr;
-        }
-        auto* texture_manager = render_system->getTextureManager();
+        auto* texture_manager = Renderer::GetTextureManager();
         if (!texture_manager) {
             return nullptr;
         }
@@ -76,16 +69,16 @@ namespace dodoe {
             return nullptr;
         }
 
-        const auto texture_format = data.is_hdr ? gfx::Format::RGBA32_FLOAT : gfx::Format::RGBA8_UNORM;
+        const auto texture_format = data.is_hdr ? GfxFormat::RGBA32_FLOAT : GfxFormat::RGBA8_UNORM;
         const Size_t bytes_per_channel = data.is_hdr ? sizeof(Float) : sizeof(UByte);
 
-        auto texture_desc = gfx::TextureDesc()
-            .setDimension(gfx::TextureDimension::Texture2D)
+        auto texture_desc = GfxTextureDesc()
+            .setDimension(GfxTextureDimension::Texture2D)
             .setWidth(data.width)
             .setHeight(data.height)
             .setFormat(texture_format)
             .setMipLevels(1)
-            .enableAutomaticStateTracking(gfx::ResourceStates::ShaderResource)
+            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName(path);
         auto handle = m_gfx->getDevice()->createTexture(texture_desc);
         if (!handle) {
@@ -104,7 +97,7 @@ namespace dodoe {
         texture->setDimensions(data.width, data.height);
         texture->setPath(path);
         texture->setGpuHandle(handle);
-        texture->setDescriptorIndex(m_descriptor_table->createDescriptor(gfx::BindingSetItem::Texture_SRV(0, texture->getGpuHandle())));
+        texture->setDescriptorIndex(m_descriptor_table->createDescriptor(GfxBindingSetItem::Texture_SRV(0, texture->getGpuHandle())));
 
         const FileID file_id(path);
         texture->setFileIdentity(file_id, UUID{});
@@ -115,13 +108,13 @@ namespace dodoe {
     }
 
     void TextureManager::createFallbackTexture() {
-        auto texture_desc = gfx::TextureDesc()
-            .setDimension(gfx::TextureDimension::Texture2D)
+        auto texture_desc = GfxTextureDesc()
+            .setDimension(GfxTextureDimension::Texture2D)
             .setWidth(1)
             .setHeight(1)
-            .setFormat(gfx::Format::RGBA8_UNORM)
+            .setFormat(GfxFormat::RGBA8_UNORM)
             .setMipLevels(1)
-            .enableAutomaticStateTracking(gfx::ResourceStates::ShaderResource)
+            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName("Render TextureManager Fallback");
         auto handle = m_gfx->getDevice()->createTexture(texture_desc);
 
@@ -136,7 +129,7 @@ namespace dodoe {
         m_fallback->setName("<fallback>");
         m_fallback->setDimensions(1, 1);
         m_fallback->setGpuHandle(handle);
-        m_fallback->setDescriptorIndex(m_descriptor_table->createDescriptor(gfx::BindingSetItem::Texture_SRV(0, m_fallback->getGpuHandle())));
+        m_fallback->setDescriptorIndex(m_descriptor_table->createDescriptor(GfxBindingSetItem::Texture_SRV(0, m_fallback->getGpuHandle())));
         m_fallback->setFileIdentity(FileID("<fallback>"), UUID(0));
         Object::AllocateInstanceID(m_fallback.get());
     }

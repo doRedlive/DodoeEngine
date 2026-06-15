@@ -20,22 +20,46 @@ namespace dodoe {
         for (Size_t resource_index = 0; resource_index < resources.size(); resource_index++) {
             const auto& resource = resources[resource_index];
             if (resource.type == RenderGraphResourceType::Texture) {
-                m_texture_handles[resource_index] = device->createTexture(resource.texture_desc.desc);
+                switch (resource.source) {
+                    case RenderGraphResourceSource::Transient:
+                        m_texture_handles[resource_index] = device->createTexture(resource.texture_desc.desc);
+                        break;
+                    case RenderGraphResourceSource::ImportedTexture:
+                        DO_ASSERT(resource.imported_texture != nullptr, "RenderGraphResourceRegistry imported texture is null");
+                        m_texture_handles[resource_index] = resource.imported_texture;
+                        break;
+                    case RenderGraphResourceSource::ImportedBackBuffer: {
+                        const auto& swapchain_textures = gfx_context.getSwapchainTextures();
+                        DO_ASSERT(swapchain_image_index < swapchain_textures.size(), "RenderGraphResourceRegistry swapchain image index out of range");
+                        m_texture_handles[resource_index] = swapchain_textures[swapchain_image_index];
+                        break;
+                    }
+                    case RenderGraphResourceSource::ImportedBuffer:
+                        DO_ASSERT(false, "RenderGraphResourceRegistry texture resource cannot use imported buffer source");
+                        break;
+                }
                 continue;
             }
 
-            m_buffer_handles[resource_index] = device->createBuffer(resource.buffer_desc.desc);
+            switch (resource.source) {
+                case RenderGraphResourceSource::Transient:
+                    m_buffer_handles[resource_index] = device->createBuffer(resource.buffer_desc.desc);
+                    break;
+                case RenderGraphResourceSource::ImportedBuffer:
+                    DO_ASSERT(resource.imported_buffer != nullptr, "RenderGraphResourceRegistry imported buffer is null");
+                    m_buffer_handles[resource_index] = resource.imported_buffer;
+                    break;
+                case RenderGraphResourceSource::ImportedTexture:
+                case RenderGraphResourceSource::ImportedBackBuffer:
+                    DO_ASSERT(false, "RenderGraphResourceRegistry buffer resource cannot use imported texture source");
+                    break;
+            }
         }
-
-        const auto& swapchain_textures = gfx_context.getSwapchainTextures();
-        DO_ASSERT(swapchain_image_index < swapchain_textures.size(), "RenderGraphResourceRegistry swapchain image index out of range");
-        m_backbuffer = swapchain_textures[swapchain_image_index];
     }
 
     void RenderGraphResourceRegistry::reset() {
         m_texture_handles.clear();
         m_buffer_handles.clear();
-        m_backbuffer = nullptr;
     }
 
     GfxTextureHandle RenderGraphResourceRegistry::getTexture(const RenderGraphTextureHandle handle) const {

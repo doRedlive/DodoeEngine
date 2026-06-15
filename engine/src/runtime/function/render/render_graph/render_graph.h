@@ -25,6 +25,9 @@ namespace dodoe {
         void addPass(const Ref<RenderGraphPass>& pass);
         UInt32 addTextureResource(const RenderGraphTextureDesc& desc, const String& name);
         UInt32 addBufferResource(const RenderGraphBufferDesc& desc, const String& name);
+        UInt32 addImportedTextureResource(const GfxTextureHandle& texture, const String& name);
+        UInt32 addImportedBufferResource(const GfxBufferHandle& buffer, const String& name);
+        UInt32 addBackBufferResource(const String& name);
         void compile();
         DrawCommandList execute(ThreadPool& pool, const RenderGraphExecuteContext& context);
         void reset();

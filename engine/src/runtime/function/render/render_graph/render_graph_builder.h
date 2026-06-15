@@ -18,6 +18,9 @@ namespace dodoe {
 
         RenderGraphTextureHandle createTexture(const RenderGraphTextureDesc& desc, const String& name);
         RenderGraphBufferHandle createBuffer(const RenderGraphBufferDesc& desc, const String& name);
+        RenderGraphTextureHandle importTexture(const GfxTextureHandle& texture, const String& name);
+        RenderGraphBufferHandle importBuffer(const GfxBufferHandle& buffer, const String& name);
+        RenderGraphTextureHandle importBackBuffer(const String& name);
 
         template <typename TParameters, typename TSetup, typename TExecute>
         void addPass(const String& name, const RenderGraphPassFlags flags, TSetup&& setup_function, TExecute&& execute_function) {
@@ -47,6 +50,9 @@ namespace dodoe {
 
         UInt32 registerTexture(const RenderGraphTextureDesc& desc, const String& name);
         UInt32 registerBuffer(const RenderGraphBufferDesc& desc, const String& name);
+        UInt32 registerImportedTexture(const GfxTextureHandle& texture, const String& name);
+        UInt32 registerImportedBuffer(const GfxBufferHandle& buffer, const String& name);
+        UInt32 registerBackBuffer(const String& name);
 
         friend class RenderGraphPassBuilder;
     };

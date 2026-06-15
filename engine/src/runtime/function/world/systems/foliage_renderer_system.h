@@ -4,14 +4,12 @@
 
 #include "system.h"
 #include "../components.h"
+#include "runtime/function/render/render_scene/primitive_render_object.h"
 
 namespace dodoe {
 
-    class RenderObject;
-    class RenderScene;
-
     class FoliageRendererSystem : public System {
-        std::unordered_set<Uuid> m_submitted_objects{};
+        std::unordered_set<UUID> m_submitted_objects{};
 
     public:
         ~FoliageRendererSystem() override;
@@ -19,11 +17,12 @@ namespace dodoe {
         void update(Registry& reg, float dt) override;
 
     private:
-        bool syncFoliageRenderer(RenderScene& render_scene, Entity entity);
-        bool pruneRemovedObjects(RenderScene& render_scene, const std::unordered_set<Uuid>& alive_objects);
+        bool syncFoliageRenderer(Entity entity);
+        void pruneRemovedObjects(const std::unordered_set<UUID>& active_objects);
 
-        [[nodiscard]] bool needsObjectSync(const RenderScene& render_scene, Entity entity) const;
-        [[nodiscard]] static Scope<RenderObject> buildRenderObject(const FoliageRendererComponent& component);
+        [[nodiscard]] bool needsObjectSync(Entity entity) const;
+        [[nodiscard]] static Matrix4f buildWorldMatrix(const TransformComponent& transform);
+        [[nodiscard]] static Scope<PrimitiveRenderObject> buildRenderObject(const FoliageRendererComponent& component);
     };
 
 } // dodoe

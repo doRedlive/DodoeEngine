@@ -5,14 +5,14 @@
 namespace dodoe {
     namespace {
 
-        Bool EqualStencilOpDesc(const DepthStencilState::StencilOpDesc& lhs, const DepthStencilState::StencilOpDesc& rhs) {
+        Bool EqualStencilOpDesc(const GfxDepthStencilState::StencilOpDesc& lhs, const GfxDepthStencilState::StencilOpDesc& rhs) {
             return lhs.failOp == rhs.failOp &&
                    lhs.depthFailOp == rhs.depthFailOp &&
                    lhs.passOp == rhs.passOp &&
                    lhs.stencilFunc == rhs.stencilFunc;
         }
 
-        Bool EqualRasterState(const RasterState& lhs, const RasterState& rhs) {
+        Bool EqualRasterState(const GfxRasterState& lhs, const GfxRasterState& rhs) {
             return lhs.fillMode == rhs.fillMode &&
                    lhs.cullMode == rhs.cullMode &&
                    lhs.frontCounterClockwise == rhs.frontCounterClockwise &&
@@ -31,7 +31,7 @@ namespace dodoe {
                    std::memcmp(lhs.samplePositionsY, rhs.samplePositionsY, sizeof(lhs.samplePositionsY)) == 0;
         }
 
-        Bool EqualDepthStencilState(const DepthStencilState& lhs, const DepthStencilState& rhs) {
+        Bool EqualDepthStencilState(const GfxDepthStencilState& lhs, const GfxDepthStencilState& rhs) {
             return lhs.depthTestEnable == rhs.depthTestEnable &&
                    lhs.depthWriteEnable == rhs.depthWriteEnable &&
                    lhs.depthFunc == rhs.depthFunc &&
@@ -44,20 +44,20 @@ namespace dodoe {
                    EqualStencilOpDesc(lhs.backFaceStencil, rhs.backFaceStencil);
         }
 
-        Bool EqualRenderState(const RenderState& lhs, const RenderState& rhs) {
+        Bool EqualRenderState(const GfxRenderState& lhs, const GfxRenderState& rhs) {
             return lhs.blendState == rhs.blendState &&
                    EqualDepthStencilState(lhs.depthStencilState, rhs.depthStencilState) &&
                    EqualRasterState(lhs.rasterState, rhs.rasterState);
         }
 
-        Bool EqualShadingRateState(const nvrhi::VariableRateShadingState& lhs, const nvrhi::VariableRateShadingState& rhs) {
+        Bool EqualShadingRateState(const GfxVariableRateShadingState& lhs, const GfxVariableRateShadingState& rhs) {
             return lhs.enabled == rhs.enabled &&
                    lhs.shadingRate == rhs.shadingRate &&
                    lhs.pipelinePrimitiveCombiner == rhs.pipelinePrimitiveCombiner &&
                    lhs.imageCombiner == rhs.imageCombiner;
         }
 
-        Size_t HashRasterState(const RasterState& raster_state) {
+        Size_t HashRasterState(const GfxRasterState& raster_state) {
             Size_t hash_value = 0;
             hash_combine(hash_value, static_cast<UInt32>(raster_state.fillMode));
             hash_combine(hash_value, static_cast<UInt32>(raster_state.cullMode));
@@ -82,7 +82,7 @@ namespace dodoe {
             return hash_value;
         }
 
-        Size_t HashDepthStencilState(const DepthStencilState& depth_stencil_state) {
+        Size_t HashDepthStencilState(const GfxDepthStencilState& depth_stencil_state) {
             Size_t hash_value = 0;
             hash_combine(hash_value, depth_stencil_state.depthTestEnable);
             hash_combine(hash_value, depth_stencil_state.depthWriteEnable);
@@ -103,7 +103,7 @@ namespace dodoe {
             return hash_value;
         }
 
-        Size_t HashRenderState(const RenderState& render_state) {
+        Size_t HashRenderState(const GfxRenderState& render_state) {
             Size_t hash_value = 0;
             hash_combine(hash_value, render_state.blendState.alphaToCoverageEnable);
             for (const auto& target : render_state.blendState.targets) {
@@ -121,7 +121,7 @@ namespace dodoe {
             return hash_value;
         }
 
-        Size_t HashShadingRateState(const nvrhi::VariableRateShadingState& shading_rate_state) {
+        Size_t HashShadingRateState(const GfxVariableRateShadingState& shading_rate_state) {
             Size_t hash_value = 0;
             hash_combine(hash_value, shading_rate_state.enabled);
             hash_combine(hash_value, static_cast<UInt32>(shading_rate_state.shadingRate));
@@ -130,7 +130,7 @@ namespace dodoe {
             return hash_value;
         }
 
-        Size_t HashFramebufferInfo(const nvrhi::FramebufferInfo& framebuffer_info) {
+        Size_t HashFramebufferInfo(const GfxFramebufferInfo& framebuffer_info) {
             Size_t hash_value = 0;
             for (const auto format : framebuffer_info.colorFormats) {
                 hash_combine(hash_value, static_cast<UInt32>(format));

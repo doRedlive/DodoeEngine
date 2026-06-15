@@ -4,8 +4,9 @@
 
 #include "dopch.h"
 
-#include "render_scene.h"
+#include "../render_scene/render_scene.h"
 #include "render_view_family.h"
+#include "runtime/core/math/math.h"
 
 namespace dodoe::scene_visibility {
 
@@ -63,12 +64,12 @@ namespace dodoe::scene_visibility {
     }
 
     inline void BuildVisiblePrimitiveSet(const RenderScene& scene, RenderView& view) {
-        auto& visible_primitives = view.getMeshDrawContext().visible_primitives;
+        auto& visible_primitives = view.visibilityData().visible_primitives;
         visible_primitives.clear();
-        visible_primitives.reserve(scene.getPrimitives().size());
+        visible_primitives.reserve(scene.getPrimitiveSceneInfos().size());
         const auto frustum_planes = ExtractFrustumPlanes(view.getViewProjectionMatrix());
 
-        for (const auto& primitive : scene.getPrimitives()) {
+        for (const auto& primitive : scene.getPrimitiveSceneInfos()) {
             if (IsPrimitiveVisible(primitive, frustum_planes)) {
                 visible_primitives.push_back(&primitive);
             }

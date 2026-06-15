@@ -2,7 +2,8 @@
 
 #include "directional_shadow_mesh_processor.h"
 
-#include "../render_object.h"
+#include "../render_scene/primitive_render_object.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
     namespace {
@@ -46,12 +47,12 @@ namespace dodoe {
         DO_ASSERT(device != nullptr, "DirectionalShadowMeshProcessor device is null");
 
         m_binding_layout = device->createBindingLayout(
-            BindingLayoutDesc()
-                .setVisibility(ShaderType::All)
-                .addItem(BindingLayoutItem::VolatileConstantBuffer(0))
+            GfxBindingLayoutDesc()
+                .setVisibility(GfxShaderType::All)
+                .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
         );
         m_constant_buffer = device->createBuffer(
-            BufferDesc()
+            GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(Matrix4f) + sizeof(Vector4f)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
@@ -59,7 +60,7 @@ namespace dodoe {
                 .setDebugName("DirectionalShadowMeshProcessor ConstantBuffer")
         );
         m_binding_set = device->createBindingSet(
-            BindingSetDesc().addItem(BindingSetItem::ConstantBuffer(0, m_constant_buffer)),
+            GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer)),
             m_binding_layout
         );
     }
@@ -71,16 +72,17 @@ namespace dodoe {
     }
 
     void DirectionalShadowMeshProcessor::buildCommands(
-        const ViewMeshDrawContext& view_context,
+        const ViewMeshVisibilityData& visibility_data,
+        const ViewMeshInstanceData& instance_data,
+        const ViewMeshPassData& view_pass_data,
         const Matrix4f& light_view_projection,
-        ViewMeshDrawContext& out_view_context) const
+        ViewMeshPassData& out_pass_data) const
     {
-        auto& commands = out_view_context.getMeshPassCommands(MeshPassType::DirectionalShadow);
-        const auto& visible_primitives = view_context.visible_primitives;
-        const auto& relevant_primitive_indices = view_context.getMeshPassPrimitiveIndices(MeshPassType::DirectionalShadow);
+        auto& commands = out_pass_data.getMeshPassCommands(MeshPassType::DirectionalShadow);
+        const auto& visible_primitives = visibility_data.visible_primitives;
+        const auto& relevant_primitive_indices = view_pass_data.getMeshPassPrimitiveIndices(MeshPassType::DirectionalShadow);
         commands.clear();
         commands.reserve(relevant_primitive_indices.size());
-        out_view_context.directional_shadow_view_projection = light_view_projection;
         const auto frustum_planes = extractFrustumPlanes(light_view_projection);
 
         for (const UInt32 primitive_index : relevant_primitive_indices) {
@@ -91,11 +93,11 @@ namespace dodoe {
             }
 
             const auto* render_object = primitive->getRenderObject();
-            const UInt32 first_instance = primitive_index < view_context.primitive_first_instance_offsets.size()
-                ? view_context.primitive_first_instance_offsets[primitive_index]
+            const UInt32 first_instance = primitive_index < instance_data.primitive_first_instance_offsets.size()
+                ? instance_data.primitive_first_instance_offsets[primitive_index]
                 : 0;
             const auto batches = render_object
-                ? render_object->buildMeshBatches(primitive->getId(), primitive->getMaterials(), first_instance)
+                ? static_cast<const PrimitiveRenderObject*>(render_object)->buildMeshBatches(primitive->getId(), primitive->getMaterials(), first_instance)
                 : primitive->getMeshBatches();
             for (const auto& batch : batches) {
                 if (!batch.isValid() || !batch.isRelevant(MeshPassType::DirectionalShadow) || batch.elements.empty()) {
@@ -122,13 +124,13 @@ namespace dodoe {
                 command.pass_type = MeshPassType::DirectionalShadow;
                 command.primitive_index = static_cast<UInt32>(primitive_index);
                 command.binding_sets.push_back(m_binding_set);
-                command.vertex_bindings.push_back(VertexBufferBinding().setBuffer(element.vertex_buffer).setSlot(0).setOffset(0));
+                command.vertex_bindings.push_back(GfxVertexBufferBinding().setBuffer(element.vertex_buffer).setSlot(0).setOffset(0));
                 command.setPrimitiveSceneBufferBinding(1, static_cast<UInt64>(element.first_instance) * sizeof(InstanceSceneData));
-                command.index_binding = IndexBufferBinding()
+                command.index_binding = GfxIndexBufferBinding()
                     .setBuffer(element.index_buffer)
-                    .setFormat(Format::R32_UINT)
+                    .setFormat(GfxFormat::R32_UINT)
                     .setOffset(0);
-                command.draw_args = DrawArguments()
+                command.draw_args = GfxDrawArguments()
                     .setVertexCount(element.index_count)
                     .setInstanceCount(element.instance_count)
                     .setStartIndexLocation(element.index_offset)

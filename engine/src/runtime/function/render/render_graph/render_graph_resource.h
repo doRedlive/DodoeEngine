@@ -15,17 +15,24 @@ namespace dodoe {
         Buffer,
     };
 
+    enum class RenderGraphResourceSource {
+        Transient = 0,
+        ImportedTexture,
+        ImportedBuffer,
+        ImportedBackBuffer,
+    };
+
     enum class RenderGraphAccessType {
         Read = 0,
         Write,
     };
 
     struct RenderGraphTextureDesc {
-        TextureDesc desc{};
+        GfxTextureDesc desc{};
     };
 
     struct RenderGraphBufferDesc {
-        BufferDesc desc{};
+        GfxBufferDesc desc{};
     };
 
     struct RenderGraphTextureHandle {
@@ -47,13 +54,20 @@ namespace dodoe {
 
     struct RenderGraphResourceRecord {
         RenderGraphResourceType type{RenderGraphResourceType::Texture};
+        RenderGraphResourceSource source{RenderGraphResourceSource::Transient};
         String name{};
         RenderGraphTextureDesc texture_desc{};
         RenderGraphBufferDesc buffer_desc{};
+        GfxTextureHandle imported_texture{};
+        GfxBufferHandle imported_buffer{};
         Int32 producer_pass_index{-1};
         Int32 first_pass_index{-1};
         Int32 last_pass_index{-1};
         DynamicArray<UInt32> reader_passes{};
+
+        [[nodiscard]] Bool isImported() const {
+            return source != RenderGraphResourceSource::Transient;
+        }
     };
 
 } // dodoe

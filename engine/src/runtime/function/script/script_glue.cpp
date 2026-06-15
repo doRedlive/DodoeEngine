@@ -500,7 +500,7 @@ namespace dodoe {
 
         static int32_t Native_MeshRendererComponentGetValue(uint64_t entity_uuid) {
             if (auto* component = TryGetComponent<MeshRendererComponent>(entity_uuid)) {
-                return component->mesh ? 1 : 0;
+                return !component->lods.empty() ? 1 : 0;
             }
             return 0;
         }

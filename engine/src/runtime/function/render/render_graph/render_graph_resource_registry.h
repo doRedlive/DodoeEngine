@@ -12,7 +12,6 @@ namespace dodoe {
     class RenderGraphResourceRegistry {
         DynamicArray<GfxTextureHandle> m_texture_handles{};
         DynamicArray<GfxBufferHandle> m_buffer_handles{};
-        GfxTextureHandle m_backbuffer{};
 
     public:
         RenderGraphResourceRegistry() = default;
@@ -22,7 +21,6 @@ namespace dodoe {
 
         [[nodiscard]] GfxTextureHandle getTexture(const RenderGraphTextureHandle handle) const;
         [[nodiscard]] GfxBufferHandle getBuffer(const RenderGraphBufferHandle handle) const;
-        [[nodiscard]] GfxTextureHandle getBackBuffer() const { return m_backbuffer; }
     };
 
 } // dodoe

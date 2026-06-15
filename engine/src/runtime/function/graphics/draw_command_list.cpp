@@ -35,9 +35,9 @@ namespace dodoe {
     }
 
     void DrawCommandList::reset() {
-        DrawCommand* command = m_head;
+        DrawCommandList::DrawCommand* command = m_head;
         while (command != nullptr) {
-            DrawCommand* next = command->m_next;
+            DrawCommandList::DrawCommand* next = command->m_next;
             DO_ASSERT(command->m_destroy != nullptr, "DrawCommandList destroy function is null");
             command->m_destroy(*command);
             command = next;
@@ -95,8 +95,8 @@ namespace dodoe {
         other.m_used_byte_size = 0;
     }
 
-    void DrawCommandList::execute(gfx::ICommandList& command_list) const {
-        const DrawCommand* command = m_head;
+    void DrawCommandList::execute(GfxCommandList& command_list) const {
+        const DrawCommandList::DrawCommand* command = m_head;
         while (command != nullptr) {
             DO_ASSERT(command->m_execute != nullptr, "DrawCommandList execute function is null");
             command->m_execute(*command, command_list);
@@ -104,7 +104,7 @@ namespace dodoe {
         }
     }
 
-    void DrawCommandList::execute(const gfx::CommandListHandle& command_list) const {
+    void DrawCommandList::execute(const GfxCommandListHandle& command_list) const {
         DO_ASSERT(command_list != nullptr, "DrawCommandList command list is null");
         execute(*command_list);
     }
@@ -150,24 +150,24 @@ namespace dodoe {
     }
 
     void DrawCommandList::clearTextureFloat(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
-        const gfx::Color& clear_color)
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
+        const GfxColor& clear_color)
     {
         enqueue<ClearTextureFloatCommand>(texture, subresources, clear_color);
     }
 
     void DrawCommandList::clearTextureUInt(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
         UInt32 clear_color)
     {
         enqueue<ClearTextureUIntCommand>(texture, subresources, clear_color);
     }
 
     void DrawCommandList::clearDepthStencilTexture(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
         Bool clear_depth,
         Float depth,
         Bool clear_stencil,
@@ -177,9 +177,9 @@ namespace dodoe {
     }
 
     void DrawCommandList::copyBuffer(
-        const gfx::BufferHandle& destination,
+        const GfxBufferHandle& destination,
         UInt64 destination_offset_bytes,
-        const gfx::BufferHandle& source,
+        const GfxBufferHandle& source,
         UInt64 source_offset_bytes,
         UInt64 data_size_bytes)
     {
@@ -187,7 +187,7 @@ namespace dodoe {
     }
 
     void DrawCommandList::writeBuffer(
-        const gfx::BufferHandle& buffer,
+        const GfxBufferHandle& buffer,
         const void* data,
         Size_t data_size,
         UInt64 destination_offset_bytes)
@@ -195,35 +195,49 @@ namespace dodoe {
         WriteBufferCommand::Create(*this, buffer, data, data_size, destination_offset_bytes);
     }
 
+    void DrawCommandList::createBuffer(
+        const GfxDeviceHandle device,
+        const GfxBufferDesc& desc,
+        GfxBufferHandle* const destination,
+        const void* data,
+        const Size_t data_size)
+    {
+        CreateBufferCommand::Create(*this, device, desc, destination, data, data_size);
+    }
+
     void DrawCommandList::setPushConstants(const void* data, Size_t byte_size) {
         PushConstantsCommand::Create(*this, data, byte_size);
     }
 
     void DrawCommandList::setTextureState(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
-        gfx::ResourceStates state_bits)
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
+        GfxResourceStates state_bits)
     {
         enqueue<SetTextureStateCommand>(texture, subresources, state_bits);
+    }
+
+    void DrawCommandList::setBufferState(const GfxBufferHandle& buffer, const GfxResourceStates state_bits) {
+        enqueue<SetBufferStateCommand>(buffer, state_bits);
     }
 
     void DrawCommandList::commitBarriers() {
         enqueue<CommitBarriersCommand>();
     }
 
-    void DrawCommandList::setGraphicsState(const gfx::GraphicsState& state) {
+    void DrawCommandList::setGraphicsState(const GfxGraphicsState& state) {
         enqueue<SetGraphicsStateCommand>(state);
     }
 
-    void DrawCommandList::setComputeState(const gfx::ComputeState& state) {
+    void DrawCommandList::setComputeState(const GfxComputeState& state) {
         enqueue<SetComputeStateCommand>(state);
     }
 
-    void DrawCommandList::draw(const gfx::DrawArguments& args) {
+    void DrawCommandList::draw(const GfxDrawArguments& args) {
         enqueue<DrawPrimitiveCommand>(args);
     }
 
-    void DrawCommandList::drawIndexed(const gfx::DrawArguments& args) {
+    void DrawCommandList::drawIndexed(const GfxDrawArguments& args) {
         enqueue<DrawIndexedPrimitiveCommand>(args);
     }
 
@@ -232,12 +246,12 @@ namespace dodoe {
     }
 
     DrawCommandList::ClearTextureFloatCommand::ClearTextureFloatCommand(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
-        const gfx::Color& clear_color)
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
+        const GfxColor& clear_color)
         : m_texture(texture), m_subresources(subresources), m_clear_color(clear_color) {}
 
-    void DrawCommandList::ClearTextureFloatCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::ClearTextureFloatCommand::execute(GfxCommandList& command_list) const {
         command_list.clearTextureFloat(m_texture, m_subresources, m_clear_color);
     }
 
@@ -260,7 +274,7 @@ namespace dodoe {
     DrawCommandList::BeginMarkerCommand::BeginMarkerCommand(Size_t name_length)
         : DrawCommand(CalculateSize(name_length), &BeginMarkerCommand::ExecuteCommand, &BeginMarkerCommand::DestroyCommand) {}
 
-    void DrawCommandList::BeginMarkerCommand::ExecuteCommand(const DrawCommand& command, gfx::ICommandList& command_list) {
+    void DrawCommandList::BeginMarkerCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
         static_cast<const BeginMarkerCommand&>(command).execute(command_list);
     }
 
@@ -276,27 +290,27 @@ namespace dodoe {
         return reinterpret_cast<char*>(this + 1);
     }
 
-    void DrawCommandList::BeginMarkerCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::BeginMarkerCommand::execute(GfxCommandList& command_list) const {
         command_list.beginMarker(name());
     }
 
-    void DrawCommandList::EndMarkerCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::EndMarkerCommand::execute(GfxCommandList& command_list) const {
         command_list.endMarker();
     }
 
     DrawCommandList::ClearTextureUIntCommand::ClearTextureUIntCommand(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
         UInt32 clear_color)
         : m_texture(texture), m_subresources(subresources), m_clear_color(clear_color) {}
 
-    void DrawCommandList::ClearTextureUIntCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& command_list) const {
         command_list.clearTextureUInt(m_texture, m_subresources, m_clear_color);
     }
 
     DrawCommandList::ClearDepthStencilTextureCommand::ClearDepthStencilTextureCommand(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
         Bool clear_depth,
         Float depth,
         Bool clear_stencil,
@@ -308,14 +322,14 @@ namespace dodoe {
           m_clear_stencil(clear_stencil),
           m_stencil(stencil) {}
 
-    void DrawCommandList::ClearDepthStencilTextureCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& command_list) const {
         command_list.clearDepthStencilTexture(m_texture, m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil);
     }
 
     DrawCommandList::CopyBufferCommand::CopyBufferCommand(
-        const gfx::BufferHandle& destination,
+        const GfxBufferHandle& destination,
         UInt64 destination_offset_bytes,
-        const gfx::BufferHandle& source,
+        const GfxBufferHandle& source,
         UInt64 source_offset_bytes,
         UInt64 data_size_bytes)
         : m_destination(destination),
@@ -324,13 +338,13 @@ namespace dodoe {
           m_source_offset_bytes(source_offset_bytes),
           m_data_size_bytes(data_size_bytes) {}
 
-    void DrawCommandList::CopyBufferCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& command_list) const {
         command_list.copyBuffer(m_destination, m_destination_offset_bytes, m_source, m_source_offset_bytes, m_data_size_bytes);
     }
 
     DrawCommandList::WriteBufferCommand& DrawCommandList::WriteBufferCommand::Create(
         DrawCommandList& command_list,
-        const gfx::BufferHandle& buffer,
+        const GfxBufferHandle& buffer,
         const void* data,
         Size_t data_size,
         UInt64 destination_offset_bytes)
@@ -352,7 +366,7 @@ namespace dodoe {
     }
 
     DrawCommandList::WriteBufferCommand::WriteBufferCommand(
-        const gfx::BufferHandle& buffer,
+        const GfxBufferHandle& buffer,
         UInt64 destination_offset_bytes,
         Size_t data_size)
         : DrawCommand(CalculateSize(data_size), &WriteBufferCommand::ExecuteCommand, &WriteBufferCommand::DestroyCommand),
@@ -360,7 +374,7 @@ namespace dodoe {
           m_destination_offset_bytes(destination_offset_bytes),
           m_data_size(data_size) {}
 
-    void DrawCommandList::WriteBufferCommand::ExecuteCommand(const DrawCommand& command, gfx::ICommandList& command_list) {
+    void DrawCommandList::WriteBufferCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
         static_cast<const WriteBufferCommand&>(command).execute(command_list);
     }
 
@@ -376,7 +390,7 @@ namespace dodoe {
         return reinterpret_cast<UInt8*>(this) + sizeof(WriteBufferCommand);
     }
 
-    void DrawCommandList::WriteBufferCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::WriteBufferCommand::execute(GfxCommandList& command_list) const {
         command_list.writeBuffer(m_buffer, data(), m_data_size, m_destination_offset_bytes);
     }
 
@@ -405,7 +419,7 @@ namespace dodoe {
         : DrawCommand(CalculateSize(byte_size), &PushConstantsCommand::ExecuteCommand, &PushConstantsCommand::DestroyCommand),
           m_byte_size(byte_size) {}
 
-    void DrawCommandList::PushConstantsCommand::ExecuteCommand(const DrawCommand& command, gfx::ICommandList& command_list) {
+    void DrawCommandList::PushConstantsCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
         static_cast<const PushConstantsCommand&>(command).execute(command_list);
     }
 
@@ -421,68 +435,127 @@ namespace dodoe {
         return reinterpret_cast<UInt8*>(this) + sizeof(PushConstantsCommand);
     }
 
-    void DrawCommandList::PushConstantsCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::PushConstantsCommand::execute(GfxCommandList& command_list) const {
         command_list.setPushConstants(data(), m_byte_size);
     }
 
     DrawCommandList::SetTextureStateCommand::SetTextureStateCommand(
-        const gfx::TextureHandle& texture,
-        const gfx::TextureSubresourceSet& subresources,
-        gfx::ResourceStates state_bits)
+        const GfxTextureHandle& texture,
+        const GfxTextureSubresourceSet& subresources,
+        GfxResourceStates state_bits)
         : m_texture(texture), m_subresources(subresources), m_state_bits(state_bits) {}
 
-    void DrawCommandList::SetTextureStateCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& command_list) const {
         command_list.setTextureState(m_texture, m_subresources, m_state_bits);
     }
 
-    void DrawCommandList::CommitBarriersCommand::execute(gfx::ICommandList& command_list) const {
+    DrawCommandList::SetBufferStateCommand::SetBufferStateCommand(const GfxBufferHandle& buffer, GfxResourceStates state_bits)
+        : m_buffer(buffer), m_state_bits(state_bits) {}
+
+    void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& command_list) const {
+        command_list.setBufferState(m_buffer, m_state_bits);
+    }
+
+    void DrawCommandList::CommitBarriersCommand::execute(GfxCommandList& command_list) const {
         command_list.commitBarriers();
     }
 
-    DrawCommandList::SetGraphicsStateCommand::SetGraphicsStateCommand(const gfx::GraphicsState& state)
+    DrawCommandList::SetGraphicsStateCommand::SetGraphicsStateCommand(const GfxGraphicsState& state)
         : m_state(state) {}
 
-    void DrawCommandList::SetGraphicsStateCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::SetGraphicsStateCommand::execute(GfxCommandList& command_list) const {
         command_list.setGraphicsState(m_state);
     }
 
-    DrawCommandList::SetComputeStateCommand::SetComputeStateCommand(const gfx::ComputeState& state)
+    DrawCommandList::SetComputeStateCommand::SetComputeStateCommand(const GfxComputeState& state)
         : m_state(state) {}
 
-    void DrawCommandList::SetComputeStateCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::SetComputeStateCommand::execute(GfxCommandList& command_list) const {
         command_list.setComputeState(m_state);
     }
 
-    DrawCommandList::DrawPrimitiveCommand::DrawPrimitiveCommand(const gfx::DrawArguments& args)
+    DrawCommandList::DrawPrimitiveCommand::DrawPrimitiveCommand(const GfxDrawArguments& args)
         : m_args(args) {}
 
-    void DrawCommandList::DrawPrimitiveCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::DrawPrimitiveCommand::execute(GfxCommandList& command_list) const {
         command_list.draw(m_args);
     }
 
-    DrawCommandList::DrawIndexedPrimitiveCommand::DrawIndexedPrimitiveCommand(const gfx::DrawArguments& args)
+    DrawCommandList::DrawIndexedPrimitiveCommand::DrawIndexedPrimitiveCommand(const GfxDrawArguments& args)
         : m_args(args) {}
 
-    void DrawCommandList::DrawIndexedPrimitiveCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::DrawIndexedPrimitiveCommand::execute(GfxCommandList& command_list) const {
         command_list.drawIndexed(m_args);
     }
 
     DrawCommandList::DispatchCommand::DispatchCommand(UInt32 groups_x, UInt32 groups_y, UInt32 groups_z)
         : m_groups_x(groups_x), m_groups_y(groups_y), m_groups_z(groups_z) {}
 
-    void DrawCommandList::DispatchCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::DispatchCommand::execute(GfxCommandList& command_list) const {
         command_list.dispatch(m_groups_x, m_groups_y, m_groups_z);
     }
 
-    void DrawCommandList::OpenCommand::execute(gfx::ICommandList& command_list) const {
+    DrawCommandList::CreateBufferCommand::CreateBufferCommand(
+        const GfxDeviceHandle device,
+        const GfxBufferDesc& desc,
+        GfxBufferHandle* const destination,
+        const Size_t data_size)
+        : DrawCommand(CalculateSize(data_size), &CreateBufferCommand::ExecuteCommand, &CreateBufferCommand::DestroyCommand)
+        , m_device(device), m_desc(desc), m_destination(destination), m_data_size(data_size) {}
+
+    DrawCommandList::CreateBufferCommand& DrawCommandList::CreateBufferCommand::Create(
+        DrawCommandList& command_list,
+        const GfxDeviceHandle device,
+        const GfxBufferDesc& desc,
+        GfxBufferHandle* const destination,
+        const void* const data,
+        const Size_t data_size)
+    {
+        void* memory = command_list.allocate(CalculateSize(data_size), alignof(CreateBufferCommand));
+        auto* command = new (memory) CreateBufferCommand(device, desc, destination, data_size);
+        if (data && data_size > 0) {
+            std::memcpy(command->mutableData(), data, data_size);
+        }
+        command_list.appendCommand(command);
+        return *command;
+    }
+
+    Size_t DrawCommandList::CreateBufferCommand::CalculateSize(const Size_t data_size) {
+        return alignUp(sizeof(CreateBufferCommand) + data_size, alignof(CreateBufferCommand));
+    }
+
+    void* DrawCommandList::CreateBufferCommand::mutableData() {
+        return reinterpret_cast<UInt8*>(this) + sizeof(CreateBufferCommand);
+    }
+
+    const void* DrawCommandList::CreateBufferCommand::data() const {
+        return m_data_size > 0 ? reinterpret_cast<const UInt8*>(this) + sizeof(CreateBufferCommand) : nullptr;
+    }
+
+    void DrawCommandList::CreateBufferCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
+        static_cast<const CreateBufferCommand&>(command).execute(command_list);
+    }
+
+    void DrawCommandList::CreateBufferCommand::DestroyCommand(DrawCommand& command) {
+        static_cast<CreateBufferCommand&>(command).~CreateBufferCommand();
+    }
+
+    void DrawCommandList::CreateBufferCommand::execute(GfxCommandList& command_list) const {
+        *m_destination = m_device->createBuffer(m_desc);
+        if (m_data_size > 0) {
+            command_list.writeBuffer(*m_destination, data(), m_data_size);
+        }
+    }
+
+    void DrawCommandList::OpenCommand::execute(GfxCommandList& command_list) const {
         command_list.open();
     }
 
-    void DrawCommandList::CloseCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::CloseCommand::execute(GfxCommandList& command_list) const {
         command_list.close();
     }
 
-    void DrawCommandList::ClearStateCommand::execute(gfx::ICommandList& command_list) const {
+    void DrawCommandList::ClearStateCommand::execute(GfxCommandList& command_list) const {
         command_list.clearState();
     }
 
@@ -493,7 +566,7 @@ namespace dodoe {
         return (value + mask) & ~mask;
     }
 
-    void DrawCommandList::appendCommand(DrawCommand* command) {
+    void DrawCommandList::appendCommand(DrawCommandList::DrawCommand* command) {
         DO_ASSERT(command != nullptr, "DrawCommandList command is null");
 
         command->m_next = nullptr;

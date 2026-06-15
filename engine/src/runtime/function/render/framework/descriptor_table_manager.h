@@ -17,20 +17,20 @@ namespace dodoe {
     class DescriptorTableManager : public Managed<DescriptorTableManager, DescriptorTableManagerCreateInfo> {
         friend class Managed<DescriptorTableManager, DescriptorTableManagerCreateInfo>;
         struct BindingSetItemHasher {
-            std::size_t operator()(const gfx::BindingSetItem& item) const {
+            std::size_t operator()(const GfxBindingSetItem& item) const {
                 size_t hash = 0;
-                gfx::hash_combine(hash, item.resourceHandle);
-                gfx::hash_combine(hash, item.type);
-                gfx::hash_combine(hash, item.format);
-                gfx::hash_combine(hash, item.dimension);
-                gfx::hash_combine(hash, item.rawData[0]);
-                gfx::hash_combine(hash, item.rawData[1]);
+                hash_combine(hash, item.resourceHandle);
+                hash_combine(hash, item.type);
+                hash_combine(hash, item.format);
+                hash_combine(hash, item.dimension);
+                hash_combine(hash, item.rawData[0]);
+                hash_combine(hash, item.rawData[1]);
                 return hash;
             }
         };
 
         struct BindingSetItemsEqual {
-            bool operator()(const gfx::BindingSetItem& a, const gfx::BindingSetItem& b) const {
+            bool operator()(const GfxBindingSetItem& a, const GfxBindingSetItem& b) const {
                 return a.resourceHandle == b.resourceHandle
                     && a.type == b.type
                     && a.format == b.format
@@ -39,9 +39,9 @@ namespace dodoe {
             }
         };
         
-        gfx::DescriptorTableHandle descriptor_table_{};
-        std::vector<gfx::BindingSetItem> descriptors_{};
-        std::unordered_map<gfx::BindingSetItem, DescriptorIndex, BindingSetItemHasher, BindingSetItemsEqual> descriptor_index_umap_{};
+        GfxDescriptorTableHandle descriptor_table_{};
+        std::vector<GfxBindingSetItem> descriptors_{};
+        std::unordered_map<GfxBindingSetItem, DescriptorIndex, BindingSetItemHasher, BindingSetItemsEqual> descriptor_index_umap_{};
         std::vector<bool> allocated_descriptors_{};
         int search_start_ = 0;
 
@@ -49,9 +49,9 @@ namespace dodoe {
 
     public:
 
-        DescriptorIndex createDescriptor(gfx::BindingSetItem item);
+        DescriptorIndex createDescriptor(GfxBindingSetItem item);
         void releaseDescriptor(DescriptorIndex index);
-        [[nodiscard]] gfx::IDescriptorTable* getDescriptorTable() const { return descriptor_table_; }
+        [[nodiscard]] GfxDescriptorTable* getDescriptorTable() const { return descriptor_table_; }
 
     private:
         bool initialize(const DescriptorTableManagerCreateInfo& info);

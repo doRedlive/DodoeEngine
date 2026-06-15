@@ -1,63 +1,64 @@
-// do@Redlive
 #pragma once
 
 #include "dopch.h"
 
-#include "runtime/function/render/framework/material.h"
-#include "runtime/function/render/framework/mesh.h"
-#include "framework/descriptor_table_manager.h"
-#include "runtime/function/graphics/gfx.h"
-
 namespace dodoe {
 
-    struct BufferGroup {
-        gfx::BufferHandle index_buffer;
-        gfx::BufferHandle vertex_buffer;
-        DescriptorIndex index_buffer_descriptor;
-        DescriptorIndex vertex_buffer_descriptor;
-        DynamicArray<UInt32> index_data;
-        DynamicArray<Vector3f> position_data;
-        DynamicArray<Vector2f> texcoord1_data;
-        DynamicArray<Vector2f> texcoord2_data;
-        DynamicArray<UInt32> normal_data;
-        DynamicArray<UInt32> tangent_data;
-    };
+struct alignas(16) SpriteInstance {
+    float  position_x{0.0f};
+    float  position_y{0.0f};
+    float  scale_x{1.0f};
+    float  scale_y{1.0f};
+    float  rotation{0.0f};
+    float  _pad0{0.0f};
+    uint32 atlas_index{0};
+    uint32 _pad1{0};
+    float  uv_min_x{0.0f};
+    float  uv_min_y{0.0f};
+    float  uv_max_x{1.0f};
+    float  uv_max_y{1.0f};
+    uint32 color{0xFFFFFFFF};
+    uint32 sorting_key{0};
+    uint32 material_id{0};
+    uint32 flags{0};
+};
 
-    enum class MeshGeometryPrimitiveType : UInt8 {
-        Triangles,
-        Lines,
-        LineStrip,
-        Count
-    };
+static_assert(sizeof(SpriteInstance) == 64, "SpriteInstance must be 64 bytes");
+static_assert(alignof(SpriteInstance) == 16, "SpriteInstance must be 16-byte aligned");
 
-    struct MeshGeometry {
-        Ref<Material> material;
-        UInt32 index_offset{0};
-        UInt32 vertex_offset{0};
-        UInt32 index_count{0};
-        UInt32 vertex_count{0};
-        Int32 geometry_index{0};
-        MeshGeometryPrimitiveType type{MeshGeometryPrimitiveType::Triangles};
-    };
+namespace SpriteFlags {
+    constexpr uint32 None           = 0;
+    constexpr uint32 FlipX          = 1 << 0;
+    constexpr uint32 FlipY          = 1 << 1;
+    constexpr uint32 HasNormalMap   = 1 << 2;
+    constexpr uint32 CastShadow     = 1 << 3;
+    constexpr uint32 IsOpaque       = 1 << 4;
+}
 
-    enum class MeshType : UInt8 {
-        Triangles,
-        CurvePolytubes,
-        CurveDisjointOrthogonalTriangleStrips,
-        CurveLinearSweptSpheres,
-        Count
-    };
+struct QuadVertex {
+    float position[3]{};
+    float uv[2]{};
+};
 
-    struct Mesh {
-        String name;
-        MeshType type{MeshType::Triangles};
-        Ref<BufferGroup> buffers;
-        DynamicArray<Ref<MeshGeometry>> geometries;
-        UInt32 index_offset{0};
-        UInt32 vertex_offset{0};
-        UInt32 index_count{0};
-        UInt32 vertex_count{0};
-        Int32 mesh_index{0};
-    };
+inline constexpr QuadVertex kQuadVertices[] = {
+    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}},
+    {{ 0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}},
+    {{ 0.5f,  0.5f, 0.0f}, {1.0f, 1.0f}},
+    {{-0.5f,  0.5f, 0.0f}, {0.0f, 1.0f}},
+};
 
-} // dodoe
+inline constexpr uint16_t kQuadIndices[] = {0, 1, 2, 2, 3, 0};
+
+struct SpriteSceneProxy {
+    DynamicArray<SpriteInstance> instances{};
+    uint32_t instance_count{0};
+    bool dirty{true};
+
+    void clear() {
+        instances.clear();
+        instance_count = 0;
+        dirty = true;
+    }
+};
+
+} // namespace dodoe

@@ -63,8 +63,11 @@ namespace dodoe {
 
         input_manager->initialize({render_system->getViewportManager()});
 
+        m_draw_thread = create_scope<DrawThread>();
+        m_draw_thread->start(render_system->getGfx()->getDevice(), render_system->getGfx());
+
         m_render_thread = create_scope<RenderThread>();
-        m_render_thread->start([this] { tickRenderingTask(); });
+        m_render_thread->start(render_system.get(), m_draw_thread.get());
 
         return true;
     }
@@ -74,6 +77,9 @@ namespace dodoe {
 
         m_render_thread->stop();
         m_render_thread.reset();
+
+        m_draw_thread->stop();
+        m_draw_thread.reset();
 
         // ---------------------GAME-------------------------
         input_manager->shutdown();
@@ -146,11 +152,6 @@ namespace dodoe {
         }
 
         m_render_thread->submitAndWait();
-    }
-
-    void SystemContext::tickRenderingTask() {
-        render_system->prepare();
-        render_system->present();
     }
 
 } // dodoe

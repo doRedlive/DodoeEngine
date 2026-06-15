@@ -3,7 +3,7 @@
 
 #include "dopch.h"
 
-#include "vulkan_backend.h"
+#include "backend/vulkan_backend.h"
 
 #include "gfx.h"
 
@@ -20,9 +20,9 @@ namespace dodoe {
     };
 
     class GfxContext {
-        gfx::DeviceHandle device_{};
-        gfx::CommandListHandle cmd_{};
-        std::vector<gfx::TextureHandle> swapchain_textures_{};
+        GfxDeviceHandle device_{};
+        GfxCommandListHandle cmd_{};
+        std::vector<GfxTextureHandle> swapchain_textures_{};
         Scope<VulkanBackend> vulkan_backend_{nullptr};
         GLFWwindow* window_handle_{nullptr};
         std::vector<VkSemaphore> acquire_semaphores_{};
@@ -34,13 +34,13 @@ namespace dodoe {
         static Scope<GfxContext> Create(const GfxBackendCreateInfo& create_info);
         static void Destroy(Scope<GfxContext>& backend);
 
-        [[nodiscard]] gfx::DeviceHandle getDevice() const { return device_; }
-        [[nodiscard]] const std::vector<gfx::TextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
+        [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
+        [[nodiscard]] const std::vector<GfxTextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
         [[nodiscard]] Vector2i getSwapchainExtent2d() const { return vulkan_backend_->getSwapchainExtent2d(); }
         [[nodiscard]] bool acquireNextSwapchainImage(uint32_t& image_index);
         [[nodiscard]] bool presentSwapchainImage(uint32_t image_index);
         [[nodiscard]] bool recreateSwapchain();
-        [[nodiscard]] const gfx::CommandListHandle& getCommandList() { return cmd_; }
+        [[nodiscard]] const GfxCommandListHandle& getCommandList() { return cmd_; }
 
         [[nodiscard]] VulkanBackend* getVulkanBackend() const { return vulkan_backend_.get(); }
 

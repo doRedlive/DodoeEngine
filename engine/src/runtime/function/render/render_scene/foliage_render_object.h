@@ -2,12 +2,13 @@
 
 #include "dopch.h"
 
-#include "render_object.h"
+#include "primitive_render_object.h"
 
 namespace dodoe {
 
     struct FoliageRenderType {
-        Ref<Mesh> mesh{};
+        MeshUploadData upload_data{};
+        DynamicArray<MeshLODData> lods{};
         DynamicArray<Ref<Material>> override_materials{};
         PrimitiveMobility mobility{PrimitiveMobility::Static};
         Bool visible{true};
@@ -24,7 +25,7 @@ namespace dodoe {
         Float variation{0.0f};
     };
 
-    class FoliageRenderObject final : public RenderObject {
+    class FoliageRenderObject final : public PrimitiveRenderObject {
     public:
         struct Cluster {
             UInt32 first_instance{0};

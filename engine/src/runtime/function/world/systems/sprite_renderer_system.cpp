@@ -1,6 +1,10 @@
 #include "sprite_renderer_system.h"
 
-#include "render_system_bridge.h"
+#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_scene/sprite_render_object.h"
+#include "runtime/function/render/framework/texture_manager.h"
+
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace dodoe {
 
@@ -9,52 +13,103 @@ namespace dodoe {
     void SpriteRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
 
-        reg.sort<SpriteRendererComponent>([](const SpriteRendererComponent& a, const SpriteRendererComponent& b) {
-            return a.depth_ > b.depth_;
-        });
+        auto sprite_view = reg.view<IDComponent, TransformComponent, SpriteRendererComponent>();
+        std::unordered_set<UUID> active_sprites{};
+        bool dirty = false;
 
-        auto view = reg.view<SpriteRendererComponent, TransformComponent>();
-        view.use<SpriteRendererComponent>();
+        for (auto entity : sprite_view) {
+            auto& id = entity.getComponent<IDComponent>();
+            auto& transform = entity.getComponent<TransformComponent>();
+            auto& sr = entity.getComponent<SpriteRendererComponent>();
+            active_sprites.insert(id.id);
 
-        auto* texture_manager = TryGetTextureManager();
-        if (!texture_manager) {
-            return;
+            dirty |= syncSpriteRenderer(entity);
+
+            transform.dirty = false;
+            id.dirty = false;
+            sr.dirty = false;
         }
 
-        for (auto entity : view) {
-            auto& sr = reg.get<SpriteRendererComponent>(entity);
-            auto& tr = reg.get<TransformComponent>(entity);
+        pruneRemovedSprites(active_sprites);
 
-            Ref<Texture> texture = nullptr;
-            const String& tex_path = sr.texture.getFileID().getPath();
-            if (!tex_path.empty()) {
-                texture = Texture::Load(tex_path);
-            } else {
-                texture = texture_manager->getFallback();
-            }
-            if (!texture) {
+        if (dirty) {
+            Renderer::FlushSceneUpdates();
+        }
+    }
+
+    bool SpriteRendererSystem::syncSpriteRenderer(Entity entity) {
+        auto& id = entity.getComponent<IDComponent>();
+        auto& transform = entity.getComponent<TransformComponent>();
+        auto& sr = entity.getComponent<SpriteRendererComponent>();
+
+        if (!needsSync(entity)) {
+            return false;
+        }
+
+        auto* texture_manager = Renderer::GetTextureManager();
+        if (!texture_manager) {
+            return false;
+        }
+
+        Ref<Texture> texture = nullptr;
+        const String& tex_path = sr.texture.getFileID().getPath();
+        if (!tex_path.empty()) {
+            texture = Texture::Load(tex_path);
+        } else {
+            texture = texture_manager->getFallback();
+        }
+        if (!texture) {
+            return false;
+        }
+
+        UInt32 flags = 0;
+        if (sr.flip) {
+            flags |= kSpriteFlagFlipX;
+        }
+
+        auto sprite_object = create_scope<SpriteRenderObject>();
+        sprite_object->setUUID(id.id);
+        sprite_object->setTexture(sr.texture);
+        sprite_object->setColor(sr.color.to_rgba32());
+        sprite_object->setFlags(flags);
+        sprite_object->setUVRect(0.0f, 0.0f, 1.0f, 1.0f);
+        sprite_object->setVisible(true);
+
+        sprite_object->setWorldTransform(buildWorldMatrix(transform));
+
+        Renderer::AddSprite(std::move(sprite_object));
+        m_submitted_sprites.insert(id.id);
+        return true;
+    }
+
+    void SpriteRendererSystem::pruneRemovedSprites(const std::unordered_set<UUID>& active_sprites) {
+        for (auto it = m_submitted_sprites.begin(); it != m_submitted_sprites.end();) {
+            if (active_sprites.find(*it) == active_sprites.end()) {
+                Renderer::RemoveSprite(*it);
+                it = m_submitted_sprites.erase(it);
                 continue;
             }
-
-            constexpr float ppu = 10.0f;
-            const Vector2f tex_size(
-                static_cast<float>(texture->getWidth()),
-                static_cast<float>(texture->getHeight())
-            );
-            const Vector2f world_size = (tex_size / ppu) * Vector2f(tr.scale.x, tr.scale.y);
-
-            const Vector2f anchor_pos(tr.position.x, tr.position.y);
-            const Vector2f pivot_offset = world_size * sr.pivot;
-            const Vector2f bl_pos = anchor_pos - pivot_offset;
-
-            Renderer2D::DrawSprite(
-                sr.texture,
-                bl_pos,
-                world_size,
-                tr.rotation,
-                sr.color
-            );
+            ++it;
         }
+    }
+
+    bool SpriteRendererSystem::needsSync(Entity entity) const {
+        const auto& id = entity.getComponent<IDComponent>();
+        const auto& transform = entity.getComponent<TransformComponent>();
+        const auto& sr = entity.getComponent<SpriteRendererComponent>();
+
+        return m_submitted_sprites.find(id.id) == m_submitted_sprites.end() ||
+            transform.dirty ||
+            id.dirty ||
+            sr.dirty;
+    }
+
+    Matrix4f SpriteRendererSystem::buildWorldMatrix(const TransformComponent& transform) {
+        Matrix4f world(1.0f);
+        world = glm::translate(world, Vector3f(transform.position.x, transform.position.y, 0.0f));
+        world = glm::rotate(world, glm::radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
+        world = glm::scale(world, Vector3f(transform.scale.x, transform.scale.y, 1.0f));
+        return world;
     }
 
 } // dodoe

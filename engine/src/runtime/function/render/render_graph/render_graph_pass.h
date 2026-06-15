@@ -3,6 +3,7 @@
 #pragma once
 
 #include "dopch.h"
+#include "runtime/function/graphics/gfx.h"
 
 #include "render_graph_blackboard.h"
 #include "render_graph_resource.h"
@@ -73,10 +74,6 @@ namespace dodoe {
             return m_resource_registry->getBuffer(handle);
         }
 
-        [[nodiscard]] GfxTextureHandle getBackBuffer() const {
-            DO_ASSERT(m_resource_registry != nullptr, "RenderGraphPassContext resource registry is null");
-            return m_resource_registry->getBackBuffer();
-        }
     };
 
     class RenderGraphCommandList {
@@ -87,25 +84,22 @@ namespace dodoe {
         RenderGraphCommandList(const RenderGraphPassContext& pass_context, DrawCommandList& draw_command_list)
             : m_pass_context(&pass_context), m_draw_command_list(&draw_command_list) { }
 
-        [[nodiscard]] DrawCommandList& raw() const { return *m_draw_command_list; }
         [[nodiscard]] GfxTextureHandle resolveTexture(const RenderGraphTextureHandle handle) const { return m_pass_context->resolveTexture(handle); }
         [[nodiscard]] GfxBufferHandle resolveBuffer(const RenderGraphBufferHandle handle) const { return m_pass_context->resolveBuffer(handle); }
-        [[nodiscard]] GfxTextureHandle getBackBuffer() const { return m_pass_context->getBackBuffer(); }
-
         void open() const { m_draw_command_list->open(); }
         void close() const { m_draw_command_list->close(); }
         void clearState() const { m_draw_command_list->clearState(); }
         void beginMarker(const char* name) const { m_draw_command_list->beginMarker(name); }
         void endMarker() const { m_draw_command_list->endMarker(); }
-        void clearTextureFloat(const RenderGraphTextureHandle handle, const TextureSubresourceSet& subresources, const Color& clear_color) const {
+        void clearTextureFloat(const RenderGraphTextureHandle handle, const GfxTextureSubresourceSet& subresources, const GfxColor& clear_color) const {
             m_draw_command_list->clearTextureFloat(resolveTexture(handle), subresources, clear_color);
         }
-        void clearTextureUInt(const RenderGraphTextureHandle handle, const TextureSubresourceSet& subresources, const UInt32 clear_color) const {
+        void clearTextureUInt(const RenderGraphTextureHandle handle, const GfxTextureSubresourceSet& subresources, const UInt32 clear_color) const {
             m_draw_command_list->clearTextureUInt(resolveTexture(handle), subresources, clear_color);
         }
         void clearDepthStencilTexture(
             const RenderGraphTextureHandle handle,
-            const TextureSubresourceSet& subresources,
+            const GfxTextureSubresourceSet& subresources,
             const Bool clear_depth,
             const Float depth,
             const Bool clear_stencil,
@@ -128,23 +122,19 @@ namespace dodoe {
         void setPushConstants(const void* data, const Size_t byte_size) const { m_draw_command_list->setPushConstants(data, byte_size); }
         void setTextureState(
             const RenderGraphTextureHandle handle,
-            const TextureSubresourceSet& subresources,
-            const ResourceStates state_bits) const
+            const GfxTextureSubresourceSet& subresources,
+            const GfxResourceStates state_bits) const
         {
             m_draw_command_list->setTextureState(resolveTexture(handle), subresources, state_bits);
         }
-        void setTextureState(
-            const GfxTextureHandle& texture,
-            const TextureSubresourceSet& subresources,
-            const ResourceStates state_bits) const
-        {
-            m_draw_command_list->setTextureState(texture, subresources, state_bits);
+        void setBufferState(const RenderGraphBufferHandle buffer, const GfxResourceStates state_bits) const {
+            m_draw_command_list->setBufferState(resolveBuffer(buffer), state_bits);
         }
         void commitBarriers() const { m_draw_command_list->commitBarriers(); }
-        void setGraphicsState(const GraphicsState& state) const { m_draw_command_list->setGraphicsState(state); }
-        void setComputeState(const ComputeState& state) const { m_draw_command_list->setComputeState(state); }
-        void draw(const DrawArguments& args) const { m_draw_command_list->draw(args); }
-        void drawIndexed(const DrawArguments& args) const { m_draw_command_list->drawIndexed(args); }
+        void setGraphicsState(const GfxGraphicsState& state) const { m_draw_command_list->setGraphicsState(state); }
+        void setComputeState(const GfxComputeState& state) const { m_draw_command_list->setComputeState(state); }
+        void draw(const GfxDrawArguments& args) const { m_draw_command_list->draw(args); }
+        void drawIndexed(const GfxDrawArguments& args) const { m_draw_command_list->drawIndexed(args); }
         void dispatch(const UInt32 groups_x, const UInt32 groups_y = 1, const UInt32 groups_z = 1) const { m_draw_command_list->dispatch(groups_x, groups_y, groups_z); }
     };
 
@@ -188,6 +178,9 @@ namespace dodoe {
 
         RenderGraphTextureHandle createTransientTexture(const RenderGraphTextureDesc& desc, const String& name);
         RenderGraphBufferHandle createTransientBuffer(const RenderGraphBufferDesc& desc, const String& name);
+        RenderGraphTextureHandle importTexture(const GfxTextureHandle& texture, const String& name);
+        RenderGraphBufferHandle importBuffer(const GfxBufferHandle& buffer, const String& name);
+        RenderGraphTextureHandle importBackBuffer(const String& name);
 
         RenderGraphTextureHandle read(const RenderGraphTextureHandle handle);
         RenderGraphTextureHandle write(const RenderGraphTextureHandle handle);

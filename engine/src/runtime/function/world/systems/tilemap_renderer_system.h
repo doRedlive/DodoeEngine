@@ -6,7 +6,6 @@
 
 #include "runtime/function/world/systems/system.h"
 #include "runtime/function/world/components.h"
-#include "runtime/function/render/renderer_2d.h"
 
 namespace dodoe {
 

@@ -5,6 +5,8 @@
 #include "dopch.h"
 
 #include "vertex_factory.h"
+#include "runtime/function/graphics/gfx.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
 

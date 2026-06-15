@@ -18,18 +18,18 @@ namespace dodoe {
 
         [[nodiscard]] GfxGraphicsPipelineHandle resolveGraphicsPipeline(
             const MeshPassType pass_type,
-            const GraphicsPipelineDesc& pipeline_desc,
-            const nvrhi::FramebufferInfo& framebuffer_info);
+            const GfxGraphicsPipelineDesc& pipeline_desc,
+            const GfxFramebufferInfo& framebuffer_info);
         [[nodiscard]] GfxGraphicsPipelineHandle resolveGraphicsPipeline(
-            const GraphicsPipelineDesc& pipeline_desc,
-            const nvrhi::FramebufferInfo& framebuffer_info);
+            const GfxGraphicsPipelineDesc& pipeline_desc,
+            const GfxFramebufferInfo& framebuffer_info);
         void clear();
 
     private:
         [[nodiscard]] static GraphicsPipelineCacheKey BuildGraphicsPipelineCacheKey(
             const MeshPassType pass_type,
-            const GraphicsPipelineDesc& pipeline_desc,
-            const nvrhi::FramebufferInfo& framebuffer_info);
+            const GfxGraphicsPipelineDesc& pipeline_desc,
+            const GfxFramebufferInfo& framebuffer_info);
     };
 
 } // dodoe

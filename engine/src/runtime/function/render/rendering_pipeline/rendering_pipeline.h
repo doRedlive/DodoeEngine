@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "fullscreen_pass_shared_state.h"
-#include "render_scene.h"
+#include "../render_scene/render_scene.h"
 #include "rendering_pass_context.h"
 #include "render_view_family.h"
 
@@ -24,7 +24,6 @@
 namespace dodoe {
 
     class RenderGraphBuilder;
-    struct ViewMeshDrawContext;
 
     struct RenderingPipelineCreateInfo {
         Size_t worker_count{0};
@@ -58,7 +57,7 @@ namespace dodoe {
         void shutdown();
         [[nodiscard]] RenderingPassContext buildPassContext() const;
         void initViews(const RenderScene& scene, RenderViewFamily& view_family) const;
-        void setupMeshPassRelevance(ViewMeshDrawContext& view_context) const;
+        void setupMeshPassRelevance(RenderView& view) const;
         void setupMeshPassContexts(const RenderScene& scene, RenderViewFamily& view_family) const;
         void buildMeshDrawCommands(RenderViewFamily& view_family) const;
         DrawCommandList buildFrameCommandList(

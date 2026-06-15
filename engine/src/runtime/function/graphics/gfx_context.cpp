@@ -4,7 +4,7 @@
 
 #include "gfx_context.h"
 
-#include "../render_settings.h"
+#include "../render/render_settings.h"
 
 #include "vulkan/vulkan.hpp"
 
@@ -14,20 +14,20 @@ namespace dodoe {
 
     namespace {
 
-        gfx::Format to_nvrhi_format(VkFormat format) {
+        GfxFormat to_nvrhi_format(VkFormat format) {
             switch (format) {
-                case VK_FORMAT_B8G8R8A8_UNORM: return gfx::Format::BGRA8_UNORM;
-                case VK_FORMAT_B8G8R8A8_SRGB: return gfx::Format::SBGRA8_UNORM;
-                case VK_FORMAT_R8G8B8A8_UNORM: return gfx::Format::RGBA8_UNORM;
-                case VK_FORMAT_R8G8B8A8_SRGB: return gfx::Format::SRGBA8_UNORM;
-                default: return gfx::Format::BGRA8_UNORM;
+                case VK_FORMAT_B8G8R8A8_UNORM: return GfxFormat::BGRA8_UNORM;
+                case VK_FORMAT_B8G8R8A8_SRGB: return GfxFormat::SBGRA8_UNORM;
+                case VK_FORMAT_R8G8B8A8_UNORM: return GfxFormat::RGBA8_UNORM;
+                case VK_FORMAT_R8G8B8A8_SRGB: return GfxFormat::SRGBA8_UNORM;
+                default: return GfxFormat::BGRA8_UNORM;
             }
         }
 
-        class GfxMessageCallback : public gfx::IMessageCallback {
+        class RhiMessageCallback : public GfxMessageCallback {
         public:
-            void message(gfx::MessageSeverity severity, const char* message_text) override {
-                if (severity == gfx::MessageSeverity::Info || severity == gfx::MessageSeverity::Warning) return;
+            void message(GfxMessageSeverity severity, const char* message_text) override {
+                if (severity == GfxMessageSeverity::Info || severity == GfxMessageSeverity::Warning) return;
                 DO_ERROR("RHI::ERROR: {}", message_text);
             }
         };
@@ -59,9 +59,9 @@ namespace dodoe {
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(vulkan_backend_->getInstance()));
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Device(vulkan_backend_->getDevice()));
 
-        auto* error_callback = new GfxMessageCallback();
+        auto* error_callback = new RhiMessageCallback();
 
-        gfx::vulkan::DeviceDesc device_desc{};
+        vulkan::DeviceDesc device_desc{};
         device_desc.errorCB = error_callback;
         device_desc.instance = vulkan_backend_->getInstance();
         device_desc.physicalDevice = vulkan_backend_->getPhysicalDevice();
@@ -78,11 +78,11 @@ namespace dodoe {
         device_desc.numDeviceExtensions = vulkan_backend_->getDeviceExtensions().size();
         device_desc.bufferDeviceAddressSupported = true;
 
-        device_ = gfx::vulkan::createDevice(device_desc);
+        device_ = vulkan::createDevice(device_desc);
         DO_ASSERT(device_ != nullptr, "GfxBackend::initialize: failed to create nvrhi vulkan device.");
 
         if (create_info.enable_validation) {
-            device_ = gfx::validation::createValidationLayer(device_);
+            device_ = validation::createValidationLayer(device_);
             DO_ASSERT(device_ != nullptr, "GfxBackend::initialize: failed to create validation layer.");
         }
 
@@ -112,16 +112,16 @@ namespace dodoe {
         const auto swapchain_format = to_nvrhi_format(vulkan_backend_->getSwapchainImageFormat());
 
         for (const auto& image : vulkan_backend_->getSwapchainImages()) {
-            auto texture_desc = gfx::TextureDesc()
-                .setDimension(gfx::TextureDimension::Texture2D)
+            auto texture_desc = GfxTextureDesc()
+                .setDimension(GfxTextureDimension::Texture2D)
                 .setFormat(swapchain_format)
                 .setWidth(vulkan_backend_->getSwapchainExtent2d().x)
                 .setHeight(vulkan_backend_->getSwapchainExtent2d().y)
                 .setIsRenderTarget(true)
-                .enableAutomaticStateTracking(gfx::ResourceStates::Present)
+                .enableAutomaticStateTracking(GfxResourceStates::Present)
                 .setDebugName("Swapchain Image");
 
-            gfx::TextureHandle swapchain_texture = device_->createHandleForNativeTexture(gfx::ObjectTypes::VK_Image, image, texture_desc);
+            GfxTextureHandle swapchain_texture = device_->createHandleForNativeTexture(GfxObjectTypes::VK_Image, image, texture_desc);
             swapchain_textures_.push_back(swapchain_texture);
         }
     }
@@ -131,8 +131,8 @@ namespace dodoe {
             return false;
         }
 
-        auto* vk_device = static_cast<gfx::vulkan::IDevice*>(
-            device_->getNativeObject(gfx::ObjectTypes::Nvrhi_VK_Device));
+        auto* vk_device = static_cast<vulkan::IDevice*>(
+            device_->getNativeObject(GfxObjectTypes::Nvrhi_VK_Device));
         DO_ASSERT(vk_device != nullptr, "GfxContext::acquireNextSwapchainImage: failed to get native nvrhi vulkan device.");
         const size_t frame_slot = current_frame_slot_ % acquire_semaphores_.size();
         VkDevice vk_device_handle = vulkan_backend_->getDevice();
@@ -143,7 +143,7 @@ namespace dodoe {
         if (!vulkan_backend_->acquireNextImage(image_index, acquire_semaphore)) {
             return false;
         }
-        vk_device->queueWaitForSemaphore(gfx::CommandQueue::Graphics, acquire_semaphore, 0);
+        vk_device->queueWaitForSemaphore(GfxCommandQueue::Graphics, acquire_semaphore, 0);
         active_frame_slot_ = frame_slot;
 
         return true;

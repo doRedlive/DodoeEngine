@@ -71,8 +71,8 @@ namespace dodoe {
     template <typename T>
     using DynamicArray = std::vector<T>;
 
-    template <typename TKey, typename TValue>
-    using UnorderedMap = std::unordered_map<TKey, TValue>;
+    template <typename TKey, typename TValue, typename THash = std::hash<TKey>, typename TEqual = std::equal_to<TKey>>
+    using UnorderedMap = std::unordered_map<TKey, TValue, THash, TEqual>;
 
     template <typename TKey, typename TValue>
     using Dictionary = UnorderedMap<TKey, TValue> ;

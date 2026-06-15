@@ -42,7 +42,8 @@ namespace dodoe {
     } // namespace
 
     void FoliageRenderObject::applyType(const FoliageRenderType& type) {
-        setMesh(type.mesh);
+        setUploadData(type.upload_data);
+        setLODData(type.lods);
         setOverrideMaterials(type.override_materials);
         setMobility(type.mobility);
         setVisible(type.visible);
@@ -78,7 +79,7 @@ namespace dodoe {
     }
 
     RenderObjectDirtyFlags FoliageRenderObject::diff(const RenderObject& previous) const {
-        const RenderObjectDirtyFlags base_dirty_flags = RenderObject::diff(previous);
+        const RenderObjectDirtyFlags base_dirty_flags = PrimitiveRenderObject::diff(previous);
         if (getRenderObjectType() != previous.getRenderObjectType()) {
             return base_dirty_flags;
         }
@@ -110,21 +111,22 @@ namespace dodoe {
         const DynamicArray<Ref<Material>>& resolved_materials,
         const UInt32 first_instance) const
     {
-        if (m_instances.empty() || !m_mesh || !m_mesh->buffers || !m_mesh->buffers->vertex_buffer || !m_mesh->buffers->index_buffer) {
+        const auto* lod = activeLOD();
+        if (m_instances.empty() || !lod || !lod->isValid()) {
             return {};
         }
 
         DynamicArray<MeshBatch> batches{};
-        batches.reserve(m_mesh->geometries.size() * (m_clusters.empty() ? 1 : m_clusters.size()));
+        batches.reserve(lod->sections.size() * (m_clusters.empty() ? 1 : m_clusters.size()));
         DynamicArray<Cluster> fallback_clusters{};
         if (m_clusters.empty()) {
             fallback_clusters.push_back(Cluster{0, static_cast<UInt32>(m_instances.size()), -m_instance_bounds_extent, m_instance_bounds_extent});
         }
         const DynamicArray<Cluster>& clusters = m_clusters.empty() ? fallback_clusters : m_clusters;
 
-        for (Size_t geometry_index = 0; geometry_index < m_mesh->geometries.size(); geometry_index++) {
-            const auto& geometry = m_mesh->geometries[geometry_index];
-            if (!geometry || geometry->index_count == 0) {
+        for (Size_t section_index = 0; section_index < lod->sections.size(); section_index++) {
+            const auto& mesh_section = lod->sections[section_index];
+            if (mesh_section.index_count == 0) {
                 continue;
             }
 
@@ -134,19 +136,19 @@ namespace dodoe {
                 }
 
                 MeshBatchElement element{};
-                element.index_count = geometry->index_count;
-                element.index_offset = geometry->index_offset;
-                element.vertex_offset = geometry->vertex_offset;
-                element.section_index = static_cast<UInt32>(geometry_index);
+                element.index_count = mesh_section.index_count;
+                element.index_offset = mesh_section.index_offset;
+                element.vertex_offset = mesh_section.vertex_offset;
+                element.section_index = static_cast<UInt32>(section_index);
                 element.uses_instance_range = true;
                 element.first_instance = first_instance + cluster.first_instance;
                 element.instance_count = cluster.instance_count;
-                element.vertex_buffer = m_mesh->buffers->vertex_buffer;
-                element.index_buffer = m_mesh->buffers->index_buffer;
+                element.vertex_buffer = lod->buffers.vertex_buffer;
+                element.index_buffer = lod->buffers.index_buffer;
 
                 MeshBatch batch{};
                 batch.primitive_id = primitive_id;
-                batch.material = geometry_index < resolved_materials.size() ? resolved_materials[geometry_index] : geometry->material;
+                batch.material = section_index < resolved_materials.size() ? resolved_materials[section_index] : mesh_section.material;
                 batch.pass_mask.setRelevant(MeshPassType::GBuffer, m_visible);
                 batch.pass_mask.setRelevant(MeshPassType::DirectionalShadow, m_visible && m_cast_shadow);
                 batch.uses_custom_bounds = true;
@@ -171,7 +173,7 @@ namespace dodoe {
         Vector3f local_bounds_min{0.0f};
         Vector3f local_bounds_max{0.0f};
         computeLocalBounds(local_bounds_min, local_bounds_max);
-        return RenderObject::buildSceneInfo(primitive_id, world_transform, local_bounds_min, local_bounds_max);
+        return PrimitiveRenderObject::buildSceneInfo(primitive_id, world_transform, local_bounds_min, local_bounds_max);
     }
 
     Matrix4f FoliageRenderObject::buildInstanceWorldTransform(

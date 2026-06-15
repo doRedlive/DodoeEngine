@@ -2,97 +2,113 @@
 
 namespace dodoe {
 
-    bool Renderer::initialize(const RendererCreateInfo& info) {
-        m_main_camera = info.main_camera;
-        m_texture_manager = info.texture_manager;
-        m_render_scene = RenderScene::Create({info.device});
-        return m_render_scene != nullptr;
+    Bool Renderer::Initialize(Camera* const camera, TextureManager* const texture_manager) {
+        s_main_camera = camera;
+        s_texture_manager = texture_manager;
+        s_render_scene = RenderScene::Create({});
+        return s_render_scene != nullptr;
     }
 
-    void Renderer::shutdown() {
-        RenderScene::Destroy(m_render_scene);
-        m_main_camera = nullptr;
-        m_texture_manager = nullptr;
+    void Renderer::Shutdown() {
+        RenderScene::Destroy(s_render_scene);
+        s_render_scene = nullptr;
+        s_main_camera = nullptr;
+        s_texture_manager = nullptr;
     }
 
-    void Renderer::setMainCameraViewProjection(const Matrix4f& view_proj_matrix, const Vector3f& position) {
-        if (m_render_scene) {
-            m_render_scene->setMainCameraViewProjection(view_proj_matrix, position);
+    void Renderer::SetMainCameraViewProjection(const Matrix4f& view_proj_matrix, const Vector3f& position) {
+        if (s_render_scene) {
+            s_render_scene->setMainCameraViewProjection(view_proj_matrix, position);
         }
     }
 
-    void Renderer::addRenderObject(const Uuid entity_uuid, const Matrix4f& world_transform, Scope<RenderObject> render_object) {
-        if (m_render_scene) {
-            m_render_scene->addRenderObject(entity_uuid, world_transform, std::move(render_object));
+    void Renderer::AddPrimitive(Scope<PrimitiveRenderObject> primitive) {
+        if (s_render_scene) {
+            s_render_scene->addPrimitive(std::move(primitive));
         }
     }
 
-    void Renderer::updateRenderObjectTransform(const Uuid entity_uuid, const Matrix4f& world_transform) {
-        if (m_render_scene) {
-            m_render_scene->updateRenderObjectTransform(entity_uuid, world_transform);
+    void Renderer::UpdatePrimitiveTransform(const UUID id, const Matrix4f& world_transform) {
+        if (s_render_scene) {
+            s_render_scene->updatePrimitiveTransform(id, world_transform);
         }
     }
 
-    void Renderer::removeRenderObject(const Uuid entity_uuid) {
-        if (m_render_scene) {
-            m_render_scene->removeRenderObject(entity_uuid);
+    void Renderer::RemovePrimitive(const UUID id) {
+        if (s_render_scene) {
+            s_render_scene->removePrimitive(id);
         }
     }
 
-    void Renderer::addLightObject(const Uuid entity_uuid, const Matrix4f& world_transform, const RenderLightObject& light) {
-        if (m_render_scene) {
-            m_render_scene->addLightObject(entity_uuid, world_transform, light);
+    void Renderer::AddLight(Scope<LightRenderObject> light) {
+        if (s_render_scene) {
+            s_render_scene->addLight(std::move(light));
         }
     }
 
-    void Renderer::updateLightTransform(const Uuid entity_uuid, const Matrix4f& world_transform) {
-        if (m_render_scene) {
-            m_render_scene->updateLightTransform(entity_uuid, world_transform);
+    void Renderer::UpdateLightTransform(const UUID id, const Matrix4f& world_transform) {
+        if (s_render_scene) {
+            s_render_scene->updateLightTransform(id, world_transform);
         }
     }
 
-    void Renderer::removeLightObject(const Uuid entity_uuid) {
-        if (m_render_scene) {
-            m_render_scene->removeLightObject(entity_uuid);
+    void Renderer::RemoveLight(const UUID id) {
+        if (s_render_scene) {
+            s_render_scene->removeLight(id);
         }
     }
 
-    void Renderer::flushSceneUpdates() {
-        if (m_render_scene) {
-            m_render_scene->flushUpdates();
+    void Renderer::AddSprite(Scope<SpriteRenderObject> sprite) {
+        if (s_render_scene) {
+            s_render_scene->addSprite(std::move(sprite));
         }
     }
 
-    void Renderer::prepareBuffers(const gfx::CommandListHandle& cmd_list) {
-        if (m_render_scene) {
-            m_render_scene->prepareBuffers(cmd_list);
+    void Renderer::UpdateSpriteTransform(const UUID id, const Matrix4f& world_transform) {
+        if (s_render_scene) {
+            s_render_scene->updateSpriteTransform(id, world_transform);
         }
     }
 
-    Bool Renderer::hasRenderObject(const Uuid entity_uuid) const {
-        return m_render_scene ? m_render_scene->hasRenderObject(entity_uuid) : false;
-    }
-
-    Bool Renderer::hasLightObject(const Uuid entity_uuid) const {
-        return m_render_scene ? m_render_scene->hasLightObject(entity_uuid) : false;
-    }
-
-    const RenderObject* Renderer::findRenderObject(const Uuid entity_uuid) const {
-        return m_render_scene ? m_render_scene->findRenderObject(entity_uuid) : nullptr;
-    }
-
-    const RenderLightObject* Renderer::findLightObject(const Uuid entity_uuid) const {
-        return m_render_scene ? m_render_scene->findLightObject(entity_uuid) : nullptr;
-    }
-
-    gfx::TextureHandle Renderer::getSkyboxTexture() const {
-        return m_render_scene ? m_render_scene->getSkyboxTexture() : nullptr;
-    }
-
-    void Renderer::setSkyboxTexture(const gfx::TextureHandle& skybox_texture) {
-        if (m_render_scene) {
-            m_render_scene->setSkyboxTexture(skybox_texture);
+    void Renderer::RemoveSprite(const UUID id) {
+        if (s_render_scene) {
+            s_render_scene->removeSprite(id);
         }
+    }
+
+    void Renderer::FlushSceneUpdates() {
+        if (s_render_scene) {
+            s_render_scene->flushUpdates();
+        }
+    }
+
+    Bool Renderer::HasPrimitive(const UUID id) {
+        return s_render_scene ? s_render_scene->hasPrimitive(id) : false;
+    }
+
+    Bool Renderer::HasLight(const UUID id) {
+        return s_render_scene ? s_render_scene->hasLight(id) : false;
+    }
+
+    const PrimitiveRenderObject* Renderer::FindPrimitive(const UUID id) {
+        return s_render_scene ? s_render_scene->findPrimitive(id) : nullptr;
+    }
+
+    const LightRenderObject* Renderer::FindLight(const UUID id) {
+        return s_render_scene ? s_render_scene->findLight(id) : nullptr;
+    }
+
+    RenderScene& Renderer::GetRenderScene() {
+        DO_ASSERT(s_render_scene != nullptr, "Renderer::GetRenderScene: not initialized");
+        return *s_render_scene;
+    }
+
+    Camera* Renderer::GetMainCamera() {
+        return s_main_camera;
+    }
+
+    TextureManager* Renderer::GetTextureManager() {
+        return s_texture_manager;
     }
 
 } // dodoe

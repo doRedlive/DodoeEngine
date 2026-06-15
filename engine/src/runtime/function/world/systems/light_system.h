@@ -8,15 +8,13 @@
 
 namespace dodoe {
 
-    class RenderScene;
-
     class LightSystem : public System {
         enum class LightKind {
             Point,
             Spot,
         };
 
-        std::unordered_map<Uuid, LightKind> m_submitted_lights;
+        std::unordered_map<UUID, LightKind> m_submitted_lights;
 
     public:
         ~LightSystem() override;
@@ -24,11 +22,12 @@ namespace dodoe {
         void update(Registry& reg, float dt) override;
 
     private:
-        bool syncPointLight(RenderScene& render_scene, Entity entity, PointLightComponent& light);
-        bool syncSpotLight(RenderScene& render_scene, Entity entity, SpotLightComponent& light);
-        bool pruneRemovedLights(RenderScene& render_scene, const std::unordered_set<Uuid>& alive_nodes);
-        [[nodiscard]] bool needsLightSync(const RenderScene& render_scene, Entity entity, LightKind kind, bool light_dirty) const;
-        [[nodiscard]] static Uuid resolveParentUuid(Entity entity);
+        bool syncPointLight(Entity entity);
+        bool syncSpotLight(Entity entity);
+        void pruneRemovedLights(const std::unordered_set<UUID>& active_lights);
+
+        [[nodiscard]] bool needsLightSync(Entity entity, LightKind kind) const;
+        [[nodiscard]] static Matrix4f buildWorldMatrix(const TransformComponent& transform);
     };
 
 } // dodoe

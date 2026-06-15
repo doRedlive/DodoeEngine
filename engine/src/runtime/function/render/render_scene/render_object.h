@@ -1,15 +1,17 @@
 #pragma once
 
 #include "dopch.h"
-
-#include "framework/primitive_scene_info.h"
-#include "mesh_draw/view_mesh_draw_context.h"
+#include "runtime/core/utils/uuid.h"
 
 namespace dodoe {
 
     enum class RenderObjectType : UInt8 {
         StaticMesh,
-        Foliage
+        Foliage,
+        PointLight,
+        SpotLight,
+        SkyLight,
+        Sprite
     };
 
     enum class RenderObjectDirtyFlags : UInt32 {
@@ -36,43 +38,22 @@ namespace dodoe {
 
     class RenderObject {
     protected:
-        Ref<Mesh> m_mesh{};
-        DynamicArray<Ref<Material>> m_override_materials{};
-        PrimitiveMobility m_mobility{PrimitiveMobility::Static};
-        Bool m_visible{true};
-        Bool m_cast_shadow{true};
+        Identifier m_id{0};
+        UUID m_uuid{};
+        Matrix4f m_world_transform{1.0f};
 
     public:
         virtual ~RenderObject() = default;
 
-        void setMesh(const Ref<Mesh>& mesh) { m_mesh = mesh; }
-        void setOverrideMaterials(const DynamicArray<Ref<Material>>& override_materials) { m_override_materials = override_materials; }
-        void setMobility(const PrimitiveMobility mobility) { m_mobility = mobility; }
-        void setVisible(const Bool visible) { m_visible = visible; }
-        void setCastShadow(const Bool cast_shadow) { m_cast_shadow = cast_shadow; }
-
-        [[nodiscard]] const Ref<Mesh>& getMesh() const { return m_mesh; }
-        [[nodiscard]] const DynamicArray<Ref<Material>>& getOverrideMaterials() const { return m_override_materials; }
-        [[nodiscard]] PrimitiveMobility getMobility() const { return m_mobility; }
-        [[nodiscard]] Bool isVisible() const { return m_visible; }
-        [[nodiscard]] Bool castsShadow() const { return m_cast_shadow; }
+        void setId(const Identifier id) { m_id = id; }
+        [[nodiscard]] Identifier getId() const { return m_id; }
+        void setUUID(const UUID& uuid) { m_uuid = uuid; }
+        [[nodiscard]] UUID getUUID() const { return m_uuid; }
+        void setWorldTransform(const Matrix4f& transform) { m_world_transform = transform; }
+        [[nodiscard]] const Matrix4f& getWorldTransform() const { return m_world_transform; }
 
         [[nodiscard]] virtual RenderObjectType getRenderObjectType() const = 0;
-        [[nodiscard]] virtual UInt32 getInstanceCount() const;
-        virtual void appendInstanceSceneData(DynamicArray<InstanceSceneData>& out_instance_scene_data, const Matrix4f& world_transform) const;
-
         [[nodiscard]] virtual RenderObjectDirtyFlags diff(const RenderObject& previous) const;
-        [[nodiscard]] virtual DynamicArray<Ref<Material>> resolveMaterials() const;
-        [[nodiscard]] virtual DynamicArray<PrimitiveSceneInfo::Section> buildSections(const DynamicArray<Ref<Material>>& resolved_materials) const;
-        [[nodiscard]] virtual DynamicArray<MeshBatch> buildMeshBatches(
-            Identifier primitive_id,
-            const DynamicArray<Ref<Material>>& resolved_materials,
-            UInt32 first_instance) const;
-        [[nodiscard]] virtual PrimitiveSceneInfo buildSceneInfo(
-            Identifier primitive_id,
-            const Matrix4f& world_transform,
-            const Vector3f& bounds_min,
-            const Vector3f& bounds_max) const;
     };
 
 } // dodoe

@@ -45,6 +45,7 @@ namespace dodoe {
         DO_ASSERT(!m_compiled, "Cannot add resource after compile");
         RenderGraphResourceRecord record{};
         record.type = RenderGraphResourceType::Texture;
+        record.source = RenderGraphResourceSource::Transient;
         record.name = name;
         record.texture_desc = desc;
         m_resources.push_back(record);
@@ -55,8 +56,43 @@ namespace dodoe {
         DO_ASSERT(!m_compiled, "Cannot add resource after compile");
         RenderGraphResourceRecord record{};
         record.type = RenderGraphResourceType::Buffer;
+        record.source = RenderGraphResourceSource::Transient;
         record.name = name;
         record.buffer_desc = desc;
+        m_resources.push_back(record);
+        return static_cast<UInt32>(m_resources.size() - 1);
+    }
+
+    UInt32 RenderGraph::addImportedTextureResource(const GfxTextureHandle& texture, const String& name) {
+        DO_ASSERT(!m_compiled, "Cannot add resource after compile");
+        DO_ASSERT(texture != nullptr, "RenderGraph::addImportedTextureResource requires valid texture");
+        RenderGraphResourceRecord record{};
+        record.type = RenderGraphResourceType::Texture;
+        record.source = RenderGraphResourceSource::ImportedTexture;
+        record.name = name;
+        record.imported_texture = texture;
+        m_resources.push_back(record);
+        return static_cast<UInt32>(m_resources.size() - 1);
+    }
+
+    UInt32 RenderGraph::addImportedBufferResource(const GfxBufferHandle& buffer, const String& name) {
+        DO_ASSERT(!m_compiled, "Cannot add resource after compile");
+        DO_ASSERT(buffer != nullptr, "RenderGraph::addImportedBufferResource requires valid buffer");
+        RenderGraphResourceRecord record{};
+        record.type = RenderGraphResourceType::Buffer;
+        record.source = RenderGraphResourceSource::ImportedBuffer;
+        record.name = name;
+        record.imported_buffer = buffer;
+        m_resources.push_back(record);
+        return static_cast<UInt32>(m_resources.size() - 1);
+    }
+
+    UInt32 RenderGraph::addBackBufferResource(const String& name) {
+        DO_ASSERT(!m_compiled, "Cannot add resource after compile");
+        RenderGraphResourceRecord record{};
+        record.type = RenderGraphResourceType::Texture;
+        record.source = RenderGraphResourceSource::ImportedBackBuffer;
+        record.name = name;
         m_resources.push_back(record);
         return static_cast<UInt32>(m_resources.size() - 1);
     }

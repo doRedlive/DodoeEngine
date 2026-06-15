@@ -1,6 +1,6 @@
 #include "camera2d_system.h"
 
-#include "render_system_bridge.h"
+#include "runtime/function/render/renderer.h"
 
 namespace dodoe {
 
@@ -9,7 +9,7 @@ namespace dodoe {
     void Camera2dSystem::update(Registry& reg, float dt) {
         (void)dt;
 
-        auto* camera = TryGetMainCamera();
+        auto* camera = Renderer::GetMainCamera();
         if (!camera) {
             return;
         }
@@ -32,7 +32,7 @@ namespace dodoe {
             camera->setRotation(transform_comp.rotation.z);
             camera->setZoom(camera_comp.zoom);
             camera->setClearColor(camera_comp.background);
-            SubmitMainCameraViewProjection(camera->getViewProjectionMatrix(), camera->getPosition());
+            Renderer::SetMainCameraViewProjection(camera->getViewProjectionMatrix(), camera->getPosition());
             camera_comp.dirty = false;
             transform_comp.dirty = false;
         }

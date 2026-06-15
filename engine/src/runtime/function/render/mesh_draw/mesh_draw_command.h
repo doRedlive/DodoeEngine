@@ -3,6 +3,7 @@
 #pragma once
 
 #include "dopch.h"
+#include "runtime/function/graphics/gfx.h"
 
 #include "mesh_pass_type.h"
 
@@ -10,15 +11,15 @@ namespace dodoe {
 
     struct MeshDrawCommand {
         MeshPassType pass_type{MeshPassType::GBuffer};
-        gfx::GraphicsPipelineHandle pipeline;
-        DynamicArray<gfx::BindingSetHandle> binding_sets;
+        GfxGraphicsPipelineHandle pipeline;
+        DynamicArray<GfxBindingSetHandle> binding_sets;
 
-        DynamicArray<gfx::VertexBufferBinding> vertex_bindings;
+        DynamicArray<GfxVertexBufferBinding> vertex_bindings;
         UInt32 primitive_scene_buffer_slot{1};
         UInt64 primitive_scene_buffer_offset{0};
         Bool uses_primitive_scene_buffer{false};
-        gfx::IndexBufferBinding index_binding;
-        gfx::DrawArguments draw_args;
+        GfxIndexBufferBinding index_binding;
+        GfxDrawArguments draw_args;
         UInt32 primitive_index{0};
         UInt32 shader_data_index{std::numeric_limits<UInt32>::max()};
 

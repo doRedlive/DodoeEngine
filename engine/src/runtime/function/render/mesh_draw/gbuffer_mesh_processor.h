@@ -7,10 +7,11 @@
 #include "../framework/descriptor_table_manager.h"
 #include "../framework/texture_manager.h"
 #include "../framework/primitive_scene_info.h"
-#include "../rendering_pipeline/render_view.h"
 #include "view_mesh_draw_context.h"
 
 namespace dodoe {
+
+    class RenderView;
 
     class GBufferMeshProcessor {
         DescriptorTableManager* m_descriptor_table{nullptr};
@@ -35,9 +36,13 @@ namespace dodoe {
         [[nodiscard]] const GfxBufferHandle& getConstantBuffer() const { return m_constant_buffer; }
 
         void buildCommands(
-            const ViewMeshDrawContext& view_context,
-            const RenderView& view,
-            ViewMeshDrawContext& out_view_context) const;
+            const ViewMeshVisibilityData& visibility_data,
+            const ViewMeshInstanceData& instance_data,
+            const ViewMeshPassData& view_pass_data,
+            const ViewMeshShaderData& view_shader_data,
+            const Matrix4f& view_projection,
+            ViewMeshPassData& out_pass_data,
+            ViewMeshShaderData& out_shader_data) const;
     };
 
 } // dodoe

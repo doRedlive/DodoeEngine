@@ -1,4 +1,6 @@
 // do@Redlive
+#include "runtime/function/graphics/gfx.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 #include "render_lighting_passes.h"
 
@@ -6,6 +8,7 @@
 
 #include "../fullscreen_pass_shared_state.h"
 #include "../rendering_pipeline_pass_utils.h"
+#include "runtime/function/render/render_scene/render_scene.h"
 
 #include "runtime/core/math/math.h"
 #include "runtime/function/render/framework/pipeline_state_cache.h"
@@ -40,6 +43,7 @@ namespace dodoe::RenderingPipelinePasses {
             RenderGraphTextureHandle material{};
             RenderGraphTextureHandle shadow_map{};
             RenderGraphTextureHandle hdr_color{};
+            RenderGraphBufferHandle constant_buffer{};
         };
 
         void addSkyboxPass(RenderGraphBuilder& graph, const RenderingPassContext& pass_context) {
@@ -55,13 +59,13 @@ namespace dodoe::RenderingPipelinePasses {
                     DO_ASSERT(depth, "SkyboxPass depth is missing");
 
                     RenderGraphTextureDesc hdr_desc{};
-                    hdr_desc.desc = TextureDesc()
-                        .setDimension(TextureDimension::Texture2D)
+                    hdr_desc.desc = GfxTextureDesc()
+                        .setDimension(GfxTextureDimension::Texture2D)
                         .setWidth(static_cast<UInt32>(swapchain_extent.x))
                         .setHeight(static_cast<UInt32>(swapchain_extent.y))
-                        .setFormat(Format::RGBA16_FLOAT)
+                        .setFormat(GfxFormat::RGBA16_FLOAT)
                         .setIsRenderTarget(true)
-                        .enableAutomaticStateTracking(ResourceStates::ShaderResource)
+                        .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
                         .setDebugName("RDG MainCameraHdrColor");
 
                     parameters.depth = pass_builder.read(*depth);
@@ -72,16 +76,17 @@ namespace dodoe::RenderingPipelinePasses {
                     const auto device = context.getGfxContext()->getDevice();
                     const auto depth = command_list.resolveTexture(parameters.depth);
                     const auto hdr = command_list.resolveTexture(parameters.hdr_color);
-                    auto framebuffer = device->createFramebuffer(FramebufferDesc().addColorAttachment(hdr));
-                    const auto skybox_texture = context.getScene()->getSkyboxTexture();
+                    auto framebuffer = device->createFramebuffer(GfxFramebufferDesc().addColorAttachment(hdr));
+                    const auto* sky_light = context.getScene()->findSkyLight();
+                    const auto skybox_texture = sky_light && sky_light->getCubemap() ? sky_light->getCubemap()->getGpuHandle() : GfxTextureHandle{nullptr};
                     const auto& sampler = pass_context.fullscreen_pass_shared_state->getScreenSampler();
                     const auto& binding_layout = pass_context.fullscreen_pass_shared_state->getSkyboxBindingLayout();
                     auto binding_set = device->createBindingSet(
-                        BindingSetDesc()
-                            .addItem(BindingSetItem::PushConstants(0, sizeof(SkyboxPushConstants)))
-                            .addItem(BindingSetItem::Texture_SRV(0, skybox_texture ? skybox_texture : hdr))
-                            .addItem(BindingSetItem::Texture_SRV(1, depth))
-                            .addItem(BindingSetItem::Sampler(0, sampler)),
+                        GfxBindingSetDesc()
+                            .addItem(GfxBindingSetItem::PushConstants(0, sizeof(SkyboxPushConstants)))
+                            .addItem(GfxBindingSetItem::Texture_SRV(0, skybox_texture ? skybox_texture : hdr))
+                            .addItem(GfxBindingSetItem::Texture_SRV(1, depth))
+                            .addItem(GfxBindingSetItem::Sampler(0, sampler)),
                         binding_layout
                     );
                     const auto pipeline = pass_context.pipeline_state_cache->resolveGraphicsPipeline(
@@ -97,19 +102,19 @@ namespace dodoe::RenderingPipelinePasses {
 
                     command_list.open();
                     command_list.beginMarker("SkyboxPass");
-                    command_list.setTextureState(parameters.depth, AllSubresources, ResourceStates::ShaderResource);
-                    command_list.setTextureState(parameters.hdr_color, AllSubresources, ResourceStates::RenderTarget);
+                    command_list.setTextureState(parameters.depth, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.setTextureState(parameters.hdr_color, GfxAllSubresources, GfxResourceStates::RenderTarget);
                     command_list.commitBarriers();
-                    command_list.clearTextureFloat(parameters.hdr_color, AllSubresources, Color(0.0f, 0.0f, 0.0f, 1.0f));
+                    command_list.clearTextureFloat(parameters.hdr_color, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                     command_list.setGraphicsState(
-                        GraphicsState()
+                        GfxGraphicsState()
                             .setPipeline(pipeline)
                             .setFramebuffer(framebuffer)
                             .setViewport(rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d()))
                             .addBindingSet(binding_set)
                     );
-                    command_list.setPushConstants(constants);
-                    command_list.draw(DrawArguments().setVertexCount(6).setInstanceCount(1));
+                    command_list.setPushConstants(&constants, sizeof(constants));
+                    command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                     command_list.endMarker();
                     command_list.close();
                 }
@@ -123,7 +128,7 @@ namespace dodoe::RenderingPipelinePasses {
             graph.addPass<DeferredLightPassParameters>(
                 "DeferredLightPass",
                 RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-                [](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
+                [pass_context](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
                     const auto* albedo = pass_builder.blackboard().get<GBufferAlbedoKey, RenderGraphTextureHandle>();
                     const auto* normal = pass_builder.blackboard().get<GBufferNormalKey, RenderGraphTextureHandle>();
                     const auto* position = pass_builder.blackboard().get<GBufferPositionKey, RenderGraphTextureHandle>();
@@ -137,6 +142,7 @@ namespace dodoe::RenderingPipelinePasses {
                     parameters.material = pass_builder.read(*material);
                     parameters.shadow_map = pass_builder.read(*shadow);
                     parameters.hdr_color = pass_builder.write(*hdr);
+                    parameters.constant_buffer = pass_builder.importBuffer(pass_context.fullscreen_pass_shared_state->getDeferredLightConstantBuffer(), "DeferredLightConstantBuffer");
                 },
                 [pass_context, &shader_library](const DeferredLightPassParameters& parameters, const RenderGraphPassContext& context, RenderGraphCommandList& command_list) {
                     const auto device = context.getGfxContext()->getDevice();
@@ -146,21 +152,20 @@ namespace dodoe::RenderingPipelinePasses {
                     const auto material = command_list.resolveTexture(parameters.material);
                     const auto shadow = command_list.resolveTexture(parameters.shadow_map);
                     const auto hdr = command_list.resolveTexture(parameters.hdr_color);
-                    const auto skybox = context.getScene()->getSkyboxTexture() ? context.getScene()->getSkyboxTexture() : hdr;
-                    auto framebuffer = device->createFramebuffer(FramebufferDesc().addColorAttachment(hdr));
+                    const auto skybox = GfxTextureHandle{} ? GfxTextureHandle{} : hdr;
+                    auto framebuffer = device->createFramebuffer(GfxFramebufferDesc().addColorAttachment(hdr));
                     const auto& sampler = pass_context.fullscreen_pass_shared_state->getScreenSampler();
                     const auto& binding_layout = pass_context.fullscreen_pass_shared_state->getDeferredLightBindingLayout();
-                    const auto& constant_buffer = pass_context.fullscreen_pass_shared_state->getDeferredLightConstantBuffer();
                     auto binding_set = device->createBindingSet(
-                        BindingSetDesc()
-                            .addItem(BindingSetItem::ConstantBuffer(0, constant_buffer))
-                            .addItem(BindingSetItem::Sampler(0, sampler))
-                            .addItem(BindingSetItem::Texture_SRV(0, albedo))
-                            .addItem(BindingSetItem::Texture_SRV(1, normal))
-                            .addItem(BindingSetItem::Texture_SRV(2, position))
-                            .addItem(BindingSetItem::Texture_SRV(3, shadow))
-                            .addItem(BindingSetItem::Texture_SRV(4, material))
-                            .addItem(BindingSetItem::Texture_SRV(5, skybox)),
+                        GfxBindingSetDesc()
+                            .addItem(GfxBindingSetItem::ConstantBuffer(0, command_list.resolveBuffer(parameters.constant_buffer)))
+                            .addItem(GfxBindingSetItem::Sampler(0, sampler))
+                            .addItem(GfxBindingSetItem::Texture_SRV(0, albedo))
+                            .addItem(GfxBindingSetItem::Texture_SRV(1, normal))
+                            .addItem(GfxBindingSetItem::Texture_SRV(2, position))
+                            .addItem(GfxBindingSetItem::Texture_SRV(3, shadow))
+                            .addItem(GfxBindingSetItem::Texture_SRV(4, material))
+                            .addItem(GfxBindingSetItem::Texture_SRV(5, skybox)),
                         binding_layout
                     );
                     const auto pipeline = pass_context.pipeline_state_cache->resolveGraphicsPipeline(
@@ -176,12 +181,12 @@ namespace dodoe::RenderingPipelinePasses {
 
                     command_list.open();
                     command_list.beginMarker("DeferredLightPass");
-                    command_list.setTextureState(parameters.albedo, AllSubresources, ResourceStates::ShaderResource);
-                    command_list.setTextureState(parameters.normal, AllSubresources, ResourceStates::ShaderResource);
-                    command_list.setTextureState(parameters.position, AllSubresources, ResourceStates::ShaderResource);
-                    command_list.setTextureState(parameters.material, AllSubresources, ResourceStates::ShaderResource);
-                    command_list.setTextureState(parameters.shadow_map, AllSubresources, ResourceStates::ShaderResource);
-                    command_list.setTextureState(parameters.hdr_color, AllSubresources, ResourceStates::RenderTarget);
+                    command_list.setTextureState(parameters.albedo, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.setTextureState(parameters.normal, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.setTextureState(parameters.position, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.setTextureState(parameters.material, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.setTextureState(parameters.shadow_map, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.setTextureState(parameters.hdr_color, GfxAllSubresources, GfxResourceStates::RenderTarget);
                     command_list.commitBarriers();
 
                     const auto& directional_lights = context.getScene()->getDirectionalLights();
@@ -192,15 +197,15 @@ namespace dodoe::RenderingPipelinePasses {
                         constants.light_view_projection = rendering_pipeline_utils::BuildDirectionalLightViewProjection(light.direction);
                         constants.shadow_params = Vector4f(0.005f, 0.2f, 0.005f, 2.0f);
                         constants.camera_position = Vector4f(camera_position, 0.0f);
-                        command_list.writeBuffer(constant_buffer, constants);
+                        command_list.writeBuffer(parameters.constant_buffer, &constants, sizeof(constants));
                         command_list.setGraphicsState(
-                            GraphicsState()
+                            GfxGraphicsState()
                                 .setPipeline(pipeline)
                                 .setFramebuffer(framebuffer)
                                 .setViewport(viewport_state)
                                 .addBindingSet(binding_set)
                         );
-                        command_list.draw(DrawArguments().setVertexCount(6).setInstanceCount(1));
+                        command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                     }
 
                     const auto& point_lights = context.getScene()->getPointLights();
@@ -210,18 +215,18 @@ namespace dodoe::RenderingPipelinePasses {
                         constants.light_position_radius = Vector4f(light.position, light.radius);
                         constants.light_direction_type = Vector4f(0.0f, 0.0f, 0.0f, light.range);
                         constants.camera_position = Vector4f(camera_position, 0.0f);
-                        command_list.writeBuffer(constant_buffer, constants);
+                        command_list.writeBuffer(parameters.constant_buffer, &constants, sizeof(constants));
                         command_list.setGraphicsState(
-                            GraphicsState()
+                            GfxGraphicsState()
                                 .setPipeline(pipeline)
                                 .setFramebuffer(framebuffer)
                                 .setViewport(viewport_state)
                                 .addBindingSet(binding_set)
                         );
-                        command_list.draw(DrawArguments().setVertexCount(6).setInstanceCount(1));
+                        command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                     }
 
-                    command_list.setTextureState(parameters.hdr_color, AllSubresources, ResourceStates::ShaderResource);
+                    command_list.setTextureState(parameters.hdr_color, GfxAllSubresources, GfxResourceStates::ShaderResource);
                     command_list.commitBarriers();
                     command_list.endMarker();
                     command_list.close();

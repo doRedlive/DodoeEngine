@@ -181,7 +181,10 @@ namespace dodoe {
         registerComponent<BoxCollider2dComponent>("BoxCollider2dComponent");
         registerComponent<PointLightComponent>("PointLightComponent");
         registerComponent<SpotLightComponent>("SpotLightComponent");
+        registerComponent<CircleRendererComponent>("CircleRendererComponent");
+        registerComponent<LineRendererComponent>("LineRendererComponent");
         registerComponent<MeshRendererComponent>("MeshRendererComponent");
+        registerComponent<RectRendererComponent>("RectRendererComponent");
         registerComponent<Rigidbody2dComponent>("Rigidbody2dComponent");
         registerComponent<SpriteRendererComponent>("SpriteRendererComponent");
         registerComponent<TilemapComponent>("TilemapComponent", false);

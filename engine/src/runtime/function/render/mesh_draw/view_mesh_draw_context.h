@@ -36,25 +36,31 @@ namespace dodoe {
         Vector4f time_data{0.0f};
     };
 
-    struct ViewMeshDrawContext {
+    struct ViewMeshVisibilityData {
         DynamicArray<const PrimitiveSceneInfo*> visible_primitives{};
-        DynamicArray<UInt32> primitive_first_instance_offsets{};
-        DynamicArray<InstanceSceneData> instance_scene_data{};
-        DynamicArray<MeshPassRelevance> primitive_mesh_pass_relevance{};
-        DynamicArray<UInt32> mesh_pass_primitive_indices[static_cast<Size_t>(MeshPassType::Count)]{};
-        DynamicArray<MeshDrawCommand> mesh_pass_commands[static_cast<Size_t>(MeshPassType::Count)]{};
-        DynamicArray<GBufferMeshDrawShaderData> gbuffer_shader_data{};
-        Matrix4f directional_shadow_view_projection{1.0f};
-        Vector4f frame_time_data{0.0f};
 
         void reset() {
             visible_primitives.clear();
+        }
+    };
+
+    struct ViewMeshInstanceData {
+        DynamicArray<UInt32> primitive_first_instance_offsets{};
+        DynamicArray<InstanceSceneData> instance_scene_data{};
+
+        void reset() {
             primitive_first_instance_offsets.clear();
             instance_scene_data.clear();
+        }
+    };
+
+    struct ViewMeshPassData {
+        DynamicArray<MeshPassRelevance> primitive_mesh_pass_relevance{};
+        DynamicArray<UInt32> mesh_pass_primitive_indices[static_cast<Size_t>(MeshPassType::Count)]{};
+        DynamicArray<MeshDrawCommand> mesh_pass_commands[static_cast<Size_t>(MeshPassType::Count)]{};
+
+        void reset() {
             primitive_mesh_pass_relevance.clear();
-            gbuffer_shader_data.clear();
-            directional_shadow_view_projection = Matrix4f(1.0f);
-            frame_time_data = Vector4f(0.0f);
             for (auto& primitive_indices : mesh_pass_primitive_indices) {
                 primitive_indices.clear();
             }
@@ -80,7 +86,7 @@ namespace dodoe {
         }
 
         [[nodiscard]] const MeshPassRelevance& getMeshPassRelevance(const UInt32 primitive_index) const {
-            DO_ASSERT(primitive_index < primitive_mesh_pass_relevance.size(), "ViewMeshDrawContext primitive relevance index out of range");
+            DO_ASSERT(primitive_index < primitive_mesh_pass_relevance.size(), "ViewMeshPassData primitive relevance index out of range");
             return primitive_mesh_pass_relevance[primitive_index];
         }
 
@@ -94,6 +100,18 @@ namespace dodoe {
 
         [[nodiscard]] const DynamicArray<MeshDrawCommand>& getMeshPassCommands(const MeshPassType pass_type) const {
             return mesh_pass_commands[static_cast<Size_t>(pass_type)];
+        }
+    };
+
+    struct ViewMeshShaderData {
+        DynamicArray<GBufferMeshDrawShaderData> gbuffer_shader_data{};
+        Matrix4f directional_shadow_view_projection{1.0f};
+        Vector4f frame_time_data{0.0f};
+
+        void reset() {
+            gbuffer_shader_data.clear();
+            directional_shadow_view_projection = Matrix4f(1.0f);
+            frame_time_data = Vector4f(0.0f);
         }
     };
 

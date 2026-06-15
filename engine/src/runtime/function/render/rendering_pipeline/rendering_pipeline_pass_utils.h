@@ -1,10 +1,15 @@
 // do@Redlive
+#include "runtime/function/graphics/gfx.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 #pragma once
 
 #include "dopch.h"
 
 #include "runtime/function/render/render_graph/render_graph_pass.h"
+#include "render_view_family.h"
+#include "runtime/core/math/math.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace dodoe::rendering_pipeline_utils {
 
@@ -13,14 +18,14 @@ namespace dodoe::rendering_pipeline_utils {
         return Vector3f(inverse_view[3]);
     }
 
-    [[nodiscard]] inline ViewportState BuildViewportState(const RenderView& view, const Vector2i& fallback_extent) {
+    [[nodiscard]] inline GfxViewportState BuildViewportState(const RenderView& view, const Vector2i& fallback_extent) {
         const auto viewport_rect = view.getViewportRect();
         const Float offset_x = static_cast<Float>(viewport_rect.x);
         const Float offset_y = static_cast<Float>(viewport_rect.y);
         const Float width = viewport_rect.z > 0 ? static_cast<Float>(viewport_rect.z) : static_cast<Float>(fallback_extent.x);
         const Float height = viewport_rect.w > 0 ? static_cast<Float>(viewport_rect.w) : static_cast<Float>(fallback_extent.y);
-        return ViewportState().addViewportAndScissorRect(
-            Viewport(offset_x, offset_x + width, offset_y, offset_y + height, 0.0f, 1.0f)
+        return GfxViewportState().addViewportAndScissorRect(
+            GfxViewport(offset_x, offset_x + width, offset_y, offset_y + height, 0.0f, 1.0f)
         );
     }
 
@@ -34,21 +39,21 @@ namespace dodoe::rendering_pipeline_utils {
         return proj * view;
     }
 
-    [[nodiscard]] inline GraphicsPipelineDesc BuildFullscreenPipelineDesc(
+    [[nodiscard]] inline GfxGraphicsPipelineDesc BuildFullscreenPipelineDesc(
         const GfxShaderHandle& vertex_shader,
         const GfxShaderHandle& pixel_shader,
         const GfxBindingLayoutHandle& binding_layout)
     {
-        auto pipeline_desc = GraphicsPipelineDesc()
+        auto pipeline_desc = GfxGraphicsPipelineDesc()
             .setVertexShader(vertex_shader)
             .setPixelShader(pixel_shader)
             .addBindingLayout(binding_layout)
-            .setPrimType(PrimitiveType::TriangleList);
-        DepthStencilState depth_stencil_state;
+            .setPrimType(GfxPrimitiveType::TriangleList);
+        GfxDepthStencilState depth_stencil_state;
         depth_stencil_state.disableDepthTest().disableDepthWrite().disableStencil();
-        RasterState raster_state;
+        GfxRasterState raster_state;
         raster_state.setCullNone();
-        RenderState render_state;
+        GfxRenderState render_state;
         render_state.setDepthStencilState(depth_stencil_state);
         render_state.setRasterState(raster_state);
         pipeline_desc.setRenderState(render_state);
@@ -68,30 +73,30 @@ namespace dodoe::rendering_pipeline_utils {
         const auto device = context.getGfxContext()->getDevice();
         const auto input_texture = command_list.resolveTexture(input);
         const auto output_texture = command_list.resolveTexture(output);
-        auto framebuffer = device->createFramebuffer(FramebufferDesc().addColorAttachment(output_texture));
+        auto framebuffer = device->createFramebuffer(GfxFramebufferDesc().addColorAttachment(output_texture));
         auto binding_set = device->createBindingSet(
-            BindingSetDesc()
-                .addItem(BindingSetItem::Texture_SRV(0, input_texture))
-                .addItem(BindingSetItem::Sampler(0, sampler)),
+            GfxBindingSetDesc()
+                .addItem(GfxBindingSetItem::Texture_SRV(0, input_texture))
+                .addItem(GfxBindingSetItem::Sampler(0, sampler)),
             binding_layout
         );
         const auto viewport_state = BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
 
         command_list.open();
         command_list.beginMarker(marker);
-        command_list.setTextureState(input_texture, AllSubresources, ResourceStates::ShaderResource);
-        command_list.setTextureState(output_texture, AllSubresources, ResourceStates::RenderTarget);
+        command_list.setTextureState(input, GfxAllSubresources, GfxResourceStates::ShaderResource);
+        command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::RenderTarget);
         command_list.commitBarriers();
-        command_list.clearTextureFloat(output, AllSubresources, Color(0.0f, 0.0f, 0.0f, 1.0f));
+        command_list.clearTextureFloat(output, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
         command_list.setGraphicsState(
-            GraphicsState()
+            GfxGraphicsState()
                 .setPipeline(pipeline)
                 .setFramebuffer(framebuffer)
                 .setViewport(viewport_state)
                 .addBindingSet(binding_set)
         );
-        command_list.draw(DrawArguments().setVertexCount(6).setInstanceCount(1));
-        command_list.setTextureState(output_texture, AllSubresources, ResourceStates::ShaderResource);
+        command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+        command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::ShaderResource);
         command_list.commitBarriers();
         command_list.endMarker();
         command_list.close();

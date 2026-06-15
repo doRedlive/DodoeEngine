@@ -5,8 +5,8 @@
 namespace dodoe {
     GfxGraphicsPipelineHandle PipelineStateCache::resolveGraphicsPipeline(
         const MeshPassType pass_type,
-        const GraphicsPipelineDesc& pipeline_desc,
-        const nvrhi::FramebufferInfo& framebuffer_info)
+        const GfxGraphicsPipelineDesc& pipeline_desc,
+        const GfxFramebufferInfo& framebuffer_info)
     {
         DO_ASSERT(m_device != nullptr, "PipelineStateCache device is null");
 
@@ -23,8 +23,8 @@ namespace dodoe {
     }
 
     GfxGraphicsPipelineHandle PipelineStateCache::resolveGraphicsPipeline(
-        const GraphicsPipelineDesc& pipeline_desc,
-        const nvrhi::FramebufferInfo& framebuffer_info)
+        const GfxGraphicsPipelineDesc& pipeline_desc,
+        const GfxFramebufferInfo& framebuffer_info)
     {
         return resolveGraphicsPipeline(MeshPassType::Count, pipeline_desc, framebuffer_info);
     }
@@ -35,8 +35,8 @@ namespace dodoe {
 
     GraphicsPipelineCacheKey PipelineStateCache::BuildGraphicsPipelineCacheKey(
         const MeshPassType pass_type,
-        const GraphicsPipelineDesc& pipeline_desc,
-        const nvrhi::FramebufferInfo& framebuffer_info)
+        const GfxGraphicsPipelineDesc& pipeline_desc,
+        const GfxFramebufferInfo& framebuffer_info)
     {
         GraphicsPipelineCacheKey key{};
         key.pass_type = pass_type;
