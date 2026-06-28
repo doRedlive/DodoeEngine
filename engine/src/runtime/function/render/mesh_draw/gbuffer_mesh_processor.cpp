@@ -2,6 +2,7 @@
 
 #include "gbuffer_mesh_processor.h"
 
+#include "runtime/core/math/math.h"
 #include "../render_scene/primitive_render_object.h"
 #include "runtime/function/graphics/gfx_context.h"
 
@@ -11,7 +12,7 @@ namespace dodoe {
 
         std::array<Vector4f, 6> extractFrustumPlanes(const Matrix4f& view_projection) {
             std::array<Vector4f, 6> planes{};
-            const Matrix4f transposed = glm::transpose(view_projection);
+            const Matrix4f transposed = Math::Transpose(view_projection);
             planes[0] = transposed[3] + transposed[0];
             planes[1] = transposed[3] - transposed[0];
             planes[2] = transposed[3] + transposed[1];
@@ -20,7 +21,7 @@ namespace dodoe {
             planes[5] = transposed[3] - transposed[2];
 
             for (auto& plane : planes) {
-                const Float length = glm::length(Vector3f(plane));
+                const Float length = Math::Length(Vector3f(plane));
                 if (length > std::numeric_limits<Float>::epsilon()) {
                     plane /= length;
                 }
@@ -31,8 +32,8 @@ namespace dodoe {
         Bool intersectsFrustum(const std::array<Vector4f, 6>& frustum_planes, const Vector3f& center, const Vector3f& extents) {
             for (const auto& plane : frustum_planes) {
                 const Vector3f normal = Vector3f(plane);
-                const Float radius = glm::dot(glm::abs(normal), extents);
-                const Float distance = glm::dot(normal, center) + plane.w;
+                const Float radius = Math::Dot(Math::Abs(normal), extents);
+                const Float distance = Math::Dot(normal, center) + plane.w;
                 if (distance + radius < 0.0f) {
                     return false;
                 }
@@ -170,7 +171,7 @@ namespace dodoe {
                     const Matrix4f& world_transform = primitive->getWorldTransform();
                     const Vector3f world_center = Vector3f(world_transform * Vector4f(local_center, 1.0f));
                     const Matrix3f linear = Matrix3f(world_transform);
-                    const Matrix3f abs_linear(glm::abs(linear[0]), glm::abs(linear[1]), glm::abs(linear[2]));
+                    const Matrix3f abs_linear(Math::Abs(linear[0]), Math::Abs(linear[1]), Math::Abs(linear[2]));
                     const Vector3f world_extents = abs_linear * local_extents;
                     if (!intersectsFrustum(frustum_planes, world_center, world_extents)) {
                         continue;
@@ -189,8 +190,8 @@ namespace dodoe {
                     draw_shader_data.draw_data.x = static_cast<Int32>(resolveTextureIndex(m_texture_manager, material));
                     draw_shader_data.draw_data.y = static_cast<Int32>(resolveMetallicRoughnessTextureIndex(m_texture_manager, material));
                     draw_shader_data.draw_data.z = material->metallic_roughness_texture.isValid() ? 1 : 0;
-                    draw_shader_data.material_data.x = glm::clamp(material->metallic, 0.0f, 1.0f);
-                    draw_shader_data.material_data.y = glm::clamp(material->roughness, 0.04f, 1.0f);
+                    draw_shader_data.material_data.x = Math::Clamp(material->metallic, 0.0f, 1.0f);
+                    draw_shader_data.material_data.y = Math::Clamp(material->roughness, 0.04f, 1.0f);
                 }
 
                 const UInt32 shader_data_index = static_cast<UInt32>(shader_data.size());

@@ -2,6 +2,8 @@
 
 #include "render_graph.h"
 
+#include <cstdio>
+
 namespace dodoe {
     namespace {
         class WaitGroup {
@@ -200,15 +202,20 @@ namespace dodoe {
         resource_registry.initialize(m_resources, *context.gfx_context, context.swapchain_image_index);
         DrawCommandList merged_command_list{};
 
-        for (const auto& level : m_levels) {
+        for (Size_t graph_level_index = 0; graph_level_index < m_levels.size(); ++graph_level_index) {
+            const auto& level = m_levels[graph_level_index];
             WaitGroup wg(static_cast<Int32>(level.size()));
             DynamicArray<DrawCommandList> level_command_lists(level.size());
             for (Size_t level_index = 0; level_index < level.size(); level_index++) {
                 const auto pass = m_passes[level[level_index]];
                 pool.enqueue([pass, &context, &resource_registry, &level_command_lists, level_index, &wg] {
                     RenderGraphPassContext pass_context(context, resource_registry);
-                    RenderGraphCommandList command_list(pass_context, level_command_lists[level_index]);
+                    auto& command_list = level_command_lists[level_index];
+                    command_list.open();
+                    command_list.beginMarker(pass->getName().c_str());
                     pass->execute(pass_context, command_list);
+                    command_list.endMarker();
+                    command_list.close();
                     wg.done();
                 });
             }

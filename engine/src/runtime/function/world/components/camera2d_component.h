@@ -9,11 +9,16 @@
 
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/util.h"
-#include "runtime/function/render/framework/camera.h"
 
 REFLECTION_TYPE(Camera2dComponent)
 
 namespace dodoe {
+
+    enum class CameraType {
+        None = 0,
+        Perspective,
+        Orthographic,
+    };
 
     STRUCT(Camera2dComponent, WhiteListFields) {
         REFLECTION_BODY(Camera2dComponent)
@@ -23,16 +28,19 @@ namespace dodoe {
         META(Enable)
         float zoom{1.0f};
         META(Enable)
+        float fov{60.0f};
+        META(Enable)
+        float near_plane{0.01f};
+        META(Enable)
+        float far_plane{1000.0f};
+        META(Enable)
         Color background{Color::white()};
-        
+
         bool dirty{false};
 
-        void setCameraType(CameraType in_type) { type = in_type;  dirty = true; }
-        void setZoom(float in_zoom) { zoom = in_zoom; dirty = true; }
+        void setCameraType(const CameraType in_type) { type = in_type; dirty = true; }
+        void setZoom(const float in_zoom) { zoom = in_zoom; dirty = true; }
         void setBackgroundColor(const Color& in_background) { background = in_background; dirty = true; }
-        [[nodiscard]] CameraType getCameraType() { return type; }
-        [[nodiscard]] float getZoom() { return zoom; }
-        [[nodiscard]] const Color& getBackgroundColor() { return background; }
     };
 
 } // dodoe

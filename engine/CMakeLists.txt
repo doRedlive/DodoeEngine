@@ -1,6 +1,6 @@
 set(ENGINE_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
-option(DODOE_EDITOR "Build the Cakery editor" ON)
+option(DODOE_EDITOR "Build the Cakery editor" OFF)
 
 add_subdirectory(external)
 

@@ -5,6 +5,9 @@
 #include "dopch.h"
 
 #include "texture.h"
+#include "runtime/function/graphics/draw_command_list.h"
+
+#include <mutex>
 
 namespace dodoe {
 
@@ -22,6 +25,8 @@ namespace dodoe {
         DescriptorTableManager* m_descriptor_table{nullptr};
         Ref<Texture> m_fallback{};
         UnorderedMap<InstanceID, Ref<Texture>> m_texture_cache{};
+        DrawCommandList m_pending_commands{};
+        std::mutex m_mutex{};
 
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
@@ -33,7 +38,10 @@ namespace dodoe {
         [[nodiscard]] Ref<Texture> loadTexture(const String& path);
         [[nodiscard]] Ref<Texture> findTexture(InstanceID id);
         [[nodiscard]] Ref<Texture> getFallback() const;
+        [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
         void removeTexture(InstanceID id);
+
+        DrawCommandList flushPendingCommands();
     };
 
 } // dodoe

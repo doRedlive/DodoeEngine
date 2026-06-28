@@ -10,10 +10,11 @@
 #include "runtime/core/event/event_system.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/render/render_system.h"
+#include "runtime/function/render/renderer.h"
 
 namespace dodoe {
 
-    void InputManager::initialize(const InputManagerInitInfo& init_info) {
+    bool InputManager::initialize(const InputManagerInitInfo& init_info) {
         viewport_manager_ = init_info.viewport_manager;
 
         EventSystem::Subscribe<KeyPressedEvent, &InputManager::on_key_pressed_>(this);
@@ -23,6 +24,7 @@ namespace dodoe {
         EventSystem::Subscribe<MouseMovedEvent, &InputManager::on_mouse_moved_>(this);
 
         Input::initialize(this);
+        return true;
     }
 
     void InputManager::update() {
@@ -125,8 +127,23 @@ namespace dodoe {
             0.0f
         };
 
-        auto* camera = Renderer::GetMainCamera();
-        const auto world_pos = camera ? camera->screen2world(logical_pos) : logical_pos;
+        const auto* render_system = GetRenderSystem();
+        const auto* view_family = render_system ? render_system->getViewFamily() : nullptr;
+        if (!view_family || view_family->isEmpty()) {
+            return Vector2f(logical_pos.x, logical_pos.y);
+        }
+
+        const auto& view = view_family->getView(0);
+        const Vector4f clip_pos{
+            logical_pos.x / logical_size.x * 2.0f - 1.0f,
+            logical_pos.y / logical_size.y * 2.0f - 1.0f,
+            0.0f,
+            1.0f
+        };
+        Vector4f world_pos = Math::Inverse(view.getViewProjectionMatrix()) * clip_pos;
+        if (std::abs(world_pos.w) > 0.00001f) {
+            world_pos /= world_pos.w;
+        }
         return Vector2f(world_pos.x, world_pos.y);
     }
 

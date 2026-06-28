@@ -21,6 +21,30 @@
       "problemMatcher": [
         "$msCompile"
       ]
+    },
+    {
+      "label": "Build DodoeSandbox",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "build",
+        "--target",
+        "DodoeSandbox",
+        "--config",
+        "Debug",
+        "--parallel",
+        "8"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build"
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ]
     }
   ]
 }

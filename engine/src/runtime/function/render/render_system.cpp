@@ -1,7 +1,5 @@
-//
-// Created by GreenMuffin on 2026/3/6.
+// do@Redlive
 // Knight!
-//
 
 #include "render_system.h"
 
@@ -22,40 +20,32 @@ namespace dodoe {
 #else
             false;
 #endif
-        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation});
-        const auto camera_type = RenderSettings::GetRenderingPipelineType() == RenderingPipelineType::Only2D
-            ? CameraType::Orthographic : CameraType::Perspective;
-        m_camera = Camera::Create({camera_type, m_viewport_manager->getLogicalSize(), m_viewport_manager->getWindowSize()});
+        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, window->isHostMode() ? window->getNativeHandle() : nullptr});
         m_descriptor_table = DescriptorTableManager::Create({m_gfx.get()});
         m_texture_manager = TextureManager::Create({m_gfx.get(), m_descriptor_table.get()});
-
-        if (!Renderer::Initialize(m_camera.get(), m_texture_manager.get())) {
-            return false;
-        }
-        m_rendering_pipeline = RenderingPipeline::Create({
+        m_shared_render_service = SharedRenderService::Create({m_gfx.get(), m_descriptor_table.get(), m_texture_manager.get()});
+        m_render_scene = RenderScene::Create({});
+        m_view_family = RenderViewFamily::Create({});
+        m_render_pipeline = RenderPipeline::Create({
             std::thread::hardware_concurrency(),
             m_gfx.get(),
-            m_descriptor_table.get(),
-            m_texture_manager.get()
+            m_shared_render_service.get()
         });
 
-        return m_camera && m_descriptor_table && m_texture_manager && m_rendering_pipeline;
+        return m_render_scene && m_descriptor_table && m_texture_manager && m_shared_render_service && m_render_pipeline;
     }
 
     void RenderSystem::shutdown() {
-        if (m_gfx && m_gfx->getDevice()) {
-            m_gfx->getDevice()->waitForIdle();
-        }
+        m_gfx->waitForIdle();
 
-        RenderingPipeline::Destroy(m_rendering_pipeline);
-        Renderer::Shutdown();
-        Camera::Destroy(m_camera);
+        RenderPipeline::Destroy(m_render_pipeline);
+        RenderViewFamily::Destroy(m_view_family);
+        RenderScene::Destroy(m_render_scene);
+        SharedRenderService::Destroy(m_shared_render_service);
         TextureManager::Destroy(m_texture_manager);
         DescriptorTableManager::Destroy(m_descriptor_table);
-        if (m_gfx && m_gfx->getDevice()) {
-            m_gfx->getDevice()->waitForIdle();
-            m_gfx->getDevice()->runGarbageCollection();
-        }
+        m_gfx->waitForIdle();
+        m_gfx->clearGarbage();
         GfxContext::Destroy(m_gfx);
     }
 

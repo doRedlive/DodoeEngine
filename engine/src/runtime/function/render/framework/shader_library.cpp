@@ -11,11 +11,19 @@ namespace dodoe {
 
         auto load_shader = [device](const char* path, const GfxShaderType shader_type, const char* debug_name) {
             auto source = ReadShaderFile(path);
-            return device->createShader(
+            if (source.empty()) {
+                DO_ERROR("ShaderLibrary::load_shader failed to read shader file: {}", path);
+                return GfxShaderHandle{};
+            }
+            auto shader = device->createShader(
                 GfxShaderDesc().setShaderType(shader_type).setEntryName("main").setDebugName(debug_name),
                 source.data(),
                 source.size()
             );
+            if (!shader) {
+                DO_ERROR("ShaderLibrary::load_shader createShader failed for: {}", path);
+            }
+            return shader;
         };
 
         m_gbuffer_vertex_shader = load_shader("engine/res/shaders/bin/main_camera_pass.vert.spv", GfxShaderType::Vertex, "ShaderLibrary GBuffer VS");
@@ -29,9 +37,19 @@ namespace dodoe {
         m_color_grading_pixel_shader = load_shader("engine/res/shaders/bin/color_grading_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary ColorGrading PS");
         m_fxaa_pixel_shader = load_shader("engine/res/shaders/bin/fxaa_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary FXAA PS");
         m_present_pixel_shader = load_shader("engine/res/shaders/bin/combine_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary Present PS");
+        m_imgui_vertex_shader = load_shader("engine/res/shaders/bin/imgui_pass.vert.spv", GfxShaderType::Vertex, "ShaderLibrary ImGui VS");
+        m_imgui_pixel_shader = load_shader("engine/res/shaders/bin/imgui_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary ImGui PS");
+        m_sprite_vertex_shader = load_shader("engine/res/shaders/bin/sprite_pass.vert.spv", GfxShaderType::Vertex, "ShaderLibrary Sprite VS");
+        m_sprite_pixel_shader = load_shader("engine/res/shaders/bin/sprite_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary Sprite PS");
+
+        DO_INFO("ShaderLibrary::initialize completed");
     }
 
     void ShaderLibrary::reset() {
+        m_sprite_pixel_shader = nullptr;
+        m_sprite_vertex_shader = nullptr;
+        m_imgui_pixel_shader = nullptr;
+        m_imgui_vertex_shader = nullptr;
         m_present_pixel_shader = nullptr;
         m_fxaa_pixel_shader = nullptr;
         m_color_grading_pixel_shader = nullptr;

@@ -42,6 +42,9 @@ namespace dodoe {
     }
 
     DescriptorIndex DescriptorTableManager::createDescriptor(GfxBindingSetItem item) {
+        DO_DEBUG("DescriptorTableManager::createDescriptor: type={}, resourceHandle={}",
+            static_cast<int>(item.type), item.resourceHandle != nullptr);
+
         const GfxBindingSetItem cache_key = item;
         const auto& it = descriptor_index_umap_.find(cache_key);
         if (it != descriptor_index_umap_.end()) { return it->second; }
@@ -72,6 +75,8 @@ namespace dodoe {
         item.slot = index;
         search_start_ = index + 1;
         allocated_descriptors_[index] = true;
+
+        DO_DEBUG("DescriptorTableManager::createDescriptor: writing to slot={}", index);
         gfx_->getDevice()->writeDescriptorTable(descriptor_table_, item);
 
         if (item.resourceHandle) { item.resourceHandle->AddRef(); }
@@ -79,6 +84,7 @@ namespace dodoe {
         descriptors_[index] = item;
         descriptor_index_umap_.emplace(cache_key, index);
 
+        DO_DEBUG("DescriptorTableManager::createDescriptor: completed, index={}", index);
         return index;
     }
 
@@ -106,6 +112,30 @@ namespace dodoe {
         if (index < search_start_) {
             search_start_ = index;
         }
+    }
+
+    UInt32 DescriptorTableManager::allocateSlot() {
+        ui32 capacity = descriptor_table_->getCapacity();
+        ui32 index = 0;
+
+        for (index = search_start_; index < capacity; index++) {
+            if (!allocated_descriptors_[index]) {
+                allocated_descriptors_[index] = true;
+                search_start_ = index + 1;
+                return index;
+            }
+        }
+
+        ui32 new_capacity = ((std::max)(64u, capacity * 2));
+        gfx_->getDevice()->resizeDescriptorTable(descriptor_table_, new_capacity);
+        allocated_descriptors_.resize(new_capacity);
+        descriptors_.resize(new_capacity);
+        memset(&descriptors_[capacity], 0, sizeof(GfxBindingSetItem) * (new_capacity - capacity));
+
+        index = capacity;
+        allocated_descriptors_[index] = true;
+        search_start_ = index + 1;
+        return index;
     }
 
 } // dodoe

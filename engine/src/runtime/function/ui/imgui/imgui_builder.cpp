@@ -25,6 +25,12 @@ namespace dodoe {
 
         ApplyImGuiStyle(window);
 
+        // Build font atlas early to satisfy atlas->TexIsBuilt assertion
+        // when running without a dedicated renderer backend
+        unsigned char* font_pixels = nullptr;
+        int font_width = 0, font_height = 0;
+        io.Fonts->GetTexDataAsRGBA32(&font_pixels, &font_width, &font_height);
+
         if (!window) return;  // Host mode: no GLFW window, skip backend init
 
         const auto api_type = RenderSettings::GetRenderBackendApiType();

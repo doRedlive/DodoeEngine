@@ -12,7 +12,7 @@
 namespace dodoe::ui {
 
 [[nodiscard]] inline Ref<Texture> resolveTexture(const Image& image) {
-    auto* texture_manager = Renderer::GetTextureManager();
+    auto* texture_manager = GetRenderSystem()->getTextureManager();
     if (!texture_manager) {
         return nullptr;
     }

@@ -1,9 +1,10 @@
 #include "foliage_renderer_system.h"
 
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/render/renderer.h"
 #include "runtime/function/render/render_scene/foliage_render_object.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -35,7 +36,7 @@ namespace dodoe {
         pruneRemovedObjects(active_objects);
 
         if (dirty) {
-            Renderer::FlushSceneUpdates();
+            GetRenderSystem()->getRenderScene()->flushUpdates();
         }
     }
 
@@ -73,7 +74,7 @@ namespace dodoe {
         const auto& foliage = entity.getComponent<FoliageRendererComponent>();
         const bool hierarchy_dirty = entity.hasComponent<HierarchyComponent>() && entity.getComponent<HierarchyComponent>().dirty;
 
-        const auto* render_object = Renderer::FindPrimitive(id.id);
+        const auto* render_object = GetRenderSystem()->getRenderScene()->findPrimitive(id.id);
         return !m_submitted_objects.contains(id.id) ||
             render_object == nullptr ||
             render_object->getRenderObjectType() != RenderObjectType::Foliage ||
@@ -124,11 +125,11 @@ namespace dodoe {
 
     Matrix4f FoliageRendererSystem::buildWorldMatrix(const TransformComponent& transform) {
         Matrix4f world(1.0f);
-        world = glm::translate(world, transform.position);
-        world = glm::rotate(world, glm::radians(transform.rotation.x), Vector3f(1.0f, 0.0f, 0.0f));
-        world = glm::rotate(world, glm::radians(transform.rotation.y), Vector3f(0.0f, 1.0f, 0.0f));
-        world = glm::rotate(world, glm::radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
-        world = glm::scale(world, transform.scale);
+        world = Math::Translate(world, transform.position);
+        world = Math::Rotate(world, Math::Radians(transform.rotation.x), Vector3f(1.0f, 0.0f, 0.0f));
+        world = Math::Rotate(world, Math::Radians(transform.rotation.y), Vector3f(0.0f, 1.0f, 0.0f));
+        world = Math::Rotate(world, Math::Radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
+        world = Math::Scale(world, transform.scale);
         return world;
     }
 

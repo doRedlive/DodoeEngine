@@ -4,9 +4,8 @@
 #include "draw_thread.h"
 
 #include "runtime/function/render/render_system.h"
-#include "runtime/function/render/renderer.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"
-#include "runtime/function/render/rendering_pipeline/rendering_pipeline.h"
+#include "runtime/function/render/render_pipeline/render_pipeline.h"
 
 namespace dodoe {
 
@@ -20,6 +19,7 @@ namespace dodoe {
         m_draw_thread = draw_thread;
         m_running = true;
         m_thread = std::thread(&RenderThread::loop, this);
+        DO_DEBUG("RenderThread started");
     }
 
     void RenderThread::stop() {
@@ -37,6 +37,7 @@ namespace dodoe {
     }
 
     void RenderThread::submitAndWait() {
+        DO_DEBUG("RenderThread::submitAndWait called");
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_has_pending_frame = true;
@@ -46,20 +47,25 @@ namespace dodoe {
 
         std::unique_lock<std::mutex> lock(m_mutex);
         m_cv.wait(lock, [this] { return m_frame_completed; });
+        DO_DEBUG("RenderThread::submitAndWait completed");
     }
 
     void RenderThread::loop() {
+        DO_DEBUG("RenderThread::loop started");
         while (true) {
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cv.wait(lock, [this] { return m_has_pending_frame || !m_running; });
                 if (!m_running && !m_has_pending_frame) {
+                    DO_DEBUG("RenderThread::loop exiting");
                     break;
                 }
                 m_has_pending_frame = false;
             }
 
+            DO_DEBUG("RenderThread::loop calling renderFrame()");
             renderFrame();
+            DO_DEBUG("RenderThread::loop renderFrame() completed");
 
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -77,16 +83,19 @@ namespace dodoe {
         vp->update();
         if (vp->isWindowDirty()) {
             gfx->recreateSwapchain();
-            gfx->getDevice()->runGarbageCollection();
+            gfx->clearGarbage();
         }
         vp->clearDirtyFlags();
 
-        Renderer::FlushSceneUpdates();
-        auto& scene = Renderer::GetRenderScene();
+        auto* scene = m_render_system->getRenderScene();
+        scene->flushUpdates();
 
         DrawCommandList frame_commands{};
 
-        for (const auto& info : scene.getPrimitiveSceneInfos()) {
+        auto* texture_manager = m_render_system->getTextureManager();
+        frame_commands.append(texture_manager->flushPendingCommands());
+
+        for (const auto& info : scene->getPrimitiveSceneInfos()) {
             const auto* obj = info.getRenderObject();
             if (obj && (obj->getRenderObjectType() == RenderObjectType::StaticMesh ||
                         obj->getRenderObjectType() == RenderObjectType::Foliage)) {
@@ -96,19 +105,25 @@ namespace dodoe {
         }
 
         UInt32 image_index = 0;
-        if (!gfx->acquireNextSwapchainImage(image_index)) return;
+        DO_DEBUG("RenderThread::renderFrame calling acquireNextSwapchainImage...");
+        if (!gfx->acquireNextSwapchainImage(image_index)) {
+            DO_DEBUG("RenderThread::renderFrame acquireNextSwapchainImage FAILED, returning early");
+            return;
+        }
+        DO_DEBUG("RenderThread::renderFrame acquireNextSwapchainImage succeeded, image_index={}", image_index);
 
-        RenderViewFamily view_family{};
-        RenderView main_view(Identifier{});
+        auto* viewFamily = m_render_system->getViewFamily();
+        viewFamily->reset();
         auto vs = vp->getPixelSize();
+        RenderView main_view(Identifier{});
         main_view.setViewportRect(Vector4i(0, 0, vs.x, vs.y));
-        auto* camera = Renderer::GetMainCamera();
-        main_view.setMatrices(camera->getViewMatrix(), camera->getProjectionMatrix());
-        view_family.addView(main_view);
+        viewFamily->addView(main_view);
 
-        frame_commands.append(pipeline->render(view_family, scene, image_index));
+        frame_commands.append(pipeline->render(*viewFamily, *scene, image_index));
 
+        DO_DEBUG("RenderThread::renderFrame calling DrawThread::submitAndWait...");
         m_draw_thread->submitAndWait(std::move(frame_commands), image_index);
+        DO_DEBUG("RenderThread::renderFrame DrawThread::submitAndWait returned");
     }
 
 } // dodoe

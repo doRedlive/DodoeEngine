@@ -33,7 +33,7 @@ namespace dodoe {
         uint64_t sequence{0};
     };
 
-    class Log {
+    class DODOE_API Log {
     public:
         static void Initialize();
 

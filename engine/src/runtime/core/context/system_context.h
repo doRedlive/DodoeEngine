@@ -48,6 +48,7 @@ namespace dodoe {
         [[nodiscard]] InputManager*  getInputManager()  const { return m_input_manager.get(); }
         [[nodiscard]] ScriptSystem*  getScriptSystem()  const { return m_script_system.get(); }
         [[nodiscard]] TimeSystem*    getTimeSystem()    const { return m_time_system.get(); }
+        [[nodiscard]] UISystem*      getUISystem()      const { return m_ui_system.get(); }
         [[nodiscard]] World*         getWorld()         const { return m_world.get(); }
         [[nodiscard]] LayerStack& getLayerStack() { return m_layer_stack; }
         [[nodiscard]] const LayerStack& getLayerStack() const { return m_layer_stack; }
@@ -67,6 +68,7 @@ namespace dodoe {
 
         void updateTick(float dt);
         void renderTick();
+
     };
 
     inline RenderSystem*  GetRenderSystem()  { return Application::Self().context().getRenderSystem(); }
@@ -75,6 +77,7 @@ namespace dodoe {
     inline World*         GetWorld()         { return Application::Self().context().getWorld(); }
     inline ScriptSystem*  GetScriptSystem()  { return Application::Self().context().getScriptSystem(); }
     inline PhysicsSystem* GetPhysicsSystem() { return Application::Self().context().getPhysicsSystem(); }
+    inline UISystem*      GetUISystem()      { return Application::Self().context().getUISystem(); }
     inline InputManager*  GetInputManager()  { return Application::Self().context().getInputManager(); }
 
 } // dodoe

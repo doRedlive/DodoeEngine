@@ -10,7 +10,7 @@ namespace dodoe {
     Bool Window::initialize(const WindowManagerCreateInfo& info) {
         m_prop = info.prop;
         m_host_handle = info.host_handle;
-        if (isHostMode) {
+        if (isHostMode()) {
             m_glfw_window = nullptr;
             return true;
         }

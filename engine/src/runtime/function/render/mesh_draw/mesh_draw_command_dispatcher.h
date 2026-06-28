@@ -14,11 +14,13 @@ namespace dodoe {
     class MeshDrawCommandDispatcher {
     public:
         static void uploadInstanceTransforms(
+            const RenderGraphPassContext& context,
             const ViewMeshInstanceData& instance_data,
             const RenderGraphBufferHandle& primitive_scene_data,
-            RenderGraphCommandList& command_list);
+            DrawCommandList& command_list);
 
         static void dispatch(
+            const RenderGraphPassContext& context,
             const MeshPassType pass_type,
             const ViewMeshShaderData& shader_data,
             const ViewMeshPassData& pass_data,
@@ -28,7 +30,7 @@ namespace dodoe {
             const GfxGraphicsPipelineHandle& pass_pipeline,
             const RenderGraphBufferHandle& primitive_scene_buffer,
             const RenderGraphBufferHandle& pass_constant_buffer,
-            RenderGraphCommandList& command_list);
+            DrawCommandList& command_list);
     };
 
 } // dodoe

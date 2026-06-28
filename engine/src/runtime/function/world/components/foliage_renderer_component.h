@@ -3,7 +3,7 @@
 #include "dopch.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
-#include "runtime/function/render/framework/primitive_scene_info.h"
+#include "runtime/function/render/render_scene/primitive_scene_info.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"
 #include "runtime/function/render/mesh_draw/mesh_data.h"
 

@@ -31,7 +31,7 @@ namespace dodoe {
             pass->setExecuteFunction(
                 [parameters = std::move(parameters), execute = std::forward<TExecute>(execute_function)](
                     const RenderGraphPassContext& context,
-                    RenderGraphCommandList& command_list) mutable
+                    DrawCommandList& command_list) mutable
                 {
                     execute(parameters, context, command_list);
                 }

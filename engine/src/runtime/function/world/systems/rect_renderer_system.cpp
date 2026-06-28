@@ -2,10 +2,11 @@
 
 #include "rect_renderer_system.h"
 
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/render/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -33,7 +34,7 @@ namespace dodoe {
         pruneRemoved(active);
 
         if (dirty) {
-            Renderer::FlushSceneUpdates();
+            GetRenderSystem()->getRenderScene()->flushUpdates();
         }
     }
 
@@ -82,9 +83,9 @@ namespace dodoe {
 
     Matrix4f RectRendererSystem::buildWorldMatrix(const TransformComponent& transform, const RectRendererComponent& rect) const {
         Matrix4f world(1.0f);
-        world = glm::translate(world, Vector3f(transform.position.x, transform.position.y, 0.0f));
-        world = glm::rotate(world, glm::radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
-        world = glm::scale(world, Vector3f(rect.size.x, rect.size.y, 1.0f));
+        world = Math::Translate(world, Vector3f(transform.position.x, transform.position.y, 0.0f));
+        world = Math::Rotate(world, Math::Radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
+        world = Math::Scale(world, Vector3f(rect.size.x, rect.size.y, 1.0f));
         return world;
     }
 

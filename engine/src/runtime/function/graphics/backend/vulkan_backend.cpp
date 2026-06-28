@@ -15,17 +15,34 @@ namespace dodoe {
 	}
 
 	bool VulkanBackend::initialize(const VulkanBackendCreateInfo& info) {
+		OutputDebugStringA("[VK] initialize begin\n");
 		enable_validation_layers_ = info.enable_validation && checkValidationLayerSupport();
 		host_handle_ = info.host_handle;
         instance_extensions_ = getRequiredExtensions();
+		OutputDebugStringA("[VK] creating instance...\n");
 		createInstance(instance_extensions_.data(), static_cast<int>(instance_extensions_.size()));
-		if (enable_validation_layers_) { initializeDebugMessenger(); }
+		OutputDebugStringA("[VK] instance ok\n");
+		if (enable_validation_layers_) {
+			OutputDebugStringA("[VK] init debug messenger...\n");
+			initializeDebugMessenger();
+			OutputDebugStringA("[VK] debug messenger ok\n");
+		}
+		OutputDebugStringA("[VK] createSurface...\n");
 		createSurface(info.window_handle, info.host_handle);
+		OutputDebugStringA("[VK] surface ok\n");
+		OutputDebugStringA("[VK] pickPhysicalDevice...\n");
 		pickPhysicalDevice();
+		OutputDebugStringA("[VK] physicalDevice ok\n");
+		OutputDebugStringA("[VK] createLogicalDevice...\n");
 		createLogicalDevice();
+		OutputDebugStringA("[VK] logicalDevice ok\n");
+		OutputDebugStringA("[VK] createSwapchain...\n");
 		createSwapchain(info.window_handle);
+		OutputDebugStringA("[VK] swapchain ok\n");
 		createCommandPool();
+		OutputDebugStringA("[VK] commandPool ok\n");
 		createSwapchainImageViews();
+		OutputDebugStringA("[VK] imageViews ok, initialize done\n");
 		return true;
 	}
 
@@ -155,8 +172,10 @@ namespace dodoe {
 
 	}
 	void VulkanBackend::pickPhysicalDevice() {
+		OutputDebugStringA("[VK] pickPhysicalDevice: enumerate...\n");
 		uint32_t gpu_count;
 		vkEnumeratePhysicalDevices(m_instance, &gpu_count, nullptr);
+		{ char _b[64]; snprintf(_b, sizeof(_b), "[VK] gpu_count=%u\n", gpu_count); OutputDebugStringA(_b); }
 		DO_ASSERT(gpu_count > 0, "No available GPU found!");
 
 		std::vector<VkPhysicalDevice> gpus(gpu_count);
@@ -171,9 +190,12 @@ namespace dodoe {
 				break;
 			}
 		}
+		{ char _b[64]; snprintf(_b, sizeof(_b), "[VK] use_gpu=%d, checking suitable...\n", use_gpu); OutputDebugStringA(_b); }
+		OutputDebugStringA("[VK] calling isDeviceSuitable...\n");
 		DO_ASSERT(isDeviceSuitable(gpus[use_gpu]), "Suitable gpu not found!");
 
 		physical_device_ = gpus[use_gpu];
+		OutputDebugStringA("[VK] pickPhysicalDevice done\n");
 	}
 
 	void VulkanBackend::createLogicalDevice() {
@@ -498,6 +520,12 @@ namespace dodoe {
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
 
+#if defined(DO_PLATFORM_WINDOWS)
+        if (host_handle_ != nullptr) {
+            extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+        }
+#endif
+
         return extensions;
     }
 
@@ -518,7 +546,9 @@ namespace dodoe {
 	}
 
  	bool VulkanBackend::isDeviceSuitable(VkPhysicalDevice gpu) {
+		OutputDebugStringA("[VK] isDeviceSuitable enter\n");
         auto queue_indices           = findQueueFamilies(gpu);
+        OutputDebugStringA("[VK] findQueueFamilies ok\n");
         bool is_extensions_supported = checkDeviceExtensionSupport(gpu);
         bool is_swapchain_adequate   = false;
         if (is_extensions_supported) {

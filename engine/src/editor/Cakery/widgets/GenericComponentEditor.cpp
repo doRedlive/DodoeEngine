@@ -7,7 +7,7 @@
 #include "runtime/core/project/project.h"
 #include "runtime/core/utils/common.h"
 #include "runtime/core/utils/util.h"
-#include "runtime/function/render/framework/camera.h"
+#include "runtime/function/world/components/camera2d_component.h"
 #include "runtime/function/render/framework/texture.h"
 #include "runtime/function/world/entity.h"
 #include "widgets/DragSpinBox.h"

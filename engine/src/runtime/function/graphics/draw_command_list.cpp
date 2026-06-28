@@ -635,4 +635,159 @@ namespace dodoe {
         return memory;
     }
 
+    DrawCommandList::CreateFramebufferCommand::CreateFramebufferCommand(
+        GfxDeviceHandle device,
+        const GfxFramebufferDesc& desc,
+        GfxFramebufferHandle* destination)
+        : m_device(device), m_desc(desc), m_destination(destination) {}
+
+    void DrawCommandList::CreateFramebufferCommand::execute(GfxCommandList& command_list) const {
+        (void)command_list;
+        DO_ASSERT(m_device != nullptr, "CreateFramebufferCommand device is null");
+        DO_ASSERT(m_destination != nullptr, "CreateFramebufferCommand destination is null");
+        *m_destination = m_device->createFramebuffer(m_desc);
+    }
+
+    DrawCommandList::CreateBindingSetCommand::CreateBindingSetCommand(
+        GfxDeviceHandle device,
+        const GfxBindingSetDesc& desc,
+        const GfxBindingLayoutHandle& layout,
+        GfxBindingSetHandle* destination)
+        : m_device(device), m_desc(desc), m_layout(layout), m_destination(destination) {}
+
+    void DrawCommandList::CreateBindingSetCommand::execute(GfxCommandList& command_list) const {
+        (void)command_list;
+        DO_ASSERT(m_device != nullptr, "CreateBindingSetCommand device is null");
+        DO_ASSERT(m_destination != nullptr, "CreateBindingSetCommand destination is null");
+        *m_destination = m_device->createBindingSet(m_desc, m_layout);
+    }
+
+    void DrawCommandList::createFramebuffer(GfxDeviceHandle device, const GfxFramebufferDesc& desc, GfxFramebufferHandle* destination) {
+        enqueue<CreateFramebufferCommand>(device, desc, destination);
+    }
+
+    void DrawCommandList::createBindingSet(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout, GfxBindingSetHandle* destination) {
+        enqueue<CreateBindingSetCommand>(device, desc, layout, destination);
+    }
+
+    DrawCommandList::CreateTextureCommand::CreateTextureCommand(
+        GfxDeviceHandle device,
+        const GfxTextureDesc& desc,
+        GfxTextureHandle* destination,
+        Size_t data_size)
+        : DrawCommand(CalculateSize(data_size), &CreateTextureCommand::ExecuteCommand, &CreateTextureCommand::DestroyCommand)
+        , m_device(device)
+        , m_desc(desc)
+        , m_destination(destination)
+        , m_data_size(data_size) {}
+
+    DrawCommandList::CreateTextureCommand& DrawCommandList::CreateTextureCommand::Create(
+        DrawCommandList& command_list,
+        GfxDeviceHandle device,
+        const GfxTextureDesc& desc,
+        GfxTextureHandle* destination,
+        const void* data,
+        Size_t data_size)
+    {
+        void* memory = command_list.allocate(CalculateSize(data_size), alignof(CreateTextureCommand));
+        auto* command = new (memory) CreateTextureCommand(device, desc, destination, data_size);
+        if (data && data_size > 0) {
+            std::memcpy(command->mutableData(), data, data_size);
+        }
+        command_list.appendCommand(command);
+        return *command;
+    }
+
+    const void* DrawCommandList::CreateTextureCommand::data() const {
+        return reinterpret_cast<const UInt8*>(this) + sizeof(CreateTextureCommand);
+    }
+
+    void* DrawCommandList::CreateTextureCommand::mutableData() {
+        return reinterpret_cast<UInt8*>(this) + sizeof(CreateTextureCommand);
+    }
+
+    Size_t DrawCommandList::CreateTextureCommand::CalculateSize(Size_t data_size) {
+        return sizeof(CreateTextureCommand) + data_size;
+    }
+
+    void DrawCommandList::CreateTextureCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
+        static_cast<const CreateTextureCommand&>(command).execute(command_list);
+    }
+
+    void DrawCommandList::CreateTextureCommand::DestroyCommand(DrawCommand& command) {
+        static_cast<CreateTextureCommand&>(command).~CreateTextureCommand();
+    }
+
+    void DrawCommandList::CreateTextureCommand::execute(GfxCommandList& command_list) const {
+        DO_ASSERT(m_device != nullptr, "CreateTextureCommand device is null");
+        DO_ASSERT(m_destination != nullptr, "CreateTextureCommand destination is null");
+
+        *m_destination = m_device->createTexture(m_desc);
+        if (*m_destination && m_data_size > 0) {
+            const UInt32 width = m_desc.width;
+            const UInt32 bytes_per_pixel = m_desc.format == GfxFormat::RGBA32_FLOAT ? 16 : 4;
+            const Size_t row_pitch = static_cast<Size_t>(width) * bytes_per_pixel;
+            command_list.writeTexture(*m_destination, 0, 0, data(), row_pitch);
+        }
+    }
+
+    void DrawCommandList::createTexture(GfxDeviceHandle device, const GfxTextureDesc& desc, GfxTextureHandle* destination, const void* data, Size_t data_size) {
+        CreateTextureCommand::Create(*this, device, desc, destination, data, data_size);
+    }
+
+    DrawCommandList::CreateDescriptorCommand::CreateDescriptorCommand(
+        GfxDeviceHandle device,
+        GfxDescriptorTableHandle descriptor_table,
+        GfxTextureHandle* texture_handle,
+        DescriptorIndex* destination,
+        UInt32 slot)
+        : DrawCommand(sizeof(CreateDescriptorCommand), &ExecuteCommand, &DestroyCommand)
+        , m_device(device)
+        , m_descriptor_table(descriptor_table)
+        , m_texture_handle(texture_handle)
+        , m_destination(destination)
+        , m_slot(slot) {}
+
+    DrawCommandList::CreateDescriptorCommand& DrawCommandList::CreateDescriptorCommand::Create(
+        DrawCommandList& command_list,
+        GfxDeviceHandle device,
+        GfxDescriptorTableHandle descriptor_table,
+        GfxTextureHandle* texture_handle,
+        DescriptorIndex* destination,
+        UInt32 slot)
+    {
+        void* memory = command_list.allocate(sizeof(CreateDescriptorCommand), alignof(CreateDescriptorCommand));
+        auto* command = new (memory) CreateDescriptorCommand(device, descriptor_table, texture_handle, destination, slot);
+        command_list.appendCommand(command);
+        return *command;
+    }
+
+    void DrawCommandList::CreateDescriptorCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
+        static_cast<const CreateDescriptorCommand&>(command).execute(command_list);
+    }
+
+    void DrawCommandList::CreateDescriptorCommand::DestroyCommand(DrawCommand& command) {
+        static_cast<CreateDescriptorCommand&>(command).~CreateDescriptorCommand();
+    }
+
+    void DrawCommandList::CreateDescriptorCommand::execute(GfxCommandList& command_list) const {
+        DO_ASSERT(m_device != nullptr, "CreateDescriptorCommand device is null");
+        DO_ASSERT(m_descriptor_table != nullptr, "CreateDescriptorCommand descriptor_table is null");
+        DO_ASSERT(m_texture_handle != nullptr, "CreateDescriptorCommand texture_handle is null");
+        DO_ASSERT(m_destination != nullptr, "CreateDescriptorCommand destination is null");
+
+        if (*m_texture_handle) {
+            GfxBindingSetItem item = GfxBindingSetItem::Texture_SRV(0, *m_texture_handle);
+            item.slot = m_slot;
+            m_device->writeDescriptorTable(m_descriptor_table, item);
+            *m_destination = static_cast<DescriptorIndex>(m_slot);
+        } else {
+            *m_destination = -1;
+        }
+    }
+
+    void DrawCommandList::createDescriptor(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle* texture_handle, DescriptorIndex* destination, UInt32 slot) {
+        CreateDescriptorCommand::Create(*this, device, descriptor_table, texture_handle, destination, slot);
+    }
+
 } // dodoe

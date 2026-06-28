@@ -1,15 +1,16 @@
 // do@Redlive
 
 #include "CameraController.h"
-#include "runtime/function/render/framework/camera.h"
+#include "runtime/function/render/render_view/render_view.h"
+#include "runtime/core/math/math.h"
 
 namespace cakery {
 
-CameraController::CameraController(dodoe::Camera* engineCamera, QObject* parent)
+CameraController::CameraController(dodoe::RenderView* engineView, QObject* parent)
     : QObject(parent)
-    , m_engineCamera(engineCamera)
+    , m_engineView(engineView)
 {
-    updateCamera();
+    updateView();
 }
 
 void CameraController::setViewportSize(float w, float h)
@@ -18,11 +19,21 @@ void CameraController::setViewportSize(float w, float h)
     m_viewportH = h;
 }
 
-void CameraController::updateCamera()
+void CameraController::updateView()
 {
-    if (!m_engineCamera) return;
-    m_engineCamera->setPosition(dodoe::Vector3f(m_posX, m_posY, 0.0f));
-    m_engineCamera->setZoom(m_zoom);
+    if (!m_engineView) return;
+
+    const float half_w = m_viewportW * 0.5f / m_zoom;
+    const float half_h = m_viewportH * 0.5f / m_zoom;
+
+    dodoe::Matrix4f view = dodoe::Math::LookAt(
+        dodoe::Vector3f(m_posX, m_posY, 10.0f),
+        dodoe::Vector3f(m_posX, m_posY, 0.0f),
+        dodoe::Vector3f(0.0f, 1.0f, 0.0f));
+
+    dodoe::Matrix4f projection = dodoe::Math::Ortho(-half_w, half_w, -half_h, half_h, 0.01f, 1000.0f);
+
+    m_engineView->setMatrices(view, projection);
 }
 
 void CameraController::onMouseDown(double x, double y, int button)
@@ -54,7 +65,7 @@ void CameraController::onMouseMove(double x, double y)
     m_posX += worldDx;
     m_posY -= worldDy;
 
-    updateCamera();
+    updateView();
 }
 
 void CameraController::onScroll(double delta)
@@ -62,7 +73,7 @@ void CameraController::onScroll(double delta)
     float factor = delta > 0.0f ? kZoomFactor : (1.0f / kZoomFactor);
     m_zoom = std::clamp(m_zoom * factor, kMinZoom, kMaxZoom);
 
-    updateCamera();
+    updateView();
 }
 
 std::pair<float, float> CameraController::screenToWorld(float screenX, float screenY) const

@@ -8,11 +8,11 @@
 #include "runtime/resource/file/file_id.h"
 #include "runtime/resource/parser/texture_blob.h"
 #include "runtime/function/graphics/gfx_context.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/core/context/system_context.h"
 namespace dodoe {
 
     Ref<Texture> Texture::Load(const String& path) {
-        auto* texture_manager = Renderer::GetTextureManager();
+        auto* texture_manager = GetRenderSystem()->getTextureManager();
         if (!texture_manager) {
             return nullptr;
         }
@@ -63,14 +63,17 @@ namespace dodoe {
     }
 
     Ref<Texture> TextureManager::createTexture(const String& path) {
+        DO_DEBUG("TextureManager::createTexture: path='{}'", path);
         TextureBlob data(path);
         if (!data.isValid()) {
             DO_ERROR("TextureManager: Create texture {} failed!", path);
+            DO_DEBUG("TextureManager::createTexture: TextureBlob invalid, returning nullptr");
             return nullptr;
         }
 
         const auto texture_format = data.is_hdr ? GfxFormat::RGBA32_FLOAT : GfxFormat::RGBA8_UNORM;
         const Size_t bytes_per_channel = data.is_hdr ? sizeof(Float) : sizeof(UByte);
+        const Size_t data_size = static_cast<Size_t>(data.width) * static_cast<Size_t>(data.height) * 4u * bytes_per_channel;
 
         auto texture_desc = GfxTextureDesc()
             .setDimension(GfxTextureDimension::Texture2D)
@@ -80,31 +83,37 @@ namespace dodoe {
             .setMipLevels(1)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName(path);
-        auto handle = m_gfx->getDevice()->createTexture(texture_desc);
-        if (!handle) {
-            DO_ERROR("TextureManager::createTexture: createTexture failed for {}.", path);
-            return nullptr;
-        }
-
-        auto cmd = m_gfx->getCommandList();
-        const Size_t row_pitch = static_cast<Size_t>(data.width) * 4u * bytes_per_channel;
-        cmd->open();
-        cmd->writeTexture(handle, 0, 0, data.pixels, row_pitch);
-        cmd->close();
-        m_gfx->getDevice()->executeCommandList(cmd);
 
         Ref<Texture> texture = create_ref<Texture>();
         texture->setDimensions(data.width, data.height);
         texture->setPath(path);
-        texture->setGpuHandle(handle);
-        texture->setDescriptorIndex(m_descriptor_table->createDescriptor(GfxBindingSetItem::Texture_SRV(0, texture->getGpuHandle())));
+
+        auto handle_ptr = create_ref<GfxTextureHandle>();
+        auto descriptor_index_ptr = create_ref<DescriptorIndex>();
+        UInt32 slot = m_descriptor_table->allocateSlot();
+
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_pending_commands.createTexture(m_gfx->getDevice(), texture_desc, handle_ptr.get(), data.pixels, data_size);
+            m_pending_commands.createDescriptor(m_gfx->getDevice(), m_descriptor_table->getDescriptorTable(), handle_ptr.get(), descriptor_index_ptr.get(), slot);
+        }
+        texture->setGpuHandle(*handle_ptr);
+        texture->setDescriptorIndex(*descriptor_index_ptr);
 
         const FileID file_id(path);
         texture->setFileIdentity(file_id, UUID{});
         Object::AllocateInstanceID(texture.get());
 
         m_texture_cache.emplace(texture->getInstanceID(), texture);
+        DO_DEBUG("TextureManager::createTexture: completed, slot={}", slot);
         return texture;
+    }
+
+    DrawCommandList TextureManager::flushPendingCommands() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        DrawCommandList result = std::move(m_pending_commands);
+        m_pending_commands = DrawCommandList{};
+        return result;
     }
 
     void TextureManager::createFallbackTexture() {

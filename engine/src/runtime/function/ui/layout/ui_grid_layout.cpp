@@ -1,5 +1,5 @@
 #include "ui_grid_layout.h"
-#include <glm/geometric.hpp>
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -15,14 +15,14 @@ void UIGridLayout::setColumnCount(int count) {
 }
 
 void UIGridLayout::setSpacing(Vector2f spacing) {
-    if (glm::distance(spacing_, spacing) > 0.001f) {
+    if (Math::Distance(spacing_, spacing) > 0.001f) {
         spacing_ = spacing;
         invalidateLayout();
     }
 }
 
 void UIGridLayout::setCellSize(Vector2f size) {
-    if (glm::distance(cell_size_, size) > 0.001f) {
+    if (Math::Distance(cell_size_, size) > 0.001f) {
         cell_size_ = size;
         invalidateLayout();
     }
@@ -43,7 +43,7 @@ void UIGridLayout::onLayout() {
         Vector2f size;
         if (cell_size_.x > 0.0f && cell_size_.y > 0.0f) {
             size = cell_size_;
-            if (glm::distance(child->getRequestedSize(), cell_size_) > 0.001f) {
+            if (Math::Distance(child->getRequestedSize(), cell_size_) > 0.001f) {
                 child->setSize(cell_size_);
             }
         } else {
@@ -55,7 +55,7 @@ void UIGridLayout::onLayout() {
         float y = start_offset.y + current_row * (size.y + spacing_.y);
 
         Vector2f new_pos = {x, y};
-        if (glm::distance(child->getPosition(), new_pos) > 0.001f) {
+        if (Math::Distance(child->getPosition(), new_pos) > 0.001f) {
             child->setPosition(new_pos);
         }
 

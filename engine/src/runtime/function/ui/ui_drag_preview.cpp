@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
-#include <glm/geometric.hpp>
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 namespace {
@@ -79,7 +79,7 @@ void UIDragPreview::onLayout() {
     Vector2f pos = getSize();
     pos -= (lbl_size + COUNT_PADDING);
 
-    if (glm::distance(count_label_->getPosition(), pos) > 0.001f) {
+    if (Math::Distance(count_label_->getPosition(), pos) > 0.001f) {
         count_label_->setPosition(pos);
     }
 }

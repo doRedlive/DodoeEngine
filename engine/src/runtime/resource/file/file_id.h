@@ -7,7 +7,7 @@
 
 namespace dodoe {
 
-    class FileID {
+    class DODOE_API FileID {
         String m_path{};
         UUID m_uuid{};
         UInt64 m_id{0};
@@ -23,7 +23,7 @@ namespace dodoe {
         [[nodiscard]] const UUID& getUUID() const { return m_uuid; }
         [[nodiscard]] UInt64 getID() const { return m_id; }
 
-        [[nodiscard]] Bool isValid() const { return m_id != 0; }
+        [[nodiscard]] Bool isValid() const { return !m_path.empty() && m_id != 0; }
 
         Bool operator==(const FileID& other) const { return m_id == other.m_id; }
     };

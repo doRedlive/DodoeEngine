@@ -21,11 +21,10 @@ namespace dodoe {
         EventSystem::Subscribe<WindowResizeEvent, &WindowManager::onWindowResize>(this);
         EventSystem::Subscribe<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
 
-        if (init_info.host_handle) {
-            m_window = Window::Create({init_info.prop, init_info.host_handle});
-        } else {
-            glfwInit();
-            m_window = Window::Create({init_info.prop, init_info.host_handle});
+        glfwInit();
+        WindowManagerCreateInfo window_create_info{init_info.host_handle, init_info.prop};
+        m_window = Window::Create(window_create_info);
+        if (!init_info.host_handle) {
             bindEventCallback();
         }
 

@@ -1,3 +1,5 @@
+// do@Redlive
+
 #pragma once
 
 #include "dopch.h"
@@ -8,9 +10,6 @@ namespace dodoe {
     enum class RenderObjectType : UInt8 {
         StaticMesh,
         Foliage,
-        PointLight,
-        SpotLight,
-        SkyLight,
         Sprite
     };
 

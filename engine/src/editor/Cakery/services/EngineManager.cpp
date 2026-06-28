@@ -12,7 +12,8 @@
 #include "runtime/function/world/entity.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/render_system.h"
-#include "runtime/function/render/framework/camera.h"
+#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_view/render_view.h"
 
 #include <QDateTime>
 #include <QDebug>
@@ -64,6 +65,8 @@ bool EngineManager::initialize(const std::string& projectPath, void* hostHandle,
     m_context->initializeModules();
     qDebug() << "[EngineManager] Modules initialized";
 
+    Project::Load(projectPath);
+
     m_context->startRuntime();
     qDebug() << "[EngineManager] Runtime started";
 
@@ -86,10 +89,11 @@ void EngineManager::shutdown()
         // Begin: mirrors Application::run() cleanup sequence (reverse)
         m_context->getLayerStack().detach();
         m_context->stopRuntime();
-        m_context->finalizeModules();
-        // End: mirrors Application::run()
 
         EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(m_app.get());
+
+        m_context->finalizeModules();
+        // End: mirrors Application::run()
     }
 
     m_initialized = false;
@@ -124,11 +128,11 @@ dodoe::Scene* EngineManager::getCurrentScene() const
     return w ? w->getCurrentScene() : nullptr;
 }
 
-dodoe::Camera* EngineManager::getMainCamera() const
+dodoe::RenderView* EngineManager::getMainView() const
 {
     auto* ctx = getContext();
     if (!ctx || !ctx->getRenderSystem()) return nullptr;
-    return &ctx->getRenderSystem()->getMainCamera();
+    return &GetRenderSystem()->getViewFamily()->getView(0);
 }
 
 void EngineManager::resizeViewport(int width, int height, float devicePixelRatio)

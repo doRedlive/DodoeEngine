@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <glm/geometric.hpp>
+#include "runtime/core/math/math.h"
 
 
 namespace dodoe {
@@ -92,7 +92,7 @@ void UIProgressBar::onLayout() {
         Vector2f size = label_->getSize();
         Vector2f my_size = getSize();
         Vector2f pos = (my_size - size) * 0.5f;
-        if (glm::distance(label_->getPosition(), pos) > 0.001f) {
+        if (Math::Distance(label_->getPosition(), pos) > 0.001f) {
             label_->setPosition(pos);
         }
     }

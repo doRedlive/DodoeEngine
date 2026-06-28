@@ -1,3 +1,5 @@
+// do@Redlive
+
 #include "mono_system.h"
 
 namespace dodoe {
@@ -21,7 +23,7 @@ namespace dodoe {
     }
 
     ScriptRuntime* MonoSystem::getMonoRuntime() {
-        return Application::Self().context().script_system->getMonoRuntime();
+        return GetScriptSystem()->getMonoRuntime();
     }
 
 } // dodoe

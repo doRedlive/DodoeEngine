@@ -1,9 +1,10 @@
 #include "light_system.h"
 
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/render/renderer.h"
-#include "runtime/function/render/render_scene/light_render_object.h"
+#include "runtime/function/render/render_scene/light_scene_info.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -40,7 +41,7 @@ namespace dodoe {
         pruneRemovedLights(active_lights);
 
         if (dirty) {
-            Renderer::FlushSceneUpdates();
+            GetRenderSystem()->getRenderScene()->flushUpdates();
         }
     }
 
@@ -49,20 +50,24 @@ namespace dodoe {
         auto& transform = entity.getComponent<TransformComponent>();
         auto& light = entity.getComponent<PointLightComponent>();
 
-        if (!needsLightSync(entity, LightKind::Point)) {
+        if (!needsLightSync(entity, LightType::Point)) {
             return false;
         }
 
-        auto light_object = create_scope<PointLightRenderObject>();
-        light_object->setColor(light.color);
-        light_object->setIntensity(light.intensity);
-        light_object->setRadius(light.radius);
-        light_object->setRange(light.range);
-        light_object->setUUID(id.id);
-        light_object->setWorldTransform(buildWorldMatrix(transform));
+        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        info.setLightType(LightType::Point);
+        info.setWorldTransform(buildWorldMatrix(transform));
+        info.setEnabled(light.enabled);
 
-        Renderer::AddLight(std::move(light_object));
-        m_submitted_lights[id.id] = LightKind::Point;
+        PointLightData data{};
+        data.color = Vector3f(light.color.r, light.color.g, light.color.b);
+        data.intensity = light.intensity;
+        data.radius = light.radius;
+        data.range = light.range;
+        info.setPointLightData(data);
+
+        Renderer::AddLight(std::move(info));
+        m_submitted_lights[id.id] = LightType::Point;
 
         transform.dirty = false;
         id.dirty = false;
@@ -75,22 +80,26 @@ namespace dodoe {
         auto& transform = entity.getComponent<TransformComponent>();
         auto& light = entity.getComponent<SpotLightComponent>();
 
-        if (!needsLightSync(entity, LightKind::Spot)) {
+        if (!needsLightSync(entity, LightType::Spot)) {
             return false;
         }
 
-        auto light_object = create_scope<SpotLightRenderObject>();
-        light_object->setColor(light.color);
-        light_object->setIntensity(light.intensity);
-        light_object->setRadius(light.radius);
-        light_object->setRange(light.range);
-        light_object->setInnerAngle(light.inner_angle);
-        light_object->setOuterAngle(light.outer_angle);
-        light_object->setUUID(id.id);
-        light_object->setWorldTransform(buildWorldMatrix(transform));
+        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        info.setLightType(LightType::Spot);
+        info.setWorldTransform(buildWorldMatrix(transform));
+        info.setEnabled(light.enabled);
 
-        Renderer::AddLight(std::move(light_object));
-        m_submitted_lights[id.id] = LightKind::Spot;
+        SpotLightData data{};
+        data.color = Vector3f(light.color.r, light.color.g, light.color.b);
+        data.intensity = light.intensity;
+        data.radius = light.radius;
+        data.range = light.range;
+        data.inner_angle = light.inner_angle;
+        data.outer_angle = light.outer_angle;
+        info.setSpotLightData(data);
+
+        Renderer::AddLight(std::move(info));
+        m_submitted_lights[id.id] = LightType::Spot;
 
         transform.dirty = false;
         id.dirty = false;
@@ -109,17 +118,17 @@ namespace dodoe {
         }
     }
 
-    bool LightSystem::needsLightSync(Entity entity, const LightKind kind) const {
+    bool LightSystem::needsLightSync(Entity entity, const LightType kind) const {
         const auto& id = entity.getComponent<IDComponent>();
         const auto& transform = entity.getComponent<TransformComponent>();
-        const bool light_dirty = kind == LightKind::Point
+        const bool light_dirty = kind == LightType::Point
             ? entity.getComponent<PointLightComponent>().dirty
             : entity.getComponent<SpotLightComponent>().dirty;
 
         const auto submitted_it = m_submitted_lights.find(id.id);
         return submitted_it == m_submitted_lights.end() ||
             submitted_it->second != kind ||
-            !Renderer::HasLight(id.id) ||
+            !GetRenderSystem()->getRenderScene()->hasLight(id.id) ||
             transform.dirty ||
             id.dirty ||
             light_dirty;
@@ -127,11 +136,11 @@ namespace dodoe {
 
     Matrix4f LightSystem::buildWorldMatrix(const TransformComponent& transform) {
         Matrix4f world(1.0f);
-        world = glm::translate(world, transform.position);
-        world = glm::rotate(world, glm::radians(transform.rotation.x), Vector3f(1.0f, 0.0f, 0.0f));
-        world = glm::rotate(world, glm::radians(transform.rotation.y), Vector3f(0.0f, 1.0f, 0.0f));
-        world = glm::rotate(world, glm::radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
-        world = glm::scale(world, transform.scale);
+        world = Math::Translate(world, transform.position);
+        world = Math::Rotate(world, Math::Radians(transform.rotation.x), Vector3f(1.0f, 0.0f, 0.0f));
+        world = Math::Rotate(world, Math::Radians(transform.rotation.y), Vector3f(0.0f, 1.0f, 0.0f));
+        world = Math::Rotate(world, Math::Radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
+        world = Math::Scale(world, transform.scale);
         return world;
     }
 

@@ -8,11 +8,12 @@ namespace dodoe {
     namespace {
 
         void writePassShaderData(
+            const RenderGraphPassContext& context,
             const MeshPassType pass_type,
             const DynamicArray<GBufferMeshDrawShaderData>& gbuffer_shader_data,
             const MeshDrawCommand& command,
             const RenderGraphBufferHandle& pass_constant_buffer,
-            RenderGraphCommandList& command_list)
+            DrawCommandList& command_list)
         {
             if (!pass_constant_buffer.isValid() || pass_type != MeshPassType::GBuffer) {
                 return;
@@ -21,23 +22,24 @@ namespace dodoe {
             DO_ASSERT(
                 command.shader_data_index < gbuffer_shader_data.size(),
                 "MeshDrawCommandDispatcher gbuffer shader data index out of range");
-            command_list.setBufferState(pass_constant_buffer, GfxResourceStates::CopyDest);
+            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::CopyDest);
             command_list.commitBarriers();
-            command_list.writeBuffer(pass_constant_buffer, &gbuffer_shader_data[command.shader_data_index], sizeof(gbuffer_shader_data[command.shader_data_index]));
-            command_list.setBufferState(pass_constant_buffer, GfxResourceStates::ConstantBuffer);
+            command_list.writeBuffer(context.resolveBuffer(pass_constant_buffer), &gbuffer_shader_data[command.shader_data_index], sizeof(gbuffer_shader_data[command.shader_data_index]));
+            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::ConstantBuffer);
             command_list.commitBarriers();
         }
 
     } // namespace
 
     void MeshDrawCommandDispatcher::uploadInstanceTransforms(
+        const RenderGraphPassContext& context,
         const ViewMeshInstanceData& instance_data,
         const RenderGraphBufferHandle& primitive_scene_data,
-        RenderGraphCommandList& command_list)
+        DrawCommandList& command_list)
     {
         for (Size_t primitive_index = 0; primitive_index < instance_data.instance_scene_data.size(); primitive_index++) {
             command_list.writeBuffer(
-                primitive_scene_data,
+                context.resolveBuffer(primitive_scene_data),
                 &instance_data.instance_scene_data[primitive_index],
                 sizeof(InstanceSceneData),
                 primitive_index * sizeof(InstanceSceneData)
@@ -46,6 +48,7 @@ namespace dodoe {
     }
 
     void MeshDrawCommandDispatcher::dispatch(
+        const RenderGraphPassContext& context,
         const MeshPassType pass_type,
         const ViewMeshShaderData& shader_data,
         const ViewMeshPassData& pass_data,
@@ -55,7 +58,7 @@ namespace dodoe {
         const GfxGraphicsPipelineHandle& pass_pipeline,
         const RenderGraphBufferHandle& primitive_scene_buffer,
         const RenderGraphBufferHandle& pass_constant_buffer,
-        RenderGraphCommandList& command_list)
+        DrawCommandList& command_list)
     {
         if (commands.empty()) {
             return;
@@ -69,10 +72,10 @@ namespace dodoe {
             DirectionalShadowPassShaderData directional_shader_data{};
             directional_shader_data.light_view_projection = shader_data.directional_shadow_view_projection;
             directional_shader_data.time_data = shader_data.frame_time_data;
-            command_list.setBufferState(pass_constant_buffer, GfxResourceStates::CopyDest);
+            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::CopyDest);
             command_list.commitBarriers();
-            command_list.writeBuffer(pass_constant_buffer, &directional_shader_data, sizeof(directional_shader_data));
-            command_list.setBufferState(pass_constant_buffer, GfxResourceStates::ConstantBuffer);
+            command_list.writeBuffer(context.resolveBuffer(pass_constant_buffer), &directional_shader_data, sizeof(directional_shader_data));
+            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::ConstantBuffer);
             command_list.commitBarriers();
         }
 
@@ -87,7 +90,7 @@ namespace dodoe {
                 continue;
             }
 
-            writePassShaderData(pass_type, shader_data.gbuffer_shader_data, command, pass_constant_buffer, command_list);
+            writePassShaderData(context, pass_type, shader_data.gbuffer_shader_data, command, pass_constant_buffer, command_list);
 
             auto graphics_state = GfxGraphicsState()
                 .setFramebuffer(framebuffer)
@@ -110,7 +113,7 @@ namespace dodoe {
             if (command.uses_primitive_scene_buffer && primitive_scene_buffer.isValid()) {
                 graphics_state.addVertexBuffer(
                     GfxVertexBufferBinding()
-                        .setBuffer(command_list.resolveBuffer(primitive_scene_buffer))
+                        .setBuffer(context.resolveBuffer(primitive_scene_buffer))
                         .setSlot(command.primitive_scene_buffer_slot)
                         .setOffset(command.primitive_scene_buffer_offset)
                 );

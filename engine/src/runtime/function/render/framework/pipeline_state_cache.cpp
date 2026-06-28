@@ -6,7 +6,7 @@ namespace dodoe {
     GfxGraphicsPipelineHandle PipelineStateCache::resolveGraphicsPipeline(
         const MeshPassType pass_type,
         const GfxGraphicsPipelineDesc& pipeline_desc,
-        const GfxFramebufferInfo& framebuffer_info)
+        const GfxFramebufferInfo& framebuffer_info) const
     {
         DO_ASSERT(m_device != nullptr, "PipelineStateCache device is null");
 
@@ -16,7 +16,15 @@ namespace dodoe {
             return cache_it->second;
         }
 
+        DO_DEBUG("PipelineStateCache: Creating graphics pipeline for pass_type={}, VS={}, PS={}, binding_layouts={}",
+            static_cast<int>(pass_type),
+            pipeline_desc.VS != nullptr,
+            pipeline_desc.PS != nullptr,
+            pipeline_desc.bindingLayouts.size());
+
         auto pipeline = m_device->createGraphicsPipeline(pipeline_desc, framebuffer_info);
+
+        DO_DEBUG("PipelineStateCache: Pipeline created, handle={}", pipeline != nullptr);
         DO_ASSERT(pipeline != nullptr, "PipelineStateCache failed to create graphics pipeline");
         m_graphics_pipelines.emplace(cache_key, pipeline);
         return pipeline;
@@ -24,7 +32,7 @@ namespace dodoe {
 
     GfxGraphicsPipelineHandle PipelineStateCache::resolveGraphicsPipeline(
         const GfxGraphicsPipelineDesc& pipeline_desc,
-        const GfxFramebufferInfo& framebuffer_info)
+        const GfxFramebufferInfo& framebuffer_info) const
     {
         return resolveGraphicsPipeline(MeshPassType::Count, pipeline_desc, framebuffer_info);
     }

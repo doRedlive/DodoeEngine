@@ -1,3 +1,5 @@
+// do@Redlive
+
 #include "render_scene.h"
 #include "runtime/core/math/math.h"
 
@@ -14,27 +16,18 @@ namespace dodoe {
     }
 
     void RenderScene::reset() {
-        m_main_camera = {};
         m_mesh_bounds_cache.clear();
         m_primitive_objects.clear();
-        m_light_objects.clear();
         m_sprite_objects.clear();
         m_scene_data_dirty = true;
         m_primitive_scene_info_indices.clear();
-        m_point_light_indices.clear();
+        m_light_scene_info_indices.clear();
+        m_sprite_scene_info_indices.clear();
         m_pending_primitive_updates.clear();
-        m_pending_light_updates.clear();
         m_pending_sprite_updates.clear();
         m_primitive_scene_infos.clear();
-        m_directional_lights.clear();
-        m_point_lights.clear();
-        m_sprite_scene_info.clear();
-    }
-
-    void RenderScene::setMainCameraViewProjection(const Matrix4f& view_proj_matrix, const Vector3f& position) {
-        m_main_camera.view_projection = view_proj_matrix;
-        m_main_camera.position = position;
-        m_main_camera.valid = true;
+        m_light_scene_infos.clear();
+        m_sprite_scene_infos.clear();
     }
 
     void RenderScene::addPrimitive(Scope<PrimitiveRenderObject> primitive) {
@@ -88,46 +81,44 @@ namespace dodoe {
         markPrimitiveDirty(id, PrimitiveUpdateType::Removed);
     }
 
-    void RenderScene::addLight(Scope<LightRenderObject> light) {
-        DO_ASSERT(light != nullptr, "RenderScene::addLight requires valid light");
-
-        const UUID id = light->getUUID();
-        LightUpdateType update_type = LightUpdateType::Added;
-        const auto existing_it = m_light_objects.find(id);
-        if (existing_it != m_light_objects.end()) {
-            update_type = LightUpdateType::None;
-            const RenderObjectDirtyFlags dirty_flags = light->diff(*existing_it->second);
-            if (dirty_flags != RenderObjectDirtyFlags::None) {
-                update_type |= LightUpdateType::StateChanged;
-            }
-            if (existing_it->second->getWorldTransform() != light->getWorldTransform()) {
-                update_type |= LightUpdateType::TransformChanged;
-            }
+    void RenderScene::addLightSceneInfo(LightSceneInfo&& info) {
+        const UUID id = static_cast<UUID>(static_cast<uint64_t>(info.getId()));
+        const auto it = m_light_scene_info_indices.find(id);
+        if (it != m_light_scene_info_indices.end()) {
+            m_light_scene_infos[it->second] = std::move(info);
+            return;
         }
+        m_light_scene_info_indices[id] = m_light_scene_infos.size();
+        m_light_scene_infos.push_back(std::move(info));
+    }
 
-        m_light_objects[id] = std::move(light);
-        if (update_type != LightUpdateType::None) {
-            markLightDirty(id, update_type);
+    void RenderScene::updateLightSceneInfoTransform(const UUID id, const Matrix4f& world_transform) {
+        const auto it = m_light_scene_info_indices.find(id);
+        if (it != m_light_scene_info_indices.end()) {
+            m_light_scene_infos[it->second].setWorldTransform(world_transform);
         }
     }
 
-    void RenderScene::updateLightTransform(const UUID id, const Matrix4f& world_transform) {
-        const auto it = m_light_objects.find(id);
-        if (it == m_light_objects.end()) {
+    void RenderScene::removeLightSceneInfo(const UUID id) {
+        const auto it = m_light_scene_info_indices.find(id);
+        if (it == m_light_scene_info_indices.end()) {
             return;
         }
-
-        if (it->second->getWorldTransform() == world_transform) {
-            return;
+        const Size_t remove_index = it->second;
+        const Size_t last_index = m_light_scene_infos.size() - 1;
+        if (remove_index != last_index) {
+            LightSceneInfo& moved = m_light_scene_infos[last_index];
+            const UUID moved_uuid = static_cast<UUID>(static_cast<uint64_t>(moved.getId()));
+            m_light_scene_infos[remove_index] = std::move(moved);
+            m_light_scene_info_indices[moved_uuid] = remove_index;
         }
-
-        it->second->setWorldTransform(world_transform);
-        markLightDirty(id, LightUpdateType::TransformChanged);
+        m_light_scene_infos.pop_back();
+        m_light_scene_info_indices.erase(it);
     }
 
-    void RenderScene::removeLight(const UUID id) {
-        m_light_objects.erase(id);
-        markLightDirty(id, LightUpdateType::Removed);
+    const LightSceneInfo* RenderScene::findLightSceneInfo(const UUID id) const {
+        const auto it = m_light_scene_info_indices.find(id);
+        return it != m_light_scene_info_indices.end() ? &m_light_scene_infos[it->second] : nullptr;
     }
 
     void RenderScene::addSprite(Scope<SpriteRenderObject> sprite) {
@@ -179,7 +170,7 @@ namespace dodoe {
     }
 
     void RenderScene::flushUpdates() {
-        if (!m_scene_data_dirty && m_pending_primitive_updates.empty() && m_pending_light_updates.empty() && m_pending_sprite_updates.empty()) {
+        if (!m_scene_data_dirty && m_pending_primitive_updates.empty() && m_pending_sprite_updates.empty()) {
             return;
         }
         rebuildPipelineSceneData();
@@ -190,24 +181,9 @@ namespace dodoe {
         return it != m_primitive_objects.end() ? it->second.get() : nullptr;
     }
 
-    const LightRenderObject* RenderScene::findLight(const UUID id) const {
-        const auto it = m_light_objects.find(id);
-        return it != m_light_objects.end() ? it->second.get() : nullptr;
-    }
-
     const SpriteRenderObject* RenderScene::findSprite(const UUID id) const {
         const auto it = m_sprite_objects.find(id);
         return it != m_sprite_objects.end() ? it->second.get() : nullptr;
-    }
-
-    const SkyLightRenderObject* RenderScene::findSkyLight() const {
-        for (const auto& [id, light] : m_light_objects) {
-            (void)id;
-            if (light && light->getRenderObjectType() == RenderObjectType::SkyLight) {
-                return static_cast<const SkyLightRenderObject*>(light.get());
-            }
-        }
-        return nullptr;
     }
 
     PrimitiveSceneInfo* RenderScene::findPrimitiveSceneInfo(const UUID id) {
@@ -220,13 +196,13 @@ namespace dodoe {
         return it != m_primitive_scene_info_indices.end() ? &m_primitive_scene_infos[it->second] : nullptr;
     }
 
-    void RenderScene::markPrimitiveDirty(const UUID id, const PrimitiveUpdateType update_type) {
-        m_pending_primitive_updates[id] |= update_type;
-        m_scene_data_dirty = true;
+    const SpriteSceneInfo* RenderScene::findSpriteSceneInfo(const UUID id) const {
+        const auto it = m_sprite_scene_info_indices.find(id);
+        return it != m_sprite_scene_info_indices.end() ? &m_sprite_scene_infos[it->second] : nullptr;
     }
 
-    void RenderScene::markLightDirty(const UUID id, const LightUpdateType update_type) {
-        m_pending_light_updates[id] |= update_type;
+    void RenderScene::markPrimitiveDirty(const UUID id, const PrimitiveUpdateType update_type) {
+        m_pending_primitive_updates[id] |= update_type;
         m_scene_data_dirty = true;
     }
 
@@ -317,59 +293,52 @@ namespace dodoe {
         m_primitive_scene_info_indices.erase(it);
     }
 
-    void RenderScene::upsertPointLightInfo(const UUID id) {
-        const LightRenderObject* light = findLight(id);
-        if (light == nullptr || light->getRenderObjectType() != RenderObjectType::PointLight) {
-            removePointLightInfo(id);
+    void RenderScene::upsertSpriteSceneInfo(const UUID id) {
+        const SpriteRenderObject* sprite = findSprite(id);
+        if (sprite == nullptr || !sprite->isVisible()) {
+            removeSpriteSceneInfo(id);
             return;
         }
 
-        const auto* point_light = static_cast<const PointLightRenderObject*>(light);
-        RenderPointLight render_light{};
-        render_light.color = Vector3f(point_light->getColor().r, point_light->getColor().g, point_light->getColor().b);
-        render_light.intensity = point_light->getIntensity();
-        render_light.radius = point_light->getRadius();
-        render_light.range = point_light->getRange();
-        render_light.position = Vector3f(light->getWorldTransform()[3]);
+        const Matrix4f& transform = sprite->getWorldTransform();
+        const Vector3f translation = Vector3f(transform[3]);
+        const Vector3f scale = Vector3f(
+            Math::Length(Vector3f(transform[0])),
+            Math::Length(Vector3f(transform[1])),
+            Math::Length(Vector3f(transform[2]))
+        );
 
-        const auto it = m_point_light_indices.find(id);
-        if (it != m_point_light_indices.end()) {
-            m_point_lights[it->second] = render_light;
+        SpriteSceneInfo info(static_cast<Identifier>(static_cast<UInt64>(id)));
+        info.setRenderObject(sprite);
+        info.setWorldTransform(transform);
+        info.setPosition(Vector2f(translation.x, translation.y));
+        info.setScale(Vector2f(scale.x, scale.y));
+        info.setRotation(0.0f);
+        info.setUVRect(sprite->getUVMinX(), sprite->getUVMinY(), sprite->getUVMaxX(), sprite->getUVMaxY());
+        info.setColor(sprite->getColor());
+        info.setSortingKey(0);
+        info.setMaterialId(sprite->getMaterialId());
+        info.setFlags(sprite->getFlags());
+        info.setTexture(sprite->getTexture());
+
+        const auto it = m_sprite_scene_info_indices.find(id);
+        if (it != m_sprite_scene_info_indices.end()) {
+            m_sprite_scene_infos[it->second] = std::move(info);
             return;
         }
 
-        m_point_light_indices[id] = m_point_lights.size();
-        m_point_lights.push_back(render_light);
+        m_sprite_scene_info_indices[id] = m_sprite_scene_infos.size();
+        m_sprite_scene_infos.push_back(std::move(info));
     }
 
-    void RenderScene::removePointLightInfo(const UUID id) {
-        const auto it = m_point_light_indices.find(id);
-        if (it == m_point_light_indices.end()) {
+    void RenderScene::applySpriteTransform(const UUID id) {
+        const auto it = m_sprite_scene_info_indices.find(id);
+        if (it == m_sprite_scene_info_indices.end()) {
+            upsertSpriteSceneInfo(id);
             return;
         }
-
-        const Size_t remove_index = it->second;
-        const Size_t last_index = m_point_lights.size() - 1;
-        if (remove_index != last_index) {
-            m_point_lights[remove_index] = std::move(m_point_lights[last_index]);
-            for (auto& [other, other_index] : m_point_light_indices) {
-                if (other_index == last_index) {
-                    other_index = remove_index;
-                    break;
-                }
-            }
-        }
-        m_point_lights.pop_back();
-        m_point_light_indices.erase(it);
-    }
-
-    void RenderScene::rebuildSpriteSceneData() {
-        m_sprite_scene_info.clear();
-        for (const auto& [id, sprite] : m_sprite_objects) {
-            (void)id;
-            if (!sprite || !sprite->isVisible()) {
-                continue;
-            }
+        const auto* sprite = findSprite(id);
+        if (sprite) {
             const Matrix4f& transform = sprite->getWorldTransform();
             const Vector3f translation = Vector3f(transform[3]);
             const Vector3f scale = Vector3f(
@@ -377,30 +346,29 @@ namespace dodoe {
                 Math::Length(Vector3f(transform[1])),
                 Math::Length(Vector3f(transform[2]))
             );
-
-            const Float rotation = 0.0f;
-            const UInt32 sorting_key = 0;
-
-            SpriteInstance instance = sprite->buildSpriteInstance(
-                Vector2f(translation.x, translation.y),
-                Vector2f(scale.x, scale.y),
-                rotation,
-                sorting_key
-            );
-            m_sprite_scene_info.m_instances.push_back(instance);
+            SpriteSceneInfo& info = m_sprite_scene_infos[it->second];
+            info.setWorldTransform(transform);
+            info.setPosition(Vector2f(translation.x, translation.y));
+            info.setScale(Vector2f(scale.x, scale.y));
         }
-        m_sprite_scene_info.m_instance_count = static_cast<UInt32>(m_sprite_scene_info.m_instances.size());
-        m_sprite_scene_info.m_dirty = false;
     }
 
-    void RenderScene::upsertSpriteInstance(const UUID id) {
-        (void)id;
-        rebuildSpriteSceneData();
-    }
+    void RenderScene::removeSpriteSceneInfo(const UUID id) {
+        const auto it = m_sprite_scene_info_indices.find(id);
+        if (it == m_sprite_scene_info_indices.end()) {
+            return;
+        }
 
-    void RenderScene::removeSpriteInstance(const UUID id) {
-        (void)id;
-        rebuildSpriteSceneData();
+        const Size_t remove_index = it->second;
+        const Size_t last_index = m_sprite_scene_infos.size() - 1;
+        if (remove_index != last_index) {
+            SpriteSceneInfo& moved = m_sprite_scene_infos[last_index];
+            const UUID moved_uuid = static_cast<UUID>(static_cast<uint64_t>(moved.getId()));
+            m_sprite_scene_infos[remove_index] = std::move(moved);
+            m_sprite_scene_info_indices[moved_uuid] = remove_index;
+        }
+        m_sprite_scene_infos.pop_back();
+        m_sprite_scene_info_indices.erase(it);
     }
 
     const RenderScene::Aabb& RenderScene::getMeshBounds(const MeshUploadData& upload_data) {
@@ -458,37 +426,22 @@ namespace dodoe {
                 updatePrimitiveState(id);
             }
         }
-        for (const auto& [id, update_type] : m_pending_light_updates) {
-            if (HasAnyFlags(update_type, LightUpdateType::Removed) && m_light_objects.find(id) == m_light_objects.end()) {
-                removePointLightInfo(id);
-                continue;
-            }
-            if (HasAnyFlags(update_type, LightUpdateType::Added | LightUpdateType::TransformChanged | LightUpdateType::StateChanged)) {
-                upsertPointLightInfo(id);
-            }
-        }
-        for (auto it = m_point_light_indices.begin(); it != m_point_light_indices.end();) {
-            const auto light_it = m_light_objects.find(it->first);
-            if (light_it == m_light_objects.end() || light_it->second->getRenderObjectType() != RenderObjectType::PointLight) {
-                const UUID id = it->first;
-                ++it;
-                removePointLightInfo(id);
-            } else {
-                ++it;
-            }
-        }
 
         for (const auto& [id, update_type] : m_pending_sprite_updates) {
             if (HasAnyFlags(update_type, SpriteUpdateType::Removed) && m_sprite_objects.find(id) == m_sprite_objects.end()) {
-                removeSpriteInstance(id);
+                removeSpriteSceneInfo(id);
                 continue;
             }
-            upsertSpriteInstance(id);
+            if (HasAnyFlags(update_type, SpriteUpdateType::Added | SpriteUpdateType::TextureChanged | SpriteUpdateType::MaterialChanged | SpriteUpdateType::StateChanged)) {
+                upsertSpriteSceneInfo(id);
+                continue;
+            }
+            if (HasAnyFlags(update_type, SpriteUpdateType::TransformChanged)) {
+                applySpriteTransform(id);
+            }
         }
 
-        m_directional_lights.clear();
         m_pending_primitive_updates.clear();
-        m_pending_light_updates.clear();
         m_pending_sprite_updates.clear();
         m_scene_data_dirty = false;
     }

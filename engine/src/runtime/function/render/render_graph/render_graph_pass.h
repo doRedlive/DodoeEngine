@@ -73,76 +73,13 @@ namespace dodoe {
             DO_ASSERT(m_resource_registry != nullptr, "RenderGraphPassContext resource registry is null");
             return m_resource_registry->getBuffer(handle);
         }
-
-    };
-
-    class RenderGraphCommandList {
-        const RenderGraphPassContext* m_pass_context{nullptr};
-        DrawCommandList* m_draw_command_list{nullptr};
-
-    public:
-        RenderGraphCommandList(const RenderGraphPassContext& pass_context, DrawCommandList& draw_command_list)
-            : m_pass_context(&pass_context), m_draw_command_list(&draw_command_list) { }
-
-        [[nodiscard]] GfxTextureHandle resolveTexture(const RenderGraphTextureHandle handle) const { return m_pass_context->resolveTexture(handle); }
-        [[nodiscard]] GfxBufferHandle resolveBuffer(const RenderGraphBufferHandle handle) const { return m_pass_context->resolveBuffer(handle); }
-        void open() const { m_draw_command_list->open(); }
-        void close() const { m_draw_command_list->close(); }
-        void clearState() const { m_draw_command_list->clearState(); }
-        void beginMarker(const char* name) const { m_draw_command_list->beginMarker(name); }
-        void endMarker() const { m_draw_command_list->endMarker(); }
-        void clearTextureFloat(const RenderGraphTextureHandle handle, const GfxTextureSubresourceSet& subresources, const GfxColor& clear_color) const {
-            m_draw_command_list->clearTextureFloat(resolveTexture(handle), subresources, clear_color);
-        }
-        void clearTextureUInt(const RenderGraphTextureHandle handle, const GfxTextureSubresourceSet& subresources, const UInt32 clear_color) const {
-            m_draw_command_list->clearTextureUInt(resolveTexture(handle), subresources, clear_color);
-        }
-        void clearDepthStencilTexture(
-            const RenderGraphTextureHandle handle,
-            const GfxTextureSubresourceSet& subresources,
-            const Bool clear_depth,
-            const Float depth,
-            const Bool clear_stencil,
-            const UInt8 stencil) const
-        {
-            m_draw_command_list->clearDepthStencilTexture(resolveTexture(handle), subresources, clear_depth, depth, clear_stencil, stencil);
-        }
-        void copyBuffer(
-            const RenderGraphBufferHandle destination,
-            const UInt64 destination_offset_bytes,
-            const RenderGraphBufferHandle source,
-            const UInt64 source_offset_bytes,
-            const UInt64 data_size_bytes) const
-        {
-            m_draw_command_list->copyBuffer(resolveBuffer(destination), destination_offset_bytes, resolveBuffer(source), source_offset_bytes, data_size_bytes);
-        }
-        void writeBuffer(const RenderGraphBufferHandle buffer, const void* data, const Size_t data_size, const UInt64 destination_offset_bytes = 0) const {
-            m_draw_command_list->writeBuffer(resolveBuffer(buffer), data, data_size, destination_offset_bytes);
-        }
-        void setPushConstants(const void* data, const Size_t byte_size) const { m_draw_command_list->setPushConstants(data, byte_size); }
-        void setTextureState(
-            const RenderGraphTextureHandle handle,
-            const GfxTextureSubresourceSet& subresources,
-            const GfxResourceStates state_bits) const
-        {
-            m_draw_command_list->setTextureState(resolveTexture(handle), subresources, state_bits);
-        }
-        void setBufferState(const RenderGraphBufferHandle buffer, const GfxResourceStates state_bits) const {
-            m_draw_command_list->setBufferState(resolveBuffer(buffer), state_bits);
-        }
-        void commitBarriers() const { m_draw_command_list->commitBarriers(); }
-        void setGraphicsState(const GfxGraphicsState& state) const { m_draw_command_list->setGraphicsState(state); }
-        void setComputeState(const GfxComputeState& state) const { m_draw_command_list->setComputeState(state); }
-        void draw(const GfxDrawArguments& args) const { m_draw_command_list->draw(args); }
-        void drawIndexed(const GfxDrawArguments& args) const { m_draw_command_list->drawIndexed(args); }
-        void dispatch(const UInt32 groups_x, const UInt32 groups_y = 1, const UInt32 groups_z = 1) const { m_draw_command_list->dispatch(groups_x, groups_y, groups_z); }
     };
 
     class RenderGraphPass {
         String m_name{};
         RenderGraphPassFlags m_flags{RenderGraphPassFlags::None};
         DynamicArray<RenderGraphPassResourceAccess> m_accesses{};
-        std::function<void(const RenderGraphPassContext&, RenderGraphCommandList&)> m_execute_function{};
+        std::function<void(const RenderGraphPassContext&, DrawCommandList&)> m_execute_function{};
 
     public:
         RenderGraphPass() = default;
@@ -155,11 +92,11 @@ namespace dodoe {
             m_accesses.push_back(access);
         }
 
-        void setExecuteFunction(std::function<void(const RenderGraphPassContext&, RenderGraphCommandList&)>&& execute_function) {
+        void setExecuteFunction(std::function<void(const RenderGraphPassContext&, DrawCommandList&)>&& execute_function) {
             m_execute_function = std::move(execute_function);
         }
 
-        void execute(const RenderGraphPassContext& context, RenderGraphCommandList& command_list) const {
+        void execute(const RenderGraphPassContext& context, DrawCommandList& command_list) const {
             DO_ASSERT(m_execute_function, "RenderGraphPass execute function is empty");
             m_execute_function(context, command_list);
         }

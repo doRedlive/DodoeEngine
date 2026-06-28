@@ -1,10 +1,13 @@
+// do@Redlive
+
 #include "sprite_renderer_system.h"
 
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/render/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
 #include "runtime/function/render/framework/texture_manager.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -14,7 +17,7 @@ namespace dodoe {
         (void)dt;
 
         auto sprite_view = reg.view<IDComponent, TransformComponent, SpriteRendererComponent>();
-        std::unordered_set<UUID> active_sprites{};
+        UnorderedSet<UUID> active_sprites{};
         bool dirty = false;
 
         for (auto entity : sprite_view) {
@@ -33,7 +36,7 @@ namespace dodoe {
         pruneRemovedSprites(active_sprites);
 
         if (dirty) {
-            Renderer::FlushSceneUpdates();
+            GetRenderSystem()->getRenderScene()->flushUpdates();
         }
     }
 
@@ -46,21 +49,15 @@ namespace dodoe {
             return false;
         }
 
-        auto* texture_manager = Renderer::GetTextureManager();
-        if (!texture_manager) {
-            return false;
-        }
+        auto* texture_manager = GetRenderSystem()->getTextureManager();
 
         Ref<Texture> texture = nullptr;
         const String& tex_path = sr.texture.getFileID().getPath();
         if (!tex_path.empty()) {
             texture = Texture::Load(tex_path);
-        } else {
-            texture = texture_manager->getFallback();
         }
-        if (!texture) {
-            return false;
-        }
+
+        if (!texture) return false;
 
         UInt32 flags = 0;
         if (sr.flip) {
@@ -74,7 +71,6 @@ namespace dodoe {
         sprite_object->setFlags(flags);
         sprite_object->setUVRect(0.0f, 0.0f, 1.0f, 1.0f);
         sprite_object->setVisible(true);
-
         sprite_object->setWorldTransform(buildWorldMatrix(transform));
 
         Renderer::AddSprite(std::move(sprite_object));
@@ -82,7 +78,7 @@ namespace dodoe {
         return true;
     }
 
-    void SpriteRendererSystem::pruneRemovedSprites(const std::unordered_set<UUID>& active_sprites) {
+    void SpriteRendererSystem::pruneRemovedSprites(const UnorderedSet<UUID>& active_sprites) {
         for (auto it = m_submitted_sprites.begin(); it != m_submitted_sprites.end();) {
             if (active_sprites.find(*it) == active_sprites.end()) {
                 Renderer::RemoveSprite(*it);
@@ -106,9 +102,9 @@ namespace dodoe {
 
     Matrix4f SpriteRendererSystem::buildWorldMatrix(const TransformComponent& transform) {
         Matrix4f world(1.0f);
-        world = glm::translate(world, Vector3f(transform.position.x, transform.position.y, 0.0f));
-        world = glm::rotate(world, glm::radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
-        world = glm::scale(world, Vector3f(transform.scale.x, transform.scale.y, 1.0f));
+        world = Math::Translate(world, Vector3f(transform.position.x, transform.position.y, 0.0f));
+        world = Math::Rotate(world, Math::Radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
+        world = Math::Scale(world, Vector3f(transform.scale.x, transform.scale.y, 1.0f));
         return world;
     }
 

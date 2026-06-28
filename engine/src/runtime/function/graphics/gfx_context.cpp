@@ -1,6 +1,4 @@
-// 
-// Created by Redlive on 2026/4/5.
-//
+// do@Redlive
 
 #include "gfx_context.h"
 
@@ -14,7 +12,7 @@ namespace dodoe {
 
     namespace {
 
-        GfxFormat to_nvrhi_format(VkFormat format) {
+        GfxFormat ToRHIFormatVK(VkFormat format) {
             switch (format) {
                 case VK_FORMAT_B8G8R8A8_UNORM: return GfxFormat::BGRA8_UNORM;
                 case VK_FORMAT_B8G8R8A8_SRGB: return GfxFormat::SBGRA8_UNORM;
@@ -45,13 +43,19 @@ namespace dodoe {
         backend->shutdown();
         backend.reset();
     }
-    
-    void GfxContext::initialize(const GfxBackendCreateInfo& create_info) {
-        if (create_info.api_type != RenderBackendApiType::Vulkan) {
-            return;
-        }
 
+    void GfxContext::initialize(const GfxBackendCreateInfo& create_info) {
         window_handle_ = create_info.window_handle;
+
+        if (create_info.api_type == RenderBackendApiType::Vulkan) {
+            initializeVulkan(create_info);
+        } else if (create_info.api_type == RenderBackendApiType::OpenGL) {
+            initializeOpenGL(create_info);
+        }
+    }
+
+    void GfxContext::initializeVulkan(const GfxBackendCreateInfo& create_info) {
+        OutputDebugStringA("[GFX] Vulkan initialize begin\n");
 
         vulkan_backend_ = VulkanBackend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation});
 
@@ -79,37 +83,84 @@ namespace dodoe {
         device_desc.bufferDeviceAddressSupported = true;
 
         device_ = vulkan::createDevice(device_desc);
-        DO_ASSERT(device_ != nullptr, "GfxBackend::initialize: failed to create nvrhi vulkan device.");
+        DO_ASSERT(device_ != nullptr, "GfxBackend::initializeVulkan: failed to create cutie vulkan device.");
 
         if (create_info.enable_validation) {
             device_ = validation::createValidationLayer(device_);
-            DO_ASSERT(device_ != nullptr, "GfxBackend::initialize: failed to create validation layer.");
+            DO_ASSERT(device_ != nullptr, "GfxBackend::initializeVulkan: failed to create validation layer.");
         }
 
         createSwapchainSemaphores();
-        createSwapchainTextures();
+        createSwapchainTexturesVulkan();
         cmd_ = device_->createCommandList();
+
+        OutputDebugStringA("[GFX] Vulkan initialize done\n");
+    }
+
+    void GfxContext::initializeOpenGL(const GfxBackendCreateInfo& create_info) {
+        OutputDebugStringA("[GFX] OpenGL initialize begin\n");
+
+        opengl_backend_ = OpenGLBackend::Create({create_info.window_handle});
+        DO_ASSERT(opengl_backend_ != nullptr, "GfxBackend::initializeOpenGL: failed to create OpenGL backend.");
+
+        auto* error_callback = new RhiMessageCallback();
+
+        opengl::DeviceDesc device_desc{};
+        device_desc.messageCallback = error_callback;
+        device_desc.glLoaderFunc = reinterpret_cast<opengl::GLloaderFunc>(glfwGetProcAddress);
+
+        device_ = opengl::createDevice(device_desc);
+        DO_ASSERT(device_ != nullptr, "GfxBackend::initializeOpenGL: failed to create cutie opengl device.");
+
+        createSwapchainTexturesOpenGL();
+        cmd_ = device_->createCommandList();
+
+        OutputDebugStringA("[GFX] OpenGL initialize done\n");
     }
 
     void GfxContext::shutdown() {
-		cmd_ = nullptr;
+        cmd_ = nullptr;
         swapchain_textures_.clear();
-		if (device_) {
-			device_->waitForIdle();
-			device_->runGarbageCollection();
-		}
+        if (device_) {
+            device_->waitForIdle();
+            device_->runGarbageCollection();
+        }
         destroySwapchainSemaphores();
         device_ = nullptr;
-        VulkanBackend::Destroy(vulkan_backend_);
+
+        if (vulkan_backend_) {
+            VulkanBackend::Destroy(vulkan_backend_);
+        }
+        if (opengl_backend_) {
+            OpenGLBackend::Destroy(opengl_backend_);
+        }
     }
 
-    void GfxContext::createSwapchainTextures() {
+    void GfxContext::waitForIdle() {
+        if (device_) device_->waitForIdle();
+    }
+
+    void GfxContext::clearGarbage() {
+        if (device_) device_->runGarbageCollection();
+    }
+
+    Vector2i GfxContext::getSwapchainExtent2d() const {
+        if (vulkan_backend_) {
+            return vulkan_backend_->getSwapchainExtent2d();
+        }
+        if (opengl_backend_) {
+            return opengl_backend_->getSwapchainExtent2d();
+        }
+        return Vector2i(0, 0);
+    }
+
+    void GfxContext::createSwapchainTexturesVulkan() {
         if (!device_ || !vulkan_backend_) {
             return;
         }
 
         swapchain_textures_.clear();
-        const auto swapchain_format = to_nvrhi_format(vulkan_backend_->getSwapchainImageFormat());
+        const auto swapchain_format = ToRHIFormatVK(vulkan_backend_->getSwapchainImageFormat());
 
         for (const auto& image : vulkan_backend_->getSwapchainImages()) {
             auto texture_desc = GfxTextureDesc()
@@ -126,30 +177,96 @@ namespace dodoe {
         }
     }
 
-    bool GfxContext::acquireNextSwapchainImage(uint32_t& image_index) {
+    void GfxContext::createSwapchainTexturesOpenGL() {
+        if (!device_ || !opengl_backend_) {
+            return;
+        }
+
+        swapchain_textures_.clear();
+        const auto extent = opengl_backend_->getSwapchainExtent2d();
+
+        auto texture_desc = GfxTextureDesc()
+            .setDimension(GfxTextureDimension::Texture2D)
+            .setFormat(GfxFormat::RGBA8_UNORM)
+            .setWidth(extent.x)
+            .setHeight(extent.y)
+            .setIsRenderTarget(true)
+            .enableAutomaticStateTracking(GfxResourceStates::Present)
+            .setDebugName("GL Backbuffer");
+
+        GfxTextureHandle backbuffer = device_->createTexture(texture_desc);
+        swapchain_textures_.push_back(backbuffer);
+    }
+
+    Bool GfxContext::acquireNextSwapchainImage(UInt32& image_index) {
+        if (opengl_backend_) {
+            image_index = 0;
+            opengl_backend_->updateFramebufferSize();
+            return true;
+        }
+
         if (!vulkan_backend_ || !device_ || acquire_semaphores_.empty() || frame_fences_.empty()) {
+            DO_DEBUG("GfxContext::acquireNextSwapchainImage: early return false (missing objects)");
             return false;
         }
 
         auto* vk_device = static_cast<vulkan::IDevice*>(
-            device_->getNativeObject(GfxObjectTypes::Nvrhi_VK_Device));
-        DO_ASSERT(vk_device != nullptr, "GfxContext::acquireNextSwapchainImage: failed to get native nvrhi vulkan device.");
-        const size_t frame_slot = current_frame_slot_ % acquire_semaphores_.size();
-        VkDevice vk_device_handle = vulkan_backend_->getDevice();
-        DO_ASSERT(vkWaitForFences(vk_device_handle, 1, &frame_fences_[frame_slot], VK_TRUE, UINT64_MAX) == VK_SUCCESS,
-            "GfxContext::acquireNextSwapchainImage: failed to wait for frame fence.");
+            device_->getNativeObject(GfxObjectTypes::VK_Device));
+        DO_ASSERT(vk_device != nullptr, "GfxContext::acquireNextSwapchainImage: failed to get native cutie vulkan device.");
 
-        const VkSemaphore acquire_semaphore = acquire_semaphores_[frame_slot];
-        if (!vulkan_backend_->acquireNextImage(image_index, acquire_semaphore)) {
+        try {
+            auto test_ptr = reinterpret_cast<void**>(vk_device);
+            volatile void* vtable = test_ptr[0];
+            (void)vtable;
+            DO_DEBUG("GfxContext::acquireNextSwapchainImage: vk_device vtable={}", vtable);
+        } catch (...) {
+            DO_ERROR("GfxContext::acquireNextSwapchainImage: vk_device pointer is invalid!");
             return false;
         }
+
+        const Size_t frame_slot = current_frame_slot_ % acquire_semaphores_.size();
+        VkDevice vk_device_handle = vulkan_backend_->getDevice();
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: waiting for fence, frame_slot={}", frame_slot);
+        DO_ASSERT(vkWaitForFences(vk_device_handle, 1, &frame_fences_[frame_slot], VK_TRUE, UINT64_MAX) == VK_SUCCESS,
+            "GfxContext::acquireNextSwapchainImage: failed to wait for frame fence.");
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: fence wait done");
+
+        const VkSemaphore acquire_semaphore = acquire_semaphores_[frame_slot];
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: calling vulkan_backend_->acquireNextImage...");
+        if (!vulkan_backend_->acquireNextImage(image_index, acquire_semaphore)) {
+            DO_DEBUG("GfxContext::acquireNextSwapchainImage: acquireNextImage returned false");
+            return false;
+        }
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: acquireNextImage succeeded, image_index={}", image_index);
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: vk_device={}, acquire_semaphore={}",
+                 (void*)vk_device, (void*)acquire_semaphore);
+
+        if (!vk_device) {
+            DO_ERROR("GfxContext::acquireNextSwapchainImage: vk_device is NULL!");
+            return false;
+        }
+        if (!acquire_semaphore) {
+            DO_ERROR("GfxContext::acquireNextSwapchainImage: acquire_semaphore is NULL!");
+            return false;
+        }
+
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: about to call queueWaitForSemaphore with queue=Graphics(0)");
         vk_device->queueWaitForSemaphore(GfxCommandQueue::Graphics, acquire_semaphore, 0);
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: queueWaitForSemaphore completed successfully");
         active_frame_slot_ = frame_slot;
 
+        DO_DEBUG("GfxContext::acquireNextSwapchainImage: returning true");
         return true;
     }
 
-    bool GfxContext::presentSwapchainImage(uint32_t image_index) {
+    Bool GfxContext::presentSwapchainImage(UInt32 image_index) {
+        if (opengl_backend_) {
+            if (opengl_backend_->getWindow()) {
+                glfwSwapBuffers(opengl_backend_->getWindow());
+            }
+            return true;
+        }
+
         if (!vulkan_backend_ || !device_) {
             return false;
         }
@@ -164,6 +281,7 @@ namespace dodoe {
         VkDevice vk_device_handle = vulkan_backend_->getDevice();
         DO_ASSERT(vkResetFences(vk_device_handle, 1, &frame_fence) == VK_SUCCESS,
             "GfxContext::presentSwapchainImage: failed to reset frame fence.");
+
         VkSubmitInfo submit_info{};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.commandBufferCount = 0;
@@ -172,13 +290,20 @@ namespace dodoe {
         DO_ASSERT(vkQueueSubmit(vulkan_backend_->getGraphicsQueue(), 1, &submit_info, frame_fence) == VK_SUCCESS,
             "GfxContext::presentSwapchainImage: failed to submit present signal semaphore.");
 
-        const bool present_result = vulkan_backend_->presentImage(image_index, present_semaphore);
+        const Bool present_result = vulkan_backend_->presentImage(image_index, present_semaphore);
         current_frame_slot_ = (active_frame_slot_ + 1) % acquire_semaphores_.size();
-        active_frame_slot_ = (std::numeric_limits<size_t>::max)();
+        active_frame_slot_ = (std::numeric_limits<Size_t>::max)();
         return present_result;
     }
 
-    bool GfxContext::recreateSwapchain() {
+    Bool GfxContext::recreateSwapchain() {
+        if (opengl_backend_) {
+            opengl_backend_->updateFramebufferSize();
+            swapchain_textures_.clear();
+            createSwapchainTexturesOpenGL();
+            return !swapchain_textures_.empty();
+        }
+
         if (device_) {
             device_->waitForIdle();
         }
@@ -195,7 +320,7 @@ namespace dodoe {
         }
 
         createSwapchainSemaphores();
-        createSwapchainTextures();
+        createSwapchainTexturesVulkan();
         if (device_) {
             device_->runGarbageCollection();
         }
@@ -203,7 +328,9 @@ namespace dodoe {
     }
 
     void GfxContext::createSwapchainSemaphores() {
-        DO_ASSERT(vulkan_backend_ != nullptr, "GfxContext::createSwapchainSemaphores: vulkan backend is null.");
+        if (!vulkan_backend_) {
+            return;
+        }
 
         VkSemaphoreCreateInfo semaphore_info{};
         semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -212,7 +339,7 @@ namespace dodoe {
         acquire_semaphores_.clear();
         present_semaphores_.clear();
         frame_fences_.clear();
-        const size_t frame_count = vulkan_backend_->getSwapchainImages().size();
+        const Size_t frame_count = vulkan_backend_->getSwapchainImages().size();
         acquire_semaphores_.reserve(frame_count);
         present_semaphores_.reserve(frame_count);
         frame_fences_.reserve(frame_count);
@@ -221,7 +348,7 @@ namespace dodoe {
         fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        for (size_t i = 0; i < frame_count; ++i) {
+        for (Size_t i = 0; i < frame_count; ++i) {
             VkSemaphore acquire_semaphore = VK_NULL_HANDLE;
             DO_ASSERT(vkCreateSemaphore(vk_device, &semaphore_info, nullptr, &acquire_semaphore) == VK_SUCCESS,
                 "GfxContext::createSwapchainSemaphores: failed to create acquire semaphore.");
@@ -239,7 +366,7 @@ namespace dodoe {
         }
 
         current_frame_slot_ = 0;
-        active_frame_slot_ = (std::numeric_limits<size_t>::max)();
+        active_frame_slot_ = (std::numeric_limits<Size_t>::max)();
     }
 
     void GfxContext::destroySwapchainSemaphores() {
@@ -248,7 +375,7 @@ namespace dodoe {
             present_semaphores_.clear();
             frame_fences_.clear();
             current_frame_slot_ = 0;
-            active_frame_slot_ = (std::numeric_limits<size_t>::max)();
+            active_frame_slot_ = (std::numeric_limits<Size_t>::max)();
             return;
         }
 
@@ -274,7 +401,7 @@ namespace dodoe {
         present_semaphores_.clear();
         frame_fences_.clear();
         current_frame_slot_ = 0;
-        active_frame_slot_ = (std::numeric_limits<size_t>::max)();
+        active_frame_slot_ = (std::numeric_limits<Size_t>::max)();
     }
 
 } // dodoe

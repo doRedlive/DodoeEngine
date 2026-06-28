@@ -11,7 +11,7 @@
 namespace dodoe {
 
     class SpriteRendererSystem : public System {
-        std::unordered_set<UUID> m_submitted_sprites{};
+        UnorderedSet<UUID> m_submitted_sprites{};
 
     public:
         ~SpriteRendererSystem() override;

@@ -51,6 +51,7 @@ namespace dodoe {
 
         DescriptorIndex createDescriptor(GfxBindingSetItem item);
         void releaseDescriptor(DescriptorIndex index);
+        UInt32 allocateSlot();
         [[nodiscard]] GfxDescriptorTable* getDescriptorTable() const { return descriptor_table_; }
 
     private:

@@ -49,7 +49,7 @@ target_include_directories(${TARGET_NAME}
                 ${ENGINE_ROOT_DIR}/external/vulkanmemoryallocator/include
                 ${ENGINE_ROOT_DIR}/external/json/include
                 ${ENGINE_ROOT_DIR}/external/assimp/include
-                ${ENGINE_ROOT_DIR}/external/nvrhi/include
+                ${ENGINE_ROOT_DIR}/external/cutie-rhi/include
                 ${Vulkan_INCLUDE_DIRS}
         PRIVATE
                 ${ENGINE_ROOT_DIR}/src/runtime
@@ -70,8 +70,9 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC EnTT::EnTT
         PUBLIC box2d
         PUBLIC assimp
-        PUBLIC nvrhi
-        PUBLIC nvrhi_vk
+        PUBLIC cutie
+        PUBLIC cutie_vk
+        PUBLIC cutie_gl
         PUBLIC pybind11::embed
         PUBLIC ${Vulkan_LIBRARIES}
 )

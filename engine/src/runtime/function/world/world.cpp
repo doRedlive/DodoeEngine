@@ -11,7 +11,7 @@
 #include "runtime/core/meta/serializer/serializer.h"
 
 #include "systems/animation2d_system.h"
-#include "systems/camera2d_system.h"
+#include "systems/camera_system.h"
 #include "systems/foliage_renderer_system.h"
 #include "systems/light_system.h"
 #include "systems/line_renderer_system.h"
@@ -22,7 +22,6 @@
 #include "systems/sprite_renderer_system.h"
 #include "systems/mono_system.h"
 #include "systems/tilemap_renderer_system.h"
-#include "systems/runtime_frame_context_system.h"
 
 namespace dodoe {
 
@@ -42,15 +41,29 @@ namespace dodoe {
 
     Bool World::setupScenes() {
         const auto scene_assets = ResourceManager::Self().getAssets<SceneAsset>();
+        DO_INFO("World::setupScenes: scene handle count={}", scene_assets.size());
         for (const auto& scene_handle : scene_assets) {
+            const auto& file_id = scene_handle.getFileID();
             SceneAsset* scene_asset = scene_handle.get();
+            DO_INFO(
+                "World::setupScenes: handle valid={} loaded={} path='{}' uuid={} asset_ptr={}",
+                scene_handle.isValid(),
+                scene_handle.isLoaded(),
+                file_id.getPath(),
+                static_cast<UInt64>(file_id.getUUID()),
+                static_cast<const void*>(scene_asset));
             if (!scene_asset) continue;
             const auto& scene_res = scene_asset->getSceneRes();
+            DO_INFO(
+                "World::setupScenes: SceneRes name='{}' entity_count={}",
+                scene_res.m_name,
+                scene_res.m_entities.size());
             const String scene_name = scene_res.m_name.empty()
                 ? "Untitled"
                 : scene_res.m_name;
             Scene* scene = createScene(scene_name);
             scene->deserialize(scene_res);
+            DO_INFO("World::setupScenes: created scene='{}'", scene->getName());
         }
         return true;
     }
@@ -61,7 +74,7 @@ namespace dodoe {
 
     bool World::setupSystems() {
         auto mono = create_ref<MonoSystem>();
-        auto camera2d = create_ref<Camera2dSystem>();
+        auto camera_system = create_ref<CameraSystem>();
         auto light_system = create_ref<LightSystem>();
         auto sky_light = create_ref<SkyLightSystem>();
         auto physics2d = create_ref<Physics2dSystem>();
@@ -70,11 +83,10 @@ namespace dodoe {
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
         auto tilemap_renderer = create_ref<TilemapRendererSystem>();
-        auto runtime_frame_context = create_ref<RuntimeFrameContextSystem>();
         auto rect_renderer = create_ref<RectRendererSystem>();
         auto line_renderer = create_ref<LineRendererSystem>();
         registerRuntimeSystem(mono);
-        registerRuntimeSystem(camera2d);
+        registerRuntimeSystem(camera_system);
         registerRuntimeSystem(light_system);
         registerRuntimeSystem(sky_light);
         registerRuntimeSystem(physics2d);
@@ -83,11 +95,10 @@ namespace dodoe {
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
         registerRuntimeSystem(tilemap_renderer);
-        registerRuntimeSystem(runtime_frame_context);
         registerRuntimeSystem(rect_renderer);
         registerRuntimeSystem(line_renderer);
 
-        registerSimulationSystem(camera2d);
+        registerSimulationSystem(camera_system);
         registerSimulationSystem(light_system);
         registerSimulationSystem(physics2d);
         registerSimulationSystem(animation2d);
@@ -95,7 +106,6 @@ namespace dodoe {
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
         registerSimulationSystem(tilemap_renderer);
-        registerSimulationSystem(runtime_frame_context);
         registerSimulationSystem(rect_renderer);
         registerSimulationSystem(line_renderer);
 
@@ -256,6 +266,12 @@ namespace dodoe {
 
         Scene* start_scene = getScene(active_project->config().start_scene_name);
         if (!start_scene) {
+            DO_ERROR("World::activateStartScene: start scene '{}' not found. scene_count={}",
+                active_project->config().start_scene_name,
+                m_scenes.size());
+            for (const auto& scene : m_scenes) {
+                DO_ERROR("World::activateStartScene: available scene='{}'", scene ? scene->getName() : "<null>");
+            }
             return false;
         }
 

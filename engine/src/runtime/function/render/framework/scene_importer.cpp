@@ -14,8 +14,7 @@
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "glm/gtc/quaternion.hpp"
-#include "glm/gtx/euler_angles.hpp"
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -49,8 +48,8 @@ namespace dodoe {
         }
 
         Vector3f ToEulerDegrees(const aiQuaternion& rotation) {
-            const glm::quat quaternion(rotation.w, rotation.x, rotation.y, rotation.z);
-            return glm::degrees(glm::eulerAngles(quaternion));
+            const Quaternion quaternion(rotation.w, rotation.x, rotation.y, rotation.z);
+            return Math::Degrees(Math::EulerAngles(quaternion));
         }
 
         void ApplyNodeTransform(Entity entity, const aiMatrix4x4& transform) {
@@ -174,7 +173,7 @@ namespace dodoe {
 
                 if (source_mesh.HasNormals()) {
                     const auto& normal = source_mesh.mNormals[vertex_index];
-                    const auto packed_normal = glm::packSnorm4x8(Vector4f(normal.x, normal.y, normal.z, 0.0f));
+                    const auto packed_normal = Math::PackSnorm4x8(Vector4f(normal.x, normal.y, normal.z, 0.0f));
                     result.upload_data.normal_data.push_back(packed_normal);
                 } else {
                     result.upload_data.normal_data.push_back(0);

@@ -5,7 +5,7 @@ namespace dodoe {
     Physics2dSystem::~Physics2dSystem() = default;
 
     void Physics2dSystem::start(Registry& reg) {
-        auto world_id = Application::Self().context().physics_system->world_id_;
+        auto world_id = GetPhysicsSystem()->world_id_;
         if (!B2_IS_NON_NULL(world_id)) {
             return;
         }
@@ -63,7 +63,7 @@ namespace dodoe {
 
     void Physics2dSystem::update(Registry& reg, float dt) {
         if (dt > 0.0f) {
-            auto* physics_system = Application::Self().context().physics_system.get();
+            auto* physics_system = GetPhysicsSystem();
             if (physics_system) {
                 physics_system->step(dt);
             }
@@ -97,7 +97,7 @@ namespace dodoe {
             return;
         }
 
-        auto world_id = Application::Self().context().physics_system->world_id_;
+        auto world_id = GetPhysicsSystem()->world_id_;
         if (B2_IS_NON_NULL(world_id)) {
             for (auto& [_, body_id] : it->second.body_umap) {
                 if (B2_IS_NON_NULL(body_id)) {

@@ -1,7 +1,7 @@
 #include "ui_interactive.h"
 #include "state/ui_state.h"
 #include "ui_imgui_utils.h"
-#include <glm/geometric.hpp>
+#include "runtime/core/math/math.h"
 #include <entt/core/hashed_string.hpp>
 
 using namespace entt::literals;

@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <glm/geometric.hpp>
+#include "runtime/core/math/math.h"
 #include "state/ui_normal_state.h"
 
 namespace dodoe {
@@ -168,7 +168,7 @@ void UIItemSlot::onLayout() {
             pos.y = my_size.y - lbl_size.y - padding.y;
         }
         
-        if (glm::distance(count_label_->getPosition(), pos) > 0.001f) {
+        if (Math::Distance(count_label_->getPosition(), pos) > 0.001f) {
             count_label_->setPosition(pos);
         }
     }

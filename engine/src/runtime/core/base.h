@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <array>
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
@@ -73,8 +74,14 @@ namespace dodoe {
     template <typename T>
     using DynamicArray = std::vector<T>;
 
+    template <typename T, size_t N>
+    using StaticArray = std::array<T, N>;
+
     template <typename TKey, typename TValue, typename THash = std::hash<TKey>, typename TEqual = std::equal_to<TKey>>
     using UnorderedMap = std::unordered_map<TKey, TValue, THash, TEqual>;
+
+    template <typename T, typename THash = std::hash<T>, typename TEqual = std::equal_to<T>>
+    using UnorderedSet = std::unordered_set<T, THash, TEqual>;
 
     template <typename TKey, typename TValue>
     using Dictionary = UnorderedMap<TKey, TValue> ;

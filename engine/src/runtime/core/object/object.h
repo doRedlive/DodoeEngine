@@ -35,7 +35,8 @@ namespace dodoe {
 
         [[nodiscard]] static Object* FindObjectFromInstanceID(InstanceID id);
         [[nodiscard]] static InstanceID FindInstanceID(const FileID& file_id);
-        [[nodiscard]] static InstanceID AllocateInstanceID(Object* obj);
+
+        static InstanceID AllocateInstanceID(Object* obj);
         static void ReleaseInstanceID(InstanceID id);
 
         [[nodiscard]] virtual const char* getObjectTypeName() const = 0;

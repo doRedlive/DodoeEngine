@@ -35,6 +35,37 @@ namespace dodoe {
         GfxBufferDesc desc{};
     };
 
+    inline RenderGraphTextureDesc MakeRenderTarget2D(
+        const UInt32 width, const UInt32 height,
+        const GfxFormat format,
+        const String& debug_name)
+    {
+        RenderGraphTextureDesc desc{};
+        desc.desc.setWidth(width)
+            .setHeight(height)
+            .setFormat(format)
+            .setIsRenderTarget(true)
+            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+            .setDebugName(debug_name);
+        return desc;
+    }
+
+    inline RenderGraphTextureDesc MakeDepthTarget2D(
+        const UInt32 width, const UInt32 height,
+        const GfxFormat format,
+        const String& debug_name)
+    {
+        RenderGraphTextureDesc desc{};
+        desc.desc.setWidth(width)
+            .setHeight(height)
+            .setFormat(format)
+            .setIsRenderTarget(true)
+            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+            .enableAutomaticStateTracking(GfxResourceStates::DepthWrite)
+            .setDebugName(debug_name);
+        return desc;
+    }
+
     struct RenderGraphTextureHandle {
         UInt32 index{kInvalidRenderGraphHandle};
 

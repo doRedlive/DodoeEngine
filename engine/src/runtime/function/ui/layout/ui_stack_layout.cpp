@@ -1,6 +1,6 @@
 #include "ui_stack_layout.h"
 #include <cmath>
-#include <glm/geometric.hpp>
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -95,7 +95,7 @@ void UIStackLayout::onLayout() {
             current_pos += child_req_size.x + spacing_;
         }
 
-        if (glm::distance(child_pos, new_pos) > 0.001f) {
+        if (Math::Distance(child_pos, new_pos) > 0.001f) {
             child->setPosition(new_pos);
         }
     }
@@ -108,7 +108,7 @@ void UIStackLayout::onLayout() {
             new_size.x = total_content_length + m_padding.left + m_padding.right; 
         }
         
-        if (glm::distance(m_size, new_size) > 0.001f) {
+        if (Math::Distance(m_size, new_size) > 0.001f) {
             setSizeInternal(new_size); // Update self size
         }
     }

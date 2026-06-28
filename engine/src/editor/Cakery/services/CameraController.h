@@ -5,14 +5,14 @@
 #include <QObject>
 #include <algorithm>
 
-namespace dodoe { class Camera; }
+namespace dodoe { class RenderView; }
 
 namespace cakery {
 
 class CameraController : public QObject {
     Q_OBJECT
 public:
-    explicit CameraController(dodoe::Camera* engineCamera, QObject* parent = nullptr);
+    explicit CameraController(dodoe::RenderView* engineView, QObject* parent = nullptr);
 
     void setViewportSize(float w, float h);
 
@@ -29,7 +29,7 @@ public:
     std::pair<float, float> worldToScreen(float worldX, float worldY) const;
 
 private:
-    void updateCamera();
+    void updateView();
 
     float m_viewportW = 800.0f;
     float m_viewportH = 600.0f;
@@ -41,7 +41,7 @@ private:
     double m_lastMouseX = 0.0;
     double m_lastMouseY = 0.0;
 
-    dodoe::Camera* m_engineCamera = nullptr;
+    dodoe::RenderView* m_engineView = nullptr;
 
     static constexpr float kMinZoom = 0.01f;
     static constexpr float kMaxZoom = 100.0f;

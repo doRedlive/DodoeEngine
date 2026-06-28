@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "render_object.h"
-#include "../framework/primitive_scene_info.h"
+#include "primitive_scene_info.h"
 #include "../mesh_draw/view_mesh_draw_context.h"
 #include "../mesh_draw/mesh_data.h"
 

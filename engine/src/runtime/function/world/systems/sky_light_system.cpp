@@ -5,7 +5,7 @@
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/render/renderer.h"
-#include "runtime/function/render/render_scene/light_render_object.h"
+#include "runtime/function/render/render_scene/light_scene_info.h"
 #include "runtime/function/render/framework/texture.h"
 #include "runtime/resource/parser/texture_blob.h"
 #include "runtime/resource/file/file_system.h"
@@ -31,7 +31,7 @@ namespace dodoe {
         }
 
         pruneRemoved(active);
-        if (dirty) Renderer::FlushSceneUpdates();
+        if (dirty) GetRenderSystem()->getRenderScene()->flushUpdates();
     }
 
     bool SkyLightSystem::syncSkyLight(Entity entity) {
@@ -43,10 +43,17 @@ namespace dodoe {
         auto cubemap = loadCubemap(sky.face_paths);
         if (!cubemap) return false;
 
-        auto sky_object = buildRenderObject(cubemap, sky.intensity);
-        sky_object->setUUID(id.id);
-        sky_object->setWorldTransform(Matrix4f(1.0f));
-        Renderer::AddLight(std::move(sky_object));
+        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        info.setLightType(LightType::Sky);
+        info.setWorldTransform(Matrix4f(1.0f));
+        info.setEnabled(sky.enabled);
+
+        SkyLightData data{};
+        data.cubemap = cubemap;
+        data.intensity = sky.intensity;
+        info.setSkyLightData(data);
+
+        Renderer::AddLight(std::move(info));
         m_submitted.insert(id.id);
 
         id.dirty = false;
@@ -67,7 +74,7 @@ namespace dodoe {
 
     Ref<Texture> SkyLightSystem::loadCubemap(const DynamicArray<String>& paths) {
         auto& app = Application::Self();
-        auto* rs = app.context().render_system.get();
+        auto* rs = app.context().getRenderSystem();
         if (!rs || !rs->getGfx() || !rs->getGfx()->getDevice()) return nullptr;
         if (paths.size() < 6) return nullptr;
 
@@ -109,13 +116,6 @@ namespace dodoe {
         auto texture = create_ref<Texture>();
         texture->setGpuHandle(cubemap);
         return texture;
-    }
-
-    Scope<SkyLightRenderObject> SkyLightSystem::buildRenderObject(const Ref<Texture>& cubemap, Float intensity) {
-        auto proxy = create_scope<SkyLightRenderObject>();
-        proxy->setCubemap(cubemap);
-        proxy->setIntensity(intensity);
-        return proxy;
     }
 
 } // dodoe

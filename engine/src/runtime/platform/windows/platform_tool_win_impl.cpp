@@ -137,6 +137,8 @@ namespace dodoe {
                 &process_info);
 
             if (!launched) {
+                const DWORD err = GetLastError();
+                DO_ERROR("RunProcessAndWait: CreateProcessA failed for '{}', error code: {}", command_line, err);
                 return false;
             }
 
@@ -146,7 +148,11 @@ namespace dodoe {
             GetExitCodeProcess(process_info.hProcess, &exit_code);
             CloseHandle(process_info.hThread);
             CloseHandle(process_info.hProcess);
-            return exit_code == 0;
+            if (exit_code != 0) {
+                DO_ERROR("RunProcessAndWait: '{}' exited with code {}", command_line, exit_code);
+                return false;
+            }
+            return true;
         }
 
     } // namespace
@@ -234,7 +240,7 @@ namespace dodoe {
             return false;
         }
 
-        const fs::path generated_project_path = output_directory / (assembly_name + ".generated.csproj");
+        const fs::path generated_project_path = fs::absolute(output_directory / (assembly_name + ".generated.csproj"));
         if (!WriteGeneratedProjectFile(generated_project_path, source_files, core_assembly_path, assembly_name)) {
             return false;
         }

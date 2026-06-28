@@ -14,6 +14,8 @@
 
 namespace dodoe {
 
+    using DescriptorIndex = int;
+
     class DrawCommandList {
         struct MemoryBlock {
             Scope<UInt8[]> m_data{};
@@ -116,6 +118,10 @@ namespace dodoe {
             UInt64 data_size_bytes);
         void writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes = 0);
         void createBuffer(GfxDeviceHandle device, const GfxBufferDesc& desc, GfxBufferHandle* destination, const void* data, Size_t data_size);
+        void createFramebuffer(GfxDeviceHandle device, const GfxFramebufferDesc& desc, GfxFramebufferHandle* destination);
+        void createBindingSet(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout, GfxBindingSetHandle* destination);
+        void createTexture(GfxDeviceHandle device, const GfxTextureDesc& desc, GfxTextureHandle* destination, const void* data, Size_t data_size);
+        void createDescriptor(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle* texture_handle, DescriptorIndex* destination, UInt32 slot);
 
         template <typename TData>
         void writeBuffer(const GfxBufferHandle& buffer, const TData& data, UInt64 destination_offset_bytes = 0) {
@@ -354,6 +360,74 @@ namespace dodoe {
             static void DestroyCommand(DrawCommand& command);
             [[nodiscard]] static Size_t CalculateSize(Size_t data_size);
             [[nodiscard]] void* mutableData();
+            void execute(GfxCommandList& command_list) const;
+        };
+
+        struct CreateFramebufferCommand final : Command<CreateFramebufferCommand> {
+            GfxDeviceHandle m_device{};
+            GfxFramebufferDesc m_desc{};
+            GfxFramebufferHandle* m_destination{};
+
+            CreateFramebufferCommand(GfxDeviceHandle device, const GfxFramebufferDesc& desc, GfxFramebufferHandle* destination);
+            void execute(GfxCommandList& command_list) const;
+        };
+
+        struct CreateBindingSetCommand final : Command<CreateBindingSetCommand> {
+            GfxDeviceHandle m_device{};
+            GfxBindingSetDesc m_desc{};
+            GfxBindingLayoutHandle m_layout{};
+            GfxBindingSetHandle* m_destination{};
+
+            CreateBindingSetCommand(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout, GfxBindingSetHandle* destination);
+            void execute(GfxCommandList& command_list) const;
+        };
+
+        struct CreateTextureCommand final : DrawCommand {
+            GfxDeviceHandle m_device{};
+            GfxTextureDesc m_desc{};
+            GfxTextureHandle* m_destination{};
+            Size_t m_data_size{0};
+
+            static CreateTextureCommand& Create(
+                DrawCommandList& command_list,
+                GfxDeviceHandle device,
+                const GfxTextureDesc& desc,
+                GfxTextureHandle* destination,
+                const void* data,
+                Size_t data_size);
+
+            [[nodiscard]] const void* data() const;
+
+        private:
+            CreateTextureCommand(GfxDeviceHandle device, const GfxTextureDesc& desc, GfxTextureHandle* destination, Size_t data_size);
+
+            static void ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list);
+            static void DestroyCommand(DrawCommand& command);
+            [[nodiscard]] static Size_t CalculateSize(Size_t data_size);
+            [[nodiscard]] void* mutableData();
+            void execute(GfxCommandList& command_list) const;
+        };
+
+        struct CreateDescriptorCommand final : DrawCommand {
+            GfxDeviceHandle m_device{};
+            GfxDescriptorTableHandle m_descriptor_table{};
+            GfxTextureHandle* m_texture_handle{};
+            DescriptorIndex* m_destination{};
+            UInt32 m_slot{};
+
+            static CreateDescriptorCommand& Create(
+                DrawCommandList& command_list,
+                GfxDeviceHandle device,
+                GfxDescriptorTableHandle descriptor_table,
+                GfxTextureHandle* texture_handle,
+                DescriptorIndex* destination,
+                UInt32 slot);
+
+        private:
+            CreateDescriptorCommand(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle* texture_handle, DescriptorIndex* destination, UInt32 slot);
+
+            static void ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list);
+            static void DestroyCommand(DrawCommand& command);
             void execute(GfxCommandList& command_list) const;
         };
 

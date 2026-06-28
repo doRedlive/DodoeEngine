@@ -1,9 +1,10 @@
-#ifndef DODOE_GFX_H
-#define DODOE_GFX_H
+// do@Redlive
+#pragma once
 
 #include "dopch.h"
 
 #include "backend/vulkan_backend.h"
+#include "backend/opengl_backend.h"
 
 #include "gfx.h"
 
@@ -16,44 +17,55 @@ namespace dodoe {
     struct GfxBackendCreateInfo {
         GLFWwindow* window_handle{nullptr};
         RenderBackendApiType api_type{};
-        bool enable_validation{true};
+        Bool enable_validation{true};
         void* host_handle{nullptr};
     };
 
     class GfxContext {
         GfxDeviceHandle device_{};
         GfxCommandListHandle cmd_{};
-        std::vector<GfxTextureHandle> swapchain_textures_{};
+        DynamicArray<GfxTextureHandle> swapchain_textures_{};
+
         Scope<VulkanBackend> vulkan_backend_{nullptr};
+        Scope<OpenGLBackend> opengl_backend_{nullptr};
+
         GLFWwindow* window_handle_{nullptr};
-        std::vector<VkSemaphore> acquire_semaphores_{};
-        std::vector<VkSemaphore> present_semaphores_{};
-        std::vector<VkFence> frame_fences_{};
-        size_t current_frame_slot_{0};
-        size_t active_frame_slot_{(std::numeric_limits<size_t>::max)()};
+
+        DynamicArray<VkSemaphore> acquire_semaphores_{};
+        DynamicArray<VkSemaphore> present_semaphores_{};
+        DynamicArray<VkFence> frame_fences_{};
+        Size_t current_frame_slot_{0};
+        Size_t active_frame_slot_{(std::numeric_limits<Size_t>::max)()};
+
     public:
         static Scope<GfxContext> Create(const GfxBackendCreateInfo& create_info);
         static void Destroy(Scope<GfxContext>& backend);
 
         [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
-        [[nodiscard]] const std::vector<GfxTextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
-        [[nodiscard]] Vector2i getSwapchainExtent2d() const { return vulkan_backend_->getSwapchainExtent2d(); }
-        [[nodiscard]] bool acquireNextSwapchainImage(uint32_t& image_index);
-        [[nodiscard]] bool presentSwapchainImage(uint32_t image_index);
-        [[nodiscard]] bool recreateSwapchain();
+        [[nodiscard]] const DynamicArray<GfxTextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
+        [[nodiscard]] Vector2i getSwapchainExtent2d() const;
+        [[nodiscard]] Bool acquireNextSwapchainImage(UInt32& image_index);
+        [[nodiscard]] Bool presentSwapchainImage(UInt32 image_index);
+        [[nodiscard]] Bool recreateSwapchain();
         [[nodiscard]] const GfxCommandListHandle& getCommandList() { return cmd_; }
 
         [[nodiscard]] VulkanBackend* getVulkanBackend() const { return vulkan_backend_.get(); }
+        [[nodiscard]] OpenGLBackend* getOpenGLBackend() const { return opengl_backend_.get(); }
+
+        void waitForIdle();
+        void clearGarbage();
 
     private:
         void initialize(const GfxBackendCreateInfo& create_info);
         void shutdown();
 
-        void createSwapchainTextures();
+        void initializeVulkan(const GfxBackendCreateInfo& create_info);
+        void initializeOpenGL(const GfxBackendCreateInfo& create_info);
+
+        void createSwapchainTexturesVulkan();
+        void createSwapchainTexturesOpenGL();
         void createSwapchainSemaphores();
         void destroySwapchainSemaphores();
     };
 
 } // dodoe
-
-#endif//DODOE_GFX_H

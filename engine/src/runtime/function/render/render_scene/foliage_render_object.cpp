@@ -1,6 +1,8 @@
+// do@Redlive
+
 #include "foliage_render_object.h"
 
-#include "glm/gtc/matrix_transform.hpp"
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -31,11 +33,11 @@ namespace dodoe {
 
         Matrix4f BuildLocalMatrix(const Vector3f& translation, const Vector3f& rotation, const Vector3f& scale) {
             Matrix4f model(1.0f);
-            model = glm::translate(model, translation);
-            model = glm::rotate(model, glm::radians(rotation.x), Vector3f(1.0f, 0.0f, 0.0f));
-            model = glm::rotate(model, glm::radians(rotation.y), Vector3f(0.0f, 1.0f, 0.0f));
-            model = glm::rotate(model, glm::radians(rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
-            model = glm::scale(model, scale);
+            model = Math::Translate(model, translation);
+            model = Math::Rotate(model, Math::Radians(rotation.x), Vector3f(1.0f, 0.0f, 0.0f));
+            model = Math::Rotate(model, Math::Radians(rotation.y), Vector3f(0.0f, 1.0f, 0.0f));
+            model = Math::Rotate(model, Math::Radians(rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
+            model = Math::Scale(model, scale);
             return model;
         }
 

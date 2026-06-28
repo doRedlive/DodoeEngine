@@ -30,7 +30,7 @@ public:
     dodoe::SystemContext* getContext() const;
     dodoe::World* getWorld() const;
     dodoe::Scene* getCurrentScene() const;
-    dodoe::Camera* getMainCamera() const;
+    dodoe::RenderView* getMainView() const;
 
     void resizeViewport(int width, int height, float devicePixelRatio = 1.0f);
 

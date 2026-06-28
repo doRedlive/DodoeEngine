@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "render_object.h"
-#include "../framework/sprite_scene_info.h"
+#include "sprite_scene_info.h"
 #include "runtime/core/object/pptr.h"
 #include "runtime/function/render/framework/texture.h"
 

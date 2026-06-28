@@ -17,7 +17,7 @@ namespace dodoe {
         }
     }
 
-	inline std::vector<char> ReadShaderFile(const std::string& path) {
+	inline DynamicArray<char> ReadShaderFile(const std::string& path) {
 		std::ifstream in(path, std::ios::binary | std::ios::ate);
 		if (!in.is_open()) {
 			DO_ERROR("Open shader file {} failed!", path);
