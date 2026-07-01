@@ -5,6 +5,7 @@
 #include "runtime/core/math/math.h"
 #include "../render_scene/primitive_render_object.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
     namespace {
@@ -44,24 +45,20 @@ namespace dodoe {
     }
 
     void DirectionalShadowMeshProcessor::initialize(GfxContext& gfx_context) {
-        const auto device = gfx_context.getDevice();
-        DO_ASSERT(device != nullptr, "DirectionalShadowMeshProcessor device is null");
-
-        m_binding_layout = device->createBindingLayout(
+        m_binding_layout = GDrawCommandList.createBindingLayout(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
                 .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
         );
-        m_constant_buffer = device->createBuffer(
+        m_constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(Matrix4f) + sizeof(Vector4f)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("DirectionalShadowMeshProcessor ConstantBuffer")
-        );
-        m_binding_set = device->createBindingSet(
-            GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer)),
+                .setDebugName("DirectionalShadowMeshProcessor ConstantBuffer"));
+        m_binding_set = GDrawCommandList.createBindingSet(
+            GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer->getRHIHandle())),
             m_binding_layout
         );
     }
@@ -125,10 +122,10 @@ namespace dodoe {
                 command.pass_type = MeshPassType::DirectionalShadow;
                 command.primitive_index = static_cast<UInt32>(primitive_index);
                 command.binding_sets.push_back(m_binding_set);
-                command.vertex_bindings.push_back(GfxVertexBufferBinding().setBuffer(element.vertex_buffer).setSlot(0).setOffset(0));
+                command.vertex_bindings.push_back(GfxVertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
                 command.setPrimitiveSceneBufferBinding(1, static_cast<UInt64>(element.first_instance) * sizeof(InstanceSceneData));
                 command.index_binding = GfxIndexBufferBinding()
-                    .setBuffer(element.index_buffer)
+                    .setBuffer(element.index_buffer->getRHI())
                     .setFormat(GfxFormat::R32_UINT)
                     .setOffset(0);
                 command.draw_args = GfxDrawArguments()
@@ -136,7 +133,7 @@ namespace dodoe {
                     .setInstanceCount(element.instance_count)
                     .setStartIndexLocation(element.index_offset)
                     .setStartVertexLocation(element.vertex_offset);
-                command.sort_key = reinterpret_cast<UInt64>(element.vertex_buffer.Get());
+                command.sort_key = reinterpret_cast<UInt64>(element.vertex_buffer.get());
                 commands.push_back(command);
             }
         }

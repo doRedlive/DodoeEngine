@@ -1,10 +1,8 @@
-// do@Redlive
-
 #pragma once
 
 #include "dopch.h"
 
-#include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/graphics/draw_executor.h"
 
 #include <thread>
 #include <mutex>
@@ -17,7 +15,7 @@ namespace dodoe {
     class DrawThread {
         GfxDeviceHandle m_device{};
         GfxContext* m_gfx{};
-        DrawCommandList m_frame_commands{};
+        DrawExecutor m_executor{};
         UInt32 m_swapchain_image_index{0};
         Bool m_has_pending_frame{false};
         Bool m_frame_completed{true};
@@ -35,7 +33,7 @@ namespace dodoe {
 
         void start(GfxDeviceHandle device, GfxContext* gfx);
         void stop();
-        void submitAndWait(DrawCommandList&& command_list, UInt32 swapchain_image_index);
+        void submitAndWait(UInt32 swapchain_image_index);
 
     private:
         void loop();

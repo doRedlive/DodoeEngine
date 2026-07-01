@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "../framework/pso_key.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
@@ -19,10 +20,12 @@ namespace dodoe {
         [[nodiscard]] GfxGraphicsPipelineHandle resolveGraphicsPipeline(
             const MeshPassType pass_type,
             const GfxGraphicsPipelineDesc& pipeline_desc,
-            const GfxFramebufferInfo& framebuffer_info) const;
+            const GfxFramebufferInfo& framebuffer_info,
+            DrawCommandList& command_list) const;
         [[nodiscard]] GfxGraphicsPipelineHandle resolveGraphicsPipeline(
             const GfxGraphicsPipelineDesc& pipeline_desc,
-            const GfxFramebufferInfo& framebuffer_info) const;
+            const GfxFramebufferInfo& framebuffer_info,
+            DrawCommandList& command_list) const;
         void clear();
 
     private:

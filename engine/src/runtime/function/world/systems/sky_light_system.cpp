@@ -114,7 +114,7 @@ namespace dodoe {
         device->executeCommandList(cmd);
 
         auto texture = create_ref<Texture>();
-        texture->setGpuHandle(cubemap);
+        texture->setGpuHandle(create_ref<GfxTexture>(cubemap, desc, "SkyLight Cubemap"));
         return texture;
     }
 

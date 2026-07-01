@@ -132,12 +132,13 @@ namespace dodoe {
 
         Size_t HashFramebufferInfo(const GfxFramebufferInfo& framebuffer_info) {
             Size_t hash_value = 0;
-            for (const auto format : framebuffer_info.colorFormats) {
+            const auto& rhi = framebuffer_info.getRHI();
+            for (const auto format : rhi.colorFormats) {
                 hash_combine(hash_value, static_cast<UInt32>(format));
             }
-            hash_combine(hash_value, static_cast<UInt32>(framebuffer_info.depthFormat));
-            hash_combine(hash_value, framebuffer_info.sampleCount);
-            hash_combine(hash_value, framebuffer_info.sampleQuality);
+            hash_combine(hash_value, static_cast<UInt32>(rhi.depthFormat));
+            hash_combine(hash_value, rhi.sampleCount);
+            hash_combine(hash_value, rhi.sampleQuality);
             return hash_value;
         }
 
@@ -156,7 +157,7 @@ namespace dodoe {
             binding_layouts.size() != other.binding_layouts.size() ||
             !EqualRenderState(render_state, other.render_state) ||
             !EqualShadingRateState(shading_rate_state, other.shading_rate_state) ||
-            framebuffer_info != other.framebuffer_info) {
+            framebuffer_info.getRHI() != other.framebuffer_info.getRHI()) {
             return false;
         }
 

@@ -6,8 +6,6 @@
 
 #include "render_graph_pass.h"
 #include "render_graph_resource.h"
-#include "runtime/function/graphics/draw_command_list.h"
-
 #include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
@@ -29,7 +27,7 @@ namespace dodoe {
         UInt32 addImportedBufferResource(const GfxBufferHandle& buffer, const String& name);
         UInt32 addBackBufferResource(const String& name);
         void compile();
-        DrawCommandList execute(ThreadPool& pool, const RenderGraphExecuteContext& context);
+        void execute(ThreadPool& pool, const RenderGraphExecuteContext& context);
         void reset();
 
         [[nodiscard]] Bool isCompiled() const { return m_compiled; }

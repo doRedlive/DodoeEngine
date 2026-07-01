@@ -159,8 +159,8 @@ namespace dodoe {
         return primitive;
     }
 
-    void PrimitiveRenderObject::createResources(const GfxDeviceHandle device, DrawCommandList& cmd_list) {
-        if (!device || m_upload_data.position_data.empty() || m_upload_data.index_data.empty()) {
+    void PrimitiveRenderObject::createResources(DrawCommandList& cmd_list) {
+        if (m_upload_data.position_data.empty() || m_upload_data.index_data.empty()) {
             return;
         }
 
@@ -193,7 +193,7 @@ namespace dodoe {
                     m_upload_data.texcoord_data[i] : Vector2f(0.0f);
                 std::memcpy(vertex_bytes.data() + base_offset + sizeof(Vector3f) + sizeof(UInt32), &uv, sizeof(Vector2f));
             }
-            cmd_list.createBuffer(device, vertex_buffer_desc, std::addressof(vb), vertex_bytes.data(), vertex_byte_size);
+            vb = cmd_list.createBuffer(vertex_buffer_desc, vertex_bytes.data(), vertex_byte_size);
         }
 
         if (index_count > 0) {
@@ -202,7 +202,7 @@ namespace dodoe {
                 .setIsIndexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::IndexBuffer)
                 .setDebugName(fmt::format("Index Buffer {}", m_upload_data.name));
-            cmd_list.createBuffer(device, index_buffer_desc, std::addressof(ib), m_upload_data.index_data.data(), index_byte_size);
+            ib = cmd_list.createBuffer(index_buffer_desc, m_upload_data.index_data.data(), index_byte_size);
         }
     }
 

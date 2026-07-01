@@ -9,7 +9,7 @@ namespace dodoe {
 
     void ImGuiFeature::registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const {
         DO_ASSERT(context.pass_context != nullptr, "ImGuiFeature requires pass context");
-        RenderPipelinePass::RenderImGuiPass(graph, *context.pass_context, m_resources);
+        // RenderPipelinePass::RenderImGuiPass(graph, *context.pass_context, m_resources);
     }
 
 } // dodoe

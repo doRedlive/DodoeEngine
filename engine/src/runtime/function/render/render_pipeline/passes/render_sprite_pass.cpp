@@ -14,6 +14,7 @@
 #include "runtime/function/render/framework/texture_manager.h"
 #include "runtime/function/render/framework/descriptor_table_manager.h"
 #include "runtime/core/utils/common.h"
+#include "runtime/core/math/math.h"
 #include "render_pass_blackboard_keys.h"
 
 namespace dodoe::RenderPipelinePass {
@@ -49,6 +50,7 @@ namespace dodoe::RenderPipelinePass {
                     instance_buffer_desc.desc = GfxBufferDesc()
                         .setByteSize(instance_count * static_cast<UInt32>(sizeof(SpriteInstance)))
                         .setIsVertexBuffer(true)
+                        .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                         .setDebugName("RDG SpriteInstanceBuffer");
                     parameters.instance_buffer = pass_builder.write(pass_builder.createTransientBuffer(instance_buffer_desc, "SpriteInstanceBuffer"));
 
@@ -56,6 +58,7 @@ namespace dodoe::RenderPipelinePass {
                     quad_vb_desc.desc = GfxBufferDesc()
                         .setByteSize(static_cast<UInt32>(sizeof(kQuadVertices)))
                         .setIsVertexBuffer(true)
+                        .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                         .setDebugName("RDG SpriteQuadVB");
                     parameters.quad_vertex_buffer = pass_builder.write(pass_builder.createTransientBuffer(quad_vb_desc, "SpriteQuadVB"));
 
@@ -63,11 +66,12 @@ namespace dodoe::RenderPipelinePass {
                     quad_ib_desc.desc = GfxBufferDesc()
                         .setByteSize(static_cast<UInt32>(sizeof(kQuadIndices)))
                         .setIsIndexBuffer(true)
+                        .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                         .setDebugName("RDG SpriteQuadIB");
                     parameters.quad_index_buffer = pass_builder.write(pass_builder.createTransientBuffer(quad_ib_desc, "SpriteQuadIB"));
 
                     RenderGraphBufferDesc vp_buf_desc{};
-                    vp_buf_desc.desc = GfxBufferDesc().setByteSize(64).setIsConstantBuffer(true).setDebugName("SpriteVPBuffer");
+                    vp_buf_desc.desc = GfxBufferDesc().setByteSize(64).setIsConstantBuffer(true).enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer).setDebugName("SpriteVPBuffer");
                     parameters.vp_buffer = pass_builder.write(pass_builder.createTransientBuffer(vp_buf_desc, "SpriteVPBuffer"));
                 },
                 [pass_context, &resources](const SpritePassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
@@ -87,6 +91,17 @@ namespace dodoe::RenderPipelinePass {
                     if (sprite_infos.empty()) {
                         return;
                     }
+
+                    const auto swapchain_extent = context.getGfxContext()->getSwapchainExtent2d();
+                    const Matrix4f vp_matrix = Math::OrthoRH_ZO(
+                        0.0f, static_cast<Float>(swapchain_extent.x),
+                        static_cast<Float>(swapchain_extent.y), 0.0f,
+                        0.0f, 1.0f);
+                    command_list.setBufferState(vp_buffer, GfxResourceStates::CopyDest);
+                    command_list.commitBarriers();
+                    command_list.writeBuffer(vp_buffer, &vp_matrix, sizeof(Matrix4f));
+                    command_list.setBufferState(vp_buffer, GfxResourceStates::ConstantBuffer);
+                    command_list.commitBarriers();
 
                     command_list.writeBuffer(quad_vertex_buffer, kQuadVertices, sizeof(kQuadVertices));
                     command_list.writeBuffer(quad_index_buffer, kQuadIndices, sizeof(kQuadIndices));

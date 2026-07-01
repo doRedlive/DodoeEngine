@@ -42,7 +42,7 @@ namespace dodoe {
         for (const auto& item : desc.extra_binding_items) {
             binding_layout_desc.addItem(item);
         }
-        state->m_binding_layout = device->createBindingLayout(binding_layout_desc);
+        state->m_binding_layout = GDrawCommandList.createBindingLayout(binding_layout_desc);
 
         auto buffer_desc = GfxBufferDesc()
             .setByteSize(static_cast<UInt32>(desc.constant_buffer_size))
@@ -50,14 +50,14 @@ namespace dodoe {
             .setIsVolatile(true)
             .setMaxVersions(desc.constant_buffer_max_versions)
             .setDebugName((desc.debug_name + " ConstantBuffer").c_str());
-        state->m_constant_buffer = device->createBuffer(buffer_desc);
+        state->m_constant_buffer = GDrawCommandList.createBuffer(buffer_desc);
 
         auto binding_set_desc = GfxBindingSetDesc()
-            .addItem(GfxBindingSetItem::ConstantBuffer(0, state->m_constant_buffer));
+            .addItem(GfxBindingSetItem::ConstantBuffer(0, state->m_constant_buffer->getRHIHandle()));
         for (const auto& item : desc.extra_binding_set_items) {
             binding_set_desc.addItem(item);
         }
-        state->m_binding_set = device->createBindingSet(binding_set_desc, state->m_binding_layout);
+        state->m_binding_set = GDrawCommandList.createBindingSet(binding_set_desc, state->m_binding_layout);
 
         m_pipeline_state = std::move(state);
         return true;
@@ -114,8 +114,8 @@ namespace dodoe {
         }
 
         DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: calling device->createGraphicsPipeline");
-        m_pipeline_state->m_pipeline = m_gfx->getDevice()->createGraphicsPipeline(
-            pipeline_desc, framebuffer_info);
+        m_pipeline_state->m_pipeline = create_ref<GfxGraphicsPipeline>();
+        m_pipeline_state->m_pipeline->initializeRHI(m_gfx->getDevice(), pipeline_desc, framebuffer_info);
         DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: pipeline created, handle={}", m_pipeline_state->m_pipeline != nullptr);
     }
 
@@ -167,7 +167,7 @@ namespace dodoe {
             if (!m_pipeline_state->m_desc.disable_caching) {
                 MeshDrawCommandCacheKey cache_key;
                 cache_key.batch_hash =
-                    reinterpret_cast<Size_t>(element.vertex_buffer.Get()) ^
+                    reinterpret_cast<Size_t>(element.vertex_buffer.get()) ^
                     (static_cast<Size_t>(batch.primitive_id) << 1) ^
                     (static_cast<Size_t>(element.section_index) << 9);
                 cache_key.material_hash = batch.material
@@ -195,18 +195,17 @@ namespace dodoe {
             if (m_pipeline_state->m_desc.descriptor_table) {
                 auto* table = m_pipeline_state->m_desc.descriptor_table->getDescriptorTable();
                 if (table) {
-                    command.binding_sets.push_back(
-                        GfxBindingSetHandle(table));
+                    command.binding_sets.push_back(create_ref<GfxBindingSet>(cutie::BindingSetHandle(table)));
                 }
             }
 
             command.vertex_bindings.push_back(
                 GfxVertexBufferBinding()
-                    .setBuffer(element.vertex_buffer)
+                    .setBuffer(element.vertex_buffer->getRHI())
                     .setSlot(0).setOffset(0));
 
             command.index_binding = GfxIndexBufferBinding()
-                .setBuffer(element.index_buffer)
+                .setBuffer(element.index_buffer->getRHI())
                 .setFormat(GfxFormat::R32_UINT)
                 .setOffset(0);
 
@@ -216,7 +215,7 @@ namespace dodoe {
                 .setStartIndexLocation(element.index_offset)
                 .setStartVertexLocation(element.vertex_offset);
 
-            command.sort_key = reinterpret_cast<UInt64>(command.pipeline.Get());
+            command.sort_key = reinterpret_cast<UInt64>(command.pipeline.get());
 
             if (per_batch_fn) {
                 per_batch_fn(cmd_list, batch, m_pipeline_state->m_constant_buffer);
@@ -225,7 +224,7 @@ namespace dodoe {
             if (!m_pipeline_state->m_desc.disable_caching) {
                 MeshDrawCommandCacheKey cache_key;
                 cache_key.batch_hash =
-                    reinterpret_cast<Size_t>(element.vertex_buffer.Get()) ^
+                    reinterpret_cast<Size_t>(element.vertex_buffer.get()) ^
                     (static_cast<Size_t>(batch.primitive_id) << 1) ^
                     (static_cast<Size_t>(element.section_index) << 9);
                 cache_key.material_hash = batch.material
@@ -262,17 +261,17 @@ namespace dodoe {
 
         for (const auto& cmd : commands) {
             auto graphics_state = GfxGraphicsState()
-                .setFramebuffer(framebuffer)
+                .setFramebuffer(framebuffer->getRHI())
                 .setViewport(viewport_state);
 
             if (cmd.pipeline != current_pipeline) {
-                graphics_state.setPipeline(cmd.pipeline);
+                graphics_state.setPipeline(cmd.pipeline->getRHIHandle());
                 current_pipeline = cmd.pipeline;
             }
 
             for (const auto& bs : cmd.binding_sets) {
-                if (bs) {
-                    graphics_state.addBindingSet(bs);
+                if (bs && bs->isRHIReady()) {
+                    graphics_state.addBindingSet(bs->getRHIHandle());
                 }
             }
 
@@ -337,19 +336,19 @@ namespace dodoe {
                 .setName("a_UV").setFormat(GfxFormat::RG32_FLOAT)
                 .setOffset(kTexCoordOff).setElementStride(kVertexStride),
             GfxVertexAttributeDesc()
-                .setName("a_Model0").setFormat(GfxFormat::RGBA32_FLOAT)
+                .setName("TEXCOORD3").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(0)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
             GfxVertexAttributeDesc()
-                .setName("a_Model1").setFormat(GfxFormat::RGBA32_FLOAT)
+                .setName("TEXCOORD4").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f))
                 .setElementStride(kInstanceStride).setIsInstanced(true),
             GfxVertexAttributeDesc()
-                .setName("a_Model2").setFormat(GfxFormat::RGBA32_FLOAT)
+                .setName("TEXCOORD5").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f) * 2)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
             GfxVertexAttributeDesc()
-                .setName("a_Model3").setFormat(GfxFormat::RGBA32_FLOAT)
+                .setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT)
                 .setBufferIndex(1).setOffset(sizeof(Vector4f) * 3)
                 .setElementStride(kInstanceStride).setIsInstanced(true),
         };

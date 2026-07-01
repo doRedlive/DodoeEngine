@@ -40,7 +40,7 @@ namespace dodoe {
         }
 
         void compile();
-        DrawCommandList execute(ThreadPool& pool, const RenderGraphExecuteContext& context);
+        void execute(ThreadPool& pool, const RenderGraphExecuteContext& context);
         void reset();
 
         [[nodiscard]] RenderGraph& graph() { return m_graph; }

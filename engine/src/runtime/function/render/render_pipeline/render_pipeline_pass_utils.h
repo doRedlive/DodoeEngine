@@ -103,26 +103,21 @@ namespace dodoe::rendering_pipeline_utils {
         const auto device = context.getGfxContext()->getDevice();
         const auto input_texture = context.resolveTexture(input);
         const auto output_texture = context.resolveTexture(output);
-        auto framebuffer = device->createFramebuffer(GfxFramebufferDesc().addColorAttachment(output_texture));
-        auto binding_set = device->createBindingSet(
+        auto fb_desc = GfxFramebufferDesc().addColorAttachment(output_texture);
+        auto framebuffer = command_list.createFramebuffer(fb_desc);
+        auto binding_set = command_list.createBindingSet(
             GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::Texture_SRV(0, input_texture))
+                .addItem(GfxBindingSetItem::Texture_SRV(0, input_texture->getRHIHandle()))
                 .addItem(GfxBindingSetItem::Sampler(0, sampler)),
-            binding_layout
-        );
+            binding_layout);
         const auto viewport_state = BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
 
         command_list.setTextureState(input_texture, GfxAllSubresources, GfxResourceStates::ShaderResource);
         command_list.setTextureState(output_texture, GfxAllSubresources, GfxResourceStates::RenderTarget);
         command_list.commitBarriers();
         command_list.clearTextureFloat(output_texture, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-        command_list.setGraphicsState(
-            GfxGraphicsState()
-                .setPipeline(pipeline)
-                .setFramebuffer(framebuffer)
-                .setViewport(viewport_state)
-                .addBindingSet(binding_set)
-        );
+        DynamicArray<GfxBindingSetHandle> bs_arr = {binding_set};
+        command_list.setGraphicsState(framebuffer, pipeline, bs_arr, viewport_state);
         command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         command_list.setTextureState(output_texture, GfxAllSubresources, GfxResourceStates::ShaderResource);
         command_list.commitBarriers();

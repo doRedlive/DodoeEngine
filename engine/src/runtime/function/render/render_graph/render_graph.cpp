@@ -194,39 +194,41 @@ namespace dodoe {
         m_compiled = true;
     }
 
-    DrawCommandList RenderGraph::execute(ThreadPool& pool, const RenderGraphExecuteContext& context) {
+    void RenderGraph::execute(ThreadPool& pool, const RenderGraphExecuteContext& context) {
         DO_ASSERT(m_compiled, "RenderGraph must be compiled before execute");
         DO_ASSERT(context.gfx_context != nullptr, "RenderGraphContext gfx_context is null");
 
         RenderGraphResourceRegistry resource_registry{};
         resource_registry.initialize(m_resources, *context.gfx_context, context.swapchain_image_index);
-        DrawCommandList merged_command_list{};
 
         for (Size_t graph_level_index = 0; graph_level_index < m_levels.size(); ++graph_level_index) {
             const auto& level = m_levels[graph_level_index];
+
+            DynamicArray<DrawCommandList> pass_command_lists(level.size());
+            for (auto& cmd_list : pass_command_lists) {
+                cmd_list.setDevice(GDrawCommandList.getDevice());
+            }
+
             WaitGroup wg(static_cast<Int32>(level.size()));
-            DynamicArray<DrawCommandList> level_command_lists(level.size());
-            for (Size_t level_index = 0; level_index < level.size(); level_index++) {
-                const auto pass = m_passes[level[level_index]];
-                pool.enqueue([pass, &context, &resource_registry, &level_command_lists, level_index, &wg] {
+            for (Size_t i = 0; i < level.size(); ++i) {
+                const auto pass_index = level[i];
+                const auto pass = m_passes[pass_index];
+                auto* cmd_list = &pass_command_lists[i];
+
+                pool.enqueue([pass, &context, &resource_registry, &wg, cmd_list] {
                     RenderGraphPassContext pass_context(context, resource_registry);
-                    auto& command_list = level_command_lists[level_index];
-                    command_list.open();
-                    command_list.beginMarker(pass->getName().c_str());
-                    pass->execute(pass_context, command_list);
-                    command_list.endMarker();
-                    command_list.close();
+                    cmd_list->beginMarker(pass->getName().c_str());
+                    pass->execute(pass_context, *cmd_list);
+                    cmd_list->endMarker();
                     wg.done();
                 });
             }
             wg.wait();
 
-            for (auto& level_command_list : level_command_lists) {
-                merged_command_list.append(std::move(level_command_list));
+            for (auto& cmd_list : pass_command_lists) {
+                GDrawCommandList.append(std::move(cmd_list));
             }
         }
-
-        return merged_command_list;
     }
 
     void RenderGraph::reset() {

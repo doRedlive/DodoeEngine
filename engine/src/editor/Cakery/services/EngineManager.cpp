@@ -32,7 +32,7 @@ EngineManager::EngineManager()
 {
     m_spec.name               = "Cakery";
     m_spec.window_resizeable  = true;
-    m_spec.render_settings.api      = RenderBackendApiType::Vulkan;
+    m_spec.render_settings.api      = RenderBackendApiType::DX12;
     m_spec.render_settings.pipeline = RenderingPipelineType::Deferred;
 }
 
@@ -103,7 +103,6 @@ void EngineManager::shutdown()
 
 void EngineManager::tick()
 {
-    // Mirrors Application::run() loop body
     EventSystem::Poll();
     m_context->tickOneFrame();
     EventSystem::Handle();

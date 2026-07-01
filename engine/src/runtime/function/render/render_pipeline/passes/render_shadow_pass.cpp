@@ -48,8 +48,7 @@ namespace dodoe::RenderPipelinePass {
                     const auto shadow_map = context.resolveTexture(parameters.shadow_map);
 
                     auto framebuffer_desc = GfxFramebufferDesc().setDepthAttachment(shadow_map);
-                    auto framebuffer_ptr = create_ref<GfxFramebufferHandle>();
-                    command_list.createFramebuffer(device, framebuffer_desc, framebuffer_ptr.get());
+                    auto framebuffer = command_list.createFramebuffer( framebuffer_desc);
 
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
 
@@ -62,7 +61,7 @@ namespace dodoe::RenderPipelinePass {
                         view->getShaderData(),
                         view->getPassData(),
                         view->getPassData().getMeshPassCommands(MeshPassType::DirectionalShadow),
-                        *framebuffer_ptr,
+                        framebuffer,
                         viewport_state,
                         GfxGraphicsPipelineHandle{},
                         parameters.primitive_scene_buffer,

@@ -9,7 +9,13 @@ namespace dodoe {
         const auto device = gfx_context.getDevice();
         DO_ASSERT(device != nullptr, "ShaderLibrary device is null");
 
-        auto load_shader = [device](const char* path, const GfxShaderType shader_type, const char* debug_name) {
+        const auto api = RenderSettings::GetRenderBackendApiType();
+        const char* vert_ext = (api == RenderBackendApiType::DX12) ? ".vert.dxil" : ".vert.spv";
+        const char* frag_ext = (api == RenderBackendApiType::DX12) ? ".frag.dxil" : ".frag.spv";
+        const char* geom_ext = (api == RenderBackendApiType::DX12) ? ".geom.dxil" : ".geom.spv";
+
+        auto load_shader = [device](const std::string& file_name, const GfxShaderType shader_type, const char* debug_name) {
+            std::string path = "engine/res/shaders/bin/" + file_name;
             auto source = ReadShaderFile(path);
             if (source.empty()) {
                 DO_ERROR("ShaderLibrary::load_shader failed to read shader file: {}", path);
@@ -26,21 +32,21 @@ namespace dodoe {
             return shader;
         };
 
-        m_gbuffer_vertex_shader = load_shader("engine/res/shaders/bin/main_camera_pass.vert.spv", GfxShaderType::Vertex, "ShaderLibrary GBuffer VS");
-        m_gbuffer_pixel_shader = load_shader("engine/res/shaders/bin/main_camera_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary GBuffer PS");
-        m_shadow_vertex_shader = load_shader("engine/res/shaders/bin/directional_light_shadow_pass.vert.spv", GfxShaderType::Vertex, "ShaderLibrary Shadow VS");
-        m_shadow_pixel_shader = load_shader("engine/res/shaders/bin/directional_light_shadow_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary Shadow PS");
-        m_fullscreen_vertex_shader = load_shader("engine/res/shaders/bin/fullscreen.vert.spv", GfxShaderType::Vertex, "ShaderLibrary Fullscreen VS");
-        m_skybox_pixel_shader = load_shader("engine/res/shaders/bin/skybox_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary Skybox PS");
-        m_deferred_light_pixel_shader = load_shader("engine/res/shaders/bin/deferred_light_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary DeferredLight PS");
-        m_tone_mapping_pixel_shader = load_shader("engine/res/shaders/bin/tone_mapping_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary ToneMapping PS");
-        m_color_grading_pixel_shader = load_shader("engine/res/shaders/bin/color_grading_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary ColorGrading PS");
-        m_fxaa_pixel_shader = load_shader("engine/res/shaders/bin/fxaa_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary FXAA PS");
-        m_present_pixel_shader = load_shader("engine/res/shaders/bin/combine_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary Present PS");
-        m_imgui_vertex_shader = load_shader("engine/res/shaders/bin/imgui_pass.vert.spv", GfxShaderType::Vertex, "ShaderLibrary ImGui VS");
-        m_imgui_pixel_shader = load_shader("engine/res/shaders/bin/imgui_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary ImGui PS");
-        m_sprite_vertex_shader = load_shader("engine/res/shaders/bin/sprite_pass.vert.spv", GfxShaderType::Vertex, "ShaderLibrary Sprite VS");
-        m_sprite_pixel_shader = load_shader("engine/res/shaders/bin/sprite_pass.frag.spv", GfxShaderType::Pixel, "ShaderLibrary Sprite PS");
+        m_gbuffer_vertex_shader = load_shader(std::string("main_camera_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary GBuffer VS");
+        m_gbuffer_pixel_shader = load_shader(std::string("main_camera_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary GBuffer PS");
+        m_shadow_vertex_shader = load_shader(std::string("directional_light_shadow_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Shadow VS");
+        m_shadow_pixel_shader = load_shader(std::string("directional_light_shadow_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Shadow PS");
+        m_fullscreen_vertex_shader = load_shader(std::string("fullscreen") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Fullscreen VS");
+        m_skybox_pixel_shader = load_shader(std::string("skybox_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Skybox PS");
+        m_deferred_light_pixel_shader = load_shader(std::string("deferred_light_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary DeferredLight PS");
+        m_tone_mapping_pixel_shader = load_shader(std::string("tone_mapping_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary ToneMapping PS");
+        m_color_grading_pixel_shader = load_shader(std::string("color_grading_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary ColorGrading PS");
+        m_fxaa_pixel_shader = load_shader(std::string("fxaa_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary FXAA PS");
+        m_present_pixel_shader = load_shader(std::string("combine_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Present PS");
+        m_imgui_vertex_shader = load_shader(std::string("imgui_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary ImGui VS");
+        m_imgui_pixel_shader = load_shader(std::string("imgui_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary ImGui PS");
+        m_sprite_vertex_shader = load_shader(std::string("sprite_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Sprite VS");
+        m_sprite_pixel_shader = load_shader(std::string("sprite_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Sprite PS");
 
         DO_INFO("ShaderLibrary::initialize completed");
     }

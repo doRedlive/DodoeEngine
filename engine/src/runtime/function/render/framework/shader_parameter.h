@@ -33,7 +33,7 @@ namespace dodoe {
             return GfxBindingLayoutItem::Texture_SRV(Slot);
         }
         static void addToBindingSet(GfxBindingSetDesc& desc, const GfxTextureHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::Texture_SRV(Slot, resolved.Get()));
+            desc.addItem(GfxBindingSetItem::Texture_SRV(Slot, resolved->getRHIHandle().Get()));
         }
     };
 
@@ -49,7 +49,7 @@ namespace dodoe {
             return GfxBindingLayoutItem::Texture_SRV(Slot);
         }
         static void addToBindingSet(GfxBindingSetDesc& desc, const GfxTextureHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::Texture_SRV(Slot, resolved.Get()));
+            desc.addItem(GfxBindingSetItem::Texture_SRV(Slot, resolved->getRHIHandle().Get()));
         }
     };
 
@@ -98,7 +98,7 @@ namespace dodoe {
             return GfxBindingLayoutItem::VolatileConstantBuffer(Slot);
         }
         static void addToBindingSet(GfxBindingSetDesc& desc, const GfxBufferHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::ConstantBuffer(Slot, resolved.Get()));
+            desc.addItem(GfxBindingSetItem::ConstantBuffer(Slot, resolved->getRHIHandle().Get()));
         }
     };
 
@@ -190,16 +190,17 @@ namespace dodoe {
                     MemberT::addToBindingSet(desc, resolveBuf(member.value));
                 }
             });
+            auto bs = create_ref<GfxBindingSet>();
+            // Store info for deferred initialization
+            GfxBindingSetHandle result = bs;
             return device->createBindingSet(desc, layout);
         }
 
         template <typename ResolveTexFunc, typename ResolveBufFunc>
-        static void createBindingSetDeferred(
+        static GfxBindingSetHandle createBindingSetDeferred(
             DrawCommandList& command_list,
-            GfxDevice* device,
             const GfxBindingLayoutHandle& layout,
             ShaderParamStruct& params,
-            GfxBindingSetHandle* destination,
             ResolveTexFunc&& resolveTex,
             ResolveBufFunc&& resolveBuf)
         {
@@ -218,7 +219,7 @@ namespace dodoe {
                     MemberT::addToBindingSet(desc, resolveBuf(member.value));
                 }
             });
-            command_list.createBindingSet(device, desc, layout, destination);
+            return command_list.createBindingSet(desc, layout);
         }
     };
 

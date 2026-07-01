@@ -1,6 +1,6 @@
 #version 450 core
 
-const int kMaxPointLightCount = 32;
+const int kMaxPointLightCount = 16;
 const int kMaxPointLightGeomVertices = kMaxPointLightCount * 6;
 
 layout(location = 0) in vec3 in_position_world_space[];

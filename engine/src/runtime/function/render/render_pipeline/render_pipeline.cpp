@@ -176,17 +176,11 @@ namespace dodoe {
             }
         };
 
-        auto* pipeline_state_cache = m_shared_render_service->getPipelineStateCache();
-        const auto gbuffer_pipeline = pipeline_state_cache->resolveGraphicsPipeline(
-            MeshPassType::GBuffer,
-            build_gbuffer_pipeline_desc(),
-            build_gbuffer_framebuffer_info()
-        );
-        const auto shadow_pipeline = pipeline_state_cache->resolveGraphicsPipeline(
-            MeshPassType::DirectionalShadow,
-            build_shadow_pipeline_desc(),
-            build_shadow_framebuffer_info()
-        );
+        auto device = m_gfx_context->getDevice();
+        auto gbuffer_pipeline = create_ref<GfxGraphicsPipeline>();
+        gbuffer_pipeline->initializeRHI(device, build_gbuffer_pipeline_desc(), build_gbuffer_framebuffer_info());
+        auto shadow_pipeline = create_ref<GfxGraphicsPipeline>();
+        shadow_pipeline->initializeRHI(device, build_shadow_pipeline_desc(), build_shadow_framebuffer_info());
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
@@ -246,14 +240,18 @@ namespace dodoe {
         m_features.push_back(create_scope<SpriteFeature>());
         m_features.push_back(create_scope<ImGuiFeature>());
         m_features.push_back(create_scope<PresentFeature>());
-        m_deferred_light_constant_buffer = m_gfx_context->getDevice()->createBuffer(
-            GfxBufferDesc()
-                .setByteSize(256)
-                .setIsConstantBuffer(true)
-                .setIsVolatile(true)
-                .setMaxVersions(128)
-                .setDebugName("DeferredLightPass ConstantBuffer")
-        );
+        {
+            auto buf = create_ref<GfxBuffer>(
+                GfxBufferDesc()
+                    .setByteSize(256)
+                    .setIsConstantBuffer(true)
+                    .setIsVolatile(true)
+                    .setMaxVersions(128)
+                    .setDebugName("DeferredLightPass ConstantBuffer"),
+                "DeferredLightPass ConstantBuffer");
+            buf->initializeRHI(m_gfx_context->getDevice());
+            m_deferred_light_constant_buffer = buf;
+        }
         return true;
     }
 
@@ -275,19 +273,18 @@ namespace dodoe {
         m_thread_pool.reset();
     }
 
-    DrawCommandList RenderPipeline::render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index) {
+    void RenderPipeline::render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index) {
         initViews(scene, view_family);
         setupMeshPassContexts(scene, view_family);
         buildMeshDrawCommands(view_family);
-        return buildFrameCommandList(view_family, scene, swapchain_image_index);
+        buildFrameCommandList(view_family, scene, swapchain_image_index);
     }
 
-    DrawCommandList RenderPipeline::buildFrameCommandList(
+    void RenderPipeline::buildFrameCommandList(
         const RenderViewFamily& view_family,
         RenderScene& scene,
         const UInt32 swapchain_image_index) const
     {
-        DrawCommandList frame_command_list{};
         const auto pass_context = buildPassContext(scene);
 
         DynamicArray<RenderGraphBuilder> graphs;
@@ -311,17 +308,13 @@ namespace dodoe {
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             DO_DEBUG("RenderPipeline: About to execute graph for view_index={}", view_index);
-            frame_command_list.append(
-                executeFrameGraph(graphs[view_index], view_family, scene,
-                                view_family.getView(view_index), view_index, swapchain_image_index)
-            );
+            executeFrameGraph(graphs[view_index], view_family, scene,
+                            view_family.getView(view_index), view_index, swapchain_image_index);
             DO_DEBUG("RenderPipeline: Graph executed for view_index={}", view_index);
         }
-
-        return frame_command_list;
     }
 
-    DrawCommandList RenderPipeline::executeFrameGraph(
+    void RenderPipeline::executeFrameGraph(
         RenderGraphBuilder& graph,
         const RenderViewFamily& view_family,
         RenderScene& scene,
@@ -336,7 +329,7 @@ namespace dodoe {
         context.view_index = view_index;
         context.gfx_context = m_gfx_context;
         context.swapchain_image_index = swapchain_image_index;
-        return graph.execute(*m_thread_pool, context);
+        graph.execute(*m_thread_pool, context);
     }
 
 } // dodoe

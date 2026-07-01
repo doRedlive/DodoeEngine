@@ -73,8 +73,11 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC cutie
         PUBLIC cutie_vk
         PUBLIC cutie_gl
+        PUBLIC cutie_d3d12
         PUBLIC pybind11::embed
         PUBLIC ${Vulkan_LIBRARIES}
+        PUBLIC d3d12
+        PUBLIC dxgi
 )
 
 target_link_directories(${TARGET_NAME} PRIVATE "${ENGINE_ROOT_DIR}/external/python/libs")

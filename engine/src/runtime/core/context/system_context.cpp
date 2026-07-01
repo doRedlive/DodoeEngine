@@ -1,10 +1,8 @@
-// do@Redlive
-
 #include "dopch.h"
 
 #include "system_context.h"
 #include "runtime/resource/resource_manager.h"
-// core
+
 #include "runtime/core/event/event.h"
 #include "runtime/core/event/event_system.h"
 #include "runtime/core/meta/reflection/reflection_register.h"
@@ -15,18 +13,15 @@
 
 #include "runtime/function/time/time_system.h"
 
-// resource
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_system.h"
 
-// render
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/ui/ui_system.h"
 
-// game
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/script/script_system.h"
@@ -69,6 +64,7 @@ namespace dodoe {
         RenderSettingsInitInfo render_settings_init_info;
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
         render_settings_init_info.pipeline = m_init_info.spec.render_settings.pipeline;
+        render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
 
         m_ui_system     = UISystem::Create({m_window_manager.get()});
@@ -87,11 +83,31 @@ namespace dodoe {
         m_world = World::Create({"Main"});
         DO_ASSERT(m_world, "World init failed");
 
-        m_draw_thread = create_scope<DrawThread>();
-        m_draw_thread->start(m_render_system->getGfx()->getDevice(), m_render_system->getGfx());
+        auto threading_mode = m_init_info.spec.render_settings.threading_mode;
+        auto device = m_render_system->getGfx()->getDevice();
+        auto* gfx = m_render_system->getGfx();
 
-        m_render_thread = create_scope<RenderThread>();
-        m_render_thread->start(m_render_system.get(), m_draw_thread.get());
+        GDrawCommandList.setDevice(device);
+
+        switch (threading_mode) {
+        case ThreadingMode::TripleThread:
+            m_draw_thread = create_scope<DrawThread>();
+            m_draw_thread->start(device, gfx);
+
+            m_render_thread = create_scope<RenderThread>();
+            m_render_thread->start(m_render_system.get(), m_draw_thread.get());
+            break;
+
+        case ThreadingMode::DualThread:
+            m_render_thread = create_scope<RenderThread>();
+            m_render_thread->start(m_render_system.get(), device, gfx);
+            break;
+
+        case ThreadingMode::SingleThread:
+            m_render_thread = create_scope<RenderThread>();
+            m_render_thread->setupForDirect(m_render_system.get(), device, gfx);
+            break;
+        }
 
         return true;
     }
@@ -121,7 +137,6 @@ namespace dodoe {
         m_render_thread->stop();
         m_render_thread.reset();
 
-        m_draw_thread->stop();
         m_draw_thread.reset();
 
         InputManager::Destroy(m_input_manager);
@@ -158,12 +173,15 @@ namespace dodoe {
     void SystemContext::renderTick() {
         if (m_ui_system) { m_ui_system->prepare(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
-        if (m_render_thread) {
-            DO_DEBUG("SystemContext::renderTick calling m_render_thread->submitAndWait()");
-            m_render_thread->submitAndWait();
-            DO_DEBUG("SystemContext::renderTick m_render_thread->submitAndWait() returned");
+
+        if (!m_render_thread) {
+            return;
+        }
+
+        if (m_render_thread->getMode() == ThreadingMode::SingleThread) {
+            m_render_thread->executeFrameOnce();
         } else {
-            DO_WARN("SystemContext::renderTick m_render_thread is null!");
+            m_render_thread->submitAndWait();
         }
     }
 

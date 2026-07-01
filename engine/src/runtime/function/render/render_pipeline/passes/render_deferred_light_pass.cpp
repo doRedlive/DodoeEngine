@@ -79,8 +79,7 @@ namespace dodoe::RenderPipelinePass {
                 const auto hdr = context.resolveTexture(parameters.hdr_color);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
-                auto framebuffer_ptr = create_ref<GfxFramebufferHandle>();
-                command_list.createFramebuffer(device, framebuffer_desc, framebuffer_ptr.get());
+                auto fb = command_list.createFramebuffer( framebuffer_desc);
 
                 DeferredLightPassShaderParams shader_params;
                 shader_params.constant_buffer.value = parameters.constant_buffer;
@@ -94,21 +93,28 @@ namespace dodoe::RenderPipelinePass {
 
                 const auto binding_layout = ShaderBindingReflector<DeferredLightPassShaderParams>::getOrCreateLayout(device, GfxShaderType::Pixel);
 
-                auto binding_set_ptr = create_ref<GfxBindingSetHandle>();
-                ShaderBindingReflector<DeferredLightPassShaderParams>::createBindingSetDeferred(
-                    command_list, device, binding_layout, shader_params, binding_set_ptr.get(),
+                auto bs = ShaderBindingReflector<DeferredLightPassShaderParams>::createBindingSetDeferred(
+                    command_list, binding_layout, shader_params,
                     [&](auto h) { return context.resolveTexture(h); },
                     [&](auto h) { return context.resolveBuffer(h); }
                 );
 
+                if (!bs) {
+                    DO_ERROR("DeferredLightPass: Failed to create binding set");
+                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
+                }
+
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                const auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library.getFullscreenVertexShader(),
                         shader_library.getDeferredLightPixelShader(),
                         binding_layout
                     ),
-                    framebuffer_info
+                    framebuffer_info,
+                    command_list
                 );
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
                 const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*context.getView());
@@ -122,6 +128,19 @@ namespace dodoe::RenderPipelinePass {
                 command_list.commitBarriers();
 
                 const auto& light_infos = context.getScene()->getLightSceneInfos();
+                Bool has_enabled_lights = false;
+                for (const auto& light_info : light_infos) {
+                    if (light_info.isEnabled() && light_info.getLightType() != LightType::Sky) {
+                        has_enabled_lights = true;
+                        break;
+                    }
+                }
+                if (!has_enabled_lights) {
+                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
+                }
+
                 for (const auto& light_info : light_infos) {
                     if (!light_info.isEnabled()) {
                         continue;
@@ -159,14 +178,14 @@ namespace dodoe::RenderPipelinePass {
                             continue;
                     }
 
+                    command_list.setBufferState(context.resolveBuffer(parameters.constant_buffer), GfxResourceStates::CopyDest);
+                    command_list.commitBarriers();
                     command_list.writeBuffer(context.resolveBuffer(parameters.constant_buffer), &push, sizeof(push));
-                    command_list.setGraphicsState(
-                        GfxGraphicsState()
-                            .setPipeline(pipeline)
-                            .setFramebuffer(*framebuffer_ptr)
-                            .setViewport(viewport_state)
-                            .addBindingSet(*binding_set_ptr)
-                    );
+                    command_list.setBufferState(context.resolveBuffer(parameters.constant_buffer), GfxResourceStates::ConstantBuffer);
+                    command_list.commitBarriers();
+
+                    DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
+                    command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                     command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                 }
 

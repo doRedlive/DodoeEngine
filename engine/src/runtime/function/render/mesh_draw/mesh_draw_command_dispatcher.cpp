@@ -93,17 +93,17 @@ namespace dodoe {
             writePassShaderData(context, pass_type, shader_data.gbuffer_shader_data, command, pass_constant_buffer, command_list);
 
             auto graphics_state = GfxGraphicsState()
-                .setFramebuffer(framebuffer)
+                .setFramebuffer(framebuffer->getRHI())
                 .setViewport(viewport_state);
 
             if (pipeline != current_pipeline) {
-                graphics_state.setPipeline(pipeline);
+                graphics_state.setPipeline(pipeline->getRHIHandle());
                 current_pipeline = pipeline;
             }
 
             for (const auto& binding_set : command.binding_sets) {
-                if (binding_set) {
-                    graphics_state.addBindingSet(binding_set);
+                if (binding_set && binding_set->isRHIReady()) {
+                    graphics_state.addBindingSet(binding_set->getRHIHandle());
                 }
             }
 
@@ -113,7 +113,7 @@ namespace dodoe {
             if (command.uses_primitive_scene_buffer && primitive_scene_buffer.isValid()) {
                 graphics_state.addVertexBuffer(
                     GfxVertexBufferBinding()
-                        .setBuffer(context.resolveBuffer(primitive_scene_buffer))
+                        .setBuffer(context.resolveBuffer(primitive_scene_buffer)->getRHI())
                         .setSlot(command.primitive_scene_buffer_slot)
                         .setOffset(command.primitive_scene_buffer_offset)
                 );

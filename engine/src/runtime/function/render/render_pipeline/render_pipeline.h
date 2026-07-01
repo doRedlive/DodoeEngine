@@ -42,7 +42,7 @@ namespace dodoe {
         RenderPipeline() = default;
         ~RenderPipeline() = default;
 
-        DrawCommandList render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index);
+        void render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index);
 
     private:
         Bool initialize(const RenderPipelineCreateInfo& info);
@@ -52,11 +52,11 @@ namespace dodoe {
         void setupMeshPassRelevance(RenderView& view) const;
         void setupMeshPassContexts(const RenderScene& scene, RenderViewFamily& view_family) const;
         void buildMeshDrawCommands(RenderViewFamily& view_family) const;
-        DrawCommandList buildFrameCommandList(
+        void buildFrameCommandList(
             const RenderViewFamily& view_family,
             RenderScene& scene,
             const UInt32 swapchain_image_index) const;
-        DrawCommandList executeFrameGraph(
+        void executeFrameGraph(
             RenderGraphBuilder& graph,
             const RenderViewFamily& view_family,
             RenderScene& scene,

@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <mutex>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -15,6 +16,8 @@
 namespace dodoe {
 
     using DescriptorIndex = int;
+
+    class GfxContext;
 
     class DrawCommandList {
         struct MemoryBlock {
@@ -46,8 +49,14 @@ namespace dodoe {
     private:
         DrawCommand* m_head{nullptr};
         DrawCommand* m_tail{nullptr};
+        GfxDeviceHandle m_device{};
+        GfxCommandList* m_immediate_target{nullptr};
+        std::recursive_mutex m_enqueue_mutex{};
 
     public:
+        void beginImmediateFrame(GfxCommandList& cmd) { m_immediate_target = &cmd; }
+        void endImmediateFrame() { m_immediate_target = nullptr; }
+        [[nodiscard]] bool isImmediate() const { return m_immediate_target != nullptr; }
 
         template <typename TDerived>
         struct Command : DrawCommand {
@@ -78,11 +87,18 @@ namespace dodoe {
             static_assert(std::is_base_of_v<DrawCommand, TCommand>);
             static_assert(alignof(TCommand) <= alignof(std::max_align_t));
 
+            std::lock_guard<std::recursive_mutex> lock(m_enqueue_mutex);
             void* memory = allocate(sizeof(TCommand), alignof(TCommand));
             auto* command = new (memory) TCommand(std::forward<TArgs>(args)...);
             appendCommand(command);
             return *command;
         }
+
+        void setDevice(GfxDeviceHandle device) { m_device = device; }
+        [[nodiscard]] GfxDeviceHandle getDevice() const { return m_device; }
+
+        void beginFrame();
+        void endFrame();
 
         void reset();
         void reserve(Size_t byte_size);
@@ -95,6 +111,8 @@ namespace dodoe {
         [[nodiscard]] Size_t usedByteSize() const;
         [[nodiscard]] Size_t blockCount() const;
         [[nodiscard]] Size_t defaultBlockSize() const;
+
+        // ── Deferred draw / state commands ──────────────────────
 
         void open();
         void close();
@@ -117,11 +135,7 @@ namespace dodoe {
             UInt64 source_offset_bytes,
             UInt64 data_size_bytes);
         void writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes = 0);
-        void createBuffer(GfxDeviceHandle device, const GfxBufferDesc& desc, GfxBufferHandle* destination, const void* data, Size_t data_size);
-        void createFramebuffer(GfxDeviceHandle device, const GfxFramebufferDesc& desc, GfxFramebufferHandle* destination);
-        void createBindingSet(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout, GfxBindingSetHandle* destination);
-        void createTexture(GfxDeviceHandle device, const GfxTextureDesc& desc, GfxTextureHandle* destination, const void* data, Size_t data_size);
-        void createDescriptor(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle* texture_handle, DescriptorIndex* destination, UInt32 slot);
+        void writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch);
 
         template <typename TData>
         void writeBuffer(const GfxBufferHandle& buffer, const TData& data, UInt64 destination_offset_bytes = 0) {
@@ -140,11 +154,30 @@ namespace dodoe {
         void setTextureState(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, GfxResourceStates state_bits);
         void setBufferState(const GfxBufferHandle& buffer, GfxResourceStates state_bits);
         void commitBarriers();
+        void setGraphicsState(
+            const GfxFramebufferHandle& framebuffer,
+            const GfxGraphicsPipelineHandle& pipeline,
+            const DynamicArray<GfxBindingSetHandle>& binding_sets,
+            const GfxViewportState& viewport,
+            const DynamicArray<GfxVertexBufferBinding>& vertex_buffers = {},
+            const GfxIndexBufferBinding& index_buffer = {});
         void setGraphicsState(const GfxGraphicsState& state);
         void setComputeState(const GfxComputeState& state);
         void draw(const GfxDrawArguments& args);
         void drawIndexed(const GfxDrawArguments& args);
         void dispatch(UInt32 groups_x, UInt32 groups_y = 1, UInt32 groups_z = 1);
+
+        // ── Deferred resource creation (handle allocated immediately, GPU init deferred) ─
+
+        GfxTextureHandle createTexture(const GfxTextureDesc& desc, const void* data = nullptr, Size_t data_size = 0);
+        GfxBufferHandle createBuffer(const GfxBufferDesc& desc, const void* data = nullptr, Size_t data_size = 0);
+        GfxFramebufferHandle createFramebuffer(const GfxFramebufferDesc& desc);
+        GfxBindingSetHandle createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout);
+        GfxGraphicsPipelineHandle createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& framebuffer_info);
+        DescriptorIndex createDescriptor(GfxDescriptorTableHandle descriptor_table, GfxTextureHandle texture, UInt32 slot);
+
+        GfxSamplerHandle createSampler(const GfxSamplerDesc& desc);
+        GfxBindingLayoutHandle createBindingLayout(const GfxBindingLayoutDesc& desc);
 
     private:
         struct OpenCommand final : Command<OpenCommand> {
@@ -258,6 +291,34 @@ namespace dodoe {
             void execute(GfxCommandList& command_list) const;
         };
 
+        struct WriteTextureCommand final : DrawCommand {
+            GfxTextureHandle m_texture{};
+            UInt32 m_mip_level{0};
+            UInt32 m_array_slice{0};
+            Size_t m_row_pitch{0};
+            Size_t m_data_size{0};
+
+            static WriteTextureCommand& Create(
+                DrawCommandList& command_list,
+                const GfxTextureHandle& texture,
+                UInt32 mip_level,
+                UInt32 array_slice,
+                const void* data,
+                Size_t row_pitch,
+                Size_t data_size);
+
+            [[nodiscard]] const void* data() const;
+
+        private:
+            WriteTextureCommand(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, Size_t row_pitch, Size_t data_size);
+
+            static void ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list);
+            static void DestroyCommand(DrawCommand& command);
+            [[nodiscard]] static Size_t CalculateSize(Size_t data_size);
+            [[nodiscard]] void* mutableData();
+            void execute(GfxCommandList& command_list) const;
+        };
+
         struct PushConstantsCommand final : DrawCommand {
             Size_t m_byte_size{0};
 
@@ -300,10 +361,27 @@ namespace dodoe {
             void execute(GfxCommandList& command_list) const;
         };
 
-        struct SetGraphicsStateCommand final : Command<SetGraphicsStateCommand> {
+        struct SetGraphicsStateByValueCommand final : Command<SetGraphicsStateByValueCommand> {
             GfxGraphicsState m_state{};
+            explicit SetGraphicsStateByValueCommand(const GfxGraphicsState& state) : m_state(state) {}
+            void execute(GfxCommandList& command_list) const { command_list.setGraphicsState(m_state); }
+        };
 
-            explicit SetGraphicsStateCommand(const GfxGraphicsState& state);
+        struct SetGraphicsStateCommand final : Command<SetGraphicsStateCommand> {
+            GfxFramebufferHandle m_framebuffer{};
+            GfxGraphicsPipelineHandle m_pipeline{};
+            DynamicArray<GfxBindingSetHandle> m_binding_sets{};
+            GfxViewportState m_viewport{};
+            DynamicArray<GfxVertexBufferBinding> m_vertex_buffers{};
+            GfxIndexBufferBinding m_index_buffer{};
+
+            SetGraphicsStateCommand(
+                const GfxFramebufferHandle& framebuffer,
+                const GfxGraphicsPipelineHandle& pipeline,
+                const DynamicArray<GfxBindingSetHandle>& binding_sets,
+                const GfxViewportState& viewport,
+                const DynamicArray<GfxVertexBufferBinding>& vertex_buffers,
+                const GfxIndexBufferBinding& index_buffer);
             void execute(GfxCommandList& command_list) const;
         };
 
@@ -337,38 +415,48 @@ namespace dodoe {
             void execute(GfxCommandList& command_list) const;
         };
 
-        struct CreateBufferCommand final : DrawCommand {
+        // ── Deferred resource creation commands ──────────────────────
+
+        struct CreateTextureCommand final : Command<CreateTextureCommand> {
+            GfxDeviceHandle m_device{};
+            GfxTextureDesc m_desc{};
+            GfxTextureHandle m_texture{};
+            Size_t m_data_size{0};
+
+            CreateTextureCommand(GfxDeviceHandle device, const GfxTextureDesc& desc, GfxTextureHandle texture, const void* data, Size_t data_size);
+            void execute(GfxCommandList& command_list) const;
+        };
+
+        struct CreateBufferCommand final : Command<CreateBufferCommand> {
             GfxDeviceHandle m_device{};
             GfxBufferDesc m_desc{};
-            GfxBufferHandle* m_destination{};
+            GfxBufferHandle m_buffer{};
             Size_t m_data_size{0};
 
             static CreateBufferCommand& Create(
                 DrawCommandList& command_list,
                 GfxDeviceHandle device,
                 const GfxBufferDesc& desc,
-                GfxBufferHandle* destination,
+                GfxBufferHandle buffer,
                 const void* data,
                 Size_t data_size);
-
             [[nodiscard]] const void* data() const;
+            void execute(GfxCommandList& command_list) const;
 
         private:
-            CreateBufferCommand(GfxDeviceHandle device, const GfxBufferDesc& desc, GfxBufferHandle* destination, Size_t data_size);
-
+            CreateBufferCommand(GfxDeviceHandle device, const GfxBufferDesc& desc, GfxBufferHandle buffer, Size_t data_size);
             static void ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list);
             static void DestroyCommand(DrawCommand& command);
             [[nodiscard]] static Size_t CalculateSize(Size_t data_size);
             [[nodiscard]] void* mutableData();
-            void execute(GfxCommandList& command_list) const;
         };
 
         struct CreateFramebufferCommand final : Command<CreateFramebufferCommand> {
             GfxDeviceHandle m_device{};
             GfxFramebufferDesc m_desc{};
-            GfxFramebufferHandle* m_destination{};
+            GfxFramebufferHandle m_framebuffer{};
 
-            CreateFramebufferCommand(GfxDeviceHandle device, const GfxFramebufferDesc& desc, GfxFramebufferHandle* destination);
+            CreateFramebufferCommand(GfxDeviceHandle device, const GfxFramebufferDesc& desc, GfxFramebufferHandle framebuffer);
             void execute(GfxCommandList& command_list) const;
         };
 
@@ -376,58 +464,30 @@ namespace dodoe {
             GfxDeviceHandle m_device{};
             GfxBindingSetDesc m_desc{};
             GfxBindingLayoutHandle m_layout{};
-            GfxBindingSetHandle* m_destination{};
+            GfxBindingSetHandle m_binding_set{};
 
-            CreateBindingSetCommand(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout, GfxBindingSetHandle* destination);
+            CreateBindingSetCommand(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout, GfxBindingSetHandle binding_set);
             void execute(GfxCommandList& command_list) const;
         };
 
-        struct CreateTextureCommand final : DrawCommand {
+        struct CreateGraphicsPipelineCommand final : Command<CreateGraphicsPipelineCommand> {
             GfxDeviceHandle m_device{};
-            GfxTextureDesc m_desc{};
-            GfxTextureHandle* m_destination{};
-            Size_t m_data_size{0};
+            GfxGraphicsPipelineDesc m_desc{};
+            GfxFramebufferInfo m_framebuffer_info{};
+            GfxGraphicsPipelineHandle m_pipeline{};
 
-            static CreateTextureCommand& Create(
-                DrawCommandList& command_list,
-                GfxDeviceHandle device,
-                const GfxTextureDesc& desc,
-                GfxTextureHandle* destination,
-                const void* data,
-                Size_t data_size);
-
-            [[nodiscard]] const void* data() const;
-
-        private:
-            CreateTextureCommand(GfxDeviceHandle device, const GfxTextureDesc& desc, GfxTextureHandle* destination, Size_t data_size);
-
-            static void ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list);
-            static void DestroyCommand(DrawCommand& command);
-            [[nodiscard]] static Size_t CalculateSize(Size_t data_size);
-            [[nodiscard]] void* mutableData();
+            CreateGraphicsPipelineCommand(GfxDeviceHandle device, const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& framebuffer_info, GfxGraphicsPipelineHandle pipeline);
             void execute(GfxCommandList& command_list) const;
         };
 
-        struct CreateDescriptorCommand final : DrawCommand {
+        struct CreateDescriptorCommand final : Command<CreateDescriptorCommand> {
             GfxDeviceHandle m_device{};
             GfxDescriptorTableHandle m_descriptor_table{};
-            GfxTextureHandle* m_texture_handle{};
-            DescriptorIndex* m_destination{};
+            GfxTextureHandle m_texture{};
+            DescriptorIndex m_destination{0};
             UInt32 m_slot{};
 
-            static CreateDescriptorCommand& Create(
-                DrawCommandList& command_list,
-                GfxDeviceHandle device,
-                GfxDescriptorTableHandle descriptor_table,
-                GfxTextureHandle* texture_handle,
-                DescriptorIndex* destination,
-                UInt32 slot);
-
-        private:
-            CreateDescriptorCommand(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle* texture_handle, DescriptorIndex* destination, UInt32 slot);
-
-            static void ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list);
-            static void DestroyCommand(DrawCommand& command);
+            CreateDescriptorCommand(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle texture, UInt32 slot);
             void execute(GfxCommandList& command_list) const;
         };
 
@@ -438,5 +498,22 @@ namespace dodoe {
         void createBlock(Size_t minimum_size);
         [[nodiscard]] void* allocate(Size_t size, Size_t alignment);
     };
+
+    struct ImmediateFrameScope {
+        GfxDeviceHandle m_device;
+        GfxContext* m_gfx;
+        GfxCommandListHandle m_cmd;
+        UInt32 m_image_index;
+
+        ImmediateFrameScope(GfxDeviceHandle device, GfxContext* gfx, UInt32 image_index);
+        ~ImmediateFrameScope();
+
+        void flush();
+
+        ImmediateFrameScope(const ImmediateFrameScope&) = delete;
+        ImmediateFrameScope& operator=(const ImmediateFrameScope&) = delete;
+    };
+
+    extern DrawCommandList GDrawCommandList;
 
 } // dodoe

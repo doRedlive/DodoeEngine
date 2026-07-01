@@ -1,5 +1,3 @@
-// do@Redlive
-
 #include "imgui_render_resources.h"
 
 #include "runtime/function/render/framework/global_samplers.h"
@@ -41,7 +39,7 @@ namespace dodoe {
         m_font_texture = nullptr;
         m_input_layout = nullptr;
         m_binding_layout = nullptr;
-        m_pipeline = nullptr;
+        m_pipeline = GfxGraphicsPipelineHandle{};
         m_framebuffer = nullptr;
         m_framebuffer_texture = nullptr;
         m_binding_sets.clear();
@@ -54,7 +52,7 @@ namespace dodoe {
         const GfxTextureHandle& output)
     {
 #ifdef DODOE_EDITOR
-        const auto device = context.getGfxContext()->getDevice();
+        const auto* gfx_context = context.getGfxContext();
         if (!ImGui::GetCurrentContext()) {
             ClearOutput(command_list, output);
             return;
@@ -67,27 +65,21 @@ namespace dodoe {
             int height = 0;
             io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
             if (pixels && width > 0 && height > 0) {
-                m_font_texture = device->createTexture(
-                    GfxTextureDesc()
-                        .setDimension(GfxTextureDimension::Texture2D)
-                        .setWidth(width)
-                        .setHeight(height)
-                        .setFormat(GfxFormat::RGBA8_UNORM)
-                        .setMipLevels(1)
-                        .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
-                        .setDebugName("ImGui Font Texture"));
-                if (m_font_texture) {
-                    auto upload_cmd = device->createCommandList();
-                    upload_cmd->open();
-                    upload_cmd->writeTexture(m_font_texture, 0, 0, pixels, static_cast<size_t>(width) * 4u);
-                    upload_cmd->close();
-                    device->executeCommandList(upload_cmd);
-                    io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_font_texture.Get()));
-                }
+                GfxTextureDesc font_desc = GfxTextureDesc()
+                    .setDimension(GfxTextureDimension::Texture2D)
+                    .setWidth(width)
+                    .setHeight(height)
+                    .setFormat(GfxFormat::RGBA8_UNORM)
+                    .setMipLevels(1)
+                    .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+                    .setDebugName("ImGui Font Texture");
+                m_font_texture = command_list.createTexture(font_desc, pixels, static_cast<Size_t>(width) * height * 4u);
+                io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_font_texture.get()));
             }
         }
 
         const auto* shader_library = pass_context.getShaderLibrary();
+        const auto device = gfx_context->getDevice();
         if (!m_input_layout && shader_library) {
             GfxVertexAttributeDesc attributes[] = {
                 GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RG32_FLOAT).setOffset(offsetof(ImDrawVert, pos)).setElementStride(sizeof(ImDrawVert)),
@@ -106,10 +98,11 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::Sampler(0)));
         }
 
-        if (!m_framebuffer || m_framebuffer_texture.Get() != output.Get()) {
+        if (!m_framebuffer || m_framebuffer_texture.get() != output.get()) {
             m_framebuffer_texture = output;
-            m_framebuffer = device->createFramebuffer(GfxFramebufferDesc().addColorAttachment(output));
-            m_pipeline = nullptr;
+            m_framebuffer = command_list.createFramebuffer(
+                GfxFramebufferDesc().addColorAttachment(output));
+            m_pipeline = GfxGraphicsPipelineHandle{};
         }
 
         auto* pipeline_state_cache = pass_context.getPipelineStateCache();
@@ -142,7 +135,7 @@ namespace dodoe {
                 .addBindingLayout(m_binding_layout)
                 .setPrimType(GfxPrimitiveType::TriangleList)
                 .setRenderState(render_state);
-            m_pipeline = pipeline_state_cache->resolveGraphicsPipeline(pipeline_desc, m_framebuffer->getFramebufferInfo());
+            m_pipeline = pipeline_state_cache->resolveGraphicsPipeline(pipeline_desc, m_framebuffer->getInfo(), command_list);
         }
 
         ImGui::Render();
@@ -168,16 +161,16 @@ namespace dodoe {
 
         const size_t vertex_byte_size = static_cast<size_t>(draw_data->TotalVtxCount) * sizeof(ImDrawVert);
         const size_t index_byte_size = static_cast<size_t>(draw_data->TotalIdxCount) * sizeof(ImDrawIdx);
-        if (!m_vertex_buffer || static_cast<size_t>(m_vertex_buffer->getDesc().byteSize) < vertex_byte_size) {
-            m_vertex_buffer = device->createBuffer(
+        if (!m_vertex_buffer || static_cast<size_t>(m_vertex_buffer->getByteSize()) < vertex_byte_size) {
+            m_vertex_buffer = command_list.createBuffer(
                 GfxBufferDesc()
                     .setByteSize(static_cast<UInt32>((static_cast<size_t>(draw_data->TotalVtxCount) + 5000u) * sizeof(ImDrawVert)))
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
                     .setDebugName("ImGui Vertex Buffer"));
         }
-        if (!m_index_buffer || static_cast<size_t>(m_index_buffer->getDesc().byteSize) < index_byte_size) {
-            m_index_buffer = device->createBuffer(
+        if (!m_index_buffer || static_cast<size_t>(m_index_buffer->getByteSize()) < index_byte_size) {
+            m_index_buffer = command_list.createBuffer(
                 GfxBufferDesc()
                     .setByteSize(static_cast<UInt32>((static_cast<size_t>(draw_data->TotalIdxCount) + 10000u) * sizeof(ImDrawIdx)))
                     .setIsIndexBuffer(true)
@@ -207,14 +200,13 @@ namespace dodoe {
         command_list.setBufferState(m_index_buffer, GfxResourceStates::IndexBuffer);
         command_list.commitBarriers();
 
-        GfxGraphicsState state;
-        state.pipeline = m_pipeline;
-        state.framebuffer = m_framebuffer;
-        state.viewport.viewports.push_back(GfxViewport(static_cast<float>(framebuffer_width), static_cast<float>(framebuffer_height)));
-        state.viewport.scissorRects.resize(1);
-        state.vertexBuffers.push_back(GfxVertexBufferBinding().setBuffer(m_vertex_buffer).setSlot(0).setOffset(0));
-        state.indexBuffer = GfxIndexBufferBinding()
-            .setBuffer(m_index_buffer)
+        GfxViewportState vp;
+        vp.viewports.push_back(GfxViewport(static_cast<float>(framebuffer_width), static_cast<float>(framebuffer_height)));
+        vp.scissorRects.resize(1);
+        DynamicArray<GfxVertexBufferBinding> vbs;
+        vbs.push_back(GfxVertexBufferBinding().setBuffer(m_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0));
+        GfxIndexBufferBinding ib = GfxIndexBufferBinding()
+            .setBuffer(m_index_buffer->getRHIHandle())
             .setFormat(sizeof(ImDrawIdx) == 2 ? GfxFormat::R16_UINT : GfxFormat::R32_UINT)
             .setOffset(0);
 
@@ -248,17 +240,17 @@ namespace dodoe {
                 }
 
                 auto* texture = reinterpret_cast<GfxTexture*>(draw_cmd->GetTexID());
-                texture = texture ? texture : m_font_texture.Get();
+                texture = texture ? texture : m_font_texture.get();
                 if (!texture) {
                     continue;
                 }
                 const auto found = m_binding_sets.find(texture);
                 GfxBindingSetHandle binding_set = found != m_binding_sets.end() ? found->second : nullptr;
                 if (!binding_set) {
-                    binding_set = device->createBindingSet(
+                    binding_set = command_list.createBindingSet(
                         GfxBindingSetDesc()
                             .addItem(GfxBindingSetItem::PushConstants(0, sizeof(ImGuiPushConstants)))
-                            .addItem(GfxBindingSetItem::Texture_SRV(0, texture))
+                            .addItem(GfxBindingSetItem::Texture_SRV(0, texture->getRHIHandle()))
                             .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen())),
                         m_binding_layout);
                     if (binding_set) {
@@ -269,14 +261,13 @@ namespace dodoe {
                     continue;
                 }
 
-                state.bindings.resize(0);
-                state.bindings.push_back(binding_set.Get());
-                state.viewport.scissorRects[0] = GfxRect(
+                vp.scissorRects[0] = GfxRect(
                     static_cast<int>(clip_min.x),
                     static_cast<int>(clip_max.x),
                     static_cast<int>(clip_min.y),
                     static_cast<int>(clip_max.y));
-                command_list.setGraphicsState(state);
+                DynamicArray<GfxBindingSetHandle> bs_arr = {binding_set};
+                command_list.setGraphicsState(m_framebuffer, m_pipeline, bs_arr, vp, vbs, ib);
                 command_list.setPushConstants(&push_constants, sizeof(push_constants));
                 command_list.drawIndexed(
                     GfxDrawArguments()

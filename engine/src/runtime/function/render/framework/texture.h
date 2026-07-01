@@ -5,6 +5,7 @@
 #include "dopch.h"
 #include "runtime/core/object/object.h"
 #include "runtime/function/graphics/gfx.h"
+#include "runtime/function/graphics/draw_command_list.h"
 #include "descriptor_table_manager.h"
 
 namespace dodoe {
@@ -14,7 +15,7 @@ namespace dodoe {
         Int32 m_height{0};
         String m_path{};
         GfxTextureHandle m_gpu_handle{};
-        DescriptorIndex m_descriptor_index{0};
+        DescriptorIndex m_descriptor_index{-1};
 
     public:
         Texture() = default;
@@ -28,8 +29,8 @@ namespace dodoe {
 
         void setDimensions(const Int32 w, const Int32 h) { m_width = w; m_height = h; }
         void setPath(const String& p) { m_path = p; }
-        void setGpuHandle(const GfxTextureHandle handle) { m_gpu_handle = handle; }
-        void setDescriptorIndex(const DescriptorIndex index) { m_descriptor_index = index; }
+        void setGpuHandle(GfxTextureHandle handle) { m_gpu_handle = std::move(handle); }
+        void setDescriptorIndex(DescriptorIndex index) { m_descriptor_index = index; }
 
         [[nodiscard]] static Ref<Texture> Load(const String& path);
     };

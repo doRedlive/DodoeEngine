@@ -5,6 +5,7 @@
 
 #include "backend/vulkan_backend.h"
 #include "backend/opengl_backend.h"
+#include "backend/dx12_backend.h"
 
 #include "gfx.h"
 
@@ -28,6 +29,7 @@ namespace dodoe {
 
         Scope<VulkanBackend> vulkan_backend_{nullptr};
         Scope<OpenGLBackend> opengl_backend_{nullptr};
+        Scope<Dx12Backend> dx12_backend_{nullptr};
 
         GLFWwindow* window_handle_{nullptr};
 
@@ -51,6 +53,7 @@ namespace dodoe {
 
         [[nodiscard]] VulkanBackend* getVulkanBackend() const { return vulkan_backend_.get(); }
         [[nodiscard]] OpenGLBackend* getOpenGLBackend() const { return opengl_backend_.get(); }
+        [[nodiscard]] Dx12Backend* getDx12Backend() const { return dx12_backend_.get(); }
 
         void waitForIdle();
         void clearGarbage();
@@ -61,9 +64,11 @@ namespace dodoe {
 
         void initializeVulkan(const GfxBackendCreateInfo& create_info);
         void initializeOpenGL(const GfxBackendCreateInfo& create_info);
+        void initializeDx12(const GfxBackendCreateInfo& create_info);
 
         void createSwapchainTexturesVulkan();
         void createSwapchainTexturesOpenGL();
+        void createSwapchainTexturesDx12();
         void createSwapchainSemaphores();
         void destroySwapchainSemaphores();
     };

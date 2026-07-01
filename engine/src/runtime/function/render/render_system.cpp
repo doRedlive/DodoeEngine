@@ -4,6 +4,7 @@
 #include "render_system.h"
 
 #include "render_settings.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
@@ -21,6 +22,7 @@ namespace dodoe {
             false;
 #endif
         m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, window->isHostMode() ? window->getNativeHandle() : nullptr});
+        GDrawCommandList.setDevice(m_gfx->getDevice());
         m_descriptor_table = DescriptorTableManager::Create({m_gfx.get()});
         m_texture_manager = TextureManager::Create({m_gfx.get(), m_descriptor_table.get()});
         m_shared_render_service = SharedRenderService::Create({m_gfx.get(), m_descriptor_table.get(), m_texture_manager.get()});

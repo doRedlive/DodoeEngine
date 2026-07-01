@@ -22,7 +22,7 @@ namespace dodoe {
             if (resource.type == RenderGraphResourceType::Texture) {
                 switch (resource.source) {
                     case RenderGraphResourceSource::Transient:
-                        m_texture_handles[resource_index] = device->createTexture(resource.texture_desc.desc);
+                        m_texture_handles[resource_index] = create_ref<GfxTexture>(device->createTexture(resource.texture_desc.desc), resource.texture_desc.desc, resource.name);
                         break;
                     case RenderGraphResourceSource::ImportedTexture:
                         DO_ASSERT(resource.imported_texture != nullptr, "RenderGraphResourceRegistry imported texture is null");
@@ -43,7 +43,7 @@ namespace dodoe {
 
             switch (resource.source) {
                 case RenderGraphResourceSource::Transient:
-                    m_buffer_handles[resource_index] = device->createBuffer(resource.buffer_desc.desc);
+                    m_buffer_handles[resource_index] = create_ref<GfxBuffer>(device->createBuffer(resource.buffer_desc.desc), resource.buffer_desc.desc, resource.name);
                     break;
                 case RenderGraphResourceSource::ImportedBuffer:
                     DO_ASSERT(resource.imported_buffer != nullptr, "RenderGraphResourceRegistry imported buffer is null");

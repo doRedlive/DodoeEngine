@@ -25,7 +25,6 @@ namespace dodoe {
         DescriptorTableManager* m_descriptor_table{nullptr};
         Ref<Texture> m_fallback{};
         UnorderedMap<InstanceID, Ref<Texture>> m_texture_cache{};
-        DrawCommandList m_pending_commands{};
         std::mutex m_mutex{};
 
         Bool initialize(const TextureManagerCreateInfo& info);
@@ -41,7 +40,7 @@ namespace dodoe {
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
         void removeTexture(InstanceID id);
 
-        DrawCommandList flushPendingCommands();
+        void flushPendingCommands();
     };
 
 } // dodoe

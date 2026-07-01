@@ -1,8 +1,42 @@
-// do@Redlive
-
 #include "draw_command_list.h"
+#include "gfx_context.h"
 
 namespace dodoe {
+
+    DrawCommandList GDrawCommandList;
+
+    ImmediateFrameScope::ImmediateFrameScope(GfxDeviceHandle device, GfxContext* gfx, UInt32 image_index)
+        : m_device(device), m_gfx(gfx), m_image_index(image_index) {
+        m_cmd = device->createCommandList();
+        m_cmd->open();
+        GDrawCommandList.beginImmediateFrame(*m_cmd);
+    }
+
+    ImmediateFrameScope::~ImmediateFrameScope() {
+        if (GDrawCommandList.isImmediate()) {
+            GDrawCommandList.endImmediateFrame();
+            m_cmd->close();
+            m_device->executeCommandList(m_cmd);
+        }
+
+        if (!GDrawCommandList.isEmpty()) {
+            m_cmd = m_device->createCommandList();
+            m_cmd->open();
+            GDrawCommandList.execute(*m_cmd);
+            m_cmd->close();
+            m_device->executeCommandList(m_cmd);
+        }
+
+        m_gfx->presentSwapchainImage(m_image_index);
+        m_gfx->clearGarbage();
+        GDrawCommandList.reset();
+    }
+
+    void ImmediateFrameScope::flush() {
+        GDrawCommandList.endImmediateFrame();
+        m_cmd->close();
+        m_device->executeCommandList(m_cmd);
+    }
 
     DrawCommandList::DrawCommand::DrawCommand(Size_t size, ExecuteFunction execute, DestroyFunction destroy)
         : m_size(size), m_execute(execute), m_destroy(destroy) {}
@@ -32,6 +66,13 @@ namespace dodoe {
         releaseBlocks();
         moveFrom(std::move(other));
         return *this;
+    }
+
+    void DrawCommandList::beginFrame() {
+        reset();
+    }
+
+    void DrawCommandList::endFrame() {
     }
 
     void DrawCommandList::reset() {
@@ -130,22 +171,42 @@ namespace dodoe {
     }
 
     void DrawCommandList::open() {
+        if (m_immediate_target) {
+            m_immediate_target->open();
+            return;
+        }
         enqueue<OpenCommand>();
     }
 
     void DrawCommandList::close() {
+        if (m_immediate_target) {
+            m_immediate_target->close();
+            return;
+        }
         enqueue<CloseCommand>();
     }
 
     void DrawCommandList::clearState() {
+        if (m_immediate_target) {
+            m_immediate_target->clearState();
+            return;
+        }
         enqueue<ClearStateCommand>();
     }
 
     void DrawCommandList::beginMarker(const char* name) {
+        if (m_immediate_target) {
+            m_immediate_target->beginMarker(name);
+            return;
+        }
         BeginMarkerCommand::Create(*this, name);
     }
 
     void DrawCommandList::endMarker() {
+        if (m_immediate_target) {
+            m_immediate_target->endMarker();
+            return;
+        }
         enqueue<EndMarkerCommand>();
     }
 
@@ -154,6 +215,10 @@ namespace dodoe {
         const GfxTextureSubresourceSet& subresources,
         const GfxColor& clear_color)
     {
+        if (m_immediate_target) {
+            m_immediate_target->clearTextureFloat(texture->getRHIHandle(), subresources, clear_color);
+            return;
+        }
         enqueue<ClearTextureFloatCommand>(texture, subresources, clear_color);
     }
 
@@ -162,6 +227,10 @@ namespace dodoe {
         const GfxTextureSubresourceSet& subresources,
         UInt32 clear_color)
     {
+        if (m_immediate_target) {
+            m_immediate_target->clearTextureUInt(texture->getRHIHandle(), subresources, clear_color);
+            return;
+        }
         enqueue<ClearTextureUIntCommand>(texture, subresources, clear_color);
     }
 
@@ -173,6 +242,10 @@ namespace dodoe {
         Bool clear_stencil,
         UInt8 stencil)
     {
+        if (m_immediate_target) {
+            m_immediate_target->clearDepthStencilTexture(texture->getRHIHandle(), subresources, clear_depth, depth, clear_stencil, stencil);
+            return;
+        }
         enqueue<ClearDepthStencilTextureCommand>(texture, subresources, clear_depth, depth, clear_stencil, stencil);
     }
 
@@ -183,6 +256,10 @@ namespace dodoe {
         UInt64 source_offset_bytes,
         UInt64 data_size_bytes)
     {
+        if (m_immediate_target) {
+            m_immediate_target->copyBuffer(destination->getRHIHandle(), destination_offset_bytes, source->getRHIHandle(), source_offset_bytes, data_size_bytes);
+            return;
+        }
         enqueue<CopyBufferCommand>(destination, destination_offset_bytes, source, source_offset_bytes, data_size_bytes);
     }
 
@@ -192,20 +269,35 @@ namespace dodoe {
         Size_t data_size,
         UInt64 destination_offset_bytes)
     {
+        if (m_immediate_target) {
+            m_immediate_target->writeBuffer(buffer->getRHIHandle(), data, data_size, destination_offset_bytes);
+            return;
+        }
         WriteBufferCommand::Create(*this, buffer, data, data_size, destination_offset_bytes);
     }
 
-    void DrawCommandList::createBuffer(
-        const GfxDeviceHandle device,
-        const GfxBufferDesc& desc,
-        GfxBufferHandle* const destination,
+    void DrawCommandList::writeTexture(
+        const GfxTextureHandle& texture,
+        UInt32 mip_level,
+        UInt32 array_slice,
         const void* data,
-        const Size_t data_size)
+        Size_t row_pitch)
     {
-        CreateBufferCommand::Create(*this, device, desc, destination, data, data_size);
+        DO_ASSERT(texture != nullptr, "DrawCommandList writeTexture: texture is null");
+        if (m_immediate_target) {
+            m_immediate_target->writeTexture(texture->getRHIHandle(), mip_level, array_slice, data, row_pitch);
+            return;
+        }
+        const UInt32 bytes_per_pixel = texture->getFormat() == GfxFormat::RGBA32_FLOAT ? 16u : 4u;
+        const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
+        WriteTextureCommand::Create(*this, texture, mip_level, array_slice, data, row_pitch, data_size);
     }
 
     void DrawCommandList::setPushConstants(const void* data, Size_t byte_size) {
+        if (m_immediate_target) {
+            m_immediate_target->setPushConstants(data, byte_size);
+            return;
+        }
         PushConstantsCommand::Create(*this, data, byte_size);
     }
 
@@ -214,35 +306,338 @@ namespace dodoe {
         const GfxTextureSubresourceSet& subresources,
         GfxResourceStates state_bits)
     {
+        if (m_immediate_target) {
+            m_immediate_target->setTextureState(texture->getRHIHandle(), subresources, state_bits);
+            return;
+        }
         enqueue<SetTextureStateCommand>(texture, subresources, state_bits);
     }
 
     void DrawCommandList::setBufferState(const GfxBufferHandle& buffer, const GfxResourceStates state_bits) {
+        if (m_immediate_target) {
+            m_immediate_target->setBufferState(buffer->getRHIHandle(), state_bits);
+            return;
+        }
         enqueue<SetBufferStateCommand>(buffer, state_bits);
     }
 
     void DrawCommandList::commitBarriers() {
+        if (m_immediate_target) {
+            m_immediate_target->commitBarriers();
+            return;
+        }
         enqueue<CommitBarriersCommand>();
     }
 
+    void DrawCommandList::setGraphicsState(
+        const GfxFramebufferHandle& framebuffer,
+        const GfxGraphicsPipelineHandle& pipeline,
+        const DynamicArray<GfxBindingSetHandle>& binding_sets,
+        const GfxViewportState& viewport,
+        const DynamicArray<GfxVertexBufferBinding>& vertex_buffers,
+        const GfxIndexBufferBinding& index_buffer)
+    {
+        if (m_immediate_target) {
+            GfxGraphicsState state;
+            state.setViewport(viewport);
+            if (pipeline && pipeline->isRHIReady()) state.setPipeline(pipeline->getRHIHandle());
+            if (framebuffer && framebuffer->isRHIReady()) state.setFramebuffer(framebuffer->getRHIHandle());
+            for (auto& bs : binding_sets) {
+                if (bs && bs->isRHIReady()) state.addBindingSet(bs->getRHIHandle());
+            }
+            for (auto& vb : vertex_buffers) state.addVertexBuffer(vb);
+            state.setIndexBuffer(index_buffer);
+            m_immediate_target->setGraphicsState(state);
+            return;
+        }
+        enqueue<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer);
+    }
+
     void DrawCommandList::setGraphicsState(const GfxGraphicsState& state) {
-        enqueue<SetGraphicsStateCommand>(state);
+        if (m_immediate_target) {
+            m_immediate_target->setGraphicsState(state);
+            return;
+        }
+        enqueue<SetGraphicsStateByValueCommand>(state);
     }
 
     void DrawCommandList::setComputeState(const GfxComputeState& state) {
+        if (m_immediate_target) {
+            m_immediate_target->setComputeState(state);
+            return;
+        }
         enqueue<SetComputeStateCommand>(state);
     }
 
     void DrawCommandList::draw(const GfxDrawArguments& args) {
+        if (m_immediate_target) {
+            m_immediate_target->draw(args);
+            return;
+        }
         enqueue<DrawPrimitiveCommand>(args);
     }
 
     void DrawCommandList::drawIndexed(const GfxDrawArguments& args) {
+        if (m_immediate_target) {
+            m_immediate_target->drawIndexed(args);
+            return;
+        }
         enqueue<DrawIndexedPrimitiveCommand>(args);
     }
 
     void DrawCommandList::dispatch(UInt32 groups_x, UInt32 groups_y, UInt32 groups_z) {
+        if (m_immediate_target) {
+            m_immediate_target->dispatch(groups_x, groups_y, groups_z);
+            return;
+        }
         enqueue<DispatchCommand>(groups_x, groups_y, groups_z);
+    }
+
+    GfxTextureHandle DrawCommandList::createTexture(const GfxTextureDesc& desc, const void* data, Size_t data_size) {
+        auto texture = create_ref<GfxTexture>(desc);
+        texture->initializeRHI(m_device);
+        if (data && data_size > 0) {
+            const UInt32 bytes_per_pixel = desc.format == GfxFormat::RGBA32_FLOAT ? 16u : 4u;
+            const Size_t row_pitch = static_cast<Size_t>(desc.width) * bytes_per_pixel;
+            writeTexture(texture, 0, 0, data, row_pitch);
+        }
+        return texture;
+    }
+
+    GfxBufferHandle DrawCommandList::createBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
+        auto buffer = create_ref<GfxBuffer>(desc);
+        buffer->initializeRHI(m_device);
+        if (data && data_size > 0) {
+            writeBuffer(buffer, data, data_size, 0);
+        }
+        return buffer;
+    }
+
+    GfxFramebufferHandle DrawCommandList::createFramebuffer(const GfxFramebufferDesc& desc) {
+        auto framebuffer = create_ref<GfxFramebuffer>(desc);
+        framebuffer->initializeRHI(m_device);
+        return framebuffer;
+    }
+
+    GfxBindingSetHandle DrawCommandList::createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
+        auto binding_set = create_ref<GfxBindingSet>();
+        binding_set->initializeRHI(m_device, desc, layout);
+        return binding_set;
+    }
+
+    GfxGraphicsPipelineHandle DrawCommandList::createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& framebuffer_info) {
+        auto pipeline = create_ref<GfxGraphicsPipeline>();
+        pipeline->initializeRHI(m_device, desc, framebuffer_info);
+        return pipeline;
+    }
+
+    DescriptorIndex DrawCommandList::createDescriptor(GfxDescriptorTableHandle descriptor_table, GfxTextureHandle texture, UInt32 slot) {
+        if (m_immediate_target) {
+            if (texture && texture->isRHIReady()) {
+                GfxBindingSetItem item = GfxBindingSetItem::Texture_SRV(0, texture->getRHIHandle());
+                item.slot = slot;
+                m_device->writeDescriptorTable(descriptor_table, item);
+            }
+            return 0;
+        }
+        enqueue<CreateDescriptorCommand>(m_device, descriptor_table, texture, slot);
+        return -1;
+    }
+
+    GfxSamplerHandle DrawCommandList::createSampler(const GfxSamplerDesc& desc) {
+        return m_device->createSampler(desc);
+    }
+
+    GfxBindingLayoutHandle DrawCommandList::createBindingLayout(const GfxBindingLayoutDesc& desc) {
+        return m_device->createBindingLayout(desc);
+    }
+
+    DrawCommandList::SetGraphicsStateCommand::SetGraphicsStateCommand(
+        const GfxFramebufferHandle& framebuffer,
+        const GfxGraphicsPipelineHandle& pipeline,
+        const DynamicArray<GfxBindingSetHandle>& binding_sets,
+        const GfxViewportState& viewport,
+        const DynamicArray<GfxVertexBufferBinding>& vertex_buffers,
+        const GfxIndexBufferBinding& index_buffer)
+        : m_framebuffer(framebuffer)
+        , m_pipeline(pipeline)
+        , m_binding_sets(binding_sets)
+        , m_viewport(viewport)
+        , m_vertex_buffers(vertex_buffers)
+        , m_index_buffer(index_buffer) {}
+
+    void DrawCommandList::SetGraphicsStateCommand::execute(GfxCommandList& command_list) const {
+        GfxGraphicsState state;
+        state.setViewport(m_viewport);
+        if (m_pipeline && m_pipeline->isRHIReady()) state.setPipeline(m_pipeline->getRHIHandle());
+        if (m_framebuffer && m_framebuffer->isRHIReady()) state.setFramebuffer(m_framebuffer->getRHIHandle());
+        for (auto& bs : m_binding_sets) {
+            if (bs && bs->isRHIReady()) state.addBindingSet(bs->getRHIHandle());
+        }
+        for (auto& vb : m_vertex_buffers) {
+            state.addVertexBuffer(vb);
+        }
+        state.setIndexBuffer(m_index_buffer);
+        command_list.setGraphicsState(state);
+    }
+
+    DrawCommandList::SetComputeStateCommand::SetComputeStateCommand(const GfxComputeState& state)
+        : m_state(state) {}
+
+    void DrawCommandList::SetComputeStateCommand::execute(GfxCommandList& command_list) const {
+        command_list.setComputeState(m_state);
+    }
+
+    DrawCommandList::DrawPrimitiveCommand::DrawPrimitiveCommand(const GfxDrawArguments& args)
+        : m_args(args) {}
+
+    void DrawCommandList::DrawPrimitiveCommand::execute(GfxCommandList& command_list) const {
+        command_list.draw(m_args);
+    }
+
+    DrawCommandList::DrawIndexedPrimitiveCommand::DrawIndexedPrimitiveCommand(const GfxDrawArguments& args)
+        : m_args(args) {}
+
+    void DrawCommandList::DrawIndexedPrimitiveCommand::execute(GfxCommandList& command_list) const {
+        command_list.drawIndexed(m_args);
+    }
+
+    DrawCommandList::DispatchCommand::DispatchCommand(UInt32 groups_x, UInt32 groups_y, UInt32 groups_z)
+        : m_groups_x(groups_x), m_groups_y(groups_y), m_groups_z(groups_z) {}
+
+    void DrawCommandList::DispatchCommand::execute(GfxCommandList& command_list) const {
+        command_list.dispatch(m_groups_x, m_groups_y, m_groups_z);
+    }
+
+    void DrawCommandList::OpenCommand::execute(GfxCommandList& command_list) const {
+        command_list.open();
+    }
+
+    void DrawCommandList::CloseCommand::execute(GfxCommandList& command_list) const {
+        command_list.close();
+    }
+
+    void DrawCommandList::ClearStateCommand::execute(GfxCommandList& command_list) const {
+        command_list.clearState();
+    }
+
+    DrawCommandList::CreateTextureCommand::CreateTextureCommand(
+        GfxDeviceHandle device,
+        const GfxTextureDesc& desc,
+        GfxTextureHandle texture,
+        const void* data,
+        Size_t data_size)
+        : m_device(device), m_desc(desc), m_texture(std::move(texture)), m_data_size(data_size) {}
+
+    void DrawCommandList::CreateTextureCommand::execute(GfxCommandList& command_list) const {
+        m_texture->initializeRHI(m_device);
+        if (m_data_size > 0) {
+            const UInt32 bytes_per_pixel = m_desc.format == GfxFormat::RGBA32_FLOAT ? 16 : 4;
+            const Size_t row_pitch = static_cast<Size_t>(m_desc.width) * bytes_per_pixel;
+            command_list.writeTexture(m_texture->getRHIHandle(), 0, 0, this + 1, row_pitch);
+        }
+    }
+
+    DrawCommandList::CreateBufferCommand::CreateBufferCommand(
+        const GfxDeviceHandle device,
+        const GfxBufferDesc& desc,
+        GfxBufferHandle buffer,
+        const Size_t data_size)
+        : m_device(device), m_desc(desc), m_buffer(std::move(buffer)), m_data_size(data_size) {}
+
+    DrawCommandList::CreateBufferCommand& DrawCommandList::CreateBufferCommand::Create(
+        DrawCommandList& command_list,
+        const GfxDeviceHandle device,
+        const GfxBufferDesc& desc,
+        GfxBufferHandle buffer,
+        const void* const data,
+        const Size_t data_size)
+    {
+        void* memory = command_list.allocate(CalculateSize(data_size), alignof(CreateBufferCommand));
+        auto* command = new (memory) CreateBufferCommand(device, desc, std::move(buffer), data_size);
+        if (data && data_size > 0) {
+            std::memcpy(command->mutableData(), data, data_size);
+        }
+        command_list.appendCommand(command);
+        return *command;
+    }
+
+    Size_t DrawCommandList::CreateBufferCommand::CalculateSize(const Size_t data_size) {
+        return alignUp(sizeof(CreateBufferCommand) + data_size, alignof(CreateBufferCommand));
+    }
+
+    void* DrawCommandList::CreateBufferCommand::mutableData() {
+        return reinterpret_cast<UInt8*>(this) + sizeof(CreateBufferCommand);
+    }
+
+    const void* DrawCommandList::CreateBufferCommand::data() const {
+        return m_data_size > 0 ? reinterpret_cast<const UInt8*>(this) + sizeof(CreateBufferCommand) : nullptr;
+    }
+
+    void DrawCommandList::CreateBufferCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
+        static_cast<const CreateBufferCommand&>(command).execute(command_list);
+    }
+
+    void DrawCommandList::CreateBufferCommand::DestroyCommand(DrawCommand& command) {
+        static_cast<CreateBufferCommand&>(command).~CreateBufferCommand();
+    }
+
+    void DrawCommandList::CreateBufferCommand::execute(GfxCommandList& command_list) const {
+        m_buffer->initializeRHI(m_device);
+        if (m_data_size > 0) {
+            command_list.writeBuffer(m_buffer->getRHIHandle(), data(), m_data_size);
+        }
+    }
+
+    DrawCommandList::CreateFramebufferCommand::CreateFramebufferCommand(
+        GfxDeviceHandle device,
+        const GfxFramebufferDesc& desc,
+        GfxFramebufferHandle framebuffer)
+        : m_device(device), m_desc(desc), m_framebuffer(std::move(framebuffer)) {}
+
+    void DrawCommandList::CreateFramebufferCommand::execute(GfxCommandList& command_list) const {
+        (void)command_list;
+        m_framebuffer->initializeRHI(m_device);
+    }
+
+    DrawCommandList::CreateBindingSetCommand::CreateBindingSetCommand(
+        GfxDeviceHandle device,
+        const GfxBindingSetDesc& desc,
+        const GfxBindingLayoutHandle& layout,
+        GfxBindingSetHandle binding_set)
+        : m_device(device), m_desc(desc), m_layout(layout), m_binding_set(std::move(binding_set)) {}
+
+    void DrawCommandList::CreateBindingSetCommand::execute(GfxCommandList& command_list) const {
+        (void)command_list;
+        m_binding_set->initializeRHI(m_device, m_desc, m_layout);
+    }
+
+    DrawCommandList::CreateGraphicsPipelineCommand::CreateGraphicsPipelineCommand(
+        GfxDeviceHandle device,
+        const GfxGraphicsPipelineDesc& desc,
+        const GfxFramebufferInfo& framebuffer_info,
+        GfxGraphicsPipelineHandle pipeline)
+        : m_device(device), m_desc(desc), m_framebuffer_info(framebuffer_info), m_pipeline(std::move(pipeline)) {}
+
+    void DrawCommandList::CreateGraphicsPipelineCommand::execute(GfxCommandList& command_list) const {
+        (void)command_list;
+        m_pipeline->initializeRHI(m_device, m_desc, m_framebuffer_info);
+    }
+
+    DrawCommandList::CreateDescriptorCommand::CreateDescriptorCommand(
+        GfxDeviceHandle device,
+        GfxDescriptorTableHandle descriptor_table,
+        GfxTextureHandle texture,
+        UInt32 slot)
+        : m_device(device), m_descriptor_table(descriptor_table), m_texture(std::move(texture)), m_slot(slot) {}
+
+    void DrawCommandList::CreateDescriptorCommand::execute(GfxCommandList& command_list) const {
+        (void)command_list;
+        if (m_texture && m_texture->isRHIReady()) {
+            GfxBindingSetItem item = GfxBindingSetItem::Texture_SRV(0, m_texture->getRHIHandle());
+            item.slot = m_slot;
+            m_device->writeDescriptorTable(m_descriptor_table, item);
+        }
     }
 
     DrawCommandList::ClearTextureFloatCommand::ClearTextureFloatCommand(
@@ -252,50 +647,7 @@ namespace dodoe {
         : m_texture(texture), m_subresources(subresources), m_clear_color(clear_color) {}
 
     void DrawCommandList::ClearTextureFloatCommand::execute(GfxCommandList& command_list) const {
-        command_list.clearTextureFloat(m_texture, m_subresources, m_clear_color);
-    }
-
-    DrawCommandList::BeginMarkerCommand& DrawCommandList::BeginMarkerCommand::Create(DrawCommandList& command_list, const char* name) {
-        const char* marker_name = name != nullptr ? name : "";
-        Size_t name_length = std::strlen(marker_name);
-
-        void* memory = command_list.allocate(CalculateSize(name_length), alignof(BeginMarkerCommand));
-        auto* command = new (memory) BeginMarkerCommand(name_length);
-        std::memcpy(command->mutableName(), marker_name, name_length + 1);
-
-        command_list.appendCommand(command);
-        return *command;
-    }
-
-    const char* DrawCommandList::BeginMarkerCommand::name() const {
-        return reinterpret_cast<const char*>(this + 1);
-    }
-
-    DrawCommandList::BeginMarkerCommand::BeginMarkerCommand(Size_t name_length)
-        : DrawCommand(CalculateSize(name_length), &BeginMarkerCommand::ExecuteCommand, &BeginMarkerCommand::DestroyCommand) {}
-
-    void DrawCommandList::BeginMarkerCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
-        static_cast<const BeginMarkerCommand&>(command).execute(command_list);
-    }
-
-    void DrawCommandList::BeginMarkerCommand::DestroyCommand(DrawCommand& command) {
-        static_cast<BeginMarkerCommand&>(command).~BeginMarkerCommand();
-    }
-
-    Size_t DrawCommandList::BeginMarkerCommand::CalculateSize(Size_t name_length) {
-        return sizeof(BeginMarkerCommand) + name_length + 1;
-    }
-
-    char* DrawCommandList::BeginMarkerCommand::mutableName() {
-        return reinterpret_cast<char*>(this + 1);
-    }
-
-    void DrawCommandList::BeginMarkerCommand::execute(GfxCommandList& command_list) const {
-        command_list.beginMarker(name());
-    }
-
-    void DrawCommandList::EndMarkerCommand::execute(GfxCommandList& command_list) const {
-        command_list.endMarker();
+        command_list.clearTextureFloat(m_texture->getRHIHandle(), m_subresources, m_clear_color);
     }
 
     DrawCommandList::ClearTextureUIntCommand::ClearTextureUIntCommand(
@@ -305,7 +657,7 @@ namespace dodoe {
         : m_texture(texture), m_subresources(subresources), m_clear_color(clear_color) {}
 
     void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& command_list) const {
-        command_list.clearTextureUInt(m_texture, m_subresources, m_clear_color);
+        command_list.clearTextureUInt(m_texture->getRHIHandle(), m_subresources, m_clear_color);
     }
 
     DrawCommandList::ClearDepthStencilTextureCommand::ClearDepthStencilTextureCommand(
@@ -323,7 +675,7 @@ namespace dodoe {
           m_stencil(stencil) {}
 
     void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& command_list) const {
-        command_list.clearDepthStencilTexture(m_texture, m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil);
+        command_list.clearDepthStencilTexture(m_texture->getRHIHandle(), m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil);
     }
 
     DrawCommandList::CopyBufferCommand::CopyBufferCommand(
@@ -339,7 +691,7 @@ namespace dodoe {
           m_data_size_bytes(data_size_bytes) {}
 
     void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& command_list) const {
-        command_list.copyBuffer(m_destination, m_destination_offset_bytes, m_source, m_source_offset_bytes, m_data_size_bytes);
+        command_list.copyBuffer(m_destination->getRHIHandle(), m_destination_offset_bytes, m_source->getRHIHandle(), m_source_offset_bytes, m_data_size_bytes);
     }
 
     DrawCommandList::WriteBufferCommand& DrawCommandList::WriteBufferCommand::Create(
@@ -391,7 +743,65 @@ namespace dodoe {
     }
 
     void DrawCommandList::WriteBufferCommand::execute(GfxCommandList& command_list) const {
-        command_list.writeBuffer(m_buffer, data(), m_data_size, m_destination_offset_bytes);
+        command_list.writeBuffer(m_buffer->getRHIHandle(), data(), m_data_size, m_destination_offset_bytes);
+    }
+
+    DrawCommandList::WriteTextureCommand& DrawCommandList::WriteTextureCommand::Create(
+        DrawCommandList& command_list,
+        const GfxTextureHandle& texture,
+        UInt32 mip_level,
+        UInt32 array_slice,
+        const void* data,
+        Size_t row_pitch,
+        Size_t data_size)
+    {
+        DO_ASSERT(data != nullptr || data_size == 0, "DrawCommandList write texture data is null");
+
+        void* memory = command_list.allocate(CalculateSize(data_size), alignof(WriteTextureCommand));
+        auto* command = new (memory) WriteTextureCommand(texture, mip_level, array_slice, row_pitch, data_size);
+        if (data_size > 0) {
+            std::memcpy(command->mutableData(), data, data_size);
+        }
+
+        command_list.appendCommand(command);
+        return *command;
+    }
+
+    const void* DrawCommandList::WriteTextureCommand::data() const {
+        return reinterpret_cast<const UInt8*>(this) + sizeof(WriteTextureCommand);
+    }
+
+    DrawCommandList::WriteTextureCommand::WriteTextureCommand(
+        const GfxTextureHandle& texture,
+        UInt32 mip_level,
+        UInt32 array_slice,
+        Size_t row_pitch,
+        Size_t data_size)
+        : DrawCommand(CalculateSize(data_size), &WriteTextureCommand::ExecuteCommand, &WriteTextureCommand::DestroyCommand),
+          m_texture(texture),
+          m_mip_level(mip_level),
+          m_array_slice(array_slice),
+          m_row_pitch(row_pitch),
+          m_data_size(data_size) {}
+
+    void DrawCommandList::WriteTextureCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
+        static_cast<const WriteTextureCommand&>(command).execute(command_list);
+    }
+
+    void DrawCommandList::WriteTextureCommand::DestroyCommand(DrawCommand& command) {
+        static_cast<WriteTextureCommand&>(command).~WriteTextureCommand();
+    }
+
+    Size_t DrawCommandList::WriteTextureCommand::CalculateSize(Size_t data_size) {
+        return sizeof(WriteTextureCommand) + data_size;
+    }
+
+    void* DrawCommandList::WriteTextureCommand::mutableData() {
+        return reinterpret_cast<UInt8*>(this) + sizeof(WriteTextureCommand);
+    }
+
+    void DrawCommandList::WriteTextureCommand::execute(GfxCommandList& command_list) const {
+        command_list.writeTexture(m_texture->getRHIHandle(), m_mip_level, m_array_slice, data(), m_row_pitch);
     }
 
     DrawCommandList::PushConstantsCommand& DrawCommandList::PushConstantsCommand::Create(
@@ -446,117 +856,61 @@ namespace dodoe {
         : m_texture(texture), m_subresources(subresources), m_state_bits(state_bits) {}
 
     void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& command_list) const {
-        command_list.setTextureState(m_texture, m_subresources, m_state_bits);
+        command_list.setTextureState(m_texture->getRHIHandle(), m_subresources, m_state_bits);
     }
 
     DrawCommandList::SetBufferStateCommand::SetBufferStateCommand(const GfxBufferHandle& buffer, GfxResourceStates state_bits)
         : m_buffer(buffer), m_state_bits(state_bits) {}
 
     void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& command_list) const {
-        command_list.setBufferState(m_buffer, m_state_bits);
+        command_list.setBufferState(m_buffer->getRHIHandle(), m_state_bits);
     }
 
     void DrawCommandList::CommitBarriersCommand::execute(GfxCommandList& command_list) const {
         command_list.commitBarriers();
     }
 
-    DrawCommandList::SetGraphicsStateCommand::SetGraphicsStateCommand(const GfxGraphicsState& state)
-        : m_state(state) {}
+    DrawCommandList::BeginMarkerCommand& DrawCommandList::BeginMarkerCommand::Create(DrawCommandList& command_list, const char* name) {
+        const char* marker_name = name != nullptr ? name : "";
+        Size_t name_length = std::strlen(marker_name);
 
-    void DrawCommandList::SetGraphicsStateCommand::execute(GfxCommandList& command_list) const {
-        command_list.setGraphicsState(m_state);
-    }
+        void* memory = command_list.allocate(CalculateSize(name_length), alignof(BeginMarkerCommand));
+        auto* command = new (memory) BeginMarkerCommand(name_length);
+        std::memcpy(command->mutableName(), marker_name, name_length + 1);
 
-    DrawCommandList::SetComputeStateCommand::SetComputeStateCommand(const GfxComputeState& state)
-        : m_state(state) {}
-
-    void DrawCommandList::SetComputeStateCommand::execute(GfxCommandList& command_list) const {
-        command_list.setComputeState(m_state);
-    }
-
-    DrawCommandList::DrawPrimitiveCommand::DrawPrimitiveCommand(const GfxDrawArguments& args)
-        : m_args(args) {}
-
-    void DrawCommandList::DrawPrimitiveCommand::execute(GfxCommandList& command_list) const {
-        command_list.draw(m_args);
-    }
-
-    DrawCommandList::DrawIndexedPrimitiveCommand::DrawIndexedPrimitiveCommand(const GfxDrawArguments& args)
-        : m_args(args) {}
-
-    void DrawCommandList::DrawIndexedPrimitiveCommand::execute(GfxCommandList& command_list) const {
-        command_list.drawIndexed(m_args);
-    }
-
-    DrawCommandList::DispatchCommand::DispatchCommand(UInt32 groups_x, UInt32 groups_y, UInt32 groups_z)
-        : m_groups_x(groups_x), m_groups_y(groups_y), m_groups_z(groups_z) {}
-
-    void DrawCommandList::DispatchCommand::execute(GfxCommandList& command_list) const {
-        command_list.dispatch(m_groups_x, m_groups_y, m_groups_z);
-    }
-
-    DrawCommandList::CreateBufferCommand::CreateBufferCommand(
-        const GfxDeviceHandle device,
-        const GfxBufferDesc& desc,
-        GfxBufferHandle* const destination,
-        const Size_t data_size)
-        : DrawCommand(CalculateSize(data_size), &CreateBufferCommand::ExecuteCommand, &CreateBufferCommand::DestroyCommand)
-        , m_device(device), m_desc(desc), m_destination(destination), m_data_size(data_size) {}
-
-    DrawCommandList::CreateBufferCommand& DrawCommandList::CreateBufferCommand::Create(
-        DrawCommandList& command_list,
-        const GfxDeviceHandle device,
-        const GfxBufferDesc& desc,
-        GfxBufferHandle* const destination,
-        const void* const data,
-        const Size_t data_size)
-    {
-        void* memory = command_list.allocate(CalculateSize(data_size), alignof(CreateBufferCommand));
-        auto* command = new (memory) CreateBufferCommand(device, desc, destination, data_size);
-        if (data && data_size > 0) {
-            std::memcpy(command->mutableData(), data, data_size);
-        }
         command_list.appendCommand(command);
         return *command;
     }
 
-    Size_t DrawCommandList::CreateBufferCommand::CalculateSize(const Size_t data_size) {
-        return alignUp(sizeof(CreateBufferCommand) + data_size, alignof(CreateBufferCommand));
+    const char* DrawCommandList::BeginMarkerCommand::name() const {
+        return reinterpret_cast<const char*>(this + 1);
     }
 
-    void* DrawCommandList::CreateBufferCommand::mutableData() {
-        return reinterpret_cast<UInt8*>(this) + sizeof(CreateBufferCommand);
+    DrawCommandList::BeginMarkerCommand::BeginMarkerCommand(Size_t name_length)
+        : DrawCommand(CalculateSize(name_length), &BeginMarkerCommand::ExecuteCommand, &BeginMarkerCommand::DestroyCommand) {}
+
+    void DrawCommandList::BeginMarkerCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
+        static_cast<const BeginMarkerCommand&>(command).execute(command_list);
     }
 
-    const void* DrawCommandList::CreateBufferCommand::data() const {
-        return m_data_size > 0 ? reinterpret_cast<const UInt8*>(this) + sizeof(CreateBufferCommand) : nullptr;
+    void DrawCommandList::BeginMarkerCommand::DestroyCommand(DrawCommand& command) {
+        static_cast<BeginMarkerCommand&>(command).~BeginMarkerCommand();
     }
 
-    void DrawCommandList::CreateBufferCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
-        static_cast<const CreateBufferCommand&>(command).execute(command_list);
+    Size_t DrawCommandList::BeginMarkerCommand::CalculateSize(Size_t name_length) {
+        return sizeof(BeginMarkerCommand) + name_length + 1;
     }
 
-    void DrawCommandList::CreateBufferCommand::DestroyCommand(DrawCommand& command) {
-        static_cast<CreateBufferCommand&>(command).~CreateBufferCommand();
+    char* DrawCommandList::BeginMarkerCommand::mutableName() {
+        return reinterpret_cast<char*>(this + 1);
     }
 
-    void DrawCommandList::CreateBufferCommand::execute(GfxCommandList& command_list) const {
-        *m_destination = m_device->createBuffer(m_desc);
-        if (m_data_size > 0) {
-            command_list.writeBuffer(*m_destination, data(), m_data_size);
-        }
+    void DrawCommandList::BeginMarkerCommand::execute(GfxCommandList& command_list) const {
+        command_list.beginMarker(name());
     }
 
-    void DrawCommandList::OpenCommand::execute(GfxCommandList& command_list) const {
-        command_list.open();
-    }
-
-    void DrawCommandList::CloseCommand::execute(GfxCommandList& command_list) const {
-        command_list.close();
-    }
-
-    void DrawCommandList::ClearStateCommand::execute(GfxCommandList& command_list) const {
-        command_list.clearState();
+    void DrawCommandList::EndMarkerCommand::execute(GfxCommandList& command_list) const {
+        command_list.endMarker();
     }
 
     Size_t DrawCommandList::alignUp(Size_t value, Size_t alignment) {
@@ -567,6 +921,7 @@ namespace dodoe {
     }
 
     void DrawCommandList::appendCommand(DrawCommandList::DrawCommand* command) {
+        std::lock_guard<std::recursive_mutex> lock(m_enqueue_mutex);
         DO_ASSERT(command != nullptr, "DrawCommandList command is null");
 
         command->m_next = nullptr;
@@ -613,6 +968,7 @@ namespace dodoe {
     }
 
     void* DrawCommandList::allocate(Size_t size, Size_t alignment) {
+        std::lock_guard<std::recursive_mutex> lock(m_enqueue_mutex);
         DO_ASSERT(size > 0, "DrawCommandList allocate size is zero");
         DO_ASSERT(alignment <= alignof(std::max_align_t), "DrawCommandList alignment exceeds max alignment");
 
@@ -633,161 +989,6 @@ namespace dodoe {
         block->m_offset = aligned_offset + size;
         m_used_byte_size += size;
         return memory;
-    }
-
-    DrawCommandList::CreateFramebufferCommand::CreateFramebufferCommand(
-        GfxDeviceHandle device,
-        const GfxFramebufferDesc& desc,
-        GfxFramebufferHandle* destination)
-        : m_device(device), m_desc(desc), m_destination(destination) {}
-
-    void DrawCommandList::CreateFramebufferCommand::execute(GfxCommandList& command_list) const {
-        (void)command_list;
-        DO_ASSERT(m_device != nullptr, "CreateFramebufferCommand device is null");
-        DO_ASSERT(m_destination != nullptr, "CreateFramebufferCommand destination is null");
-        *m_destination = m_device->createFramebuffer(m_desc);
-    }
-
-    DrawCommandList::CreateBindingSetCommand::CreateBindingSetCommand(
-        GfxDeviceHandle device,
-        const GfxBindingSetDesc& desc,
-        const GfxBindingLayoutHandle& layout,
-        GfxBindingSetHandle* destination)
-        : m_device(device), m_desc(desc), m_layout(layout), m_destination(destination) {}
-
-    void DrawCommandList::CreateBindingSetCommand::execute(GfxCommandList& command_list) const {
-        (void)command_list;
-        DO_ASSERT(m_device != nullptr, "CreateBindingSetCommand device is null");
-        DO_ASSERT(m_destination != nullptr, "CreateBindingSetCommand destination is null");
-        *m_destination = m_device->createBindingSet(m_desc, m_layout);
-    }
-
-    void DrawCommandList::createFramebuffer(GfxDeviceHandle device, const GfxFramebufferDesc& desc, GfxFramebufferHandle* destination) {
-        enqueue<CreateFramebufferCommand>(device, desc, destination);
-    }
-
-    void DrawCommandList::createBindingSet(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout, GfxBindingSetHandle* destination) {
-        enqueue<CreateBindingSetCommand>(device, desc, layout, destination);
-    }
-
-    DrawCommandList::CreateTextureCommand::CreateTextureCommand(
-        GfxDeviceHandle device,
-        const GfxTextureDesc& desc,
-        GfxTextureHandle* destination,
-        Size_t data_size)
-        : DrawCommand(CalculateSize(data_size), &CreateTextureCommand::ExecuteCommand, &CreateTextureCommand::DestroyCommand)
-        , m_device(device)
-        , m_desc(desc)
-        , m_destination(destination)
-        , m_data_size(data_size) {}
-
-    DrawCommandList::CreateTextureCommand& DrawCommandList::CreateTextureCommand::Create(
-        DrawCommandList& command_list,
-        GfxDeviceHandle device,
-        const GfxTextureDesc& desc,
-        GfxTextureHandle* destination,
-        const void* data,
-        Size_t data_size)
-    {
-        void* memory = command_list.allocate(CalculateSize(data_size), alignof(CreateTextureCommand));
-        auto* command = new (memory) CreateTextureCommand(device, desc, destination, data_size);
-        if (data && data_size > 0) {
-            std::memcpy(command->mutableData(), data, data_size);
-        }
-        command_list.appendCommand(command);
-        return *command;
-    }
-
-    const void* DrawCommandList::CreateTextureCommand::data() const {
-        return reinterpret_cast<const UInt8*>(this) + sizeof(CreateTextureCommand);
-    }
-
-    void* DrawCommandList::CreateTextureCommand::mutableData() {
-        return reinterpret_cast<UInt8*>(this) + sizeof(CreateTextureCommand);
-    }
-
-    Size_t DrawCommandList::CreateTextureCommand::CalculateSize(Size_t data_size) {
-        return sizeof(CreateTextureCommand) + data_size;
-    }
-
-    void DrawCommandList::CreateTextureCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
-        static_cast<const CreateTextureCommand&>(command).execute(command_list);
-    }
-
-    void DrawCommandList::CreateTextureCommand::DestroyCommand(DrawCommand& command) {
-        static_cast<CreateTextureCommand&>(command).~CreateTextureCommand();
-    }
-
-    void DrawCommandList::CreateTextureCommand::execute(GfxCommandList& command_list) const {
-        DO_ASSERT(m_device != nullptr, "CreateTextureCommand device is null");
-        DO_ASSERT(m_destination != nullptr, "CreateTextureCommand destination is null");
-
-        *m_destination = m_device->createTexture(m_desc);
-        if (*m_destination && m_data_size > 0) {
-            const UInt32 width = m_desc.width;
-            const UInt32 bytes_per_pixel = m_desc.format == GfxFormat::RGBA32_FLOAT ? 16 : 4;
-            const Size_t row_pitch = static_cast<Size_t>(width) * bytes_per_pixel;
-            command_list.writeTexture(*m_destination, 0, 0, data(), row_pitch);
-        }
-    }
-
-    void DrawCommandList::createTexture(GfxDeviceHandle device, const GfxTextureDesc& desc, GfxTextureHandle* destination, const void* data, Size_t data_size) {
-        CreateTextureCommand::Create(*this, device, desc, destination, data, data_size);
-    }
-
-    DrawCommandList::CreateDescriptorCommand::CreateDescriptorCommand(
-        GfxDeviceHandle device,
-        GfxDescriptorTableHandle descriptor_table,
-        GfxTextureHandle* texture_handle,
-        DescriptorIndex* destination,
-        UInt32 slot)
-        : DrawCommand(sizeof(CreateDescriptorCommand), &ExecuteCommand, &DestroyCommand)
-        , m_device(device)
-        , m_descriptor_table(descriptor_table)
-        , m_texture_handle(texture_handle)
-        , m_destination(destination)
-        , m_slot(slot) {}
-
-    DrawCommandList::CreateDescriptorCommand& DrawCommandList::CreateDescriptorCommand::Create(
-        DrawCommandList& command_list,
-        GfxDeviceHandle device,
-        GfxDescriptorTableHandle descriptor_table,
-        GfxTextureHandle* texture_handle,
-        DescriptorIndex* destination,
-        UInt32 slot)
-    {
-        void* memory = command_list.allocate(sizeof(CreateDescriptorCommand), alignof(CreateDescriptorCommand));
-        auto* command = new (memory) CreateDescriptorCommand(device, descriptor_table, texture_handle, destination, slot);
-        command_list.appendCommand(command);
-        return *command;
-    }
-
-    void DrawCommandList::CreateDescriptorCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
-        static_cast<const CreateDescriptorCommand&>(command).execute(command_list);
-    }
-
-    void DrawCommandList::CreateDescriptorCommand::DestroyCommand(DrawCommand& command) {
-        static_cast<CreateDescriptorCommand&>(command).~CreateDescriptorCommand();
-    }
-
-    void DrawCommandList::CreateDescriptorCommand::execute(GfxCommandList& command_list) const {
-        DO_ASSERT(m_device != nullptr, "CreateDescriptorCommand device is null");
-        DO_ASSERT(m_descriptor_table != nullptr, "CreateDescriptorCommand descriptor_table is null");
-        DO_ASSERT(m_texture_handle != nullptr, "CreateDescriptorCommand texture_handle is null");
-        DO_ASSERT(m_destination != nullptr, "CreateDescriptorCommand destination is null");
-
-        if (*m_texture_handle) {
-            GfxBindingSetItem item = GfxBindingSetItem::Texture_SRV(0, *m_texture_handle);
-            item.slot = m_slot;
-            m_device->writeDescriptorTable(m_descriptor_table, item);
-            *m_destination = static_cast<DescriptorIndex>(m_slot);
-        } else {
-            *m_destination = -1;
-        }
-    }
-
-    void DrawCommandList::createDescriptor(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle* texture_handle, DescriptorIndex* destination, UInt32 slot) {
-        CreateDescriptorCommand::Create(*this, device, descriptor_table, texture_handle, destination, slot);
     }
 
 } // dodoe

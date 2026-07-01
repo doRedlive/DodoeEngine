@@ -51,6 +51,8 @@ namespace dodoe {
             initializeVulkan(create_info);
         } else if (create_info.api_type == RenderBackendApiType::OpenGL) {
             initializeOpenGL(create_info);
+        } else if (create_info.api_type == RenderBackendApiType::DX12) {
+            initializeDx12(create_info);
         }
     }
 
@@ -118,6 +120,35 @@ namespace dodoe {
         OutputDebugStringA("[GFX] OpenGL initialize done\n");
     }
 
+    void GfxContext::initializeDx12(const GfxBackendCreateInfo& create_info) {
+        OutputDebugStringA("[GFX] DX12 initialize begin\n");
+
+        dx12_backend_ = Dx12Backend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation});
+        DO_ASSERT(dx12_backend_ != nullptr, "GfxBackend::initializeDx12: failed to create DX12 backend.");
+
+        auto* error_callback = new RhiMessageCallback();
+
+        dx12::DeviceDesc device_desc{};
+        device_desc.errorCB = error_callback;
+        device_desc.pDevice = dx12_backend_->getDevice();
+        device_desc.pGraphicsCommandQueue = dx12_backend_->getGraphicsQueue();
+        device_desc.pComputeCommandQueue = dx12_backend_->getComputeQueue();
+        device_desc.pCopyCommandQueue = dx12_backend_->getCopyQueue();
+
+        device_ = dx12::createDevice(device_desc);
+        DO_ASSERT(device_ != nullptr, "GfxBackend::initializeDx12: failed to create cutie d3d12 device.");
+
+        if (create_info.enable_validation) {
+            device_ = validation::createValidationLayer(device_);
+            DO_ASSERT(device_ != nullptr, "GfxBackend::initializeDx12: failed to create validation layer.");
+        }
+
+        createSwapchainTexturesDx12();
+        cmd_ = device_->createCommandList();
+
+        OutputDebugStringA("[GFX] DX12 initialize done\n");
+    }
+
     void GfxContext::shutdown() {
         cmd_ = nullptr;
         swapchain_textures_.clear();
@@ -133,6 +164,9 @@ namespace dodoe {
         }
         if (opengl_backend_) {
             OpenGLBackend::Destroy(opengl_backend_);
+        }
+        if (dx12_backend_) {
+            Dx12Backend::Destroy(dx12_backend_);
         }
     }
 
@@ -150,6 +184,9 @@ namespace dodoe {
         }
         if (opengl_backend_) {
             return opengl_backend_->getSwapchainExtent2d();
+        }
+        if (dx12_backend_) {
+            return dx12_backend_->getSwapchainExtent2d();
         }
         return Vector2i(0, 0);
     }
@@ -172,8 +209,8 @@ namespace dodoe {
                 .enableAutomaticStateTracking(GfxResourceStates::Present)
                 .setDebugName("Swapchain Image");
 
-            GfxTextureHandle swapchain_texture = device_->createHandleForNativeTexture(GfxObjectTypes::VK_Image, image, texture_desc);
-            swapchain_textures_.push_back(swapchain_texture);
+            auto tex = create_ref<GfxTexture>(device_->createHandleForNativeTexture(GfxObjectTypes::VK_Image, image, texture_desc), texture_desc, "Swapchain Image");
+            swapchain_textures_.push_back(tex);
         }
     }
 
@@ -194,14 +231,59 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::Present)
             .setDebugName("GL Backbuffer");
 
-        GfxTextureHandle backbuffer = device_->createTexture(texture_desc);
+        auto backbuffer = create_ref<GfxTexture>(device_->createTexture(texture_desc), texture_desc, "GL Backbuffer");
         swapchain_textures_.push_back(backbuffer);
+    }
+
+    namespace {
+        GfxFormat RHIFormatDX12(DXGI_FORMAT format) {
+            switch (format) {
+                case DXGI_FORMAT_R8G8B8A8_UNORM:     return GfxFormat::RGBA8_UNORM;
+                case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return GfxFormat::SRGBA8_UNORM;
+                case DXGI_FORMAT_B8G8R8A8_UNORM:     return GfxFormat::BGRA8_UNORM;
+                case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return GfxFormat::SBGRA8_UNORM;
+                default: return GfxFormat::RGBA8_UNORM;
+            }
+        }
+    }
+
+    void GfxContext::createSwapchainTexturesDx12() {
+        if (!device_ || !dx12_backend_) {
+            return;
+        }
+
+        swapchain_textures_.clear();
+        const auto swapchain_format = RHIFormatDX12(dx12_backend_->getBackbufferFormat());
+        const auto extent = dx12_backend_->getSwapchainExtent2d();
+
+        for (auto* backbuffer : dx12_backend_->getBackbuffers()) {
+            auto texture_desc = GfxTextureDesc()
+                .setDimension(GfxTextureDimension::Texture2D)
+                .setFormat(swapchain_format)
+                .setWidth(extent.x)
+                .setHeight(extent.y)
+                .setIsRenderTarget(true)
+                .enableAutomaticStateTracking(GfxResourceStates::Present)
+                .setDebugName("Swapchain Image");
+
+            auto tex = create_ref<GfxTexture>(device_->createHandleForNativeTexture(GfxObjectTypes::D3D12_Resource, static_cast<cutie::Object>(backbuffer), texture_desc), texture_desc, "Swapchain Image");
+            swapchain_textures_.push_back(tex);
+        }
     }
 
     Bool GfxContext::acquireNextSwapchainImage(UInt32& image_index) {
         if (opengl_backend_) {
             image_index = 0;
             opengl_backend_->updateFramebufferSize();
+            return true;
+        }
+
+        if (dx12_backend_) {
+            UINT backbuffer_index = 0;
+            if (!dx12_backend_->acquireNextImage(backbuffer_index)) {
+                return false;
+            }
+            image_index = static_cast<UInt32>(backbuffer_index);
             return true;
         }
 
@@ -267,6 +349,10 @@ namespace dodoe {
             return true;
         }
 
+        if (dx12_backend_) {
+            return dx12_backend_->presentImage(static_cast<UINT>(image_index));
+        }
+
         if (!vulkan_backend_ || !device_) {
             return false;
         }
@@ -301,6 +387,29 @@ namespace dodoe {
             opengl_backend_->updateFramebufferSize();
             swapchain_textures_.clear();
             createSwapchainTexturesOpenGL();
+            return !swapchain_textures_.empty();
+        }
+
+        if (dx12_backend_) {
+            if (device_) {
+                device_->waitForIdle();
+            }
+
+            swapchain_textures_.clear();
+
+            if (device_) {
+                device_->runGarbageCollection();
+                device_->waitForIdle();
+            }
+
+            if (!dx12_backend_->recreateSwapchain(window_handle_)) {
+                return false;
+            }
+
+            createSwapchainTexturesDx12();
+            if (device_) {
+                device_->runGarbageCollection();
+            }
             return !swapchain_textures_.empty();
         }
 

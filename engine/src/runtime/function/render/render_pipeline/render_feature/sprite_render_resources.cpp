@@ -13,9 +13,10 @@ namespace dodoe {
         m_input_layout = nullptr;
         m_binding_layout = nullptr;
         m_binding_set = nullptr;
-        m_pipeline = nullptr;
+        m_pipeline = GfxGraphicsPipelineHandle{};
         m_framebuffer = nullptr;
         m_framebuffer_texture = nullptr;
+        m_bound_vp_buffer = nullptr;
     }
 
     void SpriteRenderResources::renderSprites(
@@ -35,10 +36,11 @@ namespace dodoe {
             return;
         }
 
-        if (!m_framebuffer || m_framebuffer_texture.Get() != color_target.Get()) {
+        if (!m_framebuffer || m_framebuffer_texture.get() != color_target.get()) {
             m_framebuffer_texture = color_target;
-            m_framebuffer = device->createFramebuffer(GfxFramebufferDesc().addColorAttachment(color_target));
-            m_pipeline = nullptr;
+            m_framebuffer = command_list.createFramebuffer(
+                GfxFramebufferDesc().addColorAttachment(color_target));
+            m_pipeline = GfxGraphicsPipelineHandle{};
         }
 
         const auto sprite_vs = shader_library->getSpriteVertexShader();
@@ -65,21 +67,23 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
         }
 
-        if (!m_binding_set && m_binding_layout) {
-            m_binding_set = device->createBindingSet(
+        if (m_binding_layout && (!m_binding_set || m_bound_vp_buffer.get() != vp_buffer.get())) {
+            m_bound_vp_buffer = vp_buffer;
+            m_binding_set = command_list.createBindingSet(
                 GfxBindingSetDesc()
-                    .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer))
-                    .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::point())),
+                    .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::point()))
+                    .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHIHandle())),
                 m_binding_layout);
         }
 
         GfxBindingLayoutHandle desc_table_layout = nullptr;
-        GfxDescriptorTableHandle desc_table = nullptr;
+        GfxBindingSetHandle desc_table = nullptr;
         if (pass_context.getTextureManager()) {
             auto* desc_mgr = pass_context.getTextureManager()->getDescriptorTable();
             if (desc_mgr && desc_mgr->getDescriptorTable()) {
-                desc_table = desc_mgr->getDescriptorTable();
-                desc_table_layout = desc_table->getLayout();
+                auto* raw_table = desc_mgr->getDescriptorTable();
+                desc_table = create_ref<GfxBindingSet>(cutie::BindingSetHandle(raw_table));
+                desc_table_layout = raw_table->getLayout();
             }
         }
 
@@ -112,7 +116,7 @@ namespace dodoe {
                 pipeline_desc.addBindingLayout(desc_table_layout);
             }
             DO_DEBUG("SpriteRenderResources: Calling resolveGraphicsPipeline...");
-            m_pipeline = pipeline_cache->resolveGraphicsPipeline(pipeline_desc, m_framebuffer->getFramebufferInfo());
+            m_pipeline = pipeline_cache->resolveGraphicsPipeline(pipeline_desc, m_framebuffer->getInfo(), command_list);
             DO_DEBUG("SpriteRenderResources: Pipeline created, m_pipeline={}", m_pipeline != nullptr);
         }
 
@@ -126,21 +130,20 @@ namespace dodoe {
         }
         const auto& sprite_infos = scene->getSpriteSceneInfos();
 
+        DynamicArray<GfxBindingSetHandle> bs_arr = {m_binding_set};
+        if (desc_table) {
+            bs_arr.push_back(desc_table);
+        }
+        DynamicArray<GfxVertexBufferBinding> vbs;
+        vbs.push_back(GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0));
+        GfxIndexBufferBinding ib = GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT).setOffset(0);
+        auto vp = GfxViewportState().addViewportAndScissorRect(GfxViewport(
+            0, static_cast<float>(context.getGfxContext()->getSwapchainExtent2d().x),
+            0, static_cast<float>(context.getGfxContext()->getSwapchainExtent2d().y),
+            0, 1));
+
         for (UInt32 i = 0; i < static_cast<UInt32>(sprite_infos.size()); ++i) {
-            GfxGraphicsState state;
-            state.pipeline = m_pipeline;
-            state.framebuffer = m_framebuffer;
-            state.viewport.addViewportAndScissorRect(GfxViewport(
-                0, static_cast<float>(context.getGfxContext()->getSwapchainExtent2d().x),
-                0, static_cast<float>(context.getGfxContext()->getSwapchainExtent2d().y),
-                0, 1));
-            state.addBindingSet(m_binding_set);
-            if (desc_table) {
-                state.addBindingSet(desc_table);
-            }
-            state.vertexBuffers.push_back(GfxVertexBufferBinding().setBuffer(quad_vertex_buffer).setSlot(0).setOffset(0));
-            state.indexBuffer = GfxIndexBufferBinding().setBuffer(quad_index_buffer).setFormat(GfxFormat::R16_UINT).setOffset(0);
-            command_list.setGraphicsState(state);
+            command_list.setGraphicsState(m_framebuffer, m_pipeline, bs_arr, vp, vbs, ib);
             command_list.drawIndexed(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         }
     }

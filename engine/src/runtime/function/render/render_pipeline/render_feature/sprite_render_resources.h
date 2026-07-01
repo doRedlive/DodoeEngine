@@ -15,6 +15,7 @@ namespace dodoe {
         GfxGraphicsPipelineHandle m_pipeline{};
         GfxFramebufferHandle m_framebuffer{};
         GfxTextureHandle m_framebuffer_texture{};
+        GfxBufferHandle m_bound_vp_buffer{};
 
     public:
         void reset();

@@ -38,8 +38,8 @@ namespace dodoe {
         m_graph.compile();
     }
 
-    DrawCommandList RenderGraphBuilder::execute(ThreadPool& pool, const RenderGraphExecuteContext& context) {
-        return m_graph.execute(pool, context);
+    void RenderGraphBuilder::execute(ThreadPool& pool, const RenderGraphExecuteContext& context) {
+        m_graph.execute(pool, context);
     }
 
     void RenderGraphBuilder::reset() {

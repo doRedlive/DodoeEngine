@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
 

@@ -24,9 +24,16 @@ namespace dodoe {
         Only2D,
     };
 
+    enum class ThreadingMode {
+        TripleThread,
+        DualThread,
+        SingleThread,
+    };
+
     struct RenderSettingsInitInfo {
-        RenderBackendApiType api{ RenderBackendApiType::Vulkan };
+        RenderBackendApiType api{ RenderBackendApiType::DX12 };
         RenderingPipelineType pipeline{ RenderingPipelineType::ForwardPlus };
+        ThreadingMode threading_mode{ ThreadingMode::TripleThread };
     };
 
     class RenderSettings {

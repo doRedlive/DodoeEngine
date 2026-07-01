@@ -62,8 +62,7 @@ namespace dodoe::RenderPipelinePass {
                 const auto output_handle = context.resolveTexture(parameters.output);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
-                auto framebuffer_ptr = create_ref<GfxFramebufferHandle>();
-                command_list.createFramebuffer(device, framebuffer_desc, framebuffer_ptr.get());
+                auto fb = command_list.createFramebuffer( framebuffer_desc);
 
                 SingleInputPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
@@ -71,35 +70,30 @@ namespace dodoe::RenderPipelinePass {
 
                 const auto binding_layout = ShaderBindingReflector<SingleInputPassShaderParams>::getOrCreateLayout(device);
 
-                auto binding_set_ptr = create_ref<GfxBindingSetHandle>();
-                ShaderBindingReflector<SingleInputPassShaderParams>::createBindingSetDeferred(
-                    command_list, device, binding_layout, shader_params, binding_set_ptr.get(),
+                auto bs = ShaderBindingReflector<SingleInputPassShaderParams>::createBindingSetDeferred(
+                    command_list, binding_layout, shader_params,
                     [&](auto h) { return context.resolveTexture(h); },
                     [&](auto h) { return context.resolveBuffer(h); }
                 );
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                const auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library.getFullscreenVertexShader(),
                         shader_library.getToneMappingPixelShader(),
                         binding_layout
                     ),
-                    framebuffer_info
+                    framebuffer_info,
+                    command_list
                 );
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
 
+                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
                 command_list.setTextureState(input_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
                 command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(
-                    GfxGraphicsState()
-                        .setPipeline(pipeline)
-                        .setFramebuffer(*framebuffer_ptr)
-                        .setViewport(viewport_state)
-                        .addBindingSet(*binding_set_ptr)
-                );
+                command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                 command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.commitBarriers();
@@ -130,8 +124,7 @@ namespace dodoe::RenderPipelinePass {
                 const auto output_handle = context.resolveTexture(parameters.output);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
-                auto framebuffer_ptr = create_ref<GfxFramebufferHandle>();
-                command_list.createFramebuffer(device, framebuffer_desc, framebuffer_ptr.get());
+                auto fb = command_list.createFramebuffer( framebuffer_desc);
 
                 ColorGradingPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
@@ -140,35 +133,30 @@ namespace dodoe::RenderPipelinePass {
 
                 const auto binding_layout = ShaderBindingReflector<ColorGradingPassShaderParams>::getOrCreateLayout(device);
 
-                auto binding_set_ptr = create_ref<GfxBindingSetHandle>();
-                ShaderBindingReflector<ColorGradingPassShaderParams>::createBindingSetDeferred(
-                    command_list, device, binding_layout, shader_params, binding_set_ptr.get(),
+                auto bs = ShaderBindingReflector<ColorGradingPassShaderParams>::createBindingSetDeferred(
+                    command_list, binding_layout, shader_params,
                     [&](auto h) { return context.resolveTexture(h); },
                     [&](auto h) { return context.resolveBuffer(h); }
                 );
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                const auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library.getFullscreenVertexShader(),
                         shader_library.getColorGradingPixelShader(),
                         binding_layout
                     ),
-                    framebuffer_info
+                    framebuffer_info,
+                    command_list
                 );
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
 
+                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
                 command_list.setTextureState(input_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
                 command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(
-                    GfxGraphicsState()
-                        .setPipeline(pipeline)
-                        .setFramebuffer(*framebuffer_ptr)
-                        .setViewport(viewport_state)
-                        .addBindingSet(*binding_set_ptr)
-                );
+                command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                 command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.commitBarriers();
@@ -191,7 +179,7 @@ namespace dodoe::RenderPipelinePass {
                 parameters.output = pass_builder.write(pass_builder.createTransientTexture(
                     rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG MainCameraFxaaColor"),
                     "MainCameraFxaaColor"));
-                pass_builder.blackboard().set<SceneColorKey>(parameters.output);
+                pass_builder.blackboard().set<FxaaColorKey>(parameters.output);
             },
             [pass_context, &shader_library](const SingleInputPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
                 const auto device = context.getGfxContext()->getDevice();
@@ -199,8 +187,7 @@ namespace dodoe::RenderPipelinePass {
                 const auto output_handle = context.resolveTexture(parameters.output);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
-                auto framebuffer_ptr = create_ref<GfxFramebufferHandle>();
-                command_list.createFramebuffer(device, framebuffer_desc, framebuffer_ptr.get());
+                auto fb = command_list.createFramebuffer( framebuffer_desc);
 
                 SingleInputPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
@@ -208,35 +195,30 @@ namespace dodoe::RenderPipelinePass {
 
                 const auto binding_layout = ShaderBindingReflector<SingleInputPassShaderParams>::getOrCreateLayout(device);
 
-                auto binding_set_ptr = create_ref<GfxBindingSetHandle>();
-                ShaderBindingReflector<SingleInputPassShaderParams>::createBindingSetDeferred(
-                    command_list, device, binding_layout, shader_params, binding_set_ptr.get(),
+                auto bs = ShaderBindingReflector<SingleInputPassShaderParams>::createBindingSetDeferred(
+                    command_list, binding_layout, shader_params,
                     [&](auto h) { return context.resolveTexture(h); },
                     [&](auto h) { return context.resolveBuffer(h); }
                 );
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                const auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library.getFullscreenVertexShader(),
                         shader_library.getFxaaPixelShader(),
                         binding_layout
                     ),
-                    framebuffer_info
+                    framebuffer_info,
+                    command_list
                 );
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
 
+                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
                 command_list.setTextureState(input_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
                 command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(
-                    GfxGraphicsState()
-                        .setPipeline(pipeline)
-                        .setFramebuffer(*framebuffer_ptr)
-                        .setViewport(viewport_state)
-                        .addBindingSet(*binding_set_ptr)
-                );
+                command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                 command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.commitBarriers();

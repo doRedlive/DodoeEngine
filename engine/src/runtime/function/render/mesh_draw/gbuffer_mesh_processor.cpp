@@ -82,7 +82,7 @@ namespace dodoe {
             if (!table) {
                 return nullptr;
             }
-            return GfxBindingSetHandle(table);
+            return create_ref<GfxBindingSet>(cutie::BindingSetHandle(table));
         }
 
     } // namespace
@@ -91,27 +91,23 @@ namespace dodoe {
         m_descriptor_table = descriptor_table;
         m_texture_manager = texture_manager;
 
-        const auto device = gfx_context.getDevice();
-        DO_ASSERT(device != nullptr, "GBufferMeshProcessor device is null");
-
-        m_sampler = device->createSampler(GfxSamplerDesc());
-        m_binding_layout = device->createBindingLayout(
+        m_sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
+        m_binding_layout = GDrawCommandList.createBindingLayout(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
                 .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
                 .addItem(GfxBindingLayoutItem::Sampler(0))
         );
-        m_constant_buffer = device->createBuffer(
+        m_constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(GBufferMeshDrawShaderData)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("GBufferMeshProcessor ConstantBuffer")
-        );
-        m_binding_set = device->createBindingSet(
+                .setDebugName("GBufferMeshProcessor ConstantBuffer"));
+        m_binding_set = GDrawCommandList.createBindingSet(
             GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer))
+                .addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer->getRHIHandle()))
                 .addItem(GfxBindingSetItem::Sampler(0, m_sampler)),
             m_binding_layout
         );
@@ -205,10 +201,10 @@ namespace dodoe {
                 if (descriptor_binding_set) {
                     command.binding_sets.push_back(descriptor_binding_set);
                 }
-                command.vertex_bindings.push_back(GfxVertexBufferBinding().setBuffer(element.vertex_buffer).setSlot(0).setOffset(0));
+                command.vertex_bindings.push_back(GfxVertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
                 command.setPrimitiveSceneBufferBinding(1, static_cast<UInt64>(element.first_instance) * sizeof(InstanceSceneData));
                 command.index_binding = GfxIndexBufferBinding()
-                    .setBuffer(element.index_buffer)
+                    .setBuffer(element.index_buffer->getRHI())
                     .setFormat(GfxFormat::R32_UINT)
                     .setOffset(0);
                 command.draw_args = GfxDrawArguments()
@@ -216,7 +212,7 @@ namespace dodoe {
                     .setInstanceCount(element.instance_count)
                     .setStartIndexLocation(element.index_offset)
                     .setStartVertexLocation(element.vertex_offset);
-                command.sort_key = reinterpret_cast<UInt64>(element.vertex_buffer.Get());
+                command.sort_key = reinterpret_cast<UInt64>(element.vertex_buffer.get());
                 commands.push_back(command);
             }
         }
