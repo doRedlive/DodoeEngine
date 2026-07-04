@@ -10,18 +10,16 @@ namespace dodoe {
 
     class RenderScene;
 
-    struct RenderViewFamilyCreateInfo {};
-
-    class RenderViewFamily : public Managed<RenderViewFamily, RenderViewFamilyCreateInfo> {
-        friend class Managed<RenderViewFamily, RenderViewFamilyCreateInfo>;
-
+    class RenderViewFamily {
         DynamicArray<RenderView> m_views{};
         Float m_time_seconds{0.0f};
         Float m_delta_seconds{0.0f};
 
     public:
-        void reset();
-        void addView(const RenderView& view) { m_views.push_back(view); }
+        RenderViewFamily() = default;
+
+        RenderView& createView(Identifier id);
+
         void setFrameTime(const Float time_seconds, const Float delta_seconds) {
             m_time_seconds = time_seconds;
             m_delta_seconds = delta_seconds;
@@ -37,10 +35,6 @@ namespace dodoe {
         [[nodiscard]] const RenderView& getView(const Size_t index) const { return m_views[index]; }
         [[nodiscard]] Float getTimeSeconds() const { return m_time_seconds; }
         [[nodiscard]] Float getDeltaSeconds() const { return m_delta_seconds; }
-
-    private:
-        Bool initialize(const RenderViewFamilyCreateInfo&) { return true; }
-        void shutdown();
     };
 
 } // dodoe

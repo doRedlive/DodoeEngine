@@ -10,6 +10,7 @@
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components.h"
 #include "runtime/resource/resource_manager.h"
+#include "runtime/service/scene_importer.h"
 #include "runtime/core/utils/common.h"
 
 
@@ -30,6 +31,8 @@ namespace sandbox {
         auto& sprite_renderer = test_go.addComponent<dodoe::SpriteRendererComponent>();
         const dodoe::String texture_path = "engine/res/pictures/grm.jpg";
         sprite_renderer.texture = dodoe::PPtr<dodoe::Texture>(dodoe::FileID(texture_path), dodoe::UUID(dodoe::string2hash(texture_path)));
+
+        dodoe::SceneImporter::ImportModel("engine/res/models/backpack/backpack.obj");
     }
     
     void SandboxLayer::detach() {

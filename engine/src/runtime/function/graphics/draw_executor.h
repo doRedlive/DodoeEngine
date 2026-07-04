@@ -2,7 +2,7 @@
 
 #include "dopch.h"
 
-#include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/core/thread/frame_context.h"
 
 namespace dodoe {
 
@@ -12,7 +12,7 @@ namespace dodoe {
     public:
         DrawExecutor() = default;
 
-        void execute(GfxDeviceHandle device, GfxContext* gfx, UInt32 swapchain_image_index);
+        void execute(GfxDeviceHandle device, GfxContext* gfx, FrameContext& frame_ctx);
     };
 
 } // dodoe

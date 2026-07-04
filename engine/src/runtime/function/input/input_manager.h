@@ -9,7 +9,6 @@
 #include "runtime/function/input/key_code.h"
 #include "runtime/function/input/mouse_code.h"
 
-#include "runtime/function/render/framework/viewport_manager.h"
 
 namespace dodoe {
 
@@ -31,9 +30,7 @@ namespace dodoe {
         ActionState action_state;
     };
 
-    struct InputManagerInitInfo {
-        ViewportManager* viewport_manager;
-    };
+    struct InputManagerInitInfo {};
 
     class InputManager : public Managed<InputManager, InputManagerInitInfo> {
         friend class Input;
@@ -49,15 +46,11 @@ namespace dodoe {
         std::unordered_map<KeyCode, KeyInfo> key_map_{};
         MouseInfo mouse_info_{};
 
-        ViewportManager* viewport_manager_{nullptr};
-
         void on_key_pressed_(KeyPressedEvent& e);
         void on_key_released_(KeyReleasedEvent& e);
         void on_mouse_button_pressed_(const MouseButtonPressedEvent& e);
         void on_mouse_button_released_(const MouseButtonReleasedEvent& e);
         void on_mouse_moved_(const MouseMovedEvent& e);
-
-        Vector2f window2world(const Vector2f& window_pos) const;
     };
 
 } // dodoe

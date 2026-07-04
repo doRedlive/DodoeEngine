@@ -4,7 +4,7 @@
 
 #include "runtime/platform/platform_detection.h"
 
-#ifdef DO_DEBUG
+#ifdef DODOE_DEBUG
     #if defined(DO_PLATFORM_WINDOWS)
         #include <intrin.h>
         #define DoDebugBreak() __debugbreak()
@@ -18,7 +18,7 @@
     #define DO_ENABLE_ASSERTS
 #else
     #define DoDebugBreak();
-#endif//DO_DEBUG
+#endif//DODOE_DEBUG
 
 #define DO_EXPAND_MACRO(x) x
 #define DO_STRINGIFY_MACRO(x) #x

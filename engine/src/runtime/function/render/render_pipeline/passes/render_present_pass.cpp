@@ -17,17 +17,17 @@
 
 namespace dodoe::RenderPipelinePass {
 
-    struct PresentPushConstants {
+    struct PresentViewportCB {
         float viewport_pos[2]{};
         float viewport_size[2]{};
     };
 
     BEGIN_SHADER_PARAMETER_STRUCT(PresentPassShaderParams)
-        ShaderParameter<ShaderParamType::PushConstants, 0, PresentPushConstants> push_constants{};
+        ShaderParameter<ShaderParamType::ConstantBuffer, 0, GfxBufferHandle> viewport_cb{};
         SHADER_PARAMETER(TextureSRV, 0, scene_color)
         SHADER_PARAMETER(TextureSRV, 1, imgui_color)
         SHADER_PARAMETER(Sampler,    0, sampler)
-    END_SHADER_PARAMETER_STRUCT(func(push_constants); func(scene_color); func(imgui_color); func(sampler);)
+    END_SHADER_PARAMETER_STRUCT(func(viewport_cb); func(scene_color); func(imgui_color); func(sampler);)
 
     struct PresentPassParameters {
         RenderGraphTextureHandle scene_color{};
@@ -57,19 +57,29 @@ namespace dodoe::RenderPipelinePass {
                 const auto backbuffer = context.resolveTexture(parameters.backbuffer);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(backbuffer);
-                auto fb = command_list.createFramebuffer( framebuffer_desc);
-
-                PresentPassShaderParams shader_params;
-                shader_params.scene_color.value = parameters.scene_color;
-                shader_params.imgui_color.value = parameters.imgui_color;
-                shader_params.sampler.value = GlobalSamplers::screen();
+                auto fb = command_list.createFramebuffer(framebuffer_desc);
 
                 const auto viewport_rect = context.getView()->getViewportRect();
                 const auto swapchain_extent = context.getGfxContext()->getSwapchainExtent2d();
-                shader_params.push_constants.value.viewport_pos[0] = static_cast<float>(viewport_rect.x);
-                shader_params.push_constants.value.viewport_pos[1] = static_cast<float>(viewport_rect.y);
-                shader_params.push_constants.value.viewport_size[0] = viewport_rect.z > 0 ? static_cast<float>(viewport_rect.z) : static_cast<float>(swapchain_extent.x);
-                shader_params.push_constants.value.viewport_size[1] = viewport_rect.w > 0 ? static_cast<float>(viewport_rect.w) : static_cast<float>(swapchain_extent.y);
+
+                PresentViewportCB viewport_data;
+                viewport_data.viewport_pos[0] = static_cast<float>(viewport_rect.x);
+                viewport_data.viewport_pos[1] = static_cast<float>(viewport_rect.y);
+                viewport_data.viewport_size[0] = viewport_rect.z > 0 ? static_cast<float>(viewport_rect.z) : static_cast<float>(swapchain_extent.x);
+                viewport_data.viewport_size[1] = viewport_rect.w > 0 ? static_cast<float>(viewport_rect.w) : static_cast<float>(swapchain_extent.y);
+                auto viewport_cb_handle = command_list.createBuffer(
+                    GfxBufferDesc()
+                        .setByteSize(sizeof(PresentViewportCB))
+                        .setIsConstantBuffer(true)
+                        .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
+                        .setDebugName("PresentViewportCB"),
+                    &viewport_data, sizeof(viewport_data));
+
+                PresentPassShaderParams shader_params;
+                shader_params.viewport_cb.value = viewport_cb_handle;
+                shader_params.scene_color.value = parameters.scene_color;
+                shader_params.imgui_color.value = parameters.imgui_color;
+                shader_params.sampler.value = GlobalSamplers::screen();
 
                 const auto binding_layout = ShaderBindingReflector<PresentPassShaderParams>::getOrCreateLayout(device);
 
@@ -78,6 +88,11 @@ namespace dodoe::RenderPipelinePass {
                     [&](auto h) { return context.resolveTexture(h); },
                     [&](auto h) { return context.resolveBuffer(h); }
                 );
+
+                if (!bs) {
+                    DO_ERROR("PresentPass: Failed to create binding set");
+                    return;
+                }
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
@@ -96,7 +111,6 @@ namespace dodoe::RenderPipelinePass {
                 command_list.setTextureState(backbuffer, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
                 command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
-                command_list.setPushConstants(&shader_params.push_constants.value, sizeof(PresentPushConstants));
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                 command_list.setTextureState(backbuffer, GfxAllSubresources, GfxResourceStates::Present);
                 command_list.commitBarriers();

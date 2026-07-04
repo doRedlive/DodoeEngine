@@ -10,6 +10,7 @@ namespace dodoe {
 
         m_api = info.api;
         m_pipeline = info.pipeline;
+        m_threading_mode = info.threading_mode;
 
         return true;
     }

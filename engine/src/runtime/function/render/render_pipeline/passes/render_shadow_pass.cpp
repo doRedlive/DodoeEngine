@@ -7,6 +7,8 @@
 
 #include "render_pass_blackboard_keys.h"
 
+#include "../../render_view/render_view.h"
+#include "../../render_view/mesh_view_extension.h"
 #include "../render_pipeline_pass_utils.h"
 
 #include "runtime/function/render/mesh_draw/directional_shadow_mesh_processor.h"
@@ -44,6 +46,11 @@ namespace dodoe::RenderPipelinePass {
                     DO_ASSERT(context.getView() != nullptr, "DirectionalShadowPass view is null");
                     const auto* view = context.getView();
 
+                    const auto* mesh_ext = view->getExtension<MeshViewExtension>();
+                    if (!mesh_ext) {
+                        return;
+                    }
+
                     const auto device = context.getGfxContext()->getDevice();
                     const auto shadow_map = context.resolveTexture(parameters.shadow_map);
 
@@ -55,12 +62,11 @@ namespace dodoe::RenderPipelinePass {
                     command_list.setTextureState(shadow_map, GfxAllSubresources, GfxResourceStates::DepthWrite);
                     command_list.commitBarriers();
                     command_list.clearDepthStencilTexture(shadow_map, GfxAllSubresources, true, 1.0f, false, 0);
-                    MeshDrawCommandDispatcher::dispatch(
+                    MeshDrawCommandDispatcher::Dispatch(
                         context,
                         MeshPassType::DirectionalShadow,
-                        view->getShaderData(),
-                        view->getPassData(),
-                        view->getPassData().getMeshPassCommands(MeshPassType::DirectionalShadow),
+                        mesh_ext->gbuffer_shader_data,
+                        mesh_ext->mesh_pass_commands[static_cast<size_t>(MeshPassType::DirectionalShadow)],
                         framebuffer,
                         viewport_state,
                         GfxGraphicsPipelineHandle{},

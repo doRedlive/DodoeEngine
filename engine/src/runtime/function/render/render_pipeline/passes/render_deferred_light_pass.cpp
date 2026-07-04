@@ -70,6 +70,21 @@ namespace dodoe::RenderPipelinePass {
                 parameters.constant_buffer = pass_builder.importBuffer(pass_context.deferred_light_constant_buffer, "DeferredLightConstantBuffer");
             },
             [pass_context, &shader_library](const DeferredLightPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
+                const auto& light_infos = context.getScene()->getLightSceneInfos();
+                Bool has_enabled_lights = false;
+                for (const auto& light_info : light_infos) {
+                    if (light_info.isEnabled() && light_info.getLightType() != LightType::Sky) {
+                        has_enabled_lights = true;
+                        break;
+                    }
+                }
+                if (!has_enabled_lights) {
+                    const auto hdr = context.resolveTexture(parameters.hdr_color);
+                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
+                }
+
                 const auto device = context.getGfxContext()->getDevice();
                 const auto albedo_handle = context.resolveTexture(parameters.albedo);
                 const auto normal_handle = context.resolveTexture(parameters.normal);
@@ -116,6 +131,13 @@ namespace dodoe::RenderPipelinePass {
                     framebuffer_info,
                     command_list
                 );
+                if (!pipeline) {
+                    DO_ERROR("DeferredLightPass: Failed to create pipeline");
+                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
+                }
+
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
                 const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*context.getView());
 
@@ -126,20 +148,6 @@ namespace dodoe::RenderPipelinePass {
                 command_list.setTextureState(shadow_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
-
-                const auto& light_infos = context.getScene()->getLightSceneInfos();
-                Bool has_enabled_lights = false;
-                for (const auto& light_info : light_infos) {
-                    if (light_info.isEnabled() && light_info.getLightType() != LightType::Sky) {
-                        has_enabled_lights = true;
-                        break;
-                    }
-                }
-                if (!has_enabled_lights) {
-                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
-                    return;
-                }
 
                 for (const auto& light_info : light_infos) {
                     if (!light_info.isEnabled()) {

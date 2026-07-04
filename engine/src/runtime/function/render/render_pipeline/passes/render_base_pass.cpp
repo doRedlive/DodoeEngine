@@ -8,6 +8,7 @@
 #include "render_pass_blackboard_keys.h"
 
 #include "../../render_view/render_view.h"
+#include "../../render_view/mesh_view_extension.h"
 #include "../render_pipeline_pass_utils.h"
 
 #include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
@@ -29,7 +30,12 @@ namespace dodoe::RenderPipelinePass {
     void RenderGBufferPass(RenderGraphBuilder& graph, const RenderView& view, const RenderPassContext& pass_context) {
         DO_ASSERT(pass_context.isValid(), "RenderPipeline pass context is invalid");
         const auto& gbuffer_mesh_processor = pass_context.getMeshProcessor<MeshPassType::GBuffer>();
-        const Size_t visible_instance_count = view.getInstanceData().instance_scene_data.size();
+
+        const auto* mesh_ext = view.getExtension<MeshViewExtension>();
+        if (!mesh_ext) {
+            return;
+        }
+        const Size_t visible_instance_count = mesh_ext->instance_scene_data.size();
 
         graph.addPass<GBufferPassParameters>(
             "GBufferPass",
@@ -97,22 +103,26 @@ namespace dodoe::RenderPipelinePass {
                 command_list.clearDepthStencilTexture(depth, GfxAllSubresources, true, 1.0f, false, 0);
                 command_list.setBufferState(primitive_scene_buffer, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
-                MeshDrawCommandDispatcher::uploadInstanceTransforms(context, view->getInstanceData(), parameters.primitive_scene_buffer, command_list);
-                command_list.setBufferState(primitive_scene_buffer, GfxResourceStates::VertexBuffer);
-                command_list.commitBarriers();
-                MeshDrawCommandDispatcher::dispatch(
-                    context,
-                    MeshPassType::GBuffer,
-                    view->getShaderData(),
-                    view->getPassData(),
-                    view->getPassData().getMeshPassCommands(MeshPassType::GBuffer),
-                    framebuffer,
-                    viewport_state,
-                    GfxGraphicsPipelineHandle{},
-                    parameters.primitive_scene_buffer,
-                    parameters.constant_buffer,
-                    command_list
-                );
+
+                const auto* mesh_ext = view->getExtension<MeshViewExtension>();
+                if (mesh_ext) {
+                    MeshDrawCommandDispatcher::UploadInstanceTransforms(context, mesh_ext->instance_scene_data, parameters.primitive_scene_buffer, command_list);
+                    command_list.setBufferState(primitive_scene_buffer, GfxResourceStates::VertexBuffer);
+                    command_list.commitBarriers();
+                    MeshDrawCommandDispatcher::Dispatch(
+                        context,
+                        MeshPassType::GBuffer,
+                        mesh_ext->gbuffer_shader_data,
+                        mesh_ext->mesh_pass_commands[static_cast<size_t>(MeshPassType::GBuffer)],
+                        framebuffer,
+                        viewport_state,
+                        GfxGraphicsPipelineHandle{},
+                        parameters.primitive_scene_buffer,
+                        parameters.constant_buffer,
+                        command_list
+                    );
+                }
+
                 command_list.setTextureState(albedo, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(normal, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(position, GfxAllSubresources, GfxResourceStates::ShaderResource);

@@ -27,7 +27,7 @@ namespace dodoe {
         UInt32 addImportedBufferResource(const GfxBufferHandle& buffer, const String& name);
         UInt32 addBackBufferResource(const String& name);
         void compile();
-        void execute(ThreadPool& pool, const RenderGraphExecuteContext& context);
+        void execute(ThreadPool& pool, const RenderGraphExecuteContext& context, DrawCommandList& out_commands);
         void reset();
 
         [[nodiscard]] Bool isCompiled() const { return m_compiled; }

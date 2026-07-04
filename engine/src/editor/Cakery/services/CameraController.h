@@ -5,14 +5,12 @@
 #include <QObject>
 #include <algorithm>
 
-namespace dodoe { class RenderView; }
-
 namespace cakery {
 
 class CameraController : public QObject {
     Q_OBJECT
 public:
-    explicit CameraController(dodoe::RenderView* engineView, QObject* parent = nullptr);
+    explicit CameraController(QObject* parent = nullptr);
 
     void setViewportSize(float w, float h);
 
@@ -40,8 +38,6 @@ private:
     bool m_isDragging = false;
     double m_lastMouseX = 0.0;
     double m_lastMouseY = 0.0;
-
-    dodoe::RenderView* m_engineView = nullptr;
 
     static constexpr float kMinZoom = 0.01f;
     static constexpr float kMaxZoom = 100.0f;

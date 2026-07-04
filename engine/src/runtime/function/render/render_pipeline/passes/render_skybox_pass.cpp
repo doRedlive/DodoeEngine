@@ -18,16 +18,16 @@
 
 namespace dodoe::RenderPipelinePass {
 
-    struct SkyboxPushConstants {
+    struct SkyboxConstantBuffer {
         Matrix4f inv_view_projection{1.0f};
     };
 
     BEGIN_SHADER_PARAMETER_STRUCT(SkyboxPassShaderParams)
+        ShaderParameter<ShaderParamType::ConstantBuffer, 0, GfxBufferHandle> skybox_cb{};
         SHADER_PARAMETER_RAWTEX(0, skybox_texture)
         SHADER_PARAMETER(TextureSRV, 1, depth)
         SHADER_PARAMETER(Sampler,    0, sampler)
-        ShaderParameter<ShaderParamType::PushConstants, 0, SkyboxPushConstants> push_constants{};
-    END_SHADER_PARAMETER_STRUCT(func(skybox_texture); func(depth); func(sampler); func(push_constants);)
+    END_SHADER_PARAMETER_STRUCT(func(skybox_cb); func(skybox_texture); func(depth); func(sampler);)
 
     struct SkyboxPassParameters {
         RenderGraphTextureHandle depth{};
@@ -58,26 +58,44 @@ namespace dodoe::RenderPipelinePass {
                 const auto hdr = context.resolveTexture(parameters.hdr_color);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
-                auto fb = command_list.createFramebuffer( framebuffer_desc);
+                auto fb = command_list.createFramebuffer(framebuffer_desc);
 
+                Bool has_sky = false;
                 GfxTextureHandle cubemap_handle{};
                 for (const auto& light_info : context.getScene()->getLightSceneInfos()) {
                     if (light_info.getLightType() == LightType::Sky && light_info.isEnabled()) {
                         cubemap_handle = light_info.getSkyLightData().cubemap
                             ? light_info.getSkyLightData().cubemap->getGpuHandle()
                             : GfxTextureHandle{};
+                        has_sky = true;
                         break;
                     }
+                }
+                if (!has_sky) {
+                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
+                    command_list.commitBarriers();
+                    command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
+                    return;
                 }
                 if (!cubemap_handle) {
                     cubemap_handle = hdr;
                 }
 
+                SkyboxConstantBuffer cb_data;
+                cb_data.inv_view_projection = Math::Inverse(context.getView()->getViewProjectionMatrix());
+                auto skybox_cb = command_list.createBuffer(
+                    GfxBufferDesc()
+                        .setByteSize(sizeof(SkyboxConstantBuffer))
+                        .setIsConstantBuffer(true)
+                        .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
+                        .setDebugName("SkyboxCB"),
+                    &cb_data, sizeof(cb_data));
+
                 SkyboxPassShaderParams shader_params;
+                shader_params.skybox_cb.value = skybox_cb;
                 shader_params.skybox_texture.value = cubemap_handle;
                 shader_params.depth.value = parameters.depth;
                 shader_params.sampler.value = GlobalSamplers::screen();
-                shader_params.push_constants.value.inv_view_projection = Math::Inverse(context.getView()->getViewProjectionMatrix());
 
                 const auto binding_layout = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayout(device);
 
@@ -114,7 +132,6 @@ namespace dodoe::RenderPipelinePass {
                 command_list.commitBarriers();
                 command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                 command_list.setGraphicsState(fb, pipeline, bs_arr, rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d()));
-                command_list.setPushConstants(&shader_params.push_constants.value, sizeof(SkyboxPushConstants));
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }
         );

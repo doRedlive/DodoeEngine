@@ -5,7 +5,6 @@
 #include "runtime/function/render/framework/texture_manager.h"
 #include "runtime/function/render/framework/descriptor_table_manager.h"
 #include "runtime/function/render/framework/global_samplers.h"
-#include "runtime/function/render/render_scene/render_scene.h"
 
 namespace dodoe {
 
@@ -27,8 +26,13 @@ namespace dodoe {
         const GfxBufferHandle& quad_vertex_buffer,
         const GfxBufferHandle& quad_index_buffer,
         const GfxBufferHandle& instance_buffer,
-        const GfxBufferHandle& vp_buffer)
+        const GfxBufferHandle& vp_buffer,
+        const UInt32 visible_count)
     {
+        if (visible_count == 0) {
+            return;
+        }
+
         const auto device = context.getGfxContext()->getDevice();
         const auto* shader_library = pass_context.getShaderLibrary();
         const auto* pipeline_cache = pass_context.getPipelineStateCache();
@@ -36,7 +40,10 @@ namespace dodoe {
             return;
         }
 
-        if (!m_framebuffer || m_framebuffer_texture.get() != color_target.get()) {
+        if (!m_framebuffer || !m_framebuffer_texture
+            || m_framebuffer_texture->getDesc().format != color_target->getDesc().format
+            || m_framebuffer_texture->getDesc().width != color_target->getDesc().width
+            || m_framebuffer_texture->getDesc().height != color_target->getDesc().height) {
             m_framebuffer_texture = color_target;
             m_framebuffer = command_list.createFramebuffer(
                 GfxFramebufferDesc().addColorAttachment(color_target));
@@ -67,7 +74,7 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
         }
 
-        if (m_binding_layout && (!m_binding_set || m_bound_vp_buffer.get() != vp_buffer.get())) {
+        if (m_binding_layout && (!m_binding_set || !m_bound_vp_buffer || m_bound_vp_buffer->getRHIHandle() != vp_buffer->getRHIHandle())) {
             m_bound_vp_buffer = vp_buffer;
             m_binding_set = command_list.createBindingSet(
                 GfxBindingSetDesc()
@@ -88,7 +95,6 @@ namespace dodoe {
         }
 
         if (!m_pipeline && m_framebuffer && m_input_layout && m_binding_layout) {
-            DO_DEBUG("SpriteRenderResources: Creating sprite pipeline...");
             GfxBlendState blend;
             blend.targets[0]
                 .enableBlend()
@@ -110,25 +116,15 @@ namespace dodoe {
                 .addBindingLayout(m_binding_layout)
                 .setPrimType(GfxPrimitiveType::TriangleList)
                 .setRenderState(render_state);
-            DO_DEBUG("SpriteRenderResources: sprite_vs={} sprite_ps={} desc_table_layout={}",
-                sprite_vs != nullptr, sprite_ps != nullptr, desc_table_layout != nullptr);
             if (desc_table_layout) {
                 pipeline_desc.addBindingLayout(desc_table_layout);
             }
-            DO_DEBUG("SpriteRenderResources: Calling resolveGraphicsPipeline...");
             m_pipeline = pipeline_cache->resolveGraphicsPipeline(pipeline_desc, m_framebuffer->getInfo(), command_list);
-            DO_DEBUG("SpriteRenderResources: Pipeline created, m_pipeline={}", m_pipeline != nullptr);
         }
 
         if (!m_pipeline || !m_framebuffer || !m_binding_set) {
             return;
         }
-
-        const auto* scene = pass_context.scene;
-        if (!scene) {
-            return;
-        }
-        const auto& sprite_infos = scene->getSpriteSceneInfos();
 
         DynamicArray<GfxBindingSetHandle> bs_arr = {m_binding_set};
         if (desc_table) {
@@ -142,10 +138,8 @@ namespace dodoe {
             0, static_cast<float>(context.getGfxContext()->getSwapchainExtent2d().y),
             0, 1));
 
-        for (UInt32 i = 0; i < static_cast<UInt32>(sprite_infos.size()); ++i) {
-            command_list.setGraphicsState(m_framebuffer, m_pipeline, bs_arr, vp, vbs, ib);
-            command_list.drawIndexed(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-        }
+        command_list.setGraphicsState(m_framebuffer, m_pipeline, bs_arr, vp, vbs, ib);
+        command_list.drawIndexed(GfxDrawArguments().setVertexCount(6).setInstanceCount(visible_count));
     }
 
 } // dodoe

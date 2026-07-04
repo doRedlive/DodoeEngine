@@ -17,12 +17,6 @@ namespace dodoe {
             return cache_it->second;
         }
 
-        DO_DEBUG("PipelineStateCache: Enqueuing graphics pipeline for pass_type={}, VS={}, PS={}, binding_layouts={}",
-            static_cast<int>(pass_type),
-            pipeline_desc.VS != nullptr,
-            pipeline_desc.PS != nullptr,
-            pipeline_desc.bindingLayouts.size());
-
         auto handle = command_list.createGraphicsPipeline(pipeline_desc, framebuffer_info);
         m_graphics_pipelines.emplace(cache_key, handle);
         return handle;

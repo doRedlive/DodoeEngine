@@ -34,9 +34,14 @@ namespace dodoe {
         META(Enable)
         float far_plane{1000.0f};
         META(Enable)
+        float aspect_ratio{16.0f / 9.0f};
+        META(Enable)
         Color background{Color::white()};
 
         bool dirty{false};
+
+        Matrix4f view_matrix{1.0f};
+        Matrix4f projection_matrix{1.0f};
 
         void setCameraType(const CameraType in_type) { type = in_type; dirty = true; }
         void setZoom(const float in_zoom) { zoom = in_zoom; dirty = true; }

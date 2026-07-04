@@ -32,7 +32,7 @@ namespace dodoe {
 
     struct RenderSettingsInitInfo {
         RenderBackendApiType api{ RenderBackendApiType::DX12 };
-        RenderingPipelineType pipeline{ RenderingPipelineType::ForwardPlus };
+        RenderingPipelineType pipeline{ RenderingPipelineType::Deferred };
         ThreadingMode threading_mode{ ThreadingMode::TripleThread };
     };
 
@@ -42,10 +42,12 @@ namespace dodoe {
 
         [[nodiscard]] static RenderBackendApiType GetRenderBackendApiType() { return m_api; }
         [[nodiscard]] static RenderingPipelineType GetRenderingPipelineType() { return m_pipeline; }
+        [[nodiscard]] static ThreadingMode GetThreadingMode() { return m_threading_mode; }
 
     private:
         inline static RenderBackendApiType m_api{ RenderBackendApiType::None };
         inline static RenderingPipelineType m_pipeline{ RenderingPipelineType::None };
+        inline static ThreadingMode m_threading_mode{ ThreadingMode::TripleThread };
     };
 
 } // dodoe

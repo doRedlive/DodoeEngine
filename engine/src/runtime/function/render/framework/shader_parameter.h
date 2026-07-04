@@ -102,6 +102,22 @@ namespace dodoe {
         }
     };
 
+    template <uint32_t Slot>
+    struct ShaderParameter<ShaderParamType::ConstantBuffer, Slot, GfxBufferHandle> {
+        static constexpr ShaderParamType kType = ShaderParamType::ConstantBuffer;
+        static constexpr uint32_t kSlot = Slot;
+        using ValueType = GfxBufferHandle;
+
+        GfxBufferHandle value{};
+
+        static GfxBindingLayoutItem makeLayoutItem() {
+            return GfxBindingLayoutItem::ConstantBuffer(Slot);
+        }
+        static void addToBindingSet(GfxBindingSetDesc& desc, const GfxBufferHandle& resolved) {
+            desc.addItem(GfxBindingSetItem::ConstantBuffer(Slot, resolved->getRHIHandle().Get()));
+        }
+    };
+
     #define SHADER_PARAMETER(type, slot, ...) \
         _SHADER_PARAM_IMPL(type, slot, __VA_ARGS__)
 
@@ -187,7 +203,11 @@ namespace dodoe {
                 } else if constexpr (MemberT::kType == ShaderParamType::Sampler) {
                     MemberT::addToBindingSet(desc, member.value);
                 } else if constexpr (MemberT::kType == ShaderParamType::ConstantBuffer) {
-                    MemberT::addToBindingSet(desc, resolveBuf(member.value));
+                    if constexpr (std::is_same_v<typename MemberT::ValueType, RenderGraphBufferHandle>) {
+                        MemberT::addToBindingSet(desc, resolveBuf(member.value));
+                    } else {
+                        MemberT::addToBindingSet(desc, member.value);
+                    }
                 }
             });
             auto bs = create_ref<GfxBindingSet>();
@@ -216,7 +236,11 @@ namespace dodoe {
                 } else if constexpr (MemberT::kType == ShaderParamType::Sampler) {
                     MemberT::addToBindingSet(desc, member.value);
                 } else if constexpr (MemberT::kType == ShaderParamType::ConstantBuffer) {
-                    MemberT::addToBindingSet(desc, resolveBuf(member.value));
+                    if constexpr (std::is_same_v<typename MemberT::ValueType, RenderGraphBufferHandle>) {
+                        MemberT::addToBindingSet(desc, resolveBuf(member.value));
+                    } else {
+                        MemberT::addToBindingSet(desc, member.value);
+                    }
                 }
             });
             return command_list.createBindingSet(desc, layout);

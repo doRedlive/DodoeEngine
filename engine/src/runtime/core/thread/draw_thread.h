@@ -3,25 +3,23 @@
 #include "dopch.h"
 
 #include "runtime/function/graphics/draw_executor.h"
+#include "frame_context.h"
+#include "spsc_queue.h"
 
 #include <thread>
-#include <mutex>
-#include <condition_variable>
 
 namespace dodoe {
 
     class GfxContext;
 
     class DrawThread {
+        static constexpr Size_t kMaxFramesInFlight = 2;
+
         GfxDeviceHandle m_device{};
         GfxContext* m_gfx{};
         DrawExecutor m_executor{};
-        UInt32 m_swapchain_image_index{0};
-        Bool m_has_pending_frame{false};
-        Bool m_frame_completed{true};
+        SpscQueue<FrameContext, kMaxFramesInFlight> m_frame_queue;
         Bool m_running{false};
-        std::mutex m_mutex{};
-        std::condition_variable m_cv{};
         std::thread m_thread{};
 
     public:
@@ -33,7 +31,7 @@ namespace dodoe {
 
         void start(GfxDeviceHandle device, GfxContext* gfx);
         void stop();
-        void submitAndWait(UInt32 swapchain_image_index);
+        void submit(FrameContext frame_ctx);
 
     private:
         void loop();

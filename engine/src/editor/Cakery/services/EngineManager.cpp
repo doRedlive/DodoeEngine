@@ -127,11 +127,11 @@ dodoe::Scene* EngineManager::getCurrentScene() const
     return w ? w->getCurrentScene() : nullptr;
 }
 
-dodoe::RenderView* EngineManager::getMainView() const
+dodoe::RenderViewport* EngineManager::getRenderViewport() const
 {
     auto* ctx = getContext();
     if (!ctx || !ctx->getRenderSystem()) return nullptr;
-    return &GetRenderSystem()->getViewFamily()->getView(0);
+    return ctx->getRenderSystem()->getMainRenderViewport();
 }
 
 void EngineManager::resizeViewport(int width, int height, float devicePixelRatio)
@@ -151,7 +151,7 @@ void EngineManager::resizeViewport(int width, int height, float devicePixelRatio
 
     auto* renderSys = ctx->getRenderSystem();
     if (renderSys) {
-        auto* vp = renderSys->getViewportManager();
+        auto* vp = renderSys->getMainRenderViewport();
         if (vp) {
             vp->setLogicalSize(Vector2f(static_cast<float>(pixelWidth),
                                         static_cast<float>(pixelHeight)));

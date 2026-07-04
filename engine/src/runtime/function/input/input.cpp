@@ -5,6 +5,9 @@
 #include "input.h"
 
 #include "input_manager.h"
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_system.h"
+#include "runtime/core/channel/render_channel.h"
 
 namespace dodoe {
 
@@ -38,7 +41,11 @@ namespace dodoe {
     }
 
     Vector2f Input::GetMousePosition() {
-        return input_manager_->window2world(input_manager_->mouse_info_.position);
+        auto* vp = GetRenderSystem()->getMainRenderViewport();
+        if (!vp) return input_manager_->mouse_info_.position;
+        auto& cam = GetMainCameraChannel().get<MainCameraData>();
+        const Matrix4f view_proj = cam.projection * cam.view;
+        return vp->Window2World(input_manager_->mouse_info_.position, view_proj);
     }
 
     Vector2f Input::GetMouseWindowPosition() {

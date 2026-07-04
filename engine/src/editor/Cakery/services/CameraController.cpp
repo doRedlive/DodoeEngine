@@ -1,14 +1,13 @@
 // do@Redlive
 
 #include "CameraController.h"
-#include "runtime/function/render/render_view/render_view.h"
 #include "runtime/core/math/math.h"
+#include "runtime/function/render/render_view/render_channel.h"
 
 namespace cakery {
 
-CameraController::CameraController(dodoe::RenderView* engineView, QObject* parent)
+CameraController::CameraController(QObject* parent)
     : QObject(parent)
-    , m_engineView(engineView)
 {
     updateView();
 }
@@ -21,8 +20,6 @@ void CameraController::setViewportSize(float w, float h)
 
 void CameraController::updateView()
 {
-    if (!m_engineView) return;
-
     const float half_w = m_viewportW * 0.5f / m_zoom;
     const float half_h = m_viewportH * 0.5f / m_zoom;
 
@@ -33,7 +30,9 @@ void CameraController::updateView()
 
     dodoe::Matrix4f projection = dodoe::Math::Ortho(-half_w, half_w, -half_h, half_h, 0.01f, 1000.0f);
 
-    m_engineView->setMatrices(view, projection);
+    auto& cam = dodoe::GetMainCameraChannel().get<dodoe::MainCameraData>();
+    cam.view = view;
+    cam.projection = projection;
 }
 
 void CameraController::onMouseDown(double x, double y, int button)

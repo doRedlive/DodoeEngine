@@ -1,11 +1,12 @@
 // do@Redlive
+
 #pragma once
 
 #include "dopch.h"
 
 namespace dodoe {
 
-    class SceneImporter { 
+    class DODOE_API SceneImporter { 
     public:
         static void ImportModel(const std::string& path);
     };

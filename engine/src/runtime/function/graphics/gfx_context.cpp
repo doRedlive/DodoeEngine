@@ -300,7 +300,6 @@ namespace dodoe {
             auto test_ptr = reinterpret_cast<void**>(vk_device);
             volatile void* vtable = test_ptr[0];
             (void)vtable;
-            DO_DEBUG("GfxContext::acquireNextSwapchainImage: vk_device vtable={}", vtable);
         } catch (...) {
             DO_ERROR("GfxContext::acquireNextSwapchainImage: vk_device pointer is invalid!");
             return false;
@@ -308,20 +307,13 @@ namespace dodoe {
 
         const Size_t frame_slot = current_frame_slot_ % acquire_semaphores_.size();
         VkDevice vk_device_handle = vulkan_backend_->getDevice();
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: waiting for fence, frame_slot={}", frame_slot);
         DO_ASSERT(vkWaitForFences(vk_device_handle, 1, &frame_fences_[frame_slot], VK_TRUE, UINT64_MAX) == VK_SUCCESS,
             "GfxContext::acquireNextSwapchainImage: failed to wait for frame fence.");
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: fence wait done");
 
         const VkSemaphore acquire_semaphore = acquire_semaphores_[frame_slot];
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: calling vulkan_backend_->acquireNextImage...");
         if (!vulkan_backend_->acquireNextImage(image_index, acquire_semaphore)) {
-            DO_DEBUG("GfxContext::acquireNextSwapchainImage: acquireNextImage returned false");
             return false;
         }
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: acquireNextImage succeeded, image_index={}", image_index);
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: vk_device={}, acquire_semaphore={}",
-                 (void*)vk_device, (void*)acquire_semaphore);
 
         if (!vk_device) {
             DO_ERROR("GfxContext::acquireNextSwapchainImage: vk_device is NULL!");
@@ -332,12 +324,9 @@ namespace dodoe {
             return false;
         }
 
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: about to call queueWaitForSemaphore with queue=Graphics(0)");
         vk_device->queueWaitForSemaphore(GfxCommandQueue::Graphics, acquire_semaphore, 0);
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: queueWaitForSemaphore completed successfully");
         active_frame_slot_ = frame_slot;
 
-        DO_DEBUG("GfxContext::acquireNextSwapchainImage: returning true");
         return true;
     }
 

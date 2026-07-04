@@ -7,6 +7,7 @@
 #include "runtime/core/event/event_system.h"
 #include "runtime/core/meta/reflection/reflection_register.h"
 
+#include "runtime/core/debug/debugger.h"
 #include "runtime/core/layer/layer.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/project/project.h"
@@ -68,10 +69,11 @@ namespace dodoe {
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
 
         m_ui_system     = UISystem::Create({m_window_manager.get()});
+        m_debugger      = Debugger::Create({});
         m_render_system = RenderSystem::Create({m_window_manager.get()});
         DO_ASSERT(m_render_system, "RenderSystem init failed");
 
-        m_input_manager = InputManager::Create({m_render_system->getViewportManager()});
+        m_input_manager = InputManager::Create({});
 
         m_script_system = ScriptSystem::Create({});
         DO_ASSERT(m_script_system, "ScriptSystem init failed");
@@ -96,16 +98,19 @@ namespace dodoe {
 
             m_render_thread = create_scope<RenderThread>();
             m_render_thread->start(m_render_system.get(), m_draw_thread.get());
+            m_render_system->setRenderThread(m_render_thread.get());
             break;
 
         case ThreadingMode::DualThread:
             m_render_thread = create_scope<RenderThread>();
             m_render_thread->start(m_render_system.get(), device, gfx);
+            m_render_system->setRenderThread(m_render_thread.get());
             break;
 
         case ThreadingMode::SingleThread:
             m_render_thread = create_scope<RenderThread>();
             m_render_thread->setupForDirect(m_render_system.get(), device, gfx);
+            m_render_system->setRenderThread(m_render_thread.get());
             break;
         }
 
@@ -113,10 +118,8 @@ namespace dodoe {
     }
 
     void SystemContext::startRuntime() {
-        DO_INFO("SystemContext::startRuntime: begin async asset load");
         auto future = ResourceManager::Self().loadAssetsAsync();
         future.wait();
-        DO_INFO("SystemContext::startRuntime: async asset load finished");
 
         DO_ASSERT(m_world->activateStartScene(), "World activate start scene failed");
         m_world->start();
@@ -144,9 +147,13 @@ namespace dodoe {
         ResourceManager::Self().shutdown();
         RenderSystem::Destroy(m_render_system);
         UISystem::Destroy(m_ui_system);
+        Debugger::Destroy(m_debugger);
         WindowManager::Destroy(m_window_manager);
 
         TimeSystem::Destroy(m_time_system);
+    }
+
+    void SystemContext::postShutdown() {
         TypeMetaRegister::MetaUnregister();
         EventSystem::Shutdown();
     }
@@ -172,11 +179,8 @@ namespace dodoe {
 
     void SystemContext::renderTick() {
         if (m_ui_system) { m_ui_system->prepare(); }
+        if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
-
-        if (!m_render_thread) {
-            return;
-        }
 
         if (m_render_thread->getMode() == ThreadingMode::SingleThread) {
             m_render_thread->executeFrameOnce();

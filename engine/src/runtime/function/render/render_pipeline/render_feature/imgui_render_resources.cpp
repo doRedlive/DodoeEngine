@@ -1,8 +1,9 @@
 #include "imgui_render_resources.h"
 
 #include "runtime/function/render/framework/global_samplers.h"
+#include "runtime/function/ui/imgui/imgui_builder.h"
 
-#ifdef DODOE_EDITOR
+#ifdef DODOE_DEBUG
 #include "imgui/imgui.h"
 
 #include <algorithm>
@@ -11,7 +12,7 @@
 
 namespace dodoe {
 
-#ifdef DODOE_EDITOR
+#ifdef DODOE_DEBUG
     namespace {
         struct ImGuiPushConstants {
             float inv_display_size[2]{};
@@ -29,7 +30,7 @@ namespace dodoe {
 #endif
 
     void ImGuiRenderResources::reset() {
-#ifdef DODOE_EDITOR
+#ifdef DODOE_DEBUG
         if (ImGui::GetCurrentContext()) {
             ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
         }
@@ -51,8 +52,10 @@ namespace dodoe {
         DrawCommandList& command_list,
         const GfxTextureHandle& output)
     {
-#ifdef DODOE_EDITOR
+#ifdef DODOE_DEBUG
         const auto* gfx_context = context.getGfxContext();
+        ImGuiContext* prev_ctx = ImGui::GetCurrentContext();
+        ImGui::SetCurrentContext(ImGuiBuilder::GetContext());
         if (!ImGui::GetCurrentContext()) {
             ClearOutput(command_list, output);
             return;
@@ -282,6 +285,8 @@ namespace dodoe {
 
         command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::ShaderResource);
         command_list.commitBarriers();
+
+        ImGui::SetCurrentContext(prev_ctx);
 #else
         (void)pass_context;
         (void)context;

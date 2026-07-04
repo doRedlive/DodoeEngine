@@ -21,8 +21,9 @@ namespace dodoe {
         void RenderSkyboxPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
         void RenderDeferredLightPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
 
-        void RenderSpritePass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, SpriteRenderResources& resources);
+        void RenderSpritePass(RenderGraphBuilder& graph, const RenderView& view, const RenderPassContext& pass_context, SpriteRenderResources& resources);
 
+        void RenderPostProcessPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
         void RenderToneMappingPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
         void RenderColorGradingPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
         void RenderFxaaPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);

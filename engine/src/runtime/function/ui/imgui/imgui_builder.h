@@ -6,6 +6,8 @@
 
 #include "glfw/glfw3.h"
 
+struct ImGuiContext;
+
 namespace dodoe {
 
     class ImGuiBuilder {
@@ -14,8 +16,11 @@ namespace dodoe {
         static void PrepareImGui();
         static void CleanupImGui();
 
+        static ImGuiContext* GetContext() { return s_context; }
+
     private:
         static inline bool s_glfwBackendInit = false;
+        static inline ImGuiContext* s_context = nullptr;
     };
 
 } // dodoe

@@ -18,7 +18,8 @@ namespace dodoe {
         void initialize(
             GfxContext& gfx_context,
             const GfxShaderHandle& gbuffer_vertex_shader,
-            const GfxShaderHandle& shadow_vertex_shader);
+            const GfxShaderHandle& shadow_vertex_shader
+        );
         void reset();
 
         [[nodiscard]] const GfxInputLayoutHandle& getGBufferInputLayout() const { return m_gbuffer_input_layout; }

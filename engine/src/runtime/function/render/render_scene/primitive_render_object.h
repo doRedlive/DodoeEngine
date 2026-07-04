@@ -6,7 +6,7 @@
 
 #include "render_object.h"
 #include "primitive_scene_info.h"
-#include "../mesh_draw/view_mesh_draw_context.h"
+#include "../mesh_draw/mesh_draw_types.h"
 #include "../mesh_draw/mesh_data.h"
 
 namespace dodoe {

@@ -2,8 +2,6 @@
 #include "services/EngineManager.h"
 #include "services/CameraController.h"
 
-#include "runtime/function/render/render_view/render_view.h"
-
 #include <QShowEvent>
 #include <QPaintEvent>
 #include <QResizeEvent>
@@ -63,10 +61,7 @@ void SceneWidget::resizeEvent(QResizeEvent* event)
 
 void SceneWidget::setupCamera()
 {
-    auto* engineView = EngineManager::getInstance().getMainView();
-    if (!engineView) return;
-
-    m_camera = new CameraController(engineView, this);
+    m_camera = new CameraController(this);
 
     float dpr = devicePixelRatioF();
     m_camera->setViewportSize(static_cast<float>(width() * dpr),

@@ -9,14 +9,14 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_pipeline/render_feature/imgui_render_resources.h"
 
-#ifdef DODOE_EDITOR
+#ifdef DODOE_DEBUG
 #include "imgui/imgui.h"
 #endif
 
 namespace dodoe::RenderPipelinePass {
 
     void RenderImGuiPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, ImGuiRenderResources& resources) {
-#ifdef DODOE_EDITOR
+#ifdef DODOE_DEBUG
         if (!ImGui::GetCurrentContext()) return;
 
         struct ImGuiPassParameters {

@@ -2,6 +2,8 @@
 
 #include "gbuffer_mesh_processor.h"
 
+#include "mesh_draw_command.h"
+#include "mesh_draw_types.h"
 #include "runtime/core/math/math.h"
 #include "../render_scene/primitive_render_object.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -123,40 +125,29 @@ namespace dodoe {
     }
 
     void GBufferMeshProcessor::buildCommands(
-        const ViewMeshVisibilityData& visibility_data,
-        const ViewMeshInstanceData& instance_data,
-        const ViewMeshPassData& view_pass_data,
-        const ViewMeshShaderData& view_shader_data,
+        const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
+        const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
+        const DynamicArray<UInt32>& mesh_pass_primitive_indices,
         const Matrix4f& view_projection,
-        ViewMeshPassData& out_pass_data,
-        ViewMeshShaderData& out_shader_data) const
+        DynamicArray<MeshDrawCommand>& out_commands,
+        DynamicArray<GBufferMeshDrawShaderData>& out_shader_data) const
     {
-        auto& commands = out_pass_data.getMeshPassCommands(MeshPassType::GBuffer);
-        auto& shader_data = out_shader_data.gbuffer_shader_data;
-        const auto& visible_primitives = visibility_data.visible_primitives;
-        const auto& relevant_primitive_indices = view_pass_data.getMeshPassPrimitiveIndices(MeshPassType::GBuffer);
-        commands.clear();
-        shader_data.clear();
-        commands.reserve(relevant_primitive_indices.size());
-        shader_data.reserve(relevant_primitive_indices.size());
+        out_commands.clear();
+        out_shader_data.clear();
+        out_commands.reserve(mesh_pass_primitive_indices.size());
+        out_shader_data.reserve(mesh_pass_primitive_indices.size());
 
         const auto descriptor_binding_set = descriptorTableBindingSet(m_descriptor_table);
         const auto frustum_planes = extractFrustumPlanes(view_projection);
 
-        for (const UInt32 primitive_index : relevant_primitive_indices) {
+        UInt32 first_instance = 0;
+        for (const UInt32 primitive_index : mesh_pass_primitive_indices) {
             DO_ASSERT(primitive_index < visible_primitives.size(), "GBufferMeshProcessor primitive index out of range");
             const auto* primitive = visible_primitives[primitive_index];
             if (!primitive) {
                 continue;
             }
-
-            const auto* render_object = primitive->getRenderObject();
-            const UInt32 first_instance = primitive_index < instance_data.primitive_first_instance_offsets.size()
-                ? instance_data.primitive_first_instance_offsets[primitive_index]
-                : 0;
-            const auto batches = render_object
-                ? static_cast<const PrimitiveRenderObject*>(render_object)->buildMeshBatches(primitive->getId(), primitive->getMaterials(), first_instance)
-                : primitive->getMeshBatches();
+            const auto& batches = primitive->getMeshBatches();
             for (const auto& batch : batches) {
                 if (!batch.isValid() || !batch.isRelevant(MeshPassType::GBuffer) || batch.elements.empty()) {
                     continue;
@@ -180,7 +171,7 @@ namespace dodoe {
 
                 GBufferMeshDrawShaderData draw_shader_data{};
                 draw_shader_data.view_projection = view_projection;
-                draw_shader_data.time_data = view_shader_data.frame_time_data;
+                draw_shader_data.time_data = Vector4f(0.0f);
                 const Ref<Material>& material = batch.material;
                 if (material) {
                     draw_shader_data.draw_data.x = static_cast<Int32>(resolveTextureIndex(m_texture_manager, material));
@@ -190,8 +181,8 @@ namespace dodoe {
                     draw_shader_data.material_data.y = Math::Clamp(material->roughness, 0.04f, 1.0f);
                 }
 
-                const UInt32 shader_data_index = static_cast<UInt32>(shader_data.size());
-                shader_data.push_back(draw_shader_data);
+                const UInt32 shader_data_index = static_cast<UInt32>(out_shader_data.size());
+                out_shader_data.push_back(draw_shader_data);
 
                 MeshDrawCommand command{};
                 command.pass_type = MeshPassType::GBuffer;
@@ -202,7 +193,7 @@ namespace dodoe {
                     command.binding_sets.push_back(descriptor_binding_set);
                 }
                 command.vertex_bindings.push_back(GfxVertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
-                command.setPrimitiveSceneBufferBinding(1, static_cast<UInt64>(element.first_instance) * sizeof(InstanceSceneData));
+                command.setPrimitiveSceneBufferBinding(1, static_cast<UInt64>(first_instance) * sizeof(InstanceSceneData));
                 command.index_binding = GfxIndexBufferBinding()
                     .setBuffer(element.index_buffer->getRHI())
                     .setFormat(GfxFormat::R32_UINT)
@@ -213,11 +204,13 @@ namespace dodoe {
                     .setStartIndexLocation(element.index_offset)
                     .setStartVertexLocation(element.vertex_offset);
                 command.sort_key = reinterpret_cast<UInt64>(element.vertex_buffer.get());
-                commands.push_back(command);
+                out_commands.push_back(command);
             }
+
+            first_instance += primitive->getInstanceCount();
         }
 
-        std::sort(commands.begin(), commands.end(), [](const MeshDrawCommand& lhs, const MeshDrawCommand& rhs) {
+        std::sort(out_commands.begin(), out_commands.end(), [](const MeshDrawCommand& lhs, const MeshDrawCommand& rhs) {
             return lhs.sort_key < rhs.sort_key;
         });
     }

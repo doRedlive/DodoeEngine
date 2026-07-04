@@ -8,8 +8,9 @@
 namespace dodoe {
 
     void SpriteFeature::registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const {
+        DO_ASSERT(context.view != nullptr, "SpriteFeature requires view");
         DO_ASSERT(context.pass_context != nullptr, "SpriteFeature requires pass context");
-        // RenderPipelinePass::RenderSpritePass(graph, *context.pass_context, m_resources);
+        RenderPipelinePass::RenderSpritePass(graph, *context.view, *context.pass_context, m_resources);
     }
 
 } // dodoe

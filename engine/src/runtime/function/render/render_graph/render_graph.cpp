@@ -194,7 +194,7 @@ namespace dodoe {
         m_compiled = true;
     }
 
-    void RenderGraph::execute(ThreadPool& pool, const RenderGraphExecuteContext& context) {
+    void RenderGraph::execute(ThreadPool& pool, const RenderGraphExecuteContext& context, DrawCommandList& out_commands) {
         DO_ASSERT(m_compiled, "RenderGraph must be compiled before execute");
         DO_ASSERT(context.gfx_context != nullptr, "RenderGraphContext gfx_context is null");
 
@@ -226,7 +226,7 @@ namespace dodoe {
             wg.wait();
 
             for (auto& cmd_list : pass_command_lists) {
-                GDrawCommandList.append(std::move(cmd_list));
+                out_commands.append(std::move(cmd_list));
             }
         }
     }

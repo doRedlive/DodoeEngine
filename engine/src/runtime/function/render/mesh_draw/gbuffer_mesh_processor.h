@@ -8,11 +8,15 @@
 #include "../framework/descriptor_table_manager.h"
 #include "../framework/texture_manager.h"
 #include "../render_scene/primitive_scene_info.h"
-#include "view_mesh_draw_context.h"
 
 namespace dodoe {
 
     class RenderView;
+    class PrimitiveSceneInfo;
+    struct InstanceSceneData;
+    struct MeshPassRelevance;
+    struct MeshDrawCommand;
+    struct GBufferMeshDrawShaderData;
 
     class GBufferMeshProcessor final : public IMeshPassProcessor {
         DescriptorTableManager* m_descriptor_table{nullptr};
@@ -37,13 +41,12 @@ namespace dodoe {
         [[nodiscard]] const GfxBufferHandle& getConstantBuffer() const override { return m_constant_buffer; }
 
         void buildCommands(
-            const ViewMeshVisibilityData& visibility_data,
-            const ViewMeshInstanceData& instance_data,
-            const ViewMeshPassData& view_pass_data,
-            const ViewMeshShaderData& view_shader_data,
+            const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
+            const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
+            const DynamicArray<UInt32>& mesh_pass_primitive_indices,
             const Matrix4f& view_projection,
-            ViewMeshPassData& out_pass_data,
-            ViewMeshShaderData& out_shader_data) const;
+            DynamicArray<MeshDrawCommand>& out_commands,
+            DynamicArray<GBufferMeshDrawShaderData>& out_shader_data) const;
     };
 
 } // dodoe

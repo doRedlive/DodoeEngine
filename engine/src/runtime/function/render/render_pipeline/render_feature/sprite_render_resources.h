@@ -27,7 +27,9 @@ namespace dodoe {
             const GfxBufferHandle& quad_vertex_buffer,
             const GfxBufferHandle& quad_index_buffer,
             const GfxBufferHandle& instance_buffer,
-            const GfxBufferHandle& vp_buffer);
+            const GfxBufferHandle& vp_buffer,
+            UInt32 visible_count
+        );
     };
 
 } // dodoe

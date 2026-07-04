@@ -19,13 +19,10 @@ namespace dodoe {
 
     void DrawThread::stop() {
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
             if (!m_running) return;
             m_running = false;
-            m_frame_completed = true;
-            m_has_pending_frame = false;
         }
-        m_cv.notify_all();
+        m_frame_queue.close();
         if (m_thread.joinable()) {
             m_thread.join();
         }
@@ -33,39 +30,17 @@ namespace dodoe {
         m_device = nullptr;
     }
 
-    void DrawThread::submitAndWait(const UInt32 swapchain_image_index) {
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_swapchain_image_index = swapchain_image_index;
-            m_has_pending_frame = true;
-            m_frame_completed = false;
-        }
-        m_cv.notify_all();
-
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return m_frame_completed; });
+    void DrawThread::submit(FrameContext frame_ctx) {
+        m_frame_queue.push(std::move(frame_ctx));
     }
 
     void DrawThread::loop() {
         while (true) {
-            UInt32 swapchain_image_index = 0;
-            {
-                std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait(lock, [this] { return m_has_pending_frame || !m_running; });
-                if (!m_running && !m_has_pending_frame) {
-                    break;
-                }
-                swapchain_image_index = m_swapchain_image_index;
-                m_has_pending_frame = false;
+            FrameContext frame_ctx;
+            if (!m_frame_queue.pop(frame_ctx, [this] { return !m_running; })) {
+                break;
             }
-
-            m_executor.execute(m_device, m_gfx, swapchain_image_index);
-
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                m_frame_completed = true;
-            }
-            m_cv.notify_all();
+            m_executor.execute(m_device, m_gfx, frame_ctx);
         }
     }
 

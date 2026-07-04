@@ -1,8 +1,11 @@
+// do@Redlive
+
 #pragma once
 
 #include "dopch.h"
 
 #include "runtime/core/application.h"
+#include "runtime/core/debug/debugger.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/thread/render_thread.h"
 #include "runtime/core/thread/draw_thread.h"
@@ -36,6 +39,7 @@ namespace dodoe {
         Scope<TimeSystem>    m_time_system    {nullptr};
         Scope<UISystem>      m_ui_system      {nullptr};
         Scope<World>         m_world          {nullptr};
+        Scope<Debugger>      m_debugger       {nullptr};
         LayerStack m_layer_stack{};
     public:
         ~SystemContext();
@@ -48,6 +52,7 @@ namespace dodoe {
         [[nodiscard]] TimeSystem*    getTimeSystem()    const { return m_time_system.get(); }
         [[nodiscard]] UISystem*      getUISystem()      const { return m_ui_system.get(); }
         [[nodiscard]] World*         getWorld()         const { return m_world.get(); }
+        [[nodiscard]] Debugger*      getDebugger()      const { return m_debugger.get(); }
         [[nodiscard]] LayerStack& getLayerStack() { return m_layer_stack; }
         [[nodiscard]] const LayerStack& getLayerStack() const { return m_layer_stack; }
 
@@ -57,6 +62,7 @@ namespace dodoe {
 
         void finalizeModules();
         void stopRuntime();
+        void postShutdown();
 
         void tickOneFrame();
 

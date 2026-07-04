@@ -2,6 +2,8 @@
 
 #include "render_view.h"
 #include "render_view_family.h"
+#include "mesh_view_extension.h"
+#include "sprite_view_extension.h"
 
 #include "../render_scene/render_scene.h"
 #include "runtime/core/math/math.h"
@@ -75,29 +77,48 @@ namespace dodoe {
         m_viewport_rect = info.viewport_rect;
     }
 
-    void RenderView::resetFrameData() {
-        m_visibility_data.reset();
-        m_instance_data.reset();
-        m_pass_data.reset();
-        m_shader_data.reset();
-    }
-
     void RenderView::buildVisiblePrimitives(const RenderScene& scene) {
-        auto& visible_primitives = m_visibility_data.visible_primitives;
-        visible_primitives.clear();
-        visible_primitives.reserve(scene.getPrimitiveSceneInfos().size());
+        auto& mesh_ext = getOrCreateExtension<MeshViewExtension>();
+        mesh_ext.visible_primitives.clear();
+        mesh_ext.visible_primitives.reserve(scene.getPrimitiveSceneInfos().size());
         const auto frustum_planes = ExtractFrustumPlanes(m_view_projection_matrix);
+
+        DO_DEBUG("RenderView: Total primitives in scene: {}", scene.getPrimitiveSceneInfos().size());
 
         for (const auto& primitive : scene.getPrimitiveSceneInfos()) {
             if (IsPrimitiveVisible(primitive, frustum_planes)) {
-                visible_primitives.push_back(&primitive);
+                mesh_ext.visible_primitives.push_back(&primitive);
             }
         }
+
+        DO_DEBUG("RenderView: Visible primitives after culling: {}", mesh_ext.visible_primitives.size());
     }
 
-    void RenderViewFamily::buildVisiblePrimitives(const RenderScene& scene) {
-        for (auto& view : m_views) {
-            view.buildVisiblePrimitives(scene);
+    void RenderView::buildVisibleSprites(const RenderScene& scene) {
+        auto& sprite_ext = getOrCreateExtension<SpriteViewExtension>();
+        sprite_ext.visible_sprites.clear();
+
+        const auto& sprite_infos = scene.getSpriteSceneInfos();
+        if (sprite_infos.empty()) {
+            return;
+        }
+
+        sprite_ext.visible_sprites.reserve(sprite_infos.size());
+        const auto frustum_planes = ExtractFrustumPlanes(m_view_projection_matrix);
+
+        for (const auto& sprite_info : sprite_infos) {
+            if (!sprite_info.isVisible()) {
+                continue;
+            }
+
+            const Vector2f position = sprite_info.getPosition();
+            const Vector2f scale = sprite_info.getScale();
+            const Vector3f world_center(position.x, position.y, 0.0f);
+            const Vector3f world_extents(scale.x * 0.5f, scale.y * 0.5f, 0.01f);
+
+            if (IntersectsFrustum(frustum_planes, world_center, world_extents)) {
+                sprite_ext.visible_sprites.push_back(&sprite_info);
+            }
         }
     }
 

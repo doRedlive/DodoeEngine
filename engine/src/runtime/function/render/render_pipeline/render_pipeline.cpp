@@ -13,10 +13,14 @@
 #include "runtime/function/render/mesh_draw/directional_shadow_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
-#include "runtime/function/render/mesh_draw/view_mesh_draw_context.h"
+#include "runtime/function/render/mesh_draw/mesh_draw_types.h"
+#include "runtime/function/render/mesh_draw/mesh_draw_command.h"
 #include "runtime/function/render/render_scene/render_object.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
+#include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/framework/pipeline_state_cache.h"
+#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
     namespace {
@@ -49,23 +53,22 @@ namespace dodoe {
 
     void RenderPipeline::initViews(const RenderScene& scene, RenderViewFamily& view_family) const {
         for (auto& view : view_family.getViews()) {
-            view.resetFrameData();
+            view.resetExtensions();
         }
         view_family.buildVisiblePrimitives(scene);
     }
 
     void RenderPipeline::setupMeshPassRelevance(RenderView& view) const {
-        auto& pass_data = view.getPassData();
-        const auto& visibility_data = view.getVisibilityData();
-        pass_data.primitive_mesh_pass_relevance.clear();
-        pass_data.primitive_mesh_pass_relevance.reserve(visibility_data.visible_primitives.size());
+        auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
+        mesh_ext.primitive_mesh_pass_relevance.clear();
+        mesh_ext.primitive_mesh_pass_relevance.reserve(mesh_ext.visible_primitives.size());
 
-        for (const auto* primitive : visibility_data.visible_primitives) {
+        for (const auto* primitive : mesh_ext.visible_primitives) {
             DO_ASSERT(primitive != nullptr, "RenderPipeline visible primitive is null");
-            pass_data.primitive_mesh_pass_relevance.push_back(BuildPrimitiveMeshPassRelevance(*primitive));
+            mesh_ext.primitive_mesh_pass_relevance.push_back(BuildPrimitiveMeshPassRelevance(*primitive));
         }
 
-        pass_data.buildMeshPassPrimitiveIndices();
+        mesh_ext.buildMeshPassPrimitiveIndices();
     }
 
     void RenderPipeline::setupMeshPassContexts(const RenderScene& scene, RenderViewFamily& view_family) const {
@@ -79,37 +82,31 @@ namespace dodoe {
         const Matrix4f directional_light_view_projection = rendering_pipeline_utils::BuildDirectionalLightViewProjection(light_direction);
 
         for (auto& view : view_family.getViews()) {
-            auto& visibility_data = view.getVisibilityData();
-            auto& instance_data = view.getInstanceData();
-            auto& shader_data = view.getShaderData();
-            auto visible_primitives = std::move(visibility_data.visible_primitives);
-            view.resetFrameData();
-            visibility_data.visible_primitives = std::move(visible_primitives);
-            shader_data.frame_time_data = Vector4f(view_family.getTimeSeconds(), view_family.getDeltaSeconds(), 0.0f, 0.0f);
-            instance_data.primitive_first_instance_offsets.reserve(visibility_data.visible_primitives.size());
+            auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
+            mesh_ext.frame_time_data = Vector4f(view_family.getTimeSeconds(), view_family.getDeltaSeconds(), 0.0f, 0.0f);
+            mesh_ext.primitive_first_instance_offsets.reserve(mesh_ext.visible_primitives.size());
             Size_t total_instance_count = 0;
-            for (const auto* primitive : visibility_data.visible_primitives) {
-                const auto* render_object = primitive ? primitive->getRenderObject() : nullptr;
-                total_instance_count += render_object ? static_cast<const PrimitiveRenderObject*>(render_object)->getInstanceCount() : 1;
+            for (const auto* primitive : mesh_ext.visible_primitives) {
+                total_instance_count += primitive ? primitive->getInstanceCount() : 1;
             }
-            instance_data.instance_scene_data.reserve(total_instance_count);
-            for (const auto* primitive : visibility_data.visible_primitives) {
-                instance_data.primitive_first_instance_offsets.push_back(static_cast<UInt32>(instance_data.instance_scene_data.size()));
-                const auto* render_object = primitive ? primitive->getRenderObject() : nullptr;
-                if (render_object) {
-                    static_cast<const PrimitiveRenderObject*>(render_object)->appendInstanceSceneData(instance_data.instance_scene_data, primitive->getWorldTransform());
+            mesh_ext.instance_scene_data.reserve(total_instance_count);
+            for (const auto* primitive : mesh_ext.visible_primitives) {
+                mesh_ext.primitive_first_instance_offsets.push_back(static_cast<UInt32>(mesh_ext.instance_scene_data.size()));
+                if (primitive) {
+                    for (const auto& inst_data : primitive->getInstanceSceneData()) {
+                        mesh_ext.instance_scene_data.push_back(inst_data);
+                    }
                 } else {
                     InstanceSceneData inst_scene_data{};
-                    inst_scene_data.model = primitive ? primitive->getWorldTransform() : Matrix4f(1.0f);
-                    instance_data.instance_scene_data.push_back(inst_scene_data);
+                    mesh_ext.instance_scene_data.push_back(inst_scene_data);
                 }
             }
-            shader_data.directional_shadow_view_projection = directional_light_view_projection;
+            mesh_ext.directional_shadow_view_projection = directional_light_view_projection;
             setupMeshPassRelevance(view);
         }
     }
 
-    void RenderPipeline::buildMeshDrawCommands(RenderViewFamily& view_family) const {
+    void RenderPipeline::buildMeshDrawCommands(RenderViewFamily& view_family, DrawCommandList& cmd_list) const {
         DO_ASSERT(m_shared_render_service != nullptr, "RenderPipeline shared render service is null");
         DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "RenderPipeline shader library is null");
         DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "RenderPipeline pipeline cache is null");
@@ -176,40 +173,51 @@ namespace dodoe {
             }
         };
 
-        auto device = m_gfx_context->getDevice();
-        auto gbuffer_pipeline = create_ref<GfxGraphicsPipeline>();
-        gbuffer_pipeline->initializeRHI(device, build_gbuffer_pipeline_desc(), build_gbuffer_framebuffer_info());
-        auto shadow_pipeline = create_ref<GfxGraphicsPipeline>();
-        shadow_pipeline->initializeRHI(device, build_shadow_pipeline_desc(), build_shadow_framebuffer_info());
+        auto* pso_cache = m_shared_render_service->getPipelineStateCache();
+        DO_ASSERT(pso_cache != nullptr, "RenderPipeline PSO cache is null");
+
+        const auto gbuffer_fb_info  = build_gbuffer_framebuffer_info();
+        const auto shadow_fb_info   = build_shadow_framebuffer_info();
+
+        auto gbuffer_pipeline = pso_cache->resolveGraphicsPipeline(
+            MeshPassType::GBuffer,
+            build_gbuffer_pipeline_desc(),
+            gbuffer_fb_info,
+            cmd_list);
+
+        auto shadow_pipeline = pso_cache->resolveGraphicsPipeline(
+            MeshPassType::DirectionalShadow,
+            build_shadow_pipeline_desc(),
+            shadow_fb_info,
+            cmd_list);
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
-            auto& visibility_data = view.getVisibilityData();
-            auto& instance_data = view.getInstanceData();
-            auto& pass_data = view.getPassData();
-            auto& shader_data = view.getShaderData();
+            auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
             gbuffer_mesh_processor.buildCommands(
-                visibility_data,
-                instance_data,
-                pass_data,
-                shader_data,
+                mesh_ext.visible_primitives,
+                mesh_ext.primitive_mesh_pass_relevance,
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::GBuffer)],
                 view.getViewProjectionMatrix(),
-                pass_data,
-                shader_data
+                mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::GBuffer)],
+                mesh_ext.gbuffer_shader_data
             );
-            assign_pipeline(pass_data.getMeshPassCommands(MeshPassType::GBuffer), gbuffer_pipeline);
+            assign_pipeline(mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::GBuffer)], gbuffer_pipeline);
             directional_shadow_mesh_processor.buildCommands(
-                visibility_data,
-                instance_data,
-                pass_data,
-                shader_data.directional_shadow_view_projection,
-                pass_data
+                mesh_ext.visible_primitives,
+                mesh_ext.primitive_mesh_pass_relevance,
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::DirectionalShadow)],
+                mesh_ext.directional_shadow_view_projection,
+                mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::DirectionalShadow)]
             );
-            assign_pipeline(pass_data.getMeshPassCommands(MeshPassType::DirectionalShadow), shadow_pipeline);
+            assign_pipeline(mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::DirectionalShadow)], shadow_pipeline);
         }
     }
 
     Bool RenderPipeline::initialize(const RenderPipelineCreateInfo& info) {
+        DO_ASSERT(RenderSettings::GetRenderingPipelineType() == RenderingPipelineType::Deferred,
+                  "RenderPipeline currently only supports Deferred pipeline type");
+
         Size_t worker_count = info.worker_count;
         if (worker_count == 0) {
             worker_count = std::thread::hardware_concurrency();
@@ -245,8 +253,7 @@ namespace dodoe {
                 GfxBufferDesc()
                     .setByteSize(256)
                     .setIsConstantBuffer(true)
-                    .setIsVolatile(true)
-                    .setMaxVersions(128)
+                    .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
                     .setDebugName("DeferredLightPass ConstantBuffer"),
                 "DeferredLightPass ConstantBuffer");
             buf->initializeRHI(m_gfx_context->getDevice());
@@ -273,17 +280,18 @@ namespace dodoe {
         m_thread_pool.reset();
     }
 
-    void RenderPipeline::render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index) {
+    void RenderPipeline::render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index, DrawCommandList& out_commands) {
         initViews(scene, view_family);
         setupMeshPassContexts(scene, view_family);
-        buildMeshDrawCommands(view_family);
-        buildFrameCommandList(view_family, scene, swapchain_image_index);
+        buildMeshDrawCommands(view_family, out_commands);
+        buildFrameCommandList(view_family, scene, swapchain_image_index, out_commands);
     }
 
     void RenderPipeline::buildFrameCommandList(
         const RenderViewFamily& view_family,
         RenderScene& scene,
-        const UInt32 swapchain_image_index) const
+        const UInt32 swapchain_image_index,
+        DrawCommandList& out_commands) const
     {
         const auto pass_context = buildPassContext(scene);
 
@@ -300,17 +308,14 @@ namespace dodoe {
             for (const auto& feature : m_features) {
                 feature->registerPass(graph, feature_context);
             }
-            DO_DEBUG("RenderPipeline: About to compile graph for view_index={}", view_index);
             graph.compile();
-            DO_DEBUG("RenderPipeline: Graph compiled for view_index={}", view_index);
             graphs.push_back(std::move(graph));
         }
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
-            DO_DEBUG("RenderPipeline: About to execute graph for view_index={}", view_index);
             executeFrameGraph(graphs[view_index], view_family, scene,
-                            view_family.getView(view_index), view_index, swapchain_image_index);
-            DO_DEBUG("RenderPipeline: Graph executed for view_index={}", view_index);
+                            view_family.getView(view_index), view_index, swapchain_image_index,
+                            out_commands);
         }
     }
 
@@ -320,7 +325,8 @@ namespace dodoe {
         RenderScene& scene,
         const RenderView& view,
         const Size_t view_index,
-        const UInt32 swapchain_image_index) const
+        const UInt32 swapchain_image_index,
+        DrawCommandList& out_commands) const
     {
         RenderGraphExecuteContext context{};
         context.view_family = &view_family;
@@ -329,7 +335,7 @@ namespace dodoe {
         context.view_index = view_index;
         context.gfx_context = m_gfx_context;
         context.swapchain_image_index = swapchain_image_index;
-        graph.execute(*m_thread_pool, context);
+        graph.execute(*m_thread_pool, context, out_commands);
     }
 
 } // dodoe

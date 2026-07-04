@@ -57,6 +57,8 @@ namespace dodoe {
         m_context->finalizeModules();
 
         EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
+
+        m_context->postShutdown();
     }
 
     void Application::quit() {

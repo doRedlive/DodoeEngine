@@ -148,7 +148,6 @@ namespace dodoe {
     {
         PrimitiveSceneInfo primitive(primitive_id);
         const auto materials = resolveMaterials();
-        primitive.setRenderObject(this);
         primitive.setSections(buildSections(materials));
         primitive.setMeshBatches(buildMeshBatches(primitive_id, materials, 0));
         primitive.setWorldTransform(world_transform);
@@ -156,6 +155,10 @@ namespace dodoe {
         primitive.setMobility(m_mobility);
         primitive.setVisible(m_visible);
         primitive.setCastShadow(m_cast_shadow);
+        primitive.setInstanceCount(getInstanceCount());
+        DynamicArray<InstanceSceneData> instance_data;
+        appendInstanceSceneData(instance_data, world_transform);
+        primitive.setInstanceSceneData(std::move(instance_data));
         return primitive;
     }
 

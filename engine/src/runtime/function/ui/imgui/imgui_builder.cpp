@@ -18,6 +18,7 @@ namespace dodoe {
     void ImGuiBuilder::SetupImGui(GLFWwindow* window) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        s_context = ImGui::GetCurrentContext();
 
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -75,6 +76,7 @@ namespace dodoe {
             s_glfwBackendInit = false;
         }
         ImGui::DestroyContext();
+        s_context = nullptr;
     }
 
 } // dodoe

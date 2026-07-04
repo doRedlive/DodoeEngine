@@ -3,6 +3,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 
 #include "mesh_draw_command_dispatcher.h"
+#include "mesh_draw_types.h"
 
 namespace dodoe {
     namespace {
@@ -31,27 +32,26 @@ namespace dodoe {
 
     } // namespace
 
-    void MeshDrawCommandDispatcher::uploadInstanceTransforms(
+    void MeshDrawCommandDispatcher::UploadInstanceTransforms(
         const RenderGraphPassContext& context,
-        const ViewMeshInstanceData& instance_data,
+        const DynamicArray<InstanceSceneData>& instance_data,
         const RenderGraphBufferHandle& primitive_scene_data,
         DrawCommandList& command_list)
     {
-        for (Size_t primitive_index = 0; primitive_index < instance_data.instance_scene_data.size(); primitive_index++) {
-            command_list.writeBuffer(
-                context.resolveBuffer(primitive_scene_data),
-                &instance_data.instance_scene_data[primitive_index],
-                sizeof(InstanceSceneData),
-                primitive_index * sizeof(InstanceSceneData)
-            );
+        if (instance_data.empty() || !primitive_scene_data.isValid()) {
+            return;
         }
+        command_list.writeBuffer(
+            context.resolveBuffer(primitive_scene_data),
+            instance_data.data(),
+            instance_data.size() * sizeof(InstanceSceneData)
+        );
     }
 
-    void MeshDrawCommandDispatcher::dispatch(
+    void MeshDrawCommandDispatcher::Dispatch(
         const RenderGraphPassContext& context,
         const MeshPassType pass_type,
-        const ViewMeshShaderData& shader_data,
-        const ViewMeshPassData& pass_data,
+        const DynamicArray<GBufferMeshDrawShaderData>& gbuffer_shader_data,
         const DynamicArray<MeshDrawCommand>& commands,
         const GfxFramebufferHandle& framebuffer,
         const GfxViewportState& viewport_state,
@@ -60,23 +60,10 @@ namespace dodoe {
         const RenderGraphBufferHandle& pass_constant_buffer,
         DrawCommandList& command_list)
     {
+        DO_DEBUG("MeshDrawCommandDispatcher: Pass type {}, command count: {}", static_cast<int>(pass_type), commands.size());
+
         if (commands.empty()) {
             return;
-        }
-
-        if (pass_type == MeshPassType::DirectionalShadow && pass_constant_buffer.isValid()) {
-            struct DirectionalShadowPassShaderData {
-                Matrix4f light_view_projection{1.0f};
-                Vector4f time_data{0.0f};
-            };
-            DirectionalShadowPassShaderData directional_shader_data{};
-            directional_shader_data.light_view_projection = shader_data.directional_shadow_view_projection;
-            directional_shader_data.time_data = shader_data.frame_time_data;
-            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::CopyDest);
-            command_list.commitBarriers();
-            command_list.writeBuffer(context.resolveBuffer(pass_constant_buffer), &directional_shader_data, sizeof(directional_shader_data));
-            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::ConstantBuffer);
-            command_list.commitBarriers();
         }
 
         GfxGraphicsPipelineHandle current_pipeline = nullptr;
@@ -90,7 +77,7 @@ namespace dodoe {
                 continue;
             }
 
-            writePassShaderData(context, pass_type, shader_data.gbuffer_shader_data, command, pass_constant_buffer, command_list);
+            writePassShaderData(context, pass_type, gbuffer_shader_data, command, pass_constant_buffer, command_list);
 
             auto graphics_state = GfxGraphicsState()
                 .setFramebuffer(framebuffer->getRHI())

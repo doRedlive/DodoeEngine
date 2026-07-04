@@ -2,7 +2,7 @@
 
 #include "local_vertex_factory.h"
 
-#include "runtime/function/render/mesh_draw/view_mesh_draw_context.h"
+#include "runtime/function/render/mesh_draw/mesh_draw_types.h"
 
 namespace dodoe {
 

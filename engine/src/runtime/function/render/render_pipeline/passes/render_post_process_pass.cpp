@@ -8,73 +8,66 @@
 #include "render_pass_blackboard_keys.h"
 
 #include "../render_pipeline_pass_utils.h"
-#include "../render_pass_context.h"
 
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/framework/shader_parameter.h"
 #include "runtime/function/render/framework/global_samplers.h"
+#include "runtime/function/render/framework/pipeline_state_cache.h"
+#include "runtime/function/render/framework/shader_library.h"
 
 namespace dodoe::RenderPipelinePass {
 
-    struct SingleInputPassParameters {
-        RenderGraphTextureHandle input{};
-        RenderGraphTextureHandle output{};
-    };
-
-    BEGIN_SHADER_PARAMETER_STRUCT(SingleInputPassShaderParams)
+    BEGIN_SHADER_PARAMETER_STRUCT(PostProcessPassShaderParams)
         SHADER_PARAMETER(TextureSRV, 0, input)
         SHADER_PARAMETER(Sampler,    0, sampler)
     END_SHADER_PARAMETER_STRUCT(func(input); func(sampler);)
 
-    struct ColorGradingPushConstants {
-        Float exposure = 1.0f;
-        Float contrast = 1.0f;
-        Float saturation = 1.0f;
-        Float padding = 0.0f;
+    struct PostProcessPassParameters {
+        RenderGraphTextureHandle input{};
+        RenderGraphTextureHandle output{};
     };
 
-    BEGIN_SHADER_PARAMETER_STRUCT(ColorGradingPassShaderParams)
-        SHADER_PARAMETER(TextureSRV, 0, input)
-        SHADER_PARAMETER(Sampler,    0, sampler)
-        ShaderParameter<ShaderParamType::PushConstants, 0, ColorGradingPushConstants> push_constants{};
-    END_SHADER_PARAMETER_STRUCT(func(input); func(sampler); func(push_constants);)
-
-    void RenderToneMappingPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+    void RenderPostProcessPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
         DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
         const auto& shader_library = *pass_context.getShaderLibrary();
 
-        graph.addPass<SingleInputPassParameters>(
-            "ToneMappingPass",
+        graph.addPass<PostProcessPassParameters>(
+            "PostProcessPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, SingleInputPassParameters& parameters) {
+            [pass_context](RenderGraphPassBuilder& pass_builder, PostProcessPassParameters& parameters) {
                 const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
                 const auto* hdr = pass_builder.blackboard().get<SceneHdrKey, RenderGraphTextureHandle>();
-                DO_ASSERT(hdr, "ToneMappingPass hdr input is missing");
+                DO_ASSERT(hdr, "PostProcessPass hdr input is missing");
                 parameters.input = pass_builder.read(*hdr);
                 parameters.output = pass_builder.write(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG MainCameraToneMappedColor"),
-                    "MainCameraToneMappedColor"));
-                pass_builder.blackboard().set<ToneMappedColorKey>(parameters.output);
+                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG PostProcessOutput"),
+                    "PostProcessOutput"));
+                pass_builder.blackboard().set<FxaaColorKey>(parameters.output);
             },
-            [pass_context, &shader_library](const SingleInputPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
+            [pass_context, &shader_library](const PostProcessPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
                 const auto device = context.getGfxContext()->getDevice();
                 const auto input_handle = context.resolveTexture(parameters.input);
                 const auto output_handle = context.resolveTexture(parameters.output);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
-                auto fb = command_list.createFramebuffer( framebuffer_desc);
+                auto fb = command_list.createFramebuffer(framebuffer_desc);
 
-                SingleInputPassShaderParams shader_params;
+                PostProcessPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
                 shader_params.sampler.value = GlobalSamplers::screen();
 
-                const auto binding_layout = ShaderBindingReflector<SingleInputPassShaderParams>::getOrCreateLayout(device);
+                const auto binding_layout = ShaderBindingReflector<PostProcessPassShaderParams>::getOrCreateLayout(device);
 
-                auto bs = ShaderBindingReflector<SingleInputPassShaderParams>::createBindingSetDeferred(
+                auto bs = ShaderBindingReflector<PostProcessPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,
                     [&](auto h) { return context.resolveTexture(h); },
                     [&](auto h) { return context.resolveBuffer(h); }
                 );
+
+                if (!bs) {
+                    DO_ERROR("PostProcessPass: Failed to create binding set");
+                    return;
+                }
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
@@ -86,6 +79,12 @@ namespace dodoe::RenderPipelinePass {
                     framebuffer_info,
                     command_list
                 );
+
+                if (!pipeline) {
+                    DO_ERROR("PostProcessPass: Failed to create pipeline");
+                    return;
+                }
+
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
@@ -95,133 +94,6 @@ namespace dodoe::RenderPipelinePass {
                 command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                 command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
-            }
-        );
-    }
-
-    void RenderColorGradingPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-        const auto& shader_library = *pass_context.getShaderLibrary();
-
-        graph.addPass<SingleInputPassParameters>(
-            "ColorGradingPass",
-            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, SingleInputPassParameters& parameters) {
-                const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
-                const auto* input = pass_builder.blackboard().get<ToneMappedColorKey, RenderGraphTextureHandle>();
-                DO_ASSERT(input, "ColorGradingPass input is missing");
-                parameters.input = pass_builder.read(*input);
-                parameters.output = pass_builder.write(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG MainCameraColorGradedColor"),
-                    "MainCameraColorGradedColor"));
-                pass_builder.blackboard().set<SceneColorKey>(parameters.output);
-            },
-            [pass_context, &shader_library](const SingleInputPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto device = context.getGfxContext()->getDevice();
-                const auto input_handle = context.resolveTexture(parameters.input);
-                const auto output_handle = context.resolveTexture(parameters.output);
-
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
-                auto fb = command_list.createFramebuffer( framebuffer_desc);
-
-                ColorGradingPassShaderParams shader_params;
-                shader_params.input.value = parameters.input;
-                shader_params.sampler.value = GlobalSamplers::screen();
-                shader_params.push_constants.value = ColorGradingPushConstants{};
-
-                const auto binding_layout = ShaderBindingReflector<ColorGradingPassShaderParams>::getOrCreateLayout(device);
-
-                auto bs = ShaderBindingReflector<ColorGradingPassShaderParams>::createBindingSetDeferred(
-                    command_list, binding_layout, shader_params,
-                    [&](auto h) { return context.resolveTexture(h); },
-                    [&](auto h) { return context.resolveBuffer(h); }
-                );
-
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
-                    rendering_pipeline_utils::BuildFullscreenPipelineDesc(
-                        shader_library.getFullscreenVertexShader(),
-                        shader_library.getColorGradingPixelShader(),
-                        binding_layout
-                    ),
-                    framebuffer_info,
-                    command_list
-                );
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
-
-                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setTextureState(input_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
-                command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
-            }
-        );
-    }
-
-    void RenderFxaaPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-        const auto& shader_library = *pass_context.getShaderLibrary();
-
-        graph.addPass<SingleInputPassParameters>(
-            "FXAAPass",
-            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, SingleInputPassParameters& parameters) {
-                const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
-                const auto* input = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
-                DO_ASSERT(input, "FXAAPass input is missing");
-                parameters.input = pass_builder.read(*input);
-                parameters.output = pass_builder.write(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG MainCameraFxaaColor"),
-                    "MainCameraFxaaColor"));
-                pass_builder.blackboard().set<FxaaColorKey>(parameters.output);
-            },
-            [pass_context, &shader_library](const SingleInputPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto device = context.getGfxContext()->getDevice();
-                const auto input_handle = context.resolveTexture(parameters.input);
-                const auto output_handle = context.resolveTexture(parameters.output);
-
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
-                auto fb = command_list.createFramebuffer( framebuffer_desc);
-
-                SingleInputPassShaderParams shader_params;
-                shader_params.input.value = parameters.input;
-                shader_params.sampler.value = GlobalSamplers::screen();
-
-                const auto binding_layout = ShaderBindingReflector<SingleInputPassShaderParams>::getOrCreateLayout(device);
-
-                auto bs = ShaderBindingReflector<SingleInputPassShaderParams>::createBindingSetDeferred(
-                    command_list, binding_layout, shader_params,
-                    [&](auto h) { return context.resolveTexture(h); },
-                    [&](auto h) { return context.resolveBuffer(h); }
-                );
-
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
-                    rendering_pipeline_utils::BuildFullscreenPipelineDesc(
-                        shader_library.getFullscreenVertexShader(),
-                        shader_library.getFxaaPixelShader(),
-                        binding_layout
-                    ),
-                    framebuffer_info,
-                    command_list
-                );
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
-
-                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setTextureState(input_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
-                command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             }
         );
     }

@@ -7,9 +7,12 @@
 #include "mesh_processor_base.h"
 #include "../render_scene/primitive_scene_info.h"
 #include "runtime/function/graphics/gfx_context.h"
-#include "view_mesh_draw_context.h"
 
 namespace dodoe {
+
+    class PrimitiveSceneInfo;
+    struct MeshPassRelevance;
+    struct MeshDrawCommand;
 
     class DirectionalShadowMeshProcessor final : public IMeshPassProcessor {
         GfxBindingLayoutHandle m_binding_layout{};
@@ -25,11 +28,11 @@ namespace dodoe {
         [[nodiscard]] const GfxBufferHandle& getConstantBuffer() const override { return m_constant_buffer; }
 
         void buildCommands(
-            const ViewMeshVisibilityData& visibility_data,
-            const ViewMeshInstanceData& instance_data,
-            const ViewMeshPassData& view_pass_data,
+            const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
+            const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
+            const DynamicArray<UInt32>& mesh_pass_primitive_indices,
             const Matrix4f& light_view_projection,
-            ViewMeshPassData& out_pass_data) const;
+            DynamicArray<MeshDrawCommand>& out_commands) const;
     };
 
 } // dodoe
