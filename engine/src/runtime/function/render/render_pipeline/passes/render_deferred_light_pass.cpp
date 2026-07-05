@@ -9,6 +9,7 @@
 
 #include "../render_pipeline_pass_utils.h"
 
+#include "runtime/function/render/render_pipeline/render_feature/deferred_light_render_resource.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/framework/pipeline_state_cache.h"
 #include "runtime/function/render/framework/shader_library.h"
@@ -49,14 +50,14 @@ namespace dodoe::RenderPipelinePass {
         RenderGraphBufferHandle constant_buffer{};
     };
 
-    void RenderDeferredLightPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+    void RenderDeferredLightPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, DeferredLightRenderResource& resources) {
         DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
         const auto& shader_library = *pass_context.getShaderLibrary();
 
         graph.addPass<DeferredLightPassParameters>(
             "DeferredLightPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
+            [pass_context, &resources](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
                 const auto* gbuffer = pass_builder.blackboard().get<SceneTexturesKey, SceneTextures>();
                 const auto* shadow = pass_builder.blackboard().get<ShadowMapKey, RenderGraphTextureHandle>();
                 const auto* hdr = pass_builder.blackboard().get<SceneHdrKey, RenderGraphTextureHandle>();
@@ -67,7 +68,7 @@ namespace dodoe::RenderPipelinePass {
                 parameters.material = pass_builder.read(gbuffer->material);
                 parameters.shadow_map = pass_builder.read(*shadow);
                 parameters.hdr_color = pass_builder.write(*hdr);
-                parameters.constant_buffer = pass_builder.importBuffer(pass_context.deferred_light_constant_buffer, "DeferredLightConstantBuffer");
+                parameters.constant_buffer = pass_builder.importBuffer(resources.getOrCreateConstantBuffer(), "DeferredLightConstantBuffer");
             },
             [pass_context, &shader_library](const DeferredLightPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
                 const auto& light_infos = context.getScene()->getLightSceneInfos();
@@ -85,7 +86,6 @@ namespace dodoe::RenderPipelinePass {
                     return;
                 }
 
-                const auto device = context.getGfxContext()->getDevice();
                 const auto albedo_handle = context.resolveTexture(parameters.albedo);
                 const auto normal_handle = context.resolveTexture(parameters.normal);
                 const auto position_handle = context.resolveTexture(parameters.position);
@@ -106,7 +106,7 @@ namespace dodoe::RenderPipelinePass {
                 shader_params.material.value = parameters.material;
                 shader_params.skybox.value = parameters.hdr_color;
 
-                const auto binding_layout = ShaderBindingReflector<DeferredLightPassShaderParams>::getOrCreateLayout(device, GfxShaderType::Pixel);
+                const auto binding_layout = ShaderBindingReflector<DeferredLightPassShaderParams>::getOrCreateLayout(GfxShaderType::Pixel);
 
                 auto bs = ShaderBindingReflector<DeferredLightPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,

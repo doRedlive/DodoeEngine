@@ -1,5 +1,7 @@
 // do@Redlive
 
+#ifdef DODOE_PYTHON_ENABLED
+
 #include "script_bindings.h"
 
 #include "runtime/core/application.h"
@@ -299,3 +301,5 @@ void RegisterCore(py::module_& m) {
 }
 
 } // dodoe::script_bindings
+
+#endif // DODOE_PYTHON_ENABLED

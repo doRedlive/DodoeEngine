@@ -100,7 +100,6 @@ namespace dodoe::rendering_pipeline_utils {
         const RenderGraphTextureHandle input,
         const RenderGraphTextureHandle output)
     {
-        const auto device = context.getGfxContext()->getDevice();
         const auto input_texture = context.resolveTexture(input);
         const auto output_texture = context.resolveTexture(output);
         auto fb_desc = GfxFramebufferDesc().addColorAttachment(output_texture);

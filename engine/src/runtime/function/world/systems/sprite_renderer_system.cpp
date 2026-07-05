@@ -20,11 +20,19 @@ namespace dodoe {
         UnorderedSet<UUID> active_sprites{};
         bool dirty = false;
 
+        DO_DEBUG("SpriteRendererSystem: found {} sprite entities", sprite_view.size_hint());
+
         for (auto entity : sprite_view) {
             auto& id = entity.getComponent<IDComponent>();
             auto& transform = entity.getComponent<TransformComponent>();
             auto& sr = entity.getComponent<SpriteRendererComponent>();
             active_sprites.insert(id.id);
+
+            DO_DEBUG("SpriteRendererSystem: processing entity id={}, pos=({},{}), scale=({},{}), tex_path='{}'",
+                      static_cast<UInt64>(id.id),
+                      transform.position.x, transform.position.y,
+                      transform.scale.x, transform.scale.y,
+                      sr.texture.getFileID().getPath());
 
             dirty |= syncSpriteRenderer(entity);
 
@@ -50,14 +58,19 @@ namespace dodoe {
         }
 
         auto* texture_manager = GetRenderSystem()->getTextureManager();
+        DO_DEBUG("SpriteRendererSystem::sync: texture_manager={}", static_cast<const void*>(texture_manager));
 
         Ref<Texture> texture = nullptr;
         const String& tex_path = sr.texture.getFileID().getPath();
+        DO_DEBUG("SpriteRendererSystem::sync: tex_path='{}', is_valid={}", tex_path, sr.texture.isValid());
         if (!tex_path.empty()) {
             texture = Texture::Load(tex_path);
+            DO_DEBUG("SpriteRendererSystem::sync: Texture::Load result={}", static_cast<const void*>(texture.get()));
         }
 
-        if (!texture) return false;
+        if (!texture) {
+            return false;
+        }
 
         UInt32 flags = 0;
         if (sr.flip) {
@@ -75,6 +88,7 @@ namespace dodoe {
 
         Renderer::AddSprite(std::move(sprite_object));
         m_submitted_sprites.insert(id.id);
+        DO_DEBUG("SpriteRendererSystem::sync: SUCCESS — sprite submitted, tex='{}'", tex_path);
         return true;
     }
 

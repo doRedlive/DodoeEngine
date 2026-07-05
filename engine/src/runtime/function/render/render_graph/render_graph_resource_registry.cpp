@@ -1,18 +1,17 @@
 // do@Redlive
 
 #include "render_graph_resource_registry.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
     void RenderGraphResourceRegistry::initialize(
         const DynamicArray<RenderGraphResourceRecord>& resources,
         GfxContext& gfx_context,
-        const UInt32 swapchain_image_index)
+        const UInt32 swapchain_image_index,
+        DrawCommandList& command_list)
     {
         reset();
-
-        const auto device = gfx_context.getDevice();
-        DO_ASSERT(device != nullptr, "RenderGraphResourceRegistry device is null");
 
         m_texture_handles.resize(resources.size());
         m_buffer_handles.resize(resources.size());
@@ -22,7 +21,7 @@ namespace dodoe {
             if (resource.type == RenderGraphResourceType::Texture) {
                 switch (resource.source) {
                     case RenderGraphResourceSource::Transient:
-                        m_texture_handles[resource_index] = create_ref<GfxTexture>(device->createTexture(resource.texture_desc.desc), resource.texture_desc.desc, resource.name);
+                        m_texture_handles[resource_index] = command_list.createTexture(resource.texture_desc.desc);
                         break;
                     case RenderGraphResourceSource::ImportedTexture:
                         DO_ASSERT(resource.imported_texture != nullptr, "RenderGraphResourceRegistry imported texture is null");
@@ -43,7 +42,7 @@ namespace dodoe {
 
             switch (resource.source) {
                 case RenderGraphResourceSource::Transient:
-                    m_buffer_handles[resource_index] = create_ref<GfxBuffer>(device->createBuffer(resource.buffer_desc.desc), resource.buffer_desc.desc, resource.name);
+                    m_buffer_handles[resource_index] = command_list.createBuffer(resource.buffer_desc.desc);
                     break;
                 case RenderGraphResourceSource::ImportedBuffer:
                     DO_ASSERT(resource.imported_buffer != nullptr, "RenderGraphResourceRegistry imported buffer is null");

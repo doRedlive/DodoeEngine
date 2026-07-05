@@ -27,6 +27,8 @@ namespace dodoe {
     };
     struct FxaaColorKey {
     };
+    struct SpriteColorKey {
+    };
     struct ImGuiColorKey {
     };
 

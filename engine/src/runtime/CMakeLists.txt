@@ -74,13 +74,16 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC cutie_vk
         PUBLIC cutie_gl
         PUBLIC cutie_d3d12
-        PUBLIC pybind11::embed
         PUBLIC ${Vulkan_LIBRARIES}
         PUBLIC d3d12
         PUBLIC dxgi
 )
 
-target_link_directories(${TARGET_NAME} PRIVATE "${ENGINE_ROOT_DIR}/external/python/libs")
+if(DODOE_PYTHON_ENABLED)
+    target_link_libraries(${TARGET_NAME} PUBLIC pybind11::embed)
+    target_link_directories(${TARGET_NAME} PRIVATE "${ENGINE_ROOT_DIR}/external/python/libs")
+    target_compile_definitions(${TARGET_NAME} PUBLIC DODOE_PYTHON_ENABLED)
+endif()
 
 if(TARGET mono::mono)
     target_link_libraries(${TARGET_NAME} PUBLIC mono::mono)
@@ -100,25 +103,16 @@ target_compile_definitions(${TARGET_NAME}
 )
 
 if(DODOE_EDITOR)
-    add_dependencies(${TARGET_NAME} DodoeMonoRuntimeFiles DodoePythonRuntimeFiles)
+    add_dependencies(${TARGET_NAME} DodoeMonoRuntimeFiles)
+    if(DODOE_PYTHON_ENABLED)
+        add_dependencies(${TARGET_NAME} DodoePythonRuntimeFiles)
+    endif()
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:${TARGET_NAME}>
             "${BINARY_ROOT_DIR}/"
         COMMENT "Copy DodoeRuntime.dll -> ${BINARY_ROOT_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${ENGINE_ROOT_DIR}/external/python/python313_d.dll"
-            "${BINARY_ROOT_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${ENGINE_ROOT_DIR}/external/python/python3_d.dll"
-            "${BINARY_ROOT_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${ENGINE_ROOT_DIR}/external/python/python313.dll"
-            "${BINARY_ROOT_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${ENGINE_ROOT_DIR}/external/python/python3.dll"
-            "${BINARY_ROOT_DIR}/"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${ENGINE_ROOT_DIR}/external/mono/bin/coreclr.dll"
             "${BINARY_ROOT_DIR}/"

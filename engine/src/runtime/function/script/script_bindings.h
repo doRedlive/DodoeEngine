@@ -4,6 +4,8 @@
 
 #include "dopch.h"
 
+#ifdef DODOE_PYTHON_ENABLED
+
 #include "pybind11/pybind11.h"
 
 namespace py = pybind11;
@@ -18,3 +20,5 @@ namespace dodoe::script_bindings {
     void RegisterWorld(py::module_& dodoe_module);
 
 } // dodoe::script_bindings
+
+#endif // DODOE_PYTHON_ENABLED

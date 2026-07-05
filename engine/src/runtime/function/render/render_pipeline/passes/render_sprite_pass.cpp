@@ -11,7 +11,9 @@
 
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_scene/render_scene.h"
-#include "runtime/function/render/render_pipeline/render_feature/sprite_render_resources.h"
+#include "runtime/function/render/render_pipeline/render_feature/sprite_render_resource.h"
+#include "runtime/function/render/framework/global_samplers.h"
+#include "runtime/function/render/framework/local_vertex_factory.h"
 #include "runtime/function/render/framework/texture_manager.h"
 #include "runtime/function/render/framework/descriptor_table_manager.h"
 #include "runtime/core/utils/common.h"
@@ -28,19 +30,22 @@ namespace dodoe::RenderPipelinePass {
         RenderGraphBufferHandle vp_buffer{};
     };
 
-    void RenderSpritePass(RenderGraphBuilder& graph, const RenderView& view, const RenderPassContext& pass_context, SpriteRenderResources& resources) {
+    void RenderSpritePass(RenderGraphBuilder& graph, const RenderView& view, const RenderPassContext& pass_context, SpriteRenderResource& resources) {
         graph.addPass<SpritePassParameters>(
             "MainSpritePass",
             RenderGraphPassFlags::Raster,
             [pass_context, &view](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
-                const auto* scene_color = pass_builder.blackboard().get<FxaaColorKey, RenderGraphTextureHandle>();
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
+                    DO_DEBUG("MainSpritePass: reusing SceneColorKey from blackboard");
                     parameters.color_target = pass_builder.write(*scene_color);
                 } else {
+                    DO_DEBUG("MainSpritePass: SceneColorKey absent, creating own target");
                     const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
                     parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
                         "SpriteColor"));
+                    pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
                 }
 
                 const auto* sprite_ext = view.getExtension<SpriteViewExtension>();
@@ -77,7 +82,13 @@ namespace dodoe::RenderPipelinePass {
             },
             [pass_context, &view, &resources](const SpritePassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
                 const auto* sprite_ext = view.getExtension<SpriteViewExtension>();
-                if (!sprite_ext || sprite_ext->visible_sprites.empty()) {
+                if (!sprite_ext) {
+                    DO_DEBUG("MainSpritePass: SKIP — no SpriteViewExtension");
+                    return;
+                }
+                const Size_t vis_count = sprite_ext->visible_sprites.size();
+                DO_DEBUG("MainSpritePass: {} visible sprites", vis_count);
+                if (vis_count == 0) {
                     return;
                 }
 
@@ -101,6 +112,9 @@ namespace dodoe::RenderPipelinePass {
                 command_list.setBufferState(vp_buffer, GfxResourceStates::ConstantBuffer);
                 command_list.commitBarriers();
 
+                command_list.setBufferState(quad_vertex_buffer, GfxResourceStates::CopyDest);
+                command_list.setBufferState(quad_index_buffer, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
                 command_list.writeBuffer(quad_vertex_buffer, kQuadVertices, sizeof(kQuadVertices), 0);
                 command_list.writeBuffer(quad_index_buffer, kQuadIndices, sizeof(kQuadIndices), 0);
                 command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
@@ -115,10 +129,98 @@ namespace dodoe::RenderPipelinePass {
 
                 command_list.setBufferState(quad_vertex_buffer, GfxResourceStates::VertexBuffer);
                 command_list.setBufferState(quad_index_buffer, GfxResourceStates::IndexBuffer);
+                command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
                 command_list.commitBarriers();
 
                 const UInt32 visible_count = static_cast<UInt32>(sprite_ext->visible_sprites.size());
-                resources.renderSprites(pass_context, context, command_list, color_target, quad_vertex_buffer, quad_index_buffer, instance_buffer, vp_buffer, visible_count);
+                if (visible_count == 0) {
+                    return;
+                }
+
+                const auto* shader_library = pass_context.getShaderLibrary();
+                auto* pipeline_cache = pass_context.getPipelineStateCache();
+                if (!shader_library || !pipeline_cache) {
+                    DO_DEBUG("MainSpritePass: SKIP — shader_library={}, pipeline_cache={}",
+                              static_cast<const void*>(shader_library), static_cast<const void*>(pipeline_cache));
+                    return;
+                }
+
+                const auto sprite_vs = shader_library->getSpriteVertexShader();
+                const auto sprite_ps = shader_library->getSpritePixelShader();
+                if (!sprite_vs || !sprite_ps) {
+                    DO_DEBUG("MainSpritePass: SKIP — sprite_vs={}, sprite_ps={}",
+                              static_cast<const void*>(sprite_vs), static_cast<const void*>(sprite_ps));
+                    return;
+                }
+
+                auto framebuffer = resources.getOrCreateFramebuffer(command_list, color_target);
+
+                auto input_layout = pass_context.local_vertex_factory
+                    ? pass_context.local_vertex_factory->getOrCreateSpriteInputLayout(command_list, sprite_vs)
+                    : GfxInputLayoutHandle{};
+
+                auto binding_layout = resources.getOrCreateBindingLayout(command_list);
+
+                if (!framebuffer || !input_layout || !binding_layout) {
+                    DO_DEBUG("MainSpritePass: SKIP — fb={}, il={}, bl={}",
+                              static_cast<const void*>(framebuffer ? framebuffer->getRHIHandle() : nullptr),
+                              static_cast<const void*>(input_layout),
+                              static_cast<const void*>(binding_layout));
+                    return;
+                }
+
+                auto per_frame_bs = command_list.createBindingSet(
+                    GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::point()))
+                        .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHIHandle())),
+                    binding_layout);
+
+                GfxBindingLayoutHandle desc_table_layout = nullptr;
+                GfxBindingSetHandle desc_table = nullptr;
+                if (pass_context.getTextureManager()) {
+                    auto* desc_mgr = pass_context.getTextureManager()->getDescriptorTable();
+                    if (desc_mgr && desc_mgr->getDescriptorTable()) {
+                        auto* raw_table = desc_mgr->getDescriptorTable();
+                        desc_table = create_ref<GfxBindingSet>(cutie::BindingSetHandle(raw_table));
+                        desc_table_layout = raw_table->getLayout();
+                    }
+                }
+
+                auto pipeline = resources.getOrCreatePipeline(
+                    pipeline_cache, sprite_vs, sprite_ps,
+                    input_layout,
+                    framebuffer->getInfo(), command_list,
+                    desc_table_layout);
+
+                if (!pipeline || !per_frame_bs) {
+                    DO_DEBUG("MainSpritePass: SKIP — pipeline={}, per_frame_bs={}",
+                              static_cast<const void*>(pipeline.get()), static_cast<const void*>(per_frame_bs.get()));
+                    return;
+                }
+
+                DynamicArray<GfxBindingSetHandle> bs_arr = {per_frame_bs};
+                if (desc_table) {
+                    bs_arr.push_back(desc_table);
+                }
+
+                DynamicArray<GfxVertexBufferBinding> vbs;
+                vbs.push_back(GfxVertexBufferBinding()
+                    .setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0));
+                vbs.push_back(GfxVertexBufferBinding()
+                    .setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0));
+                GfxIndexBufferBinding ib = GfxIndexBufferBinding()
+                    .setBuffer(quad_index_buffer->getRHIHandle())
+                    .setFormat(GfxFormat::R16_UINT).setOffset(0);
+
+                auto vp = GfxViewportState().addViewportAndScissorRect(GfxViewport(
+                    0, static_cast<float>(swapchain_extent.x),
+                    0, static_cast<float>(swapchain_extent.y),
+                    0, 1));
+
+                command_list.setGraphicsState(framebuffer, pipeline, bs_arr, vp, vbs, ib);
+                command_list.drawIndexed(GfxDrawArguments().setVertexCount(6).setInstanceCount(visible_count));
+                DO_DEBUG("MainSpritePass: DONE — drew {} sprite instances to {}x{} swapchain",
+                          visible_count, static_cast<int>(swapchain_extent.x), static_cast<int>(swapchain_extent.y));
             }
         );
     }

@@ -33,7 +33,6 @@ namespace dodoe {
         ~SharedRenderService() = default;
 
         [[nodiscard]] GfxContext* getGfxContext() const { return m_gfx_context; }
-        [[nodiscard]] GfxDeviceHandle getDevice() const { return m_gfx_context ? m_gfx_context->getDevice() : nullptr; }
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
         [[nodiscard]] TextureManager* getTextureManager() const { return m_texture_manager; }
         [[nodiscard]] ShaderLibrary* getShaderLibrary() const { return m_shader_library.get(); }

@@ -116,21 +116,24 @@ if(NOT TARGET cutie)
     endif()
 endif()
 
-if(NOT TARGET pybind11::pybind11)
-    set(Python_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/python")
-    if(NOT Python_FOUND AND NOT Python3_FOUND)
-        find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development)
-    endif()
-    add_subdirectory(pybind11)
-    set_target_properties(pybind11_headers PROPERTIES FOLDER ${external_folder}/pybind11)
+option(DODOE_PYTHON_ENABLED "Enable Python scripting support (pybind11)" OFF)
 
-    # Copy python3*.dll to output directory for runtime
-    file(GLOB PYTHON_DLL "${Python_ROOT_DIR}/python3*.dll")
-    add_custom_target(DodoePythonRuntimeFiles ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${PYTHON_DLL}
-            "${BINARY_ROOT_DIR}/"
-        COMMENT "Copying python3*.dll to output directory"
-    )
+if(DODOE_PYTHON_ENABLED)
+    if(NOT TARGET pybind11::pybind11)
+        set(Python_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/python")
+        if(NOT Python_FOUND AND NOT Python3_FOUND)
+            find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development)
+        endif()
+        add_subdirectory(pybind11)
+        set_target_properties(pybind11_headers PROPERTIES FOLDER ${external_folder}/pybind11)
+
+        file(GLOB PYTHON_DLL "${Python_ROOT_DIR}/python3*.dll")
+        add_custom_target(DodoePythonRuntimeFiles ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${PYTHON_DLL}
+                "${BINARY_ROOT_DIR}/"
+            COMMENT "Copying python3*.dll to output directory"
+        )
+    endif()
 endif()
 

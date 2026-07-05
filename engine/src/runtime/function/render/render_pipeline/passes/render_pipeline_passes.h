@@ -8,8 +8,9 @@
 
 namespace dodoe {
 
-    class ImGuiRenderResources;
-    class SpriteRenderResources;
+    class ImGuiRenderResource;
+    class SpriteRenderResource;
+    class DeferredLightRenderResource;
     class RenderGraphBuilder;
     class RenderView;
 
@@ -19,17 +20,17 @@ namespace dodoe {
         void RenderDirectionalShadowPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
 
         void RenderSkyboxPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
-        void RenderDeferredLightPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
+        void RenderDeferredLightPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, DeferredLightRenderResource& resources);
 
-        void RenderSpritePass(RenderGraphBuilder& graph, const RenderView& view, const RenderPassContext& pass_context, SpriteRenderResources& resources);
+        void RenderSpritePass(RenderGraphBuilder& graph, const RenderView& view, const RenderPassContext& pass_context, SpriteRenderResource& resources);
 
         void RenderPostProcessPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
-        void RenderToneMappingPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
-        void RenderColorGradingPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
-        void RenderFxaaPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
-        void RenderImGuiPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, ImGuiRenderResources& resources);
+        void RenderPostProcess2DPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
+        void RenderImGuiPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, ImGuiRenderResource& resources);
 
         void RenderPresentPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
+
+        void RenderTestPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
 
     } // namespace RenderPipelinePass
 

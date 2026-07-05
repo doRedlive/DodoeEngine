@@ -30,10 +30,11 @@ namespace dodoe {
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        Ref<Texture> createTexture(const String& path);
+        Ref<Texture> createTexture(const String& path, DrawCommandList& cmd_list);
         void createFallbackTexture();
 
     public:
+        [[nodiscard]] Ref<Texture> loadTexture(const String& path, DrawCommandList& cmd_list);
         [[nodiscard]] Ref<Texture> loadTexture(const String& path);
         [[nodiscard]] Ref<Texture> findTexture(InstanceID id);
         [[nodiscard]] Ref<Texture> getFallback() const;

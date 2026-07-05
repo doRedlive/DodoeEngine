@@ -1,14 +1,14 @@
-//
-// Created by Redlive on 2026/3/21.
-//
+// do@Redlive
 
-#include "viewport_manager.h"
+#include "render_viewport.h"
 
 #include "runtime/core/math/math.h"
+#include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_scene/render_scene.h"
 
 namespace dodoe {
-    
-    bool ViewportManager::initialize(const ViewportManagerCreateInfo& init_info) {
+
+    bool RenderViewport::initialize(const RenderViewportCreateInfo& init_info) {
         m_window = init_info.window_handle;
         m_logical_size = Math::Max(Vector2f(1.0f, 1.0f), init_info.logical);
         m_window_size = Math::Max(Vector2i(1, 1), init_info.window);
@@ -22,12 +22,12 @@ namespace dodoe {
         return true;
     }
 
-    void ViewportManager::shutdown() {
+    void RenderViewport::shutdown() {
         m_window_dirty = false;
         m_viewport_dirty = false;
     }
 
-    void ViewportManager::update() {
+    void RenderViewport::update() {
         const Vector2i new_window_size(m_window->getWidth(), m_window->getHeight());
         const Vector2i new_pixel_size = m_window->getPixelSize();
 
@@ -44,12 +44,12 @@ namespace dodoe {
         }
     }
 
-    void ViewportManager::clearDirtyFlags() {
+    void RenderViewport::clearDirtyFlags() {
         m_window_dirty = false;
         m_viewport_dirty = false;
     }
 
-    void ViewportManager::setLogicalSize(const Vector2f& logical) {
+    void RenderViewport::setLogicalSize(const Vector2f& logical) {
         const Vector2f clamped = Math::Max(Vector2f(1.0f, 1.0f), logical);
         if (clamped.x == m_logical_size.x && clamped.y == m_logical_size.y) {
             return;
@@ -62,7 +62,7 @@ namespace dodoe {
         m_viewport = metrics.viewport;
     }
 
-    void ViewportManager::setWindowSize(const Vector2i& window) {
+    void RenderViewport::setWindowSize(const Vector2i& window) {
         const Vector2i clamped = Math::Max(Vector2i(1, 1), window);
         if (clamped.x == m_window_size.x && clamped.y == m_window_size.y) {
             return;
@@ -72,7 +72,7 @@ namespace dodoe {
         m_window_dirty = true;
     }
 
-    void ViewportManager::setPixelSize(const Vector2i& pixel) {
+    void RenderViewport::setPixelSize(const Vector2i& pixel) {
         const Vector2i clamped = Math::Max(Vector2i(1, 1), pixel);
         if (clamped.x == m_pixel_size.x && clamped.y == m_pixel_size.y) {
             return;
@@ -80,9 +80,9 @@ namespace dodoe {
 
         m_pixel_size = clamped;
         m_window_dirty = true;
-    } 
+    }
 
-    void ViewportManager::setViewportRect(const Rect& viewport_rect) {
+    void RenderViewport::setViewportRect(const Rect& viewport_rect) {
         const Vector2f clamped_size = Math::Max(Vector2f(1.0f, 1.0f), viewport_rect.size);
         const Vector2f window_size_f(
             static_cast<float>((std::max)(1, m_window_size.x)),
@@ -120,7 +120,7 @@ namespace dodoe {
         m_viewport_dirty = true;
     }
 
-    ViewportManager::LetterboxMetrics ViewportManager::computeLetterboxMetrics(const Vector2i& pixel_size_i, const Vector2f& logical_size) {
+    RenderViewport::LetterboxMetrics RenderViewport::computeLetterboxMetrics(const Vector2i& pixel_size_i, const Vector2f& logical_size) {
         LetterboxMetrics result{};
 
         const Vector2f pixel_size(static_cast<float>(pixel_size_i.x), static_cast<float>(pixel_size_i.y));
@@ -131,11 +131,6 @@ namespace dodoe {
             result.scale = 1.0f;
             return result;
         }
-
-        // 640 * 360 : 1920 * 1080
-        // result.scale = 3 --> viewport.size = 1920 * 1080
-        // 640 * 360 : 1280 * 7200 (scaled)
-        // result.scale = 2 --> viewport.size = 1280 * 720
 
         const float scale_x = pixel_size.x / logical_size.x;
         const float scale_y = pixel_size.y / logical_size.y;
@@ -154,6 +149,51 @@ namespace dodoe {
         result.viewport.pos.x = std::floor(result.viewport.pos.x);
         result.viewport.pos.y = std::floor(result.viewport.pos.y);
         return result;
+    }
+
+    RenderViewFamily RenderViewport::buildViewFamily(const RenderScene& scene, const Float time, const Float delta,
+                                                       const Matrix4f& view_mat, const Matrix4f& proj_mat) const {
+        RenderViewFamily family{};
+        family.setFrameTime(time, delta);
+        auto& view = family.createView(Identifier("main_view"));
+        view.setMatrices(view_mat, proj_mat);
+        view.setViewportRect(Vector4i(0, 0, m_pixel_size.x, m_pixel_size.y));
+        (void)scene;
+        return family;
+    }
+
+    Vector2f RenderViewport::Window2World(const Vector2f& window_pos, const Matrix4f& view_proj) const {
+        if (m_window_size.x <= 0 || m_window_size.y <= 0
+            || m_pixel_size.x <= 0 || m_pixel_size.y <= 0
+            || m_viewport.size.x <= 0.0f || m_viewport.size.y <= 0.0f) {
+            return window_pos;
+        }
+
+        const Vector2f pixel_pos{
+            window_pos.x * (static_cast<float>(m_pixel_size.x) / static_cast<float>(m_window_size.x)),
+            window_pos.y * (static_cast<float>(m_pixel_size.y) / static_cast<float>(m_window_size.y))
+        };
+
+        const float normalized_x = (pixel_pos.x - m_viewport.pos.x) / m_viewport.size.x;
+        const float normalized_y = (pixel_pos.y - m_viewport.pos.y) / m_viewport.size.y;
+
+        const Vector3f logical_pos{
+            normalized_x * m_logical_size.x,
+            (1.0f - normalized_y) * m_logical_size.y,
+            0.0f
+        };
+
+        const Vector4f clip_pos{
+            logical_pos.x / m_logical_size.x * 2.0f - 1.0f,
+            logical_pos.y / m_logical_size.y * 2.0f - 1.0f,
+            0.0f,
+            1.0f
+        };
+        Vector4f world_pos = Math::Inverse(view_proj) * clip_pos;
+        if (std::abs(world_pos.w) > 0.00001f) {
+            world_pos /= world_pos.w;
+        }
+        return Vector2f(world_pos.x, world_pos.y);
     }
 
 } // dodoe

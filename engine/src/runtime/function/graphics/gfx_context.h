@@ -43,7 +43,6 @@ namespace dodoe {
         static Scope<GfxContext> Create(const GfxBackendCreateInfo& create_info);
         static void Destroy(Scope<GfxContext>& backend);
 
-        [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
         [[nodiscard]] const DynamicArray<GfxTextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
         [[nodiscard]] Vector2i getSwapchainExtent2d() const;
         [[nodiscard]] Bool acquireNextSwapchainImage(UInt32& image_index);
@@ -59,6 +58,9 @@ namespace dodoe {
         void clearGarbage();
 
     private:
+        friend class DrawCommandList;
+
+        [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
         void initialize(const GfxBackendCreateInfo& create_info);
         void shutdown();
 

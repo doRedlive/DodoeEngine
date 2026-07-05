@@ -18,12 +18,17 @@ namespace dodoe {
 
     void LightingFeature::registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const {
         DO_ASSERT(context.pass_context != nullptr, "LightingFeature requires pass context");
-        RenderPipelinePass::RenderDeferredLightPass(graph, *context.pass_context);
+        RenderPipelinePass::RenderDeferredLightPass(graph, *context.pass_context, m_resources);
     }
 
     void PostProcessFeature::registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const {
         DO_ASSERT(context.pass_context != nullptr, "PostProcessFeature requires pass context");
         RenderPipelinePass::RenderPostProcessPass(graph, *context.pass_context);
+    }
+
+    void PostProcess2DFeature::registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const {
+        DO_ASSERT(context.pass_context != nullptr, "PostProcess2DFeature requires pass context");
+        RenderPipelinePass::RenderPostProcess2DPass(graph, *context.pass_context);
     }
 
     void PresentFeature::registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const {

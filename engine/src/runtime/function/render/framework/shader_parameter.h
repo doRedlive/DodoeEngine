@@ -158,20 +158,15 @@ namespace dodoe {
     template <typename ShaderParamStruct>
     struct ShaderBindingReflector {
 
-        static GfxBindingLayoutHandle getOrCreateLayout(GfxDevice* device,
-                                                         GfxShaderType visibility = GfxShaderType::All) {
-            static GfxBindingLayoutHandle s_layout = [device, visibility]() {
-                if (!device) {
-                    DO_ERROR("ShaderBindingReflector::getOrCreateLayout device is null!");
-                    return GfxBindingLayoutHandle{};
-                }
+        static GfxBindingLayoutHandle getOrCreateLayout(GfxShaderType visibility = GfxShaderType::All) {
+            static GfxBindingLayoutHandle s_layout = [visibility]() {
                 GfxBindingLayoutDesc desc;
                 desc.setVisibility(visibility);
                 ShaderParamStruct dummy{};
                 dummy.forEachMember([&desc](auto& member) {
                     desc.addItem(std::decay_t<decltype(member)>::makeLayoutItem());
                 });
-                auto layout = device->createBindingLayout(desc);
+                auto layout = GDrawCommandList.createBindingLayout(desc);
                 if (!layout) {
                     DO_ERROR("ShaderBindingReflector::getOrCreateLayout createBindingLayout failed!");
                 }

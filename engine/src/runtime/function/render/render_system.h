@@ -9,7 +9,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "framework/descriptor_table_manager.h"
 #include "framework/shared_render_service.h"
-#include "framework/render_viewport.h"
+#include "render_view/render_viewport.h"
 #include "render_pipeline/render_pipeline.h"
 #include "render_scene/render_scene.h"
 

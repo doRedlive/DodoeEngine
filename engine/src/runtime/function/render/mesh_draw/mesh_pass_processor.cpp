@@ -4,6 +4,7 @@
 
 #include "../render_scene/render_scene.h"
 #include "runtime/core/utils/common.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
@@ -13,7 +14,7 @@ namespace dodoe {
         auto state = create_scope<MeshPipelineState>();
         state->m_desc = desc;
 
-        auto device = m_gfx->getDevice();
+        auto device = GDrawCommandList.getDevice();
 
         auto vert_source = ReadShaderFile(desc.vertex_shader_path);
         auto frag_source = ReadShaderFile(desc.pixel_shader_path);
@@ -115,7 +116,7 @@ namespace dodoe {
 
         DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: calling device->createGraphicsPipeline");
         m_pipeline_state->m_pipeline = create_ref<GfxGraphicsPipeline>();
-        m_pipeline_state->m_pipeline->initializeRHI(m_gfx->getDevice(), pipeline_desc, framebuffer_info);
+        m_pipeline_state->m_pipeline->initializeRHI(GDrawCommandList.getDevice(), pipeline_desc, framebuffer_info);
         DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: pipeline created, handle={}", m_pipeline_state->m_pipeline != nullptr);
     }
 
@@ -308,7 +309,7 @@ namespace dodoe {
         const MeshPipelineStateDesc& desc)
     {
         if (!desc.vertex_attributes.empty()) {
-            return m_gfx->getDevice()->createInputLayout(
+            return GDrawCommandList.getDevice()->createInputLayout(
                 desc.vertex_attributes.data(),
                 static_cast<UInt32>(desc.vertex_attributes.size()),
                 vertex_shader);
@@ -357,7 +358,7 @@ namespace dodoe {
             attributes.push_back(attr);
         }
 
-        auto input_layout = m_gfx->getDevice()->createInputLayout(
+        auto input_layout = GDrawCommandList.getDevice()->createInputLayout(
             attributes.data(),
             static_cast<UInt32>(attributes.size()),
             vertex_shader);

@@ -5,6 +5,7 @@
 #include "passes/render_pipeline_passes.h"
 #include "render_feature/imgui_feature.h"
 #include "render_feature/sprite_feature.h"
+#include "render_feature/test_feature.h"
 #include "render_feature/render_builtin_features.h"
 #include "render_pipeline_pass_utils.h"
 #include "runtime/core/math/math.h"
@@ -44,7 +45,7 @@ namespace dodoe {
         context.gfx_context = m_gfx_context;
         context.shared_render_service = m_shared_render_service;
         context.scene = &scene;
-        context.deferred_light_constant_buffer = m_deferred_light_constant_buffer;
+        context.local_vertex_factory = m_local_vertex_factory.get();
         for (size_t i = 0; i < static_cast<size_t>(MeshPassType::Count); ++i) {
             context.mesh_processors[i] = m_mesh_processors[i].get();
         }
@@ -52,10 +53,18 @@ namespace dodoe {
     }
 
     void RenderPipeline::initViews(const RenderScene& scene, RenderViewFamily& view_family) const {
+        const auto pipeline_type = RenderSettings::GetRenderingPipelineType();
         for (auto& view : view_family.getViews()) {
             view.resetExtensions();
         }
-        view_family.buildVisiblePrimitives(scene);
+        if (pipeline_type == RenderingPipelineType::Only2D) {
+            DO_DEBUG("RenderPipeline::initViews: Only2D — building visible sprites only");
+            for (auto& view : view_family.getViews()) {
+                view.buildVisibleSprites(scene);
+            }
+        } else {
+            view_family.buildVisiblePrimitives(scene);
+        }
     }
 
     void RenderPipeline::setupMeshPassRelevance(RenderView& view) const {
@@ -215,8 +224,9 @@ namespace dodoe {
     }
 
     Bool RenderPipeline::initialize(const RenderPipelineCreateInfo& info) {
-        DO_ASSERT(RenderSettings::GetRenderingPipelineType() == RenderingPipelineType::Deferred,
-                  "RenderPipeline currently only supports Deferred pipeline type");
+        const auto pipeline_type = RenderSettings::GetRenderingPipelineType();
+        DO_ASSERT(pipeline_type == RenderingPipelineType::Deferred || pipeline_type == RenderingPipelineType::Only2D,
+                  "RenderPipeline currently only supports Deferred and Only2D pipeline types");
 
         Size_t worker_count = info.worker_count;
         if (worker_count == 0) {
@@ -232,38 +242,37 @@ namespace dodoe {
         DO_ASSERT(m_shared_render_service->getDescriptorTable() != nullptr, "RenderPipeline requires descriptor table");
         DO_ASSERT(m_shared_render_service->getTextureManager() != nullptr, "RenderPipeline requires texture manager");
         const auto* shader_library = m_shared_render_service->getShaderLibrary();
+
         m_local_vertex_factory = create_scope<LocalVertexFactory>();
-        m_local_vertex_factory->initialize(
-            *m_gfx_context,
-            shader_library->getGBufferVertexShader(),
-            shader_library->getShadowVertexShader()
-        );
-        m_mesh_processors[static_cast<size_t>(MeshPassType::GBuffer)] = create_scope<GBufferMeshProcessor>();
-        static_cast<GBufferMeshProcessor*>(m_mesh_processors[static_cast<size_t>(MeshPassType::GBuffer)].get())->initialize(*m_gfx_context, m_shared_render_service->getDescriptorTable(), m_shared_render_service->getTextureManager());
-        m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)] = create_scope<DirectionalShadowMeshProcessor>();
-        static_cast<DirectionalShadowMeshProcessor*>(m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)].get())->initialize(*m_gfx_context);
-        m_features.push_back(create_scope<BaseSceneFeature>());
-        m_features.push_back(create_scope<LightingFeature>());
-        m_features.push_back(create_scope<PostProcessFeature>());
+        if (pipeline_type == RenderingPipelineType::Deferred) {
+            m_local_vertex_factory->initialize(
+                GDrawCommandList,
+                shader_library->getGBufferVertexShader(),
+                shader_library->getShadowVertexShader()
+            );
+        }
+
+        if (pipeline_type == RenderingPipelineType::Deferred) {
+            m_mesh_processors[static_cast<size_t>(MeshPassType::GBuffer)] = create_scope<GBufferMeshProcessor>();
+            static_cast<GBufferMeshProcessor*>(m_mesh_processors[static_cast<size_t>(MeshPassType::GBuffer)].get())->initialize(*m_gfx_context, m_shared_render_service->getDescriptorTable(), m_shared_render_service->getTextureManager());
+            m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)] = create_scope<DirectionalShadowMeshProcessor>();
+            static_cast<DirectionalShadowMeshProcessor*>(m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)].get())->initialize(*m_gfx_context);
+
+            // m_features.push_back(create_scope<BaseSceneFeature>());
+            // m_features.push_back(create_scope<LightingFeature>());
+            // m_features.push_back(create_scope<PostProcessFeature>());
+        }
         m_features.push_back(create_scope<SpriteFeature>());
+        // if (pipeline_type == RenderingPipelineType::Only2D) {
+        //     m_features.push_back(create_scope<PostProcess2DFeature>());
+        // }
+        // m_features.push_back(create_scope<TestFeature>());
         m_features.push_back(create_scope<ImGuiFeature>());
         m_features.push_back(create_scope<PresentFeature>());
-        {
-            auto buf = create_ref<GfxBuffer>(
-                GfxBufferDesc()
-                    .setByteSize(256)
-                    .setIsConstantBuffer(true)
-                    .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
-                    .setDebugName("DeferredLightPass ConstantBuffer"),
-                "DeferredLightPass ConstantBuffer");
-            buf->initializeRHI(m_gfx_context->getDevice());
-            m_deferred_light_constant_buffer = buf;
-        }
         return true;
     }
 
     void RenderPipeline::shutdown() {
-        m_deferred_light_constant_buffer = nullptr;
         m_features.clear();
         for (auto& proc : m_mesh_processors) {
             if (proc) {
@@ -281,13 +290,33 @@ namespace dodoe {
     }
 
     void RenderPipeline::render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index, DrawCommandList& out_commands) {
+        const auto pipeline_type = RenderSettings::GetRenderingPipelineType();
+        switch (pipeline_type) {
+        case RenderingPipelineType::Deferred:
+            renderDeferred(view_family, scene, swapchain_image_index, out_commands);
+            break;
+        case RenderingPipelineType::Only2D:
+            renderOnly2D(view_family, scene, swapchain_image_index, out_commands);
+            break;
+        default:
+            DO_ERROR("Unsupported pipeline type");
+            break;
+        }
+    }
+
+    void RenderPipeline::renderDeferred(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index, DrawCommandList& out_commands) {
         initViews(scene, view_family);
         setupMeshPassContexts(scene, view_family);
         buildMeshDrawCommands(view_family, out_commands);
-        buildFrameCommandList(view_family, scene, swapchain_image_index, out_commands);
+        buildFrameDrawCommandList(view_family, scene, swapchain_image_index, out_commands);
     }
 
-    void RenderPipeline::buildFrameCommandList(
+    void RenderPipeline::renderOnly2D(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index, DrawCommandList& out_commands) {
+        initViews(scene, view_family);
+        buildFrameDrawCommandList(view_family, scene, swapchain_image_index, out_commands);
+    }
+
+    void RenderPipeline::buildFrameDrawCommandList(
         const RenderViewFamily& view_family,
         RenderScene& scene,
         const UInt32 swapchain_image_index,

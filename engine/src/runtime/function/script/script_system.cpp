@@ -6,13 +6,15 @@
 #include "script_glue.h"
 #include "script_runtime.h"
 
+#ifdef DODOE_PYTHON_ENABLED
 #include <pybind11/embed.h>
 #include "script_bindings.h"
-
 namespace py = pybind11;
+#endif
 
 namespace dodoe {
 
+#ifdef DODOE_PYTHON_ENABLED
     struct ScriptSystem::ToolInterpreter {
         Scope<py::scoped_interpreter> guard;
 
@@ -45,19 +47,27 @@ namespace dodoe {
             }
         }
     };
+#endif
 
     ScriptSystem::ScriptSystem() = default;
 
     ScriptSystem::~ScriptSystem() {
+#ifdef DODOE_PYTHON_ENABLED
         delete m_tool_interp;
+#endif
     }
 
     Bool ScriptSystem::Execute(const std::filesystem::path& path) {
+#ifdef DODOE_PYTHON_ENABLED
         auto ext = path.extension().string();
         if (ext == ".py" && m_tool_interp) {
             return m_tool_interp->Execute(path);
         }
         DO_ERROR("ScriptSystem::Execute: unsupported extension '{}' for '{}'", ext, path.string());
+#else
+        (void)path;
+        DO_ERROR("ScriptSystem::Execute: Python scripting is disabled");
+#endif
         return false;
     }
 
@@ -104,11 +114,13 @@ namespace dodoe {
         ScriptGlue::Shutdown();
         ScriptRuntime::Destroy(m_script_runtime);
         ScriptEngine::Destroy(m_script_engine);
+#ifdef DODOE_PYTHON_ENABLED
         if (m_tool_interp) {
             m_tool_interp->Shutdown();
             delete m_tool_interp;
             m_tool_interp = nullptr;
         }
+#endif
     }
 
 } // dodoe

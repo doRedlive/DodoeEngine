@@ -86,8 +86,8 @@ namespace dodoe {
         DO_ASSERT(m_world, "World init failed");
 
         auto threading_mode = m_init_info.spec.render_settings.threading_mode;
-        auto device = m_render_system->getGfx()->getDevice();
         auto* gfx = m_render_system->getGfx();
+        auto device = GDrawCommandList.getDevice();
 
         GDrawCommandList.setDevice(device);
 

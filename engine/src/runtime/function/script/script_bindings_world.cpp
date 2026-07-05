@@ -1,5 +1,7 @@
 // do@Redlive
 
+#ifdef DODOE_PYTHON_ENABLED
+
 #include "script_bindings.h"
 
 #include "runtime/function/world/world.h"
@@ -43,3 +45,5 @@ namespace dodoe::script_bindings {
     }
 
 } // dodoe::script_bindings
+
+#endif // DODOE_PYTHON_ENABLED

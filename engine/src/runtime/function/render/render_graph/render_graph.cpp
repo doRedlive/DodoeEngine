@@ -120,7 +120,11 @@ namespace dodoe {
             const auto& pass = m_passes[pass_index];
             const auto& accesses = pass->getAccesses();
 
+            DO_DEBUG("RenderGraph::compile: pass[{}]='{}' accesses={} flags=0x{:x}",
+                      pass_index, pass->getName(), accesses.size(), static_cast<UInt32>(pass->getFlags()));
+
             if (accesses.empty() && !HasAnyFlags(pass->getFlags(), RenderGraphPassFlags::NeverCull)) {
+                DO_DEBUG("RenderGraph::compile: culling pass[{}]='{}'", pass_index, pass->getName());
                 m_culled_passes[pass_index] = true;
                 continue;
             }
@@ -199,34 +203,47 @@ namespace dodoe {
         DO_ASSERT(context.gfx_context != nullptr, "RenderGraphContext gfx_context is null");
 
         RenderGraphResourceRegistry resource_registry{};
-        resource_registry.initialize(m_resources, *context.gfx_context, context.swapchain_image_index);
+        resource_registry.initialize(m_resources, *context.gfx_context, context.swapchain_image_index, out_commands);
+
+        const bool direct_mode = out_commands.isImmediate();
 
         for (Size_t graph_level_index = 0; graph_level_index < m_levels.size(); ++graph_level_index) {
             const auto& level = m_levels[graph_level_index];
 
-            DynamicArray<DrawCommandList> pass_command_lists(level.size());
-            for (auto& cmd_list : pass_command_lists) {
-                cmd_list.setDevice(GDrawCommandList.getDevice());
-            }
-
-            WaitGroup wg(static_cast<Int32>(level.size()));
-            for (Size_t i = 0; i < level.size(); ++i) {
-                const auto pass_index = level[i];
-                const auto pass = m_passes[pass_index];
-                auto* cmd_list = &pass_command_lists[i];
-
-                pool.enqueue([pass, &context, &resource_registry, &wg, cmd_list] {
+            if (direct_mode) {
+                for (Size_t i = 0; i < level.size(); ++i) {
+                    const auto pass_index = level[i];
+                    const auto pass = m_passes[pass_index];
                     RenderGraphPassContext pass_context(context, resource_registry);
-                    cmd_list->beginMarker(pass->getName().c_str());
-                    pass->execute(pass_context, *cmd_list);
-                    cmd_list->endMarker();
-                    wg.done();
-                });
-            }
-            wg.wait();
+                    out_commands.beginMarker(pass->getName().c_str());
+                    pass->execute(pass_context, out_commands);
+                    out_commands.endMarker();
+                }
+            } else {
+                DynamicArray<DrawCommandList> pass_command_lists(level.size());
+                for (auto& cmd_list : pass_command_lists) {
+                    cmd_list.setDevice(GDrawCommandList.getDevice());
+                }
 
-            for (auto& cmd_list : pass_command_lists) {
-                out_commands.append(std::move(cmd_list));
+                WaitGroup wg(static_cast<Int32>(level.size()));
+                for (Size_t i = 0; i < level.size(); ++i) {
+                    const auto pass_index = level[i];
+                    const auto pass = m_passes[pass_index];
+                    auto* cmd_list = &pass_command_lists[i];
+
+                    pool.enqueue([pass, &context, &resource_registry, &wg, cmd_list] {
+                        RenderGraphPassContext pass_context(context, resource_registry);
+                        cmd_list->beginMarker(pass->getName().c_str());
+                        pass->execute(pass_context, *cmd_list);
+                        cmd_list->endMarker();
+                        wg.done();
+                    });
+                }
+                wg.wait();
+
+                for (auto& cmd_list : pass_command_lists) {
+                    out_commands.append(std::move(cmd_list));
+                }
             }
         }
     }

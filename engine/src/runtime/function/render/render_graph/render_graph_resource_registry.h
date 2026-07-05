@@ -9,6 +9,8 @@
 
 namespace dodoe {
 
+    class DrawCommandList;
+
     class RenderGraphResourceRegistry {
         DynamicArray<GfxTextureHandle> m_texture_handles{};
         DynamicArray<GfxBufferHandle> m_buffer_handles{};
@@ -16,7 +18,7 @@ namespace dodoe {
     public:
         RenderGraphResourceRegistry() = default;
 
-        void initialize(const DynamicArray<RenderGraphResourceRecord>& resources, GfxContext& gfx_context, const UInt32 swapchain_image_index);
+        void initialize(const DynamicArray<RenderGraphResourceRecord>& resources, GfxContext& gfx_context, const UInt32 swapchain_image_index, DrawCommandList& command_list);
         void reset();
 
         [[nodiscard]] GfxTextureHandle getTexture(const RenderGraphTextureHandle handle) const;

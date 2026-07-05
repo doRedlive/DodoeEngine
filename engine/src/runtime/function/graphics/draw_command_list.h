@@ -95,6 +95,7 @@ namespace dodoe {
         }
 
         void setDevice(GfxDeviceHandle device) { m_device = device; }
+        void setDevice(class GfxContext& gfx);
         [[nodiscard]] GfxDeviceHandle getDevice() const { return m_device; }
 
         void beginFrame();
@@ -167,8 +168,6 @@ namespace dodoe {
         void drawIndexed(const GfxDrawArguments& args);
         void dispatch(UInt32 groups_x, UInt32 groups_y = 1, UInt32 groups_z = 1);
 
-        // ── Deferred resource creation (handle allocated immediately, GPU init deferred) ─
-
         GfxTextureHandle createTexture(const GfxTextureDesc& desc, const void* data = nullptr, Size_t data_size = 0);
         GfxBufferHandle createBuffer(const GfxBufferDesc& desc, const void* data = nullptr, Size_t data_size = 0);
         GfxFramebufferHandle createFramebuffer(const GfxFramebufferDesc& desc);
@@ -178,6 +177,8 @@ namespace dodoe {
 
         GfxSamplerHandle createSampler(const GfxSamplerDesc& desc);
         GfxBindingLayoutHandle createBindingLayout(const GfxBindingLayoutDesc& desc);
+        GfxInputLayoutHandle createInputLayout(const GfxVertexAttributeDesc* attributes, UInt32 count, GfxShaderHandle shader);
+        GfxShaderHandle createShader(const GfxShaderDesc& desc, const void* data, Size_t data_size);
 
     private:
         struct OpenCommand final : Command<OpenCommand> {
@@ -489,6 +490,30 @@ namespace dodoe {
 
             CreateDescriptorCommand(GfxDeviceHandle device, GfxDescriptorTableHandle descriptor_table, GfxTextureHandle texture, UInt32 slot);
             void execute(GfxCommandList& command_list) const;
+        };
+
+        struct CreateShaderCommand final : DrawCommand {
+            GfxDeviceHandle m_device{};
+            GfxShaderDesc m_desc{};
+            GfxShaderHandle m_shader{};
+            Size_t m_data_size{0};
+
+            static CreateShaderCommand& Create(
+                DrawCommandList& command_list,
+                GfxDeviceHandle device,
+                const GfxShaderDesc& desc,
+                GfxShaderHandle shader,
+                const void* data,
+                Size_t data_size);
+            [[nodiscard]] const void* data() const;
+            void execute(GfxCommandList& command_list) const;
+
+        private:
+            CreateShaderCommand(GfxDeviceHandle device, const GfxShaderDesc& desc, GfxShaderHandle shader, Size_t data_size);
+            static void ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list);
+            static void DestroyCommand(DrawCommand& command);
+            [[nodiscard]] static Size_t CalculateSize(Size_t data_size);
+            [[nodiscard]] void* mutableData();
         };
 
         [[nodiscard]] static Size_t alignUp(Size_t value, Size_t alignment);

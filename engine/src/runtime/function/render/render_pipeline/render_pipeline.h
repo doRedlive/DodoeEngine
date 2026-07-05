@@ -36,27 +36,26 @@ namespace dodoe {
         Scope<LocalVertexFactory> m_local_vertex_factory{nullptr};
         StaticArray<Scope<IMeshPassProcessor>, static_cast<size_t>(MeshPassType::Count)> m_mesh_processors{};
         DynamicArray<Scope<IRenderFeature>> m_features{};
-        GfxBufferHandle m_deferred_light_constant_buffer{};
 
     public:
-        RenderPipeline() = default;
-        ~RenderPipeline() = default;
-
         void render(RenderViewFamily& view_family, RenderScene& scene, const UInt32 swapchain_image_index, DrawCommandList& out_commands);
 
     private:
         Bool initialize(const RenderPipelineCreateInfo& info);
         void shutdown();
+
         [[nodiscard]] RenderPassContext buildPassContext(const RenderScene& scene) const;
+
         void initViews(const RenderScene& scene, RenderViewFamily& view_family) const;
         void setupMeshPassRelevance(RenderView& view) const;
         void setupMeshPassContexts(const RenderScene& scene, RenderViewFamily& view_family) const;
         void buildMeshDrawCommands(RenderViewFamily& view_family, DrawCommandList& cmd_list) const;
-        void buildFrameCommandList(
+        void buildFrameDrawCommandList(
             const RenderViewFamily& view_family,
             RenderScene& scene,
             const UInt32 swapchain_image_index,
-            DrawCommandList& out_commands) const;
+            DrawCommandList& out_commands
+        ) const;
         void executeFrameGraph(
             RenderGraphBuilder& graph,
             const RenderViewFamily& view_family,
@@ -64,7 +63,13 @@ namespace dodoe {
             const RenderView& view,
             const Size_t view_index,
             const UInt32 swapchain_image_index,
-            DrawCommandList& out_commands) const;
+            DrawCommandList& out_commands
+        ) const;
+
+        void renderDeferred(RenderViewFamily& view_family, RenderScene& scene,
+                            const UInt32 swapchain_image_index, DrawCommandList& out_commands);
+        void renderOnly2D(RenderViewFamily& view_family, RenderScene& scene,
+                          const UInt32 swapchain_image_index, DrawCommandList& out_commands);
     };
 
 } // dodoe

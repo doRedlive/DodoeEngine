@@ -2,6 +2,7 @@
 
 #include "descriptor_table_manager.h"
 
+#include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
@@ -16,8 +17,8 @@ namespace dodoe {
         bindless_layout_desc.registerSpaces = {
             GfxBindingLayoutItem::Texture_SRV(0)
         };
-        auto bindless_layout = gfx_->getDevice()->createBindlessLayout(bindless_layout_desc);
-        descriptor_table_ = gfx_->getDevice()->createDescriptorTable(bindless_layout);
+        auto bindless_layout = GDrawCommandList.getDevice()->createBindlessLayout(bindless_layout_desc);
+        descriptor_table_ = GDrawCommandList.getDevice()->createDescriptorTable(bindless_layout);
 
         size_t capacity = descriptor_table_->getCapacity();
         allocated_descriptors_.resize(capacity);
@@ -62,7 +63,7 @@ namespace dodoe {
 
         if (!has_free_slot) {
             ui32 new_capacity = ((std::max)(64u, capacity * 2));
-            gfx_->getDevice()->resizeDescriptorTable(descriptor_table_, new_capacity);
+            GDrawCommandList.getDevice()->resizeDescriptorTable(descriptor_table_, new_capacity);
             allocated_descriptors_.resize(new_capacity);
             descriptors_.resize(new_capacity);
 
@@ -77,7 +78,7 @@ namespace dodoe {
         allocated_descriptors_[index] = true;
 
         DO_DEBUG("DescriptorTableManager::createDescriptor: writing to slot={}", index);
-        gfx_->getDevice()->writeDescriptorTable(descriptor_table_, item);
+        GDrawCommandList.getDevice()->writeDescriptorTable(descriptor_table_, item);
 
         if (item.resourceHandle) { item.resourceHandle->AddRef(); }
 
@@ -127,7 +128,7 @@ namespace dodoe {
         }
 
         ui32 new_capacity = ((std::max)(64u, capacity * 2));
-        gfx_->getDevice()->resizeDescriptorTable(descriptor_table_, new_capacity);
+        GDrawCommandList.getDevice()->resizeDescriptorTable(descriptor_table_, new_capacity);
         allocated_descriptors_.resize(new_capacity);
         descriptors_.resize(new_capacity);
         memset(&descriptors_[capacity], 0, sizeof(GfxBindingSetItem) * (new_capacity - capacity));

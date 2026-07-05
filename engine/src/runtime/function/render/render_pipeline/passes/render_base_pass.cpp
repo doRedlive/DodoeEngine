@@ -72,7 +72,6 @@ namespace dodoe::RenderPipelinePass {
                 DO_ASSERT(context.getView() != nullptr, "GBufferPass view is null");
                 const auto* view = context.getView();
 
-                const auto device = context.getGfxContext()->getDevice();
                 const auto albedo = context.resolveTexture(parameters.albedo);
                 const auto normal = context.resolveTexture(parameters.normal);
                 const auto position = context.resolveTexture(parameters.position);

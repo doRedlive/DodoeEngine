@@ -43,7 +43,7 @@ namespace dodoe::RenderPipelinePass {
             "PresentPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
             [](RenderGraphPassBuilder& pass_builder, PresentPassParameters& parameters) {
-                const auto* scene_color = pass_builder.blackboard().get<FxaaColorKey, RenderGraphTextureHandle>();
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 DO_ASSERT(scene_color, "PresentPass scene color is missing");
                 parameters.scene_color = pass_builder.read(*scene_color);
                 const auto* imgui_color = pass_builder.blackboard().get<ImGuiColorKey, RenderGraphTextureHandle>();
@@ -51,7 +51,6 @@ namespace dodoe::RenderPipelinePass {
                 parameters.backbuffer = pass_builder.write(pass_builder.importBackBuffer("PresentBackBuffer"));
             },
             [pass_context, &shader_library](const PresentPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto device = context.getGfxContext()->getDevice();
                 const auto scene_color_handle = context.resolveTexture(parameters.scene_color);
                 const auto imgui_color_handle = context.resolveTexture(parameters.imgui_color);
                 const auto backbuffer = context.resolveTexture(parameters.backbuffer);
@@ -81,7 +80,7 @@ namespace dodoe::RenderPipelinePass {
                 shader_params.imgui_color.value = parameters.imgui_color;
                 shader_params.sampler.value = GlobalSamplers::screen();
 
-                const auto binding_layout = ShaderBindingReflector<PresentPassShaderParams>::getOrCreateLayout(device);
+                const auto binding_layout = ShaderBindingReflector<PresentPassShaderParams>::getOrCreateLayout();
 
                 auto bs = ShaderBindingReflector<PresentPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,
@@ -108,6 +107,7 @@ namespace dodoe::RenderPipelinePass {
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
                 command_list.setTextureState(scene_color_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                command_list.setTextureState(imgui_color_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(backbuffer, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
                 command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);

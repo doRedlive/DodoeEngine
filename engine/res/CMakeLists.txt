@@ -32,6 +32,7 @@ set(HLSL_VS_PAIRS
 	"main_camera_pass_vs.hlsl main_camera_pass.vert.dxil"
 	"directional_light_shadow_pass_vs.hlsl directional_light_shadow_pass.vert.dxil"
 	"imgui_pass_vs.hlsl imgui_pass.vert.dxil"
+	"test_pass_vs.hlsl test_pass.vert.dxil"
 )
 
 set(HLSL_PS_PAIRS
@@ -45,6 +46,7 @@ set(HLSL_PS_PAIRS
 	"fxaa_pass_ps.hlsl fxaa_pass.frag.dxil"
 	"combine_pass_ps.hlsl combine_pass.frag.dxil"
 	"imgui_pass_ps.hlsl imgui_pass.frag.dxil"
+	"test_pass_ps.hlsl test_pass.frag.dxil"
 )
 
 set(DXILS "")

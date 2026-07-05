@@ -10,6 +10,12 @@ namespace dodoe {
         }
 
         gfx_cmd->open();
+
+        if (!GDrawCommandList.isEmpty()) {
+            GDrawCommandList.execute(gfx_cmd);
+            GDrawCommandList.reset();
+        }
+
         frame_ctx.command_list.execute(gfx_cmd);
         gfx_cmd->close();
         device->executeCommandList(gfx_cmd);

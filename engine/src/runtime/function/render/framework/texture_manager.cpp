@@ -35,6 +35,10 @@ namespace dodoe {
     }
 
     Ref<Texture> TextureManager::loadTexture(const String& path) {
+        return loadTexture(path, GDrawCommandList);
+    }
+
+    Ref<Texture> TextureManager::loadTexture(const String& path, DrawCommandList& cmd_list) {
         const FileID file_id(path);
         const InstanceID existing = Object::FindInstanceID(file_id);
         if (existing != 0) {
@@ -44,7 +48,7 @@ namespace dodoe {
             }
         }
 
-        return createTexture(path);
+        return createTexture(path, cmd_list);
     }
 
     Ref<Texture> TextureManager::findTexture(const InstanceID id) {
@@ -63,7 +67,7 @@ namespace dodoe {
         m_texture_cache.erase(id);
     }
 
-    Ref<Texture> TextureManager::createTexture(const String& path) {
+    Ref<Texture> TextureManager::createTexture(const String& path, DrawCommandList& cmd_list) {
         DO_DEBUG("TextureManager::createTexture: path='{}'", path);
         TextureBlob data(path);
         if (!data.isValid()) {
@@ -88,14 +92,23 @@ namespace dodoe {
         texture->setDimensions(data.width, data.height);
         texture->setPath(path);
 
-        UInt32 slot = m_descriptor_table->allocateSlot();
-
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            auto handle = GDrawCommandList.createTexture(texture_desc, data.pixels, data_size);
-            texture->setGpuHandle(handle);
-            GDrawCommandList.createDescriptor(m_descriptor_table->getDescriptorTable(), handle, slot);
+        const auto device = GDrawCommandList.getDevice();
+        auto handle = create_ref<GfxTexture>(texture_desc);
+        handle->initializeRHI(device);
+        if (data.pixels && data_size > 0) {
+            const UInt32 bytes_per_pixel = data.is_hdr ? 16u : 4u;
+            const Size_t row_pitch = static_cast<Size_t>(data.width) * bytes_per_pixel;
+            auto upload_cmd = device->createCommandList();
+            upload_cmd->open();
+            upload_cmd->writeTexture(handle->getRHIHandle(), 0, 0, data.pixels, row_pitch);
+            upload_cmd->close();
+            device->executeCommandList(upload_cmd);
         }
+        texture->setGpuHandle(handle);
+
+        auto item = GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle());
+        DescriptorIndex descriptor_index = m_descriptor_table->createDescriptor(item);
+        const UInt32 slot = static_cast<UInt32>(descriptor_index);
 
         texture->setDescriptorIndex(static_cast<DescriptorIndex>(slot));
 
@@ -121,15 +134,16 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName("Render TextureManager Fallback");
 
-        auto handle = create_ref<GfxTexture>(texture_desc, "Render TextureManager Fallback");
-        handle->initializeRHI(m_gfx->getDevice());
+        const auto device = GDrawCommandList.getDevice();
+        auto handle = create_ref<GfxTexture>(texture_desc);
+        handle->initializeRHI(device);
 
-        auto upload_cmd = m_gfx->getCommandList();
         const UByte white[4] = {255, 255, 255, 255};
+        auto upload_cmd = device->createCommandList();
         upload_cmd->open();
-        upload_cmd->writeTexture(handle->getRHIHandle(), 0, 0, white, sizeof(white));
+        upload_cmd->writeTexture(handle->getRHIHandle(), 0, 0, white, 4);
         upload_cmd->close();
-        m_gfx->getDevice()->executeCommandList(upload_cmd);
+        device->executeCommandList(upload_cmd);
 
         m_fallback = create_ref<Texture>();
         m_fallback->setName("<fallback>");

@@ -1,0 +1,196 @@
+// do@Redlive
+
+#include "dopch.h"
+
+#include "render_pipeline_passes.h"
+
+#include "runtime/function/graphics/gfx.h"
+#include "runtime/function/graphics/gfx_context.h"
+
+#include "../render_pipeline_pass_utils.h"
+
+#include "runtime/function/render/framework/pipeline_state_cache.h"
+#include "runtime/function/render/framework/shader_library.h"
+#include "runtime/function/render/framework/texture.h"
+#include "runtime/function/render/framework/texture_manager.h"
+#include "runtime/function/render/render_graph/render_graph_builder.h"
+#include "render_pass_blackboard_keys.h"
+
+namespace dodoe::RenderPipelinePass {
+
+    struct TestTriangleVertex {
+        Float px, py, pz;
+        Float r, g, b, a;
+        Float u, v;
+    };
+
+    // Fullscreen quad with UVs for checkerboard
+    inline constexpr TestTriangleVertex kTestQuadVertices[] = {
+        {-1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  0.0f, 1.0f},
+        { 1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  1.0f, 1.0f},
+        {-1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  0.0f, 0.0f},
+        { 1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  1.0f, 1.0f},
+        { 1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  1.0f, 0.0f},
+        {-1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  0.0f, 0.0f},
+    };
+    inline constexpr UInt32 kTestQuadVertexCount = static_cast<UInt32>(std::size(kTestQuadVertices));
+
+    struct TestPassParameters {
+        RenderGraphTextureHandle color_target{};
+        RenderGraphBufferHandle triangle_vb{};
+    };
+
+    void RenderTestPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+        DO_ASSERT(pass_context.isValid(), "TestPass: pass context is invalid");
+
+        graph.addPass<TestPassParameters>(
+            "TestTrianglePass",
+            RenderGraphPassFlags::Raster,
+            [pass_context](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
+                // Reuse SceneColorKey if already set (e.g. by BaseSceneFeature),
+                // otherwise create a new transient render target and publish it.
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+                if (scene_color) {
+                    DO_DEBUG("TestTrianglePass: reusing SceneColorKey from blackboard");
+                    parameters.color_target = pass_builder.write(*scene_color);
+                } else {
+                    DO_DEBUG("TestTrianglePass: SceneColorKey absent, creating own target");
+                    const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
+                    parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
+                        rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG TestColor"),
+                        "TestColor"));
+                    pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
+                }
+
+                RenderGraphBufferDesc tri_vb_desc{};
+                tri_vb_desc.desc = GfxBufferDesc()
+                    .setByteSize(static_cast<UInt32>(sizeof(kTestQuadVertices)))
+                    .setIsVertexBuffer(true)
+                    .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
+                    .setDebugName("RDG TestQuadVB");
+                parameters.triangle_vb = pass_builder.write(pass_builder.createTransientBuffer(tri_vb_desc, "TestTriangleVB"));
+            },
+            [pass_context](const TestPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
+                const auto color_target = context.resolveTexture(parameters.color_target);
+                const auto quad_vb = context.resolveBuffer(parameters.triangle_vb);
+
+                // Upload quad vertex data
+                command_list.setBufferState(quad_vb, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(quad_vb, kTestQuadVertices, sizeof(kTestQuadVertices), 0);
+                command_list.setBufferState(quad_vb, GfxResourceStates::VertexBuffer);
+                command_list.commitBarriers();
+
+                auto* tm = pass_context.getTextureManager();
+                Ref<Texture> loaded_tex;
+                GfxTextureHandle test_tex;
+                if (tm) {
+                    loaded_tex = tm->loadTexture("engine/res/pictures/grm.jpg", command_list);
+                    if (loaded_tex && loaded_tex->getGpuHandle()) {
+                        test_tex = loaded_tex->getGpuHandle();
+                    }
+                }
+                if (!test_tex) {
+                    DO_ERROR("TestPass: failed to load grm.jpg");
+                    return;
+                }
+
+                auto test_sampler = command_list.createSampler(GfxSamplerDesc());
+
+                auto binding_layout = command_list.createBindingLayout(
+                    GfxBindingLayoutDesc()
+                        .setVisibility(GfxShaderType::Pixel)
+                        .addItem(GfxBindingLayoutItem::Texture_SRV(0))
+                        .addItem(GfxBindingLayoutItem::Sampler(0)));
+
+                auto binding_set = command_list.createBindingSet(
+                    GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::Texture_SRV(0, test_tex->getRHIHandle()))
+                        .addItem(GfxBindingSetItem::Sampler(0, test_sampler)),
+                    binding_layout);
+
+                // Create framebuffer for the color target
+                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
+                auto fb = command_list.createFramebuffer(framebuffer_desc);
+
+                const auto* shader_library = pass_context.getShaderLibrary();
+                if (!shader_library) {
+                    DO_ERROR("TestPass: shader_library is null");
+                    return;
+                }
+
+                const auto test_vs = shader_library->getTestVertexShader();
+                const auto test_ps = shader_library->getTestPixelShader();
+                if (!test_vs || !test_ps) {
+                    DO_ERROR("TestPass: test shaders not loaded");
+                    return;
+                }
+
+                // Create input layout for quad vertices
+                constexpr UInt32 kVertexStride = sizeof(TestTriangleVertex);
+                GfxVertexAttributeDesc attribs[] = {
+                    GfxVertexAttributeDesc().setName("POSITION").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
+                    GfxVertexAttributeDesc().setName("COLOR").setFormat(GfxFormat::RGBA32_FLOAT).setOffset(12).setElementStride(kVertexStride),
+                    GfxVertexAttributeDesc().setName("TEXCOORD").setFormat(GfxFormat::RG32_FLOAT).setOffset(28).setElementStride(kVertexStride),
+                };
+                auto input_layout = command_list.createInputLayout(attribs, 3, test_vs);
+
+                // Build pipeline
+                GfxDepthStencilState ds;
+                ds.disableDepthTest().disableDepthWrite().disableStencil();
+                GfxRasterState raster;
+                raster.setCullNone();
+                GfxRenderState render_state;
+                render_state.setDepthStencilState(ds).setRasterState(raster);
+
+                auto pipeline_desc = GfxGraphicsPipelineDesc()
+                    .setVertexShader(test_vs)
+                    .setPixelShader(test_ps)
+                    .setInputLayout(input_layout)
+                    .addBindingLayout(binding_layout)
+                    .setPrimType(GfxPrimitiveType::TriangleList)
+                    .setRenderState(render_state);
+
+                auto* pipeline_cache = pass_context.getPipelineStateCache();
+                if (!pipeline_cache) {
+                    DO_ERROR("TestPass: pipeline_cache is null");
+                    return;
+                }
+
+                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
+                auto pipeline = pipeline_cache->resolveGraphicsPipeline(pipeline_desc, framebuffer_info, command_list);
+                if (!pipeline) {
+                    DO_ERROR("TestPass: failed to create pipeline");
+                    return;
+                }
+
+                // Set up viewport
+                const auto swapchain_extent = context.getGfxContext()->getSwapchainExtent2d();
+                auto vp = GfxViewportState().addViewportAndScissorRect(GfxViewport(
+                    0, static_cast<float>(swapchain_extent.x),
+                    0, static_cast<float>(swapchain_extent.y),
+                    0, 1));
+
+                // Draw quad to color target
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
+                command_list.commitBarriers();
+
+                DynamicArray<GfxBindingSetHandle> bs_arr = {binding_set};
+                DynamicArray<GfxVertexBufferBinding> vbs;
+                vbs.push_back(GfxVertexBufferBinding()
+                    .setBuffer(quad_vb->getRHIHandle()).setSlot(0).setOffset(0));
+
+                command_list.setGraphicsState(fb, pipeline, bs_arr, vp, vbs);
+                command_list.draw(GfxDrawArguments().setVertexCount(kTestQuadVertexCount).setInstanceCount(1));
+
+                // Let subsequent passes (PresentPass) read this as a shader resource
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                command_list.commitBarriers();
+
+                DO_DEBUG("TestPass: DONE — drew textured quad to {}x{} color target",
+                          static_cast<int>(swapchain_extent.x), static_cast<int>(swapchain_extent.y));
+            }
+        );
+    }
+
+} // namespace dodoe::RenderPipelinePass

@@ -16,10 +16,10 @@ namespace dodoe {
     class MeshViewExtension : public IViewExtension {
     public:
         DynamicArray<const PrimitiveSceneInfo*> visible_primitives{};
-        DynamicArray<UInt32> primitive_first_instance_offsets{};
-        DynamicArray<InstanceSceneData> instance_scene_data{};
         DynamicArray<MeshPassRelevance> primitive_mesh_pass_relevance{};
         DynamicArray<UInt32> mesh_pass_primitive_indices[static_cast<Size_t>(8)]{};
+        DynamicArray<UInt32> primitive_first_instance_offsets{};
+        DynamicArray<InstanceSceneData> instance_scene_data{};
         DynamicArray<MeshDrawCommand> mesh_pass_commands[static_cast<Size_t>(8)]{};
         DynamicArray<GBufferMeshDrawShaderData> gbuffer_shader_data{};
         Matrix4f directional_shadow_view_projection{1.0f};

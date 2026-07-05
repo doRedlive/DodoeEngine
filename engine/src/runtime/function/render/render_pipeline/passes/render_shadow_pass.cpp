@@ -51,7 +51,6 @@ namespace dodoe::RenderPipelinePass {
                         return;
                     }
 
-                    const auto device = context.getGfxContext()->getDevice();
                     const auto shadow_map = context.resolveTexture(parameters.shadow_map);
 
                     auto framebuffer_desc = GfxFramebufferDesc().setDepthAttachment(shadow_map);

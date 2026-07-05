@@ -30,7 +30,7 @@ namespace dodoe {
             false;
 #endif
         m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, window->isHostMode() ? window->getNativeHandle() : nullptr});
-        GDrawCommandList.setDevice(m_gfx->getDevice());
+        GDrawCommandList.setDevice(*m_gfx);
         m_descriptor_table = DescriptorTableManager::Create({m_gfx.get()});
         m_texture_manager = TextureManager::Create({m_gfx.get(), m_descriptor_table.get()});
         m_shared_render_service = SharedRenderService::Create({m_gfx.get(), m_descriptor_table.get(), m_texture_manager.get()});
@@ -82,9 +82,12 @@ namespace dodoe {
         auto* scene = m_render_scene.get();
 
         RenderCommand cmd;
+        Int32 cmd_count = 0;
         while (m_game_command_queue.tryPop(cmd)) {
             applyRenderCommand(*scene, cmd);
+            ++cmd_count;
         }
+        DO_DEBUG("RenderSystem: processed {} render commands this frame", cmd_count);
 
         UInt32 image_index = 0;
         if (!gfx->acquireNextSwapchainImage(image_index)) {
@@ -101,7 +104,7 @@ namespace dodoe {
         case ThreadingMode::TripleThread: {
             FrameContext frame_ctx;
             frame_ctx.swapchain_image_index = image_index;
-            frame_ctx.command_list.setDevice(gfx->getDevice());
+            frame_ctx.command_list.setDevice(GDrawCommandList.getDevice());
             frame_ctx.command_list.beginFrame();
 
             texture_manager->flushPendingCommands();
@@ -127,7 +130,7 @@ namespace dodoe {
         }
         case ThreadingMode::DualThread:
         case ThreadingMode::SingleThread: {
-            ImmediateFrameScope frame(gfx->getDevice(), gfx, image_index);
+            ImmediateFrameScope frame(GDrawCommandList.getDevice(), gfx, image_index);
 
             GDrawCommandList.beginFrame();
 
@@ -144,6 +147,11 @@ namespace dodoe {
             scene->flushUpdates();
 
             auto& cam_data = GetMainCameraChannel().get<MainCameraData>();
+            DO_DEBUG("RenderSystem(DualThread): cam_data.view=\n[{},{},{},{}]\n[{},{},{},{}]\n[{},{},{},{}]\n[{},{},{},{}]",
+                      cam_data.view[0][0], cam_data.view[0][1], cam_data.view[0][2], cam_data.view[0][3],
+                      cam_data.view[1][0], cam_data.view[1][1], cam_data.view[1][2], cam_data.view[1][3],
+                      cam_data.view[2][0], cam_data.view[2][1], cam_data.view[2][2], cam_data.view[2][3],
+                      cam_data.view[3][0], cam_data.view[3][1], cam_data.view[3][2], cam_data.view[3][3]);
             for (auto& viewport : m_render_viewports) {
                 auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta,
                                                               cam_data.view, cam_data.projection);
@@ -175,9 +183,11 @@ namespace dodoe {
             scene.updateLightSceneInfoTransform(cmd.id, cmd.transform);
             break;
         case RenderCommandType::AddSprite:
+            DO_DEBUG("RenderSystem: apply AddSprite command, id={}", static_cast<UInt64>(cmd.sprite ? cmd.sprite->getUUID() : UUID(0)));
             scene.addSprite(std::move(cmd.sprite));
             break;
         case RenderCommandType::RemoveSprite:
+            DO_DEBUG("RenderSystem: apply RemoveSprite command, id={}", static_cast<UInt64>(cmd.id));
             scene.removeSprite(cmd.id);
             break;
         case RenderCommandType::UpdateSpriteTransform:

@@ -53,7 +53,6 @@ namespace dodoe::RenderPipelinePass {
                 pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
             },
             [pass_context, &shader_library](const SkyboxPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto device = context.getGfxContext()->getDevice();
                 const auto depth_handle = context.resolveTexture(parameters.depth);
                 const auto hdr = context.resolveTexture(parameters.hdr_color);
 
@@ -97,7 +96,7 @@ namespace dodoe::RenderPipelinePass {
                 shader_params.depth.value = parameters.depth;
                 shader_params.sampler.value = GlobalSamplers::screen();
 
-                const auto binding_layout = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayout(device);
+                const auto binding_layout = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayout();
 
                 auto bs = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,

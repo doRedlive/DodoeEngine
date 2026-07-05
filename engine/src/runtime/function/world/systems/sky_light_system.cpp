@@ -75,10 +75,10 @@ namespace dodoe {
     Ref<Texture> SkyLightSystem::loadCubemap(const DynamicArray<String>& paths) {
         auto& app = Application::Self();
         auto* rs = app.context().getRenderSystem();
-        if (!rs || !rs->getGfx() || !rs->getGfx()->getDevice()) return nullptr;
+        if (!rs || !rs->getGfx()) return nullptr;
         if (paths.size() < 6) return nullptr;
 
-        const auto device = rs->getGfx()->getDevice();
+        const auto device = GDrawCommandList.getDevice();
         constexpr ui32 kFaceCount = 6;
 
         std::array<TextureBlob, kFaceCount> faces{};
@@ -97,7 +97,7 @@ namespace dodoe {
             .setFormat(GfxFormat::RGBA32_FLOAT)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName("SkyLight Cubemap");
-        auto cubemap = device->createTexture(desc);
+        auto cubemap = GDrawCommandList.createTexture(desc);
         if (!cubemap) return nullptr;
 
         auto cmd = device->createCommandList();
@@ -108,13 +108,13 @@ namespace dodoe {
             const void* px = faces[i].pixels;
             if (i == 2) { top = RotateCubemapFaceCW(static_cast<const float*>(faces[i].pixels), faces[i].width, faces[i].height); px = top.data(); }
             else if (i == 3) { bottom = RotateCubemapFaceCCW(static_cast<const float*>(faces[i].pixels), faces[i].width, faces[i].height); px = bottom.data(); }
-            cmd->writeTexture(cubemap, i, 0, px, rp);
+            cmd->writeTexture(cubemap->getRHIHandle(), i, 0, px, rp);
         }
         cmd->close();
         device->executeCommandList(cmd);
 
         auto texture = create_ref<Texture>();
-        texture->setGpuHandle(create_ref<GfxTexture>(cubemap, desc, "SkyLight Cubemap"));
+        texture->setGpuHandle(cubemap);
         return texture;
     }
 

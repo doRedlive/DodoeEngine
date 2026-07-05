@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "renderdoc": {
+      "command": "C:/Users/33235/.local/bin/renderdoc-mcp.exe"
+    }
+  }
+}

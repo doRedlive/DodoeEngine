@@ -17,54 +17,55 @@
 
 namespace dodoe::RenderPipelinePass {
 
-    BEGIN_SHADER_PARAMETER_STRUCT(PostProcessPassShaderParams)
+    BEGIN_SHADER_PARAMETER_STRUCT(PostProcess2DPassShaderParams)
         SHADER_PARAMETER(TextureSRV, 0, input)
         SHADER_PARAMETER(Sampler,    0, sampler)
     END_SHADER_PARAMETER_STRUCT(func(input); func(sampler);)
 
-    struct PostProcessPassParameters {
+    struct PostProcess2DPassParameters {
         RenderGraphTextureHandle input{};
         RenderGraphTextureHandle output{};
     };
 
-    void RenderPostProcessPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+    void RenderPostProcess2DPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
         DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
         const auto& shader_library = *pass_context.getShaderLibrary();
 
-        graph.addPass<PostProcessPassParameters>(
-            "PostProcessPass",
+        graph.addPass<PostProcess2DPassParameters>(
+            "PostProcess2DPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, PostProcessPassParameters& parameters) {
+            [pass_context](RenderGraphPassBuilder& pass_builder, PostProcess2DPassParameters& parameters) {
                 const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
-                const auto* hdr = pass_builder.blackboard().get<SceneHdrKey, RenderGraphTextureHandle>();
-                DO_ASSERT(hdr, "PostProcessPass hdr input is missing");
-                parameters.input = pass_builder.read(*hdr);
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+                DO_ASSERT(scene_color, "PostProcess2DPass scene color is missing");
+                parameters.input = pass_builder.read(*scene_color);
                 parameters.output = pass_builder.write(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG PostProcessOutput"),
-                    "PostProcessOutput"));
+                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG PostProcess2DOutput"),
+                    "PostProcess2DOutput"));
                 pass_builder.blackboard().set<SceneColorKey>(parameters.output);
             },
-            [pass_context, &shader_library](const PostProcessPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
+            [pass_context, &shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
+                DO_DEBUG("PostProcess2DPass: executing FXAA");
                 const auto input_handle = context.resolveTexture(parameters.input);
                 const auto output_handle = context.resolveTexture(parameters.output);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
 
-                PostProcessPassShaderParams shader_params;
+                PostProcess2DPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
                 shader_params.sampler.value = GlobalSamplers::screen();
 
-                const auto binding_layout = ShaderBindingReflector<PostProcessPassShaderParams>::getOrCreateLayout();
+                const auto binding_layout = ShaderBindingReflector<PostProcess2DPassShaderParams>::getOrCreateLayout();
 
-                auto bs = ShaderBindingReflector<PostProcessPassShaderParams>::createBindingSetDeferred(
+                auto bs = ShaderBindingReflector<PostProcess2DPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,
                     [&](auto h) { return context.resolveTexture(h); },
                     [&](auto h) { return context.resolveBuffer(h); }
                 );
 
                 if (!bs) {
-                    DO_ERROR("PostProcessPass: Failed to create binding set");
+                    DO_ERROR("PostProcess2DPass: Failed to create binding set");
                     return;
                 }
 
@@ -72,7 +73,7 @@ namespace dodoe::RenderPipelinePass {
                 auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library.getFullscreenVertexShader(),
-                        shader_library.getToneMappingPixelShader(),
+                        shader_library.getFxaaPixelShader(),
                         binding_layout
                     ),
                     framebuffer_info,
@@ -80,7 +81,7 @@ namespace dodoe::RenderPipelinePass {
                 );
 
                 if (!pipeline) {
-                    DO_ERROR("PostProcessPass: Failed to create pipeline");
+                    DO_ERROR("PostProcess2DPass: Failed to create pipeline");
                     return;
                 }
 
@@ -93,6 +94,7 @@ namespace dodoe::RenderPipelinePass {
                 command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                 command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+                DO_DEBUG("PostProcess2DPass: DONE — FXAA applied");
             }
         );
     }

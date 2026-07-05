@@ -5,6 +5,10 @@ namespace dodoe {
 
     DrawCommandList GDrawCommandList;
 
+    void DrawCommandList::setDevice(GfxContext& gfx) {
+        m_device = gfx.getDevice();
+    }
+
     ImmediateFrameScope::ImmediateFrameScope(GfxDeviceHandle device, GfxContext* gfx, UInt32 image_index)
         : m_device(device), m_gfx(gfx), m_image_index(image_index) {
         m_cmd = device->createCommandList();
@@ -15,17 +19,9 @@ namespace dodoe {
     ImmediateFrameScope::~ImmediateFrameScope() {
         if (GDrawCommandList.isImmediate()) {
             GDrawCommandList.endImmediateFrame();
-            m_cmd->close();
-            m_device->executeCommandList(m_cmd);
         }
-
-        if (!GDrawCommandList.isEmpty()) {
-            m_cmd = m_device->createCommandList();
-            m_cmd->open();
-            GDrawCommandList.execute(*m_cmd);
-            m_cmd->close();
-            m_device->executeCommandList(m_cmd);
-        }
+        m_cmd->close();
+        m_device->executeCommandList(m_cmd);
 
         m_gfx->presentSwapchainImage(m_image_index);
         m_gfx->clearGarbage();
@@ -33,9 +29,6 @@ namespace dodoe {
     }
 
     void ImmediateFrameScope::flush() {
-        GDrawCommandList.endImmediateFrame();
-        m_cmd->close();
-        m_device->executeCommandList(m_cmd);
     }
 
     DrawCommandList::DrawCommand::DrawCommand(Size_t size, ExecuteFunction execute, DestroyFunction destroy)
@@ -452,6 +445,19 @@ namespace dodoe {
         return m_device->createBindingLayout(desc);
     }
 
+    GfxInputLayoutHandle DrawCommandList::createInputLayout(const GfxVertexAttributeDesc* attributes, UInt32 count, GfxShaderHandle shader) {
+        return m_device->createInputLayout(attributes, count, shader);
+    }
+
+    GfxShaderHandle DrawCommandList::createShader(const GfxShaderDesc& desc, const void* data, Size_t data_size) {
+        if (isImmediate()) {
+            return m_device->createShader(desc, data, data_size);
+        }
+        auto shader = m_device->createShader(desc, data, data_size);
+        CreateShaderCommand::Create(*this, m_device, desc, shader, data, data_size);
+        return shader;
+    }
+
     DrawCommandList::SetGraphicsStateCommand::SetGraphicsStateCommand(
         const GfxFramebufferHandle& framebuffer,
         const GfxGraphicsPipelineHandle& pipeline,
@@ -638,6 +644,56 @@ namespace dodoe {
             item.slot = m_slot;
             m_device->writeDescriptorTable(m_descriptor_table, item);
         }
+    }
+
+    DrawCommandList::CreateShaderCommand::CreateShaderCommand(
+        const GfxDeviceHandle device,
+        const GfxShaderDesc& desc,
+        GfxShaderHandle shader,
+        const Size_t data_size)
+        : DrawCommand(CalculateSize(data_size), &ExecuteCommand, &DestroyCommand),
+          m_device(device), m_desc(desc), m_shader(std::move(shader)), m_data_size(data_size) {}
+
+    DrawCommandList::CreateShaderCommand& DrawCommandList::CreateShaderCommand::Create(
+        DrawCommandList& command_list,
+        const GfxDeviceHandle device,
+        const GfxShaderDesc& desc,
+        GfxShaderHandle shader,
+        const void* const data,
+        const Size_t data_size)
+    {
+        void* memory = command_list.allocate(CalculateSize(data_size), alignof(CreateShaderCommand));
+        auto* command = new (memory) CreateShaderCommand(device, desc, std::move(shader), data_size);
+        if (data && data_size > 0) {
+            std::memcpy(command->mutableData(), data, data_size);
+        }
+        command_list.appendCommand(command);
+        return *command;
+    }
+
+    Size_t DrawCommandList::CreateShaderCommand::CalculateSize(const Size_t data_size) {
+        return alignUp(sizeof(CreateShaderCommand) + data_size, alignof(CreateShaderCommand));
+    }
+
+    void* DrawCommandList::CreateShaderCommand::mutableData() {
+        return reinterpret_cast<UInt8*>(this) + sizeof(CreateShaderCommand);
+    }
+
+    const void* DrawCommandList::CreateShaderCommand::data() const {
+        return m_data_size > 0 ? reinterpret_cast<const UInt8*>(this) + sizeof(CreateShaderCommand) : nullptr;
+    }
+
+    void DrawCommandList::CreateShaderCommand::ExecuteCommand(const DrawCommand& command, GfxCommandList& command_list) {
+        static_cast<const CreateShaderCommand&>(command).execute(command_list);
+    }
+
+    void DrawCommandList::CreateShaderCommand::DestroyCommand(DrawCommand& command) {
+        static_cast<CreateShaderCommand&>(command).~CreateShaderCommand();
+    }
+
+    void DrawCommandList::CreateShaderCommand::execute(GfxCommandList& command_list) const {
+        (void)command_list;
+        m_device->createShader(m_desc, data(), m_data_size);
     }
 
     DrawCommandList::ClearTextureFloatCommand::ClearTextureFloatCommand(

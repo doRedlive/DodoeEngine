@@ -2,13 +2,13 @@
 
 #pragma once
 
-#include "imgui_render_resources.h"
+#include "imgui_render_resource.h"
 #include "render_builtin_features.h"
 
 namespace dodoe {
 
     class ImGuiFeature final : public IRenderFeature {
-        mutable ImGuiRenderResources m_resources{};
+        mutable ImGuiRenderResource m_resources{};
 
     public:
         ~ImGuiFeature() override { m_resources.reset(); }

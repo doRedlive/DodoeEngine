@@ -10,7 +10,7 @@ namespace dodoe {
         m_texture_manager = info.texture_manager;
 
         DO_ASSERT(m_gfx_context != nullptr, "SharedRenderService requires gfx_context");
-        const auto device = m_gfx_context->getDevice();
+        const auto device = GDrawCommandList.getDevice();
         DO_ASSERT(device != nullptr, "SharedRenderService requires valid device");
 
         m_shader_library = create_scope<ShaderLibrary>();

@@ -2,26 +2,26 @@
 
 #include "shader_library.h"
 #include "runtime/core/utils/common.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
     void ShaderLibrary::initialize(GfxContext& gfx_context) {
-        const auto device = gfx_context.getDevice();
-        DO_ASSERT(device != nullptr, "ShaderLibrary device is null");
+        (void)gfx_context;
 
         const auto api = RenderSettings::GetRenderBackendApiType();
         const char* vert_ext = (api == RenderBackendApiType::DX12) ? ".vert.dxil" : ".vert.spv";
         const char* frag_ext = (api == RenderBackendApiType::DX12) ? ".frag.dxil" : ".frag.spv";
         const char* geom_ext = (api == RenderBackendApiType::DX12) ? ".geom.dxil" : ".geom.spv";
 
-        auto load_shader = [device](const std::string& file_name, const GfxShaderType shader_type, const char* debug_name) {
+        auto load_shader = [](const std::string& file_name, const GfxShaderType shader_type, const char* debug_name) {
             std::string path = "engine/res/shaders/bin/" + file_name;
             auto source = ReadShaderFile(path);
             if (source.empty()) {
                 DO_ERROR("ShaderLibrary::load_shader failed to read shader file: {}", path);
                 return GfxShaderHandle{};
             }
-            auto shader = device->createShader(
+            auto shader = GDrawCommandList.createShader(
                 GfxShaderDesc().setShaderType(shader_type).setEntryName("main").setDebugName(debug_name),
                 source.data(),
                 source.size()
@@ -47,11 +47,15 @@ namespace dodoe {
         m_imgui_pixel_shader = load_shader(std::string("imgui_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary ImGui PS");
         m_sprite_vertex_shader = load_shader(std::string("sprite_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Sprite VS");
         m_sprite_pixel_shader = load_shader(std::string("sprite_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Sprite PS");
+        m_test_vertex_shader = load_shader(std::string("test_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Test VS");
+        m_test_pixel_shader = load_shader(std::string("test_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Test PS");
 
         DO_INFO("ShaderLibrary::initialize completed");
     }
 
     void ShaderLibrary::reset() {
+        m_test_pixel_shader = nullptr;
+        m_test_vertex_shader = nullptr;
         m_sprite_pixel_shader = nullptr;
         m_sprite_vertex_shader = nullptr;
         m_imgui_pixel_shader = nullptr;
