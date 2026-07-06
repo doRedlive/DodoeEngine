@@ -96,15 +96,6 @@ namespace dodoe::RenderPipelinePass {
                     framebuffer->getInfo(),
                     command_list);
 
-                ImGui::ShowDemoWindow();
-                ImGui::Begin("Dodoe Render Info");
-                ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-                ImGui::Text("Display: %.0f x %.0f", ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
-                static int counter = 0;
-                ImGui::Text("Frame: %d", ++counter);
-                if (ImGui::Button("Test Button")) { counter = 0; }
-                ImGui::End();
-
                 ImGui::Render();
                 ImDrawData* draw_data = ImGui::GetDrawData();
                 if (!draw_data || !pipeline || !framebuffer || !binding_layout) {

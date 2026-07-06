@@ -205,6 +205,9 @@ namespace dodoe::RenderPipelinePass {
 
                 command_list.setGraphicsState(framebuffer, pipeline, bs_arr, vp, vbs, ib);
                 command_list.drawIndexed(GfxDrawArguments().setVertexCount(6).setInstanceCount(visible_count));
+
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                command_list.commitBarriers();
             }
         );
     }

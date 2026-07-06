@@ -110,9 +110,7 @@ namespace dodoe {
     {
 #ifdef DODOE_DEBUG
         if (!m_framebuffer || !m_framebuffer_texture
-            || m_framebuffer_texture->getDesc().format != output->getDesc().format
-            || m_framebuffer_texture->getDesc().width != output->getDesc().width
-            || m_framebuffer_texture->getDesc().height != output->getDesc().height) {
+            || m_framebuffer_texture != output) {
             m_framebuffer_texture = output;
             m_framebuffer = command_list.createFramebuffer(
                 GfxFramebufferDesc().addColorAttachment(output));

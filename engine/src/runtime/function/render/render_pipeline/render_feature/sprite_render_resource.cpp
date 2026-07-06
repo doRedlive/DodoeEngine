@@ -16,9 +16,7 @@ namespace dodoe {
         const GfxTextureHandle& color_target)
     {
         if (!m_framebuffer || !m_framebuffer_texture
-            || m_framebuffer_texture->getDesc().format != color_target->getDesc().format
-            || m_framebuffer_texture->getDesc().width != color_target->getDesc().width
-            || m_framebuffer_texture->getDesc().height != color_target->getDesc().height) {
+            || m_framebuffer_texture != color_target) {
             m_framebuffer_texture = color_target;
             m_framebuffer = command_list.createFramebuffer(
                 GfxFramebufferDesc().addColorAttachment(color_target));
