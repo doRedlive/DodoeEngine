@@ -83,15 +83,11 @@ namespace dodoe {
         mesh_ext.visible_primitives.reserve(scene.getPrimitiveSceneInfos().size());
         const auto frustum_planes = ExtractFrustumPlanes(m_view_projection_matrix);
 
-        DO_DEBUG("RenderView: Total primitives in scene: {}", scene.getPrimitiveSceneInfos().size());
-
         for (const auto& primitive : scene.getPrimitiveSceneInfos()) {
             if (IsPrimitiveVisible(primitive, frustum_planes)) {
                 mesh_ext.visible_primitives.push_back(&primitive);
             }
         }
-
-        DO_DEBUG("RenderView: Visible primitives after culling: {}", mesh_ext.visible_primitives.size());
     }
 
     void RenderView::buildVisibleSprites(const RenderScene& scene) {
@@ -99,7 +95,6 @@ namespace dodoe {
         sprite_ext.visible_sprites.clear();
 
         const auto& sprite_infos = scene.getSpriteSceneInfos();
-        DO_DEBUG("RenderView::buildVisibleSprites: total sprite infos in scene = {}", sprite_infos.size());
         if (sprite_infos.empty()) {
             return;
         }
@@ -109,7 +104,6 @@ namespace dodoe {
 
         for (const auto& sprite_info : sprite_infos) {
             if (!sprite_info.isVisible()) {
-                DO_DEBUG("RenderView::buildVisibleSprites: sprite id={} is not visible (flag)", static_cast<UInt64>(sprite_info.getId()));
                 continue;
             }
 
@@ -120,17 +114,8 @@ namespace dodoe {
 
             if (IntersectsFrustum(frustum_planes, world_center, world_extents)) {
                 sprite_ext.visible_sprites.push_back(&sprite_info);
-            } else {
-                DO_DEBUG("RenderView::buildVisibleSprites: sprite id={} culled, pos=({},{}), vp=\n[{},{},{},{}]\n[{},{},{},{}]\n[{},{},{},{}]\n[{},{},{},{}]",
-                          static_cast<UInt64>(sprite_info.getId()),
-                          position.x, position.y,
-                          m_view_projection_matrix[0][0], m_view_projection_matrix[0][1], m_view_projection_matrix[0][2], m_view_projection_matrix[0][3],
-                          m_view_projection_matrix[1][0], m_view_projection_matrix[1][1], m_view_projection_matrix[1][2], m_view_projection_matrix[1][3],
-                          m_view_projection_matrix[2][0], m_view_projection_matrix[2][1], m_view_projection_matrix[2][2], m_view_projection_matrix[2][3],
-                          m_view_projection_matrix[3][0], m_view_projection_matrix[3][1], m_view_projection_matrix[3][2], m_view_projection_matrix[3][3]);
             }
         }
-        DO_DEBUG("RenderView::buildVisibleSprites: visible sprites = {}", sprite_ext.visible_sprites.size());
     }
 
 } // dodoe

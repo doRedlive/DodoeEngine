@@ -14,7 +14,7 @@ namespace dodoe {
         GDrawCommandList.setDevice(device);
         m_running = true;
         m_thread = std::thread(&DrawThread::loop, this);
-        DO_DEBUG("DrawThread Start...");
+        DO_INFO("DrawThread Start...");
     }
 
     void DrawThread::stop() {

@@ -58,7 +58,6 @@ namespace dodoe {
             view.resetExtensions();
         }
         if (pipeline_type == RenderingPipelineType::Only2D) {
-            DO_DEBUG("RenderPipeline::initViews: Only2D — building visible sprites only");
             for (auto& view : view_family.getViews()) {
                 view.buildVisibleSprites(scene);
             }

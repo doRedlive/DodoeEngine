@@ -295,10 +295,6 @@ namespace dodoe {
 
     void RenderScene::upsertSpriteSceneInfo(const UUID id) {
         const SpriteRenderObject* sprite = findSprite(id);
-        DO_DEBUG("RenderScene::upsertSpriteSceneInfo: id={}, sprite={}, visible={}",
-                  static_cast<UInt64>(id),
-                  static_cast<const void*>(sprite),
-                  sprite ? sprite->isVisible() : false);
         if (sprite == nullptr || !sprite->isVisible()) {
             removeSpriteSceneInfo(id);
             return;

@@ -68,7 +68,6 @@ namespace dodoe {
     }
 
     Ref<Texture> TextureManager::createTexture(const String& path, DrawCommandList& cmd_list) {
-        DO_DEBUG("TextureManager::createTexture: path='{}'", path);
         TextureBlob data(path);
         if (!data.isValid()) {
             DO_ERROR("TextureManager: Create texture {} failed!", path);
@@ -117,7 +116,6 @@ namespace dodoe {
         Object::AllocateInstanceID(texture.get());
 
         m_texture_cache.emplace(texture->getInstanceID(), texture);
-        DO_DEBUG("TextureManager::createTexture: completed, slot={}", slot);
         return texture;
     }
 

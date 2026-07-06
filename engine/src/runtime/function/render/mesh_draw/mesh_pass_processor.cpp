@@ -71,22 +71,14 @@ namespace dodoe {
     }
 
     void MeshPassProcessor::createGraphicsPipeline(GfxFramebufferHandle framebuffer) {
-        DO_DEBUG("MeshPassProcessor::createGraphicsPipeline called");
         if (!m_pipeline_state) {
-            DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: no pipeline_state");
             return;
         }
         if (m_pipeline_state->m_pipeline) {
-            DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: pipeline already exists");
             return;
         }
         if (!framebuffer || !m_pipeline_state->m_vertex_shader ||
             !m_pipeline_state->m_pixel_shader || !m_pipeline_state->m_binding_layout) {
-            DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: missing resources (framebuffer={} vs={} ps={} layout={})",
-                framebuffer != nullptr,
-                m_pipeline_state->m_vertex_shader != nullptr,
-                m_pipeline_state->m_pixel_shader != nullptr,
-                m_pipeline_state->m_binding_layout != nullptr);
             return;
         }
 
@@ -114,10 +106,8 @@ namespace dodoe {
             pipeline_desc.setGeometryShader(m_pipeline_state->m_geometry_shader);
         }
 
-        DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: calling device->createGraphicsPipeline");
         m_pipeline_state->m_pipeline = create_ref<GfxGraphicsPipeline>();
         m_pipeline_state->m_pipeline->initializeRHI(GDrawCommandList.getDevice(), pipeline_desc, framebuffer_info);
-        DO_DEBUG("MeshPassProcessor::createGraphicsPipeline: pipeline created, handle={}", m_pipeline_state->m_pipeline != nullptr);
     }
 
     DynamicArray<MeshBatch> MeshPassProcessor::buildMeshBatches(

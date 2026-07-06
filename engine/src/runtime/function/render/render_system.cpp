@@ -87,7 +87,6 @@ namespace dodoe {
             applyRenderCommand(*scene, cmd);
             ++cmd_count;
         }
-        DO_DEBUG("RenderSystem: processed {} render commands this frame", cmd_count);
 
         UInt32 image_index = 0;
         if (!gfx->acquireNextSwapchainImage(image_index)) {
@@ -147,11 +146,6 @@ namespace dodoe {
             scene->flushUpdates();
 
             auto& cam_data = GetMainCameraChannel().get<MainCameraData>();
-            DO_DEBUG("RenderSystem(DualThread): cam_data.view=\n[{},{},{},{}]\n[{},{},{},{}]\n[{},{},{},{}]\n[{},{},{},{}]",
-                      cam_data.view[0][0], cam_data.view[0][1], cam_data.view[0][2], cam_data.view[0][3],
-                      cam_data.view[1][0], cam_data.view[1][1], cam_data.view[1][2], cam_data.view[1][3],
-                      cam_data.view[2][0], cam_data.view[2][1], cam_data.view[2][2], cam_data.view[2][3],
-                      cam_data.view[3][0], cam_data.view[3][1], cam_data.view[3][2], cam_data.view[3][3]);
             for (auto& viewport : m_render_viewports) {
                 auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta,
                                                               cam_data.view, cam_data.projection);
@@ -183,11 +177,9 @@ namespace dodoe {
             scene.updateLightSceneInfoTransform(cmd.id, cmd.transform);
             break;
         case RenderCommandType::AddSprite:
-            DO_DEBUG("RenderSystem: apply AddSprite command, id={}", static_cast<UInt64>(cmd.sprite ? cmd.sprite->getUUID() : UUID(0)));
             scene.addSprite(std::move(cmd.sprite));
             break;
         case RenderCommandType::RemoveSprite:
-            DO_DEBUG("RenderSystem: apply RemoveSprite command, id={}", static_cast<UInt64>(cmd.id));
             scene.removeSprite(cmd.id);
             break;
         case RenderCommandType::UpdateSpriteTransform:

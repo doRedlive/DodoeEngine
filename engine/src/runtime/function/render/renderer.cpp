@@ -85,9 +85,6 @@ namespace dodoe {
 
     void Renderer::AddSprite(Scope<SpriteRenderObject> sprite) {
         auto* rs = GetRenderSystem();
-        DO_DEBUG("Renderer::AddSprite: id={}, threading_mode={}",
-                  static_cast<UInt64>(sprite ? sprite->getUUID() : UUID(0)),
-                  static_cast<int>(RenderSettings::GetThreadingMode()));
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->addSprite(std::move(sprite));
         } else {

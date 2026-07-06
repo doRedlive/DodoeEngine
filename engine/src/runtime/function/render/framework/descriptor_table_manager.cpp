@@ -43,9 +43,6 @@ namespace dodoe {
     }
 
     DescriptorIndex DescriptorTableManager::createDescriptor(GfxBindingSetItem item) {
-        DO_DEBUG("DescriptorTableManager::createDescriptor: type={}, resourceHandle={}",
-            static_cast<int>(item.type), item.resourceHandle != nullptr);
-
         const GfxBindingSetItem cache_key = item;
         const auto& it = descriptor_index_umap_.find(cache_key);
         if (it != descriptor_index_umap_.end()) { return it->second; }
@@ -77,7 +74,6 @@ namespace dodoe {
         search_start_ = index + 1;
         allocated_descriptors_[index] = true;
 
-        DO_DEBUG("DescriptorTableManager::createDescriptor: writing to slot={}", index);
         GDrawCommandList.getDevice()->writeDescriptorTable(descriptor_table_, item);
 
         if (item.resourceHandle) { item.resourceHandle->AddRef(); }
@@ -85,7 +81,6 @@ namespace dodoe {
         descriptors_[index] = item;
         descriptor_index_umap_.emplace(cache_key, index);
 
-        DO_DEBUG("DescriptorTableManager::createDescriptor: completed, index={}", index);
         return index;
     }
 

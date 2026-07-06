@@ -120,11 +120,7 @@ namespace dodoe {
             const auto& pass = m_passes[pass_index];
             const auto& accesses = pass->getAccesses();
 
-            DO_DEBUG("RenderGraph::compile: pass[{}]='{}' accesses={} flags=0x{:x}",
-                      pass_index, pass->getName(), accesses.size(), static_cast<UInt32>(pass->getFlags()));
-
             if (accesses.empty() && !HasAnyFlags(pass->getFlags(), RenderGraphPassFlags::NeverCull)) {
-                DO_DEBUG("RenderGraph::compile: culling pass[{}]='{}'", pass_index, pass->getName());
                 m_culled_passes[pass_index] = true;
                 continue;
             }

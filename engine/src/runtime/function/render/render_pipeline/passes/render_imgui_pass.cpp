@@ -14,7 +14,6 @@
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 
-#include <algorithm>
 #endif
 
 namespace dodoe::RenderPipelinePass {
@@ -162,33 +161,12 @@ namespace dodoe::RenderPipelinePass {
                     }
                 }
 
-                DO_DEBUG("ImGuiPass: vtx_count={} idx_count={} vtx_byte_size={} idx_byte_size={}",
-                          static_cast<int>(draw_data->TotalVtxCount),
-                          static_cast<int>(draw_data->TotalIdxCount),
-                          vertex_byte_size, index_byte_size);
-                if (vertex_upload.size() > 0) {
-                    const auto& v0 = vertex_upload[0];
-                    DO_DEBUG("ImGuiPass: first vertex pos=({:.1f},{:.1f}) uv=({:.3f},{:.3f}) col=0x{:08x}",
-                              v0.pos.x, v0.pos.y, v0.uv.x, v0.uv.y, v0.col);
-                }
-                if (index_upload.size() > 0) {
-                    DO_DEBUG("ImGuiPass: first 3 indices: {} {} {}",
-                              static_cast<int>(index_upload[0]),
-                              index_upload.size() > 1 ? static_cast<int>(index_upload[1]) : -1,
-                              index_upload.size() > 2 ? static_cast<int>(index_upload[2]) : -1);
-                }
-                DO_DEBUG("ImGuiPass: vb_byte_size={} ib_byte_size={} vb_rhi_ready={} ib_rhi_ready={}",
-                          vertex_buffer->getByteSize(), index_buffer->getByteSize(),
-                          vertex_buffer->isRHIReady(), index_buffer->isRHIReady());
-                DO_DEBUG("ImGuiPass: vb_rhi={} vertex_upload.data={} first_bytes={:02x} {:02x} {:02x} {:02x}",
-                          static_cast<const void*>(vertex_buffer->getRHIHandle().Get()),
-                          static_cast<const void*>(vertex_upload.data()),
-                          vertex_upload.size() > 0 ? reinterpret_cast<const UInt8*>(vertex_upload.data())[0] : 0,
-                          vertex_upload.size() > 1 ? reinterpret_cast<const UInt8*>(vertex_upload.data())[1] : 0,
-                          vertex_upload.size() > 2 ? reinterpret_cast<const UInt8*>(vertex_upload.data())[2] : 0,
-                          vertex_upload.size() > 3 ? reinterpret_cast<const UInt8*>(vertex_upload.data())[3] : 0);
-                command_list.writeBuffer(vertex_buffer, vertex_upload.data(), vertex_byte_size);
-                command_list.writeBuffer(index_buffer, index_upload.data(), index_byte_size);
+                command_list.setBufferState(vertex_buffer, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(vertex_buffer, vertex_upload.data(), vertex_byte_size, 0);
+                command_list.setBufferState(vertex_buffer, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(index_buffer, index_upload.data(), index_byte_size, 0);
                 command_list.setBufferState(vertex_buffer, GfxResourceStates::VertexBuffer);
                 command_list.setBufferState(index_buffer, GfxResourceStates::IndexBuffer);
                 command_list.commitBarriers();

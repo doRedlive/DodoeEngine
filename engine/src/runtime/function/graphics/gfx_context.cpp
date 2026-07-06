@@ -288,7 +288,6 @@ namespace dodoe {
         }
 
         if (!vulkan_backend_ || !device_ || acquire_semaphores_.empty() || frame_fences_.empty()) {
-            DO_DEBUG("GfxContext::acquireNextSwapchainImage: early return false (missing objects)");
             return false;
         }
 

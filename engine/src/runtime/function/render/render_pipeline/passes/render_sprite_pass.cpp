@@ -37,10 +37,8 @@ namespace dodoe::RenderPipelinePass {
             [pass_context, &view](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
-                    DO_DEBUG("MainSpritePass: reusing SceneColorKey from blackboard");
                     parameters.color_target = pass_builder.write(*scene_color);
                 } else {
-                    DO_DEBUG("MainSpritePass: SceneColorKey absent, creating own target");
                     const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
                     parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
@@ -83,11 +81,9 @@ namespace dodoe::RenderPipelinePass {
             [pass_context, &view, &resources](const SpritePassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
                 const auto* sprite_ext = view.getExtension<SpriteViewExtension>();
                 if (!sprite_ext) {
-                    DO_DEBUG("MainSpritePass: SKIP — no SpriteViewExtension");
                     return;
                 }
                 const Size_t vis_count = sprite_ext->visible_sprites.size();
-                DO_DEBUG("MainSpritePass: {} visible sprites", vis_count);
                 if (vis_count == 0) {
                     return;
                 }
@@ -140,16 +136,12 @@ namespace dodoe::RenderPipelinePass {
                 const auto* shader_library = pass_context.getShaderLibrary();
                 auto* pipeline_cache = pass_context.getPipelineStateCache();
                 if (!shader_library || !pipeline_cache) {
-                    DO_DEBUG("MainSpritePass: SKIP — shader_library={}, pipeline_cache={}",
-                              static_cast<const void*>(shader_library), static_cast<const void*>(pipeline_cache));
                     return;
                 }
 
                 const auto sprite_vs = shader_library->getSpriteVertexShader();
                 const auto sprite_ps = shader_library->getSpritePixelShader();
                 if (!sprite_vs || !sprite_ps) {
-                    DO_DEBUG("MainSpritePass: SKIP — sprite_vs={}, sprite_ps={}",
-                              static_cast<const void*>(sprite_vs), static_cast<const void*>(sprite_ps));
                     return;
                 }
 
@@ -162,10 +154,6 @@ namespace dodoe::RenderPipelinePass {
                 auto binding_layout = resources.getOrCreateBindingLayout(command_list);
 
                 if (!framebuffer || !input_layout || !binding_layout) {
-                    DO_DEBUG("MainSpritePass: SKIP — fb={}, il={}, bl={}",
-                              static_cast<const void*>(framebuffer ? framebuffer->getRHIHandle() : nullptr),
-                              static_cast<const void*>(input_layout),
-                              static_cast<const void*>(binding_layout));
                     return;
                 }
 
@@ -193,8 +181,6 @@ namespace dodoe::RenderPipelinePass {
                     desc_table_layout);
 
                 if (!pipeline || !per_frame_bs) {
-                    DO_DEBUG("MainSpritePass: SKIP — pipeline={}, per_frame_bs={}",
-                              static_cast<const void*>(pipeline.get()), static_cast<const void*>(per_frame_bs.get()));
                     return;
                 }
 
@@ -219,8 +205,6 @@ namespace dodoe::RenderPipelinePass {
 
                 command_list.setGraphicsState(framebuffer, pipeline, bs_arr, vp, vbs, ib);
                 command_list.drawIndexed(GfxDrawArguments().setVertexCount(6).setInstanceCount(visible_count));
-                DO_DEBUG("MainSpritePass: DONE — drew {} sprite instances to {}x{} swapchain",
-                          visible_count, static_cast<int>(swapchain_extent.x), static_cast<int>(swapchain_extent.y));
             }
         );
     }

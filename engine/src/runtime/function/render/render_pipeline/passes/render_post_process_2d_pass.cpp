@@ -45,7 +45,6 @@ namespace dodoe::RenderPipelinePass {
                 pass_builder.blackboard().set<SceneColorKey>(parameters.output);
             },
             [pass_context, &shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                DO_DEBUG("PostProcess2DPass: executing FXAA");
                 const auto input_handle = context.resolveTexture(parameters.input);
                 const auto output_handle = context.resolveTexture(parameters.output);
 
@@ -94,7 +93,6 @@ namespace dodoe::RenderPipelinePass {
                 command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                 command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                DO_DEBUG("PostProcess2DPass: DONE — FXAA applied");
             }
         );
     }

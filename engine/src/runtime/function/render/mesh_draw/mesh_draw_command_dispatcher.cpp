@@ -60,7 +60,6 @@ namespace dodoe {
         const RenderGraphBufferHandle& pass_constant_buffer,
         DrawCommandList& command_list)
     {
-        DO_DEBUG("MeshDrawCommandDispatcher: Pass type {}, command count: {}", static_cast<int>(pass_type), commands.size());
 
         if (commands.empty()) {
             return;

@@ -47,14 +47,10 @@ namespace dodoe::RenderPipelinePass {
             "TestTrianglePass",
             RenderGraphPassFlags::Raster,
             [pass_context](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
-                // Reuse SceneColorKey if already set (e.g. by BaseSceneFeature),
-                // otherwise create a new transient render target and publish it.
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
-                    DO_DEBUG("TestTrianglePass: reusing SceneColorKey from blackboard");
                     parameters.color_target = pass_builder.write(*scene_color);
                 } else {
-                    DO_DEBUG("TestTrianglePass: SceneColorKey absent, creating own target");
                     const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
                     parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG TestColor"),
@@ -74,7 +70,6 @@ namespace dodoe::RenderPipelinePass {
                 const auto color_target = context.resolveTexture(parameters.color_target);
                 const auto quad_vb = context.resolveBuffer(parameters.triangle_vb);
 
-                // Upload quad vertex data
                 command_list.setBufferState(quad_vb, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
                 command_list.writeBuffer(quad_vb, kTestQuadVertices, sizeof(kTestQuadVertices), 0);
@@ -183,12 +178,8 @@ namespace dodoe::RenderPipelinePass {
                 command_list.setGraphicsState(fb, pipeline, bs_arr, vp, vbs);
                 command_list.draw(GfxDrawArguments().setVertexCount(kTestQuadVertexCount).setInstanceCount(1));
 
-                // Let subsequent passes (PresentPass) read this as a shader resource
                 command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.commitBarriers();
-
-                DO_DEBUG("TestPass: DONE — drew textured quad to {}x{} color target",
-                          static_cast<int>(swapchain_extent.x), static_cast<int>(swapchain_extent.y));
             }
         );
     }
