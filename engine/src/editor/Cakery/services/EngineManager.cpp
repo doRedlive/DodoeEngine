@@ -14,9 +14,9 @@
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/renderer.h"
 #include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_view/render_viewport.h"
 
 #include <QDateTime>
-#include <QDebug>
 
 using namespace dodoe;
 
@@ -34,6 +34,7 @@ EngineManager::EngineManager()
     m_spec.window_resizeable  = true;
     m_spec.render_settings.api      = RenderBackendApiType::DX12;
     m_spec.render_settings.pipeline = RenderingPipelineType::Deferred;
+    m_spec.render_settings.threading_mode = ThreadingMode::DualThread;
 }
 
 bool EngineManager::initialize(const std::string& projectPath, void* hostHandle, int width, int height)
@@ -63,22 +64,22 @@ bool EngineManager::initialize(const std::string& projectPath, void* hostHandle,
     EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(m_app.get());
 
     m_context->initializeModules();
-    qDebug() << "[EngineManager] Modules initialized";
+    LOG_INFO("[EngineManager] Modules initialized");
 
     Project::Load(projectPath);
 
     m_context->startRuntime();
-    qDebug() << "[EngineManager] Runtime started";
+    LOG_INFO("[EngineManager] Runtime started");
 
     m_context->getLayerStack().attach();
-    qDebug() << "[EngineManager] LayerStack attached";
+    LOG_INFO("[EngineManager] LayerStack attached");
     // End: mirrors Application::run()
 
     m_initialized  = true;
     m_lastFpsTime  = QDateTime::currentMSecsSinceEpoch();
 
     emit engineInitialized();
-    qDebug() << "[EngineManager] Engine fully initialized";
+    LOG_INFO("[EngineManager] Engine fully initialized");
 
     return true;
 }

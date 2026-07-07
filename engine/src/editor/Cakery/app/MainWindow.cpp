@@ -30,7 +30,6 @@
 #include <QIcon>
 #include <QCoreApplication>
 #include <QCloseEvent>
-#include <QDebug>
 
 namespace cakery {
 
@@ -304,7 +303,7 @@ void MainWindow::connectSignals()
 
 void MainWindow::enterWorkspace(const QString& projectPath)
 {
-    qDebug() << "[MainWindow] Entering workspace:" << projectPath;
+    LOG_INFO("[MainWindow] Entering workspace: {}", projectPath.toStdString());
     m_statusLabel->setText("Initializing engine...");
 
     float dpr = m_sceneWidget->devicePixelRatioF();

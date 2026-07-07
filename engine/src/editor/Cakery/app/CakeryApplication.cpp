@@ -7,7 +7,6 @@
 
 #include <QDir>
 #include <QFile>
-#include <QDebug>
 
 namespace cakery {
 
@@ -22,12 +21,12 @@ static void loadStyleSheet(QApplication& app)
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 QString styleSheet = QString::fromUtf8(file.readAll());
                 app.setStyleSheet(styleSheet);
-                qDebug() << "[Cakery] Loaded stylesheet from:" << path;
+                LOG_INFO("[Cakery] Loaded stylesheet from: {}", path.toStdString());
                 return;
             }
         }
     }
-    qWarning() << "[Cakery] Could not find style.qss in any search path";
+    LOG_WARN("[Cakery] Could not find style.qss in any search path");
 }
 
 CakeryApplication::CakeryApplication(int& argc, char** argv)

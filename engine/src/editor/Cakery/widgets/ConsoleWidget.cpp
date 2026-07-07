@@ -1,5 +1,3 @@
-
-
 #include "ConsoleWidget.h"
 #include "services/LogService.h"
 
@@ -20,9 +18,8 @@ ConsoleWidget::ConsoleWidget(QWidget* parent)
     auto* toolbar = new QHBoxLayout();
     toolbar->setSpacing(4);
 
-
     m_btnClear = new QToolButton(this);
-    m_btnClear->setText(QString::fromUtf8("Clear ▾"));
+    m_btnClear->setText(QString::fromUtf8("Clear"));
     m_btnClear->setPopupMode(QToolButton::InstantPopup);
     auto* clearMenu = new QMenu(this);
     clearMenu->addAction(tr("Clear"), this, &ConsoleWidget::onClear);
@@ -30,43 +27,36 @@ ConsoleWidget::ConsoleWidget(QWidget* parent)
     m_btnClear->setMenu(clearMenu);
     toolbar->addWidget(m_btnClear);
 
-
     m_btnCollapse = new QToolButton(this);
     m_btnCollapse->setText(tr("Collapse"));
     m_btnCollapse->setCheckable(true);
     m_btnCollapse->setChecked(true);
     toolbar->addWidget(m_btnCollapse);
 
-
     m_btnClearOnPlay = new QToolButton(this);
     m_btnClearOnPlay->setText(tr("Clear on Play"));
     m_btnClearOnPlay->setCheckable(true);
     toolbar->addWidget(m_btnClearOnPlay);
-
 
     m_btnErrorPause = new QToolButton(this);
     m_btnErrorPause->setText(tr("Error Pause"));
     m_btnErrorPause->setCheckable(true);
     toolbar->addWidget(m_btnErrorPause);
 
-
     toolbar->addStretch();
 
-
     m_btnFilterLog = new QToolButton(this);
-    m_btnFilterLog->setText(tr("Log 3"));
+    m_btnFilterLog->setText(tr("Log 0"));
     m_btnFilterLog->setCheckable(true);
     m_btnFilterLog->setChecked(true);
     toolbar->addWidget(m_btnFilterLog);
 
-
     m_btnFilterWarn = new QToolButton(this);
-    m_btnFilterWarn->setText(tr("Warnings 1"));
+    m_btnFilterWarn->setText(tr("Warnings 0"));
     m_btnFilterWarn->setStyleSheet("color: #F1FA8C;");
     m_btnFilterWarn->setCheckable(true);
     m_btnFilterWarn->setChecked(true);
     toolbar->addWidget(m_btnFilterWarn);
-
 
     m_btnFilterError = new QToolButton(this);
     m_btnFilterError->setText(tr("Errors 0"));
@@ -82,49 +72,17 @@ ConsoleWidget::ConsoleWidget(QWidget* parent)
     m_list->setObjectName("consoleList");
     layout->addWidget(m_list, 1);
 
-
     connect(m_btnFilterLog, &QToolButton::toggled, this, &ConsoleWidget::onFilterToggled);
     connect(m_btnFilterWarn, &QToolButton::toggled, this, &ConsoleWidget::onFilterToggled);
     connect(m_btnFilterError, &QToolButton::toggled, this, &ConsoleWidget::onFilterToggled);
 
     auto& logService = LogService::getInstance();
-    connect(&logService, &LogService::entryAdded, this, &ConsoleWidget::onEntryAdded);
-    connect(&logService, &LogService::cleared, this, [this]() {
-        m_list->clear();
-        updateFilterCounts();
-    });
-
-    updateFilterCounts();
+    connect(&logService, &LogService::updated, this, &ConsoleWidget::onLogUpdated);
 }
 
-void ConsoleWidget::onEntryAdded(const LogEntry& entry)
+void ConsoleWidget::onLogUpdated()
 {
-
-    int level = static_cast<int>(entry.level);
-
-    if (level <= 2 && !m_showLog) return;
-    if (level == 3 && !m_showWarn) return;
-    if (level >= 4 && !m_showError) return;
-
-    auto* item = new QListWidgetItem();
-    QString text = QString("[%1] [%2] %3")
-        .arg(entry.timestamp.toString("HH:mm:ss"))
-        .arg(prefixForLevel(level))
-        .arg(entry.message);
-
-    if (entry.repeatCount > 1)
-        text += QString(" (x%1)").arg(entry.repeatCount);
-
-    item->setText(text);
-    item->setForeground(colorForLevel(level));
-    m_list->addItem(item);
-    m_list->scrollToBottom();
-
-
-    while (m_list->count() > 1000)
-        delete m_list->takeItem(0);
-
-    updateFilterCounts();
+    refreshDisplay();
 }
 
 void ConsoleWidget::onClear()
@@ -151,19 +109,36 @@ void ConsoleWidget::onSearchChanged(const QString& text)
 void ConsoleWidget::refreshDisplay()
 {
     m_list->clear();
-    auto& logService = LogService::getInstance();
-    for (const auto& entry : logService.entries()) {
-        onEntryAdded(entry);
+
+    for (const auto& entry : LogService::getInstance().entries()) {
+        int level = static_cast<int>(entry.level);
+        if (level <= 2 && !m_showLog) continue;
+        if (level == 3 && !m_showWarn) continue;
+        if (level >= 4 && !m_showError) continue;
+
+        auto* item = new QListWidgetItem();
+        QString text = QString("[%1] [%2] %3")
+            .arg(entry.timestamp.toString("HH:mm:ss"))
+            .arg(prefixForLevel(level))
+            .arg(entry.message);
+
+        if (entry.repeatCount > 1)
+            text += QString(" (x%1)").arg(entry.repeatCount);
+
+        item->setText(text);
+        item->setForeground(colorForLevel(level));
+        m_list->addItem(item);
     }
+
+    m_list->scrollToBottom();
     updateFilterCounts();
 }
 
 void ConsoleWidget::updateFilterCounts()
 {
-    auto& logService = LogService::getInstance();
     int logCount = 0, warnCount = 0, errCount = 0;
 
-    for (const auto& entry : logService.entries()) {
+    for (const auto& entry : LogService::getInstance().entries()) {
         int level = static_cast<int>(entry.level);
         if (level <= 2) logCount++;
         else if (level == 3) warnCount++;

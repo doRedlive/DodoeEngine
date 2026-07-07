@@ -12,6 +12,7 @@ namespace dodoe {
     class World;
     class Scene;
     class Camera;
+    class RenderViewport;
 }
 
 namespace cakery {

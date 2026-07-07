@@ -2,7 +2,7 @@
 
 #include "CameraController.h"
 #include "runtime/core/math/math.h"
-#include "runtime/function/render/render_view/render_channel.h"
+#include "runtime/core/channel/render_channel.h"
 
 namespace cakery {
 

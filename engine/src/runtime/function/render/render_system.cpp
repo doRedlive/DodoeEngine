@@ -97,8 +97,6 @@ namespace dodoe {
         const Float frame_time = time_sys ? time_sys->current_time() : 0.0f;
         const Float frame_delta = time_sys ? time_sys->getDeltaTime() : 0.0f;
 
-        auto* texture_manager = m_texture_manager.get();
-
         switch (mode) {
         case ThreadingMode::TripleThread: {
             FrameContext frame_ctx;
@@ -106,7 +104,6 @@ namespace dodoe {
             frame_ctx.command_list.setDevice(GDrawCommandList.getDevice());
             frame_ctx.command_list.beginFrame();
 
-            texture_manager->flushPendingCommands();
 
             scene->flushUpdates();
 
@@ -125,7 +122,6 @@ namespace dodoe {
 
             GDrawCommandList.beginFrame();
 
-            texture_manager->flushPendingCommands();
 
             scene->flushUpdates();
 

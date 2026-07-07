@@ -1,6 +1,10 @@
 #pragma once
 
 #include <QWidget>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
+#include <QMimeData>
 
 namespace cakery {
 
@@ -22,8 +26,14 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
 
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dragMoveEvent(QDragMoveEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+
 private:
     void setupCamera();
+    QStringList extractAssetPaths(const QMimeData* mime) const;
+    void createEntityFromAsset(const QString& filePath);
 
     CameraController* m_camera = nullptr;
     bool m_firstShow = true;

@@ -91,17 +91,11 @@ namespace dodoe {
         texture->setDimensions(data.width, data.height);
         texture->setPath(path);
 
-        const auto device = GDrawCommandList.getDevice();
-        auto handle = create_ref<GfxTexture>(texture_desc);
-        handle->initializeRHI(device);
+        auto handle = cmd_list.createTexture(texture_desc);
         if (data.pixels && data_size > 0) {
             const UInt32 bytes_per_pixel = data.is_hdr ? 16u : 4u;
             const Size_t row_pitch = static_cast<Size_t>(data.width) * bytes_per_pixel;
-            auto upload_cmd = device->createCommandList();
-            upload_cmd->open();
-            upload_cmd->writeTexture(handle->getRHIHandle(), 0, 0, data.pixels, row_pitch);
-            upload_cmd->close();
-            device->executeCommandList(upload_cmd);
+            cmd_list.writeTexture(handle, 0, 0, data.pixels, row_pitch);
         }
         texture->setGpuHandle(handle);
 
@@ -119,9 +113,6 @@ namespace dodoe {
         return texture;
     }
 
-    void TextureManager::flushPendingCommands() {
-    }
-
     void TextureManager::createFallbackTexture() {
         auto texture_desc = GfxTextureDesc()
             .setDimension(GfxTextureDimension::Texture2D)
@@ -132,14 +123,16 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName("Render TextureManager Fallback");
 
-        const auto device = GDrawCommandList.getDevice();
-        auto handle = create_ref<GfxTexture>(texture_desc);
-        handle->initializeRHI(device);
+        auto handle = GDrawCommandList.createTexture(texture_desc);
 
         const UByte white[4] = {255, 255, 255, 255};
+        GDrawCommandList.writeTexture(handle, 0, 0, white, 4);
+
+        const auto device = GDrawCommandList.getDevice();
         auto upload_cmd = device->createCommandList();
         upload_cmd->open();
-        upload_cmd->writeTexture(handle->getRHIHandle(), 0, 0, white, 4);
+        GDrawCommandList.execute(upload_cmd);
+        GDrawCommandList.reset();
         upload_cmd->close();
         device->executeCommandList(upload_cmd);
 

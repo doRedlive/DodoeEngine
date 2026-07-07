@@ -3,6 +3,7 @@
 #include "debug_imgui.h"
 
 #ifdef DODOE_DEBUG
+
 #include "imgui/imgui.h"
 
 #include "runtime/function/world/components/camera2d_component.h"
@@ -12,35 +13,27 @@
 #include "runtime/function/world/components/sprite_renderer_component.h"
 #include "runtime/function/world/components/tag_component.h"
 #include "runtime/function/world/components/transform_component.h"
-#endif
 
 namespace dodoe {
 
     void DebugImGui::RegisterDebugPanel() {
-#ifdef DODOE_DEBUG
         if (s_registered) return;
         GetDebugger()->addImGuiRenderFunc("DebugImGui", OnImGuiRender);
         s_registered = true;
-#endif
     }
 
     void DebugImGui::UnregisterDebugPanel() {
-#ifdef DODOE_DEBUG
         if (!s_registered) return;
         GetDebugger()->removeImGuiRenderFunc("DebugImGui");
         s_registered = false;
-#endif
     }
 
     void DebugImGui::OnImGuiRender() {
-#ifdef DODOE_DEBUG
         RenderHierarchyPanel();
         RenderInspectorPanel();
-#endif
     }
 
     void DebugImGui::RenderHierarchyPanel() {
-#ifdef DODOE_DEBUG
         ImGui::Begin("Hierarchy");
 
         Scene* scene = GetWorld()->getCurrentScene();
@@ -57,7 +50,6 @@ namespace dodoe {
         }
 
         ImGui::End();
-#endif
     }
 
     std::vector<DebugImGui::EntityNode> DebugImGui::BuildEntityTree(Scene& scene) {
@@ -123,7 +115,6 @@ namespace dodoe {
     }
 
     void DebugImGui::RenderEntityTreeNode(const EntityNode& node) {
-#ifdef DODOE_DEBUG
         Entity entity = node.entity;
         if (!entity.valid()) return;
 
@@ -146,11 +137,9 @@ namespace dodoe {
             }
             ImGui::TreePop();
         }
-#endif
     }
 
     void DebugImGui::RenderInspectorPanel() {
-#ifdef DODOE_DEBUG
         ImGui::Begin("Inspector");
 
         if (!s_selectedEntity.valid()) {
@@ -170,16 +159,9 @@ namespace dodoe {
         if (entity.hasComponent<Rigidbody2dComponent>())   InspectRigidbody2dComponent(entity);
 
         ImGui::End();
-#endif
-    }
-
-    void DebugImGui::DrawComponentHeader(const std::string& label) {
-#ifdef DODOE_DEBUG
-#endif
     }
 
     void DebugImGui::InspectIDComponent(Entity entity) {
-#ifdef DODOE_DEBUG
         if (!ImGui::CollapsingHeader("ID", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         IDComponent& idc = entity.getComponent<IDComponent>();
@@ -189,11 +171,9 @@ namespace dodoe {
         if (ImGui::InputText("Name", buffer, sizeof(buffer))) {
             idc.setName(String(buffer));
         }
-#endif
     }
 
     void DebugImGui::InspectTagComponent(Entity entity) {
-#ifdef DODOE_DEBUG
         if (!ImGui::CollapsingHeader("Tag", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         TagComponent& tag = entity.getComponent<TagComponent>();
@@ -203,11 +183,9 @@ namespace dodoe {
         if (ImGui::InputText("Tag", buffer, sizeof(buffer))) {
             tag.setTag(String(buffer));
         }
-#endif
     }
 
     void DebugImGui::InspectTransformComponent(Entity entity) {
-#ifdef DODOE_DEBUG
         if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         TransformComponent& xform = entity.getComponent<TransformComponent>();
@@ -229,11 +207,9 @@ namespace dodoe {
         if (ImGui::DragFloat3("Scale", scl, 0.1f, 0.01f, 100.0f)) {
             xform.setScale(Vector3f(scl[0], scl[1], scl[2]));
         }
-#endif
     }
 
     void DebugImGui::InspectHierarchyComponent(Entity entity) {
-#ifdef DODOE_DEBUG
         if (!ImGui::CollapsingHeader("Hierarchy", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         HierarchyComponent& hier = entity.getComponent<HierarchyComponent>();
@@ -243,11 +219,9 @@ namespace dodoe {
         } else {
             ImGui::TextUnformatted("Parent: None");
         }
-#endif
     }
 
     void DebugImGui::InspectCamera2dComponent(Entity entity) {
-#ifdef DODOE_DEBUG
         if (!ImGui::CollapsingHeader("Camera 2D", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         Camera2dComponent& cam = entity.getComponent<Camera2dComponent>();
@@ -279,11 +253,9 @@ namespace dodoe {
         if (ImGui::ColorEdit4("Background", bg)) {
             cam.setBackgroundColor(Color(bg[0], bg[1], bg[2], bg[3]));
         }
-#endif
     }
 
     void DebugImGui::InspectSpriteRendererComponent(Entity entity) {
-#ifdef DODOE_DEBUG
         if (!ImGui::CollapsingHeader("Sprite Renderer", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         SpriteRendererComponent& sprite = entity.getComponent<SpriteRendererComponent>();
@@ -307,11 +279,9 @@ namespace dodoe {
             sprite.color = Color(color[0], color[1], color[2], color[3]);
             sprite.dirty = true;
         }
-#endif
     }
 
     void DebugImGui::InspectRigidbody2dComponent(Entity entity) {
-#ifdef DODOE_DEBUG
         if (!ImGui::CollapsingHeader("Rigidbody 2D", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
         Rigidbody2dComponent& rb = entity.getComponent<Rigidbody2dComponent>();
@@ -328,7 +298,8 @@ namespace dodoe {
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
         ImGui::Checkbox("Fixed Rotation", &rb.fixed_rotation);
-#endif
     }
 
 } // dodoe
+
+#endif // DODOE_DEBUG

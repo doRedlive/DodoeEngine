@@ -12880,6 +12880,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "1663411289368405814": {
+            "asset_file_mtime": 0,
+            "asset_path": "Models/backpack/specular.jpg",
+            "dependencies": [],
+            "file_id": {
+                "path": "Models/backpack/specular.jpg",
+                "uuid": 4452258370705794870
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "specular",
+            "source_file_mtime": 0,
+            "source_path": "Models/backpack/specular.jpg",
+            "tags": [],
+            "type": "Texture"
+        },
         "16636209730194986963": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right weapons/weaponR1/fall_1.png",
@@ -19296,6 +19312,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "3310942482792093911": {
+            "asset_file_mtime": 0,
+            "asset_path": "Models/backpack/ao.jpg",
+            "dependencies": [],
+            "file_id": {
+                "path": "Models/backpack/ao.jpg",
+                "uuid": 6802596387286587607
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "ao",
+            "source_file_mtime": 0,
+            "source_path": "Models/backpack/ao.jpg",
+            "tags": [],
+            "type": "Texture"
+        },
         "332512873806412931": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Enemies/Enemy 4/hit_0.png",
@@ -19693,6 +19725,22 @@
             "name": "death_2",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair2/death_2.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "3598430933889985984": {
+            "asset_file_mtime": 0,
+            "asset_path": "Models/backpack/roughness.jpg",
+            "dependencies": [],
+            "file_id": {
+                "path": "Models/backpack/roughness.jpg",
+                "uuid": 3242120593042714048
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "roughness",
+            "source_file_mtime": 0,
+            "source_path": "Models/backpack/roughness.jpg",
             "tags": [],
             "type": "Texture"
         },
@@ -24560,6 +24608,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "6313663690745410127": {
+            "asset_file_mtime": 0,
+            "asset_path": "Models/backpack/normal.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "Models/backpack/normal.png",
+                "uuid": 8052257574468809295
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "normal",
+            "source_file_mtime": 0,
+            "source_path": "Models/backpack/normal.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "6319547634190906882": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/death_3.png",
@@ -24847,6 +24911,22 @@
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right hands/handR1/death_4.png",
             "tags": [],
             "type": "Texture"
+        },
+        "6456214341631910594": {
+            "asset_file_mtime": 0,
+            "asset_path": "Models/backpack/backpack.obj",
+            "dependencies": [],
+            "file_id": {
+                "path": "Models/backpack/backpack.obj",
+                "uuid": 18290319710065042114
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "backpack",
+            "source_file_mtime": 0,
+            "source_path": "Models/backpack/backpack.obj",
+            "tags": [],
+            "type": "Mesh"
         },
         "6461125899808550751": {
             "asset_file_mtime": 0,
@@ -25453,6 +25533,22 @@
             "name": "jumpStart_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair2/jumpStart_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "6795664014298596438": {
+            "asset_file_mtime": 0,
+            "asset_path": "Models/backpack/diffuse.jpg",
+            "dependencies": [],
+            "file_id": {
+                "path": "Models/backpack/diffuse.jpg",
+                "uuid": 9974522030515307606
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "diffuse",
+            "source_file_mtime": 0,
+            "source_path": "Models/backpack/diffuse.jpg",
             "tags": [],
             "type": "Texture"
         },

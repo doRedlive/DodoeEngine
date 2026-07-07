@@ -8,6 +8,7 @@
 #include "runtime/function/world/components/hierarchy_component.h"
 #include "runtime/function/world/components/id_component.h"
 #include "runtime/function/world/components/transform_component.h"
+#include "runtime/service/world/scene_importer.h"
 
 #include <QMenu>
 #include <QInputDialog>
@@ -15,6 +16,10 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QHBoxLayout>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QUrl>
 
 namespace cakery {
 
@@ -60,6 +65,9 @@ HierarchyWidget::HierarchyWidget(QWidget* parent)
 
     connect(&EngineManager::getInstance(), &EngineManager::engineInitialized,
             this, &HierarchyWidget::refresh);
+
+    m_tree->viewport()->installEventFilter(this);
+    m_tree->viewport()->setAcceptDrops(true);
 }
 
 void HierarchyWidget::refresh()
@@ -278,6 +286,81 @@ void HierarchyWidget::onContextMenu(const QPoint& pos)
 
     menu.addAction(tr("Create Empty Entity"), this, &HierarchyWidget::onCreateEntity);
     menu.exec(m_tree->viewport()->mapToGlobal(pos));
+}
+
+bool HierarchyWidget::eventFilter(QObject* obj, QEvent* event)
+{
+    if (obj == m_tree->viewport()) {
+        auto isExternal = [](const QMimeData* mime) {
+            return mime->hasFormat("application/x-cakery-asset") || mime->hasUrls();
+        };
+
+        if (event->type() == QEvent::DragEnter) {
+            auto* de = static_cast<QDragEnterEvent*>(event);
+            if (isExternal(de->mimeData())) {
+                de->acceptProposedAction();
+                return true;
+            }
+        }
+        if (event->type() == QEvent::DragMove) {
+            auto* de = static_cast<QDragMoveEvent*>(event);
+            if (isExternal(de->mimeData())) {
+                de->acceptProposedAction();
+                return true;
+            }
+        }
+        if (event->type() == QEvent::Drop) {
+            auto* de = static_cast<QDropEvent*>(event);
+            if (isExternal(de->mimeData())) {
+                handleExternalDrop(de);
+                return true;
+            }
+        }
+    }
+    return QWidget::eventFilter(obj, event);
+}
+
+void HierarchyWidget::handleExternalDrop(QDropEvent* event)
+{
+    dodoe::Entity parentEntity;
+
+    auto* item = m_tree->itemAt(event->position().toPoint());
+    if (item) {
+        auto id = static_cast<entt::entity>(item->data(0, kEntityIdRole).value<quint64>());
+        auto* scene = EngineManager::getInstance().getCurrentScene();
+        if (scene) {
+            parentEntity = dodoe::Entity(scene, id);
+        }
+    }
+
+    auto* mime = event->mimeData();
+    QStringList paths;
+
+    if (mime->hasFormat("application/x-cakery-asset")) {
+        QString text = QString::fromUtf8(mime->data("application/x-cakery-asset"));
+        for (const auto& line : text.split('\n', Qt::SkipEmptyParts)) {
+            paths << line.trimmed();
+        }
+    }
+
+    if (paths.isEmpty() && mime->hasUrls()) {
+        for (const auto& url : mime->urls()) {
+            if (url.isLocalFile()) {
+                paths << url.toLocalFile();
+            }
+        }
+    }
+
+    for (const auto& path : paths) {
+        createEntityFromAsset(path, parentEntity);
+    }
+    refresh();
+}
+
+void HierarchyWidget::createEntityFromAsset(const QString& filePath, dodoe::Entity parent)
+{
+    Q_UNUSED(parent);
+    dodoe::SceneImporter::ImportAsset(filePath.toStdString());
 }
 
 }

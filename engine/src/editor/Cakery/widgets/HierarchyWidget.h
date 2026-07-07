@@ -7,6 +7,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QDropEvent>
 
 namespace dodoe { class Entity; }
 
@@ -31,9 +32,14 @@ private slots:
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onContextMenu(const QPoint& pos);
 
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
 private:
     void populateItem(QTreeWidgetItem* parentItem, dodoe::Entity entity);
     bool matchesSearch(QTreeWidgetItem* item) const;
+    void handleExternalDrop(QDropEvent* event);
+    void createEntityFromAsset(const QString& filePath, dodoe::Entity parent);
 
     QLineEdit* m_searchEdit = nullptr;
     QPushButton* m_createBtn = nullptr;

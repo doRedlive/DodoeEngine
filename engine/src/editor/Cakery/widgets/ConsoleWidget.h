@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <QWidget>
@@ -18,7 +16,7 @@ public:
     explicit ConsoleWidget(QWidget* parent = nullptr);
 
 private slots:
-    void onEntryAdded(const cakery::LogEntry& entry);
+    void onLogUpdated();
     void onClear();
     void onFilterToggled();
     void onSearchChanged(const QString& text);
@@ -32,17 +30,14 @@ private:
     QListWidget* m_list = nullptr;
     QLineEdit* m_searchEdit = nullptr;
 
-
     QToolButton* m_btnClear = nullptr;
     QToolButton* m_btnCollapse = nullptr;
     QToolButton* m_btnClearOnPlay = nullptr;
     QToolButton* m_btnErrorPause = nullptr;
 
-
     QToolButton* m_btnFilterLog = nullptr;
     QToolButton* m_btnFilterWarn = nullptr;
     QToolButton* m_btnFilterError = nullptr;
-
 
     bool m_showLog = true;
     bool m_showWarn = true;

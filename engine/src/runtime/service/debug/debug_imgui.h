@@ -29,7 +29,6 @@ namespace dodoe {
 
         static void RenderInspectorPanel();
 
-        static void DrawComponentHeader(const std::string& label);
         static void InspectIDComponent(Entity entity);
         static void InspectTagComponent(Entity entity);
         static void InspectTransformComponent(Entity entity);

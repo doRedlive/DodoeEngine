@@ -29,7 +29,7 @@ namespace dodoe {
     private:
         bool initialize(const DebuggerCreateInfo& info);
         void shutdown();
-        void onImGuiRendr();
+        void onImGuiRender();
     };
 
 } // dodoe

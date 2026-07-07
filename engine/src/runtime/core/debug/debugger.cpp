@@ -41,22 +41,20 @@ namespace dodoe {
     }
 
     void Debugger::onRender() {
-#ifdef DODOE_DEBUG
+#if defined(DODOE_DEBUG) && !defined(DODOE_EDITOR)
         if (!ImGuiBuilder::GetContext()) return;
         ImGuiContext* prev_ctx = ImGui::GetCurrentContext();
         ImGui::SetCurrentContext(ImGuiBuilder::GetContext());
-        onImGuiRendr();
+        onImGuiRender();
         ImGui::SetCurrentContext(prev_ctx);
 #endif
     }
 
-    void Debugger::onImGuiRendr() {
-#ifdef DODOE_DEBUG
+    void Debugger::onImGuiRender() {
+#if defined(DODOE_DEBUG) && !defined(DODOE_EDITOR)
         ImGui::Begin("Dodoe Debugger");
-
         ImGuiIO& io = ImGui::GetIO();
         ImGui::Text("FPS: %.1f (%.3f ms)", io.Framerate, 1000.0f / io.Framerate);
-
         ImGui::End();
 
         for (const auto& pair : m_imguiRenderFuncs) {

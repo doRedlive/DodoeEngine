@@ -40,8 +40,6 @@ namespace dodoe {
         [[nodiscard]] Ref<Texture> getFallback() const;
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
         void removeTexture(InstanceID id);
-
-        void flushPendingCommands();
     };
 
 } // dodoe

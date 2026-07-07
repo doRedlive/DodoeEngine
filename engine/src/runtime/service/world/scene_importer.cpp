@@ -6,10 +6,13 @@
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/world/components/hierarchy_component.h"
 #include "runtime/function/world/components/mesh_renderer_component.h"
+#include "runtime/function/world/components/sprite_renderer_component.h"
 #include "runtime/function/world/components/transform_component.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
+#include "runtime/core/object/pptr.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "assimp/Importer.hpp"
@@ -155,7 +158,7 @@ namespace dodoe {
             const aiScene* imported_scene,
             const std::filesystem::path& model_directory,
             const uint mesh_index,
-            const std::string& fallback_name) {
+            const String& fallback_name) {
             MeshImportResult result{};
             result.upload_data.name = source_mesh.mName.length > 0 ? source_mesh.mName.C_Str() : fallback_name;
 
@@ -215,7 +218,7 @@ namespace dodoe {
             const aiScene* imported_scene,
             const std::filesystem::path& model_directory,
             const uint mesh_index,
-            const std::string& fallback_name) {
+            const String& fallback_name) {
             if (!imported_scene || mesh_index >= imported_scene->mNumMeshes) {
                 return;
             }
@@ -239,7 +242,7 @@ namespace dodoe {
                 return;
             }
 
-            const std::string node_name = node->mName.C_Str();
+            const String node_name = node->mName.C_Str();
             auto node_entity = scene->createEntity(node_name);
             ApplyNodeTransform(node_entity, node->mTransformation);
             AttachChild(parent_entity, node_entity);
@@ -249,7 +252,7 @@ namespace dodoe {
             } else {
                 for (uint mesh_offset = 0; mesh_offset < node->mNumMeshes; ++mesh_offset) {
                     const uint mesh_index = node->mMeshes[mesh_offset];
-                    const std::string mesh_entity_name = fmt::format("{}_Mesh{}", node_name, mesh_offset);
+                    const String mesh_entity_name = fmt::format("{}_Mesh{}", node_name, mesh_offset);
 
                     auto mesh_entity = scene->createEntity(mesh_entity_name);
                     AttachChild(node_entity, mesh_entity);
@@ -264,7 +267,7 @@ namespace dodoe {
 
     }
 
-    void SceneImporter::ImportModel(const std::string& path) {
+    void SceneImporter::ImportModel(const String& path) {
         auto cur_scene = Application::Self().context().getWorld()->getCurrentScene();
         DO_ASSERT(cur_scene);
 
@@ -282,11 +285,40 @@ namespace dodoe {
             return;
         }
 
-        const std::string root_name = std::filesystem::path(path).stem().string();
+        const String root_name = std::filesystem::path(path).stem().string();
         const std::filesystem::path model_directory = std::filesystem::path(path).parent_path();
         auto root_entity = cur_scene->createEntity(root_name);
 
         ProcessNode(cur_scene, imported_scene, model_directory, imported_scene->mRootNode, root_entity);
     }
-    
+
+    void SceneImporter::ImportSprite(const String& path) {
+        auto cur_scene = Application::Self().context().getWorld()->getCurrentScene();
+        DO_ASSERT(cur_scene);
+
+        const String entity_name = std::filesystem::path(path).stem().string();
+        auto entity = cur_scene->createEntity(entity_name);
+
+        auto& sr = entity.addComponent<SpriteRendererComponent>();
+        FileID file_id(path);
+        sr.texture = PPtr<Texture>(file_id, UUID());
+        sr.dirty = true;
+
+        LOG_INFO("SceneImporter::ImportSprite: {}", path);
+    }
+
+    void SceneImporter::ImportAsset(const String& path) {
+        const String ext = std::filesystem::path(path).extension().string();
+
+        if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" ||
+            ext == ".OBJ" || ext == ".FBX" || ext == ".GLTF" || ext == ".GLB") {
+            ImportModel(path);
+        } else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" ||
+                   ext == ".PNG" || ext == ".JPG" || ext == ".JPEG" || ext == ".BMP") {
+            ImportSprite(path);
+        } else {
+            DO_ERROR("SceneImporter::ImportAsset: unsupported format '{}'", ext);
+        }
+    }
+
 } // dodoe

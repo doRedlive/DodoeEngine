@@ -263,7 +263,7 @@ namespace dodoe {
         if (pipeline_type == RenderingPipelineType::Only2D) {
             m_features.push_back(create_scope<PostProcess2DFeature>());
         }
-        m_features.push_back(create_scope<TestFeature>());
+        // m_features.push_back(create_scope<TestFeature>());
         m_features.push_back(create_scope<ImGuiFeature>());
         m_features.push_back(create_scope<PresentFeature>());
         return true;

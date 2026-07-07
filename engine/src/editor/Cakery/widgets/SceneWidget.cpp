@@ -2,12 +2,18 @@
 #include "services/EngineManager.h"
 #include "services/CameraController.h"
 
+#include "runtime/service/world/scene_importer.h"
+
 #include <QShowEvent>
 #include <QPaintEvent>
 #include <QResizeEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
-#include <QDebug>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QUrl>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -23,6 +29,7 @@ SceneWidget::SceneWidget(QWidget* parent)
     setAttribute(Qt::WA_NoSystemBackground);
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
+    setAcceptDrops(true);
     setMinimumSize(320, 240);
 }
 
@@ -95,6 +102,55 @@ void SceneWidget::wheelEvent(QWheelEvent* event)
 {
     if (!m_camera) return;
     m_camera->onScroll(event->angleDelta().y());
+}
+
+void SceneWidget::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->mimeData()->hasFormat("application/x-cakery-asset") ||
+        event->mimeData()->hasUrls()) {
+        event->acceptProposedAction();
+    }
+}
+
+void SceneWidget::dragMoveEvent(QDragMoveEvent* event)
+{
+    event->acceptProposedAction();
+}
+
+void SceneWidget::dropEvent(QDropEvent* event)
+{
+    auto paths = extractAssetPaths(event->mimeData());
+    for (const auto& path : paths) {
+        createEntityFromAsset(path);
+    }
+    event->acceptProposedAction();
+}
+
+QStringList SceneWidget::extractAssetPaths(const QMimeData* mime) const
+{
+    QStringList paths;
+
+    if (mime->hasFormat("application/x-cakery-asset")) {
+        QString text = QString::fromUtf8(mime->data("application/x-cakery-asset"));
+        for (const auto& line : text.split('\n', Qt::SkipEmptyParts)) {
+            paths << line.trimmed();
+        }
+    }
+
+    if (paths.isEmpty() && mime->hasUrls()) {
+        for (const auto& url : mime->urls()) {
+            if (url.isLocalFile()) {
+                paths << url.toLocalFile();
+            }
+        }
+    }
+
+    return paths;
+}
+
+void SceneWidget::createEntityFromAsset(const QString& filePath)
+{
+    dodoe::SceneImporter::ImportAsset(filePath.toStdString());
 }
 
 } // namespace cakery
