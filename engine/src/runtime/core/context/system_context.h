@@ -83,5 +83,6 @@ namespace dodoe {
     inline PhysicsSystem* GetPhysicsSystem() { return Application::Self().context().getPhysicsSystem(); }
     inline UISystem*      GetUISystem()      { return Application::Self().context().getUISystem(); }
     inline InputManager*  GetInputManager()  { return Application::Self().context().getInputManager(); }
+    inline Debugger*      GetDebugger()      { return Application::Self().context().getDebugger(); }
 
 } // dodoe

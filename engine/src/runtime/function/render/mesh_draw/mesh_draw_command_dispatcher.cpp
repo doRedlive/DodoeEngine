@@ -8,7 +8,7 @@
 namespace dodoe {
     namespace {
 
-        void writePassShaderData(
+        void WritePassShaderData(
             const RenderGraphPassContext& context,
             const MeshPassType pass_type,
             const DynamicArray<GBufferMeshDrawShaderData>& gbuffer_shader_data,
@@ -60,12 +60,10 @@ namespace dodoe {
         const RenderGraphBufferHandle& pass_constant_buffer,
         DrawCommandList& command_list)
     {
-
         if (commands.empty()) {
             return;
         }
 
-        GfxGraphicsPipelineHandle current_pipeline = nullptr;
         for (const auto& command : commands) {
             if (!command.isValid()) {
                 continue;
@@ -76,16 +74,12 @@ namespace dodoe {
                 continue;
             }
 
-            writePassShaderData(context, pass_type, gbuffer_shader_data, command, pass_constant_buffer, command_list);
+            WritePassShaderData(context, pass_type, gbuffer_shader_data, command, pass_constant_buffer, command_list);
 
             auto graphics_state = GfxGraphicsState()
                 .setFramebuffer(framebuffer->getRHI())
-                .setViewport(viewport_state);
-
-            if (pipeline != current_pipeline) {
-                graphics_state.setPipeline(pipeline->getRHIHandle());
-                current_pipeline = pipeline;
-            }
+                .setViewport(viewport_state)
+                .setPipeline(pipeline->getRHIHandle());
 
             for (const auto& binding_set : command.binding_sets) {
                 if (binding_set && binding_set->isRHIReady()) {

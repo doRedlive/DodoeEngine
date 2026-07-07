@@ -17,6 +17,29 @@ namespace dodoe {
     void Debugger::shutdown() {
     }
 
+    Bool Debugger::addImGuiRenderFunc(const String& name, ImGuiRenderFunc func) {
+        if (!func) return false;
+        for (const auto& pair : m_imguiRenderFuncs) {
+            if (pair.first == name) return false;
+        }
+        m_imguiRenderFuncs.push_back(Pair<String, ImGuiRenderFunc>(name, std::move(func)));
+        return true;
+    }
+
+    Bool Debugger::removeImGuiRenderFunc(const String& name) {
+        auto it = std::find_if(m_imguiRenderFuncs.begin(), m_imguiRenderFuncs.end(),
+            [&name](const Pair<String, ImGuiRenderFunc>& pair) { return pair.first == name; });
+        if (it != m_imguiRenderFuncs.end()) {
+            m_imguiRenderFuncs.erase(it);
+            return true;
+        }
+        return false;
+    }
+
+    void Debugger::clearImGuiRenderFuncs() {
+        m_imguiRenderFuncs.clear();
+    }
+
     void Debugger::onRender() {
 #ifdef DODOE_DEBUG
         if (!ImGuiBuilder::GetContext()) return;
@@ -29,38 +52,18 @@ namespace dodoe {
 
     void Debugger::onImGuiRendr() {
 #ifdef DODOE_DEBUG
-        ImGui::ShowDemoWindow();
-
         ImGui::Begin("Dodoe Debugger");
 
         ImGuiIO& io = ImGui::GetIO();
         ImGui::Text("FPS: %.1f (%.3f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::Text("Display: %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
-        ImGui::Text("Mouse: (%.0f, %.0f)", io.MousePos.x, io.MousePos.y);
-        ImGui::Text("WantCaptureMouse: %s", io.WantCaptureMouse ? "true" : "false");
-        ImGui::Text("WantCaptureKeyboard: %s", io.WantCaptureKeyboard ? "true" : "false");
-
-        ImGui::Separator();
-
-        static float f_val = 0.5f;
-        ImGui::SliderFloat("float", &f_val, 0.0f, 1.0f);
-
-        static int i_val = 0;
-        ImGui::SliderInt("int", &i_val, 0, 100);
-
-        static bool b_val = true;
-        ImGui::Checkbox("checkbox", &b_val);
-
-        static float color[3] = { 0.8f, 0.3f, 0.6f };
-        ImGui::ColorEdit3("color", color);
-
-        if (ImGui::Button("Click Me")) {
-            i_val += 10;
-        }
-        ImGui::SameLine();
-        ImGui::Text("counter: %d", i_val);
 
         ImGui::End();
+
+        for (const auto& pair : m_imguiRenderFuncs) {
+            if (pair.second) {
+                pair.second();
+            }
+        }
 #endif
     }
 

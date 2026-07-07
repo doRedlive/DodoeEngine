@@ -44,19 +44,19 @@ namespace dodoe::RenderPipelinePass {
                 const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
                 using namespace rendering_pipeline_utils;
 
-                parameters.albedo   = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM,  "RDG MainCameraAlbedo"),   "MainCameraAlbedo"));
-                parameters.normal   = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG MainCameraNormal"),   "MainCameraNormal"));
-                parameters.position = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA32_FLOAT, "RDG MainCameraPosition"), "MainCameraPosition"));
-                parameters.material = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM,  "RDG MainCameraMaterial"), "MainCameraMaterial"));
-                parameters.depth    = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainDepth2D(swapchain_extent, GfxFormat::D32, "RDG MainCameraDepth"), "MainCameraDepth"));
+                parameters.albedo   = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM,  "RDG BaseAlbedo"),   "BaseAlbedo"));
+                parameters.normal   = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG BaseNormal"),   "BaseNormal"));
+                parameters.position = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA32_FLOAT, "RDG BasePosition"), "BasePosition"));
+                parameters.material = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM,  "RDG BaseMaterial"), "BaseMaterial"));
+                parameters.depth    = pass_builder.write(pass_builder.createTransientTexture(MakeSwapchainDepth2D(swapchain_extent, GfxFormat::D32, "RDG BaseDepth"), "BaseDepth"));
 
                 RenderGraphBufferDesc primitive_scene_buffer_desc{};
                 primitive_scene_buffer_desc.desc = GfxBufferDesc()
                     .setByteSize(static_cast<UInt32>(std::max<Size_t>(visible_instance_count, 1) * sizeof(InstanceSceneData)))
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
-                    .setDebugName("RDG MainCamera PrimitiveSceneBuffer");
-                parameters.primitive_scene_buffer = pass_builder.write(pass_builder.createTransientBuffer(primitive_scene_buffer_desc, "MainCameraPrimitiveSceneBuffer"));
+                    .setDebugName("RDG BasePass PrimitiveSceneBuffer");
+                parameters.primitive_scene_buffer = pass_builder.write(pass_builder.createTransientBuffer(primitive_scene_buffer_desc, "BasePrimitiveSceneBuffer"));
                 parameters.constant_buffer = pass_builder.importBuffer(gbuffer_mesh_processor.getConstantBuffer(), "GBufferConstantBuffer");
 
                 SceneTextures gbuffer;
@@ -69,7 +69,7 @@ namespace dodoe::RenderPipelinePass {
                 pass_builder.blackboard().set<SceneTexturesKey>(gbuffer);
             },
             [&gbuffer_mesh_processor](const GBufferPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                DO_ASSERT(context.getView() != nullptr, "GBufferPass view is null");
+                DO_ASSERT(context.getView() != nullptr, "BasePass view is null");
                 const auto* view = context.getView();
 
                 const auto albedo = context.resolveTexture(parameters.albedo);

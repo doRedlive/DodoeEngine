@@ -62,7 +62,7 @@ namespace dodoe {
             const Vector3f& bounds_min,
             const Vector3f& bounds_max) const;
 
-        virtual void createResources(DrawCommandList& cmd_list);
+        virtual bool createResources(DrawCommandList& cmd_list);
 
     protected:
         [[nodiscard]] const MeshLODData* activeLOD() const;

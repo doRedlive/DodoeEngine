@@ -18,7 +18,6 @@ namespace dodoe {
 
         auto sprite_view = reg.view<IDComponent, TransformComponent, SpriteRendererComponent>();
         UnorderedSet<UUID> active_sprites{};
-        bool dirty = false;
 
         for (auto entity : sprite_view) {
             auto& id = entity.getComponent<IDComponent>();
@@ -26,7 +25,7 @@ namespace dodoe {
             auto& sr = entity.getComponent<SpriteRendererComponent>();
             active_sprites.insert(id.id);
 
-            dirty |= syncSpriteRenderer(entity);
+            syncSpriteRenderer(entity);
 
             transform.dirty = false;
             id.dirty = false;
@@ -34,10 +33,6 @@ namespace dodoe {
         }
 
         pruneRemovedSprites(active_sprites);
-
-        if (dirty) {
-            GetRenderSystem()->getRenderScene()->flushUpdates();
-        }
     }
 
     bool SpriteRendererSystem::syncSpriteRenderer(Entity entity) {

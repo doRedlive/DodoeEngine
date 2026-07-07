@@ -2,6 +2,7 @@
 
 #include "render_scene.h"
 #include "runtime/core/math/math.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
@@ -176,6 +177,11 @@ namespace dodoe {
         rebuildPipelineSceneData();
     }
 
+    PrimitiveRenderObject* RenderScene::findPrimitive(const UUID id) {
+        const auto it = m_primitive_objects.find(id);
+        return it != m_primitive_objects.end() ? it->second.get() : nullptr;
+    }
+
     const PrimitiveRenderObject* RenderScene::findPrimitive(const UUID id) const {
         const auto it = m_primitive_objects.find(id);
         return it != m_primitive_objects.end() ? it->second.get() : nullptr;
@@ -212,12 +218,14 @@ namespace dodoe {
     }
 
     void RenderScene::upsertPrimitiveSceneInfo(const UUID id) {
-        const PrimitiveRenderObject* primitive = findPrimitive(id);
+        PrimitiveRenderObject* primitive = findPrimitive(id);
         const auto& lod_data = primitive->getLODData();
         if (primitive == nullptr || lod_data.empty()) {
             removePrimitiveSceneInfo(id);
             return;
         }
+
+        primitive->createResources(GDrawCommandList);
 
         const auto& bounds = getMeshBounds(primitive->getUploadData());
         PrimitiveSceneInfo info = primitive->buildSceneInfo(

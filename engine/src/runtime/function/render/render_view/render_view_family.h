@@ -26,6 +26,7 @@ namespace dodoe {
         }
 
         void buildVisiblePrimitives(const RenderScene& scene);
+        void buildVisibleSprites(const RenderScene& scene);
 
         [[nodiscard]] Bool isEmpty() const { return m_views.empty(); }
         [[nodiscard]] Size_t getSize() const { return m_views.size(); }

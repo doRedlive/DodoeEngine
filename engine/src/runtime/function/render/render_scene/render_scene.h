@@ -112,6 +112,7 @@ namespace dodoe {
         [[nodiscard]] Bool hasLight(UUID id) const { return m_light_scene_info_indices.find(id) != m_light_scene_info_indices.end(); }
         [[nodiscard]] Bool hasSprite(UUID id) const { return m_sprite_objects.find(id) != m_sprite_objects.end(); }
 
+        [[nodiscard]] PrimitiveRenderObject* findPrimitive(UUID id);
         [[nodiscard]] const PrimitiveRenderObject* findPrimitive(UUID id) const;
         [[nodiscard]] const SpriteRenderObject* findSprite(UUID id) const;
         [[nodiscard]] const SpriteSceneInfo* findSpriteSceneInfo(UUID id) const;

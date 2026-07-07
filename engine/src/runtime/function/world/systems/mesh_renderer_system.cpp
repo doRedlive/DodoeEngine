@@ -15,7 +15,6 @@ namespace dodoe {
 
         auto mesh_view = reg.view<IDComponent, TransformComponent, MeshRendererComponent>();
         std::unordered_set<UUID> active_renderers{};
-        bool dirty = false;
 
         for (auto entity : mesh_view) {
             auto& id = entity.getComponent<IDComponent>();
@@ -23,7 +22,7 @@ namespace dodoe {
             auto& mesh = entity.getComponent<MeshRendererComponent>();
             active_renderers.insert(id.id);
 
-            dirty |= syncRenderObject(entity);
+            syncRenderObject(entity);
 
             transform.dirty = false;
             if (entity.hasComponent<HierarchyComponent>()) {
@@ -34,10 +33,6 @@ namespace dodoe {
         }
 
         pruneRemovedObjects(active_renderers);
-
-        if (dirty) {
-            GetRenderSystem()->getRenderScene()->flushUpdates();
-        }
     }
 
     bool MeshRendererSystem::syncRenderObject(Entity entity) {

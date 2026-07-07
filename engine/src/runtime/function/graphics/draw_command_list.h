@@ -138,7 +138,7 @@ namespace dodoe {
         void writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes = 0);
         void writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch);
 
-        template <typename TData>
+        template <typename TData, typename = std::enable_if_t<!std::is_pointer_v<TData>>>
         void writeBuffer(const GfxBufferHandle& buffer, const TData& data, UInt64 destination_offset_bytes = 0) {
             static_assert(std::is_trivially_copyable_v<TData>);
             writeBuffer(buffer, std::addressof(data), sizeof(TData), destination_offset_bytes);

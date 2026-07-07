@@ -18,4 +18,10 @@ namespace dodoe {
         }
     }
 
+    void RenderViewFamily::buildVisibleSprites(const RenderScene& scene) {
+        for (auto& view : m_views) {
+            view.buildVisibleSprites(scene);
+        }
+    }
+
 } // dodoe

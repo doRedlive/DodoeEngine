@@ -25,14 +25,7 @@ namespace sandbox {
         auto* world = dodoe::GetWorld();
         auto scene = world->getCurrentScene();
 
-        auto test_go = scene->createEntity("test_go");
-        auto& transform = test_go.getComponent<dodoe::TransformComponent>();
-        // transform.position = {800.0f, 450.0f, 0.0f};
-        transform.position = {0.0f, 0.0f, 0.0f};
-        transform.scale = {256.0f, 256.0f, 1.0f};
-        auto& sprite_renderer = test_go.addComponent<dodoe::SpriteRendererComponent>();
-        const dodoe::String texture_path = "engine/res/pictures/grm.jpg";
-        sprite_renderer.texture = dodoe::PPtr<dodoe::Texture>(dodoe::FileID(texture_path), dodoe::UUID(dodoe::string2hash(texture_path)));
+        dodoe::SceneImporter::ImportModel("engine/res/models/backpack/backpack.obj");
 
     }
     

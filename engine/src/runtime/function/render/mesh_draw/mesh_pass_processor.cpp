@@ -248,17 +248,11 @@ namespace dodoe {
             GfxViewport(static_cast<float>(viewport_extent.x),
                           static_cast<float>(viewport_extent.y)));
 
-        GfxGraphicsPipelineHandle current_pipeline = nullptr;
-
         for (const auto& cmd : commands) {
             auto graphics_state = GfxGraphicsState()
                 .setFramebuffer(framebuffer->getRHI())
-                .setViewport(viewport_state);
-
-            if (cmd.pipeline != current_pipeline) {
-                graphics_state.setPipeline(cmd.pipeline->getRHIHandle());
-                current_pipeline = cmd.pipeline;
-            }
+                .setViewport(viewport_state)
+                .setPipeline(cmd.pipeline->getRHIHandle());
 
             for (const auto& bs : cmd.binding_sets) {
                 if (bs && bs->isRHIReady()) {

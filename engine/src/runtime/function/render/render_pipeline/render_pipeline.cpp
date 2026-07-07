@@ -58,9 +58,7 @@ namespace dodoe {
             view.resetExtensions();
         }
         if (pipeline_type == RenderingPipelineType::Only2D) {
-            for (auto& view : view_family.getViews()) {
-                view.buildVisibleSprites(scene);
-            }
+            view_family.buildVisibleSprites(scene);
         } else {
             view_family.buildVisiblePrimitives(scene);
         }
@@ -257,15 +255,15 @@ namespace dodoe {
             m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)] = create_scope<DirectionalShadowMeshProcessor>();
             static_cast<DirectionalShadowMeshProcessor*>(m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)].get())->initialize(*m_gfx_context);
 
-            // m_features.push_back(create_scope<BaseSceneFeature>());
-            // m_features.push_back(create_scope<LightingFeature>());
-            // m_features.push_back(create_scope<PostProcessFeature>());
+            m_features.push_back(create_scope<BaseSceneFeature>());
+            m_features.push_back(create_scope<LightingFeature>());
+            m_features.push_back(create_scope<PostProcessFeature>());
         }
         m_features.push_back(create_scope<SpriteFeature>());
-        // if (pipeline_type == RenderingPipelineType::Only2D) {
-        //     m_features.push_back(create_scope<PostProcess2DFeature>());
-        // }
-        // m_features.push_back(create_scope<TestFeature>());
+        if (pipeline_type == RenderingPipelineType::Only2D) {
+            m_features.push_back(create_scope<PostProcess2DFeature>());
+        }
+        m_features.push_back(create_scope<TestFeature>());
         m_features.push_back(create_scope<ImGuiFeature>());
         m_features.push_back(create_scope<PresentFeature>());
         return true;

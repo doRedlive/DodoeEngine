@@ -108,14 +108,6 @@ namespace dodoe {
 
             texture_manager->flushPendingCommands();
 
-            for (const auto& info : scene->getPrimitiveSceneInfos()) {
-                const auto* obj = scene->findPrimitive(UUID{static_cast<uint64_t>(info.getId())});
-                if (obj && (obj->getRenderObjectType() == RenderObjectType::StaticMesh ||
-                            obj->getRenderObjectType() == RenderObjectType::Foliage)) {
-                    const_cast<PrimitiveRenderObject*>(obj)->createResources(frame_ctx.command_list);
-                }
-            }
-
             scene->flushUpdates();
 
             auto& cam_data = GetMainCameraChannel().get<MainCameraData>();
@@ -134,14 +126,6 @@ namespace dodoe {
             GDrawCommandList.beginFrame();
 
             texture_manager->flushPendingCommands();
-
-            for (const auto& info : scene->getPrimitiveSceneInfos()) {
-                const auto* obj = scene->findPrimitive(UUID{static_cast<uint64_t>(info.getId())});
-                if (obj && (obj->getRenderObjectType() == RenderObjectType::StaticMesh ||
-                            obj->getRenderObjectType() == RenderObjectType::Foliage)) {
-                    const_cast<PrimitiveRenderObject*>(obj)->createResources(GDrawCommandList);
-                }
-            }
 
             scene->flushUpdates();
 

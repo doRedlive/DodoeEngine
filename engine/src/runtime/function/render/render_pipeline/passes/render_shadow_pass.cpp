@@ -61,6 +61,22 @@ namespace dodoe::RenderPipelinePass {
                     command_list.setTextureState(shadow_map, GfxAllSubresources, GfxResourceStates::DepthWrite);
                     command_list.commitBarriers();
                     command_list.clearDepthStencilTexture(shadow_map, GfxAllSubresources, true, 1.0f, false, 0);
+
+                    const auto shadow_cb = context.resolveBuffer(parameters.constant_buffer);
+                    struct ShadowConstantData {
+                        Matrix4f light_view_projection;
+                        Vector4f time_data;
+                    };
+                    const ShadowConstantData shadow_data{
+                        mesh_ext->directional_shadow_view_projection,
+                        mesh_ext->frame_time_data
+                    };
+                    command_list.setBufferState(shadow_cb, GfxResourceStates::CopyDest);
+                    command_list.commitBarriers();
+                    command_list.writeBuffer(shadow_cb, &shadow_data, sizeof(shadow_data));
+                    command_list.setBufferState(shadow_cb, GfxResourceStates::ConstantBuffer);
+                    command_list.commitBarriers();
+
                     MeshDrawCommandDispatcher::Dispatch(
                         context,
                         MeshPassType::DirectionalShadow,
