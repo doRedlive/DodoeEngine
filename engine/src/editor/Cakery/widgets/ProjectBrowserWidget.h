@@ -9,6 +9,9 @@
 #include <QSlider>
 #include <QSplitter>
 #include <QMimeData>
+#include <QDrag>
+#include <QMouseEvent>
+#include <QApplication>
 
 namespace cakery {
 
@@ -18,9 +21,70 @@ public:
     explicit AssetListWidget(QWidget* parent = nullptr) : QListWidget(parent) {
         setDragEnabled(true);
         setDragDropMode(QAbstractItemView::DragOnly);
+        setSelectionMode(QAbstractItemView::SingleSelection);
+        setDefaultDropAction(Qt::CopyAction);
+        setSelectionRectVisible(false);
     }
 
 protected:
+    void mousePressEvent(QMouseEvent* event) override {
+        m_dragStartPos = event->pos();
+        m_dragStarted = false;
+
+        QListWidgetItem* item = itemAt(event->pos());
+        if (item && !item->isSelected()) {
+            setCurrentItem(item);
+        }
+
+        QListWidget::mousePressEvent(event);
+    }
+
+    void mouseMoveEvent(QMouseEvent* event) override {
+        if (m_dragStarted) return;
+
+        if (event->buttons() & Qt::LeftButton) {
+            int dx = event->pos().x() - m_dragStartPos.x();
+            int dy = event->pos().y() - m_dragStartPos.y();
+            int threshold = QApplication::startDragDistance();
+
+            if (dx * dx + dy * dy >= threshold * threshold) {
+                QListWidgetItem* item = itemAt(m_dragStartPos);
+                if (item) {
+                    m_dragStarted = true;
+                    setCurrentItem(item);
+                    startDrag(Qt::CopyAction);
+                    return;
+                }
+            }
+        }
+
+        QListWidget::mouseMoveEvent(event);
+    }
+
+    void mouseReleaseEvent(QMouseEvent* event) override {
+        m_dragStarted = false;
+        QListWidget::mouseReleaseEvent(event);
+    }
+
+    void startDrag(Qt::DropActions supportedActions) override {
+        QList<QListWidgetItem*> items = selectedItems();
+        if (items.isEmpty()) return;
+
+        QMimeData* data = mimeData(items);
+        if (!data) return;
+
+        QDrag* drag = new QDrag(this);
+        drag->setMimeData(data);
+
+        QPixmap pixmap = items.first()->icon().pixmap(48, 48);
+        if (!pixmap.isNull()) {
+            drag->setPixmap(pixmap);
+            drag->setHotSpot(QPoint(pixmap.width() / 2, pixmap.height() / 2));
+        }
+
+        drag->exec(supportedActions, Qt::CopyAction);
+    }
+
     QMimeData* mimeData(const QList<QListWidgetItem*>& items) const override {
         if (items.isEmpty()) return nullptr;
         auto* mime = new QMimeData();
@@ -36,6 +100,10 @@ protected:
     QStringList mimeTypes() const override {
         return {"application/x-cakery-asset", "text/uri-list", "text/plain"};
     }
+
+private:
+    QPoint m_dragStartPos;
+    bool m_dragStarted = false;
 };
 
 class ProjectBrowserWidget : public QWidget {

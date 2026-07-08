@@ -7,6 +7,7 @@
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components/id_component.h"
 #include "runtime/core/meta/component_db.h"
+#include "runtime/service/world/scene_importer.h"
 
 #include <QLabel>
 #include <QLineEdit>
@@ -19,6 +20,11 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QMenu>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QUrl>
 
 namespace cakery {
 
@@ -27,6 +33,8 @@ static dodoe::ComponentDB& db() { return dodoe::ComponentDB::self(); }
 InspectorWidget::InspectorWidget(QWidget* parent)
     : QWidget(parent)
 {
+    setAcceptDrops(true);
+
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(10, 8, 10, 8);
     mainLayout->setSpacing(7);
@@ -292,6 +300,52 @@ void InspectorWidget::onRemoveComponent(const QString& typeName)
 
     db().removeComponent(m_entity, typeName.toLatin1().constData());
     refresh();
+}
+
+void InspectorWidget::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->mimeData()->hasFormat("application/x-cakery-asset") ||
+        event->mimeData()->hasUrls()) {
+        event->acceptProposedAction();
+    }
+}
+
+void InspectorWidget::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (event->mimeData()->hasFormat("application/x-cakery-asset") ||
+        event->mimeData()->hasUrls()) {
+        event->acceptProposedAction();
+    }
+}
+
+void InspectorWidget::dropEvent(QDropEvent* event)
+{
+    importDroppedAssets(event->mimeData());
+    event->acceptProposedAction();
+}
+
+void InspectorWidget::importDroppedAssets(const QMimeData* mime)
+{
+    QStringList paths;
+
+    if (mime->hasFormat("application/x-cakery-asset")) {
+        QString text = QString::fromUtf8(mime->data("application/x-cakery-asset"));
+        for (const auto& line : text.split('\n', Qt::SkipEmptyParts)) {
+            paths << line.trimmed();
+        }
+    }
+
+    if (paths.isEmpty() && mime->hasUrls()) {
+        for (const auto& url : mime->urls()) {
+            if (url.isLocalFile()) {
+                paths << url.toLocalFile();
+            }
+        }
+    }
+
+    for (const auto& path : paths) {
+        dodoe::SceneImporter::ImportAsset(path.toStdString());
+    }
 }
 
 }

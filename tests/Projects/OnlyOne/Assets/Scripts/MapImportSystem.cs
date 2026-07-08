@@ -1,0 +1,19 @@
+namespace OnlyOne;
+
+using GreenCake;
+using GreenCake.TiledImporter;
+using GreenCake.Tilemap;
+
+public class MapImportSystem : DoSystem
+{
+    private bool _imported;
+
+    public void Start()
+    {
+        if (_imported) return;
+        _imported = true;
+
+        var tilemap = TiledImporter.ImportFromFile("Assets/Maps/level1.tmj");
+        tilemap.InstantiateToScene();
+    }
+}

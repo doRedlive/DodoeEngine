@@ -1,6 +1,6 @@
 // do@Redlive
 
-#ifdef DODOE_EDITOR
+#ifdef DODOE_DEBUG
 
 #include "dopch.h"
 
@@ -25,4 +25,4 @@ namespace dodoe {
 
 } // dodoe
 
-#endif//DODOE_EDITOR
+#endif//DODOE_DEBUG

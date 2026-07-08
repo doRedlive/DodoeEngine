@@ -96,6 +96,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "10060261293956603903": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Resume2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Resume2.png",
+                "uuid": 14240566634034307071
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Resume2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Resume2.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "10062718726961650166": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left hands/handL1/walk_7.png",
@@ -304,6 +320,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "10208975613136502924": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/pine.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/pine.png",
+                "uuid": 7774307026974310540
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "pine",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/pine.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "10213775521775055441": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn1/fall_0.png",
@@ -349,6 +381,22 @@
             "name": "fall_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 1/no hands/fall_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "10233577027312653631": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Actors/frog.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Actors/frog.png",
+                "uuid": 16291567779152237887
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "frog",
+            "source_file_mtime": 0,
+            "source_path": "textures/Actors/frog.png",
             "tags": [],
             "type": "Texture"
         },
@@ -573,6 +621,22 @@
             "name": "roll_4",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes3/roll_4.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "10373956261145968276": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/spikes.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/spikes.png",
+                "uuid": 10320516478457839252
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "spikes",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/spikes.png",
             "tags": [],
             "type": "Texture"
         },
@@ -1216,6 +1280,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "10620288538848277491": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Save2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Save2.png",
+                "uuid": 3461134654113068019
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Save2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Save2.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "10638928385659253288": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left feet/footL1/death_9.png",
@@ -1549,6 +1629,22 @@
             "name": "death_4",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair2/death_4.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "10831441734145659995": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/door-opened.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/door-opened.png",
+                "uuid": 16805525480904578139
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "door-opened",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/door-opened.png",
             "tags": [],
             "type": "Texture"
         },
@@ -1936,6 +2032,38 @@
             "tags": [],
             "type": "Texture"
         },
+        "11094851434703426692": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/skulls.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/skulls.png",
+                "uuid": 14807043989927826564
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "skulls",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/skulls.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "11102964388156492647": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Helps1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Helps1.png",
+                "uuid": 13609359920299330407
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Helps1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Helps1.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "11118239685590511004": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left feet/footL1/hit_0.png",
@@ -2173,6 +2301,22 @@
             "name": "jumpStart_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 1/with hands/jumpStart_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "11210890127150891325": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/rock.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/rock.png",
+                "uuid": 5603802784555286845
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "rock",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/rock.png",
             "tags": [],
             "type": "Texture"
         },
@@ -2544,6 +2688,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "11453032512678717930": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Quit2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Quit2.png",
+                "uuid": 8751377261769714154
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Quit2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Quit2.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "11457717003998791079": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair3/walk_7.png",
@@ -2557,6 +2717,22 @@
             "name": "walk_7",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair3/walk_7.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "11466172754831839303": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/Heart-bg.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/Heart-bg.png",
+                "uuid": 5920278126289719367
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Heart-bg",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/Heart-bg.png",
             "tags": [],
             "type": "Texture"
         },
@@ -2749,6 +2925,22 @@
             "name": "death_7",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth2/death_7.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "11552723591856995462": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/platform-long.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/platform-long.png",
+                "uuid": 6244336007629061254
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "platform-long",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/platform-long.png",
             "tags": [],
             "type": "Texture"
         },
@@ -3216,6 +3408,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "11794860102137122305": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/FX/item-feedback.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/FX/item-feedback.png",
+                "uuid": 14038136798036594177
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "item-feedback",
+            "source_file_mtime": 0,
+            "source_path": "textures/FX/item-feedback.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "11796880202560422430": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes2/jumpEnd_0.png",
@@ -3597,6 +3805,22 @@
             "name": "roll_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes5/roll_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "12012545684068454860": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Load1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Load1.png",
+                "uuid": 16026653424926675404
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Load1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Load1.png",
             "tags": [],
             "type": "Texture"
         },
@@ -3984,6 +4208,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "1213444712988844947": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/small-platform.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/small-platform.png",
+                "uuid": 10525447364251394963
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "small-platform",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/small-platform.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "12136015071616170260": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Heads/head1/death_1.png",
@@ -4189,6 +4429,22 @@
             "name": "fall_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair1/fall_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "12211699874988691298": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Resume1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Resume1.png",
+                "uuid": 11911039717453467490
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Resume1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Resume1.png",
             "tags": [],
             "type": "Texture"
         },
@@ -4512,6 +4768,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "12361265619243303797": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/crank-up.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/crank-up.png",
+                "uuid": 13613858398368891765
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "crank-up",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/crank-up.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "12374330427608149906": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Heads/head1/death_5.png",
@@ -4653,6 +4925,22 @@
             "name": "fall_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right weapons/weaponR3/fall_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "12503712017295705286": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Restart1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Restart1.png",
+                "uuid": 7221521216722535622
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Restart1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Restart1.png",
             "tags": [],
             "type": "Texture"
         },
@@ -5552,6 +5840,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "12878421694484337226": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/spike-skull.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/spike-skull.png",
+                "uuid": 16354014817883542090
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "spike-skull",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/spike-skull.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "12886579392149150952": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn3/roll_0.png",
@@ -6256,6 +6560,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "13250801661654553417": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Start2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Start2.png",
+                "uuid": 13546987605728645961
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Start2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Start2.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "1325533744965215298": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn1/fall_2.png",
@@ -6717,6 +7037,22 @@
             "name": "roll_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left feet/footL1/roll_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "13432752202535529415": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Start1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Start1.png",
+                "uuid": 416884886095915975
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Start1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Start1.png",
             "tags": [],
             "type": "Texture"
         },
@@ -7456,6 +7792,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "13802349759182046207": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Helps3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Helps3.png",
+                "uuid": 15331472581731451903
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Helps3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Helps3.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "13816356856898916643": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair3/death_8.png",
@@ -7565,6 +7917,22 @@
             "name": "jumpEnd_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes5/jumpEnd_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "13876322287781644963": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/rock-1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/rock-1.png",
+                "uuid": 5552652617044167331
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "rock-1",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/rock-1.png",
             "tags": [],
             "type": "Texture"
         },
@@ -8160,6 +8528,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "14150855184805985470": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/tree.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/tree.png",
+                "uuid": 852139915165236414
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "tree",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/tree.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "14154208811901259600": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth8/death_5.png",
@@ -8333,6 +8717,22 @@
             "name": "roll_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right hands/handR1/roll_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "14236886690306812677": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/big-crate.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/big-crate.png",
+                "uuid": 292659491302370053
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "big-crate",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/big-crate.png",
             "tags": [],
             "type": "Texture"
         },
@@ -9024,6 +9424,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "146138589912061125": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/Heart.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/Heart.png",
+                "uuid": 2666856828669744325
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Heart",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/Heart.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "14626171817488116738": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/idle_5.png",
@@ -9264,6 +9680,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "14782869926501601788": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/palm.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/palm.png",
+                "uuid": 4080946378567504380
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "palm",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/palm.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "14787883592955504930": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth8/walk_1.png",
@@ -9421,6 +9853,22 @@
             "name": "roll_3",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left feet/footL1/roll_3.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "14869513606826785634": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Actors/eagle-attack.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Actors/eagle-attack.png",
+                "uuid": 4360757540175182690
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "eagle-attack",
+            "source_file_mtime": 0,
+            "source_path": "textures/Actors/eagle-attack.png",
             "tags": [],
             "type": "Texture"
         },
@@ -9792,6 +10240,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "14997493415174887772": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Layers/tileset.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Layers/tileset.png",
+                "uuid": 2322218048985127260
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "tileset",
+            "source_file_mtime": 0,
+            "source_path": "textures/Layers/tileset.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "14999788285144080858": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes5/death_7.png",
@@ -10080,6 +10544,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "15143787304795313232": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Items/cherry.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Items/cherry.png",
+                "uuid": 9939576828096484432
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "cherry",
+            "source_file_mtime": 0,
+            "source_path": "textures/Items/cherry.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "15145757677284569350": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left feet/footL1/walk_6.png",
@@ -10269,6 +10749,22 @@
             "name": "walk_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left hands/handL1/walk_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "15225153674755927305": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/tree-house.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/tree-house.png",
+                "uuid": 2087880345961590025
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "tree-house",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/tree-house.png",
             "tags": [],
             "type": "Texture"
         },
@@ -11088,6 +11584,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "15650703339018010632": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/big-house.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/big-house.png",
+                "uuid": 8201648164054253576
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "big-house",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/big-house.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "15662651624426400201": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 1/with hands/hit_0.png",
@@ -11789,6 +12301,22 @@
             "name": "death_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth7/death_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "1602625952065538201": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Restart3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Restart3.png",
+                "uuid": 10035636861569878169
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Restart3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Restart3.png",
             "tags": [],
             "type": "Texture"
         },
@@ -12717,6 +13245,22 @@
             "name": "walk_4",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes4/walk_4.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "16550369233675776427": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Actors/foxy.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Actors/foxy.png",
+                "uuid": 7781696227578245547
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "foxy",
+            "source_file_mtime": 0,
+            "source_path": "textures/Actors/foxy.png",
             "tags": [],
             "type": "Texture"
         },
@@ -14272,6 +14816,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "17362218968036497706": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/shrooms.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/shrooms.png",
+                "uuid": 4280945355582691626
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "shrooms",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/shrooms.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "17391394988445424313": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn2/walk_4.png",
@@ -15072,6 +15632,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "17850460276059664980": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/house.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/house.png",
+                "uuid": 12604716662449631828
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "house",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/house.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "17858650762535659333": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 4/no hands/idle_3.png",
@@ -15165,6 +15741,22 @@
             "name": "walk_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth7/walk_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "17879788197997867194": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/plant-house.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/plant-house.png",
+                "uuid": 3381446119717499066
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "plant-house",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/plant-house.png",
             "tags": [],
             "type": "Texture"
         },
@@ -15536,6 +16128,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "18018577272143628316": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Load2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Load2.png",
+                "uuid": 17971926892152637468
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Load2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Load2.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "18032525716490460829": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/fall_0.png",
@@ -15677,6 +16285,22 @@
             "name": "jumpStart_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair2/jumpStart_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "18100040885149481576": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Items/gem.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Items/gem.png",
+                "uuid": 8512153964565871208
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "gem",
+            "source_file_mtime": 0,
+            "source_path": "textures/Items/gem.png",
             "tags": [],
             "type": "Texture"
         },
@@ -15917,6 +16541,22 @@
             "name": "walk_4",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes5/walk_4.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "18170452431098476070": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Quit3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Quit3.png",
+                "uuid": 3213895607861245478
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Quit3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Quit3.png",
             "tags": [],
             "type": "Texture"
         },
@@ -17536,6 +18176,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "2425053358376151331": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Resume3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Resume3.png",
+                "uuid": 1506268817634945315
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Resume3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Resume3.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "2426683142712364983": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/no hands/fall_3.png",
@@ -17885,6 +18541,22 @@
             "name": "walk_4",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair1/walk_4.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "2607658683265497389": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Save1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Save1.png",
+                "uuid": 8478289432506579245
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Save1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Save1.png",
             "tags": [],
             "type": "Texture"
         },
@@ -18464,6 +19136,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "2885751474060592754": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/crank-down.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/crank-down.png",
+                "uuid": 6324680531828082290
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "crank-down",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/crank-down.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "2887071406937312979": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth7/idle_3.png",
@@ -18736,6 +19424,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "3012373796347547794": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/spikes-top.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/spikes-top.png",
+                "uuid": 17043393767484002450
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "spikes-top",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/spikes-top.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "3017198034759828326": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/hit_0.png",
@@ -18861,6 +19565,22 @@
             "name": "death_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left feet/footL1/death_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "3072764707035340720": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/block-big.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/block-big.png",
+                "uuid": 16398923494847602608
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "block-big",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/block-big.png",
             "tags": [],
             "type": "Texture"
         },
@@ -19408,6 +20128,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "3361234469413507199": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Actors/opossum.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Actors/opossum.png",
+                "uuid": 13162005288019087487
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "opossum",
+            "source_file_mtime": 0,
+            "source_path": "textures/Actors/opossum.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "3373828042002941299": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/no hands/death_0.png",
@@ -19725,6 +20461,22 @@
             "name": "death_2",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair2/death_2.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "359472825572527538": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Back3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Back3.png",
+                "uuid": 847201821283323314
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Back3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Back3.png",
             "tags": [],
             "type": "Texture"
         },
@@ -20381,6 +21133,22 @@
             "name": "death_3",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes6/death_3.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "3924409862658968476": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/bush.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/bush.png",
+                "uuid": 3162967935523474332
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "bush",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/bush.png",
             "tags": [],
             "type": "Texture"
         },
@@ -21344,6 +22112,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "4576583202277999543": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/sign.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/sign.png",
+                "uuid": 4278379899180073911
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "sign",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/sign.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "4591666392651521145": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Bodies/body1/jumpStart_0.png",
@@ -21437,6 +22221,22 @@
             "name": "death_9",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth7/death_9.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "4664443678960999689": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/FX/enemy-deadth.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/FX/enemy-deadth.png",
+                "uuid": 12226832191778807049
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "enemy-deadth",
+            "source_file_mtime": 0,
+            "source_path": "textures/FX/enemy-deadth.png",
             "tags": [],
             "type": "Texture"
         },
@@ -22080,6 +22880,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "4975851937029173474": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Save3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Save3.png",
+                "uuid": 14607025509411860706
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Save3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Save3.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "5016366539661841801": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth6/walk_2.png",
@@ -22256,6 +23072,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "5081262411455935307": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Quit1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Quit1.png",
+                "uuid": 8699564610767827787
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Quit1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Quit1.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "5081368174079757007": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth3/jumpEnd_1.png",
@@ -22320,6 +23152,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "5128715917070716832": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/straw-house.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/straw-house.png",
+                "uuid": 1054436461784616864
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "straw-house",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/straw-house.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "5136028617441205356": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Hairs/hair1/idle_5.png",
@@ -22381,6 +23229,22 @@
             "name": "idle_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn3/idle_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "5173597205388609007": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Back2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Back2.png",
+                "uuid": 7044355616586089967
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Back2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Back2.png",
             "tags": [],
             "type": "Texture"
         },
@@ -23760,6 +24624,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "5859757236781134082": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/press-enter-text.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/press-enter-text.png",
+                "uuid": 16049870405591970050
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "press-enter-text",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/press-enter-text.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "5862241741569121670": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth8/hit_1.png",
@@ -23885,6 +24765,22 @@
             "name": "fall_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left wings/wingL1/fall_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "5932846690791398235": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Layers/middle.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Layers/middle.png",
+                "uuid": 12464818097703426907
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "middle",
+            "source_file_mtime": 0,
+            "source_path": "textures/Layers/middle.png",
             "tags": [],
             "type": "Texture"
         },
@@ -24125,6 +25021,22 @@
             "name": "idle_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right hands/handR1/idle_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "6012666618355819043": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/face-block.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/face-block.png",
+                "uuid": 8211895263538881059
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "face-block",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/face-block.png",
             "tags": [],
             "type": "Texture"
         },
@@ -24944,6 +25856,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "6469816125845225032": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/rock-2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/rock-2.png",
+                "uuid": 4307073962281090632
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "rock-2",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/rock-2.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "6476700802970911596": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Bodies/body1/walk_5.png",
@@ -25261,6 +26189,22 @@
             "name": "death_5",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn1/death_5.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "6614622610513394236": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/title-screen.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/title-screen.png",
+                "uuid": 4450287447874140732
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "title-screen",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/title-screen.png",
             "tags": [],
             "type": "Texture"
         },
@@ -25677,6 +26621,22 @@
             "name": "roll_0",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes5/roll_0.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "6880766864761113221": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Start3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Start3.png",
+                "uuid": 6609295403753753221
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Start3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Start3.png",
             "tags": [],
             "type": "Texture"
         },
@@ -26112,6 +27072,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "7092972190364959672": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Back1.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Back1.png",
+                "uuid": 2208143113953575864
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Back1",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Back1.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "7107948621191608096": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Eyes/eyes2/roll_0.png",
@@ -26160,6 +27136,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "7128163849113765159": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/instructions.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/instructions.png",
+                "uuid": 16822217361912562983
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "instructions",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/instructions.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "7131230713657487064": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Enemies/Enemy 3/fly_3.png",
@@ -26189,6 +27181,22 @@
             "name": "roll_4",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn2/roll_4.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "7156206750328299657": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/door.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/door.png",
+                "uuid": 11225154278594322569
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "door",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/door.png",
             "tags": [],
             "type": "Texture"
         },
@@ -27072,6 +28080,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "769670425030467589": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/block.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/block.png",
+                "uuid": 6229955493391015941
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "block",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/block.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "7709442226696194825": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right hands/handR1/walk_1.png",
@@ -27904,6 +28928,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "806758449818585795": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Layers/back.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Layers/back.png",
+                "uuid": 17792040021599668931
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "back",
+            "source_file_mtime": 0,
+            "source_path": "textures/Layers/back.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "8074898302810820511": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right feet/footR1/jumpEnd_1.png",
@@ -28608,6 +29648,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "8443578373151359749": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/wooden-house.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/wooden-house.png",
+                "uuid": 2573579984830169861
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "wooden-house",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/wooden-house.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "8456416708695079268": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Horns/horn4/idle_2.png",
@@ -28637,6 +29693,22 @@
             "name": "idle_2",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Enemies/Enemy 2/idle_2.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "8470857017681763417": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Preview.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Preview.png",
+                "uuid": 1587598311484546137
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Preview",
+            "source_file_mtime": 0,
+            "source_path": "textures/Preview.png",
             "tags": [],
             "type": "Texture"
         },
@@ -29005,6 +30077,22 @@
             "name": "jumpStart_1",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth6/jumpStart_1.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "8624011490369269928": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Load3.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Load3.png",
+                "uuid": 1300650027971571880
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Load3",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Load3.png",
             "tags": [],
             "type": "Texture"
         },
@@ -30320,6 +31408,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "9343411238164422279": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Restart2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Restart2.png",
+                "uuid": 1944564866546065031
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Restart2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Restart2.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "9358665017084200695": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Left feet/footL1/death_5.png",
@@ -31408,6 +32512,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "9723437135161386763": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/Props/crate.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/Props/crate.png",
+                "uuid": 8690143943060547339
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "crate",
+            "source_file_mtime": 0,
+            "source_path": "textures/Props/crate.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "9737917473631532603": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Mouths/mouth5/death_0.png",
@@ -31808,6 +32928,22 @@
             "tags": [],
             "type": "Texture"
         },
+        "9891888696534565100": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/credits-text.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/credits-text.png",
+                "uuid": 6751320571459731692
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "credits-text",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/credits-text.png",
+            "tags": [],
+            "type": "Texture"
+        },
         "991021348589199877": {
             "asset_file_mtime": 0,
             "asset_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Animated body parts/Right weapons/weaponR1/death_1.png",
@@ -31885,6 +33021,22 @@
             "name": "idle_4",
             "source_file_mtime": 0,
             "source_path": "Pictures/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 3/with hands/idle_4.png",
+            "tags": [],
+            "type": "Texture"
+        },
+        "992169602665370664": {
+            "asset_file_mtime": 0,
+            "asset_path": "textures/UI/buttons/Helps2.png",
+            "dependencies": [],
+            "file_id": {
+                "path": "textures/UI/buttons/Helps2.png",
+                "uuid": 6405118002505667624
+            },
+            "import_settings": {},
+            "is_builtin": false,
+            "name": "Helps2",
+            "source_file_mtime": 0,
+            "source_path": "textures/UI/buttons/Helps2.png",
             "tags": [],
             "type": "Texture"
         },

@@ -10,6 +10,10 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QLabel>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
+#include <QMimeData>
 #include <vector>
 #include "runtime/function/world/entity.h"
 
@@ -26,6 +30,11 @@ public slots:
     void onEntitySelected(dodoe::Entity entity);
     void onEntityDeselected();
 
+protected:
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dragMoveEvent(QDragMoveEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+
 private slots:
     void onEntityNameChanged(const QString& text);
     void onAddComponent(const QString& typeName);
@@ -40,6 +49,7 @@ private:
     void setupGameObjectHeader();
     void setupTagLayerRow();
     void setupAddComponentButton();
+    void importDroppedAssets(const QMimeData* mime);
 
 
     QWidget* m_headerWidget = nullptr;

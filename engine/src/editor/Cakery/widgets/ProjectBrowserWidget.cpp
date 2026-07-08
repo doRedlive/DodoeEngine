@@ -204,10 +204,7 @@ void ProjectBrowserWidget::onFolderSelected()
 
 void ProjectBrowserWidget::onAssetDoubleClicked(QListWidgetItem* item)
 {
-    QString path = item->data(Qt::UserRole).toString();
-    if (QFileInfo::exists(path)) {
-        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
-    }
+    Q_UNUSED(item);
 }
 
 void ProjectBrowserWidget::onIconSizeChanged(int value)

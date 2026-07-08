@@ -309,6 +309,7 @@ namespace dodoe {
 
     void SceneImporter::ImportAsset(const String& path) {
         const String ext = std::filesystem::path(path).extension().string();
+        DO_DEBUG("Import Asset");
 
         if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" ||
             ext == ".OBJ" || ext == ".FBX" || ext == ".GLTF" || ext == ".GLB") {

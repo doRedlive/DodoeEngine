@@ -17,8 +17,9 @@ set(SANDBOX_ALL_SOURCES ${SANDBOX_SOURCES} ${SANDBOX_HEADERS})
 add_executable(${TARGET_NAME} ${SANDBOX_ALL_SOURCES})
 
 target_link_libraries(${TARGET_NAME}
-        PRIVATE DodoeRuntime
+        PRIVATE DodoeRuntimeStatic
 )
+target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_STATIC_LINK)
 
 if(TARGET GreenCake)
     add_dependencies(${TARGET_NAME} GreenCake)
