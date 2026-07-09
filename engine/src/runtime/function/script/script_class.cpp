@@ -7,6 +7,7 @@
 #include "mono/metadata/debug-helpers.h"
 #include "mono/metadata/attrdefs.h"
 #include "mono/metadata/class.h"
+#include "mono/metadata/appdomain.h"
 #include "mono/utils/mono-publib.h"
 
 namespace dodoe {
@@ -219,7 +220,26 @@ namespace dodoe {
         if (!instance) {
             return nullptr;
         }
-        mono_runtime_object_init(instance);
+
+        MonoMethod* ctor = mono_class_get_method_from_name(m_mono_class, ".ctor", 0);
+        if (ctor) {
+            MonoObject* exception = nullptr;
+            mono_runtime_invoke(ctor, instance, nullptr, &exception);
+            if (exception) {
+                MonoString* exception_string = mono_object_to_string(exception, nullptr);
+                char* exception_chars = exception_string ? mono_string_to_utf8(exception_string) : nullptr;
+                DO_ERROR("Managed exception in {}.{} constructor: {}",
+                    m_class_namespace, m_class_name, exception_chars ? exception_chars : "<unknown>");
+                if (exception_chars) {
+                    mono_free(exception_chars);
+                }
+                return nullptr;
+            }
+        }
+        else {
+            mono_runtime_object_init(instance);
+        }
+
         return instance;
     }
 

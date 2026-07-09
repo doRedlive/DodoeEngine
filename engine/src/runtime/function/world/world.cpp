@@ -27,6 +27,9 @@ namespace dodoe {
 
     bool World::initialize(const WorldCreateInfo& create_info) {
         m_name = create_info.name;
+#ifdef DODOE_EDITOR
+        m_state = WorldState::Simulation;
+#endif
         if (!setupSystems()) return false;
         return true;
     }

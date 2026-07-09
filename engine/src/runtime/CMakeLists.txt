@@ -33,9 +33,6 @@ set(DODOE_RUNTIME_HEADS "${_DODOE_RUNTIME_HEADS}" CACHE STRING "Runtime headers 
 add_library(${TARGET_NAME} SHARED ${DODOE_ALL_SOURCES})
 target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_BUILD_DLL)
 
-add_library(DodoeRuntimeStatic OBJECT ${SOURCE_FILES})
-target_link_libraries(DodoeRuntimeStatic PUBLIC DodoeRuntime)
-
 source_group(TREE ${ENGINE_ROOT_DIR}/src FILES ${DODOE_ALL_SOURCES})
 
 target_include_directories(${TARGET_NAME}

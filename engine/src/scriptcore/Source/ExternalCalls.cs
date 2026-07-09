@@ -56,7 +56,7 @@ public static class ExternalCalls
             if (componentType is not null)
                 break;
         }
-        
+
         if (componentType is null)
         {
             string shortName = fullName.Contains('.') ? fullName.Split('.').Last() : fullName;

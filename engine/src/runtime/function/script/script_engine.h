@@ -24,6 +24,7 @@ namespace dodoe {
         MonoAssembly* m_app_assembly{nullptr};
         MonoImage* m_core_image{nullptr};
         MonoImage* m_app_image{nullptr};
+        void* m_alc_gchandle{nullptr};
         std::string m_script_sources_fingerprint{};
 
     public:
@@ -39,9 +40,8 @@ namespace dodoe {
 
         bool setupMono();
         void cleanupMono();
-        void unloadManagedDomain();
 
-        bool loadCoreAssembly(const std::string& path);
+        bool loadCoreAssembly(const String& path);
         bool loadAppAssembly();
 
         bool buildScrptAssembly();

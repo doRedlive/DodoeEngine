@@ -17,9 +17,8 @@ set(SANDBOX_ALL_SOURCES ${SANDBOX_SOURCES} ${SANDBOX_HEADERS})
 add_executable(${TARGET_NAME} ${SANDBOX_ALL_SOURCES})
 
 target_link_libraries(${TARGET_NAME}
-        PRIVATE DodoeRuntimeStatic
+        PRIVATE DodoeRuntime
 )
-target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_STATIC_LINK)
 
 if(TARGET GreenCake)
     add_dependencies(${TARGET_NAME} GreenCake)
@@ -34,6 +33,7 @@ target_include_directories(${TARGET_NAME}
 set(POST_BUILD_COMMANDS
         COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${TARGET_NAME}>" "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:DodoeRuntime>" "${BINARY_ROOT_DIR}/"
 )
 
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

@@ -17,6 +17,7 @@
 
 #include "mono/metadata/class.h"
 #include "mono/metadata/image.h"
+#include "mono/metadata/assembly.h"
 #include "mono/metadata/object.h"
 #include "mono/metadata/reflection.h"
 #include "mono/utils/mono-publib.h"

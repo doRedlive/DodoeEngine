@@ -3,6 +3,8 @@
 #include "script_runtime.h"
 
 #include "script_class.h"
+#include "mono/jit/jit.h"
+#include "mono/metadata/appdomain.h"
 #include "mono/metadata/class.h"
 #include "mono/metadata/debug-helpers.h"
 #include "mono/metadata/reflection.h"
@@ -273,20 +275,29 @@ namespace dodoe {
     }
 
     void ScriptRuntime::onRuntimeStart() {
+        if (m_script_engine && m_script_engine->getCoreDomain()) {
+            mono_domain_set(m_script_engine->getCoreDomain(), true);
+        }
         for (auto& [_, system] : m_system_instance_umap) {
-            system->invokeStart();  
+            system->invokeStart();
         }
     }
 
     void ScriptRuntime::onRuntimeUpdate() {
+        if (m_script_engine && m_script_engine->getCoreDomain()) {
+            mono_domain_set(m_script_engine->getCoreDomain(), true);
+        }
         for (auto& [_, system] : m_system_instance_umap) {
-            system->invokeUpdate();  
+            system->invokeUpdate();
         }
     }
 
     void ScriptRuntime::onRuntimeFinalize() {
+        if (m_script_engine && m_script_engine->getCoreDomain()) {
+            mono_domain_set(m_script_engine->getCoreDomain(), true);
+        }
         for (auto& [_, system] : m_system_instance_umap) {
-            system->invokeFinalize();  
+            system->invokeFinalize();
         }
     }
     
