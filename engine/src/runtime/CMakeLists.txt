@@ -102,22 +102,21 @@ target_compile_definitions(${TARGET_NAME}
         PRIVATE $<$<CONFIG:Debug>:DO_DEBUG>
 )
 
-if(DODOE_EDITOR)
-    add_dependencies(${TARGET_NAME} DodoeMonoRuntimeFiles)
-    if(DODOE_PYTHON_ENABLED)
-        add_dependencies(${TARGET_NAME} DodoePythonRuntimeFiles)
-    endif()
+add_dependencies(${TARGET_NAME} DodoeMonoRuntimeFiles)
 
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:${TARGET_NAME}>
-            "${BINARY_ROOT_DIR}/"
-        COMMENT "Copy DodoeRuntime.dll -> ${BINARY_ROOT_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${ENGINE_ROOT_DIR}/external/mono/bin/coreclr.dll"
-            "${BINARY_ROOT_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${ENGINE_ROOT_DIR}/external/mono/bin/System.Private.CoreLib.dll"
-            "${BINARY_ROOT_DIR}/"
-    )
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:${TARGET_NAME}>
+        "${BINARY_ROOT_DIR}/"
+    COMMENT "Copy DodoeRuntime.dll -> ${BINARY_ROOT_DIR}/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ENGINE_ROOT_DIR}/external/mono/bin/coreclr.dll"
+        "${BINARY_ROOT_DIR}/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ENGINE_ROOT_DIR}/external/mono/bin/System.Private.CoreLib.dll"
+        "${BINARY_ROOT_DIR}/"
+)
+
+if(DODOE_PYTHON_ENABLED)
+    add_dependencies(${TARGET_NAME} DodoePythonRuntimeFiles)
 endif()

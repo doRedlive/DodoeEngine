@@ -86,7 +86,7 @@ if(NOT TARGET assimp)
     set_target_properties(assimp PROPERTIES FOLDER ${external_folder}/assimp)
 endif()
 
-if(NOT TARGET ads::qtadvanceddocking-qt6)
+if(DODOE_EDITOR AND NOT TARGET ads::qtadvanceddocking-qt6)
     include(qt-ads.cmake)
 endif()
 

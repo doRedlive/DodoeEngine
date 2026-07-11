@@ -1,0 +1,203 @@
+// do@Redlive
+
+#include "EditorCamera.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace cakery {
+
+EditorCamera::EditorCamera() = default;
+
+void EditorCamera::setViewportSize(float w, float h)
+{
+    m_vpW = w;
+    m_vpH = h;
+}
+
+void EditorCamera::update(float dt)
+{
+    if (m_mode == Mode::Orbit) {
+        updateOrbit(dt);
+    } else {
+        updateFly(dt);
+    }
+}
+
+void EditorCamera::updateOrbit(float /*dt*/)
+{
+    m_pitch = std::clamp(m_pitch, -kPitchLimit, kPitchLimit);
+
+    float pitchRad = glm::radians(m_pitch);
+    float yawRad   = glm::radians(m_yaw);
+
+    dodoe::Vector3f dir{
+        std::cos(pitchRad) * std::cos(yawRad),
+        std::sin(pitchRad),
+        std::cos(pitchRad) * std::sin(yawRad)
+    };
+
+    dodoe::Vector3f eye = m_pivot - dir * m_distance;
+
+    // Position will be committed via view matrix
+    (void)eye;
+}
+
+void EditorCamera::updateFly(float dt)
+{
+    float speed = kFlySpeed * dt;
+    if (m_keyW) m_flyPos += forward() * speed;
+    if (m_keyS) m_flyPos -= forward() * speed;
+    if (m_keyA) m_flyPos -= right() * speed;
+    if (m_keyD) m_flyPos += right() * speed;
+    if (m_keyQ) m_flyPos -= dodoe::Vector3f{0.0f, speed, 0.0f};
+    if (m_keyE) m_flyPos += dodoe::Vector3f{0.0f, speed, 0.0f};
+}
+
+dodoe::Vector3f EditorCamera::forward() const
+{
+    float pitchRad = glm::radians(m_flyPitch);
+    float yawRad   = glm::radians(m_flyYaw);
+    return {
+        std::cos(pitchRad) * std::cos(yawRad),
+        std::sin(pitchRad),
+        std::cos(pitchRad) * std::sin(yawRad)
+    };
+}
+
+dodoe::Vector3f EditorCamera::right() const
+{
+    float yawRad = glm::radians(m_flyYaw);
+    return {
+        -std::sin(yawRad),
+        0.0f,
+        std::cos(yawRad)
+    };
+}
+
+void EditorCamera::commitToRenderChannel()
+{
+    // TODO: write view/proj to editor camera channel in runtime
+}
+
+void EditorCamera::onMouseDown(float x, float y, int button, bool alt)
+{
+    if (button >= 0 && button < 3) {
+        m_mouseDown[button] = true;
+    }
+    m_lastMouseX = x;
+    m_lastMouseY = y;
+    m_altDown = alt;
+
+    if (button == 2) {
+        m_mode = Mode::Fly;
+    } else if (m_altDown && button == 0) {
+        m_mode = Mode::Orbit;
+    }
+}
+
+void EditorCamera::onMouseUp(int button)
+{
+    if (button >= 0 && button < 3) {
+        m_mouseDown[button] = false;
+    }
+
+    if (button == 2) {
+        m_mode = Mode::Orbit;
+    }
+}
+
+void EditorCamera::onMouseMove(float x, float y)
+{
+    float dx = x - m_lastMouseX;
+    float dy = y - m_lastMouseY;
+    m_lastMouseX = x;
+    m_lastMouseY = y;
+
+    if (m_mode == Mode::Orbit) {
+        if (m_mouseDown[0] && m_altDown) {
+            m_yaw   -= dx * kOrbitSpeed;
+            m_pitch += dy * kOrbitSpeed;
+        }
+        if (m_mouseDown[1]) {
+            float speed = m_distance * kPanSpeed;
+            m_pivot -= right() * dx * speed;
+            m_pivot += dodoe::Vector3f{0.0f, 1.0f, 0.0f} * dy * speed;
+        }
+    } else if (m_mode == Mode::Fly) {
+        m_flyYaw   -= dx * kOrbitSpeed;
+        m_flyPitch += dy * kOrbitSpeed;
+        m_flyPitch = std::clamp(m_flyPitch, -kPitchLimit, kPitchLimit);
+    }
+}
+
+void EditorCamera::onScroll(float delta)
+{
+    m_distance -= delta * kZoomSpeed;
+    m_distance = std::clamp(m_distance, kMinDistance, kMaxDistance);
+}
+
+void EditorCamera::onKey(int key, bool down)
+{
+    switch (key) {
+    case 'W': m_keyW = down; break;
+    case 'S': m_keyS = down; break;
+    case 'A': m_keyA = down; break;
+    case 'D': m_keyD = down; break;
+    case 'Q': m_keyQ = down; break;
+    case 'E': m_keyE = down; break;
+    default: break;
+    }
+}
+
+void EditorCamera::focusOn(const dodoe::Vector3f& target, float radius)
+{
+    m_pivot    = target;
+    m_distance = std::max(radius * 2.0f, kMinDistance);
+}
+
+dodoe::Matrix4f EditorCamera::view() const
+{
+    if (m_mode == Mode::Fly) {
+        return glm::lookAt(m_flyPos, m_flyPos + forward(), dodoe::Vector3f{0.0f, 1.0f, 0.0f});
+    }
+
+    float pitchRad = glm::radians(m_pitch);
+    float yawRad   = glm::radians(m_yaw);
+
+    dodoe::Vector3f dir{
+        std::cos(pitchRad) * std::cos(yawRad),
+        std::sin(pitchRad),
+        std::cos(pitchRad) * std::sin(yawRad)
+    };
+
+    dodoe::Vector3f eye = m_pivot - dir * m_distance;
+    return glm::lookAt(eye, m_pivot, dodoe::Vector3f{0.0f, 1.0f, 0.0f});
+}
+
+dodoe::Matrix4f EditorCamera::projection() const
+{
+    float aspect = (m_vpH > 0.0f) ? (m_vpW / m_vpH) : 1.0f;
+    return glm::perspective(glm::radians(m_fov), aspect, 0.1f, 10000.0f);
+}
+
+void EditorCamera::screenToRay(float sx, float sy,
+                                dodoe::Vector3f& outOrigin, dodoe::Vector3f& outDir) const
+{
+    dodoe::Matrix4f vp = projection() * view();
+    dodoe::Matrix4f invVP = glm::inverse(vp);
+
+    float ndcX = (2.0f * sx) / m_vpW - 1.0f;
+    float ndcY = 1.0f - (2.0f * sy) / m_vpH;
+
+    dodoe::Vector4f nearPoint = invVP * dodoe::Vector4f{ndcX, ndcY, 0.0f, 1.0f};
+    dodoe::Vector4f farPoint  = invVP * dodoe::Vector4f{ndcX, ndcY, 1.0f, 1.0f};
+
+    nearPoint /= nearPoint.w;
+    farPoint  /= farPoint.w;
+
+    outOrigin = dodoe::Vector3f{nearPoint};
+    outDir    = glm::normalize(dodoe::Vector3f{farPoint} - outOrigin);
+}
+
+} // namespace cakery

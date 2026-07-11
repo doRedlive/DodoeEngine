@@ -2,7 +2,7 @@ namespace OnlyOne;
 
 using GreenCake;
 
-public class TestSystem
+public class TestSystem : DoSystem
 {
     public void Update()
     {

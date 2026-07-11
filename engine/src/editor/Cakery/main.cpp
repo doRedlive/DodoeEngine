@@ -1,6 +1,6 @@
 // do@Redlive
 
-#include "app/CakeryApplication.h"
+#include "app/EditorApplication.h"
 #include "runtime/function/log/log_system.h"
 
 #include <QtGlobal>
@@ -40,6 +40,6 @@ int main(int argc, char* argv[])
 {
     qInstallMessageHandler(debugMessageHandler);
 
-    cakery::CakeryApplication app(argc, argv);
+    cakery::EditorApplication app(argc, argv);
     return app.run();
 }

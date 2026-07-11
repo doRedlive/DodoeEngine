@@ -102,8 +102,8 @@ public static class ExternalCalls
 
     public static void CollectAndWait()
     {
-        GC.Collect();
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
         GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
     }
 }

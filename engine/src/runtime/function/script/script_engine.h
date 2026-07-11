@@ -49,6 +49,7 @@ namespace dodoe {
         bool loadCoreAssembly(const String& path);
 
         std::string m_pending_fingerprint{};
+        int m_reload_counter{0};
     };
 
 } // dodoe

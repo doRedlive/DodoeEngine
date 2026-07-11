@@ -26,6 +26,119 @@ namespace dodoe {
 
     namespace {
 
+        struct PeMetaStream {
+            ui32 offset;
+            ui32 size;
+            char name[12];
+        };
+
+        struct IMAGE_COR20_HEADER_DATA {
+            ui32 cb;
+            ui16 MajorRuntimeVersion;
+            ui16 MinorRuntimeVersion;
+            IMAGE_DATA_DIRECTORY MetaData;
+            ui32 Flags;
+            ui32 EntryPointToken;
+            IMAGE_DATA_DIRECTORY Resources;
+            IMAGE_DATA_DIRECTORY StrongNameSignature;
+            IMAGE_DATA_DIRECTORY CodeManagerTable;
+            IMAGE_DATA_DIRECTORY VTableFixups;
+            IMAGE_DATA_DIRECTORY ExportAddressTableJumps;
+            IMAGE_DATA_DIRECTORY ManagedNativeHeader;
+        };
+
+        static ui32 PeRvaToOffset(const Byte* base, ui32 rva) {
+            auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+            auto* nth = reinterpret_cast<const IMAGE_NT_HEADERS32*>(base + dos->e_lfanew);
+            auto* sec = IMAGE_FIRST_SECTION(nth);
+            for (int i = 0; i < nth->FileHeader.NumberOfSections; ++i, ++sec) {
+                if (rva >= sec->VirtualAddress && rva < sec->VirtualAddress + sec->Misc.VirtualSize)
+                    return sec->PointerToRawData + (rva - sec->VirtualAddress);
+            }
+            return 0;
+        }
+
+        static bool PatchAssemblyNameInPlace(DynamicArray<Byte>& dll, int counter) {
+            Byte* base = dll.data();
+            auto size = static_cast<ui32>(dll.size());
+            auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+            if (size < sizeof(IMAGE_DOS_HEADER) || dos->e_magic != IMAGE_DOS_SIGNATURE) return false;
+
+            auto* nth = reinterpret_cast<const IMAGE_NT_HEADERS32*>(base + dos->e_lfanew);
+            if (nth->Signature != IMAGE_NT_SIGNATURE) return false;
+
+            ui32 cor_rva = nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR].VirtualAddress;
+            ui32 cor_off = PeRvaToOffset(base, cor_rva);
+            if (!cor_off || cor_off + 8 > size) return false;
+
+            auto* cor = reinterpret_cast<const IMAGE_COR20_HEADER_DATA*>(base + cor_off);
+            ui32 meta_rva = cor->MetaData.VirtualAddress;
+            ui32 meta_off = PeRvaToOffset(base, meta_rva);
+            if (!meta_off || meta_off + 16 > size) return false;
+
+            const Byte* meta = base + meta_off;
+            ui32 sig = *reinterpret_cast<const ui32*>(meta);
+            if (sig != 0x424A5342) return false;
+            ui16 streams = *reinterpret_cast<const ui16*>(meta + 14);
+
+            PeMetaStream strings_stm = {};
+            PeMetaStream tables_stm = {};
+            const Byte* cur = meta + 16;
+            for (ui16 i = 0; i < streams; ++i) {
+                PeMetaStream st;
+                st.offset = *reinterpret_cast<const ui32*>(cur);
+                st.size = *reinterpret_cast<const ui32*>(cur + 4);
+                const char* nm = reinterpret_cast<const char*>(cur + 8);
+                strncpy_s(st.name, nm, sizeof(st.name) - 1);
+                ui32 name_len = static_cast<ui32>(strlen(nm));
+                cur += 8 + ((name_len + 4) & ~3u);
+
+                if (strcmp(st.name, "#Strings") == 0) strings_stm = st;
+                if (strcmp(st.name, "#~") == 0) tables_stm = st;
+            }
+            if (!strings_stm.offset || !tables_stm.offset) return false;
+            if (meta_off + strings_stm.offset + strings_stm.size > size) return false;
+            if (meta_off + tables_stm.offset + tables_stm.size > size) return false;
+
+            const Byte* tables = meta + tables_stm.offset;
+            ui8 heap_sizes = static_cast<ui8>(tables[6]);
+            ui32 str_idx_size = (heap_sizes & 1) ? 4u : 2u;
+            ui64 valid = *reinterpret_cast<const ui64*>(tables + 8);
+            i32 asm_table_idx = 0x20;
+            if (!(valid & (1ull << asm_table_idx))) return false;
+
+            i32 row_count = 0;
+            const Byte* row_counts = tables + 24;
+            for (i32 t = 0; t < 64; ++t) {
+                if (!(valid & (1ull << t))) continue;
+                row_count = *reinterpret_cast<const i32*>(row_counts);
+                row_counts += 4;
+                if (t == asm_table_idx) break;
+            }
+
+            const Byte* table_start = row_counts;
+            ui32 name_off = (str_idx_size == 2) ? 18u : 20u;
+            ui32 name_idx_val;
+            if (str_idx_size == 2)
+                name_idx_val = *reinterpret_cast<const ui16*>(table_start + name_off);
+            else
+                name_idx_val = *reinterpret_cast<const ui32*>(table_start + name_off);
+
+            ui32 str_off = meta_off + strings_stm.offset + name_idx_val;
+            if (str_off >= size) return false;
+            i32 orig_len = static_cast<i32>(strlen(reinterpret_cast<const char*>(base + str_off)));
+            if (orig_len < 4) return false;
+
+            char suffix[8];
+            snprintf(suffix, sizeof(suffix), "_%X", counter & 0xFFF);
+            i32 suffix_len = static_cast<i32>(strlen(suffix));
+            i32 keep_len = orig_len - suffix_len;
+            if (keep_len < 1) keep_len = 1;
+
+            memcpy(base + str_off + keep_len, suffix, suffix_len + 1);
+            return true;
+        }
+
         Bool BuildScriptSourceFingerprint(const fs::path& asset_directory, String& out_fingerprint) {
             out_fingerprint.clear();
             if (!fs::exists(asset_directory) || !fs::is_directory(asset_directory)) {
@@ -257,12 +370,6 @@ namespace dodoe {
 
         mono_domain_set(m_core_domain, true);
 
-        if (m_app_image) {
-            mono_image_close(m_app_image);
-            m_app_image = nullptr;
-        }
-        m_app_assembly = nullptr;
-
         MonoObject* alc = mono_gchandle_get_target_v2(static_cast<MonoGCHandle>(m_alc_gchandle));
         if (alc) {
             MonoClass* alc_class = mono_object_get_class(alc);
@@ -294,6 +401,9 @@ namespace dodoe {
             mono_gchandle_free_v2(static_cast<MonoGCHandle>(m_alc_gchandle));
             m_alc_gchandle = nullptr;
         }
+
+        m_app_image = nullptr;
+        m_app_assembly = nullptr;
     }
 
     Bool ScriptEngine::loadAppAssembly() {
@@ -340,6 +450,9 @@ namespace dodoe {
             DO_ERROR("ScriptEngine: failed to read app assembly '{}'", assembly_path.string());
             return false;
         }
+
+        ++m_reload_counter;
+        PatchAssemblyNameInPlace(data, m_reload_counter);
 
         MonoImageOpenStatus status;
         MonoImage* image = mono_image_open_from_data_alc(

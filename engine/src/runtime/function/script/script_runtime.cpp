@@ -13,6 +13,20 @@
 
 namespace dodoe {
 
+    namespace {
+        bool IsSubclassOfByName(MonoClass* klass, const char* target_ns, const char* target_name) {
+            MonoClass* parent = mono_class_get_parent(klass);
+            while (parent) {
+                const char* ns = mono_class_get_namespace(parent);
+                const char* name = mono_class_get_name(parent);
+                if (ns && name && strcmp(ns, target_ns) == 0 && strcmp(name, target_name) == 0)
+                    return true;
+                parent = mono_class_get_parent(parent);
+            }
+            return false;
+        }
+    }
+
     bool ScriptRuntime::initialize(const ScriptRuntimeCreateInfo &info) {
         m_script_engine = info.script_engine;
 
@@ -30,7 +44,7 @@ namespace dodoe {
         mono_runtime_object_init(world_instance);
 
         MonoClass* mb_sys_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "MonoBehaviourSystem");
-        if (mb_sys_class && mono_class_is_subclass_of(mb_sys_class, m_class_system, false)) {
+        if (mb_sys_class && IsSubclassOfByName(mb_sys_class, "GreenCake", "DoSystem")) {
             auto script_class = create_ref<ScriptClass>(m_script_engine, "GreenCake", "MonoBehaviourSystem", true);
             auto instance = create_ref<MonoSystemInstance>(script_class);
             m_system_instance_umap["GreenCake.MonoBehaviourSystem"] = std::move(instance);
@@ -67,11 +81,12 @@ namespace dodoe {
             if (!mono_class) {
                 continue;
             }
+            mono_class_init(mono_class);
 
             if (mono_class == component_base) {
                 continue;
             }
-            if (!mono_class_is_subclass_of(mono_class, component_base, false)) {
+            if (!IsSubclassOfByName(mono_class, "GreenCake", "Component")) {
                 continue;
             }
 
@@ -115,11 +130,18 @@ namespace dodoe {
                 full_name = class_name;
 
             MonoClass* mono_class = mono_class_from_name(m_script_engine->getAppImage(), space_name, class_name);
+            if (!mono_class) {
+                continue;
+            }
+            mono_class_init(mono_class);
 
             if (mono_class == m_class_system)
                 continue;
-            if (const bool is_system = mono_class_is_subclass_of(mono_class, m_class_system, false); !is_system)
+            if (!IsSubclassOfByName(mono_class, "GreenCake", "DoSystem")) {
+                DO_DEBUG("loadAssemblyClasses: {} is not subclass of DoSystem", full_name);
                 continue;
+            }
+            DO_DEBUG("loadAssemblyClasses: system[{}] {} found", m_system_class_umap.size(), full_name);
 
             Ref<ScriptClass> script_class = create_ref<ScriptClass>(m_script_engine, space_name, class_name);
             m_system_class_umap[full_name] = script_class;
@@ -194,6 +216,13 @@ namespace dodoe {
         }
 
         loadAssemblyClasses();
+
+        MonoClass* mb_sys_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "MonoBehaviourSystem");
+        if (mb_sys_class && IsSubclassOfByName(mb_sys_class, "GreenCake", "DoSystem")) {
+            auto script_class = create_ref<ScriptClass>(m_script_engine, "GreenCake", "MonoBehaviourSystem", true);
+            auto instance = create_ref<MonoSystemInstance>(script_class);
+            m_system_instance_umap["GreenCake.MonoBehaviourSystem"] = std::move(instance);
+        }
     }
 
     void ScriptRuntime::loadEntityMonoComponentsFromManaged(uint64_t entity_uuid) {
