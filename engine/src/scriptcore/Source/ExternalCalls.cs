@@ -93,4 +93,17 @@ public static class ExternalCalls
     {
         World.Current?.RemoveEntityLocal(entityId);
     }
+
+    public static void Reset()
+    {
+        World.Reset();
+        GameObjectManager.Reset();
+    }
+
+    public static void CollectAndWait()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+    }
 }

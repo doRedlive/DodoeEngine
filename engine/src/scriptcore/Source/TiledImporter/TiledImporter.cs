@@ -9,8 +9,9 @@ public static class TiledImporter
 {
     public static Tilemap ImportFromFile(string jsonFilePath)
     {
-        string jsonText = File.ReadAllText(jsonFilePath);
-        return ImportFromJson(jsonText, Path.GetDirectoryName(jsonFilePath) ?? ".");
+        string fullPath = FilePath.Resolve(jsonFilePath);
+        string jsonText = File.ReadAllText(fullPath);
+        return ImportFromJson(jsonText, Path.GetDirectoryName(fullPath) ?? ".");
     }
 
     public static Tilemap ImportFromJson(string json, string baseDir)

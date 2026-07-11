@@ -19,6 +19,8 @@ namespace dodoe {
         static void OnImGuiRender();
 
         static void RenderHierarchyPanel();
+        static void RenderInspectorPanel();
+        static void RenderDebuggerPanel();
 
         struct EntityNode {
             Entity entity;
@@ -27,7 +29,6 @@ namespace dodoe {
         static std::vector<EntityNode> BuildEntityTree(Scene& scene);
         static void RenderEntityTreeNode(const EntityNode& node);
 
-        static void RenderInspectorPanel();
 
         static void InspectIDComponent(Entity entity);
         static void InspectTagComponent(Entity entity);

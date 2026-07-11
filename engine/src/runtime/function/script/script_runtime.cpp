@@ -126,6 +126,53 @@ namespace dodoe {
             Ref<MonoSystemInstance> script_instance = create_ref<MonoSystemInstance>(script_class);
             m_system_instance_umap[full_name] = script_instance;
         }
+        DO_DEBUG("load assembly classes:: system class count{}", static_cast<Int>(m_system_class_umap.size()));
+        DO_DEBUG("load assembly classes:: system instance count{}", static_cast<Int>(m_system_instance_umap.size()));
+    }
+
+    void ScriptRuntime::clearRuntimeState() {
+        m_component_instance_umap.clear();
+        m_component_class_umap.clear();
+        m_system_class_umap.clear();
+        m_system_instance_umap.clear();
+        m_class_system = nullptr;
+    }
+
+    void ScriptRuntime::snapshotFields() {
+        m_field_snapshot.clear();
+
+        for (const auto& [entity_uuid, instances] : m_component_instance_umap) {
+            auto& snapshots = m_field_snapshot[entity_uuid];
+            for (const auto& instance : instances) {
+                if (!instance || !instance->getScriptClass()) continue;
+                const auto json = instance->serializeFields();
+                snapshots.emplace_back(instance->getScriptClass()->getFullName(), json.dump());
+            }
+        }
+    }
+
+    void ScriptRuntime::restoreFields() {
+        for (const auto& [entity_uuid, snapshots] : m_field_snapshot) {
+            for (const auto& [type_name, json_str] : snapshots) {
+                addEntityMonoComponentFromManaged(static_cast<uint64_t>(entity_uuid), type_name);
+            }
+
+            loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity_uuid));
+
+            auto it = m_component_instance_umap.find(entity_uuid);
+            if (it == m_component_instance_umap.end()) continue;
+
+            for (auto& instance : it->second) {
+                if (!instance || !instance->getScriptClass()) continue;
+                const auto& full_name = instance->getScriptClass()->getFullName();
+                for (const auto& [snap_type, json_str] : snapshots) {
+                    if (snap_type == full_name) {
+                        instance->deserializeFields(Json::parse(json_str));
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     void ScriptRuntime::reloadAssemblyClasses() {
@@ -136,11 +183,13 @@ namespace dodoe {
 
         if (!m_script_engine || !m_script_engine->getCoreImage()) {
             m_class_system = nullptr;
+            DO_ERROR("script engine is null || script engine core image is null");
             return;
         }
 
         m_class_system = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "DoSystem");
         if (!m_class_system || !m_script_engine->getAppImage()) {
+            DO_ERROR("dosystem is null || APP image is null");
             return;
         }
 

@@ -65,6 +65,7 @@ namespace dodoe{
 		MonoObject* invokeMethod(MonoObject* instance, MonoMethod* method, void** params = nullptr);
 		[[nodiscard]] MonoClass* getMonoClass() const { return m_mono_class; }
 		[[nodiscard]] ScriptEngine* getEngine() const { return m_engine; }
+		[[nodiscard]] std::string getFullName() const;
 
 		[[nodiscard]] const std::map<std::string, ScriptField>& getFields() const { return m_fields; }
 	};

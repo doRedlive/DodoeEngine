@@ -25,11 +25,17 @@ namespace dodoe {
         std::unordered_map<std::string, Ref<MonoSystemInstance>> m_system_instance_umap;
         std::unordered_map<std::string, Ref<ScriptClass>> m_component_class_umap;
         std::unordered_map<ui64, std::vector<Ref<MonoComponentInstance>>> m_component_instance_umap;
+        std::unordered_map<ui64, std::vector<std::pair<std::string, std::string>>> m_field_snapshot;
     public:
+        Int logSystemClassCount() { return m_system_class_umap.size(); }
+        Int logSystemInstanceCount() { return m_system_instance_umap.size(); }
 
         void loadMonoComponentClasses();
         void loadAssemblyClasses();
         void reloadAssemblyClasses();
+        void clearRuntimeState();
+        void snapshotFields();
+        void restoreFields();
 
         void loadEntityMonoComponentsFromManaged(uint64_t entity_uuid);
         bool addEntityMonoComponentFromManaged(uint64_t entity_uuid, const std::string& full_name);

@@ -52,11 +52,6 @@ namespace dodoe {
 
     void Debugger::onImGuiRender() {
 #if defined(DODOE_DEBUG) && !defined(DODOE_EDITOR)
-        ImGui::Begin("Dodoe Debugger");
-        ImGuiIO& io = ImGui::GetIO();
-        ImGui::Text("FPS: %.1f (%.3f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::End();
-
         for (const auto& pair : m_imguiRenderFuncs) {
             if (pair.second) {
                 pair.second();

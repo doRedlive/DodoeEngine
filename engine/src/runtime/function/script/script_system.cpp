@@ -72,13 +72,28 @@ namespace dodoe {
     }
 
     Bool ScriptSystem::reloadScripts() {
-        const Bool reloaded = m_script_engine->reloadScripts();
-        if (!reloaded) {
+        if (!m_script_engine->onScriptSourcesChanged()) {
+            DO_DEBUG("Scripts sources don't changed");
+            return false;
+        }
+        if (!m_script_engine->buildAppAssembly()) {
+            DO_DEBUG("Build App Assembly failed");    
             return false;
         }
 
+        m_script_runtime->snapshotFields();
+        m_script_runtime->clearRuntimeState();
+        m_script_engine->resetManagedState();
+        m_script_engine->unloadAppAssembly();
+
+        if (!m_script_engine->loadAppAssembly()) {
+            DO_DEBUG("load app assembly failed");
+            return false;
+        }
         m_script_runtime->reloadAssemblyClasses();
         ScriptGlue::Register();
+        m_script_runtime->restoreFields();
+        m_script_engine->commitScriptFingerprint();
         return true;
     }
 

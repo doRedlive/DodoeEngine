@@ -15,6 +15,17 @@ internal static class GameObjectManager
     private static readonly List<MonoBehaviour> _activeBehaviours = new List<MonoBehaviour>();
     private static readonly List<GameObject> _destroyQueue = new List<GameObject>();
 
+    public static void Reset()
+    {
+        _objects.Clear();
+        _parentMap.Clear();
+        _childrenMap.Clear();
+        _awakeQueue.Clear();
+        _startQueue.Clear();
+        _activeBehaviours.Clear();
+        _destroyQueue.Clear();
+    }
+
     public static void Register(GameObject obj)
     {
         if (obj == null) return;

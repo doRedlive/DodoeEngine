@@ -13,7 +13,7 @@
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components/tilemap/tileset_asset.h"
-#include "runtime/core/utils/json.h"
+#include "runtime/core/project/project.h"
 
 #include "mono/metadata/class.h"
 #include "mono/metadata/image.h"
@@ -965,6 +965,10 @@ namespace dodoe {
             }
         }
 
+        static MonoString* Native_GetAssetDirectory() {
+            return StdStringToMonoString(Project::AssetDirectory().string());
+        }
+
     }
 
     void ScriptGlue::Initialize(ScriptEngine* engine) {
@@ -1089,6 +1093,8 @@ namespace dodoe {
         DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOffsetX);
         DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetOffsetY);
         DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOffsetY);
+
+        DO_ADD_INTERNAL_CALL(Native_GetAssetDirectory);
 
     }
 

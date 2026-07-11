@@ -27,6 +27,7 @@
     <Compile Include="../Assets/Scripts/MapImportSystem.cs" />
     <Compile Include="../Assets/Scripts/MoveSpeedComponent.cs" />
     <Compile Include="../Assets/Scripts/PrintMessageSystem.cs" />
+    <Compile Include="../Assets/Scripts/TestSystem.cs" />
   </ItemGroup>
 
 </Project>

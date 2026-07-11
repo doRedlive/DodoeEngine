@@ -243,6 +243,12 @@ public class World
             set.Remove(entityId);
     }
 
+    internal static void Reset()
+    {
+        Current?._componentSets.Clear();
+        Current = null;
+    }
+
     private ComponentSet<T> GetSet<T>() where T : Component
     {
         var type = typeof(T);

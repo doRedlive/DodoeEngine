@@ -6,6 +6,9 @@
 
 #include "imgui/imgui.h"
 
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/script/script_system.h"
+
 #include "runtime/function/world/components/camera2d_component.h"
 #include "runtime/function/world/components/hierarchy_component.h"
 #include "runtime/function/world/components/id_component.h"
@@ -31,6 +34,26 @@ namespace dodoe {
     void DebugImGui::OnImGuiRender() {
         RenderHierarchyPanel();
         RenderInspectorPanel();
+        RenderDebuggerPanel();
+    }
+
+    void DebugImGui::RenderDebuggerPanel() { 
+        ImGui::Begin("Dodoe Debugger");
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui::Text("FPS: %.1f (%.3f ms)", io.Framerate, 1000.0f / io.Framerate);
+
+        if (ImGui::Button("Reload Scripts")) {
+            Bool success = GetScriptSystem()->reloadScripts();
+            if (success) {
+                DO_DEBUG("Reload Scripts success!");
+                DO_DEBUG("MonoScriptSystem count is {}", GetScriptSystem()->getMonoRuntime()->logSystemClassCount());
+                DO_DEBUG("MonoInstanceSystem count is {}", GetScriptSystem()->getMonoRuntime()->logSystemInstanceCount());
+            }
+
+
+        }
+
+        ImGui::End();
     }
 
     void DebugImGui::RenderHierarchyPanel() {

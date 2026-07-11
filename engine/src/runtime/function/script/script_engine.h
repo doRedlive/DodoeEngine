@@ -32,7 +32,12 @@ namespace dodoe {
         [[nodiscard]] MonoImage* getCoreImage() const { return m_core_image; }
         [[nodiscard]] MonoImage* getAppImage()  const { return m_app_image;  }
 
-        bool reloadScripts();
+        bool onScriptSourcesChanged();
+        bool buildAppAssembly();
+        void resetManagedState();
+        void unloadAppAssembly();
+        bool loadAppAssembly();
+        void commitScriptFingerprint();
 
     private:
         bool initialize(const ScriptEngineCreateInfo& info);
@@ -42,9 +47,8 @@ namespace dodoe {
         void cleanupMono();
 
         bool loadCoreAssembly(const String& path);
-        bool loadAppAssembly();
 
-        bool buildScrptAssembly();
+        std::string m_pending_fingerprint{};
     };
 
 } // dodoe

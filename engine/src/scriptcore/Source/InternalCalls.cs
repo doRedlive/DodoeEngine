@@ -282,4 +282,7 @@ internal static class InternalCalls
 
 	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	internal extern static void Native_TileLayerComponentSetOffsetY(ulong entityId, int value);
+
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	internal extern static string Native_GetAssetDirectory();
 }

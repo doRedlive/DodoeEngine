@@ -212,6 +212,12 @@ namespace dodoe {
         }
     }
 
+    std::string ScriptClass::getFullName() const {
+        if (!m_class_namespace.empty())
+            return m_class_namespace + "." + m_class_name;
+        return m_class_name;
+    }
+
     MonoObject* ScriptClass::instantiate() const {
         if (!m_mono_class) {
             return nullptr;

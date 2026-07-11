@@ -18,6 +18,7 @@
 #include "mono/metadata/object.h"
 #include "mono/metadata/threads.h"
 #include "mono/utils/mono-publib.h"
+#include "mono/metadata/mono-gc.h"
 
 namespace dodoe {
 
@@ -128,7 +129,7 @@ namespace dodoe {
         }
     }
 
-    Bool ScriptEngine::reloadScripts() {
+    Bool ScriptEngine::onScriptSourcesChanged() {
         const auto active_project = Project::ActiveProject();
         if (!active_project) {
             return false;
@@ -144,16 +145,13 @@ namespace dodoe {
             return false;
         }
 
-        if (!buildScrptAssembly()) {
-            return false;
-        }
-
-        if (!loadAppAssembly()) {
-            return false;
-        }
-
-        m_script_sources_fingerprint = std::move(script_sources_fingerprint);
+        m_pending_fingerprint = std::move(script_sources_fingerprint);
         return true;
+    }
+
+    void ScriptEngine::commitScriptFingerprint() {
+        m_script_sources_fingerprint = std::move(m_pending_fingerprint);
+        m_pending_fingerprint.clear();
     }
 
     Bool ScriptEngine::initialize(const ScriptEngineCreateInfo& info) {
@@ -167,7 +165,7 @@ namespace dodoe {
         cleanupMono();
     }
 
-    Bool ScriptEngine::buildScrptAssembly() {
+    Bool ScriptEngine::buildAppAssembly() {
         const auto active_project = Project::ActiveProject();
         if (!active_project) {
             return false;
@@ -177,6 +175,21 @@ namespace dodoe {
         }
         DO_ERROR("ScriptEngine build script assembly failed!");
         return false;
+    }
+
+    void ScriptEngine::resetManagedState() {
+        if (!m_core_image) return;
+        mono_domain_set(m_core_domain, true);
+
+        MonoClass* ec = mono_class_from_name(m_core_image, "GreenCake", "ExternalCalls");
+        if (!ec) { DO_ERROR("ScriptEngine: ExternalCalls not found"); return; }
+
+        MonoMethod* reset = mono_class_get_method_from_name(ec, "Reset", 0);
+        if (!reset) { DO_ERROR("ScriptEngine: ExternalCalls.Reset() not found"); return; }
+
+        MonoObject* ex = nullptr;
+        mono_runtime_invoke(reset, nullptr, nullptr, &ex);
+        if (ex) DO_ERROR("ScriptEngine: ExternalCalls.Reset() threw exception");
     }
 
     Bool ScriptEngine::setupMono() {
@@ -235,6 +248,54 @@ namespace dodoe {
         return true;
     }
 
+    void ScriptEngine::unloadAppAssembly() {
+        if (!m_alc_gchandle) {
+            m_app_image = nullptr;
+            m_app_assembly = nullptr;
+            return;
+        }
+
+        mono_domain_set(m_core_domain, true);
+
+        if (m_app_image) {
+            mono_image_close(m_app_image);
+            m_app_image = nullptr;
+        }
+        m_app_assembly = nullptr;
+
+        MonoObject* alc = mono_gchandle_get_target_v2(static_cast<MonoGCHandle>(m_alc_gchandle));
+        if (alc) {
+            MonoClass* alc_class = mono_object_get_class(alc);
+            MonoMethod* unload = mono_class_get_method_from_name(alc_class, "Unload", 0);
+            if (unload) {
+                MonoObject* ex = nullptr;
+                mono_runtime_invoke(unload, alc, nullptr, &ex);
+            }
+
+            MonoGCHandle weak = mono_gchandle_new_weakref_v2(alc, false);
+            mono_gchandle_free_v2(static_cast<MonoGCHandle>(m_alc_gchandle));
+            m_alc_gchandle = nullptr;
+
+            MonoClass* ec = mono_class_from_name(m_core_image, "GreenCake", "ExternalCalls");
+            MonoMethod* collect = ec ? mono_class_get_method_from_name(ec, "CollectAndWait", 0) : nullptr;
+            for (int i = 0; i < 10; ++i) {
+                if (collect) {
+                    MonoObject* e = nullptr;
+                    mono_runtime_invoke(collect, nullptr, nullptr, &e);
+                }
+                mono_gc_collect(mono_gc_max_generation());
+                if (!mono_gchandle_get_target_v2(weak)) break;
+            }
+            if (mono_gchandle_get_target_v2(weak)) {
+                DO_WARN("ScriptEngine: app ALC not reclaimed, strong references may remain");
+            }
+            mono_gchandle_free_v2(weak);
+        } else {
+            mono_gchandle_free_v2(static_cast<MonoGCHandle>(m_alc_gchandle));
+            m_alc_gchandle = nullptr;
+        }
+    }
+
     Bool ScriptEngine::loadAppAssembly() {
         const auto active_project = Project::ActiveProject();
         if (!active_project) {
@@ -243,49 +304,35 @@ namespace dodoe {
 
         mono_domain_set(m_core_domain, true);
 
-        if (m_app_image) {
-            if (m_alc_gchandle) {
-                MonoObject* alc_instance = mono_gchandle_get_target_v2(static_cast<MonoGCHandle>(m_alc_gchandle));
-                if (alc_instance) {
-                    MonoClass* alc_class = mono_object_get_class(alc_instance);
-                    MonoMethod* unload_method = mono_class_get_method_from_name(alc_class, "Unload", 0);
-                    if (unload_method) {
-                        MonoObject* exception = nullptr;
-                        mono_runtime_invoke(unload_method, alc_instance, nullptr, &exception);
-                    }
-                }
-                mono_gchandle_free_v2(static_cast<MonoGCHandle>(m_alc_gchandle));
-                m_alc_gchandle = nullptr;
-            }
-            m_app_image = nullptr;
-            m_app_assembly = nullptr;
-        }
-
         MonoClass* alc_class = mono_class_from_name(mono_get_corlib(), "System.Runtime.Loader", "AssemblyLoadContext");
         if (!alc_class) {
             DO_ERROR("ScriptEngine: failed to find AssemblyLoadContext class");
             return false;
         }
 
-        if (!m_alc_gchandle) {
-            MonoMethod* alc_ctor = mono_class_get_method_from_name(alc_class, ".ctor", 2);
-            if (!alc_ctor) {
-                DO_ERROR("ScriptEngine: failed to find AssemblyLoadContext ctor");
-                return false;
-            }
-
-            MonoString* alc_name = mono_string_new(m_core_domain, "AppAssembly");
-            bool is_collectible = true;
-            void* ctor_args[2] = { alc_name, &is_collectible };
-            MonoObject* exception = nullptr;
-            MonoObject* alc_instance = mono_runtime_invoke(alc_ctor, nullptr, ctor_args, &exception);
-            if (exception || !alc_instance) {
-                DO_ERROR("ScriptEngine: failed to create AssemblyLoadContext");
-                return false;
-            }
-
-            m_alc_gchandle = static_cast<void*>(mono_gchandle_new_v2(alc_instance, false));
+        MonoMethod* alc_ctor = mono_class_get_method_from_name(alc_class, ".ctor", 2);
+        if (!alc_ctor) {
+            DO_ERROR("ScriptEngine: failed to find AssemblyLoadContext ctor");
+            return false;
         }
+
+        MonoObject* alc_instance = mono_object_new(m_core_domain, alc_class);
+        if (!alc_instance) {
+            DO_ERROR("ScriptEngine: failed to allocate AssemblyLoadContext");
+            return false;
+        }
+
+        MonoString* alc_name = mono_string_new(m_core_domain, "AppAssembly");
+        bool is_collectible = true;
+        void* ctor_args[2] = { alc_name, &is_collectible };
+        MonoObject* exception = nullptr;
+        mono_runtime_invoke(alc_ctor, alc_instance, ctor_args, &exception);
+        if (exception) {
+            DO_ERROR("ScriptEngine: failed to create AssemblyLoadContext");
+            return false;
+        }
+
+        m_alc_gchandle = static_cast<void*>(mono_gchandle_new_v2(alc_instance, false));
 
         const fs::path assembly_path = Project::ScriptAssemblyPath();
         auto data = ReadFileBinary(assembly_path);
