@@ -12,5 +12,6 @@ public class TestSystem : CakeSystem
     {
         _testSprite = GameObject.Create("GrmSprite");
         _spriteRenderer = _testSprite.AddComponent<SpriteRendererComponent>();
+        _spriteRenderer.Texture = Texture.Load("textures/Preview.png");
     }
 }
