@@ -59,12 +59,12 @@ public class Transform : CakeComponent
 
     public void Translate(Vector3f delta)
     {
-        Position = new Vector3f(Position.X + delta.X, Position.Y + delta.Y, Position.Z + delta.Z);
+        Position = new Vector3f(Position.x + delta.x, Position.y + delta.y, Position.z + delta.z);
     }
 
     public void Rotate(Vector3f delta)
     {
-        Rotation = new Vector3f(Rotation.X + delta.X, Rotation.Y + delta.Y, Rotation.Z + delta.Z);
+        Rotation = new Vector3f(Rotation.x + delta.x, Rotation.y + delta.y, Rotation.z + delta.z);
     }
 
     public override string ToString()

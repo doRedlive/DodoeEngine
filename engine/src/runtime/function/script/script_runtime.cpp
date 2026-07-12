@@ -52,10 +52,10 @@ namespace dodoe {
                 std::string base_name = t.value("baseName", "");
                 std::string full_name = ns.empty() ? name : ns + "." + name;
 
-                if (base_ns == "GreenCake" && base_name == "Component") {
+                if (base_ns == "GreenCake" && base_name == "CakeComponent") {
                     m_component_class_umap[full_name] = {full_name, ns, name};
                 }
-                if (base_ns == "GreenCake" && base_name == "DoSystem") {
+                if (base_ns == "GreenCake" && base_name == "CakeSystem") {
                     m_system_class_umap[full_name] = {full_name, ns, name};
                 }
             }
@@ -63,8 +63,8 @@ namespace dodoe {
             DO_ERROR("ScriptRuntime: failed to parse scan_types JSON: {}", e.what());
         }
 
-        if (m_system_class_umap.find("GreenCake.BehaviourSystem") == m_system_class_umap.end()) {
-            m_system_class_umap["GreenCake.BehaviourSystem"] = {"GreenCake.BehaviourSystem", "GreenCake", "BehaviourSystem"};
+        if (m_system_class_umap.find("GreenCake.CakeBehaviourSystem") == m_system_class_umap.end()) {
+            m_system_class_umap["GreenCake.CakeBehaviourSystem"] = {"GreenCake.CakeBehaviourSystem", "GreenCake", "CakeBehaviourSystem"};
         }
 
         DO_DEBUG("load assembly classes: system class count {}", m_system_class_umap.size());

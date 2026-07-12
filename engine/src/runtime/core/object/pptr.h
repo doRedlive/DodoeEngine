@@ -34,8 +34,8 @@ namespace dodoe {
             return nullptr;
         }
         T* operator->() const { return get(); }
-        [[nodiscard]] explicit operator Bool() const { return m_uuid.isValid(); }
-        [[nodiscard]] Bool isValid() const { return m_uuid.isValid(); }
+        [[nodiscard]] explicit operator Bool() const { return m_instance_id != 0 || m_file_id.isValid() || m_uuid.isValid(); }
+        [[nodiscard]] Bool isValid() const { return m_instance_id != 0 || m_file_id.isValid() || m_uuid.isValid(); }
 
         [[nodiscard]] const FileID& getFileID() const { return m_file_id; }
         [[nodiscard]] const UUID& getUUID() const { return m_uuid; }

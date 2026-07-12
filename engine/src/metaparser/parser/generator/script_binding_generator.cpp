@@ -67,8 +67,11 @@ namespace Generator
             if (t == "uint32_t" || t == "UInt32" || t == "unsigned int") return "uint";
             if (t == "uint64_t" || t == "UInt64" || t == "unsigned long long") return "ulong";
             if (t == "bool" || t == "Bool") return "bool";
+            if (t == "Vector2i") return "Vector2i";
             if (t == "Vector2f") return "Vector2f";
+            if (t == "Vector3i") return "Vector3i";
             if (t == "Vector3f") return "Vector3f";
+            if (t == "Vector4i") return "Vector4i";
             if (t == "Vector4f") return "Vector4f";
             if (t == "Color") return "Color";
             if (t == "std::string" || t == "String") return "string";
@@ -84,7 +87,10 @@ namespace Generator
 
         static bool isStructCsType(const std::string& t)
         {
-            return t == "Vector2f" || t == "Vector3f" || t == "Vector4f" || t == "Color";
+            return t == "Vector2i" || t == "Vector2f" ||
+                   t == "Vector3i" || t == "Vector3f" ||
+                   t == "Vector4i" || t == "Vector4f" ||
+                   t == "Color";
         }
 
         static std::string nativeFuncName(const std::string& comp, const std::string& field)
@@ -98,11 +104,32 @@ namespace Generator
 
         static bool isObjectType(const std::string& t) { return t.find("PPtr<") == 0; }
 
+        static bool hasDirtyField(const std::shared_ptr<Class>& class_temp)
+        {
+            for (const auto& field : class_temp->m_fields) {
+                if (field && field->m_name == "dirty") {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static bool hasDirtyField(const Class* class_temp)
+        {
+            if (!class_temp) return false;
+            for (const auto& field : class_temp->m_fields) {
+                if (field && field->m_name == "dirty") {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         static void buildCsProxyBodies(const std::string& compName, const std::string& csField, const std::string& csType, FieldBindingInfo& info)
         {
             std::string callPrefix = "NativeCalls." + compName + "_" + csField;
             if (isObjectType(info.field_type_cpp)) {
-                info.cs_proxy_getter = "return new " + csType + "(" + callPrefix + "_Get(Entity.ID));";
+                info.cs_proxy_getter = "return Object.FindObjectFromInstanceID<" + csType + ">(" + callPrefix + "_Get(Entity.ID))!;";
                 info.cs_proxy_setter = callPrefix + "_Set(Entity.ID, value?.InstanceID ?? 0);";
             } else if (isValueCsType(csType) || csType == "string") {
                 info.cs_proxy_getter = "return " + callPrefix + "_Get(Entity.ID);";
@@ -130,18 +157,34 @@ namespace Generator
                 info.cs_nc_method_set = "b->" + fn + "_set(entityId, v);";
             } else if (isStructCsType(csType)) {
                 info.cs_nc_ret_type = csType;
-                if (csType == "Vector2f") {
+                if (csType == "Vector2i") {
+                    info.cs_nc_setter_param = "ref Vector2i v";
+                    info.cs_nc_method_get = "int x, y; b->" + fn + "_get(entityId, &x, &y); return new Vector2i(x, y);";
+                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.x, v.y);";
+                } else if (csType == "Vector2f") {
                     info.cs_nc_setter_param = "ref Vector2f v";
                     info.cs_nc_method_get = "float x, y; b->" + fn + "_get(entityId, &x, &y); return new Vector2f(x, y);";
-                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.X, v.Y);";
+                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.x, v.y);";
+                } else if (csType == "Vector3i") {
+                    info.cs_nc_setter_param = "ref Vector3i v";
+                    info.cs_nc_method_get = "int x, y, z; b->" + fn + "_get(entityId, &x, &y, &z); return new Vector3i(x, y, z);";
+                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.x, v.y, v.z);";
                 } else if (csType == "Vector3f") {
                     info.cs_nc_setter_param = "ref Vector3f v";
                     info.cs_nc_method_get = "float x, y, z; b->" + fn + "_get(entityId, &x, &y, &z); return new Vector3f(x, y, z);";
-                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.X, v.Y, v.Z);";
+                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.x, v.y, v.z);";
+                } else if (csType == "Vector4i") {
+                    info.cs_nc_setter_param = "ref Vector4i v";
+                    info.cs_nc_method_get = "int x, y, z, w; b->" + fn + "_get(entityId, &x, &y, &z, &w); return new Vector4i(x, y, z, w);";
+                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.x, v.y, v.z, v.w);";
+                } else if (csType == "Vector4f") {
+                    info.cs_nc_setter_param = "ref Vector4f v";
+                    info.cs_nc_method_get = "float x, y, z, w; b->" + fn + "_get(entityId, &x, &y, &z, &w); return new Vector4f(x, y, z, w);";
+                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.x, v.y, v.z, v.w);";
                 } else {
                     info.cs_nc_setter_param = "ref Color v";
                     info.cs_nc_method_get = "float r, g, bl, a; b->" + fn + "_get(entityId, &r, &g, &bl, &a); return new Color(r, g, bl, a);";
-                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.R, v.G, v.B, v.A);";
+                    info.cs_nc_method_set = "b->" + fn + "_set(entityId, v.r, v.g, v.b, v.a);";
                 }
             } else if (csType == "string") {
                 info.cs_nc_ret_type = "string";
@@ -156,7 +199,7 @@ namespace Generator
             }
         }
 
-        static void buildCppBodies(const std::string& compName, const std::string& fieldName, const std::string& fieldNameCs, const std::string& csType, FieldBindingInfo& info, bool hasGetter = false, bool hasSetter = false)
+        static void buildCppBodies(const std::string& compName, const std::string& fieldName, const std::string& fieldNameCs, const std::string& csType, FieldBindingInfo& info, bool hasGetter = false, bool hasSetter = false, bool markDirty = false)
         {
             std::string fnGet = cppFuncName(compName, fieldName, "get");
             std::string fnSet = cppFuncName(compName, fieldName, "set");
@@ -167,8 +210,36 @@ namespace Generator
                 info.cpp_ret_type = "int";
                 info.cpp_get_params = "";
                 info.cpp_set_params = "int v";
-                info.cpp_getter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) return (int)c->" + fieldName + ".getInstanceID(); return 0;";
-                info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) c->" + fieldName + " = " + info.field_type_cpp + "(FileID{}, Uuid{}, (InstanceID)v);";
+                if (info.field_type_cpp == "PPtr<Texture>") {
+                    info.cpp_getter_body =
+                        "if (auto* c = TryGetComponent<" + compName + ">(uuid)) { "
+                        "if (auto* obj = c->" + fieldName + ".get()) return (int)obj->getInstanceID(); "
+                        "const auto& file_id = c->" + fieldName + ".getFileID(); "
+                        "if (file_id.isValid()) { if (auto obj = Texture::Load(file_id.getPath())) return (int)obj->getInstanceID(); } "
+                        "} return 0;";
+                } else {
+                    info.cpp_getter_body =
+                        "if (auto* c = TryGetComponent<" + compName + ">(uuid)) { "
+                        "if (auto* obj = c->" + fieldName + ".get()) return (int)obj->getInstanceID(); "
+                        "} return 0;";
+                }
+                const std::string dirtyAssign = markDirty ? "        c->dirty = true;\n" : "";
+                info.cpp_setter_body =
+                    "if (auto* c = TryGetComponent<" + compName + ">(uuid)) {\n"
+                    "    if (v == 0) {\n"
+                    "        c->" + fieldName + " = {};\n" +
+                    dirtyAssign +
+                    "        return;\n"
+                    "    }\n"
+                    "    if (auto* obj = Object::FindObjectFromInstanceID((InstanceID)v)) {\n"
+                    "        c->" + fieldName + " = " + info.field_type_cpp + "(obj->getFileID(), obj->getUUID(), (InstanceID)v);\n" +
+                    dirtyAssign +
+                    "        return;\n"
+                    "    }\n"
+                    "    DO_ERROR(\"" + compName + "." + fieldName + ": invalid object instance id {}\", v);\n"
+                    "    c->" + fieldName + " = {};\n" +
+                    dirtyAssign +
+                    "}";
             } else if (info.field_type_cpp == "Uuid" || info.field_type_cpp == "UUID") {
                 info.cpp_ret_type = "uint64_t";
                 info.cpp_get_params = "";
@@ -196,7 +267,18 @@ namespace Generator
             } else if (isStructCsType(csType)) {
                 info.cpp_ret_type = "void";
                 std::string comps, zero, getAssign, setAssign;
-                if (csType == "Vector2f") {
+                if (csType == "Vector2i") {
+                    comps = "x, y";
+                    info.cpp_get_params = "int* x, int* y";
+                    info.cpp_set_params = "int x, int y";
+                    zero = "if (x) *x = 0; if (y) *y = 0;";
+                    if (hasGetter) {
+                        getAssign = "auto v = c->get" + fieldNameCs + "(); if (x) *x = v.x; if (y) *y = v.y;";
+                    } else {
+                        getAssign = "auto v = c->" + fieldName + "; if (x) *x = v.x; if (y) *y = v.y;";
+                    }
+                    setAssign = hasSetter ? ("c->set" + fieldNameCs + "({x, y});") : ("c->" + fieldName + " = {x, y};");
+                } else if (csType == "Vector2f") {
                     comps = "x, y";
                     info.cpp_get_params = "float* x, float* y";
                     info.cpp_set_params = "float x, float y";
@@ -207,6 +289,17 @@ namespace Generator
                         getAssign = "auto v = c->" + fieldName + "; if (x) *x = v.x; if (y) *y = v.y;";
                     }
                     setAssign = hasSetter ? ("c->set" + fieldNameCs + "({x, y});") : ("c->" + fieldName + " = {x, y};");
+                } else if (csType == "Vector3i") {
+                    comps = "x, y, z";
+                    info.cpp_get_params = "int* x, int* y, int* z";
+                    info.cpp_set_params = "int x, int y, int z";
+                    zero = "if (x) *x = 0; if (y) *y = 0; if (z) *z = 0;";
+                    if (hasGetter) {
+                        getAssign = "auto v = c->get" + fieldNameCs + "(); if (x) *x = v.x; if (y) *y = v.y; if (z) *z = v.z;";
+                    } else {
+                        getAssign = "auto v = c->" + fieldName + "; if (x) *x = v.x; if (y) *y = v.y; if (z) *z = v.z;";
+                    }
+                    setAssign = hasSetter ? ("c->set" + fieldNameCs + "({x, y, z});") : ("c->" + fieldName + " = {x, y, z};");
                 } else if (csType == "Vector3f") {
                     comps = "x, y, z";
                     info.cpp_get_params = "float* x, float* y, float* z";
@@ -218,6 +311,26 @@ namespace Generator
                         getAssign = "auto v = c->" + fieldName + "; if (x) *x = v.x; if (y) *y = v.y; if (z) *z = v.z;";
                     }
                     setAssign = hasSetter ? ("c->set" + fieldNameCs + "({x, y, z});") : ("c->" + fieldName + " = {x, y, z};");
+                } else if (csType == "Vector4i") {
+                    info.cpp_get_params = "int* x, int* y, int* z, int* w";
+                    info.cpp_set_params = "int x, int y, int z, int w";
+                    zero = "if (x) *x = 0; if (y) *y = 0; if (z) *z = 0; if (w) *w = 0;";
+                    if (hasGetter) {
+                        getAssign = "auto v = c->get" + fieldNameCs + "(); if (x) *x = v.x; if (y) *y = v.y; if (z) *z = v.z; if (w) *w = v.w;";
+                    } else {
+                        getAssign = "auto v = c->" + fieldName + "; if (x) *x = v.x; if (y) *y = v.y; if (z) *z = v.z; if (w) *w = v.w;";
+                    }
+                    setAssign = hasSetter ? ("c->set" + fieldNameCs + "({x, y, z, w});") : ("c->" + fieldName + " = {x, y, z, w};");
+                } else if (csType == "Vector4f") {
+                    info.cpp_get_params = "float* x, float* y, float* z, float* w";
+                    info.cpp_set_params = "float x, float y, float z, float w";
+                    zero = "if (x) *x = 0; if (y) *y = 0; if (z) *z = 0; if (w) *w = 0;";
+                    if (hasGetter) {
+                        getAssign = "auto v = c->get" + fieldNameCs + "(); if (x) *x = v.x; if (y) *y = v.y; if (z) *z = v.z; if (w) *w = v.w;";
+                    } else {
+                        getAssign = "auto v = c->" + fieldName + "; if (x) *x = v.x; if (y) *y = v.y; if (z) *z = v.z; if (w) *w = v.w;";
+                    }
+                    setAssign = hasSetter ? ("c->set" + fieldNameCs + "({x, y, z, w});") : ("c->" + fieldName + " = {x, y, z, w};");
                 } else {
                     info.cpp_get_params = "float* r, float* g, float* b, float* a";
                     info.cpp_set_params = "float r, float g, float b, float a";
@@ -311,13 +424,27 @@ namespace Generator
                 info.cpp_bind_get_ret = "void";
                 info.cpp_bind_set_ret = "void";
 
-                if (csType == "Vector2f") {
+                if (csType == "Vector2i") {
+                    info.cpp_bind_get_sig = "(uint64_t e, int* x, int* y)";
+                    info.cpp_bind_get_invoke = "e, x, y";
+                    info.cs_bind_get_type = "delegate* unmanaged<ulong, int*, int*, void>";
+                    info.cpp_bind_set_sig = "(uint64_t e, int x, int y)";
+                    info.cpp_bind_set_invoke = "e, x, y";
+                    info.cs_bind_set_type = "delegate* unmanaged<ulong, int, int, void>";
+                } else if (csType == "Vector2f") {
                     info.cpp_bind_get_sig = "(uint64_t e, float* x, float* y)";
                     info.cpp_bind_get_invoke = "e, x, y";
                     info.cs_bind_get_type = "delegate* unmanaged<ulong, float*, float*, void>";
                     info.cpp_bind_set_sig = "(uint64_t e, float x, float y)";
                     info.cpp_bind_set_invoke = "e, x, y";
                     info.cs_bind_set_type = "delegate* unmanaged<ulong, float, float, void>";
+                } else if (csType == "Vector3i") {
+                    info.cpp_bind_get_sig = "(uint64_t e, int* x, int* y, int* z)";
+                    info.cpp_bind_get_invoke = "e, x, y, z";
+                    info.cs_bind_get_type = "delegate* unmanaged<ulong, int*, int*, int*, void>";
+                    info.cpp_bind_set_sig = "(uint64_t e, int x, int y, int z)";
+                    info.cpp_bind_set_invoke = "e, x, y, z";
+                    info.cs_bind_set_type = "delegate* unmanaged<ulong, int, int, int, void>";
                 } else if (csType == "Vector3f") {
                     info.cpp_bind_get_sig = "(uint64_t e, float* x, float* y, float* z)";
                     info.cpp_bind_get_invoke = "e, x, y, z";
@@ -325,7 +452,14 @@ namespace Generator
                     info.cpp_bind_set_sig = "(uint64_t e, float x, float y, float z)";
                     info.cpp_bind_set_invoke = "e, x, y, z";
                     info.cs_bind_set_type = "delegate* unmanaged<ulong, float, float, float, void>";
-                } else { // Color / Vector4f
+                } else if (csType == "Vector4i") {
+                    info.cpp_bind_get_sig = "(uint64_t e, int* x, int* y, int* z, int* w)";
+                    info.cpp_bind_get_invoke = "e, x, y, z, w";
+                    info.cs_bind_get_type = "delegate* unmanaged<ulong, int*, int*, int*, int*, void>";
+                    info.cpp_bind_set_sig = "(uint64_t e, int x, int y, int z, int w)";
+                    info.cpp_bind_set_invoke = "e, x, y, z, w";
+                    info.cs_bind_set_type = "delegate* unmanaged<ulong, int, int, int, int, void>";
+                } else { // Vector4f / Color
                     info.cpp_bind_get_sig = "(uint64_t e, float* r, float* g, float* b, float* a)";
                     info.cpp_bind_get_invoke = "e, r, g, b, a";
                     info.cs_bind_get_type = "delegate* unmanaged<ulong, float*, float*, float*, float*, void>";
@@ -380,7 +514,7 @@ namespace Generator
 
             buildCsProxyBodies(className, info.field_name_cs, info.field_type_cs, info);
             buildCsNativeCallBodies(className, info.field_name, info.field_type_cs, info);
-            buildCppBodies(className, info.field_name, info.field_name_cs, info.field_type_cs, info, hasGetter, hasSetter);
+            buildCppBodies(className, info.field_name, info.field_name_cs, info.field_type_cs, info, hasGetter, hasSetter, hasDirtyField(field->m_parent));
             buildBindingsEntries(className, info.field_name, info.field_type_cs, info);
             return true;
         }

@@ -170,30 +170,9 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, byte*, void>                                     native_tilemap_add_tileset;
         public delegate* unmanaged<ulong, uint*, int, int, int, byte*, int, float, int, int, void> native_tile_layer_set_data;
         public delegate* unmanaged<ulong, ulong, void>                                     native_entity_set_parent;
-        public delegate* unmanaged<ulong, uint>                                            native_tilemap_get_map_width;
-        public delegate* unmanaged<ulong, uint, void>                                      native_tilemap_set_map_width;
-        public delegate* unmanaged<ulong, uint>                                            native_tilemap_get_map_height;
-        public delegate* unmanaged<ulong, uint, void>                                      native_tilemap_set_map_height;
-        public delegate* unmanaged<ulong, uint>                                            native_tilemap_get_tile_width;
-        public delegate* unmanaged<ulong, uint, void>                                      native_tilemap_set_tile_width;
-        public delegate* unmanaged<ulong, uint>                                            native_tilemap_get_tile_height;
-        public delegate* unmanaged<ulong, uint, void>                                      native_tilemap_set_tile_height;
-        public delegate* unmanaged<ulong, byte*>                                           native_tile_layer_get_name;
-        public delegate* unmanaged<ulong, byte*, void>                                     native_tile_layer_set_name;
-        public delegate* unmanaged<ulong, uint>                                            native_tile_layer_get_width;
-        public delegate* unmanaged<ulong, uint, void>                                      native_tile_layer_set_width;
-        public delegate* unmanaged<ulong, uint>                                            native_tile_layer_get_height;
-        public delegate* unmanaged<ulong, uint, void>                                      native_tile_layer_set_height;
-        public delegate* unmanaged<ulong, int>                                             native_tile_layer_get_visible;
-        public delegate* unmanaged<ulong, int, void>                                       native_tile_layer_set_visible;
-        public delegate* unmanaged<ulong, float>                                           native_tile_layer_get_opacity;
-        public delegate* unmanaged<ulong, float, void>                                     native_tile_layer_set_opacity;
-        public delegate* unmanaged<ulong, int>                                             native_tile_layer_get_offset_x;
-        public delegate* unmanaged<ulong, int, void>                                       native_tile_layer_set_offset_x;
-        public delegate* unmanaged<ulong, int>                                             native_tile_layer_get_offset_y;
-        public delegate* unmanaged<ulong, int, void>                                       native_tile_layer_set_offset_y;
         public delegate* unmanaged<byte*>                                                  native_get_asset_directory;
-        public delegate* unmanaged<ulong, byte*, void>                                     native_sprite_renderer_set_texture_path;
+        public delegate* unmanaged<int, byte*>                                            native_object_get_type_name;
+        public delegate* unmanaged<byte*, int>                                            native_texture_load;
     }
 
     private static NativeBindings* b;
@@ -275,14 +254,6 @@ internal static unsafe partial class NativeCalls
         try { b->native_id_component_set_name(entityId, ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
 
-    internal static void Native_SpriteRendererComponentSetTexturePath(ulong entityId, string path)
-    {
-        fixed (byte* ptr = System.Text.Encoding.UTF8.GetBytes(path + "\0"))
-        {
-            b->native_sprite_renderer_set_texture_path(entityId, ptr);
-        }
-    }
-
     internal static ulong Native_CreateEntity(string name)
     {
         var ptr = StrToPtr(name);
@@ -315,4 +286,12 @@ internal static unsafe partial class NativeCalls
     internal static void Native_EntitySetParent(ulong child, ulong parent) => b->native_entity_set_parent(child, parent);
 
     internal static string Native_GetAssetDirectory() => PtrToStr(b->native_get_asset_directory());
+
+    internal static string Native_ObjectGetTypeName(int instanceID) => PtrToStr(b->native_object_get_type_name(instanceID));
+
+    internal static int Native_TextureLoad(string path)
+    {
+        var ptr = StrToPtr(path);
+        try { return b->native_texture_load(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
 }

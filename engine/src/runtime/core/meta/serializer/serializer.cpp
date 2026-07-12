@@ -143,6 +143,19 @@ namespace dodoe {
     }
 
     template <>
+    Json Serializer::write(const Vector2i& instance) {
+        return Json::array({ instance.x, instance.y });
+    }
+    template <>
+    Vector2i& Serializer::read(const Json& json_context, Vector2i& instance) {
+        DO_ASSERT(json_context.is_array() && json_context.size() >= 2,
+                 "Serializer::read<Vector2i> expects [x, y]");
+        instance.x = json_context.at(0).get<int>();
+        instance.y = json_context.at(1).get<int>();
+        return instance;
+    }
+
+    template <>
     Json Serializer::write(const Vector3f& instance) {
         return Json::array({ instance.x, instance.y, instance.z });
     }
@@ -153,6 +166,20 @@ namespace dodoe {
         instance.x = json_context.at(0).get<float>();
         instance.y = json_context.at(1).get<float>();
         instance.z = json_context.at(2).get<float>();
+        return instance;
+    }
+
+    template <>
+    Json Serializer::write(const Vector3i& instance) {
+        return Json::array({ instance.x, instance.y, instance.z });
+    }
+    template <>
+    Vector3i& Serializer::read(const Json& json_context, Vector3i& instance) {
+        DO_ASSERT(json_context.is_array() && json_context.size() >= 3,
+                 "Serializer::read<Vector3i> expects [x, y, z]");
+        instance.x = json_context.at(0).get<int>();
+        instance.y = json_context.at(1).get<int>();
+        instance.z = json_context.at(2).get<int>();
         return instance;
     }
 
@@ -168,6 +195,21 @@ namespace dodoe {
         instance.y = json_context.at(1).get<float>();
         instance.z = json_context.at(2).get<float>();
         instance.w = json_context.at(3).get<float>();
+        return instance;
+    }
+
+    template <>
+    Json Serializer::write(const Vector4i& instance) {
+        return Json::array({ instance.x, instance.y, instance.z, instance.w });
+    }
+    template <>
+    Vector4i& Serializer::read(const Json& json_context, Vector4i& instance) {
+        DO_ASSERT(json_context.is_array() && json_context.size() >= 4,
+                 "Serializer::read<Vector4i> expects [x, y, z, w]");
+        instance.x = json_context.at(0).get<int>();
+        instance.y = json_context.at(1).get<int>();
+        instance.z = json_context.at(2).get<int>();
+        instance.w = json_context.at(3).get<int>();
         return instance;
     }
 

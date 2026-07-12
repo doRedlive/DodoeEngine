@@ -57,8 +57,11 @@ void PropertyDrawerRegistry::registerBuiltinDrawers()
     registerByType("bool",      []() { return std::make_unique<ScalarDrawer>(); });
     registerByType("std::string", []() { return std::make_unique<StringDrawer>(); });
     registerByType("Vector2f",  []() { return std::make_unique<VectorDrawer<2>>(); });
+    registerByType("Vector2i",  []() { return std::make_unique<VectorDrawer<2>>(); });
     registerByType("Vector3f",  []() { return std::make_unique<VectorDrawer<3>>(); });
+    registerByType("Vector3i",  []() { return std::make_unique<VectorDrawer<3>>(); });
     registerByType("Vector4f",  []() { return std::make_unique<VectorDrawer<4>>(); });
+    registerByType("Vector4i",  []() { return std::make_unique<VectorDrawer<4>>(); });
     registerByType("Color",     []() { return std::make_unique<ColorDrawer>(); });
 
     registerByType("CameraType", []() { return std::make_unique<EnumDrawer>(); });

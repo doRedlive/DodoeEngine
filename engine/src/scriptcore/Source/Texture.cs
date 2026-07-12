@@ -2,5 +2,10 @@ namespace GreenCake;
 
 public class Texture : Object
 {
-    public Texture(int instanceID) : base(instanceID) { }
+    internal Texture(int instanceID) : base(instanceID) { }
+
+    public static Texture? Load(string path)
+    {
+        return Resources.Load<Texture>(path);
+    }
 }

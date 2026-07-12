@@ -165,19 +165,19 @@ namespace dodoe {
 
         DEF_STR_RET(asset_dir);
         static const char* native_get_asset_directory() { _s_asset_dir = Project::AssetDirectory().string(); return _s_asset_dir.c_str(); }
-        static void native_sprite_renderer_set_texture_path(uint64_t u, const char* path) {
-            auto* c = TryGetComponent<SpriteRendererComponent>(u);
-            if (!c) return;
+        DEF_STR_RET(object_type_name);
 
-            if (!path || path[0] == '\0') {
-                c->texture = {};
-            } else if (auto texture = Texture::Load(path)) {
-                c->texture = PPtr<Texture>(texture->getFileID(), texture->getUUID(), texture->getInstanceID());
-            } else {
-                c->texture = PPtr<Texture>(FileID(String(path)), Uuid());
-            }
+        static const char* native_object_get_type_name(int instanceID) {
+            auto* obj = Object::FindObjectFromInstanceID((InstanceID)instanceID);
+            if (!obj) return "";
+            _s_object_type_name = obj->getObjectTypeName();
+            return _s_object_type_name.c_str();
+        }
 
-            c->dirty = true;
+        static int native_texture_load(const char* path) {
+            if (!path || path[0] == '\0') return 0;
+            auto tex = Texture::Load(String(path));
+            return tex ? (int)tex->getInstanceID() : 0;
         }
 
 #define FOR_EACH_NATIVE_BINDING(X) \
@@ -335,8 +335,15 @@ X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
     X(native_TileLayerComponent_offset_y_get, int, (uint64_t e), e) \
     X(native_TileLayerComponent_offset_y_set, void, (uint64_t e, int v), e, v) \
 /* === NATIVE_BINDINGS_GENERATED_END === */ \
+    X(native_create_entity, uint64_t, (const char* name), name) \
+    X(native_destroy_entity, void, (uint64_t e), e) \
+    X(native_tilemap_set_data, void, (uint64_t e, int w, int h, int tw, int th), e, w, h, tw, th) \
+    X(native_tilemap_add_tileset, void, (uint64_t e, const char* json_str), e, json_str) \
+    X(native_tile_layer_set_data, void, (uint64_t e, const uint32_t* tiles, int len, int w, int h, const char* name, int vis, float opac, int ox, int oy), e, tiles, len, w, h, name, vis, opac, ox, oy) \
+    X(native_entity_set_parent, void, (uint64_t child, uint64_t parent), child, parent) \
     X(native_get_asset_directory, const char*, (), ) \
-    X(native_sprite_renderer_set_texture_path, void, (uint64_t e, const char* path), e, path)
+    X(native_object_get_type_name, const char*, (int instanceID), instanceID) \
+    X(native_texture_load, int, (const char* path), path)
 
 #include "_generated/script/script_glue.generated.cpp"
 

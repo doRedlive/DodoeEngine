@@ -94,10 +94,18 @@ public static partial class ScriptHub
             field.SetValue(obj, *(bool*)valuePtr);
         else if (fc == typeof(char))
             field.SetValue(obj, *(char*)valuePtr);
+        else if (fc == typeof(Vector2i))
+            field.SetValue(obj, *(Vector2i*)valuePtr);
         else if (fc == typeof(Vector2f))
             field.SetValue(obj, *(Vector2f*)valuePtr);
+        else if (fc == typeof(Vector3i))
+            field.SetValue(obj, *(Vector3i*)valuePtr);
         else if (fc == typeof(Vector3f))
             field.SetValue(obj, *(Vector3f*)valuePtr);
+        else if (fc == typeof(Vector4i))
+            field.SetValue(obj, *(Vector4i*)valuePtr);
+        else if (fc == typeof(Vector4f))
+            field.SetValue(obj, *(Vector4f*)valuePtr);
         else
             return 0;
 

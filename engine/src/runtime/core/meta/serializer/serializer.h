@@ -153,7 +153,7 @@ namespace dodoe {
                     if (json_context.contains("uuid")) {
                         read(json_context.at("uuid"), uuid);
                     }
-                    FileID file_id(path);
+                    FileID file_id(path, file_uuid);
                     instance = T(file_id, uuid);
                 }
                 return instance;
@@ -234,14 +234,29 @@ namespace dodoe {
     Vector2f& Serializer::read(const Json& json_context, Vector2f& instance);
 
     template<>
+    Json Serializer::write(const Vector2i& instance);
+    template<>
+    Vector2i& Serializer::read(const Json& json_context, Vector2i& instance);
+
+    template<>
     Json Serializer::write(const Vector3f& instance);
     template<>
     Vector3f& Serializer::read(const Json& json_context, Vector3f& instance);
 
     template<>
+    Json Serializer::write(const Vector3i& instance);
+    template<>
+    Vector3i& Serializer::read(const Json& json_context, Vector3i& instance);
+
+    template<>
     Json Serializer::write(const Vector4f& instance);
     template<>
     Vector4f& Serializer::read(const Json& json_context, Vector4f& instance);
+
+    template<>
+    Json Serializer::write(const Vector4i& instance);
+    template<>
+    Vector4i& Serializer::read(const Json& json_context, Vector4i& instance);
 
     template<>
     Json Serializer::write(const Color& instance);

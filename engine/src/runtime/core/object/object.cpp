@@ -10,7 +10,7 @@ namespace dodoe {
     InstanceID Object::s_next_instance_id{1};
 
     UInt64 Object::makeKey(const FileID& file_id) {
-        return static_cast<UInt64>(file_id.getUUID());
+        return file_id.getID();
     }
 
     Object* Object::FindObjectFromInstanceID(const InstanceID id) {

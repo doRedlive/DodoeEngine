@@ -1,0 +1,17 @@
+namespace GreenCake;
+
+using System;
+
+public static class Resources
+{
+    public static T? Load<T>(string path) where T : Object
+    {
+        if (typeof(T) == typeof(Texture)) {
+            var fullPath = FilePath.Resolve(path);
+            int id = NativeCalls.Native_TextureLoad(fullPath);
+            return Object.FindObjectFromInstanceID<T>(id);
+        }
+
+        throw new NotSupportedException($"Resources.Load<{typeof(T).Name}> is not supported yet.");
+    }
+}

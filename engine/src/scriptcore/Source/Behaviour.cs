@@ -13,6 +13,19 @@ public class CakeBehaviour : CakeComponent
     public GameObject GameObject { get; internal set; }
     public Transform Transform { get { return GameObject != null ? GameObject.Transform : null; } }
 
+    public T GetComponent<T>() where T : CakeComponent
+    {
+        return GameObject?.GetComponent<T>();
+    }
+
+    public T GetOrAddComponent<T>() where T : CakeComponent, new()
+    {
+        var comp = GameObject?.GetComponent<T>();
+        if (comp != null)
+            return comp;
+        return GameObject?.AddComponent<T>();
+    }
+
     internal bool _awakeCalled;
     internal bool _startCalled;
     internal bool _destroyed;
