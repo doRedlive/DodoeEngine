@@ -11,7 +11,7 @@ REFLECTION_TYPE(SpotLightComponent)
 
 namespace dodoe {
 
-    STRUCT(PointLightComponent, WhiteListFields) {
+    STRUCT(PointLightComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(PointLightComponent)
 
         META(Enable)
@@ -27,7 +27,7 @@ namespace dodoe {
         bool dirty{true};
     };
 
-    STRUCT(SpotLightComponent, WhiteListFields) {
+    STRUCT(SpotLightComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(SpotLightComponent)
 
         META(Enable)

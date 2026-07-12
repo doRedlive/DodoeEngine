@@ -10,9 +10,9 @@ internal static class GameObjectManager
     private static readonly Dictionary<ulong, ulong> _parentMap = new Dictionary<ulong, ulong>();
     private static readonly Dictionary<ulong, List<ulong>> _childrenMap = new Dictionary<ulong, List<ulong>>();
 
-    private static readonly List<Behaviour> _awakeQueue = new List<Behaviour>();
-    private static readonly List<Behaviour> _startQueue = new List<Behaviour>();
-    private static readonly List<Behaviour> _activeBehaviours = new List<Behaviour>();
+    private static readonly List<CakeBehaviour> _awakeQueue = new List<CakeBehaviour>();
+    private static readonly List<CakeBehaviour> _startQueue = new List<CakeBehaviour>();
+    private static readonly List<CakeBehaviour> _activeCakeBehaviours = new List<CakeBehaviour>();
     private static readonly List<GameObject> _destroyQueue = new List<GameObject>();
 
     public static void Reset()
@@ -22,7 +22,7 @@ internal static class GameObjectManager
         _childrenMap.Clear();
         _awakeQueue.Clear();
         _startQueue.Clear();
-        _activeBehaviours.Clear();
+        _activeCakeBehaviours.Clear();
         _destroyQueue.Clear();
     }
 
@@ -50,7 +50,7 @@ internal static class GameObjectManager
             _childrenMap.Remove(id);
         }
 
-        _activeBehaviours.RemoveAll(mb => mb.GameObject != null && mb.GameObject.ID == id);
+        _activeCakeBehaviours.RemoveAll(mb => mb.GameObject != null && mb.GameObject.ID == id);
     }
 
     public static void SetParent(ulong childId, GameObject parent)
@@ -117,13 +117,13 @@ internal static class GameObjectManager
         return null;
     }
 
-    public static void QueueAwake(Behaviour comp)
+    public static void QueueAwake(CakeBehaviour comp)
     {
         if (!comp._awakeCalled && !comp._destroyed)
             _awakeQueue.Add(comp);
     }
 
-    public static void QueueStart(Behaviour comp)
+    public static void QueueStart(CakeBehaviour comp)
     {
         if (!comp._startCalled && !comp._destroyed)
             _startQueue.Add(comp);
@@ -135,10 +135,10 @@ internal static class GameObjectManager
             _destroyQueue.Add(obj);
     }
 
-    public static void RegisterActiveBehaviour(Behaviour comp)
+    public static void RegisterActiveCakeBehaviour(CakeBehaviour comp)
     {
-        if (!_activeBehaviours.Contains(comp))
-            _activeBehaviours.Add(comp);
+        if (!_activeCakeBehaviours.Contains(comp))
+            _activeCakeBehaviours.Add(comp);
     }
 
     public static void ProcessLifecycle(float dt)
@@ -153,7 +153,7 @@ internal static class GameObjectManager
     {
         if (_awakeQueue.Count == 0) return;
 
-        var toProcess = new List<Behaviour>(_awakeQueue);
+        var toProcess = new List<CakeBehaviour>(_awakeQueue);
         _awakeQueue.Clear();
 
         foreach (var comp in toProcess)
@@ -175,7 +175,7 @@ internal static class GameObjectManager
     {
         if (_startQueue.Count == 0) return;
 
-        var toProcess = new List<Behaviour>(_startQueue);
+        var toProcess = new List<CakeBehaviour>(_startQueue);
         _startQueue.Clear();
 
         foreach (var comp in toProcess)
@@ -189,13 +189,13 @@ internal static class GameObjectManager
                 catch (Exception e) { Debug.LogError(string.Format("Start error in {0}: {1}", comp.GetType().Name, e)); }
             }
 
-            RegisterActiveBehaviour(comp);
+            RegisterActiveCakeBehaviour(comp);
         }
     }
 
     private static void ProcessUpdates(float dt)
     {
-        foreach (var comp in _activeBehaviours)
+        foreach (var comp in _activeCakeBehaviours)
         {
             if (comp._destroyed) continue;
             if (!comp.Enabled) continue;
@@ -228,7 +228,7 @@ internal static class GameObjectManager
                 }
             }
 
-            foreach (var comp in _activeBehaviours)
+            foreach (var comp in _activeCakeBehaviours)
             {
                 if (comp.GameObject == go && !comp._destroyed)
                 {
@@ -238,7 +238,7 @@ internal static class GameObjectManager
                 }
             }
 
-            _activeBehaviours.RemoveAll(mb => mb.GameObject == go);
+            _activeCakeBehaviours.RemoveAll(mb => mb.GameObject == go);
 
             NativeCalls.Native_DestroyEntity(go.ID);
 

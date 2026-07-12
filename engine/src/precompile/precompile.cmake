@@ -62,4 +62,8 @@ COMMAND
   ${CMAKE_COMMAND} -DINPUT_LIST_FILE="${DODOE_PRECOMPILE_PARAMS_PATH}" -DOUTPUT_HEADER_FILE="${PARSER_INPUT}" -P "${CMAKE_CURRENT_SOURCE_DIR}/src/precompile/generate_parser_header.cmake"
 COMMAND
   ${PRECOMPILE_PARSER} "*"  "${PARSER_INPUT}"  "${ENGINE_ROOT_DIR}/src" ${sys_include} "DODOE" 0
+COMMAND
+  python "${ENGINE_ROOT_DIR}/tools/splice_generated.py" "${ENGINE_ROOT_DIR}/src/scriptcore/Source/NativeCalls.cs" "${ENGINE_ROOT_DIR}/src/_generated/script/NativeBindings.generated.cs" "NATIVE_BINDINGS_GENERATED_START" "NATIVE_BINDINGS_GENERATED_END"
+COMMAND
+  python "${ENGINE_ROOT_DIR}/tools/splice_generated.py" "${ENGINE_ROOT_DIR}/src/runtime/function/script/script_glue.cpp" "${ENGINE_ROOT_DIR}/src/_generated/script/script_glue_bindings.generated.h" "NATIVE_BINDINGS_GENERATED_START" "NATIVE_BINDINGS_GENERATED_END"
 )

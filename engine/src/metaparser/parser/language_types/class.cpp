@@ -49,6 +49,11 @@ bool Class::shouldCompileMethods(void) const{
            m_meta_data.getFlag(NativeProperty::WhiteListMethods);
 }
 
+bool Class::shouldScriptBind(void) const
+{
+    return m_meta_data.getFlag(NativeProperty::ScriptBind);
+}
+
 std::string Class::getClassName(void) { return m_name; }
 
 bool Class::isAccessible(void) const { return m_enabled; }

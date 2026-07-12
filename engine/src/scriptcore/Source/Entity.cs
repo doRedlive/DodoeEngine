@@ -1,7 +1,6 @@
 namespace GreenCake;
 
 using System;
-using System.Collections.Generic;
 
 public class Entity
 {
@@ -10,67 +9,28 @@ public class Entity
     protected Entity() { ID = 0; }
     internal Entity(ulong id) { ID = id; }
 
-    public bool HasComponent<T>() where T : Component
+    public bool HasComponent<T>() where T : CakeComponent
     {
-        if (World.Current?.HasComponent<T>(ID) == true)
-            return true;
-        return false;
+        return ComponentManager.Has<T>(this);
     }
 
-    public T GetComponent<T>() where T : Component
+    public T GetComponent<T>() where T : CakeComponent
     {
-        if (World.Current != null && World.Current.TryGetComponent<T>(ID, out T component))
-            return component;
-
-        return null;
-        Debug.Log($"Entity {ID} does not have component {typeof(T).FullName}.");
+        return ComponentManager.Get<T>(this);
     }
 
-    public void AddComponent<T>(T component) where T : Component
+    public void AddComponent<T>(T component) where T : CakeComponent, new()
     {
-        if (HasComponent<T>()) return;
-
-        component.Entity = this;
-        World.Current.AddComponent(ID, component);
-
-        Type componentType = typeof(T);
-        if (NativeCalls.Native_ComponentExists(ID, componentType))
-        {
-            if (NativeCalls.Native_EntityHasComponent(ID, componentType))
-                return;
-            NativeCalls.Native_EntityAddComponent(ID, component);
-        }
+        ComponentManager.Add<T>(this);
     }
 
-    public void AddComponent<T>() where T : Component, new()
+    public void AddComponent<T>() where T : CakeComponent, new()
     {
-        AddComponent(new T());
+        ComponentManager.Add<T>(this);
     }
 
-    public void RemoveComponent<T>() where T : Component
+    public void RemoveComponent<T>() where T : CakeComponent
     {
-        if (!HasComponent<T>()) return;
-
-        World.Current.RemoveComponent<T>(ID);
-
-        Type componentType = typeof(T);
-        if (NativeCalls.Native_ComponentExists(ID, componentType))
-        {
-            if (!NativeCalls.Native_EntityHasComponent(ID, componentType))
-                return;
-            NativeCalls.Native_EntityRemoveComponent(ID, componentType);
-        }
-    }
-
-    public Type[] GetAllMonoComponentTypes()
-    {
-        if (World.Current is null)
-            return Array.Empty<Type>();
-
-        var result = new List<Type>();
-        foreach (var type in World.Current.GetMonoComponentTypes(ID))
-            result.Add(type);
-
-        return result.ToArray();
+        ComponentManager.Remove<T>(this);
     }
 }

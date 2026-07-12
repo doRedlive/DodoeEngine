@@ -3,7 +3,7 @@ using GreenCake;
 namespace Game 
 {
 
-    struct CustomComponent : IComponent 
+    struct CustomComponent : ICakeComponent
     {
         int intValue;
         float floatValue; 

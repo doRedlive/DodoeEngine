@@ -14,7 +14,7 @@ REFLECTION_TYPE(SpriteRendererComponent)
 
 namespace dodoe {
 
-    STRUCT(SpriteRendererComponent, WhiteListFields) {
+    STRUCT(SpriteRendererComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(SpriteRendererComponent)
 
         META(Enable)

@@ -11,7 +11,7 @@ REFLECTION_TYPE(TransformComponent)
 
 namespace dodoe {
 
-    STRUCT(TransformComponent, WhiteListFields) {
+    STRUCT(TransformComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(TransformComponent)
 
         META(Enable)

@@ -1,6 +1,6 @@
 namespace GreenCake;
 
-public class Transform : Component
+public class Transform : CakeComponent
 {
     private TransformComponent EcsTransform
     {

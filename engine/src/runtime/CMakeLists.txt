@@ -19,8 +19,6 @@ file(GLOB_RECURSE HEADER_FILES
 
 set(DODOE_ALL_SOURCES ${SOURCE_FILES} ${HEADER_FILES})
 
-# bindings/ directory removed — editor links directly to runtime API
-
 set(_DODOE_RUNTIME_HEADS "")
 foreach(_header_file IN LISTS HEADER_FILES)
     file(RELATIVE_PATH _rel "${ENGINE_ROOT_DIR}/src" "${_header_file}")
@@ -31,6 +29,10 @@ list(REMOVE_DUPLICATES _DODOE_RUNTIME_HEADS)
 set(DODOE_RUNTIME_HEADS "${_DODOE_RUNTIME_HEADS}" CACHE STRING "Runtime headers for DodoePreCompile" FORCE)
 
 add_library(${TARGET_NAME} SHARED ${DODOE_ALL_SOURCES})
+
+target_sources(${TARGET_NAME} PRIVATE
+    ${ENGINE_ROOT_DIR}/src/_generated/script/py_bindings_components.generated.cpp
+)
 target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_BUILD_DLL)
 
 source_group(TREE ${ENGINE_ROOT_DIR}/src FILES ${DODOE_ALL_SOURCES})

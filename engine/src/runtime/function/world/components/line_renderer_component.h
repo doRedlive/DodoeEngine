@@ -11,7 +11,7 @@ REFLECTION_TYPE(LineRendererComponent)
 
 namespace dodoe {
 
-    STRUCT(LineRendererComponent, WhiteListFields) {
+    STRUCT(LineRendererComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(LineRendererComponent)
 
         META(Enable)

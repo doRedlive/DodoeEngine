@@ -1,6 +1,6 @@
 namespace GreenCake;
 
-public class DoSystem
+public class CakeSystem
 {
     protected World World { get; private set; } = World.Current;
 }

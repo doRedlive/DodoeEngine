@@ -11,7 +11,7 @@ REFLECTION_TYPE(HierarchyComponent)
 
 namespace dodoe {
 
-    STRUCT(HierarchyComponent, WhiteListFields) {
+    STRUCT(HierarchyComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(HierarchyComponent)
 
         META(Enable)

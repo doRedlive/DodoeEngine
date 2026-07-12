@@ -8,7 +8,7 @@ public class GameObject
     internal Entity Entity { get; private set; }
 
     private bool _activeSelf = true;
-    private readonly List<Component> _userComponents = new List<Component>();
+    private readonly List<CakeComponent> _userComponents = new List<CakeComponent>();
 
     public string Name
     {
@@ -66,7 +66,7 @@ public class GameObject
 
     private GameObject() { }
 
-    public T AddComponent<T>() where T : Component, new()
+    public T AddComponent<T>() where T : CakeComponent, new()
     {
         if (typeof(T) == typeof(Transform))
         {
@@ -74,25 +74,12 @@ public class GameObject
                 return (T)(object)Transform;
         }
 
-        if (World.Current != null && World.Current.HasComponent<T>(ID))
-            return World.Current.GetComponent<T>(ID);
+        var component = ComponentManager.Add<T>(Entity);
 
-        var component = new T();
-        component.Entity = Entity;
-        World.Current?.AddOrReplaceComponent(ID, component);
-
-        Type componentType = typeof(T);
-        if (NativeCalls.Native_ComponentExists(ID, componentType))
-        {
-            if (!NativeCalls.Native_EntityHasComponent(ID, componentType))
-                NativeCalls.Native_EntityAddComponent(ID, component);
-        }
-
-        if (component is Behaviour mb)
+        if (component is CakeBehaviour mb)
         {
             mb.GameObject = this;
             _userComponents.Add(mb);
-            GameObjectManager.QueueAwake(mb);
         }
         else if (component is Transform tf)
         {
@@ -102,61 +89,40 @@ public class GameObject
         return component;
     }
 
-    public T GetComponent<T>() where T : Component
+    public T GetComponent<T>() where T : CakeComponent
     {
-        if (World.Current == null) return null;
-        if (World.Current.TryGetComponent<T>(ID, out var component))
-            return component;
-        return null;
+        return ComponentManager.Get<T>(Entity);
     }
 
-    public bool TryGetComponent<T>(out T component) where T : Component
+    public bool TryGetComponent<T>(out T component) where T : CakeComponent
     {
         component = GetComponent<T>();
         return component != null;
     }
 
-    public bool HasComponent<T>() where T : Component
+    public bool HasComponent<T>() where T : CakeComponent
     {
-        return World.Current != null && World.Current.HasComponent<T>(ID);
+        return ComponentManager.Has<T>(Entity);
     }
 
-    public void RemoveComponent<T>() where T : Component
+    public void RemoveComponent<T>() where T : CakeComponent
     {
-        if (World.Current == null) return;
-
         if (typeof(T) == typeof(Transform))
             return;
 
-        if (World.Current.TryGetComponent<T>(ID, out var component))
+        if (ComponentManager.TryGetUserComponent<T>(Entity, out var component) && component is CakeBehaviour mb)
         {
-            if (component is Behaviour mb)
-            {
-                if (!mb._destroyed)
-                {
-                    mb._destroyed = true;
-                    try { mb.OnDestroy(); }
-                    catch (Exception e) { Debug.LogError(string.Format("OnDestroy error: {0}", e)); }
-                }
-                _userComponents.Remove(mb);
-            }
+            _userComponents.Remove(mb);
         }
 
-        World.Current.RemoveComponent<T>(ID);
-
-        Type componentType = typeof(T);
-        if (NativeCalls.Native_ComponentExists(ID, componentType))
-        {
-            if (NativeCalls.Native_EntityHasComponent(ID, componentType))
-                NativeCalls.Native_EntityRemoveComponent(ID, componentType);
-        }
+        ComponentManager.Remove<T>(Entity);
     }
 
-    internal IEnumerable<Behaviour> GetBehaviours()
+    internal IEnumerable<CakeBehaviour> GetBehaviours()
     {
         foreach (var comp in _userComponents)
         {
-            if (comp is Behaviour mb)
+            if (comp is CakeBehaviour mb)
                 yield return mb;
         }
     }
@@ -201,7 +167,7 @@ public class GameObject
     {
         foreach (var comp in _userComponents)
         {
-            if (comp is Behaviour mb && !mb._destroyed)
+            if (comp is CakeBehaviour mb && !mb._destroyed)
             {
                 if (_activeSelf && mb.Enabled)
                     try { mb.OnEnable(); } catch (Exception e) { Debug.LogError(string.Format("OnEnable error: {0}", e)); }

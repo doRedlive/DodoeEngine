@@ -2,16 +2,16 @@ namespace GreenCake;
 
 using System.Collections.Generic;
 
-internal interface IComponentSet
+internal interface ICakeComponentSet
 {
     int Count { get; }
     void Remove(ulong entityId);
     bool Has(ulong entityId);
     IEnumerable<ulong> GetEntities();
-    bool TryGetComponent(ulong entityId, out Component component);
+    bool TryGetComponent(ulong entityId, out CakeComponent component);
 }
 
-internal class ComponentSet<T> : IComponentSet where T : Component
+internal class ComponentSet<T> : ICakeComponentSet where T : CakeComponent
 {
     private readonly Dictionary<ulong, int> _sparse = new();
     private readonly List<ulong> _entities = new();
@@ -83,7 +83,7 @@ internal class ComponentSet<T> : IComponentSet where T : Component
         return false;
     }
 
-    public bool TryGetComponent(ulong entityId, out Component component)
+    public bool TryGetComponent(ulong entityId, out CakeComponent component)
     {
         if (TryGet(entityId, out T typedComponent) && typedComponent is not null)
         {

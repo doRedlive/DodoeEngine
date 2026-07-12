@@ -265,13 +265,23 @@ namespace dodoe {
     }
 
     Entity Scene::getEntityByTag(const std::string& tag) {
-        for (auto& [_, entity] : m_entity_umap) {
-            if (entity.getComponent<TagComponent>().id == string2hash(tag)) {
+        for (auto entity : m_reg.view<TagComponent>()) {
+            if (entity.getComponent<TagComponent>().tag == tag) {
                 return entity;
             }
         }
         DO_ERROR("Not found entity has the tag {}.", tag);
         return Entity::NullEntity();
+    }
+
+    DynamicArray<Entity> Scene::getEntitiesByTag(const std::string& tag) {
+        DynamicArray<Entity> result;
+        for (auto entity : m_reg.view<TagComponent>()) {
+            if (entity.getComponent<TagComponent>().tag == tag) {
+                result.push_back(entity);
+            }
+        }
+        return result;
     }
 
     Entity Scene::getEntity(const ui32 entity_id) {

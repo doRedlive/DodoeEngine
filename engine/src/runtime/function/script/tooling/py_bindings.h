@@ -18,6 +18,7 @@ namespace dodoe::py_bindings {
     void RegisterResource(py::module_& dodoe_module);
     void RegisterEntity(py::module_& dodoe_module);
     void RegisterWorld(py::module_& dodoe_module);
+    void RegisterGeneratedComponents(py::module_& m);
 
 } // namespace dodoe::py_bindings
 

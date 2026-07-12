@@ -11,7 +11,7 @@ REFLECTION_TYPE(CircleRendererComponent)
 
 namespace dodoe {
 
-    STRUCT(CircleRendererComponent, WhiteListFields) {
+    STRUCT(CircleRendererComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(CircleRendererComponent)
 
         META(Enable)

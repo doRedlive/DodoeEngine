@@ -1,0 +1,20 @@
+using System;
+using System.Runtime.InteropServices;
+
+namespace GreenCake;
+
+internal static unsafe partial class NativeCalls
+{
+{{#class_defines}}
+    internal static {{{nc_ret_type}}} {{class_name}}_{{field_name_cs}}_Get(ulong entityId)
+    {
+        {{{nc_getter_body}}}
+    }
+
+    internal static void {{class_name}}_{{field_name_cs}}_Set(ulong entityId, {{{nc_setter_param}}})
+    {
+        {{{nc_setter_body}}}
+    }
+
+{{/class_defines}}
+}

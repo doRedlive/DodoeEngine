@@ -9,4 +9,10 @@
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="../_generated/script/NativeComponents.generated.cs" />
+    <Compile Include="../_generated/script/NativeCalls.generated.cs" />
+    <Compile Remove="../_generated/script/NativeBindings.generated.cs" />
+  </ItemGroup>
+
 </Project>

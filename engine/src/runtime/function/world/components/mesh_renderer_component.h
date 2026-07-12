@@ -13,7 +13,7 @@ REFLECTION_TYPE(MeshRendererComponent)
 
 namespace dodoe {
 
-	STRUCT(MeshRendererComponent, WhiteListFields) {
+	STRUCT(MeshRendererComponent, WhiteListFields, ScriptBind) {
 		REFLECTION_BODY(MeshRendererComponent)
 
         META(Enable)

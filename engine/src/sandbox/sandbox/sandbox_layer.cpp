@@ -12,7 +12,6 @@
 #include "runtime/resource/resource_manager.h"
 #include "runtime/service/world/scene_importer.h"
 #include "runtime/core/utils/common.h"
-#include "runtime/core/utils/tags.h"
 
 
 namespace sandbox {
@@ -22,10 +21,6 @@ namespace sandbox {
     }
 
     void SandboxLayer::attach() {
-        auto* world = dodoe::GetWorld();
-        auto scene = world->getCurrentScene();
-
-        dodoe::SceneImporter::ImportModel("engine/res/models/backpack/backpack.obj");
 
     }
     

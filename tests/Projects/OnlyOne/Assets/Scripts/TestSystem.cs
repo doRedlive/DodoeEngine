@@ -2,10 +2,15 @@ namespace OnlyOne;
 
 using GreenCake;
 
-public class TestSystem : DoSystem
+public class TestSystem : CakeSystem
 {
-    public void Update()
+
+    private GameObject _testSprite;
+    private SpriteRendererComponent _spriteRenderer; 
+
+    public void Start()
     {
-        Debug.Log("Test System Update!");
+        _testSprite = GameObject.Create("GrmSprite");
+        _spriteRenderer = _testSprite.AddComponent<SpriteRendererComponent>();
     }
 }

@@ -1,6 +1,6 @@
 namespace GreenCake;
 
-public class Behaviour : Component
+public class CakeBehaviour : CakeComponent
 {
     public virtual void Awake() { }
     public virtual void Start() { }

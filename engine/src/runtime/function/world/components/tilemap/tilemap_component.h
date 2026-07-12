@@ -13,7 +13,7 @@ REFLECTION_TYPE(TilemapComponent)
 
 namespace dodoe {
 
-    STRUCT(TilemapComponent, WhiteListFields) {
+    STRUCT(TilemapComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(TilemapComponent)
 
         META(Enable)

@@ -1,0 +1,12 @@
+{{#class_defines}}
+{{#field_defines}}
+static {{{cpp_ret_type}}} {{{cpp_func_get}}}(uint64_t uuid{{#has_get_params}}, {{{cpp_get_params}}}{{/has_get_params}}) {
+    {{{getter_body}}}
+}
+
+static void {{{cpp_func_set}}}(uint64_t uuid{{#has_set_params}}, {{{cpp_set_params}}}{{/has_set_params}}) {
+    {{{setter_body}}}
+}
+
+{{/field_defines}}
+{{/class_defines}}

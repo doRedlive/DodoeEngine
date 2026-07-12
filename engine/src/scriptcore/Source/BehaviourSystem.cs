@@ -1,6 +1,6 @@
 namespace GreenCake;
 
-internal class BehaviourSystem : DoSystem
+internal class CakeBehaviourSystem : CakeSystem
 {
     public void Update()
     {

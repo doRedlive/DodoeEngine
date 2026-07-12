@@ -12,7 +12,7 @@ REFLECTION_TYPE(FoliageRendererComponent)
 
 namespace dodoe {
 
-    STRUCT(FoliageRendererInstance, WhiteListFields) {
+    STRUCT(FoliageRendererInstance, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(FoliageRendererInstance)
 
         META(Enable)
@@ -29,7 +29,7 @@ namespace dodoe {
         float variation{0.0f};
     };
 
-    STRUCT(FoliageRendererComponent, WhiteListFields) {
+    STRUCT(FoliageRendererComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(FoliageRendererComponent)
 
         META(Enable)

@@ -5,13 +5,20 @@ using System.Collections.Generic;
 
 public class World
 {
-    internal static World Current { get; private set; }
-
-    private readonly Dictionary<Type, IComponentSet> _componentSets = new();
-
-    public World()
+    internal static World Current
     {
-        Current = this;
+        get
+        {
+            _current ??= new World();
+            return _current;
+        }
+    }
+
+    private static World? _current;
+
+    private World()
+    {
+        _current = this;
     }
 
     public Entity CreateEntity(string name = "Entity")
@@ -27,245 +34,84 @@ public class World
         RemoveEntityLocal(entityId);
     }
 
-    public void AddComponent<T>(ulong entity, T component) where T : Component
+    public void AddOrReplaceComponent<T>(ulong entity, T component) where T : CakeComponent
     {
-        GetSet<T>().Add(entity, component);
+        ManagedComponentStore.AddOrReplace(entity, component);
     }
 
-    public void AddOrReplaceComponent<T>(ulong entity, T component) where T : Component
+    public bool TryGetComponent<T>(ulong entity, out T component) where T : CakeComponent
     {
-        GetSet<T>().AddOrReplace(entity, component);
+        return ManagedComponentStore.TryGet(entity, out component);
     }
 
-    public bool HasComponent<T>(ulong entity) where T : Component
+    public bool TryGetComponent(ulong entity, Type componentType, out CakeComponent component)
     {
-        return GetSet<T>().Has(entity);
+        return ManagedComponentStore.TryGetComponent(entity, componentType, out component);
     }
 
-    public T GetComponent<T>(ulong entity) where T : Component
+    public IEnumerable<Entity> Query<T>() where T : CakeComponent
     {
-        return GetSet<T>().Get(entity);
-    }
-
-    public bool TryGetComponent<T>(ulong entity, out T component) where T : Component
-    {
-        return GetSet<T>().TryGet(entity, out component);
-    }
-
-    public bool TryGetComponent(ulong entity, Type componentType, out Component component)
-    {
-        if (componentType is null)
-            throw new ArgumentNullException(nameof(componentType));
-
-        if (!typeof(Component).IsAssignableFrom(componentType))
-            throw new ArgumentException($"{componentType.FullName} does not inherit Component.", nameof(componentType));
-
-        if (_componentSets.TryGetValue(componentType, out var set) && set.TryGetComponent(entity, out component))
-            return true;
-
-        component = null!;
-        return false;
-    }
-
-    public void RemoveComponent<T>(ulong entity) where T : Component
-    {
-        GetSet<T>().Remove(entity);
-    }
-
-    public IEnumerable<Entity> Query<T>() where T : Component
-    {
-        foreach (var entityId in QueryIds<T>())
+        foreach (var entityId in ManagedComponentStore.Query<T>())
             yield return new Entity(entityId);
     }
 
     public IEnumerable<Entity> Query<T1, T2>()
-        where T1 : Component
-        where T2 : Component
+        where T1 : CakeComponent
+        where T2 : CakeComponent
     {
-        foreach (var entityId in QueryIds(typeof(T1), typeof(T2)))
+        foreach (var entityId in ManagedComponentStore.Query(typeof(T1), typeof(T2)))
             yield return new Entity(entityId);
     }
 
     public IEnumerable<Entity> Query<T1, T2, T3>()
-        where T1 : Component
-        where T2 : Component
-        where T3 : Component
+        where T1 : CakeComponent
+        where T2 : CakeComponent
+        where T3 : CakeComponent
     {
-        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3)))
+        foreach (var entityId in ManagedComponentStore.Query(typeof(T1), typeof(T2), typeof(T3)))
             yield return new Entity(entityId);
     }
 
     public IEnumerable<Entity> Query<T1, T2, T3, T4>()
-        where T1 : Component
-        where T2 : Component
-        where T3 : Component
-        where T4 : Component
+        where T1 : CakeComponent
+        where T2 : CakeComponent
+        where T3 : CakeComponent
+        where T4 : CakeComponent
     {
-        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4)))
+        foreach (var entityId in ManagedComponentStore.Query(typeof(T1), typeof(T2), typeof(T3), typeof(T4)))
             yield return new Entity(entityId);
     }
 
     public IEnumerable<Entity> Query<T1, T2, T3, T4, T5>()
-        where T1 : Component
-        where T2 : Component
-        where T3 : Component
-        where T4 : Component
-        where T5 : Component
+        where T1 : CakeComponent
+        where T2 : CakeComponent
+        where T3 : CakeComponent
+        where T4 : CakeComponent
+        where T5 : CakeComponent
     {
-        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5)))
-            yield return new Entity(entityId);
-    }
-
-    public IEnumerable<Entity> Query<T1, T2, T3, T4, T5, T6>()
-        where T1 : Component
-        where T2 : Component
-        where T3 : Component
-        where T4 : Component
-        where T5 : Component
-        where T6 : Component
-    {
-        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6)))
-            yield return new Entity(entityId);
-    }
-
-    public IEnumerable<Entity> Query<T1, T2, T3, T4, T5, T6, T7>()
-        where T1 : Component
-        where T2 : Component
-        where T3 : Component
-        where T4 : Component
-        where T5 : Component
-        where T6 : Component
-        where T7 : Component
-    {
-        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7)))
-            yield return new Entity(entityId);
-    }
-
-    public IEnumerable<Entity> Query<T1, T2, T3, T4, T5, T6, T7, T8>()
-        where T1 : Component
-        where T2 : Component
-        where T3 : Component
-        where T4 : Component
-        where T5 : Component
-        where T6 : Component
-        where T7 : Component
-        where T8 : Component
-    {
-        foreach (var entityId in QueryIds(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7), typeof(T8)))
+        foreach (var entityId in ManagedComponentStore.Query(typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5)))
             yield return new Entity(entityId);
     }
 
     public IEnumerable<Entity> Query(params Type[] componentTypes)
     {
-        foreach (var entityId in QueryIds(componentTypes))
+        foreach (var entityId in ManagedComponentStore.Query(componentTypes))
             yield return new Entity(entityId);
-    }
-
-    public IEnumerable<ulong> QueryIds<T>() where T : Component
-    {
-        if (!TryGetSet<T>(out var set))
-            yield break;
-
-        foreach (var entity in set.GetEntities())
-            yield return entity;
-    }
-
-    public IEnumerable<ulong> QueryIds(params Type[] componentTypes)
-    {
-        if (componentTypes is null)
-            throw new ArgumentNullException(nameof(componentTypes));
-
-        if (componentTypes.Length == 0)
-            yield break;
-
-        var sets = new List<IComponentSet>(componentTypes.Length);
-        var uniqueTypes = new HashSet<Type>();
-
-        foreach (var componentType in componentTypes)
-        {
-            if (componentType is null)
-                throw new ArgumentException("Component type cannot be null.", nameof(componentTypes));
-
-            if (!typeof(Component).IsAssignableFrom(componentType))
-                throw new ArgumentException($"{componentType.FullName} does not inherit Component.", nameof(componentTypes));
-
-            if (!uniqueTypes.Add(componentType))
-                continue;
-
-            if (!_componentSets.TryGetValue(componentType, out var set))
-                yield break;
-
-            sets.Add(set);
-        }
-
-        if (sets.Count == 0)
-            yield break;
-
-        IComponentSet smallest = sets[0];
-        for (int i = 1; i < sets.Count; i++)
-        {
-            if (sets[i].Count < smallest.Count)
-                smallest = sets[i];
-        }
-
-        foreach (var entity in smallest.GetEntities())
-        {
-            bool matchesAll = true;
-            for (int i = 0; i < sets.Count; i++)
-            {
-                if (ReferenceEquals(sets[i], smallest))
-                    continue;
-
-                if (!sets[i].Has(entity))
-                {
-                    matchesAll = false;
-                    break;
-                }
-            }
-
-            if (matchesAll)
-                yield return entity;
-        }
     }
 
     internal IEnumerable<Type> GetMonoComponentTypes(ulong entity)
     {
-        foreach (var (componentType, set) in _componentSets)
-        {
-            if (set.Has(entity))
-                yield return componentType;
-        }
+        return ManagedComponentStore.GetComponentTypes(entity);
     }
 
     internal void RemoveEntityLocal(ulong entityId)
     {
-        foreach (var set in _componentSets.Values)
-            set.Remove(entityId);
+        ManagedComponentStore.RemoveEntity(entityId);
     }
 
     internal static void Reset()
     {
-        Current?._componentSets.Clear();
-        Current = null;
-    }
-
-    private ComponentSet<T> GetSet<T>() where T : Component
-    {
-        var type = typeof(T);
-        if (!_componentSets.ContainsKey(type))
-            _componentSets[type] = new ComponentSet<T>();
-        return (ComponentSet<T>)_componentSets[type];
-    }
-
-    private bool TryGetSet<T>(out ComponentSet<T> set) where T : Component
-    {
-        if (_componentSets.TryGetValue(typeof(T), out var rawSet))
-        {
-            set = (ComponentSet<T>)rawSet;
-            return true;
-        }
-
-        set = default!;
-        return false;
+        ManagedComponentStore.Clear();
+        _current = null;
     }
 }

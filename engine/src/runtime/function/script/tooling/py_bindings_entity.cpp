@@ -55,27 +55,10 @@ namespace {
     }
 
     void BindComponents(py::module_& m) {
-        py::class_<TransformComponent>(m, "TransformComponent")
-            .def(py::init<>())
-            .def_readwrite("position", &TransformComponent::position)
-            .def_readwrite("rotation", &TransformComponent::rotation)
-            .def_readwrite("scale", &TransformComponent::scale)
-            .def("set_position", &TransformComponent::setPosition)
-            .def("set_rotation", &TransformComponent::setRotation)
-            .def("set_scale", &TransformComponent::setScale);
+        RegisterGeneratedComponents(m);
 
-        py::class_<TagComponent>(m, "TagComponent")
-            .def(py::init<>())
-            .def(py::init<const std::string&>())
-            .def_readwrite("tag", &TagComponent::tag);
-
+        // Hand-written bindings for special components
         py::class_<Rigidbody2dComponent> rb(m, "Rigidbody2dComponent");
-        rb.def(py::init<>());
-        rb.def_property("body_type",
-            [](const Rigidbody2dComponent& c) { return static_cast<int>(c.type); },
-            [](Rigidbody2dComponent& c, int val) { c.type = static_cast<Rigidbody2dComponent::BodyType>(val); });
-        rb.def_readwrite("gravity_scale", &Rigidbody2dComponent::gravity_scale);
-        rb.def_readwrite("fixed_rotation", &Rigidbody2dComponent::fixed_rotation);
         rb.def("set_linear_velocity", &Rigidbody2dComponent::setLinearVelocity);
         rb.def("apply_force_to_center", &Rigidbody2dComponent::applyForceToCenter);
         rb.def("apply_linear_impulse_to_center", &Rigidbody2dComponent::applyLinearImpulseToCenter);
@@ -86,28 +69,7 @@ namespace {
             .value("Kinematic", Rigidbody2dComponent::BodyType::Kinematic)
             .export_values();
 
-        py::class_<BoxCollider2dComponent>(m, "BoxCollider2dComponent")
-            .def(py::init<>())
-            .def_readwrite("offset", &BoxCollider2dComponent::offset)
-            .def_readwrite("size", &BoxCollider2dComponent::size)
-            .def_readwrite("friction", &BoxCollider2dComponent::friction)
-            .def_readwrite("restitution", &BoxCollider2dComponent::restitution)
-            .def_readwrite("restitution_threshold", &BoxCollider2dComponent::restitution_threshold)
-            .def_readwrite("density", &BoxCollider2dComponent::density);
-
-        py::class_<SpriteRendererComponent>(m, "SpriteRendererComponent")
-            .def(py::init<>())
-            .def_readwrite("color", &SpriteRendererComponent::color)
-            .def_readwrite("depth", &SpriteRendererComponent::depth_)
-            .def_readwrite("flip", &SpriteRendererComponent::flip)
-            .def_readwrite("pivot", &SpriteRendererComponent::pivot);
-
         py::class_<Animation2dComponent>(m, "Animation2dComponent")
-            .def(py::init<>())
-            .def_readwrite("cur_anim_id", &Animation2dComponent::cur_anim_id)
-            .def_readwrite("cur_frame_id", &Animation2dComponent::cur_frame_id)
-            .def_readwrite("cur_time_duration", &Animation2dComponent::cur_time_duration)
-            .def_readwrite("speed", &Animation2dComponent::speed)
             .def("add_clip", &Animation2dComponent::addClip);
     }
 
@@ -149,7 +111,6 @@ void RegisterEntity(py::module_& m) {
 #define DO_REG(T) RegisterComponentType<T>(#T)
 
     s_component_registry.clear();
-    DO_REG(TagComponent);
     DO_REG(TransformComponent);
     DO_REG(Rigidbody2dComponent);
     DO_REG(BoxCollider2dComponent);

@@ -11,7 +11,7 @@ REFLECTION_TYPE(RectRendererComponent)
 
 namespace dodoe {
 
-    STRUCT(RectRendererComponent, WhiteListFields) {
+    STRUCT(RectRendererComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(RectRendererComponent)
 
         META(Enable)

@@ -20,7 +20,7 @@ namespace dodoe {
         Orthographic,
     };
 
-    STRUCT(Camera2dComponent, WhiteListFields) {
+    STRUCT(Camera2dComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(Camera2dComponent)
 
         META(Enable)

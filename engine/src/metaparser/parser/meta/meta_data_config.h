@@ -13,4 +13,6 @@ namespace NativeProperty
     const auto WhiteListFields = "WhiteListFields";
     const auto WhiteListMethods = "WhiteListMethods";
 
+    const auto ScriptBind = "ScriptBind";
+
 } // namespace NativeProperty

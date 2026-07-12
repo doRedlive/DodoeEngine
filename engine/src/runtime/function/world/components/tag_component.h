@@ -1,4 +1,4 @@
-// do->GreenMuffin
+// do@Redlive
 
 #pragma once
 
@@ -12,20 +12,16 @@ REFLECTION_TYPE(TagComponent)
 
 namespace dodoe {
 
-    STRUCT(TagComponent, WhiteListFields) {
+    STRUCT(TagComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(TagComponent)
 
         META(Enable)
-        identifier id;
-        META(Enable)
-        std::string tag;
+        std::string tag{"default"};
 
-        TagComponent() : id(string2hash("default")), tag("default") { }
-        TagComponent(const std::string& tag) : id(string2hash(tag)), tag(tag) { }
-
+        identifier id{string2hash("default")};
         bool dirty{false};
 
-        void setTag(const std::string& in_tag) { tag = in_tag; id = string2hash(tag); dirty = true; } 
+        void setTag(const std::string& v) { tag = v; id = string2hash(v); dirty = true; }
         [[nodiscard]] const std::string& getTag() const { return tag; }
     };
 

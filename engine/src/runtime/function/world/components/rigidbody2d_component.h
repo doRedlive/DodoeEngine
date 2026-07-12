@@ -1,9 +1,6 @@
-//
-// Created by Redlive on 2026/3/24.
-//
+// do@Redlive
 
-#ifndef DODOE_RIGIDBODY2D_COMPONENT_H
-#define DODOE_RIGIDBODY2D_COMPONENT_H
+#pragma once
 
 #include "dopch.h"
 
@@ -14,7 +11,7 @@
 REFLECTION_TYPE(Rigidbody2dComponent)
 
 namespace dodoe {
-    STRUCT(Rigidbody2dComponent, WhiteListFields) {
+    STRUCT(Rigidbody2dComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(Rigidbody2dComponent)
 
         enum class BodyType {
@@ -51,5 +48,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif//DODOE_RIGIDBODY2D_COMPONENT_H

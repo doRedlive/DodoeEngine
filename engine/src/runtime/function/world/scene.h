@@ -64,6 +64,7 @@ namespace dodoe {
         void addEntity(Entity entity);
         [[nodiscard]] Entity getEntity(ui32 entity_id);
         [[nodiscard]] Entity getEntityByTag(const std::string& tag);
+        [[nodiscard]] DynamicArray<Entity> getEntitiesByTag(const std::string& tag);
         [[nodiscard]] std::vector<Entity> getEntities();
         [[nodiscard]] Entity tryGetEntityByUUID(Uuid uuid) const;
         [[nodiscard]] Entity getEntityByUUID(Uuid uuid);

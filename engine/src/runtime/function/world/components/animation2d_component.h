@@ -1,4 +1,4 @@
-// do->GreenMuffin
+// do@Redlive
 
 #pragma once
 
@@ -12,7 +12,7 @@ REFLECTION_TYPE(Animation2dComponent)
 
 namespace dodoe {
 
-    STRUCT(Animation2dComponent, WhiteListFields) {
+    STRUCT(Animation2dComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(Animation2dComponent)
 
         META(Enable)

@@ -11,7 +11,7 @@ REFLECTION_TYPE(TileLayerComponent)
 
 namespace dodoe {
 
-    STRUCT(TileLayerComponent, WhiteListFields) {
+    STRUCT(TileLayerComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(TileLayerComponent)
 
         META(Enable)

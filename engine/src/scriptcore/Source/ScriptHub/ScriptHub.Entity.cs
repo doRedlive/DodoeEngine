@@ -56,15 +56,15 @@ public static partial class ScriptHub
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 componentType = EnumerateTypes(asm)
-                    .FirstOrDefault(t => t.Name == shortName && typeof(Component).IsAssignableFrom(t));
+                    .FirstOrDefault(t => t.Name == shortName && typeof(CakeComponent).IsAssignableFrom(t));
                 if (componentType is not null) break;
             }
         }
 
-        if (componentType is null || !typeof(Component).IsAssignableFrom(componentType))
+        if (componentType is null || !typeof(CakeComponent).IsAssignableFrom(componentType))
             return 0;
 
-        if (Activator.CreateInstance(componentType) is not Component component)
+        if (Activator.CreateInstance(componentType) is not CakeComponent component)
             return 0;
 
         var entity = new Entity(entityId);

@@ -1,0 +1,28 @@
+namespace GreenCake;
+
+using System;
+
+{{#class_defines}}
+public sealed class {{class_name}} : NativeComponent
+{
+    static {{class_name}}()
+    {
+        NativeProxyFactory.Register<{{class_name}}>(e => new {{class_name}} { Entity = e });
+    }
+
+{{#field_defines}}
+    public {{{field_type_cs}}} {{field_name_cs}}
+    {
+        get
+        {
+            {{{getter_body}}}
+        }
+        set
+        {
+            {{{setter_body}}}
+        }
+    }
+
+{{/field_defines}}
+}
+{{/class_defines}}

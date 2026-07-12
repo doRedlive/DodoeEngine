@@ -3,7 +3,6 @@
 #include "camera_system.h"
 
 #include "runtime/core/math/math.h"
-#include "runtime/core/utils/tags.h"
 #include "runtime/core/channel/render_channel.h"
 
 namespace dodoe {
@@ -16,8 +15,8 @@ namespace dodoe {
         auto view = reg.view<Camera2dComponent, TransformComponent, TagComponent>();
 
         for (auto entity : view) {
-            const auto tag_id = reg.get<TagComponent>(entity).id;
-            if (tag_id != tag::PrimaryCameraTag) continue;
+            const auto& tag = reg.get<TagComponent>(entity).tag;
+            if (tag != "PrimaryCamera") continue;
 
             auto& cam = reg.get<Camera2dComponent>(entity);
             auto& tf  = reg.get<TransformComponent>(entity);

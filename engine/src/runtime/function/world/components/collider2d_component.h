@@ -1,9 +1,6 @@
-//
-// Created by Redlive on 2026/3/24.
-//
+// do@Redlive
 
-#ifndef DODOE_COLLIDER2D_COMPONENT_H
-#define DODOE_COLLIDER2D_COMPONENT_H
+#pragma once
 
 #include "dopch.h"
 
@@ -13,7 +10,7 @@ REFLECTION_TYPE(BoxCollider2dComponent)
 
 namespace dodoe {
 
-    STRUCT(BoxCollider2dComponent, WhiteListFields) {
+    STRUCT(BoxCollider2dComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(BoxCollider2dComponent)
 
         META(Enable)
@@ -34,5 +31,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif//DODOE_COLLIDER2D_COMPONENT_H

@@ -4,7 +4,7 @@ using GreenCake;
 using GreenCake.TiledImporter;
 using GreenCake.Tilemap;
 
-public class MapImportSystem : DoSystem
+public class MapImportSystem : CakeSystem
 {
     private bool _imported;
 

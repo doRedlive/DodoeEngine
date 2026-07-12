@@ -8,6 +8,19 @@ public static class FilePath
     {
         if (string.IsNullOrEmpty(path) || Path.IsPathRooted(path))
             return path;
-        return Path.Combine(NativeCalls.Native_GetAssetDirectory(), path);
+
+        string assetDir = NativeCalls.Native_GetAssetDirectory();
+        Debug.Log($"[FilePath] Native_GetAssetDirectory() = '{assetDir}'");
+
+        if (!string.IsNullOrEmpty(assetDir))
+        {
+            string combined = Path.GetFullPath(Path.Combine(assetDir, path));
+            if (File.Exists(combined))
+                return combined;
+
+            Debug.Log($"[FilePath] file not found at '{combined}', fallback to CWD");
+        }
+
+        return Path.GetFullPath(path);
     }
 }

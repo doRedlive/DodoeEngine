@@ -10,7 +10,7 @@ REFLECTION_TYPE(SkyLightComponent)
 
 namespace dodoe {
 
-    STRUCT(SkyLightComponent, WhiteListFields) {
+    STRUCT(SkyLightComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(SkyLightComponent)
 
         META(Enable)
