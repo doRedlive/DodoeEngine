@@ -8,22 +8,22 @@ namespace dodoe {
 
     void MonoSystem::start(Registry& reg) {
         (void)reg;
-        getMonoRuntime()->onRuntimeStart();
+        getScriptRuntime()->onRuntimeStart();
     }
 
     void MonoSystem::update(Registry& reg, float dt) {
         (void)reg;
         (void)dt;
-        getMonoRuntime()->onRuntimeUpdate();
+        getScriptRuntime()->onRuntimeUpdate();
     }
 
     void MonoSystem::finalize(Registry& reg) {
         (void)reg;
-        getMonoRuntime()->onRuntimeFinalize();
+        getScriptRuntime()->onRuntimeFinalize();
     }
 
-    ScriptRuntime* MonoSystem::getMonoRuntime() {
-        return GetScriptSystem()->getMonoRuntime();
+    ScriptRuntime* MonoSystem::getScriptRuntime() {
+        return GetScriptSystem()->getScriptRuntime();
     }
 
 } // dodoe

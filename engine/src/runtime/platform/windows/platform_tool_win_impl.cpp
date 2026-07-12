@@ -43,7 +43,7 @@ namespace dodoe {
         fs::path FindCoreAssemblyPath() {
             const std::array candidates = {
                 FileSystem::GetEngineRootPath() / "bin" / "GreenCake.dll",
-                FileSystem::GetEngineRootPath() / "engine" / "src" / "scriptcore" / "bin" / "Debug" / "net8.0" / "GreenCake.dll"
+                FileSystem::GetEngineRootPath() / "engine" / "src" / "scriptcore" / "bin" / "Debug" / "net10.0" / "GreenCake.dll",
             };
 
             for (const auto& candidate : candidates) {
@@ -88,7 +88,7 @@ namespace dodoe {
 
             fout << "<Project Sdk=\"Microsoft.NET.Sdk\">\n\n";
             fout << "  <PropertyGroup>\n";
-            fout << "    <TargetFramework>net8.0</TargetFramework>\n";
+            fout << "    <TargetFramework>net10.0</TargetFramework>\n";
             fout << "    <ImplicitUsings>disable</ImplicitUsings>\n";
             fout << "    <Nullable>disable</Nullable>\n";
             fout << "    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n";

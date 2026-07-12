@@ -76,9 +76,8 @@ if (NOT TARGET json)
     endif ()
 endif()
 
-# Mono's coreclr.dll conflicts with .NET 10 runtime.
-if(NOT TARGET mono::mono)
-    include(mono.cmake)
+if(NOT TARGET nethost::nethost)
+    include(nethost.cmake)
 endif()
 
 if(NOT TARGET assimp)

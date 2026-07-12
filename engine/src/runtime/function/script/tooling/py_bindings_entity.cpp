@@ -2,13 +2,13 @@
 
 #ifdef DODOE_PYTHON_ENABLED
 
-#include "script_bindings.h"
+#include "py_bindings.h"
 
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components.h"
 #include "runtime/core/utils/common.h"
 
-namespace dodoe::script_bindings {
+namespace dodoe::py_bindings {
 namespace {
 
     struct ComponentRegistry {
@@ -146,17 +146,21 @@ void RegisterEntity(py::module_& m) {
     BindColor(m);
     BindComponents(m);
 
+#define DO_REG(T) RegisterComponentType<T>(#T)
+
     s_component_registry.clear();
-    RegisterComponentType<TagComponent>("TagComponent");
-    RegisterComponentType<TransformComponent>("TransformComponent");
-    RegisterComponentType<Rigidbody2dComponent>("Rigidbody2dComponent");
-    RegisterComponentType<BoxCollider2dComponent>("BoxCollider2dComponent");
-    RegisterComponentType<SpriteRendererComponent>("SpriteRendererComponent");
-    RegisterComponentType<Animation2dComponent>("Animation2dComponent");
+    DO_REG(TagComponent);
+    DO_REG(TransformComponent);
+    DO_REG(Rigidbody2dComponent);
+    DO_REG(BoxCollider2dComponent);
+    DO_REG(SpriteRendererComponent);
+    DO_REG(Animation2dComponent);
+
+#undef DO_REG
 
     BindEntity(m);
 }
 
-} // dodoe::script_bindings
+} // namespace dodoe::py_bindings
 
 #endif // DODOE_PYTHON_ENABLED

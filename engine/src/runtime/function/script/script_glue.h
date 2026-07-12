@@ -1,18 +1,11 @@
-// do@GreenMuffin
+// do@Redlive
 
 #pragma once
 
 #include "dopch.h"
 
-extern "C" {
-    typedef struct _MonoClass MonoClass;
-    typedef struct _MonoObject MonoObject;
-    typedef struct _MonoType MonoType;
-}
-
 namespace dodoe {
 
-    class Entity;
     class ScriptEngine;
 
     class ScriptGlue {
@@ -21,10 +14,10 @@ namespace dodoe {
         static void Shutdown();
 
         static void Register();
-
+        
     private:
         static void RegisterComponents();
-        static void RegisterFunctions();
+        static void RegisterNativeBindings();
     };
 
 } // dodoe

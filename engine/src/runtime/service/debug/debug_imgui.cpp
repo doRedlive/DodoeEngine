@@ -46,8 +46,7 @@ namespace dodoe {
             Bool success = GetScriptSystem()->reloadScripts();
             if (success) {
                 DO_DEBUG("Reload Scripts success!");
-                DO_DEBUG("MonoScriptSystem count is {}", GetScriptSystem()->getMonoRuntime()->logSystemClassCount());
-                DO_DEBUG("MonoInstanceSystem count is {}", GetScriptSystem()->getMonoRuntime()->logSystemInstanceCount());
+                DO_DEBUG("MonoScriptSystem count is {}", GetScriptSystem()->getScriptRuntime()->logSystemClassCount());
             }
 
 

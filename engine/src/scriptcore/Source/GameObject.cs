@@ -82,13 +82,13 @@ public class GameObject
         World.Current?.AddOrReplaceComponent(ID, component);
 
         Type componentType = typeof(T);
-        if (InternalCalls.Native_ComponentExists(ID, componentType))
+        if (NativeCalls.Native_ComponentExists(ID, componentType))
         {
-            if (!InternalCalls.Native_EntityHasComponent(ID, componentType))
-                InternalCalls.Native_EntityAddComponent(ID, component);
+            if (!NativeCalls.Native_EntityHasComponent(ID, componentType))
+                NativeCalls.Native_EntityAddComponent(ID, component);
         }
 
-        if (component is MonoBehaviour mb)
+        if (component is Behaviour mb)
         {
             mb.GameObject = this;
             _userComponents.Add(mb);
@@ -130,7 +130,7 @@ public class GameObject
 
         if (World.Current.TryGetComponent<T>(ID, out var component))
         {
-            if (component is MonoBehaviour mb)
+            if (component is Behaviour mb)
             {
                 if (!mb._destroyed)
                 {
@@ -145,18 +145,18 @@ public class GameObject
         World.Current.RemoveComponent<T>(ID);
 
         Type componentType = typeof(T);
-        if (InternalCalls.Native_ComponentExists(ID, componentType))
+        if (NativeCalls.Native_ComponentExists(ID, componentType))
         {
-            if (InternalCalls.Native_EntityHasComponent(ID, componentType))
-                InternalCalls.Native_EntityRemoveComponent(ID, componentType);
+            if (NativeCalls.Native_EntityHasComponent(ID, componentType))
+                NativeCalls.Native_EntityRemoveComponent(ID, componentType);
         }
     }
 
-    internal IEnumerable<MonoBehaviour> GetMonoBehaviours()
+    internal IEnumerable<Behaviour> GetBehaviours()
     {
         foreach (var comp in _userComponents)
         {
-            if (comp is MonoBehaviour mb)
+            if (comp is Behaviour mb)
                 yield return mb;
         }
     }
@@ -201,7 +201,7 @@ public class GameObject
     {
         foreach (var comp in _userComponents)
         {
-            if (comp is MonoBehaviour mb && !mb._destroyed)
+            if (comp is Behaviour mb && !mb._destroyed)
             {
                 if (_activeSelf && mb.Enabled)
                     try { mb.OnEnable(); } catch (Exception e) { Debug.LogError(string.Format("OnEnable error: {0}", e)); }

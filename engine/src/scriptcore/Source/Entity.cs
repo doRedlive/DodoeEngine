@@ -34,11 +34,11 @@ public class Entity
         World.Current.AddComponent(ID, component);
 
         Type componentType = typeof(T);
-        if (InternalCalls.Native_ComponentExists(ID, componentType))
+        if (NativeCalls.Native_ComponentExists(ID, componentType))
         {
-            if (InternalCalls.Native_EntityHasComponent(ID, componentType))
+            if (NativeCalls.Native_EntityHasComponent(ID, componentType))
                 return;
-            InternalCalls.Native_EntityAddComponent(ID, component);
+            NativeCalls.Native_EntityAddComponent(ID, component);
         }
     }
 
@@ -54,11 +54,11 @@ public class Entity
         World.Current.RemoveComponent<T>(ID);
 
         Type componentType = typeof(T);
-        if (InternalCalls.Native_ComponentExists(ID, componentType))
+        if (NativeCalls.Native_ComponentExists(ID, componentType))
         {
-            if (!InternalCalls.Native_EntityHasComponent(ID, componentType))
+            if (!NativeCalls.Native_EntityHasComponent(ID, componentType))
                 return;
-            InternalCalls.Native_EntityRemoveComponent(ID, componentType);
+            NativeCalls.Native_EntityRemoveComponent(ID, componentType);
         }
     }
 

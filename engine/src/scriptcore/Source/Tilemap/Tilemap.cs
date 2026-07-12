@@ -18,7 +18,7 @@ public class Tilemap
 
         Entity mapEntity = World.Current.CreateEntity("Tilemap");
 
-        InternalCalls.Native_TilemapSetData(
+        NativeCalls.Native_TilemapSetData(
             mapEntity.ID,
             (int)MapWidth, (int)MapHeight,
             (int)TileWidth, (int)TileHeight);
@@ -26,14 +26,14 @@ public class Tilemap
         foreach (var tileset in Tilesets)
         {
             string json = System.Text.Json.JsonSerializer.Serialize(tileset);
-            InternalCalls.Native_TilemapAddTileset(mapEntity.ID, json);
+            NativeCalls.Native_TilemapAddTileset(mapEntity.ID, json);
         }
 
         foreach (var layer in Layers)
         {
             Entity layerEntity = World.Current.CreateEntity(layer.Name);
 
-            InternalCalls.Native_TileLayerSetData(
+            NativeCalls.Native_TileLayerSetData(
                 layerEntity.ID,
                 layer.Tiles,
                 (int)layer.Width,
@@ -44,7 +44,7 @@ public class Tilemap
                 layer.OffsetX,
                 layer.OffsetY);
 
-            InternalCalls.Native_EntitySetParent(layerEntity.ID, mapEntity.ID);
+            NativeCalls.Native_EntitySetParent(layerEntity.ID, mapEntity.ID);
         }
 
         return mapEntity;

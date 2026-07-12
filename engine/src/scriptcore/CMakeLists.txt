@@ -13,7 +13,7 @@ else()
     set(TARGET_COPY_DIR ${CMAKE_SOURCE_DIR}/bin)
 endif()
 
-set(DOTNET_OUT_DIR ${CS_PROJECT_DIR}/bin/${DOTNET_CONFIG}/net8.0)
+set(DOTNET_OUT_DIR ${CS_PROJECT_DIR}/bin/${DOTNET_CONFIG}/net10.0)
 set(CS_OUTPUT_DLL ${DOTNET_OUT_DIR}/GreenCake.dll)
 set(CS_OUTPUT_DEPS ${DOTNET_OUT_DIR}/GreenCake.deps.json)
 set(CS_OUTPUT_RUNTIMECONFIG ${DOTNET_OUT_DIR}/GreenCake.runtimeconfig.json)
@@ -50,6 +50,16 @@ add_custom_command(
     COMMENT "Copy GreenCake.dll -> ${TARGET_COPY_DIR}"
 )
 
+add_custom_command(
+    OUTPUT ${TARGET_COPY_DIR}/DodoeRuntime.runtimeconfig.json
+    DEPENDS ${TARGET_COPY_DIR}/GreenCake.dll
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${TARGET_COPY_DIR}/GreenCake.runtimeconfig.json
+            ${TARGET_COPY_DIR}/DodoeRuntime.runtimeconfig.json
+    COMMENT "Copy GreenCake.runtimeconfig.json -> DodoeRuntime.runtimeconfig.json"
+)
+
 add_custom_target(GreenCake ALL
     DEPENDS ${TARGET_COPY_DIR}/GreenCake.dll
+    DEPENDS ${TARGET_COPY_DIR}/DodoeRuntime.runtimeconfig.json
 )

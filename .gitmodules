@@ -1,3 +1,6 @@
 [submodule "engine/external/cutie-rhi"]
 	path = engine/external/cutie-rhi
 	url = https://github.com/doRedlive/Cutie-RHI.git
+[submodule "engine/external/DirectX-Headers"]
+	path = engine/external/DirectX-Headers
+	url = https://github.com/microsoft/DirectX-Headers.git

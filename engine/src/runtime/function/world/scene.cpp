@@ -12,13 +12,10 @@
 #include "runtime/core/meta/component_db.h"
 #include "runtime/core/project/project.h"
 #include "runtime/core/utils/common.h"
-#include "runtime/function/script/script_class.h"
 #include "runtime/function/script/script_runtime.h"
 #include "runtime/function/world/components.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/res_type/scene_res.h"
-
-#include "mono/metadata/class.h"
 
 namespace dodoe {
 
@@ -28,25 +25,7 @@ namespace dodoe {
             if (!GetScriptSystem()) {
                 return nullptr;
             }
-            return GetScriptSystem()->getMonoRuntime();
-        }
-
-        std::string GetMonoComponentFullName(const ScriptClass& script_class) {
-            MonoClass* mono_class = script_class.getMonoClass();
-            if (!mono_class) {
-                return {};
-            }
-
-            const char* name = mono_class_get_name(mono_class);
-            const char* ns = mono_class_get_namespace(mono_class);
-            if (!name) {
-                return {};
-            }
-
-            if (ns && ns[0] != '\0') {
-                return std::string(ns) + "." + name;
-            }
-            return std::string(name);
+            return GetScriptSystem()->getScriptRuntime();
         }
 
         bool ParseJsonText(const std::string& json_text, Json& out_json) {
@@ -88,20 +67,17 @@ namespace dodoe {
             }
 
             runtime->loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
-            const auto& mono_instances = runtime->getComponentInstanceUmap();
-            const auto it = mono_instances.find(static_cast<ui64>(entity.uuid()));
-            if (it == mono_instances.end()) {
+
+            const auto& snapshot = runtime->getFieldSnapshot();
+            const auto it = snapshot.find(static_cast<ui64>(entity.uuid()));
+            if (it == snapshot.end()) {
                 return components;
             }
 
-            for (const auto& instance_ref : it->second) {
-                if (!instance_ref || !instance_ref->getScriptClass()) {
-                    continue;
-                }
-
+            for (const auto& [type_name, json_str] : it->second) {
                 ComponentRes component_res;
-                component_res.m_type_name = GetMonoComponentFullName(*instance_ref->getScriptClass());
-                component_res.m_component = instance_ref->serializeFields().dump();
+                component_res.m_type_name = type_name;
+                component_res.m_component = json_str;
                 components.push_back(std::move(component_res));
             }
 
@@ -141,37 +117,11 @@ namespace dodoe {
             }
 
             for (const auto& component_res : components) {
-                (void)runtime->addEntityMonoComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
+                runtime->addEntityMonoComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
             }
 
             runtime->loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
-            const auto& mono_instances = runtime->getComponentInstanceUmap();
-            const auto it = mono_instances.find(static_cast<ui64>(entity.uuid()));
-            if (it == mono_instances.end()) {
-                return;
-            }
-
-            std::unordered_map<std::string, MonoComponentInstance*> mono_component_map;
-            for (const auto& instance_ref : it->second) {
-                if (!instance_ref || !instance_ref->getScriptClass()) {
-                    continue;
-                }
-                mono_component_map.emplace(GetMonoComponentFullName(*instance_ref->getScriptClass()), instance_ref.get());
-            }
-
-            for (const auto& component_res : components) {
-                const auto found = mono_component_map.find(component_res.m_type_name);
-                if (found == mono_component_map.end() || !found->second) {
-                    continue;
-                }
-
-                Json component_json;
-                if (!ParseJsonText(component_res.m_component, component_json)) {
-                    continue;
-                }
-
-                (void)found->second->deserializeFields(component_json);
-            }
+            runtime->restoreFields();
         }
 
     } // namespace

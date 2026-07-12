@@ -2,15 +2,15 @@
 
 #ifdef DODOE_PYTHON_ENABLED
 
-#include "script_bindings.h"
+#include "py_bindings.h"
 
 #include <pybind11/embed.h>
 
 PYBIND11_EMBEDDED_MODULE(dodoe, m) {
-    dodoe::script_bindings::RegisterAll(m);
+    dodoe::py_bindings::RegisterAll(m);
 }
 
-namespace dodoe::script_bindings {
+namespace dodoe::py_bindings {
 
     void RegisterAll(py::module_& dodoe_module) {
         RegisterCore(dodoe_module);
@@ -19,6 +19,6 @@ namespace dodoe::script_bindings {
         RegisterWorld(dodoe_module);
     }
 
-} // dodoe::script_bindings
+} // namespace dodoe::py_bindings
 
 #endif // DODOE_PYTHON_ENABLED

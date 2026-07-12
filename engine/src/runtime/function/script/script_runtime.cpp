@@ -1,54 +1,31 @@
-// do@GreenMuffin
-
 #include "script_runtime.h"
 
-#include "script_class.h"
-#include "mono/jit/jit.h"
-#include "mono/metadata/appdomain.h"
-#include "mono/metadata/class.h"
-#include "mono/metadata/debug-helpers.h"
-#include "mono/metadata/reflection.h"
-#include "mono/metadata/object.h"
-#include "mono/utils/mono-publib.h"
+#include "script_engine.h"
+#include "runtime/core/utils/json.h"
 
 namespace dodoe {
 
     namespace {
-        bool IsSubclassOfByName(MonoClass* klass, const char* target_ns, const char* target_name) {
-            MonoClass* parent = mono_class_get_parent(klass);
-            while (parent) {
-                const char* ns = mono_class_get_namespace(parent);
-                const char* name = mono_class_get_name(parent);
-                if (ns && name && strcmp(ns, target_ns) == 0 && strcmp(name, target_name) == 0)
-                    return true;
-                parent = mono_class_get_parent(parent);
-            }
-            return false;
-        }
+        using json = Json;
     }
 
     bool ScriptRuntime::initialize(const ScriptRuntimeCreateInfo &info) {
         m_script_engine = info.script_engine;
+        m_call = m_script_engine->getCallFn();
 
-        MonoClass* world_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "World");
-        m_class_system = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "DoSystem");
-
-        if (!world_class || !m_class_system) {
+        if (!m_call) {
+            DO_ERROR("ScriptRuntime: ScriptHub_Call not available");
             return false;
         }
 
-        MonoObject* world_instance = mono_object_new(m_script_engine->getCoreDomain(), world_class);
-        if (!world_instance) {
-            return false;
-        }
-        mono_runtime_object_init(world_instance);
+        m_call("reset_state", nullptr, nullptr);
 
-        MonoClass* mb_sys_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "MonoBehaviourSystem");
-        if (mb_sys_class && IsSubclassOfByName(mb_sys_class, "GreenCake", "DoSystem")) {
-            auto script_class = create_ref<ScriptClass>(m_script_engine, "GreenCake", "MonoBehaviourSystem", true);
-            auto instance = create_ref<MonoSystemInstance>(script_class);
-            m_system_instance_umap["GreenCake.MonoBehaviourSystem"] = std::move(instance);
-        }
+        auto* alc = m_script_engine->getAlcHandle();
+        void* init_args[1] = { alc };
+        void* types_result = nullptr;
+        m_call("scan_types", init_args, &types_result);
+
+        loadAssemblyClasses();
 
         return true;
     }
@@ -57,326 +34,152 @@ namespace dodoe {
 
     }
 
-    void ScriptRuntime::loadMonoComponentClasses() {
-        if (!m_script_engine) {
-            return;
-        }
-
-        m_component_class_umap.clear();
-
-        MonoClass* component_base = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "Component");
-        if (!component_base) {
-            return;
-        }
-
-        const MonoTableInfo* type_def_tables = mono_image_get_table_info(m_script_engine->getAppImage(), MONO_TABLE_TYPEDEF);
-        i32 num_types = mono_table_info_get_rows(type_def_tables);
-        for (i32 i = 0; i < num_types; i++) {
-            ui32 col[MONO_TYPEDEF_SIZE];
-            mono_metadata_decode_row(type_def_tables, i, col, MONO_TYPEDEF_SIZE);
-
-            const char* space_name = mono_metadata_string_heap(m_script_engine->getAppImage(), col[MONO_TYPEDEF_NAMESPACE]);
-            const char* class_name = mono_metadata_string_heap(m_script_engine->getAppImage(), col[MONO_TYPEDEF_NAME]);
-            MonoClass* mono_class = mono_class_from_name(m_script_engine->getAppImage(), space_name, class_name);
-            if (!mono_class) {
-                continue;
-            }
-            mono_class_init(mono_class);
-
-            if (mono_class == component_base) {
-                continue;
-            }
-            if (!IsSubclassOfByName(mono_class, "GreenCake", "Component")) {
-                continue;
-            }
-
-            std::string full_name;
-            if (space_name && strlen(space_name) > 0)
-                full_name = fmt::format("{}.{}", space_name, class_name);
-            else
-                full_name = class_name ? class_name : "";
-
-            if (full_name.empty()) {
-                continue;
-            }
-
-            m_component_class_umap[full_name] = create_ref<ScriptClass>(m_script_engine, space_name ? space_name : "", class_name ? class_name : "");
-        }
-    }
-
     void ScriptRuntime::loadAssemblyClasses() {
         m_system_class_umap.clear();
-        m_system_instance_umap.clear();
+        m_component_class_umap.clear();
 
-        if (!m_script_engine || !m_script_engine->getAppImage()) {
-            return;
+        if (!m_call) return;
+
+        auto* alc = m_script_engine->getAlcHandle();
+        void* args[1] = { alc };
+        void* result = nullptr;
+        m_call("scan_types", args, &result);
+        if (!result) return;
+
+        std::string json_str((char*)result);
+
+        try {
+            json types = json::parse(json_str);
+            for (const auto& t : types) {
+                std::string ns = t.value("ns", "");
+                std::string name = t.value("name", "");
+                std::string base_ns = t.value("base_ns", "");
+                std::string base_name = t.value("base_name", "");
+                std::string full_name = ns.empty() ? name : ns + "." + name;
+
+                if (base_ns == "GreenCake" && base_name == "Component") {
+                    m_component_class_umap[full_name] = {full_name, ns, name};
+                }
+                if (base_ns == "GreenCake" && base_name == "DoSystem") {
+                    m_system_class_umap[full_name] = {full_name, ns, name};
+                }
+            }
+        } catch (const std::exception& e) {
+            DO_ERROR("ScriptRuntime: failed to parse scan_types JSON: {}", e.what());
         }
 
-        loadMonoComponentClasses();
-
-        const MonoTableInfo* type_def_tables = mono_image_get_table_info(m_script_engine->getAppImage(), MONO_TABLE_TYPEDEF);
-        i32 num_types = mono_table_info_get_rows(type_def_tables);
-
-        for (i32 i = 0; i < num_types; i++) {
-            ui32 col[MONO_TYPEDEF_SIZE];
-            mono_metadata_decode_row(type_def_tables, i, col, MONO_TYPEDEF_SIZE);
-
-            const char* space_name = mono_metadata_string_heap(m_script_engine->getAppImage(), col[MONO_TYPEDEF_NAMESPACE]);
-            const char* class_name = mono_metadata_string_heap(m_script_engine->getAppImage(), col[MONO_TYPEDEF_NAME]);
-            std::string full_name;
-            if (strlen(space_name) != 0)
-                full_name = fmt::format("{}.{}", space_name, class_name);
-            else
-                full_name = class_name;
-
-            MonoClass* mono_class = mono_class_from_name(m_script_engine->getAppImage(), space_name, class_name);
-            if (!mono_class) {
-                continue;
-            }
-            mono_class_init(mono_class);
-
-            if (mono_class == m_class_system)
-                continue;
-            if (!IsSubclassOfByName(mono_class, "GreenCake", "DoSystem")) {
-                DO_DEBUG("loadAssemblyClasses: {} is not subclass of DoSystem", full_name);
-                continue;
-            }
-            DO_DEBUG("loadAssemblyClasses: system[{}] {} found", m_system_class_umap.size(), full_name);
-
-            Ref<ScriptClass> script_class = create_ref<ScriptClass>(m_script_engine, space_name, class_name);
-            m_system_class_umap[full_name] = script_class;
-            Ref<MonoSystemInstance> script_instance = create_ref<MonoSystemInstance>(script_class);
-            m_system_instance_umap[full_name] = script_instance;
+        if (m_system_class_umap.find("GreenCake.BehaviourSystem") == m_system_class_umap.end()) {
+            m_system_class_umap["GreenCake.BehaviourSystem"] = {"GreenCake.BehaviourSystem", "GreenCake", "BehaviourSystem"};
         }
-        DO_DEBUG("load assembly classes:: system class count{}", static_cast<Int>(m_system_class_umap.size()));
-        DO_DEBUG("load assembly classes:: system instance count{}", static_cast<Int>(m_system_instance_umap.size()));
+
+        DO_DEBUG("load assembly classes: system class count {}", m_system_class_umap.size());
     }
 
     void ScriptRuntime::clearRuntimeState() {
-        m_component_instance_umap.clear();
         m_component_class_umap.clear();
         m_system_class_umap.clear();
-        m_system_instance_umap.clear();
-        m_class_system = nullptr;
+        if (m_call) {
+            m_call("reset_state", nullptr, nullptr);
+        }
     }
 
     void ScriptRuntime::snapshotFields() {
         m_field_snapshot.clear();
+        if (!m_call) return;
 
-        for (const auto& [entity_uuid, instances] : m_component_instance_umap) {
-            auto& snapshots = m_field_snapshot[entity_uuid];
-            for (const auto& instance : instances) {
-                if (!instance || !instance->getScriptClass()) continue;
-                const auto json = instance->serializeFields();
-                snapshots.emplace_back(instance->getScriptClass()->getFullName(), json.dump());
+        void* result = nullptr;
+        m_call("snapshot", nullptr, &result);
+        if (!result) return;
+
+        std::string json_str((char*)result);
+        try {
+            json snapshot = json::parse(json_str);
+            for (auto& [entityStr, fields_obj] : snapshot.items()) {
+                ui64 entity_uuid = std::stoull(entityStr);
+                auto& snapshots = m_field_snapshot[entity_uuid];
+                for (auto& [fieldName, fieldValue] : fields_obj.items()) {
+                    snapshots.emplace_back(fieldName, fieldValue.dump());
+                }
             }
+        } catch (const std::exception& e) {
+            DO_ERROR("ScriptRuntime: failed to parse snapshot JSON: {}", e.what());
         }
     }
 
     void ScriptRuntime::restoreFields() {
-        for (const auto& [entity_uuid, snapshots] : m_field_snapshot) {
-            for (const auto& [type_name, json_str] : snapshots) {
-                addEntityMonoComponentFromManaged(static_cast<uint64_t>(entity_uuid), type_name);
-            }
+        if (!m_call) return;
 
-            loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity_uuid));
-
-            auto it = m_component_instance_umap.find(entity_uuid);
-            if (it == m_component_instance_umap.end()) continue;
-
-            for (auto& instance : it->second) {
-                if (!instance || !instance->getScriptClass()) continue;
-                const auto& full_name = instance->getScriptClass()->getFullName();
-                for (const auto& [snap_type, json_str] : snapshots) {
-                    if (snap_type == full_name) {
-                        instance->deserializeFields(Json::parse(json_str));
-                        break;
-                    }
+        void* args[1] = { nullptr };
+        std::string json_str = "{}";
+        if (!m_field_snapshot.empty()) {
+            json restoreJson = json::object();
+            for (const auto& [entity_uuid, snapshots] : m_field_snapshot) {
+                json fields_obj = json::object();
+                for (const auto& [key, value] : snapshots) {
+                    fields_obj[key] = value;
                 }
+                restoreJson[std::to_string(entity_uuid)] = fields_obj;
             }
+            json_str = restoreJson.dump();
         }
+
+        args[0] = (void*)json_str.c_str();
+        m_call("restore", args, nullptr);
     }
 
     void ScriptRuntime::reloadAssemblyClasses() {
-        m_component_instance_umap.clear();
         m_component_class_umap.clear();
         m_system_class_umap.clear();
-        m_system_instance_umap.clear();
 
-        if (!m_script_engine || !m_script_engine->getCoreImage()) {
-            m_class_system = nullptr;
-            DO_ERROR("script engine is null || script engine core image is null");
-            return;
-        }
-
-        m_class_system = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "DoSystem");
-        if (!m_class_system || !m_script_engine->getAppImage()) {
-            DO_ERROR("dosystem is null || APP image is null");
+        if (!m_call) {
+            DO_ERROR("ScriptRuntime: ScriptHub_Call not available");
             return;
         }
 
         loadAssemblyClasses();
-
-        MonoClass* mb_sys_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "MonoBehaviourSystem");
-        if (mb_sys_class && IsSubclassOfByName(mb_sys_class, "GreenCake", "DoSystem")) {
-            auto script_class = create_ref<ScriptClass>(m_script_engine, "GreenCake", "MonoBehaviourSystem", true);
-            auto instance = create_ref<MonoSystemInstance>(script_class);
-            m_system_instance_umap["GreenCake.MonoBehaviourSystem"] = std::move(instance);
-        }
     }
 
     void ScriptRuntime::loadEntityMonoComponentsFromManaged(uint64_t entity_uuid) {
-        auto& entity_components = m_component_instance_umap[static_cast<ui64>(entity_uuid)];
-        entity_components.clear();
+        if (!m_call) return;
 
-        if (!m_script_engine) {
-            return;
-        }
-
-        MonoClass* external_calls_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "ExternalCalls");
-        if (!external_calls_class) {
-            DO_ERROR("Could not find GreenCake.ExternalCalls in core image.");
-            return;
-        }
-
-        MonoMethod* get_mono_components = mono_class_get_method_from_name(external_calls_class, "GetEntityMonoComponents", 1);
-        if (!get_mono_components) {
-            DO_ERROR("Missing GreenCake.ExternalCalls.GetEntityMonoComponents(ulong).");
-            return;
-        }
-
-        void* call_args[1] = { &entity_uuid };
-        MonoObject* exception = nullptr;
-        MonoObject* raw = mono_runtime_invoke(get_mono_components, nullptr, call_args, &exception);
-        if (exception) {
-            MonoString* ex_str = mono_object_to_string(exception, nullptr);
-            char* utf8 = ex_str ? mono_string_to_utf8(ex_str) : nullptr;
-            DO_ERROR("Managed exception in ExternalCalls.GetEntityMonoComponents: {}", utf8 ? utf8 : "<unknown>");
-            if (utf8) mono_free(utf8);
-            return;
-        }
-
-        MonoArray* component_array = reinterpret_cast<MonoArray*>(raw);
-        if (!component_array) {
-            return;
-        }
-
-        const uintptr_t length = mono_array_length(component_array);
-        for (uintptr_t i = 0; i < length; ++i) {
-            MonoObject* component_object = mono_array_get(component_array, MonoObject*, i);
-            if (!component_object) {
-                continue;
-            }
-
-            MonoClass* mono_component_class = mono_object_get_class(component_object);
-            if (!mono_component_class) {
-                continue;
-            }
-
-            const char* ns = mono_class_get_namespace(mono_component_class);
-            const char* name = mono_class_get_name(mono_component_class);
-            std::string full_name = (ns && strlen(ns) > 0) ? fmt::format("{}.{}", ns, name) : std::string(name ? name : "");
-            if (full_name.empty()) {
-                continue;
-            }
-
-            Ref<ScriptClass> script_class = create_ref<ScriptClass>(m_script_engine, ns ? ns : "", name ? name : "");
-            Ref<MonoComponentInstance> instance = create_ref<MonoComponentInstance>(script_class, component_object);
-            entity_components.emplace_back(std::move(instance));
-        }
+        void* args[1] = { &entity_uuid };
+        void* result = nullptr;
+        m_call("get_entity_components", args, &result);
     }
 
     bool ScriptRuntime::addEntityMonoComponentFromManaged(uint64_t entity_uuid, const std::string& full_name) {
-        if (!m_script_engine) {
-            return false;
-        }
+        if (!m_call) return false;
 
-        MonoClass* external_calls_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "ExternalCalls");
-        if (!external_calls_class) {
-            DO_ERROR("Could not find GreenCake.ExternalCalls in core image.");
-            return false;
-        }
-
-        MonoMethod* add_component = mono_class_get_method_from_name(external_calls_class, "AddEntityMonoComponent", 2);
-        if (!add_component) {
-            DO_ERROR("Missing GreenCake.ExternalCalls.AddEntityMonoComponent(ulong,string).");
-            return false;
-        }
-
-        MonoString* component_name = mono_string_new(m_script_engine->getCoreDomain(), full_name.c_str());
-        void* args[2] = { &entity_uuid, component_name };
-
-        MonoObject* exception = nullptr;
-        MonoObject* result = mono_runtime_invoke(add_component, nullptr, args, &exception);
-        if (exception) {
-            MonoString* ex_str = mono_object_to_string(exception, nullptr);
-            char* utf8 = ex_str ? mono_string_to_utf8(ex_str) : nullptr;
-            DO_ERROR("Managed exception in ExternalCalls.AddEntityMonoComponent: {}", utf8 ? utf8 : "<unknown>");
-            if (utf8) mono_free(utf8);
-            return false;
-        }
-
-        if (!result) {
-            return false;
-        }
-        return *static_cast<bool*>(mono_object_unbox(result));
+        void* args[2] = { &entity_uuid, (void*)full_name.c_str() };
+        void* result = nullptr;
+        int rc = m_call("add_entity_component", args, &result);
+        return rc == 1;
     }
 
     void ScriptRuntime::removeEntityFromManagedWorld(uint64_t entity_uuid) {
-        m_component_instance_umap.erase(static_cast<ui64>(entity_uuid));
-
-        if (!m_script_engine) {
-            return;
-        }
-
-        MonoClass* external_calls_class = mono_class_from_name(m_script_engine->getCoreImage(), "GreenCake", "ExternalCalls");
-        if (!external_calls_class) {
-            DO_ERROR("Could not find GreenCake.ExternalCalls in core image.");
-            return;
-        }
-
-        MonoMethod* remove_entity = mono_class_get_method_from_name(external_calls_class, "RemoveEntityFromManagedWorld", 1);
-        if (!remove_entity) {
-            DO_ERROR("Missing GreenCake.ExternalCalls.RemoveEntityFromManagedWorld(ulong).");
-            return;
-        }
+        if (!m_call) return;
 
         void* args[1] = { &entity_uuid };
-        MonoObject* exception = nullptr;
-        mono_runtime_invoke(remove_entity, nullptr, args, &exception);
-        if (exception) {
-            MonoString* ex_str = mono_object_to_string(exception, nullptr);
-            char* utf8 = ex_str ? mono_string_to_utf8(ex_str) : nullptr;
-            DO_ERROR("Managed exception in ExternalCalls.RemoveEntityFromManagedWorld: {}", utf8 ? utf8 : "<unknown>");
-            if (utf8) mono_free(utf8);
-        }
+        m_call("remove_entity", args, nullptr);
     }
 
     void ScriptRuntime::onRuntimeStart() {
-        if (m_script_engine && m_script_engine->getCoreDomain()) {
-            mono_domain_set(m_script_engine->getCoreDomain(), true);
-        }
-        for (auto& [_, system] : m_system_instance_umap) {
-            system->invokeStart();
+        if (m_call) {
+            m_call("invoke_start", nullptr, nullptr);
         }
     }
 
     void ScriptRuntime::onRuntimeUpdate() {
-        if (m_script_engine && m_script_engine->getCoreDomain()) {
-            mono_domain_set(m_script_engine->getCoreDomain(), true);
-        }
-        for (auto& [_, system] : m_system_instance_umap) {
-            system->invokeUpdate();
+        if (m_call) {
+            m_call("invoke_update", nullptr, nullptr);
+            DO_DEBUG("m_call is not null");
         }
     }
 
     void ScriptRuntime::onRuntimeFinalize() {
-        if (m_script_engine && m_script_engine->getCoreDomain()) {
-            mono_domain_set(m_script_engine->getCoreDomain(), true);
-        }
-        for (auto& [_, system] : m_system_instance_umap) {
-            system->invokeFinalize();
+        if (m_call) {
+            m_call("invoke_finalize", nullptr, nullptr);
         }
     }
-    
+
 } // dodoe

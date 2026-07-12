@@ -8,6 +8,6 @@ public static class FilePath
     {
         if (string.IsNullOrEmpty(path) || Path.IsPathRooted(path))
             return path;
-        return Path.Combine(InternalCalls.Native_GetAssetDirectory(), path);
+        return Path.Combine(NativeCalls.Native_GetAssetDirectory(), path);
     }
 }

@@ -16,14 +16,14 @@ public class World
 
     public Entity CreateEntity(string name = "Entity")
     {
-        ulong entityId = InternalCalls.Native_CreateEntity(name);
+        ulong entityId = NativeCalls.Native_CreateEntity(name);
         return new Entity(entityId);
     }
 
     public void DestroyEntity(Entity entity)
     {
         ulong entityId = entity.ID;
-        InternalCalls.Native_DestroyEntity(entityId);
+        NativeCalls.Native_DestroyEntity(entityId);
         RemoveEntityLocal(entityId);
     }
 

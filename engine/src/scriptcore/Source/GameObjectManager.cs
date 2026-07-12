@@ -10,9 +10,9 @@ internal static class GameObjectManager
     private static readonly Dictionary<ulong, ulong> _parentMap = new Dictionary<ulong, ulong>();
     private static readonly Dictionary<ulong, List<ulong>> _childrenMap = new Dictionary<ulong, List<ulong>>();
 
-    private static readonly List<MonoBehaviour> _awakeQueue = new List<MonoBehaviour>();
-    private static readonly List<MonoBehaviour> _startQueue = new List<MonoBehaviour>();
-    private static readonly List<MonoBehaviour> _activeBehaviours = new List<MonoBehaviour>();
+    private static readonly List<Behaviour> _awakeQueue = new List<Behaviour>();
+    private static readonly List<Behaviour> _startQueue = new List<Behaviour>();
+    private static readonly List<Behaviour> _activeBehaviours = new List<Behaviour>();
     private static readonly List<GameObject> _destroyQueue = new List<GameObject>();
 
     public static void Reset()
@@ -117,13 +117,13 @@ internal static class GameObjectManager
         return null;
     }
 
-    public static void QueueAwake(MonoBehaviour comp)
+    public static void QueueAwake(Behaviour comp)
     {
         if (!comp._awakeCalled && !comp._destroyed)
             _awakeQueue.Add(comp);
     }
 
-    public static void QueueStart(MonoBehaviour comp)
+    public static void QueueStart(Behaviour comp)
     {
         if (!comp._startCalled && !comp._destroyed)
             _startQueue.Add(comp);
@@ -135,7 +135,7 @@ internal static class GameObjectManager
             _destroyQueue.Add(obj);
     }
 
-    public static void RegisterActiveBehaviour(MonoBehaviour comp)
+    public static void RegisterActiveBehaviour(Behaviour comp)
     {
         if (!_activeBehaviours.Contains(comp))
             _activeBehaviours.Add(comp);
@@ -153,7 +153,7 @@ internal static class GameObjectManager
     {
         if (_awakeQueue.Count == 0) return;
 
-        var toProcess = new List<MonoBehaviour>(_awakeQueue);
+        var toProcess = new List<Behaviour>(_awakeQueue);
         _awakeQueue.Clear();
 
         foreach (var comp in toProcess)
@@ -175,7 +175,7 @@ internal static class GameObjectManager
     {
         if (_startQueue.Count == 0) return;
 
-        var toProcess = new List<MonoBehaviour>(_startQueue);
+        var toProcess = new List<Behaviour>(_startQueue);
         _startQueue.Clear();
 
         foreach (var comp in toProcess)
@@ -240,7 +240,7 @@ internal static class GameObjectManager
 
             _activeBehaviours.RemoveAll(mb => mb.GameObject == go);
 
-            InternalCalls.Native_DestroyEntity(go.ID);
+            NativeCalls.Native_DestroyEntity(go.ID);
 
             Unregister(go.ID);
         }

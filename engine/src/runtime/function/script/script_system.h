@@ -1,11 +1,10 @@
-// do@Redlive
-
 #pragma once
 
 #include "dopch.h"
 
 #include "script_engine.h"
 #include "script_runtime.h"
+#include "tooling/tool_interpreter.h"
 
 namespace dodoe {
 
@@ -17,20 +16,14 @@ namespace dodoe {
         friend class Managed<ScriptSystem, ScriptSystemCreateInfo>;
         Scope<ScriptEngine> m_script_engine;
         Scope<ScriptRuntime> m_script_runtime;
-
-        struct ToolInterpreter;
-        ToolInterpreter* m_tool_interp = nullptr;
+        Scope<ToolInterpreter> m_tool_interp;
 
     public:
-        ScriptSystem();
-        ~ScriptSystem();
-
-        [[nodiscard]] ScriptEngine* getMonoEngine() const { return m_script_engine.get(); }
-        [[nodiscard]] ScriptRuntime* getMonoRuntime() const { return m_script_runtime.get(); }
+        [[nodiscard]] ScriptEngine* getScriptEngine() const { return m_script_engine.get(); }
+        [[nodiscard]] ScriptRuntime* getScriptRuntime() const { return m_script_runtime.get(); }
 
         Bool reloadScripts();
 
-        // Execute script by extension: .py
         [[nodiscard]] Bool Execute(const std::filesystem::path& path);
 
     private:

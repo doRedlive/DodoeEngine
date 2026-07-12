@@ -1,5 +1,3 @@
-// do@GreenMuffin
-
 #include "script_glue.h"
 
 #include "runtime/core/application.h"
@@ -15,733 +13,216 @@
 #include "runtime/function/world/components/tilemap/tileset_asset.h"
 #include "runtime/core/project/project.h"
 
-#include "mono/metadata/class.h"
-#include "mono/metadata/image.h"
-#include "mono/metadata/assembly.h"
-#include "mono/metadata/object.h"
-#include "mono/metadata/reflection.h"
-#include "mono/utils/mono-publib.h"
-
 namespace dodoe {
 
     namespace {
 
-#define DO_ADD_INTERNAL_CALL(name) mono_add_internal_call("GreenCake.InternalCalls::" #name, name);
-
         static ScriptEngine* s_ScriptEngine = nullptr;
 
-        static std::unordered_map<MonoType*, std::function<bool(Entity)>>  s_EntityHasComponentFuncUmap;
-        static std::unordered_map<MonoClass*, std::function<void(Entity)>> s_EntityAddComponentFuncUmap;
-        static std::unordered_map<MonoType*, std::function<void(Entity)>>  s_EntityRemoveComponentFuncUmap;
+        static std::unordered_map<std::string, std::function<int(Entity)>> s_EntityHasComponentFuncUmap;
+        static std::unordered_map<std::string, std::function<void(Entity)>> s_EntityAddComponentFuncUmap;
+        static std::unordered_map<std::string, std::function<void(Entity)>> s_EntityRemoveComponentFuncUmap;
 
-        template<typename... T>
-        struct ComponentGroup { };
+        template<typename... T> struct ComponentGroup { };
 
         using NativeComponents = ComponentGroup<
-            IDComponent,
-            TagComponent,
-            TransformComponent,
-            Animation2dComponent,
-            Camera2dComponent,
-            BoxCollider2dComponent,
-            MeshRendererComponent,
-            Rigidbody2dComponent,
-            SpriteRendererComponent,
-            TilemapComponent,
-            TileLayerComponent
+            IDComponent, TagComponent, TransformComponent,
+            Animation2dComponent, Camera2dComponent, BoxCollider2dComponent,
+            MeshRendererComponent, Rigidbody2dComponent, SpriteRendererComponent,
+            TilemapComponent, TileLayerComponent
         >;
 
-        template<typename TComponent>
+        template<typename TC>
         static std::string ResolveManagedComponentName() {
-            std::string_view type_name = typeid(TComponent).name();
-            size_t pos = type_name.find_last_of(':');
-            std::string_view struct_name = (pos == std::string_view::npos) ? type_name : type_name.substr(pos + 1);
-
-            if (struct_name.starts_with("struct ")) {
-                struct_name.remove_prefix(7);
-            } else if (struct_name.starts_with("class ")) {
-                struct_name.remove_prefix(6);
-            }
-
-            return std::string(struct_name);
+            std::string_view tn = typeid(TC).name();
+            size_t p = tn.find_last_of(':');
+            std::string_view n = (p == std::string_view::npos) ? tn : tn.substr(p + 1);
+            if (n.starts_with("struct ")) n.remove_prefix(7);
+            else if (n.starts_with("class ")) n.remove_prefix(6);
+            return std::string(n);
         }
 
-        template<typename TComponent>
+        template<typename TC>
         static void RegisterNativeComponent() {
-            const std::string managed_component_name = ResolveManagedComponentName<TComponent>();
-            MonoClass* managed_class = mono_class_from_name(s_ScriptEngine->getCoreImage(), "GreenCake", managed_component_name.c_str());
-            if (!managed_class) {
-                DO_ERROR("Could not find managed component GreenCake.{} for native registration.", managed_component_name);
-                return;
-            }
-
-            MonoType* managed_type = mono_class_get_type(managed_class);
-            if (!managed_type) {
-                DO_ERROR("Could not resolve managed type for GreenCake.{}.", managed_component_name);
-                return;
-            }
-
-            s_EntityHasComponentFuncUmap[managed_type] = [](Entity entity) {
-                return entity.hasComponent<TComponent>();
-            };
-
-            s_EntityAddComponentFuncUmap[managed_class] = [](Entity entity) {
-                if (!entity.hasComponent<TComponent>()) {
-                    entity.addComponent<TComponent>();
-                }
-            };
-
-            s_EntityRemoveComponentFuncUmap[managed_type] = [](Entity entity) {
-                if (entity.hasComponent<TComponent>()) {
-                    entity.removeComponent<TComponent>();
-                }
-            };
+            auto name = ResolveManagedComponentName<TC>();
+            s_EntityHasComponentFuncUmap[name] = [](Entity e) { return e.hasComponent<TC>() ? 1 : 0; };
+            s_EntityAddComponentFuncUmap[name] = [](Entity e) { if (!e.hasComponent<TC>()) e.addComponent<TC>(); };
+            s_EntityRemoveComponentFuncUmap[name] = [](Entity e) { if (e.hasComponent<TC>()) e.removeComponent<TC>(); };
         }
+        template<typename... TC>
+        static void RegisterNativeComponents() { (RegisterNativeComponent<TC>(), ...); }
+        template<typename... TC>
+        static void RegisterNativeComponents(ComponentGroup<TC...>) { RegisterNativeComponents<TC...>(); }
 
-        template<typename... TComponent>
-        static void RegisterNativeComponents() {
-            (RegisterNativeComponent<TComponent>(), ...);
-        }
+        static Scene* GetCurrentScene() { Scene* s = GetWorld()->getCurrentScene(); DO_ASSERT(s); return s; }
 
-        template<typename... TComponent>
-        static void RegisterNativeComponents(ComponentGroup<TComponent...>) {
-            RegisterNativeComponents<TComponent...>();
-        }
-
-        static Scene* GetCurrentScene() {
-            Scene* scene = GetWorld()->getCurrentScene();
-            DO_ASSERT(scene);
-            return scene;
-        }
-
-        static Entity TryGetEntityByUuid(const uint64_t entity_uuid) {
-            if (Scene* scene = GetCurrentScene()) {
-                Entity entity = scene->tryGetEntityByUUID(Uuid(entity_uuid));
-                if (entity.valid()) {
-                    return entity;
-                }
+        static Entity TryGetEntityByUuid(uint64_t uuid) {
+            if (Scene* s = GetCurrentScene()) {
+                Entity e = s->tryGetEntityByUUID(Uuid(uuid));
+                if (e.valid()) return e;
             }
-
-            if (GetScriptSystem()) {
-                if (auto* runtime = GetScriptSystem()->getMonoRuntime()) {
-                    runtime->removeEntityFromManagedWorld(entity_uuid);
-                }
-            }
+            if (GetScriptSystem())
+                if (auto* r = GetScriptSystem()->getScriptRuntime())
+                    r->removeEntityFromManagedWorld(uuid);
             return {};
         }
 
-        static void Native_Log(MonoString* message) {
-            char* c_message_str = mono_string_to_utf8(message);
-            std::string message_string(c_message_str);
-            mono_free(c_message_str);
-            LOG_INFO("{}", message_string);
-        }
-
-        static std::string MonoStringToStdString(MonoString* value) {
-            if (!value) {
-                return {};
-            }
-
-            char* chars = mono_string_to_utf8(value);
-            std::string result = chars ? chars : "";
-            mono_free(chars);
-            return result;
-        }
-
-        static MonoString* StdStringToMonoString(const std::string& value) {
-            return mono_string_new(s_ScriptEngine->getCoreDomain(), value.c_str());
-        }
-
-        template<typename TComponent>
-        static TComponent* TryGetComponent(const uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (!entity.valid()) {
+        template<typename TC>
+        static TC* TryGetComponent(uint64_t uuid) {
+            Entity e = TryGetEntityByUuid(uuid);
+            if (!e.valid()) return nullptr;
+            if (!e.hasComponent<TC>()) {
+                DO_ERROR("Entity {} has no {}", uuid, ResolveManagedComponentName<TC>());
                 return nullptr;
             }
-
-            if (!entity.hasComponent<TComponent>()) {
-                DO_ERROR("Entity uuid {} does not have component {}.", entity_uuid, ResolveManagedComponentName<TComponent>());
-                return nullptr;
-            }
-
-            return &entity.getComponent<TComponent>();
-        }
-
-        static bool Native_EntityHasComponent(uint64_t entity_uuid, MonoReflectionType* component_type) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid()) {
-                MonoType* mono_type = mono_reflection_type_get_type(component_type);
-                if (s_EntityHasComponentFuncUmap.contains(mono_type)) {
-                    return s_EntityHasComponentFuncUmap.at(mono_type)(entity);
-                }
-                DO_ERROR("No has-component injector registered for the requested managed type.");
-                return false;
-            }
-            return false;
-        }
-
-        static bool Native_ComponentExists(uint64_t entity_uuid, MonoReflectionType* component_type) {
-            (void)entity_uuid;
-
-            MonoType* mono_type = mono_reflection_type_get_type(component_type);
-            return s_EntityHasComponentFuncUmap.contains(mono_type)
-                || s_EntityRemoveComponentFuncUmap.contains(mono_type);
-        }
-
-        static void Native_EntityAddComponent(uint64_t entity_uuid, MonoObject* component) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid()) {
-                MonoClass* component_class = mono_object_get_class(component);
-                if (s_EntityAddComponentFuncUmap.contains(component_class)) {
-                    s_EntityAddComponentFuncUmap.at(component_class)(entity);
-                    return;
-                }
-                DO_ERROR("No add-component injector registered for the requested managed class.");
-                return;
-            }
-            return;
-        }
-
-        static void Native_EntityRemoveComponent(uint64_t entity_uuid, MonoReflectionType* component_type) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid()) {
-                MonoType* mono_type = mono_reflection_type_get_type(component_type);
-                if (s_EntityRemoveComponentFuncUmap.contains(mono_type)) {
-                    return s_EntityRemoveComponentFuncUmap.at(mono_type)(entity);
-                }
-                DO_ERROR("No remove-component injector registered for the requested managed type.");
-                return;
-            }
-            return;
-        }
-
-        static uint64_t Native_IDComponentGetID(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<IDComponent>(entity_uuid)) {
-                return static_cast<uint64_t>(component->id);
-            }
-            return 0;
-        }
-
-        static MonoString* Native_IDComponentGetName(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<IDComponent>(entity_uuid)) {
-                return StdStringToMonoString(component->name);
-            }
-            return StdStringToMonoString("");
-        }
-
-        static void Native_IDComponentSetName(uint64_t entity_uuid, MonoString* name) {
-            if (auto* component = TryGetComponent<IDComponent>(entity_uuid)) {
-                component->setName(MonoStringToStdString(name));
-            }
-        }
-
-        static MonoString* Native_TagComponentGetTag(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<TagComponent>(entity_uuid)) {
-                return StdStringToMonoString(component->getTag());
-            }
-            return StdStringToMonoString("");
-        }
-
-        static void Native_TagComponentSetTag(uint64_t entity_uuid, MonoString* tag) {
-            if (auto* component = TryGetComponent<TagComponent>(entity_uuid)) {
-                component->setTag(MonoStringToStdString(tag));
-            }
-        }
-
-        static void Native_TransfromComponentGetPosition(uint64_t entity_uuid, Vector3f* position) {
-            if (position) {
-                *position = {};
-            }
-
-            if (auto* component = TryGetComponent<TransformComponent>(entity_uuid)) {
-                if (position) {
-                    *position = component->getPosition();
-                }
-            }
-        }
-
-        static void Native_TransfromComponentSetPosition(uint64_t entity_uuid, Vector3f* position) {
-            if (auto* component = TryGetComponent<TransformComponent>(entity_uuid)) {
-                if (position) {
-                    component->setPosition(*position);
-                }
-            }
-        }
-
-        static void Native_TransfromComponentGetRotation(uint64_t entity_uuid, Vector3f* rotation) {
-            if (rotation) {
-                *rotation = {};
-            }
-
-            if (auto* component = TryGetComponent<TransformComponent>(entity_uuid)) {
-                if (rotation) {
-                    *rotation = component->getRotation();
-                }
-            }
-        }
-
-        static void Native_TransfromComponentSetRotation(uint64_t entity_uuid, Vector3f* rotation) {
-            if (auto* component = TryGetComponent<TransformComponent>(entity_uuid)) {
-                if (rotation) {
-                    component->setRotation(*rotation);
-                }
-            }
-        }
-
-        static void Native_TransfromComponentGetScale(uint64_t entity_uuid, Vector3f* scale) {
-            if (scale) {
-                *scale = {1.0f, 1.0f, 1.0f};
-            }
-
-            if (auto* component = TryGetComponent<TransformComponent>(entity_uuid)) {
-                if (scale) {
-                    *scale = component->getScale();
-                }
-            }
-        }
-
-        static void Native_TransfromComponentSetScale(uint64_t entity_uuid, Vector3f* scale) {
-            if (auto* component = TryGetComponent<TransformComponent>(entity_uuid)) {
-                if (scale) {
-                    component->setScale(*scale);
-                }
-            }
-        }
-
-        static uint32_t Native_Animation2dComponentGetCurrentAnimationID(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                return component->cur_anim_id;
-            }
-            return 0;
-        }
-
-        static void Native_Animation2dComponentSetCurrentAnimationID(uint64_t entity_uuid, uint32_t animation_id) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                component->cur_anim_id = animation_id;
-            }
-        }
-
-        static uint64_t Native_Animation2dComponentGetCurrentFrameID(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                return static_cast<uint64_t>(component->cur_frame_id);
-            }
-            return 0;
-        }
-
-        static void Native_Animation2dComponentSetCurrentFrameID(uint64_t entity_uuid, uint64_t frame_id) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                component->cur_frame_id = static_cast<size_t>(frame_id);
-            }
-        }
-
-        static float Native_Animation2dComponentGetCurrentTimeDuration(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                return component->cur_time_duration;
-            }
-            return 0.0f;
-        }
-
-        static void Native_Animation2dComponentSetCurrentTimeDuration(uint64_t entity_uuid, float duration) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                component->cur_time_duration = duration;
-            }
-        }
-
-        static float Native_Animation2dComponentGetSpeed(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                return component->speed;
-            }
-            return 1.0f;
-        }
-
-        static void Native_Animation2dComponentSetSpeed(uint64_t entity_uuid, float speed) {
-            if (auto* component = TryGetComponent<Animation2dComponent>(entity_uuid)) {
-                component->speed = speed;
-            }
-        }
-
-        static int32_t Native_Camera2dComponentGetType(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Camera2dComponent>(entity_uuid)) {
-                return static_cast<int32_t>(component->type);
-            }
-            return 0;
-        }
-
-        static void Native_Camera2dComponentSetType(uint64_t entity_uuid, int32_t camera_type) {
-            if (auto* component = TryGetComponent<Camera2dComponent>(entity_uuid)) {
-                component->setCameraType(static_cast<CameraType>(camera_type));
-            }
-        }
-
-        static float Native_Camera2dComponentGetZoom(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Camera2dComponent>(entity_uuid)) {
-                return component->zoom;
-            }
-            return 1.0f;
-        }
-
-        static void Native_Camera2dComponentSetZoom(uint64_t entity_uuid, float zoom) {
-            if (auto* component = TryGetComponent<Camera2dComponent>(entity_uuid)) {
-                component->setZoom(zoom);
-            }
-        }
-
-        static void Native_Camera2dComponentGetBackground(uint64_t entity_uuid, Color* color) {
-            if (color) {
-                *color = Color::white();
-            }
-
-            if (auto* component = TryGetComponent<Camera2dComponent>(entity_uuid)) {
-                if (color) {
-                    *color = component->background;
-                }
-            }
-        }
-
-        static void Native_Camera2dComponentSetBackground(uint64_t entity_uuid, Color* color) {
-            if (auto* component = TryGetComponent<Camera2dComponent>(entity_uuid)) {
-                if (color) {
-                    component->setBackgroundColor(*color);
-                }
-            }
-        }
-
-        static void Native_BoxCollider2dComponentGetOffset(uint64_t entity_uuid, Vector2f* offset) {
-            if (offset) {
-                *offset = {};
-            }
-
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                if (offset) {
-                    *offset = component->offset;
-                }
-            }
-        }
-
-        static void Native_BoxCollider2dComponentSetOffset(uint64_t entity_uuid, Vector2f* offset) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                if (offset) {
-                    component->offset = *offset;
-                }
-            }
-        }
-
-        static void Native_BoxCollider2dComponentGetSize(uint64_t entity_uuid, Vector2f* size) {
-            if (size) {
-                *size = {};
-            }
-
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                if (size) {
-                    *size = component->size;
-                }
-            }
-        }
-
-        static void Native_BoxCollider2dComponentSetSize(uint64_t entity_uuid, Vector2f* size) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                if (size) {
-                    component->size = *size;
-                }
-            }
-        }
-
-        static float Native_BoxCollider2dComponentGetDensity(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                return component->density;
-            }
-            return 1.0f;
-        }
-
-        static void Native_BoxCollider2dComponentSetDensity(uint64_t entity_uuid, float density) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                component->density = density;
-            }
-        }
-
-        static float Native_BoxCollider2dComponentGetFriction(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                return component->friction;
-            }
-            return 0.5f;
-        }
-
-        static void Native_BoxCollider2dComponentSetFriction(uint64_t entity_uuid, float friction) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                component->friction = friction;
-            }
-        }
-
-        static float Native_BoxCollider2dComponentGetRestitution(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                return component->restitution;
-            }
-            return 0.0f;
-        }
-
-        static void Native_BoxCollider2dComponentSetRestitution(uint64_t entity_uuid, float restitution) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                component->restitution = restitution;
-            }
-        }
-
-        static float Native_BoxCollider2dComponentGetRestitutionThreshold(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                return component->restitution_threshold;
-            }
-            return 0.5f;
-        }
-
-        static void Native_BoxCollider2dComponentSetRestitutionThreshold(uint64_t entity_uuid, float restitution_threshold) {
-            if (auto* component = TryGetComponent<BoxCollider2dComponent>(entity_uuid)) {
-                component->restitution_threshold = restitution_threshold;
-            }
-        }
-
-        static int32_t Native_MeshRendererComponentGetValue(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<MeshRendererComponent>(entity_uuid)) {
-                return !component->lods.empty() ? 1 : 0;
-            }
-            return 0;
-        }
-
-        static void Native_MeshRendererComponentSetValue(uint64_t entity_uuid, int32_t value) {
-            if (auto* component = TryGetComponent<MeshRendererComponent>(entity_uuid)) {
-                component->dirty = component->dirty || (value != 0);
-            }
-        }
-
-        static int32_t Native_Rigidbody2dComponentGetType(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                return static_cast<int32_t>(component->type);
-            }
-            return 0;
-        }
-
-        static void Native_Rigidbody2dComponentSetType(uint64_t entity_uuid, int32_t body_type) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                component->type = static_cast<Rigidbody2dComponent::BodyType>(body_type);
-            }
-        }
-
-        static float Native_Rigidbody2dComponentGetGravityScale(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                return component->gravity_scale;
-            }
-            return 1.0f;
-        }
-
-        static void Native_Rigidbody2dComponentSetGravityScale(uint64_t entity_uuid, float gravity_scale) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                component->gravity_scale = gravity_scale;
-            }
-        }
-
-        static bool Native_Rigidbody2dComponentGetFixedRotation(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                return component->fixed_rotation;
-            }
-            return false;
-        }
-
-        static void Native_Rigidbody2dComponentSetFixedRotation(uint64_t entity_uuid, bool fixed_rotation) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                component->fixed_rotation = fixed_rotation;
-            }
-        }
-
-        static void Native_Rigidbody2dComponentSetLinearVelocity(uint64_t entity_uuid, Vector2f* velocity) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                if (velocity) {
-                    component->setLinearVelocity(*velocity);
-                }
-            }
-        }
-
-        static void Native_Rigidbody2dComponentApplyForceToCenter(uint64_t entity_uuid, Vector2f* force, bool wake) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                if (force) {
-                    component->applyForceToCenter(*force, wake);
-                }
-            }
-        }
-
-        static void Native_Rigidbody2dComponentApplyLinearImpulseToCenter(uint64_t entity_uuid, Vector2f* impulse, bool wake) {
-            if (auto* component = TryGetComponent<Rigidbody2dComponent>(entity_uuid)) {
-                if (impulse) {
-                    component->applyLinearImpulseToCenter(*impulse, wake);
-                }
-            }
-        }
-
-        static Int32 Native_SpriteRendererComponentGetTextureID(UInt64 entity_uuid) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                return static_cast<Int32>(component->texture.getInstanceID());
-            }
-            return 0;
-        }
-
-        static void Native_SpriteRendererComponentSetTextureID(UInt64 entity_uuid, Int32 texture_id) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                auto* tex = static_cast<Texture*>(Object::FindObjectFromInstanceID(texture_id));
-                if (tex) {
-                    component->texture = PPtr<Texture>(tex->getFileID(), tex->getUUID(), texture_id);
-                }
-            }
-        }
-
-        static bool Native_SpriteRendererComponentGetFlip(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                return component->flip;
-            }
-            return false;
-        }
-
-        static void Native_SpriteRendererComponentSetFlip(uint64_t entity_uuid, bool flip) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                component->flip = flip;
-            }
-        }
-
-        static void Native_SpriteRendererComponentGetPivot(uint64_t entity_uuid, Vector2f* pivot) {
-            if (pivot) {
-                *pivot = {};
-            }
-
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                if (pivot) {
-                    *pivot = component->pivot;
-                }
-            }
-        }
-
-        static void Native_SpriteRendererComponentSetPivot(uint64_t entity_uuid, Vector2f* pivot) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                if (pivot) {
-                    component->pivot = *pivot;
-                }
-            }
-        }
-
-        static float Native_SpriteRendererComponentGetDepth(uint64_t entity_uuid) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                return component->depth_;
-            }
-            return 0.0f;
-        }
-
-        static void Native_SpriteRendererComponentSetDepth(uint64_t entity_uuid, float depth) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                component->depth_ = depth;
-            }
-        }
-
-        static void Native_SpriteRendererComponentGetColor(uint64_t entity_uuid, Color* color) {
-            if (color) {
-                *color = {};
-            }
-
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                if (color) {
-                    *color = component->color;
-                }
-            }
-        }
-
-        static void Native_SpriteRendererComponentSetColor(uint64_t entity_uuid, Color* color) {
-            if (auto* component = TryGetComponent<SpriteRendererComponent>(entity_uuid)) {
-                if (color) {
-                    component->color = *color;
-                }
-            }
-        }
-
-        static bool Native_IsKeyDown(int key_code) {
-            return Input::IsKeyPressed(static_cast<KeyCode>(key_code));
-        }
-
-        static float Native_TimeGetDeltaTime() {
-            auto* time_system = GetTimeSystem();
-            if (!time_system) {
-                return 0.0f;
-            }
-            return time_system->getDeltaTime();
-        }
-
-        static uint64_t Native_CreateEntity(MonoString* name) {
-            Scene* scene = GetCurrentScene();
-            if (!scene) {
-                return 0;
-            }
-
-            std::string entity_name = "Entity";
-            if (name) {
-                char* c_name = mono_string_to_utf8(name);
-                entity_name = c_name ? c_name : entity_name;
-                mono_free(c_name);
-            }
-
-            Entity entity = scene->createEntity(entity_name);
-            if (!entity.valid()) {
-                DO_ERROR("Native_CreateEntity failed to create a valid entity.");
-                return 0;
-            }
-
-            return static_cast<uint64_t>(entity.uuid());
-        }
-
-        static void Native_DestroyEntity(uint64_t entity_uuid) {
-            Scene* scene = GetCurrentScene();
-            if (!scene) {
-                return;
-            }
-
-            Entity entity = scene->getEntityByUUID(Uuid(entity_uuid));
-            if (!entity.valid()) {
-                DO_ERROR("Native_DestroyEntity: uuid {} not found.", entity_uuid);
-                return;
-            }
-
-            scene->destroyEntity(entity);
-            if (GetScriptSystem()) {
-                if (auto* runtime = GetScriptSystem()->getMonoRuntime()) {
-                    runtime->removeEntityFromManagedWorld(entity_uuid);
-                }
-            }
-        }
-
-        static void Native_TilemapSetData(uint64_t entity_uuid, int map_width, int map_height, int tile_width, int tile_height) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (!entity.valid()) {
-                return;
-            }
-
-            if (!entity.hasComponent<TilemapComponent>()) {
-                entity.addComponent<TilemapComponent>();
-            }
-
-            auto& map = entity.getComponent<TilemapComponent>();
-            map.map_width = static_cast<uint32_t>(map_width);
-            map.map_height = static_cast<uint32_t>(map_height);
-            map.tile_width = static_cast<uint32_t>(tile_width);
-            map.tile_height = static_cast<uint32_t>(tile_height);
-            map.dirty = true;
-        }
-
-        static void Native_TilemapAddTileset(uint64_t entity_uuid, MonoString* tileset_json) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (!entity.valid() || !entity.hasComponent<TilemapComponent>()) {
-                return;
-            }
-
-            std::string json_str = MonoStringToStdString(tileset_json);
-            if (json_str.empty()) {
-                return;
-            }
-
-            auto& map = entity.getComponent<TilemapComponent>();
-            auto ts = create_ref<TilesetAsset>();
-
+            return &e.getComponent<TC>();
+        }
+
+#define DEF_STR_RET(id) thread_local static std::string _s_##id
+
+        static void native_log(const char* msg) { if (msg) LOG_INFO("{}", msg); }
+
+        static int native_entity_has_component(uint64_t uuid, const char* type) {
+            Entity e = TryGetEntityByUuid(uuid);
+            return (e.valid() && type && s_EntityHasComponentFuncUmap.count(type)) ? s_EntityHasComponentFuncUmap.at(type)(e) : 0;
+        }
+        static int native_component_exists(uint64_t, const char* type) {
+            if (!type) return 0;
+            return (s_EntityHasComponentFuncUmap.count(type) || s_EntityRemoveComponentFuncUmap.count(type)) ? 1 : 0;
+        }
+        static void native_entity_add_component(uint64_t uuid, const char* type) {
+            Entity e = TryGetEntityByUuid(uuid);
+            if (e.valid() && type && s_EntityAddComponentFuncUmap.count(type)) s_EntityAddComponentFuncUmap.at(type)(e);
+        }
+        static void native_entity_remove_component(uint64_t uuid, const char* type) {
+            Entity e = TryGetEntityByUuid(uuid);
+            if (e.valid() && type && s_EntityRemoveComponentFuncUmap.count(type)) s_EntityRemoveComponentFuncUmap.at(type)(e);
+        }
+
+        static int native_is_key_down(int key) { return Input::IsKeyPressed(static_cast<KeyCode>(key)) ? 1 : 0; }
+        static float native_time_get_delta_time() { auto* ts = GetTimeSystem(); return ts ? ts->getDeltaTime() : 0.0f; }
+
+        static uint64_t native_id_component_get_id(uint64_t u) { auto* c = TryGetComponent<IDComponent>(u); return c ? (uint64_t)c->id : 0; }
+        DEF_STR_RET(id_get_name);
+        static const char* native_id_component_get_name(uint64_t u) { auto* c = TryGetComponent<IDComponent>(u); if (c) { _s_id_get_name = c->name; return _s_id_get_name.c_str(); } return ""; }
+        static void native_id_component_set_name(uint64_t u, const char* v) { auto* c = TryGetComponent<IDComponent>(u); if (c && v) c->setName(v); }
+
+        DEF_STR_RET(tag_get_tag);
+        static const char* native_tag_component_get_tag(uint64_t u) { auto* c = TryGetComponent<TagComponent>(u); if (c) { _s_tag_get_tag = c->getTag(); return _s_tag_get_tag.c_str(); } return ""; }
+        static void native_tag_component_set_tag(uint64_t u, const char* v) { auto* c = TryGetComponent<TagComponent>(u); if (c && v) c->setTag(v); }
+
+        static void native_transform_get_position(uint64_t u, float* x, float* y, float* z) {
+            if (x) *x = 0; if (y) *y = 0; if (z) *z = 0;
+            if (auto* c = TryGetComponent<TransformComponent>(u)) { auto p = c->getPosition(); if (x)*x=p.x; if (y)*y=p.y; if (z)*z=p.z; }
+        }
+        static void native_transform_set_position(uint64_t u, float x, float y, float z) { if (auto* c = TryGetComponent<TransformComponent>(u)) c->setPosition({x,y,z}); }
+        static void native_transform_get_rotation(uint64_t u, float* x, float* y, float* z) {
+            if (x) *x = 0; if (y) *y = 0; if (z) *z = 0;
+            if (auto* c = TryGetComponent<TransformComponent>(u)) { auto r = c->getRotation(); if (x)*x=r.x; if (y)*y=r.y; if (z)*z=r.z; }
+        }
+        static void native_transform_set_rotation(uint64_t u, float x, float y, float z) { if (auto* c = TryGetComponent<TransformComponent>(u)) c->setRotation({x,y,z}); }
+        static void native_transform_get_scale(uint64_t u, float* x, float* y, float* z) {
+            if (x) *x = 1; if (y) *y = 1; if (z) *z = 1;
+            if (auto* c = TryGetComponent<TransformComponent>(u)) { auto s = c->getScale(); if (x)*x=s.x; if (y)*y=s.y; if (z)*z=s.z; }
+        }
+        static void native_transform_set_scale(uint64_t u, float x, float y, float z) { if (auto* c = TryGetComponent<TransformComponent>(u)) c->setScale({x,y,z}); }
+
+        static uint32_t native_animation2d_get_anim_id(uint64_t u) { auto* c = TryGetComponent<Animation2dComponent>(u); return c ? c->cur_anim_id : 0; }
+        static void native_animation2d_set_anim_id(uint64_t u, uint32_t v) { if (auto* c = TryGetComponent<Animation2dComponent>(u)) c->cur_anim_id = v; }
+        static uint64_t native_animation2d_get_frame_id(uint64_t u) { auto* c = TryGetComponent<Animation2dComponent>(u); return c ? (uint64_t)c->cur_frame_id : 0; }
+        static void native_animation2d_set_frame_id(uint64_t u, uint64_t v) { if (auto* c = TryGetComponent<Animation2dComponent>(u)) c->cur_frame_id = (size_t)v; }
+        static float native_animation2d_get_time(uint64_t u) { auto* c = TryGetComponent<Animation2dComponent>(u); return c ? c->cur_time_duration : 0; }
+        static void native_animation2d_set_time(uint64_t u, float v) { if (auto* c = TryGetComponent<Animation2dComponent>(u)) c->cur_time_duration = v; }
+        static float native_animation2d_get_speed(uint64_t u) { auto* c = TryGetComponent<Animation2dComponent>(u); return c ? c->speed : 1.0f; }
+        static void native_animation2d_set_speed(uint64_t u, float v) { if (auto* c = TryGetComponent<Animation2dComponent>(u)) c->speed = v; }
+
+        static int32_t native_camera2d_get_type(uint64_t u) { auto* c = TryGetComponent<Camera2dComponent>(u); return c ? (int32_t)c->type : 0; }
+        static void native_camera2d_set_type(uint64_t u, int32_t v) { if (auto* c = TryGetComponent<Camera2dComponent>(u)) c->setCameraType((CameraType)v); }
+        static float native_camera2d_get_zoom(uint64_t u) { auto* c = TryGetComponent<Camera2dComponent>(u); return c ? c->zoom : 1.0f; }
+        static void native_camera2d_set_zoom(uint64_t u, float v) { if (auto* c = TryGetComponent<Camera2dComponent>(u)) c->setZoom(v); }
+        static void native_camera2d_get_background(uint64_t u, float* r, float* g, float* b, float* a) {
+            if (r) *r = 1; if (g) *g = 1; if (b) *b = 1; if (a) *a = 1;
+            if (auto* c = TryGetComponent<Camera2dComponent>(u)) { auto bg = c->background; if (r)*r=bg.r; if (g)*g=bg.g; if (b)*b=bg.b; if (a)*a=bg.a; }
+        }
+        static void native_camera2d_set_background(uint64_t u, float r, float g, float b, float a) { if (auto* c = TryGetComponent<Camera2dComponent>(u)) c->setBackgroundColor({r,g,b,a}); }
+
+        static void native_boxcollider2d_get_offset(uint64_t u, float* x, float* y) {
+            if (x) *x = 0; if (y) *y = 0;
+            if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) { if (x)*x=c->offset.x; if (y)*y=c->offset.y; }
+        }
+        static void native_boxcollider2d_set_offset(uint64_t u, float x, float y) { if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) c->offset = {x,y}; }
+        static void native_boxcollider2d_get_size(uint64_t u, float* x, float* y) {
+            if (x) *x = 0; if (y) *y = 0;
+            if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) { if (x)*x=c->size.x; if (y)*y=c->size.y; }
+        }
+        static void native_boxcollider2d_set_size(uint64_t u, float x, float y) { if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) c->size = {x,y}; }
+        static float native_boxcollider2d_get_density(uint64_t u) { auto* c = TryGetComponent<BoxCollider2dComponent>(u); return c ? c->density : 1.0f; }
+        static void native_boxcollider2d_set_density(uint64_t u, float v) { if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) c->density = v; }
+        static float native_boxcollider2d_get_friction(uint64_t u) { auto* c = TryGetComponent<BoxCollider2dComponent>(u); return c ? c->friction : 0.5f; }
+        static void native_boxcollider2d_set_friction(uint64_t u, float v) { if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) c->friction = v; }
+        static float native_boxcollider2d_get_restitution(uint64_t u) { auto* c = TryGetComponent<BoxCollider2dComponent>(u); return c ? c->restitution : 0; }
+        static void native_boxcollider2d_set_restitution(uint64_t u, float v) { if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) c->restitution = v; }
+        static float native_boxcollider2d_get_restitution_threshold(uint64_t u) { auto* c = TryGetComponent<BoxCollider2dComponent>(u); return c ? c->restitution_threshold : 0.5f; }
+        static void native_boxcollider2d_set_restitution_threshold(uint64_t u, float v) { if (auto* c = TryGetComponent<BoxCollider2dComponent>(u)) c->restitution_threshold = v; }
+
+        static int32_t native_mesh_renderer_get_value(uint64_t u) { auto* c = TryGetComponent<MeshRendererComponent>(u); return c ? (c->lods.empty() ? 0 : 1) : 0; }
+        static void native_mesh_renderer_set_value(uint64_t u, int32_t v) { if (auto* c = TryGetComponent<MeshRendererComponent>(u)) c->dirty = c->dirty || (v != 0); }
+
+        static int32_t native_rigidbody2d_get_type(uint64_t u) { auto* c = TryGetComponent<Rigidbody2dComponent>(u); return c ? (int32_t)c->type : 0; }
+        static void native_rigidbody2d_set_type(uint64_t u, int32_t v) { if (auto* c = TryGetComponent<Rigidbody2dComponent>(u)) c->type = (Rigidbody2dComponent::BodyType)v; }
+        static float native_rigidbody2d_get_gravity_scale(uint64_t u) { auto* c = TryGetComponent<Rigidbody2dComponent>(u); return c ? c->gravity_scale : 1.0f; }
+        static void native_rigidbody2d_set_gravity_scale(uint64_t u, float v) { if (auto* c = TryGetComponent<Rigidbody2dComponent>(u)) c->gravity_scale = v; }
+        static int native_rigidbody2d_get_fixed_rotation(uint64_t u) { auto* c = TryGetComponent<Rigidbody2dComponent>(u); return c ? (c->fixed_rotation ? 1 : 0) : 0; }
+        static void native_rigidbody2d_set_fixed_rotation(uint64_t u, int v) { if (auto* c = TryGetComponent<Rigidbody2dComponent>(u)) c->fixed_rotation = (v != 0); }
+        static void native_rigidbody2d_set_linear_velocity(uint64_t u, float x, float y) { if (auto* c = TryGetComponent<Rigidbody2dComponent>(u)) c->setLinearVelocity({x,y}); }
+        static void native_rigidbody2d_apply_force_to_center(uint64_t u, float x, float y, int wake) { if (auto* c = TryGetComponent<Rigidbody2dComponent>(u)) c->applyForceToCenter({x,y}, wake != 0); }
+        static void native_rigidbody2d_apply_linear_impulse(uint64_t u, float x, float y, int wake) { if (auto* c = TryGetComponent<Rigidbody2dComponent>(u)) c->applyLinearImpulseToCenter({x,y}, wake != 0); }
+
+        static Int32 native_sprite_renderer_get_texture_id(UInt64 u) { auto* c = TryGetComponent<SpriteRendererComponent>(u); return c ? (Int32)c->texture.getInstanceID() : 0; }
+        static void native_sprite_renderer_set_texture_id(UInt64 u, Int32 v) {
+            if (auto* c = TryGetComponent<SpriteRendererComponent>(u)) {
+                auto* tex = (Texture*)Object::FindObjectFromInstanceID(v);
+                if (tex) c->texture = PPtr<Texture>(tex->getFileID(), tex->getUUID(), v);
+            }
+        }
+        static int native_sprite_renderer_get_flip(uint64_t u) { auto* c = TryGetComponent<SpriteRendererComponent>(u); return c ? (c->flip ? 1 : 0) : 0; }
+        static void native_sprite_renderer_set_flip(uint64_t u, int v) { if (auto* c = TryGetComponent<SpriteRendererComponent>(u)) c->flip = (v != 0); }
+        static void native_sprite_renderer_get_pivot(uint64_t u, float* x, float* y) {
+            if (x) *x = 0; if (y) *y = 0;
+            if (auto* c = TryGetComponent<SpriteRendererComponent>(u)) { if (x)*x=c->pivot.x; if (y)*y=c->pivot.y; }
+        }
+        static void native_sprite_renderer_set_pivot(uint64_t u, float x, float y) { if (auto* c = TryGetComponent<SpriteRendererComponent>(u)) c->pivot = {x,y}; }
+        static float native_sprite_renderer_get_depth(uint64_t u) { auto* c = TryGetComponent<SpriteRendererComponent>(u); return c ? c->depth_ : 0; }
+        static void native_sprite_renderer_set_depth(uint64_t u, float v) { if (auto* c = TryGetComponent<SpriteRendererComponent>(u)) c->depth_ = v; }
+        static void native_sprite_renderer_get_color(uint64_t u, float* r, float* g, float* b, float* a) {
+            if (r) *r = 1; if (g) *g = 1; if (b) *b = 1; if (a) *a = 1;
+            if (auto* c = TryGetComponent<SpriteRendererComponent>(u)) { if (r)*r=c->color.r; if (g)*g=c->color.g; if (b)*b=c->color.b; if (a)*a=c->color.a; }
+        }
+        static void native_sprite_renderer_set_color(uint64_t u, float r, float g, float b, float a) { if (auto* c = TryGetComponent<SpriteRendererComponent>(u)) c->color = {r,g,b,a}; }
+
+        static uint64_t native_create_entity(const char* name) {
+            Scene* s = GetCurrentScene(); if (!s) return 0;
+            Entity e = s->createEntity(name ? name : "Entity");
+            return e.valid() ? (uint64_t)e.uuid() : 0;
+        }
+        static void native_destroy_entity(uint64_t u) {
+            Scene* s = GetCurrentScene(); if (!s) return;
+            Entity e = s->getEntityByUUID(Uuid(u));
+            if (!e.valid()) { DO_ERROR("destroy_entity: {} not found", u); return; }
+            s->destroyEntity(e);
+            if (GetScriptSystem()) if (auto* r = GetScriptSystem()->getScriptRuntime()) r->removeEntityFromManagedWorld(u);
+        }
+
+        static void native_tilemap_set_data(uint64_t u, int w, int h, int tw, int th) {
+            Entity e = TryGetEntityByUuid(u); if (!e.valid()) return;
+            if (!e.hasComponent<TilemapComponent>()) e.addComponent<TilemapComponent>();
+            auto& m = e.getComponent<TilemapComponent>();
+            m.map_width = (uint32_t)w; m.map_height = (uint32_t)h; m.tile_width = (uint32_t)tw; m.tile_height = (uint32_t)th; m.dirty = true;
+        }
+        static void native_tilemap_add_tileset(uint64_t u, const char* json_str) {
+            Entity e = TryGetEntityByUuid(u);
+            if (!e.valid() || !e.hasComponent<TilemapComponent>() || !json_str) return;
+            auto& m = e.getComponent<TilemapComponent>(); auto ts = create_ref<TilesetAsset>();
             try {
                 Json j = Json::parse(json_str);
                 if (j.contains("Name")) ts->name = j["Name"].get<std::string>();
@@ -752,228 +233,167 @@ namespace dodoe {
                 if (j.contains("TileCount")) ts->tile_count = j["TileCount"].get<UInt32>();
                 if (j.contains("ImagePath")) ts->image_path = j["ImagePath"].get<std::string>();
                 if (j.contains("TextureId")) ts->texture_id = j["TextureId"].get<UInt32>();
-            } catch (const std::exception& e) {
-                DO_ERROR("Native_TilemapAddTileset: JSON parse error: {}", e.what());
-                return;
-            }
-
-            map.tilesets.push_back(std::move(ts));
-            map.dirty = true;
+            } catch (...) { DO_ERROR("tilemap_add_tileset parse error"); return; }
+            m.tilesets.push_back(std::move(ts)); m.dirty = true;
+        }
+        static void native_tile_layer_set_data(uint64_t u, const uint32_t* tiles, int len,
+                int w, int h, const char* name, int vis, float opac, int ox, int oy) {
+            Entity e = TryGetEntityByUuid(u); if (!e.valid()) return;
+            if (!e.hasComponent<TileLayerComponent>()) e.addComponent<TileLayerComponent>();
+            auto& l = e.getComponent<TileLayerComponent>();
+            l.layer_width = (uint32_t)w; l.layer_height = (uint32_t)h; l.layer_name = name ? name : "";
+            l.visible = (vis != 0); l.opacity = opac; l.offset_x = ox; l.offset_y = oy;
+            if (tiles && len > 0) { l.tiles.resize(len); for (int i = 0; i < len; ++i) l.tiles[i] = tiles[i]; }
         }
 
-        static void Native_TileLayerSetData(uint64_t entity_uuid, MonoArray* tiles_array,
-                int width, int height, MonoString* name, bool visible, float opacity, int offset_x, int offset_y) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (!entity.valid()) {
-                return;
-            }
-
-            if (!entity.hasComponent<TileLayerComponent>()) {
-                entity.addComponent<TileLayerComponent>();
-            }
-
-            auto& layer = entity.getComponent<TileLayerComponent>();
-            layer.layer_width = static_cast<uint32_t>(width);
-            layer.layer_height = static_cast<uint32_t>(height);
-            layer.layer_name = MonoStringToStdString(name);
-            layer.visible = visible;
-            layer.opacity = opacity;
-            layer.offset_x = static_cast<int32_t>(offset_x);
-            layer.offset_y = static_cast<int32_t>(offset_y);
-
-            if (tiles_array) {
-                uintptr_t length = mono_array_length(tiles_array);
-                layer.tiles.resize(length);
-                for (uintptr_t i = 0; i < length; ++i) {
-                    layer.tiles[i] = mono_array_get(tiles_array, uint32_t, i);
-                }
-            }
+        static void native_entity_set_parent(uint64_t child_u, uint64_t parent_u) {
+            Entity child = TryGetEntityByUuid(child_u), parent = TryGetEntityByUuid(parent_u);
+            if (!child.valid() || !parent.valid()) return;
+            if (!child.hasComponent<HierarchyComponent>()) child.addComponent<HierarchyComponent>();
+            if (!parent.hasComponent<HierarchyComponent>()) parent.addComponent<HierarchyComponent>();
+            auto& ch = child.getComponent<HierarchyComponent>(); auto& ph = parent.getComponent<HierarchyComponent>();
+            ch.parent_uuid = parent.uuid(); ch.parent = parent; ch.dirty = true;
+            ph.children.push_back(child); ph.child_count = (int)ph.children.size(); ph.dirty = true;
         }
 
-        static void Native_EntitySetParent(uint64_t child_uuid, uint64_t parent_uuid) {
-            Entity child = TryGetEntityByUuid(child_uuid);
-            Entity parent = TryGetEntityByUuid(parent_uuid);
-            if (!child.valid() || !parent.valid()) {
-                return;
-            }
+#define TILEMAP_GETSET(type, name, field, defval) \
+        static type native_tilemap_get_##name(uint64_t u) { Entity e = TryGetEntityByUuid(u); return (e.valid() && e.hasComponent<TilemapComponent>()) ? e.getComponent<TilemapComponent>().field : (type)(defval); } \
+        static void native_tilemap_set_##name(uint64_t u, type v) { Entity e = TryGetEntityByUuid(u); if (e.valid() && e.hasComponent<TilemapComponent>()) { e.getComponent<TilemapComponent>().field = v; e.getComponent<TilemapComponent>().dirty = true; } }
+        TILEMAP_GETSET(uint32_t, map_width, map_width, 0)
+        TILEMAP_GETSET(uint32_t, map_height, map_height, 0)
+        TILEMAP_GETSET(uint32_t, tile_width, tile_width, 16)
+        TILEMAP_GETSET(uint32_t, tile_height, tile_height, 16)
+#undef TILEMAP_GETSET
 
-            if (!child.hasComponent<HierarchyComponent>()) {
-                child.addComponent<HierarchyComponent>();
-            }
-            if (!parent.hasComponent<HierarchyComponent>()) {
-                parent.addComponent<HierarchyComponent>();
-            }
+        DEF_STR_RET(tile_layer_name);
+        static const char* native_tile_layer_get_name(uint64_t u) { Entity e = TryGetEntityByUuid(u); if (e.valid() && e.hasComponent<TileLayerComponent>()) { _s_tile_layer_name = e.getComponent<TileLayerComponent>().layer_name; return _s_tile_layer_name.c_str(); } return ""; }
+        static void native_tile_layer_set_name(uint64_t u, const char* v) { Entity e = TryGetEntityByUuid(u); if (e.valid() && e.hasComponent<TileLayerComponent>() && v) e.getComponent<TileLayerComponent>().layer_name = v; }
 
-            auto& child_hier = child.getComponent<HierarchyComponent>();
-            auto& parent_hier = parent.getComponent<HierarchyComponent>();
+#define TILELAYER_GETSET(type, name, field, defval) \
+        static type native_tile_layer_get_##name(uint64_t u) { Entity e = TryGetEntityByUuid(u); return (e.valid() && e.hasComponent<TileLayerComponent>()) ? e.getComponent<TileLayerComponent>().field : (type)(defval); } \
+        static void native_tile_layer_set_##name(uint64_t u, type v) { Entity e = TryGetEntityByUuid(u); if (e.valid() && e.hasComponent<TileLayerComponent>()) e.getComponent<TileLayerComponent>().field = v; }
+        TILELAYER_GETSET(uint32_t, width, layer_width, 0)
+        TILELAYER_GETSET(uint32_t, height, layer_height, 0)
+        TILELAYER_GETSET(int, visible, visible, 0)
+        TILELAYER_GETSET(float, opacity, opacity, 1.0f)
+        TILELAYER_GETSET(int32_t, offset_x, offset_x, 0)
+        TILELAYER_GETSET(int32_t, offset_y, offset_y, 0)
+#undef TILELAYER_GETSET
 
-            child_hier.parent_uuid = parent.uuid();
-            child_hier.parent = parent;
-            child_hier.dirty = true;
+        DEF_STR_RET(asset_dir);
+        static const char* native_get_asset_directory() { _s_asset_dir = Project::AssetDirectory().string(); return _s_asset_dir.c_str(); }
 
-            parent_hier.children.push_back(child);
-            parent_hier.child_count = static_cast<int>(parent_hier.children.size());
-            parent_hier.dirty = true;
-        }
+#define FOR_EACH_NATIVE_BINDING(X) \
+    X(native_log, void, (const char* msg), msg) \
+    X(native_entity_has_component, int, (uint64_t e, const char* type), e, type) \
+    X(native_component_exists, int, (uint64_t e, const char* type), e, type) \
+    X(native_entity_add_component, void, (uint64_t e, const char* type), e, type) \
+    X(native_entity_remove_component, void, (uint64_t e, const char* type), e, type) \
+    X(native_is_key_down, int, (int key), key) \
+    X(native_time_get_delta_time, float, (), ) \
+    X(native_id_component_get_id, uint64_t, (uint64_t e), e) \
+    X(native_id_component_get_name, const char*, (uint64_t e), e) \
+    X(native_id_component_set_name, void, (uint64_t e, const char* v), e, v) \
+    X(native_tag_component_get_tag, const char*, (uint64_t e), e) \
+    X(native_tag_component_set_tag, void, (uint64_t e, const char* v), e, v) \
+    X(native_transform_get_position, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_transform_set_position, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_transform_get_rotation, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_transform_set_rotation, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_transform_get_scale, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_transform_set_scale, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_animation2d_get_anim_id, uint32_t, (uint64_t e), e) \
+    X(native_animation2d_set_anim_id, void, (uint64_t e, uint32_t v), e, v) \
+    X(native_animation2d_get_frame_id, uint64_t, (uint64_t e), e) \
+    X(native_animation2d_set_frame_id, void, (uint64_t e, uint64_t v), e, v) \
+    X(native_animation2d_get_time, float, (uint64_t e), e) \
+    X(native_animation2d_set_time, void, (uint64_t e, float v), e, v) \
+    X(native_animation2d_get_speed, float, (uint64_t e), e) \
+    X(native_animation2d_set_speed, void, (uint64_t e, float v), e, v) \
+    X(native_camera2d_get_type, int32_t, (uint64_t e), e) \
+    X(native_camera2d_set_type, void, (uint64_t e, int32_t v), e, v) \
+    X(native_camera2d_get_zoom, float, (uint64_t e), e) \
+    X(native_camera2d_set_zoom, void, (uint64_t e, float v), e, v) \
+    X(native_camera2d_get_background, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_camera2d_set_background, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_boxcollider2d_get_offset, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_boxcollider2d_set_offset, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_boxcollider2d_get_size, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_boxcollider2d_set_size, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_boxcollider2d_get_density, float, (uint64_t e), e) \
+    X(native_boxcollider2d_set_density, void, (uint64_t e, float v), e, v) \
+    X(native_boxcollider2d_get_friction, float, (uint64_t e), e) \
+    X(native_boxcollider2d_set_friction, void, (uint64_t e, float v), e, v) \
+    X(native_boxcollider2d_get_restitution, float, (uint64_t e), e) \
+    X(native_boxcollider2d_set_restitution, void, (uint64_t e, float v), e, v) \
+    X(native_boxcollider2d_get_restitution_threshold, float, (uint64_t e), e) \
+    X(native_boxcollider2d_set_restitution_threshold, void, (uint64_t e, float v), e, v) \
+    X(native_mesh_renderer_get_value, int32_t, (uint64_t e), e) \
+    X(native_mesh_renderer_set_value, void, (uint64_t e, int32_t v), e, v) \
+    X(native_rigidbody2d_get_type, int32_t, (uint64_t e), e) \
+    X(native_rigidbody2d_set_type, void, (uint64_t e, int32_t v), e, v) \
+    X(native_rigidbody2d_get_gravity_scale, float, (uint64_t e), e) \
+    X(native_rigidbody2d_set_gravity_scale, void, (uint64_t e, float v), e, v) \
+    X(native_rigidbody2d_get_fixed_rotation, int, (uint64_t e), e) \
+    X(native_rigidbody2d_set_fixed_rotation, void, (uint64_t e, int v), e, v) \
+    X(native_rigidbody2d_set_linear_velocity, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_rigidbody2d_apply_force_to_center, void, (uint64_t e, float x, float y, int wake), e, x, y, wake) \
+    X(native_rigidbody2d_apply_linear_impulse, void, (uint64_t e, float x, float y, int wake), e, x, y, wake) \
+    X(native_sprite_renderer_get_texture_id, int32_t, (uint64_t e), e) \
+    X(native_sprite_renderer_set_texture_id, void, (uint64_t e, int32_t v), e, v) \
+    X(native_sprite_renderer_get_flip, int, (uint64_t e), e) \
+    X(native_sprite_renderer_set_flip, void, (uint64_t e, int v), e, v) \
+    X(native_sprite_renderer_get_pivot, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_sprite_renderer_set_pivot, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_sprite_renderer_get_depth, float, (uint64_t e), e) \
+    X(native_sprite_renderer_set_depth, void, (uint64_t e, float v), e, v) \
+    X(native_sprite_renderer_get_color, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_sprite_renderer_set_color, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_create_entity, uint64_t, (const char* name), name) \
+    X(native_destroy_entity, void, (uint64_t e), e) \
+    X(native_tilemap_set_data, void, (uint64_t e, int w, int h, int tw, int th), e, w, h, tw, th) \
+    X(native_tilemap_add_tileset, void, (uint64_t e, const char* json), e, json) \
+    X(native_tile_layer_set_data, void, (uint64_t e, const uint32_t* tiles, int len, int w, int h, const char* name, int vis, float opac, int ox, int oy), e, tiles, len, w, h, name, vis, opac, ox, oy) \
+    X(native_entity_set_parent, void, (uint64_t child, uint64_t parent), child, parent) \
+    X(native_tilemap_get_map_width, uint32_t, (uint64_t e), e) \
+    X(native_tilemap_set_map_width, void, (uint64_t e, uint32_t v), e, v) \
+    X(native_tilemap_get_map_height, uint32_t, (uint64_t e), e) \
+    X(native_tilemap_set_map_height, void, (uint64_t e, uint32_t v), e, v) \
+    X(native_tilemap_get_tile_width, uint32_t, (uint64_t e), e) \
+    X(native_tilemap_set_tile_width, void, (uint64_t e, uint32_t v), e, v) \
+    X(native_tilemap_get_tile_height, uint32_t, (uint64_t e), e) \
+    X(native_tilemap_set_tile_height, void, (uint64_t e, uint32_t v), e, v) \
+    X(native_tile_layer_get_name, const char*, (uint64_t e), e) \
+    X(native_tile_layer_set_name, void, (uint64_t e, const char* v), e, v) \
+    X(native_tile_layer_get_width, uint32_t, (uint64_t e), e) \
+    X(native_tile_layer_set_width, void, (uint64_t e, uint32_t v), e, v) \
+    X(native_tile_layer_get_height, uint32_t, (uint64_t e), e) \
+    X(native_tile_layer_set_height, void, (uint64_t e, uint32_t v), e, v) \
+    X(native_tile_layer_get_visible, int, (uint64_t e), e) \
+    X(native_tile_layer_set_visible, void, (uint64_t e, int v), e, v) \
+    X(native_tile_layer_get_opacity, float, (uint64_t e), e) \
+    X(native_tile_layer_set_opacity, void, (uint64_t e, float v), e, v) \
+    X(native_tile_layer_get_offset_x, int32_t, (uint64_t e), e) \
+    X(native_tile_layer_set_offset_x, void, (uint64_t e, int32_t v), e, v) \
+    X(native_tile_layer_get_offset_y, int32_t, (uint64_t e), e) \
+    X(native_tile_layer_set_offset_y, void, (uint64_t e, int32_t v), e, v) \
+    X(native_get_asset_directory, const char*, (), )
 
-        static uint32_t Native_TilemapComponentGetMapWidth(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TilemapComponent>()
-                ? entity.getComponent<TilemapComponent>().map_width : 0u;
-        }
+#define BIND_FIELD(name, ret, sig, invoke) ret (*name) sig;
+        struct NativeBindings { FOR_EACH_NATIVE_BINDING(BIND_FIELD) };
+#undef BIND_FIELD
 
-        static void Native_TilemapComponentSetMapWidth(uint64_t entity_uuid, uint32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
-                entity.getComponent<TilemapComponent>().map_width = value;
-                entity.getComponent<TilemapComponent>().dirty = true;
-            }
-        }
+        static NativeBindings s_bindings = {};
 
-        static uint32_t Native_TilemapComponentGetMapHeight(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TilemapComponent>()
-                ? entity.getComponent<TilemapComponent>().map_height : 0u;
-        }
-
-        static void Native_TilemapComponentSetMapHeight(uint64_t entity_uuid, uint32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
-                entity.getComponent<TilemapComponent>().map_height = value;
-                entity.getComponent<TilemapComponent>().dirty = true;
-            }
-        }
-
-        static uint32_t Native_TilemapComponentGetTileWidth(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TilemapComponent>()
-                ? entity.getComponent<TilemapComponent>().tile_width : 16u;
-        }
-
-        static void Native_TilemapComponentSetTileWidth(uint64_t entity_uuid, uint32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
-                entity.getComponent<TilemapComponent>().tile_width = value;
-                entity.getComponent<TilemapComponent>().dirty = true;
-            }
-        }
-
-        static uint32_t Native_TilemapComponentGetTileHeight(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TilemapComponent>()
-                ? entity.getComponent<TilemapComponent>().tile_height : 16u;
-        }
-
-        static void Native_TilemapComponentSetTileHeight(uint64_t entity_uuid, uint32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TilemapComponent>()) {
-                entity.getComponent<TilemapComponent>().tile_height = value;
-                entity.getComponent<TilemapComponent>().dirty = true;
-            }
-        }
-
-        static MonoString* Native_TileLayerComponentGetLayerName(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                return StdStringToMonoString(entity.getComponent<TileLayerComponent>().layer_name);
-            }
-            return StdStringToMonoString("");
-        }
-
-        static void Native_TileLayerComponentSetLayerName(uint64_t entity_uuid, MonoString* value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                entity.getComponent<TileLayerComponent>().layer_name = MonoStringToStdString(value);
-            }
-        }
-
-        static uint32_t Native_TileLayerComponentGetLayerWidth(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TileLayerComponent>()
-                ? entity.getComponent<TileLayerComponent>().layer_width : 0u;
-        }
-
-        static void Native_TileLayerComponentSetLayerWidth(uint64_t entity_uuid, uint32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                entity.getComponent<TileLayerComponent>().layer_width = value;
-            }
-        }
-
-        static uint32_t Native_TileLayerComponentGetLayerHeight(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TileLayerComponent>()
-                ? entity.getComponent<TileLayerComponent>().layer_height : 0u;
-        }
-
-        static void Native_TileLayerComponentSetLayerHeight(uint64_t entity_uuid, uint32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                entity.getComponent<TileLayerComponent>().layer_height = value;
-            }
-        }
-
-        static bool Native_TileLayerComponentGetVisible(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TileLayerComponent>()
-                && entity.getComponent<TileLayerComponent>().visible;
-        }
-
-        static void Native_TileLayerComponentSetVisible(uint64_t entity_uuid, bool value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                entity.getComponent<TileLayerComponent>().visible = value;
-            }
-        }
-
-        static float Native_TileLayerComponentGetOpacity(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TileLayerComponent>()
-                ? entity.getComponent<TileLayerComponent>().opacity : 1.0f;
-        }
-
-        static void Native_TileLayerComponentSetOpacity(uint64_t entity_uuid, float value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                entity.getComponent<TileLayerComponent>().opacity = value;
-            }
-        }
-
-        static int32_t Native_TileLayerComponentGetOffsetX(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TileLayerComponent>()
-                ? entity.getComponent<TileLayerComponent>().offset_x : 0;
-        }
-
-        static void Native_TileLayerComponentSetOffsetX(uint64_t entity_uuid, int32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                entity.getComponent<TileLayerComponent>().offset_x = value;
-            }
-        }
-
-        static int32_t Native_TileLayerComponentGetOffsetY(uint64_t entity_uuid) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            return entity.valid() && entity.hasComponent<TileLayerComponent>()
-                ? entity.getComponent<TileLayerComponent>().offset_y : 0;
-        }
-
-        static void Native_TileLayerComponentSetOffsetY(uint64_t entity_uuid, int32_t value) {
-            Entity entity = TryGetEntityByUuid(entity_uuid);
-            if (entity.valid() && entity.hasComponent<TileLayerComponent>()) {
-                entity.getComponent<TileLayerComponent>().offset_y = value;
-            }
-        }
-
-        static MonoString* Native_GetAssetDirectory() {
-            return StdStringToMonoString(Project::AssetDirectory().string());
+        static void FillBindings() {
+#define BIND_ASSIGN(name, ret, sig, invoke) s_bindings.name = name;
+            FOR_EACH_NATIVE_BINDING(BIND_ASSIGN)
+#undef BIND_ASSIGN
         }
 
     }
 
-    void ScriptGlue::Initialize(ScriptEngine* engine) {
-        s_ScriptEngine = engine;
-    }
+    void ScriptGlue::Initialize(ScriptEngine* engine) { s_ScriptEngine = engine; }
 
     void ScriptGlue::Shutdown() {
         s_ScriptEngine = nullptr;
@@ -982,120 +402,26 @@ namespace dodoe {
         s_EntityRemoveComponentFuncUmap.clear();
     }
 
-    void ScriptGlue::Register() {
-        if (!s_ScriptEngine) {
-            return;
-        }
-
-        RegisterComponents();
-        RegisterFunctions();
+    void ScriptGlue::Register() { 
+        if (!s_ScriptEngine) return;
+        RegisterComponents(); 
+        RegisterNativeBindings();
     }
 
     void ScriptGlue::RegisterComponents() {
         s_EntityHasComponentFuncUmap.clear();
         s_EntityAddComponentFuncUmap.clear();
         s_EntityRemoveComponentFuncUmap.clear();
-
         RegisterNativeComponents(NativeComponents{});
     }
 
-    void ScriptGlue::RegisterFunctions() {
-        DO_ADD_INTERNAL_CALL(Native_Log);
-        DO_ADD_INTERNAL_CALL(Native_EntityHasComponent);
-        DO_ADD_INTERNAL_CALL(Native_ComponentExists);
-        DO_ADD_INTERNAL_CALL(Native_EntityAddComponent);
-        DO_ADD_INTERNAL_CALL(Native_EntityRemoveComponent);
-        DO_ADD_INTERNAL_CALL(Native_IsKeyDown);
-        DO_ADD_INTERNAL_CALL(Native_TimeGetDeltaTime);
-        DO_ADD_INTERNAL_CALL(Native_IDComponentGetID);
-        DO_ADD_INTERNAL_CALL(Native_IDComponentGetName);
-        DO_ADD_INTERNAL_CALL(Native_IDComponentSetName);
-        DO_ADD_INTERNAL_CALL(Native_TagComponentGetTag);
-        DO_ADD_INTERNAL_CALL(Native_TagComponentSetTag);
-        DO_ADD_INTERNAL_CALL(Native_TransfromComponentGetPosition);
-        DO_ADD_INTERNAL_CALL(Native_TransfromComponentSetPosition);
-        DO_ADD_INTERNAL_CALL(Native_TransfromComponentGetRotation);
-        DO_ADD_INTERNAL_CALL(Native_TransfromComponentSetRotation);
-        DO_ADD_INTERNAL_CALL(Native_TransfromComponentGetScale);
-        DO_ADD_INTERNAL_CALL(Native_TransfromComponentSetScale);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentGetCurrentAnimationID);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentSetCurrentAnimationID);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentGetCurrentFrameID);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentSetCurrentFrameID);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentGetCurrentTimeDuration);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentSetCurrentTimeDuration);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentGetSpeed);
-        DO_ADD_INTERNAL_CALL(Native_Animation2dComponentSetSpeed);
-        DO_ADD_INTERNAL_CALL(Native_Camera2dComponentGetType);
-        DO_ADD_INTERNAL_CALL(Native_Camera2dComponentSetType);
-        DO_ADD_INTERNAL_CALL(Native_Camera2dComponentGetZoom);
-        DO_ADD_INTERNAL_CALL(Native_Camera2dComponentSetZoom);
-        DO_ADD_INTERNAL_CALL(Native_Camera2dComponentGetBackground);
-        DO_ADD_INTERNAL_CALL(Native_Camera2dComponentSetBackground);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentGetOffset);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetOffset);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentGetSize);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetSize);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentGetDensity);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetDensity);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentGetFriction);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetFriction);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentGetRestitution);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetRestitution);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentGetRestitutionThreshold);
-        DO_ADD_INTERNAL_CALL(Native_BoxCollider2dComponentSetRestitutionThreshold);
-        DO_ADD_INTERNAL_CALL(Native_MeshRendererComponentGetValue);
-        DO_ADD_INTERNAL_CALL(Native_MeshRendererComponentSetValue);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentGetType);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentSetType);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentGetGravityScale);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentSetGravityScale);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentGetFixedRotation);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentSetFixedRotation);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentSetLinearVelocity);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentApplyForceToCenter);
-        DO_ADD_INTERNAL_CALL(Native_Rigidbody2dComponentApplyLinearImpulseToCenter);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentGetTextureID);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentSetTextureID);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentGetFlip);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentSetFlip);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentGetPivot);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentSetPivot);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentGetDepth);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentSetDepth);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentGetColor);
-        DO_ADD_INTERNAL_CALL(Native_SpriteRendererComponentSetColor);
-        DO_ADD_INTERNAL_CALL(Native_CreateEntity);
-        DO_ADD_INTERNAL_CALL(Native_DestroyEntity);
-        DO_ADD_INTERNAL_CALL(Native_TilemapSetData);
-        DO_ADD_INTERNAL_CALL(Native_TilemapAddTileset);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerSetData);
-        DO_ADD_INTERNAL_CALL(Native_EntitySetParent);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetMapWidth);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetMapWidth);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetMapHeight);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetMapHeight);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetTileWidth);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetTileWidth);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentGetTileHeight);
-        DO_ADD_INTERNAL_CALL(Native_TilemapComponentSetTileHeight);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetLayerName);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetLayerName);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetLayerWidth);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetLayerWidth);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetLayerHeight);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetLayerHeight);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetVisible);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetVisible);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetOpacity);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOpacity);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetOffsetX);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOffsetX);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentGetOffsetY);
-        DO_ADD_INTERNAL_CALL(Native_TileLayerComponentSetOffsetY);
-
-        DO_ADD_INTERNAL_CALL(Native_GetAssetDirectory);
-
+    void ScriptGlue::RegisterNativeBindings() {
+        if (!s_ScriptEngine) return;
+        FillBindings();
+        auto call = s_ScriptEngine->getCallFn();
+        if (!call) { DO_ERROR("ScriptGlue: ScriptHub_Call not available"); return; }
+        void* args[1] = { &s_bindings };
+        call("register_natives", args, nullptr);
     }
 
 } // dodoe

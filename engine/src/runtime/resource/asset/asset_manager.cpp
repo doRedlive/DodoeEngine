@@ -147,7 +147,9 @@ namespace dodoe {
 
         const auto configs_dir = Project::ProjectDirectory() / "Configs";
         m_database = create_scope<AssetDatabase>(configs_dir);
-        m_database->load();
+        if (!m_database->load()) {
+            return false;
+        }
 
         for (const auto& file_id : m_database->getAllAssetFileIDs()) {
             AssetMetaData meta = m_database->getMetaData(file_id);

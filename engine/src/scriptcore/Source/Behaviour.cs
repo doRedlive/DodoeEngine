@@ -1,6 +1,6 @@
 namespace GreenCake;
 
-public class MonoBehaviour : Component
+public class Behaviour : Component
 {
     public virtual void Awake() { }
     public virtual void Start() { }

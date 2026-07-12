@@ -39,12 +39,12 @@ public class Transform : Component
         {
             if (value == null)
             {
-                InternalCalls.Native_EntitySetParent(Entity.ID, 0);
+                NativeCalls.Native_EntitySetParent(Entity.ID, 0);
                 GameObjectManager.SetParent(Entity.ID, null);
             }
             else
             {
-                InternalCalls.Native_EntitySetParent(Entity.ID, value.Entity.ID);
+                NativeCalls.Native_EntitySetParent(Entity.ID, value.Entity.ID);
                 GameObjectManager.SetParent(Entity.ID, value.GameObject);
             }
         }

@@ -2,13 +2,13 @@
 
 #ifdef DODOE_PYTHON_ENABLED
 
-#include "script_bindings.h"
+#include "py_bindings.h"
 
 #include "runtime/function/animation/animation.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 
-namespace dodoe::script_bindings {
+namespace dodoe::py_bindings {
 namespace {
 
     struct TextureRes {
@@ -35,7 +35,7 @@ void RegisterResource(py::module_& m) {
         .def_readwrite("name", &AnimClip2DRes::name);
 
     py::module_ rm = m.def_submodule("resource_manager");
-    rm.def("load_texture", [](const String& path) -> TextureRes {
+    auto load_texture_fn = [](const String& path) -> TextureRes {
         auto handle = ResourceManager::Self().getTexture(path);
         TextureRes res;
         if (handle.isValid()) {
@@ -43,18 +43,11 @@ void RegisterResource(py::module_& m) {
             res.path = path;
         }
         return res;
-    });
-    rm.def("get_texture", [](const String& path) -> TextureRes {
-        auto handle = ResourceManager::Self().getTexture(path);
-        TextureRes res;
-        if (handle.isValid()) {
-            res.id = static_cast<InstanceID>(handle.getFileID().getID());
-            res.path = path;
-        }
-        return res;
-    });
+    };
+    rm.def("load_texture", load_texture_fn);
+    rm.def("get_texture", load_texture_fn);
 }
 
-} // dodoe::script_bindings
+} // namespace dodoe::py_bindings
 
 #endif // DODOE_PYTHON_ENABLED

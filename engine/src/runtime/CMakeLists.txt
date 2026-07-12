@@ -85,12 +85,8 @@ if(DODOE_PYTHON_ENABLED)
     target_compile_definitions(${TARGET_NAME} PUBLIC DODOE_PYTHON_ENABLED)
 endif()
 
-if(TARGET mono::mono)
-    target_link_libraries(${TARGET_NAME} PUBLIC mono::mono)
-endif()
-
-if(TARGET mono::mono)
-    target_link_options(${TARGET_NAME} PRIVATE /DELAYLOAD:coreclr.dll)
+if(TARGET nethost::nethost)
+    target_link_libraries(${TARGET_NAME} PUBLIC nethost::nethost)
 endif()
 
 target_compile_definitions(${TARGET_NAME}
@@ -102,20 +98,21 @@ target_compile_definitions(${TARGET_NAME}
         PRIVATE $<$<CONFIG:Debug>:DO_DEBUG>
 )
 
-add_dependencies(${TARGET_NAME} DodoeMonoRuntimeFiles)
-
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:${TARGET_NAME}>
         "${BINARY_ROOT_DIR}/"
     COMMENT "Copy DodoeRuntime.dll -> ${BINARY_ROOT_DIR}/"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ENGINE_ROOT_DIR}/external/mono/bin/coreclr.dll"
-        "${BINARY_ROOT_DIR}/"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ENGINE_ROOT_DIR}/external/mono/bin/System.Private.CoreLib.dll"
-        "${BINARY_ROOT_DIR}/"
 )
+
+if(NETHOST_DLL)
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${NETHOST_DLL}"
+            "${BINARY_ROOT_DIR}/"
+        COMMENT "Copy nethost.dll -> ${BINARY_ROOT_DIR}/"
+    )
+endif()
 
 if(DODOE_PYTHON_ENABLED)
     add_dependencies(${TARGET_NAME} DodoePythonRuntimeFiles)

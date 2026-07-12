@@ -10,7 +10,7 @@
 
 namespace py = pybind11;
 
-namespace dodoe::script_bindings {
+namespace dodoe::py_bindings {
 
     void RegisterAll(py::module_& dodoe_module);
 
@@ -19,6 +19,6 @@ namespace dodoe::script_bindings {
     void RegisterEntity(py::module_& dodoe_module);
     void RegisterWorld(py::module_& dodoe_module);
 
-} // dodoe::script_bindings
+} // namespace dodoe::py_bindings
 
 #endif // DODOE_PYTHON_ENABLED

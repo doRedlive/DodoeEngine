@@ -4,16 +4,16 @@ public class Debug
 {
     public static void Log(string message)
     {
-        InternalCalls.Native_Log(message);
+        NativeCalls.Native_Log(message);
     }
 
     public static void LogError(string message)
     {
-        InternalCalls.Native_Log($"[Error] {message}");
+        NativeCalls.Native_Log($"[Error] {message}");
     }
 
     public static void LogWarning(string message)
     {
-        InternalCalls.Native_Log($"[Warning] {message}");
+        NativeCalls.Native_Log($"[Warning] {message}");
     }
 }

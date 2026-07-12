@@ -2,7 +2,7 @@
 
 #ifdef DODOE_PYTHON_ENABLED
 
-#include "script_bindings.h"
+#include "py_bindings.h"
 
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
@@ -11,7 +11,7 @@
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 
-namespace dodoe::script_bindings {
+namespace dodoe::py_bindings {
 
     void RegisterWorld(py::module_& m) {
         py::class_<Registry>(m, "Registry")
@@ -44,6 +44,6 @@ namespace dodoe::script_bindings {
         }, py::return_value_policy::reference);
     }
 
-} // dodoe::script_bindings
+} // namespace dodoe::py_bindings
 
 #endif // DODOE_PYTHON_ENABLED

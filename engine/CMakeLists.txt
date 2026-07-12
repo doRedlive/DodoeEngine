@@ -5,10 +5,6 @@ add_compile_definitions($<$<CONFIG:Debug>:DODOE_DEBUG>)
 
 add_subdirectory(external)
 
-if(DEFINED DODOE_MONO_INCLUDE_DIR AND EXISTS "${DODOE_MONO_INCLUDE_DIR}")
-	include_directories("${DODOE_MONO_INCLUDE_DIR}")
-endif()
-
 add_subdirectory(res)
 
 add_subdirectory(src/runtime)

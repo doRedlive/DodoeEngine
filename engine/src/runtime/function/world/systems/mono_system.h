@@ -21,7 +21,7 @@ namespace dodoe {
         void finalize(Registry& reg) override;
 
     private:
-        ScriptRuntime* getMonoRuntime();
+        ScriptRuntime* getScriptRuntime();
     };
 
 } // dodoe
