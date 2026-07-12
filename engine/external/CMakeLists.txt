@@ -80,6 +80,17 @@ if(NOT TARGET nethost::nethost)
     include(nethost.cmake)
 endif()
 
+if(NOT TARGET Microsoft::DirectX-Headers)
+    add_subdirectory(DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
+endif()
+
+if(TARGET DirectX-Headers)
+    set_target_properties(DirectX-Headers PROPERTIES FOLDER ${external_folder}/DirectX-Headers)
+endif()
+if(TARGET DirectX-Guids)
+    set_target_properties(DirectX-Guids PROPERTIES FOLDER ${external_folder}/DirectX-Headers)
+endif()
+
 if(NOT TARGET assimp)
     include(assimp.cmake)
     set_target_properties(assimp PROPERTIES FOLDER ${external_folder}/assimp)

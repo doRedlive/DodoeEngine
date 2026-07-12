@@ -13,6 +13,11 @@ set(CUTIE_WITH_AFTERMATH OFF CACHE BOOL "" FORCE)
 
 set(CUTIE_FETCH_VULKAN_HEADERS OFF CACHE BOOL "" FORCE)
 set(CUTIE_FETCH_GLAD OFF CACHE BOOL "" FORCE)
+set(CUTIE_FETCH_DIRECTX_HEADERS OFF CACHE BOOL "" FORCE)
+
+if(NOT TARGET Microsoft::DirectX-Headers)
+    add_subdirectory(DirectX-Headers ${CMAKE_BINARY_DIR}/DirectX-Headers)
+endif()
 
 add_subdirectory(cutie-rhi)
 
