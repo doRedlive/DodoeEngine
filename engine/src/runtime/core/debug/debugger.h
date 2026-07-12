@@ -5,7 +5,7 @@
 #include "dopch.h"
 #include "runtime/core/memory/managed.h"
 
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
 #endif
 

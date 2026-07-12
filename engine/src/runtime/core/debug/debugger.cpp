@@ -2,7 +2,7 @@
 
 #include "debugger.h"
 
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 #endif
@@ -41,7 +41,7 @@ namespace dodoe {
     }
 
     void Debugger::onRender() {
-#if defined(DODOE_DEBUG) && !defined(DODOE_EDITOR)
+#if defined(DODOE_DEBUG_ENABLED) && !defined(DODOE_EDITOR_ENABLED)
         if (!ImGuiBuilder::GetContext()) return;
         ImGuiContext* prev_ctx = ImGui::GetCurrentContext();
         ImGui::SetCurrentContext(ImGuiBuilder::GetContext());
@@ -51,7 +51,7 @@ namespace dodoe {
     }
 
     void Debugger::onImGuiRender() {
-#if defined(DODOE_DEBUG) && !defined(DODOE_EDITOR)
+#if defined(DODOE_DEBUG_ENABLED) && !defined(DODOE_EDITOR_ENABLED)
         for (const auto& pair : m_imguiRenderFuncs) {
             if (pair.second) {
                 pair.second();

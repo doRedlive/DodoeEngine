@@ -9,13 +9,16 @@ file(GLOB_RECURSE FRAMEWORK_SOURCES
 
 add_library(EditorFramework STATIC ${FRAMEWORK_SOURCES})
 target_link_libraries(EditorFramework PUBLIC DodoeRuntime)
-target_compile_definitions(EditorFramework PUBLIC DODOE_EDITOR)
+target_compile_definitions(EditorFramework PUBLIC DODOE_EDITOR_ENABLED)
+target_compile_definitions(EditorFramework PUBLIC $<$<CONFIG:Debug>:DODOE_DEBUG_ENABLED>)
 target_include_directories(EditorFramework
     PUBLIC
         ${ENGINE_ROOT_DIR}/src
         ${ENGINE_ROOT_DIR}/src/runtime
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${FRAMEWORK_SOURCES})
+set_target_properties(EditorFramework PROPERTIES FOLDER "Editor")
 
 file(GLOB_RECURSE PROPERTY_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/property/*.cpp
@@ -31,6 +34,8 @@ target_include_directories(EditorProperty
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 set_target_properties(EditorProperty PROPERTIES AUTOMOC ON)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${PROPERTY_SOURCES})
+set_target_properties(EditorProperty PROPERTIES FOLDER "Editor")
 
 set(CAKERY_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/main.cpp
@@ -92,7 +97,9 @@ set_target_properties(${TARGET_NAME} PROPERTIES
     AUTOMOC ON
     WIN32_EXECUTABLE ON
     VS_DEBUGGER_WORKING_DIRECTORY "${BINARY_ROOT_DIR}"
+    FOLDER "Apps"
 )
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${CAKERY_ALL_SOURCES})
 
 
 get_target_property(_qt_core_loc Qt6::Core IMPORTED_LOCATION)

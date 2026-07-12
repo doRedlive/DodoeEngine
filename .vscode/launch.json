@@ -6,7 +6,7 @@
       "type": "cppvsdbg",
       "request": "launch",
       "preLaunchTask": "Build Cakery",
-      "program": "${workspaceFolder}/bin/Cakery.exe",
+      "program": "${workspaceFolder}/bin/editor-debug/Cakery.exe",
       "cwd": "${workspaceFolder}",
       "args": [],
       "stopAtEntry": false,
@@ -23,12 +23,22 @@
       "type": "cppvsdbg",
       "request": "launch",
       "preLaunchTask": "Build DodoeSandbox",
-      "program": "${workspaceFolder}/bin/DodoeSandbox.exe",
+      "program": "${workspaceFolder}/bin/sandbox-debug/DodoeSandbox.exe",
       "cwd": "${workspaceFolder}",
       "args": [],
       "stopAtEntry": false,
       "console": "integratedTerminal",
-      "environment": []
+      "exceptionSettings": {
+        "managedThrow": {
+          "breakOnFirstChance": true
+        }
+      },
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "${env:PATH};C:/Qt/6.11.1/msvc2022_64/bin"
+        }
+      ]
     }
   ]
 }

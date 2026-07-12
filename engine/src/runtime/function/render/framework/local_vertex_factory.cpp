@@ -4,7 +4,7 @@
 
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
 #include "runtime/function/render/render_scene/sprite_scene_info.h"
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
 #endif
 
@@ -74,7 +74,7 @@ namespace dodoe {
         DrawCommandList& command_list,
         GfxShaderHandle imgui_vs)
     {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!m_imgui_input_layout) {
             GfxVertexAttributeDesc attributes[] = {
                 GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RG32_FLOAT).setOffset(offsetof(ImDrawVert, pos)).setElementStride(sizeof(ImDrawVert)),

@@ -20,11 +20,6 @@ namespace dodoe {
 
         m_call("reset_state", nullptr, nullptr);
 
-        auto* alc = m_script_engine->getAlcHandle();
-        void* init_args[1] = { alc };
-        void* types_result = nullptr;
-        m_call("scan_types", init_args, &types_result);
-
         loadAssemblyClasses();
 
         return true;
@@ -53,8 +48,8 @@ namespace dodoe {
             for (const auto& t : types) {
                 std::string ns = t.value("ns", "");
                 std::string name = t.value("name", "");
-                std::string base_ns = t.value("base_ns", "");
-                std::string base_name = t.value("base_name", "");
+                std::string base_ns = t.value("baseNs", "");
+                std::string base_name = t.value("baseName", "");
                 std::string full_name = ns.empty() ? name : ns + "." + name;
 
                 if (base_ns == "GreenCake" && base_name == "Component") {
@@ -75,9 +70,28 @@ namespace dodoe {
         DO_DEBUG("load assembly classes: system class count {}", m_system_class_umap.size());
     }
 
+    void ScriptRuntime::createSystemInstances() {
+        if (!m_call) return;
+
+        for (const auto& [full_name, type_info] : m_system_class_umap) {
+            void* args[2] = {
+                (void*)type_info.ns.c_str(),
+                (void*)type_info.name.c_str()
+            };
+            void* result = nullptr;
+            int rc = m_call("create_instance", args, &result);
+            if (rc == 1) {
+                m_system_instance_handles[full_name] = reinterpret_cast<i64>(result);
+            }
+        }
+
+        DO_DEBUG("create system instances: {}", m_system_instance_handles.size());
+    }
+
     void ScriptRuntime::clearRuntimeState() {
         m_component_class_umap.clear();
         m_system_class_umap.clear();
+        m_system_instance_handles.clear();
         if (m_call) {
             m_call("reset_state", nullptr, nullptr);
         }
@@ -130,6 +144,7 @@ namespace dodoe {
     void ScriptRuntime::reloadAssemblyClasses() {
         m_component_class_umap.clear();
         m_system_class_umap.clear();
+        m_system_instance_handles.clear();
 
         if (!m_call) {
             DO_ERROR("ScriptRuntime: ScriptHub_Call not available");
@@ -137,6 +152,7 @@ namespace dodoe {
         }
 
         loadAssemblyClasses();
+        createSystemInstances();
     }
 
     void ScriptRuntime::loadEntityMonoComponentsFromManaged(uint64_t entity_uuid) {
@@ -172,7 +188,6 @@ namespace dodoe {
     void ScriptRuntime::onRuntimeUpdate() {
         if (m_call) {
             m_call("invoke_update", nullptr, nullptr);
-            DO_DEBUG("m_call is not null");
         }
     }
 

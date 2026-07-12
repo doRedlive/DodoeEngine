@@ -26,12 +26,14 @@ namespace dodoe {
 
         UnorderedMap<String, ComponentTypeInfo> m_system_class_umap;
         UnorderedMap<String, ComponentTypeInfo> m_component_class_umap;
+        UnorderedMap<String, i64> m_system_instance_handles;
         UnorderedMap<ui64, DynamicArray<Pair<String, String>>> m_field_snapshot;
 
     public:
         Int logSystemClassCount() { return m_system_class_umap.size(); }
 
         void loadAssemblyClasses();
+        void createSystemInstances();
         void reloadAssemblyClasses();
         void clearRuntimeState();
         void snapshotFields();

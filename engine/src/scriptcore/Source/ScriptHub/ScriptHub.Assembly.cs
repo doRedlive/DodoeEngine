@@ -1,11 +1,42 @@
 namespace GreenCake;
 
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
 public static partial class ScriptHub
 {
+    private static AssemblyLoadContext AppAlc;
+
+    private sealed class ScriptAssemblyLoadContext : AssemblyLoadContext
+    {
+        private readonly AssemblyDependencyResolver _resolver;
+
+        public ScriptAssemblyLoadContext(string assemblyPath, string name)
+            : base(name, isCollectible: true)
+        {
+            _resolver = new AssemblyDependencyResolver(assemblyPath);
+        }
+
+        protected override System.Reflection.Assembly Load(System.Reflection.AssemblyName assemblyName)
+        {
+            var sharedAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(asm => asm.GetName().Name == assemblyName.Name);
+            if (sharedAssembly != null)
+                return sharedAssembly;
+
+            var path = _resolver.ResolveAssemblyToPath(assemblyName);
+            return path != null ? LoadFromAssemblyPath(path) : null;
+        }
+
+        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+        {
+            var path = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            return path != null ? LoadUnmanagedDllFromPath(path) : IntPtr.Zero;
+        }
+    }
+
     private static unsafe int LoadAppAssembly(void** args, void** result)
     {
         if (args == null || result == null)
@@ -14,19 +45,22 @@ public static partial class ScriptHub
         var dataPtr = (IntPtr)args[0];
         var size = (int)(nint)args[1];
         var namePtr = (IntPtr)args[2];
-        var name = namePtr != IntPtr.Zero
-            ? (Marshal.PtrToStringUTF8(namePtr) ?? "AppAssembly")
-            : "AppAssembly";
-
-        if (dataPtr == IntPtr.Zero || size <= 0)
+        var assemblyPath = namePtr != IntPtr.Zero
+            ? Marshal.PtrToStringUTF8(namePtr)
+            : null;
+        
+        if (string.IsNullOrWhiteSpace(assemblyPath) || dataPtr == IntPtr.Zero || size <= 0)
             return 0;
 
-        var alc = new AssemblyLoadContext(name, isCollectible: true);
-        var bytes = new byte[size];
-        Marshal.Copy(dataPtr, bytes, 0, size);
-
-        using var ms = new System.IO.MemoryStream(bytes);
+        var alc = new ScriptAssemblyLoadContext(assemblyPath, System.IO.Path.GetFileNameWithoutExtension(assemblyPath));
+        
+        byte[] assemblyBytes = new byte[size];
+        Marshal.Copy(dataPtr, assemblyBytes, 0, size);
+        
+        using var ms = new System.IO.MemoryStream(assemblyBytes);
         alc.LoadFromStream(ms);
+        
+        AppAlc = alc;
 
         var gcHandle = GCHandle.Alloc(alc, GCHandleType.Normal);
         *(IntPtr*)result = GCHandle.ToIntPtr(gcHandle);
@@ -41,6 +75,7 @@ public static partial class ScriptHub
         var alc = (AssemblyLoadContext)gcHandle.Target;
         gcHandle.Free();
         alc?.Unload();
+        AppAlc = null;
         return 1;
     }
 
@@ -48,6 +83,7 @@ public static partial class ScriptHub
     {
         ObjectRegistry.Clear();
         InstanceTypeCache.Clear();
+        SystemTypeCache.Clear();
         World.Reset();
         GameObjectManager.Reset();
         return 1;

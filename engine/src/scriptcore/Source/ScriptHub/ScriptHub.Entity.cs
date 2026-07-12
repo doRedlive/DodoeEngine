@@ -55,7 +55,7 @@ public static partial class ScriptHub
             var shortName = fullName.Contains('.') ? fullName.Split('.').Last() : fullName;
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
-                componentType = asm.GetTypes()
+                componentType = EnumerateTypes(asm)
                     .FirstOrDefault(t => t.Name == shortName && typeof(Component).IsAssignableFrom(t));
                 if (componentType is not null) break;
             }

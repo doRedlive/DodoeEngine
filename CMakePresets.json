@@ -9,8 +9,6 @@
     {
       "name": "windows-base",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build",
-      "installDir": "${sourceDir}/bin",
       "cacheVariables": {
         "CMAKE_CXX_STANDARD": "20",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
@@ -19,93 +17,149 @@
       }
     },
     {
-      "name": "msvc-debug",
-      "displayName": "MSVC Debug",
+      "name": "msvc-editor-debug",
+      "displayName": "MSVC Editor Debug",
       "inherits": "windows-base",
-      "generator": "Visual Studio 17 2022",
+      "generator": "Visual Studio 18 2026",
       "architecture": "x64",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "msvc-release",
-      "displayName": "MSVC Release",
-      "inherits": "windows-base",
-      "generator": "Visual Studio 17 2022",
-      "architecture": "x64",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-    {
-      "name": "ninja-debug",
-      "displayName": "Ninja Debug",
-      "inherits": "windows-base",
-      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/editor-debug",
+      "installDir": "${sourceDir}/bin/editor-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe"
+        "DODOE_EDITOR": "ON"
       }
     },
     {
-      "name": "ninja-release",
-      "displayName": "Ninja Release",
+      "name": "msvc-editor-release",
+      "displayName": "MSVC Editor Release",
       "inherits": "windows-base",
-      "generator": "Ninja",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/editor-release",
+      "installDir": "${sourceDir}/bin/editor-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe"
+        "DODOE_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "ninja-editor-debug",
+      "displayName": "Ninja Editor Debug",
+      "inherits": "windows-base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/editor-debug",
+      "installDir": "${sourceDir}/bin/editor-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
+        "DODOE_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "ninja-editor-release",
+      "displayName": "Ninja Editor Release",
+      "inherits": "windows-base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/editor-release",
+      "installDir": "${sourceDir}/bin/editor-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
+        "DODOE_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "msvc-sandbox-debug",
+      "displayName": "MSVC Sandbox Debug",
+      "inherits": "windows-base",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/sandbox-debug",
+      "installDir": "${sourceDir}/bin/sandbox-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "DODOE_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "msvc-sandbox-release",
+      "displayName": "MSVC Sandbox Release",
+      "inherits": "windows-base",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/sandbox-release",
+      "installDir": "${sourceDir}/bin/sandbox-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "DODOE_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "ninja-sandbox-debug",
+      "displayName": "Ninja Sandbox Debug",
+      "inherits": "windows-base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/sandbox-debug",
+      "installDir": "${sourceDir}/bin/sandbox-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
+        "DODOE_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "ninja-sandbox-release",
+      "displayName": "Ninja Sandbox Release",
+      "inherits": "windows-base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/sandbox-release",
+      "installDir": "${sourceDir}/bin/sandbox-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
+        "DODOE_EDITOR": "OFF"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "msvc-debug-cakery",
-      "displayName": "MSVC Debug Cakery",
-      "configurePreset": "msvc-debug",
+      "name": "msvc-editor-debug",
+      "configurePreset": "msvc-editor-debug",
       "targets": "Cakery"
     },
     {
-      "name": "msvc-release-cakery",
-      "displayName": "MSVC Release Cakery",
-      "configurePreset": "msvc-release",
+      "name": "msvc-editor-release",
+      "configurePreset": "msvc-editor-release",
       "targets": "Cakery"
     },
     {
-      "name": "ninja-debug-cakery",
-      "displayName": "Ninja Debug Cakery",
-      "configurePreset": "ninja-debug",
+      "name": "ninja-editor-debug",
+      "configurePreset": "ninja-editor-debug",
       "targets": "Cakery"
     },
     {
-      "name": "ninja-release-cakery",
-      "displayName": "Ninja Release Cakery",
-      "configurePreset": "ninja-release",
+      "name": "ninja-editor-release",
+      "configurePreset": "ninja-editor-release",
       "targets": "Cakery"
     },
     {
-      "name": "msvc-debug-sandbox",
-      "displayName": "MSVC Debug Sandbox",
-      "configurePreset": "msvc-debug",
+      "name": "msvc-sandbox-debug",
+      "configurePreset": "msvc-sandbox-debug",
       "targets": "DodoeSandbox"
     },
     {
-      "name": "msvc-release-sandbox",
-      "displayName": "MSVC Release Sandbox",
-      "configurePreset": "msvc-release",
+      "name": "msvc-sandbox-release",
+      "configurePreset": "msvc-sandbox-release",
       "targets": "DodoeSandbox"
     },
     {
-      "name": "ninja-debug-sandbox",
-      "displayName": "Ninja Debug Sandbox",
-      "configurePreset": "ninja-debug",
+      "name": "ninja-sandbox-debug",
+      "configurePreset": "ninja-sandbox-debug",
       "targets": "DodoeSandbox"
     },
     {
-      "name": "ninja-release-sandbox",
-      "displayName": "Ninja Release Sandbox",
-      "configurePreset": "ninja-release",
+      "name": "ninja-sandbox-release",
+      "configurePreset": "ninja-sandbox-release",
       "targets": "DodoeSandbox"
     }
   ]

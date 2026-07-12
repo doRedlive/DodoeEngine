@@ -1,7 +1,6 @@
 set(ENGINE_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 option(DODOE_EDITOR "Build the Cakery editor" ON)
-add_compile_definitions($<$<CONFIG:Debug>:DODOE_DEBUG>)
 
 add_subdirectory(external)
 

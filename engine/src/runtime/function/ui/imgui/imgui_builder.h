@@ -1,6 +1,6 @@
 // do@Redlive
 
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
 
 #include "dopch.h"
 
@@ -25,4 +25,4 @@ namespace dodoe {
 
 } // dodoe
 
-#endif//DODOE_DEBUG
+#endif//DODOE_DEBUG_ENABLED

@@ -10,7 +10,7 @@
 #include "runtime/function/render/framework/local_vertex_factory.h"
 #include "runtime/function/render/render_pipeline/render_feature/imgui_render_resource.h"
 
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 
@@ -33,7 +33,7 @@ namespace dodoe::RenderPipelinePass {
     };
 
     void RenderImGuiPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, ImGuiRenderResource& resources) {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!ImGui::GetCurrentContext()) return;
 
         graph.addPass<ImGuiPassParameters>(

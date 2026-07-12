@@ -55,8 +55,9 @@ target_include_directories(${TARGET_NAME}
                 ${ENGINE_ROOT_DIR}/src/runtime
 )
 
+target_compile_definitions(${TARGET_NAME} PUBLIC $<$<CONFIG:Debug>:DODOE_DEBUG_ENABLED>)
 if(DODOE_EDITOR)
-    target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_EDITOR)
+    target_compile_definitions(${TARGET_NAME} PUBLIC DODOE_EDITOR_ENABLED)
 endif()
 target_precompile_headers(${TARGET_NAME} PUBLIC dopch.h)
 
@@ -99,6 +100,7 @@ target_compile_definitions(${TARGET_NAME}
 )
 
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:${TARGET_NAME}>
         "${BINARY_ROOT_DIR}/"
@@ -107,6 +109,7 @@ add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
 
 if(NETHOST_DLL)
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${NETHOST_DLL}"
             "${BINARY_ROOT_DIR}/"

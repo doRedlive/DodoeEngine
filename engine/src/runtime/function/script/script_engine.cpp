@@ -191,7 +191,7 @@ namespace dodoe {
             return false;
         }
 
-        const fs::path assembly_path = Project::ScriptAssemblyPath();
+        const fs::path assembly_path = fs::absolute(Project::ScriptAssemblyPath());
         auto data = ReadFileBinary(assembly_path);
         if (data.empty()) {
             DO_ERROR("ScriptEngine: failed to read app assembly '{}'", assembly_path.string());
@@ -200,12 +200,23 @@ namespace dodoe {
 
         ++m_reload_counter;
 
-        auto name = assembly_path.filename().string();
+        std::string assembly_path_str;
+#ifdef DO_PLATFORM_WINDOWS
+        const std::wstring wpath = assembly_path.wstring();
+        int utf8_len = WideCharToMultiByte(CP_UTF8, 0, wpath.c_str(), (int)wpath.length(), nullptr, 0, nullptr, nullptr);
+        if (utf8_len > 0) {
+            assembly_path_str.resize(utf8_len);
+            WideCharToMultiByte(CP_UTF8, 0, wpath.c_str(), (int)wpath.length(), &assembly_path_str[0], utf8_len, nullptr, nullptr);
+        }
+#else
+        assembly_path_str = assembly_path.string();
+#endif
+        
         void* result = nullptr;
         void* args[3] = {
             (void*)data.data(),
             (void*)(intptr_t)static_cast<int>(data.size()),
-            (void*)name.c_str()
+            (void*)assembly_path_str.c_str()
         };
 
         int rc = m_call("load_app_assembly", args, &result);

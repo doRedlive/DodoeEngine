@@ -5,7 +5,7 @@
 #include "runtime/function/render/framework/global_samplers.h"
 #include "runtime/function/render/framework/pipeline_state_cache.h"
 
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 #endif
@@ -15,7 +15,7 @@
 namespace dodoe {
 
     void ImGuiRenderResource::reset() {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (ImGui::GetCurrentContext()) {
             ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
         }
@@ -32,7 +32,7 @@ namespace dodoe {
     GfxTextureHandle ImGuiRenderResource::getOrCreateFontTexture(
         DrawCommandList& command_list)
     {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!m_font_texture) {
             ImGuiIO& io = ImGui::GetIO();
             unsigned char* pixels = nullptr;
@@ -62,7 +62,7 @@ namespace dodoe {
     GfxBufferHandle ImGuiRenderResource::getOrCreateConstantBuffer(
         DrawCommandList& command_list)
     {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!m_constant_buffer) {
             m_constant_buffer = command_list.createBuffer(
                 GfxBufferDesc()
@@ -86,7 +86,7 @@ namespace dodoe {
     GfxBindingLayoutHandle ImGuiRenderResource::getOrCreateBindingLayout(
         DrawCommandList& command_list)
     {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!m_binding_layout) {
             m_binding_layout = command_list.createBindingLayout(
                 GfxBindingLayoutDesc()
@@ -108,7 +108,7 @@ namespace dodoe {
         DrawCommandList& command_list,
         const GfxTextureHandle& output)
     {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!m_framebuffer || !m_framebuffer_texture
             || m_framebuffer_texture != output) {
             m_framebuffer_texture = output;
@@ -132,7 +132,7 @@ namespace dodoe {
         const GfxFramebufferInfo& framebuffer_info,
         DrawCommandList& command_list)
     {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!m_pipeline && m_framebuffer && input_layout && m_binding_layout && pipeline_cache && imgui_vs && imgui_ps) {
             GfxDepthStencilState depth_stencil_state;
             depth_stencil_state.disableDepthTest().disableDepthWrite().disableStencil();
@@ -180,7 +180,7 @@ namespace dodoe {
         DrawCommandList& command_list,
         GfxTexture* texture)
     {
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         if (!texture) {
             return nullptr;
         }
@@ -201,7 +201,6 @@ namespace dodoe {
 #else
         (void)command_list;
         (void)texture;
-        (void)constant_buffer;
         return nullptr;
 #endif
     }

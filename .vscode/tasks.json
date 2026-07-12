@@ -7,9 +7,8 @@
       "command": "cmake",
       "args": [
         "--build",
-        "build",
-        "--target",
-        "Cakery"
+        "--preset",
+        "msvc-editor-debug"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -28,13 +27,8 @@
       "command": "cmake",
       "args": [
         "--build",
-        "build",
-        "--target",
-        "DodoeSandbox",
-        "--config",
-        "Debug",
-        "--parallel",
-        "8"
+        "--preset",
+        "msvc-sandbox-debug"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

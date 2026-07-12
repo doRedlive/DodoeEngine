@@ -8,7 +8,7 @@
 #include "runtime/core/meta/reflection/reflection_register.h"
 
 #include "runtime/core/debug/debugger.h"
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
 #include "runtime/service/debug/debug_imgui.h"
 #endif
 #include "runtime/core/layer/layer.h"
@@ -73,7 +73,7 @@ namespace dodoe {
 
         m_ui_system     = UISystem::Create({m_window_manager.get()});
         m_debugger      = Debugger::Create({});
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         DebugImGui::RegisterDebugPanel();
 #endif
         m_render_system = RenderSystem::Create({m_window_manager.get()});
@@ -153,7 +153,7 @@ namespace dodoe {
         ResourceManager::Self().shutdown();
         RenderSystem::Destroy(m_render_system);
         UISystem::Destroy(m_ui_system);
-#ifdef DODOE_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
         DebugImGui::UnregisterDebugPanel();
 #endif
         Debugger::Destroy(m_debugger);

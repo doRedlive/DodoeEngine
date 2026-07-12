@@ -7,11 +7,10 @@ set(CS_PROJECT_FILE ${CS_PROJECT_DIR}/GreenCake.csproj)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(DOTNET_CONFIG Release)
-    set(TARGET_COPY_DIR ${CMAKE_SOURCE_DIR}/bin)
 else()
     set(DOTNET_CONFIG Debug)
-    set(TARGET_COPY_DIR ${CMAKE_SOURCE_DIR}/bin)
 endif()
+set(TARGET_COPY_DIR ${BINARY_ROOT_DIR})
 
 set(DOTNET_OUT_DIR ${CS_PROJECT_DIR}/bin/${DOTNET_CONFIG}/net10.0)
 set(CS_OUTPUT_DLL ${DOTNET_OUT_DIR}/GreenCake.dll)
@@ -63,3 +62,4 @@ add_custom_target(GreenCake ALL
     DEPENDS ${TARGET_COPY_DIR}/GreenCake.dll
     DEPENDS ${TARGET_COPY_DIR}/DodoeRuntime.runtimeconfig.json
 )
+set_target_properties(GreenCake PROPERTIES FOLDER "Scripts")
