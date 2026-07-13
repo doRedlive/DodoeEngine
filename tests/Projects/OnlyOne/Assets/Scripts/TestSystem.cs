@@ -10,8 +10,9 @@ public class TestSystem : CakeSystem
 
     public void Start()
     {
-        _testSprite = GameObject.Create("GrmSprite");
-        _spriteRenderer = _testSprite.AddComponent<SpriteRendererComponent>();
-        _spriteRenderer.Texture = Texture.Load("textures/Preview.png");
+        // _testSprite = GameObject.Create("GrmSprite");
+        // _testSprite.AddComponent<HierarchyComponent>();
+        // _spriteRenderer = _testSprite.AddComponent<SpriteRendererComponent>();
+        // _spriteRenderer.Texture = Texture.Load("textures/Preview.png");
     }
 }

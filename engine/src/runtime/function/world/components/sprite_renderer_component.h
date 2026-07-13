@@ -24,7 +24,7 @@ namespace dodoe {
         META(Enable)
         Vector2f pivot{0.0f, 0.0f};
         META(Enable)
-        float depth_{0.0f};
+        float depth{0.0f};
         META(Enable)
         Color color{ };
 

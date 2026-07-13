@@ -98,10 +98,7 @@ namespace dodoe::RenderPipelinePass {
                 command_list.commitBarriers();
 
                 const auto swapchain_extent = context.getGfxContext()->getSwapchainExtent2d();
-                const Matrix4f vp_matrix = Math::OrthoRH_ZO(
-                    0.0f, static_cast<Float>(swapchain_extent.x),
-                    static_cast<Float>(swapchain_extent.y), 0.0f,
-                    0.0f, 1.0f);
+                const Matrix4f vp_matrix = view.getViewProjectionMatrix();
                 command_list.setBufferState(vp_buffer, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
                 command_list.writeBuffer(vp_buffer, &vp_matrix, sizeof(Matrix4f), 0);

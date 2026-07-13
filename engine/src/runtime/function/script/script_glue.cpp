@@ -304,8 +304,8 @@ X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
     X(native_SpriteRendererComponent_flip_set, void, (uint64_t e, bool v), e, v) \
     X(native_SpriteRendererComponent_pivot_get, void, (uint64_t e, float* x, float* y), e, x, y) \
     X(native_SpriteRendererComponent_pivot_set, void, (uint64_t e, float x, float y), e, x, y) \
-    X(native_SpriteRendererComponent_depth__get, float, (uint64_t e), e) \
-    X(native_SpriteRendererComponent_depth__set, void, (uint64_t e, float v), e, v) \
+    X(native_SpriteRendererComponent_depth_get, float, (uint64_t e), e) \
+    X(native_SpriteRendererComponent_depth_set, void, (uint64_t e, float v), e, v) \
     X(native_SpriteRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
     X(native_SpriteRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
     X(native_TagComponent_tag_get, const char*, (uint64_t e), e) \

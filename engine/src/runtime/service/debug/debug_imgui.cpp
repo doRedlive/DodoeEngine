@@ -293,7 +293,7 @@ namespace dodoe {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("Depth", &sprite.depth_, 0.01f)) sprite.dirty = true;
+        if (ImGui::DragFloat("Depth", &sprite.depth, 0.01f)) sprite.dirty = true;
 
         float color[4] = { sprite.color.r, sprite.color.g, sprite.color.b, sprite.color.a };
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);

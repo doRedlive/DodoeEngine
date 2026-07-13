@@ -140,7 +140,9 @@ namespace dodoe {
         m_fallback->setName("<fallback>");
         m_fallback->setDimensions(1, 1);
         m_fallback->setGpuHandle(handle);
-        m_fallback->setDescriptorIndex(0);
+        auto fallback_item = GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle());
+        DescriptorIndex fallback_descriptor_index = m_descriptor_table->createDescriptor(fallback_item);
+        m_fallback->setDescriptorIndex(fallback_descriptor_index);
         m_fallback->setFileIdentity(FileID("<fallback>"), UUID(0));
         Object::AllocateInstanceID(m_fallback.get());
     }

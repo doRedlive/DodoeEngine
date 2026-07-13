@@ -10,7 +10,7 @@
 
 namespace dodoe {
 
-    class Texture : public Object {
+    class DODOE_API Texture : public Object {
         Int32 m_width{0};
         Int32 m_height{0};
         String m_path{};

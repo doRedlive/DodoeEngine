@@ -1,5 +1,6 @@
-#ifndef DODOE_COMPONENTS_H
-#define DODOE_COMPONENTS_H
+// do@Redlive
+
+#pragma once
 
 #include "runtime/function/world/components/animation2d_component.h"
 #include "runtime/function/world/components/camera2d_component.h"
@@ -19,5 +20,3 @@
 #include "runtime/function/world/components/hierarchy_component.h"
 #include "runtime/function/world/components/tilemap/tilemap_component.h"
 #include "runtime/function/world/components/tilemap/tile_layer_component.h"
-
-#endif//DODOE_COMPONENTS_H

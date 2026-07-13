@@ -132,8 +132,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, bool, void> native_SpriteRendererComponent_flip_set;
         public delegate* unmanaged<ulong, float*, float*, void> native_SpriteRendererComponent_pivot_get;
         public delegate* unmanaged<ulong, float, float, void> native_SpriteRendererComponent_pivot_set;
-        public delegate* unmanaged<ulong, float> native_SpriteRendererComponent_depth__get;
-        public delegate* unmanaged<ulong, float, void> native_SpriteRendererComponent_depth__set;
+        public delegate* unmanaged<ulong, float> native_SpriteRendererComponent_depth_get;
+        public delegate* unmanaged<ulong, float, void> native_SpriteRendererComponent_depth_set;
         public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_SpriteRendererComponent_color_get;
         public delegate* unmanaged<ulong, float, float, float, float, void> native_SpriteRendererComponent_color_set;
         public delegate* unmanaged<ulong, byte*> native_TagComponent_tag_get;
@@ -202,7 +202,7 @@ internal static unsafe partial class NativeCalls
 
     internal static bool Native_EntityHasComponent(ulong entityId, Type componentType)
     {
-        var name = componentType.FullName ?? componentType.Name;
+        var name = componentType.Name;
         var ptr = StrToPtr(name);
         try { return b->native_entity_has_component(entityId, ptr) != 0; }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
@@ -212,7 +212,7 @@ internal static unsafe partial class NativeCalls
 
     internal static void Native_EntityAddComponent(ulong entityId, Type componentType)
     {
-        var name = componentType.FullName ?? componentType.Name;
+        var name = componentType.Name;
         var ptr = StrToPtr(name);
         try { b->native_entity_add_component(entityId, ptr); }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
@@ -220,7 +220,7 @@ internal static unsafe partial class NativeCalls
 
     internal static void Native_EntityRemoveComponent(ulong entityId, Type componentType)
     {
-        var name = componentType.FullName ?? componentType.Name;
+        var name = componentType.Name;
         var ptr = StrToPtr(name);
         try { b->native_entity_remove_component(entityId, ptr); }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
@@ -233,7 +233,7 @@ internal static unsafe partial class NativeCalls
 
     internal static bool Native_ComponentExists(ulong entityId, Type componentType)
     {
-        var name = componentType.FullName ?? componentType.Name;
+        var name = componentType.Name;
         var ptr = StrToPtr(name);
         try { return b->native_component_exists(entityId, ptr) != 0; }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
