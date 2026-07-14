@@ -9,7 +9,7 @@
 
 namespace dodoe {
 
-    void Renderer::AddPrimitive(Scope<PrimitiveRenderObject> primitive) {
+    void RenderCommandQueue::AddPrimitive(Scope<PrimitiveRenderObject> primitive) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->addPrimitive(std::move(primitive));
@@ -21,7 +21,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::RemovePrimitive(UUID id) {
+    void RenderCommandQueue::RemovePrimitive(UUID id) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->removePrimitive(id);
@@ -33,7 +33,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::UpdatePrimitiveTransform(UUID id, const Matrix4f& world_transform) {
+    void RenderCommandQueue::UpdatePrimitiveTransform(UUID id, const Matrix4f& world_transform) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->updatePrimitiveTransform(id, world_transform);
@@ -46,7 +46,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::AddLight(LightSceneInfo&& info) {
+    void RenderCommandQueue::AddLight(LightSceneInfo&& info) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->addLightSceneInfo(std::move(info));
@@ -58,7 +58,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::RemoveLight(UUID id) {
+    void RenderCommandQueue::RemoveLight(UUID id) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->removeLightSceneInfo(id);
@@ -70,7 +70,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::UpdateLightTransform(UUID id, const Matrix4f& world_transform) {
+    void RenderCommandQueue::UpdateLightTransform(UUID id, const Matrix4f& world_transform) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->updateLightSceneInfoTransform(id, world_transform);
@@ -83,7 +83,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::AddSprite(Scope<SpriteRenderObject> sprite) {
+    void RenderCommandQueue::AddSprite(Scope<SpriteRenderObject> sprite) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->addSprite(std::move(sprite));
@@ -95,7 +95,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::RemoveSprite(UUID id) {
+    void RenderCommandQueue::RemoveSprite(UUID id) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->removeSprite(id);
@@ -107,7 +107,7 @@ namespace dodoe {
         }
     }
 
-    void Renderer::UpdateSpriteTransform(UUID id, const Matrix4f& world_transform) {
+    void RenderCommandQueue::UpdateSpriteTransform(UUID id, const Matrix4f& world_transform) {
         auto* rs = GetRenderSystem();
         if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
             rs->getRenderScene()->updateSpriteTransform(id, world_transform);

@@ -10,9 +10,9 @@
 
 namespace dodoe {
 
-    class DODOE_API Renderer {
+    class DODOE_API RenderCommandQueue {
     public:
-        Renderer() = delete;
+        RenderCommandQueue() = delete;
 
         static void AddPrimitive(Scope<PrimitiveRenderObject> primitive);
         static void RemovePrimitive(UUID id);

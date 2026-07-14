@@ -4,11 +4,16 @@
 
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
 
     bool DescriptorTableManager::initialize(const DescriptorTableManagerCreateInfo& info) {
         gfx_ = info.gfx;
+
+        if (!RenderSettings::IsGpuDrivenSupported()) {
+            return false;
+        }
 
         GfxBindlessLayoutDesc bindless_layout_desc;
         bindless_layout_desc.visibility = GfxShaderType::All;

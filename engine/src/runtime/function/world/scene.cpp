@@ -260,6 +260,9 @@ namespace dodoe {
     }
 
     void Scene::destroyEntity(Entity entity) {
+        if (auto* runtime = GetScriptRuntime()) {
+            runtime->removeEntityFromManagedWorld(static_cast<UInt64>(entity.uuid()));
+        }
         m_entity_umap.erase(entity.uuid());
         m_reg.destroy(entity);
     }

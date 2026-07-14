@@ -46,6 +46,7 @@ namespace dodoe {
         [[nodiscard]] GfxContext* getGfx() const { return m_gfx.get(); }
         [[nodiscard]] RenderViewport* getMainRenderViewport() const { return m_render_viewports.empty() ? nullptr : m_render_viewports[0].get(); }
         [[nodiscard]] const DynamicArray<Scope<RenderViewport>>& getRenderViewports() const { return m_render_viewports; }
+        [[nodiscard]] DynamicArray<Scope<RenderViewport>>& getRenderViewports() { return m_render_viewports; }
         [[nodiscard]] RenderPipeline* getRenderingPipeline() const { return m_render_pipeline.get(); }
         [[nodiscard]] RenderScene* getRenderScene() const { return m_render_scene.get(); }
         [[nodiscard]] TextureManager* getTextureManager() const { return m_texture_manager.get(); }

@@ -36,14 +36,12 @@ namespace dodoe {
 
     DrawCommandList::DrawCommandList() : DrawCommandList(kDefaultBlockSize) {}
 
-    DrawCommandList::DrawCommandList(Size_t default_block_size)
-        : m_default_block_size(default_block_size) {
-        DO_ASSERT(m_default_block_size > 0, "DrawCommandList block size is zero");
+    DrawCommandList::DrawCommandList(Size_t default_block_size) {
+        (void)default_block_size;
     }
 
     DrawCommandList::~DrawCommandList() {
         reset();
-        releaseBlocks();
     }
 
     DrawCommandList::DrawCommandList(DrawCommandList&& other) noexcept {
@@ -56,7 +54,6 @@ namespace dodoe {
         }
 
         reset();
-        releaseBlocks();
         moveFrom(std::move(other));
         return *this;
     }
@@ -80,26 +77,12 @@ namespace dodoe {
         m_head = nullptr;
         m_tail = nullptr;
         m_command_count = 0;
-        m_used_byte_size = 0;
-
-        for (auto& block : m_blocks) {
-            block.m_offset = 0;
-        }
+        Memory::ResetFrame();
     }
 
     void DrawCommandList::reserve(Size_t byte_size) {
-        if (byte_size == 0) {
-            return;
-        }
-
-        if (!m_blocks.empty()) {
-            MemoryBlock& block = m_blocks.back();
-            if (block.m_size - block.m_offset >= byte_size) {
-                return;
-            }
-        }
-
-        createBlock(byte_size);
+        if (byte_size == 0) return;
+        Memory::FrameReserve(byte_size);
     }
 
     void DrawCommandList::append(DrawCommandList&& other) {
@@ -116,17 +99,6 @@ namespace dodoe {
 
         m_tail = other.m_tail;
         m_command_count += other.m_command_count;
-        m_used_byte_size += other.m_used_byte_size;
-
-        for (auto& block : other.m_blocks) {
-            m_blocks.push_back(std::move(block));
-        }
-
-        other.m_blocks.clear();
-        other.m_head = nullptr;
-        other.m_tail = nullptr;
-        other.m_command_count = 0;
-        other.m_used_byte_size = 0;
     }
 
     void DrawCommandList::execute(GfxCommandList& command_list) const {
@@ -152,15 +124,15 @@ namespace dodoe {
     }
 
     Size_t DrawCommandList::usedByteSize() const {
-        return m_used_byte_size;
+        return Memory::FrameUsedBytes();
     }
 
     Size_t DrawCommandList::blockCount() const {
-        return m_blocks.size();
+        return Memory::FrameBlockCount();
     }
 
     Size_t DrawCommandList::defaultBlockSize() const {
-        return m_default_block_size;
+        return Memory::FrameDefaultBlockSize();
     }
 
     void DrawCommandList::open() {
@@ -378,12 +350,36 @@ namespace dodoe {
         enqueue<DrawIndexedPrimitiveCommand>(args);
     }
 
+    void DrawCommandList::drawIndirect(UInt32 offset_bytes, UInt32 draw_count) {
+        if (m_immediate_target) {
+            m_immediate_target->drawIndirect(offset_bytes, draw_count);
+            return;
+        }
+        enqueue<DrawIndirectCommand>(offset_bytes, draw_count);
+    }
+
+    void DrawCommandList::drawIndexedIndirect(UInt32 offset_bytes, UInt32 draw_count) {
+        if (m_immediate_target) {
+            m_immediate_target->drawIndexedIndirect(offset_bytes, draw_count);
+            return;
+        }
+        enqueue<DrawIndexedIndirectCommand>(offset_bytes, draw_count);
+    }
+
     void DrawCommandList::dispatch(UInt32 groups_x, UInt32 groups_y, UInt32 groups_z) {
         if (m_immediate_target) {
             m_immediate_target->dispatch(groups_x, groups_y, groups_z);
             return;
         }
         enqueue<DispatchCommand>(groups_x, groups_y, groups_z);
+    }
+
+    void DrawCommandList::dispatchIndirect(UInt32 offset_bytes) {
+        if (m_immediate_target) {
+            m_immediate_target->dispatchIndirect(offset_bytes);
+            return;
+        }
+        enqueue<DispatchIndirectCommand>(offset_bytes);
     }
 
     GfxTextureHandle DrawCommandList::createTexture(const GfxTextureDesc& desc, const void* data, Size_t data_size) {
@@ -513,6 +509,27 @@ namespace dodoe {
 
     void DrawCommandList::DispatchCommand::execute(GfxCommandList& command_list) const {
         command_list.dispatch(m_groups_x, m_groups_y, m_groups_z);
+    }
+
+    DrawCommandList::DrawIndirectCommand::DrawIndirectCommand(UInt32 offset_bytes, UInt32 draw_count)
+        : m_offset_bytes(offset_bytes), m_draw_count(draw_count) {}
+
+    void DrawCommandList::DrawIndirectCommand::execute(GfxCommandList& command_list) const {
+        command_list.drawIndirect(m_offset_bytes, m_draw_count);
+    }
+
+    DrawCommandList::DrawIndexedIndirectCommand::DrawIndexedIndirectCommand(UInt32 offset_bytes, UInt32 draw_count)
+        : m_offset_bytes(offset_bytes), m_draw_count(draw_count) {}
+
+    void DrawCommandList::DrawIndexedIndirectCommand::execute(GfxCommandList& command_list) const {
+        command_list.drawIndexedIndirect(m_offset_bytes, m_draw_count);
+    }
+
+    DrawCommandList::DispatchIndirectCommand::DispatchIndirectCommand(UInt32 offset_bytes)
+        : m_offset_bytes(offset_bytes) {}
+
+    void DrawCommandList::DispatchIndirectCommand::execute(GfxCommandList& command_list) const {
+        command_list.dispatchIndirect(m_offset_bytes);
     }
 
     void DrawCommandList::OpenCommand::execute(GfxCommandList& command_list) const {
@@ -993,58 +1010,20 @@ namespace dodoe {
     }
 
     void DrawCommandList::moveFrom(DrawCommandList&& other) {
-        m_blocks = std::move(other.m_blocks);
         m_head = other.m_head;
         m_tail = other.m_tail;
         m_command_count = other.m_command_count;
-        m_used_byte_size = other.m_used_byte_size;
-        m_default_block_size = other.m_default_block_size;
 
         other.m_head = nullptr;
         other.m_tail = nullptr;
         other.m_command_count = 0;
-        other.m_used_byte_size = 0;
-        other.m_default_block_size = kDefaultBlockSize;
-    }
-
-    void DrawCommandList::releaseBlocks() {
-        m_blocks.clear();
-    }
-
-    void DrawCommandList::createBlock(Size_t minimum_size) {
-        DO_ASSERT(minimum_size > 0, "DrawCommandList block size is zero");
-        Size_t block_size = std::max(m_default_block_size, minimum_size);
-
-        MemoryBlock block{};
-        block.m_data = Scope<UInt8[]>{new UInt8[block_size]};
-        block.m_size = block_size;
-        block.m_offset = 0;
-
-        m_blocks.push_back(std::move(block));
     }
 
     void* DrawCommandList::allocate(Size_t size, Size_t alignment) {
         std::lock_guard<std::recursive_mutex> lock(m_enqueue_mutex);
         DO_ASSERT(size > 0, "DrawCommandList allocate size is zero");
         DO_ASSERT(alignment <= alignof(std::max_align_t), "DrawCommandList alignment exceeds max alignment");
-
-        if (m_blocks.empty()) {
-            createBlock(size + alignment);
-        }
-
-        MemoryBlock* block = &m_blocks.back();
-        Size_t aligned_offset = alignUp(block->m_offset, alignment);
-
-        if (aligned_offset + size > block->m_size) {
-            createBlock(size + alignment);
-            block = &m_blocks.back();
-            aligned_offset = alignUp(block->m_offset, alignment);
-        }
-
-        void* memory = block->m_data.get() + aligned_offset;
-        block->m_offset = aligned_offset + size;
-        m_used_byte_size += size;
-        return memory;
+        return Memory::Allocate(size, alignment, AllocCategory::RenderCmd);
     }
 
 } // dodoe

@@ -29,7 +29,7 @@ namespace dodoe {
 #else
             false;
 #endif
-        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, window->isHostMode() ? window->getNativeHandle() : nullptr});
+        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, false, window->isHostMode() ? window->getNativeHandle() : nullptr});
         GDrawCommandList.setDevice(*m_gfx);
         m_descriptor_table = DescriptorTableManager::Create({m_gfx.get()});
         m_texture_manager = TextureManager::Create({m_gfx.get(), m_descriptor_table.get()});
@@ -109,8 +109,13 @@ namespace dodoe {
 
             auto& cam_data = GetMainCameraChannel().get<MainCameraData>();
             for (auto& viewport : m_render_viewports) {
-                auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta,
-                                                              cam_data.view, cam_data.projection);
+                Matrix4f view = cam_data.view;
+                Matrix4f proj = cam_data.projection;
+                if (viewport->hasCameraOverride()) {
+                    view = viewport->getOverrideView();
+                    proj = viewport->getOverrideProj();
+                }
+                auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta, view, proj);
                 pipeline->render(view_family, *scene, image_index, frame_ctx.command_list);
             }
             draw_thread->submit(std::move(frame_ctx));
@@ -127,8 +132,13 @@ namespace dodoe {
 
             auto& cam_data = GetMainCameraChannel().get<MainCameraData>();
             for (auto& viewport : m_render_viewports) {
-                auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta,
-                                                              cam_data.view, cam_data.projection);
+                Matrix4f view = cam_data.view;
+                Matrix4f proj = cam_data.projection;
+                if (viewport->hasCameraOverride()) {
+                    view = viewport->getOverrideView();
+                    proj = viewport->getOverrideProj();
+                }
+                auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta, view, proj);
                 pipeline->render(view_family, *scene, image_index, GDrawCommandList);
             }
             break;

@@ -50,7 +50,6 @@ namespace dodoe {
     protected:
         AssetMetaData m_meta;
         AssetLoadState m_load_state{AssetLoadState::Unloaded};
-        std::atomic<UInt32> m_ref_count{0};
         Asset() = default;
 
     public:
@@ -73,10 +72,6 @@ namespace dodoe {
         [[nodiscard]] AssetLoadState getLoadState() const { return m_load_state; }
         [[nodiscard]] Bool isLoaded() const { return m_load_state == AssetLoadState::Loaded; }
         void setLoadState(AssetLoadState state) { m_load_state = state; }
-
-        void addRef() { m_ref_count.fetch_add(1, std::memory_order_relaxed); }
-        void releaseRef() { m_ref_count.fetch_sub(1, std::memory_order_relaxed); }
-        [[nodiscard]] UInt32 getRefCount() const { return m_ref_count.load(std::memory_order_relaxed); }
 
         [[nodiscard]] virtual Bool loadFromSource(const String& absolute_source_path) = 0;
         virtual void unloadRuntime() = 0;

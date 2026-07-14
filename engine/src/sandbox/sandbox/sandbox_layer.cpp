@@ -21,7 +21,40 @@ namespace sandbox {
     }
 
     void SandboxLayer::attach() {
+        auto world = dodoe::GetWorld();
+        auto cur_scene = world->getCurrentScene();
 
+        auto tex = dodoe::Texture::Load("engine/res/pictures/grm.jpg");
+        if (!tex) {
+            DO_ERROR("Failed to load texture!");
+            return;
+        }
+
+        // {
+        //     auto entity = cur_scene->createEntity("Sandbox");
+        //     auto& transform = entity.getComponent<dodoe::TransformComponent>();
+        //     transform.setPosition({0.0f, 0.0f, 0.0f});
+        //     transform.setScale({5.0f, 5.0f, 1.0f});
+
+        //     auto& sr = entity.addComponent<dodoe::SpriteRendererComponent>();
+        //     sr.pivot = {0.5f, 0.5f};
+        //     sr.depth = 0.0f;
+        //     sr.texture = dodoe::PPtr<dodoe::Texture>(tex->getFileID(), tex->getUUID(), tex->getInstanceID());
+        //     sr.dirty = true;
+        // }
+
+        {
+            auto entity = cur_scene->createEntity("test_go");
+            auto& transform = entity.getComponent<dodoe::TransformComponent>();
+            transform.setPosition({1.0f, 0.0f, 0.0f});
+            transform.setScale({5.0f, 5.0f, 1.0f});
+
+            auto& sr = entity.addComponent<dodoe::SpriteRendererComponent>();
+            sr.pivot = {0.5f, 0.5f};
+            sr.depth = 0.0f;
+            sr.texture = dodoe::PPtr<dodoe::Texture>(tex->getFileID(), tex->getUUID(), tex->getInstanceID());
+            sr.dirty = true;
+        }
     }
     
     void SandboxLayer::detach() {

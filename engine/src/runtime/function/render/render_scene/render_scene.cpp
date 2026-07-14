@@ -9,7 +9,8 @@ namespace dodoe {
     Bool RenderScene::initialize(const RenderSceneCreateInfo& info) {
         (void)info;
         reset();
-        return true;
+        m_gpu_scene = GpuScene::Create({});
+        return m_gpu_scene != nullptr;
     }
 
     void RenderScene::shutdown() {
@@ -452,6 +453,71 @@ namespace dodoe {
         m_pending_primitive_updates.clear();
         m_pending_sprite_updates.clear();
         m_scene_data_dirty = false;
+
+        if (m_gpu_scene) {
+            for (const auto& [id, update_type] : m_pending_sprite_updates) {
+                if (HasAnyFlags(update_type, SpriteUpdateType::Removed) && m_sprite_objects.find(id) == m_sprite_objects.end()) {
+                    auto it = m_cpu_to_gpu_map.find(id);
+                    if (it != m_cpu_to_gpu_map.end()) {
+                        m_gpu_scene->unregisterObject(it->second);
+                        m_cpu_to_gpu_map.erase(it);
+                    }
+                    continue;
+                }
+
+                GpuObjectHandle handle;
+                auto it = m_cpu_to_gpu_map.find(id);
+                if (it == m_cpu_to_gpu_map.end()) {
+                    GpuObjectMeta meta{};
+                    meta.flags = 0;
+                    meta.data_offset = 0;
+                    meta.texture_id = 0;
+                    meta.material_id = 0;
+                    meta.bounds_id = 0;
+                    handle = m_gpu_scene->registerObject(GpuObjectType::Sprite, meta);
+                    m_cpu_to_gpu_map[id] = handle;
+                } else {
+                    handle = it->second;
+                }
+
+                const auto* info = findSpriteSceneInfo(id);
+                if (!info) continue;
+
+                if (HasAnyFlags(update_type, SpriteUpdateType::TransformChanged)) {
+                    const Matrix4f& transform = info->getWorldTransform();
+                    m_gpu_scene->updateTransform(handle, transform);
+                    const Vector3f translation = Vector3f(transform[3]);
+                    const Vector3f extent = Vector3f(
+                        info->getScale().x * 0.5f,
+                        info->getScale().y * 0.5f,
+                        0.01f);
+                    m_gpu_scene->updateBounds(handle, translation, extent);
+                }
+
+                if (HasAnyFlags(update_type, SpriteUpdateType::Added | SpriteUpdateType::TextureChanged |
+                                               SpriteUpdateType::MaterialChanged | SpriteUpdateType::StateChanged)) {
+                    SpriteGpuData gpu_data{};
+                    gpu_data.position_x = info->getPosition().x;
+                    gpu_data.position_y = info->getPosition().y;
+                    gpu_data.scale_x = info->getScale().x;
+                    gpu_data.scale_y = info->getScale().y;
+                    gpu_data.rotation = info->getRotation();
+                    const auto* tex = info->getTexture().get();
+                    gpu_data.atlas_index = (tex && tex->getDescriptorIndex() >= 0) ? static_cast<UInt32>(tex->getDescriptorIndex()) : 0;
+                    gpu_data.uv_min_x = info->getUVMinX();
+                    gpu_data.uv_min_y = info->getUVMinY();
+                    gpu_data.uv_max_x = info->getUVMaxX();
+                    gpu_data.uv_max_y = info->getUVMaxY();
+                    gpu_data.color = info->getColor();
+                    gpu_data.sorting_key = info->getSortingKey();
+                    gpu_data.material_id = info->getMaterialId();
+                    gpu_data.flags = info->getFlags();
+                    m_gpu_scene->updateSpriteInstance(handle, gpu_data);
+                }
+            }
+
+            m_gpu_scene->flushUpdates(GDrawCommandList);
+        }
     }
 
 } // dodoe

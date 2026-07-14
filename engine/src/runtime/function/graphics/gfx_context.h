@@ -19,6 +19,7 @@ namespace dodoe {
         GLFWwindow* window_handle{nullptr};
         RenderBackendApiType api_type{};
         Bool enable_validation{true};
+        Bool enable_gpu_driven{false};
         void* host_handle{nullptr};
     };
 
@@ -32,6 +33,7 @@ namespace dodoe {
         Scope<Dx12Backend> dx12_backend_{nullptr};
 
         GLFWwindow* window_handle_{nullptr};
+        Bool m_gpu_driven_supported{false};
 
         DynamicArray<VkSemaphore> acquire_semaphores_{};
         DynamicArray<VkSemaphore> present_semaphores_{};
@@ -50,6 +52,7 @@ namespace dodoe {
         [[nodiscard]] Bool recreateSwapchain();
         [[nodiscard]] const GfxCommandListHandle& getCommandList() { return cmd_; }
 
+        [[nodiscard]] Bool isGpuDrivenSupported() const { return m_gpu_driven_supported; }
         [[nodiscard]] VulkanBackend* getVulkanBackend() const { return vulkan_backend_.get(); }
         [[nodiscard]] OpenGLBackend* getOpenGLBackend() const { return opengl_backend_.get(); }
         [[nodiscard]] Dx12Backend* getDx12Backend() const { return dx12_backend_.get(); }

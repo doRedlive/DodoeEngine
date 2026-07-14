@@ -66,7 +66,7 @@ namespace dodoe {
         data.range = light.range;
         info.setPointLightData(data);
 
-        Renderer::AddLight(std::move(info));
+        RenderCommandQueue::AddLight(std::move(info));
         m_submitted_lights[id.id] = LightType::Point;
 
         transform.dirty = false;
@@ -98,7 +98,7 @@ namespace dodoe {
         data.outer_angle = light.outer_angle;
         info.setSpotLightData(data);
 
-        Renderer::AddLight(std::move(info));
+        RenderCommandQueue::AddLight(std::move(info));
         m_submitted_lights[id.id] = LightType::Spot;
 
         transform.dirty = false;
@@ -110,7 +110,7 @@ namespace dodoe {
     void LightSystem::pruneRemovedLights(const std::unordered_set<UUID>& active_lights) {
         for (auto it = m_submitted_lights.begin(); it != m_submitted_lights.end();) {
             if (!active_lights.contains(it->first)) {
-                Renderer::RemoveLight(it->first);
+                RenderCommandQueue::RemoveLight(it->first);
                 it = m_submitted_lights.erase(it);
                 continue;
             }

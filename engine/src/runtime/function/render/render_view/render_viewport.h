@@ -7,6 +7,7 @@
 #include "runtime/core/utils/util.h"
 #include "runtime/function/window/window.h"
 #include "runtime/function/render/render_view/render_view_family.h"
+#include <optional>
 
 namespace dodoe {
 
@@ -38,6 +39,9 @@ namespace dodoe {
         bool m_window_dirty{false};
         bool m_viewport_dirty{false};
 
+        std::optional<Matrix4f> m_overrideView;
+        std::optional<Matrix4f> m_overrideProj;
+
     public:
 
         void update();
@@ -60,6 +64,12 @@ namespace dodoe {
         [[nodiscard]] RenderViewFamily buildViewFamily(const class RenderScene& scene, Float time, Float delta,
                                                         const Matrix4f& view, const Matrix4f& proj) const;
         [[nodiscard]] Vector2f Window2World(const Vector2f& window_pos, const Matrix4f& view_proj) const;
+
+        void setCameraOverride(const Matrix4f& view, const Matrix4f& proj) { m_overrideView = view; m_overrideProj = proj; }
+        void clearCameraOverride() { m_overrideView.reset(); m_overrideProj.reset(); }
+        [[nodiscard]] bool hasCameraOverride() const { return m_overrideView.has_value(); }
+        [[nodiscard]] const Matrix4f& getOverrideView() const { return *m_overrideView; }
+        [[nodiscard]] const Matrix4f& getOverrideProj() const { return *m_overrideProj; }
 
     private:
         bool initialize(const RenderViewportCreateInfo& info);

@@ -104,8 +104,12 @@ namespace dodoe {
             instance.scale_x = m_scale.x;
             instance.scale_y = m_scale.y;
             instance.rotation = m_rotation;
-
-            instance.atlas_index = 0;
+            if (auto* texture = m_texture.get();
+                texture != nullptr && texture->getDescriptorIndex() >= 0) {
+                instance.atlas_index = static_cast<UInt32>(texture->getDescriptorIndex());
+            } else {
+                instance.atlas_index = 0;
+            }
 
             instance.uv_min_x = m_uv_min_x;
             instance.uv_min_y = m_uv_min_y;

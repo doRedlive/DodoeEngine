@@ -53,7 +53,7 @@ namespace dodoe {
         data.intensity = sky.intensity;
         info.setSkyLightData(data);
 
-        Renderer::AddLight(std::move(info));
+        RenderCommandQueue::AddLight(std::move(info));
         m_submitted.insert(id.id);
 
         id.dirty = false;
@@ -64,7 +64,7 @@ namespace dodoe {
     void SkyLightSystem::pruneRemoved(const std::unordered_set<UUID>& active) {
         for (auto it = m_submitted.begin(); it != m_submitted.end();) {
             if (!active.contains(*it)) {
-                Renderer::RemoveLight(*it);
+                RenderCommandQueue::RemoveLight(*it);
                 it = m_submitted.erase(it);
             } else {
                 ++it;

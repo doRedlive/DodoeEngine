@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "gfx.h"
+#include "runtime/core/memory/allocator.h"
 
 #include <cstddef>
 #include <cstring>
@@ -20,16 +21,7 @@ namespace dodoe {
     class GfxContext;
 
     class DrawCommandList {
-        struct MemoryBlock {
-            Scope<UInt8[]> m_data{};
-            Size_t m_size{0};
-            Size_t m_offset{0};
-        };
-
-        DynamicArray<MemoryBlock> m_blocks{};
         Size_t m_command_count{0};
-        Size_t m_used_byte_size{0};
-        Size_t m_default_block_size{4096};
 
     public:
         inline static constexpr Size_t kDefaultBlockSize = 4096;
@@ -113,8 +105,6 @@ namespace dodoe {
         [[nodiscard]] Size_t blockCount() const;
         [[nodiscard]] Size_t defaultBlockSize() const;
 
-        // ── Deferred draw / state commands ──────────────────────
-
         void open();
         void close();
         void clearState();
@@ -166,7 +156,10 @@ namespace dodoe {
         void setComputeState(const GfxComputeState& state);
         void draw(const GfxDrawArguments& args);
         void drawIndexed(const GfxDrawArguments& args);
+        void drawIndirect(UInt32 offset_bytes, UInt32 draw_count = 1);
+        void drawIndexedIndirect(UInt32 offset_bytes, UInt32 draw_count = 1);
         void dispatch(UInt32 groups_x, UInt32 groups_y = 1, UInt32 groups_z = 1);
+        void dispatchIndirect(UInt32 offset_bytes);
 
         GfxTextureHandle createTexture(const GfxTextureDesc& desc, const void* data = nullptr, Size_t data_size = 0);
         GfxBufferHandle createBuffer(const GfxBufferDesc& desc, const void* data = nullptr, Size_t data_size = 0);
@@ -416,6 +409,29 @@ namespace dodoe {
             void execute(GfxCommandList& command_list) const;
         };
 
+        struct DrawIndirectCommand final : Command<DrawIndirectCommand> {
+            UInt32 m_offset_bytes{0};
+            UInt32 m_draw_count{1};
+
+            DrawIndirectCommand(UInt32 offset_bytes, UInt32 draw_count);
+            void execute(GfxCommandList& command_list) const;
+        };
+
+        struct DrawIndexedIndirectCommand final : Command<DrawIndexedIndirectCommand> {
+            UInt32 m_offset_bytes{0};
+            UInt32 m_draw_count{1};
+
+            DrawIndexedIndirectCommand(UInt32 offset_bytes, UInt32 draw_count);
+            void execute(GfxCommandList& command_list) const;
+        };
+
+        struct DispatchIndirectCommand final : Command<DispatchIndirectCommand> {
+            UInt32 m_offset_bytes{0};
+
+            explicit DispatchIndirectCommand(UInt32 offset_bytes);
+            void execute(GfxCommandList& command_list) const;
+        };
+
         // ── Deferred resource creation commands ──────────────────────
 
         struct CreateTextureCommand final : Command<CreateTextureCommand> {
@@ -519,8 +535,6 @@ namespace dodoe {
         [[nodiscard]] static Size_t alignUp(Size_t value, Size_t alignment);
         void appendCommand(DrawCommand* command);
         void moveFrom(DrawCommandList&& other);
-        void releaseBlocks();
-        void createBlock(Size_t minimum_size);
         [[nodiscard]] void* allocate(Size_t size, Size_t alignment);
     };
 

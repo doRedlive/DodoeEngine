@@ -44,10 +44,14 @@ namespace dodoe {
         [[nodiscard]] static RenderingPipelineType GetRenderingPipelineType() { return m_pipeline; }
         [[nodiscard]] static ThreadingMode GetThreadingMode() { return m_threading_mode; }
 
+        [[nodiscard]] static Bool IsGpuDrivenSupported() { return m_gpu_driven_supported; }
+        static void SetGpuDrivenSupported(const Bool supported) { m_gpu_driven_supported = supported; }
+
     private:
         inline static RenderBackendApiType m_api{ RenderBackendApiType::None };
         inline static RenderingPipelineType m_pipeline{ RenderingPipelineType::None };
         inline static ThreadingMode m_threading_mode{ ThreadingMode::TripleThread };
+        inline static Bool m_gpu_driven_supported{ false };
     };
 
 } // dodoe

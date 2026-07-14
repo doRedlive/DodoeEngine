@@ -54,6 +54,12 @@ namespace dodoe {
         } else if (create_info.api_type == RenderBackendApiType::DX12) {
             initializeDx12(create_info);
         }
+
+        if (create_info.enable_gpu_driven && device_) {
+            m_gpu_driven_supported = device_->queryFeatureSupport(cutie::Feature::HeapDirectlyIndexed)
+                                  && device_->queryFeatureSupport(cutie::Feature::ComputeQueue);
+        }
+        RenderSettings::SetGpuDrivenSupported(m_gpu_driven_supported);
     }
 
     void GfxContext::initializeVulkan(const GfxBackendCreateInfo& create_info) {

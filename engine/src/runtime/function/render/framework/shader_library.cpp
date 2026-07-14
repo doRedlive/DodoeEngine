@@ -13,6 +13,7 @@ namespace dodoe {
         const char* vert_ext = (api == RenderBackendApiType::DX12) ? ".vert.dxil" : ".vert.spv";
         const char* frag_ext = (api == RenderBackendApiType::DX12) ? ".frag.dxil" : ".frag.spv";
         const char* geom_ext = (api == RenderBackendApiType::DX12) ? ".geom.dxil" : ".geom.spv";
+        const char* comp_ext = (api == RenderBackendApiType::DX12) ? ".comp.dxil" : ".comp.spv";
 
         auto load_shader = [](const std::string& file_name, const GfxShaderType shader_type, const char* debug_name) {
             std::string path = "engine/res/shaders/bin/" + file_name;
@@ -47,15 +48,19 @@ namespace dodoe {
         m_imgui_pixel_shader = load_shader(std::string("imgui_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary ImGui PS");
         m_sprite_vertex_shader = load_shader(std::string("sprite_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Sprite VS");
         m_sprite_pixel_shader = load_shader(std::string("sprite_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Sprite PS");
+        m_sprite_pixel_shader_traditional = load_shader(std::string("sprite_pass_traditional") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary SpriteTraditional PS");
         m_test_vertex_shader = load_shader(std::string("test_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Test VS");
         m_test_pixel_shader = load_shader(std::string("test_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Test PS");
+        m_gpu_culling_compute_shader = load_shader(std::string("gpu_culling_pass") + comp_ext, GfxShaderType::Compute, "ShaderLibrary GpuCulling CS");
 
         DO_INFO("ShaderLibrary::initialize completed");
     }
 
     void ShaderLibrary::reset() {
+        m_gpu_culling_compute_shader = nullptr;
         m_test_pixel_shader = nullptr;
         m_test_vertex_shader = nullptr;
+        m_sprite_pixel_shader_traditional = nullptr;
         m_sprite_pixel_shader = nullptr;
         m_sprite_vertex_shader = nullptr;
         m_imgui_pixel_shader = nullptr;

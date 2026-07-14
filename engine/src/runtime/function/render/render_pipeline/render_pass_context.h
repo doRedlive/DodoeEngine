@@ -7,7 +7,6 @@
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/render/framework/shared_render_service.h"
 #include "runtime/function/render/mesh_draw/mesh_processor_base.h"
-#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
 
@@ -19,6 +18,15 @@ namespace dodoe {
     class GBufferMeshProcessor;
     class DirectionalShadowMeshProcessor;
     class LocalVertexFactory;
+
+    enum class PassType : UInt32 {
+        Sprite,
+        GBuffer,
+        Shadow,
+        Transparent,
+        CullingInput,
+        Count
+    };
 
     struct RenderPassContext {
         GfxContext* gfx_context{nullptr};
@@ -35,21 +43,11 @@ namespace dodoe {
         [[nodiscard]] const RenderScene* getScene() const { return scene; }
 
         [[nodiscard]] Bool isValid() const {
-            const auto pipeline_type = RenderSettings::GetRenderingPipelineType();
-            if (pipeline_type == RenderingPipelineType::Only2D) {
-                return gfx_context != nullptr &&
-                    shared_render_service != nullptr &&
-                    getShaderLibrary() != nullptr &&
-                    getPipelineStateCache() != nullptr &&
-                    scene != nullptr;
-            }
             return gfx_context != nullptr &&
                 shared_render_service != nullptr &&
                 getShaderLibrary() != nullptr &&
                 getPipelineStateCache() != nullptr &&
-                scene != nullptr &&
-                mesh_processors[static_cast<size_t>(MeshPassType::GBuffer)] != nullptr &&
-                mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)] != nullptr;
+                scene != nullptr;
         }
 
         template <MeshPassType Type>

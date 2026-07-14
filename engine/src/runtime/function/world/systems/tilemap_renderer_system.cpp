@@ -81,7 +81,7 @@ namespace dodoe {
                     FileID file_id(tileset->image_path);
                     sprite->setTexture(PPtr<Texture>(file_id, Uuid()));
 
-                    Renderer::AddSprite(std::move(sprite));
+                    RenderCommandQueue::AddSprite(std::move(sprite));
                     m_submitted_tiles[key] = tile_uuid;
                 }
                 layer_index++;
@@ -97,7 +97,7 @@ namespace dodoe {
 
         for (auto it = m_submitted_tiles.begin(); it != m_submitted_tiles.end();) {
             if (it->first.tilemap_uuid == id.id) {
-                Renderer::RemoveSprite(it->second);
+                RenderCommandQueue::RemoveSprite(it->second);
                 it = m_submitted_tiles.erase(it);
             } else {
                 ++it;
@@ -110,7 +110,7 @@ namespace dodoe {
     void TilemapRendererSystem::pruneRemovedTiles(const UnorderedSet<Uuid>& active_tiles) {
         for (auto it = m_submitted_tiles.begin(); it != m_submitted_tiles.end();) {
             if (active_tiles.find(it->second) == active_tiles.end()) {
-                Renderer::RemoveSprite(it->second);
+                RenderCommandQueue::RemoveSprite(it->second);
                 it = m_submitted_tiles.erase(it);
             } else {
                 ++it;

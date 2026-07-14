@@ -33,6 +33,10 @@ namespace dodoe {
         void setDescriptorIndex(DescriptorIndex index) { m_descriptor_index = index; }
 
         [[nodiscard]] static Ref<Texture> Load(const String& path);
+
+    protected:
+        void onDestroy() override {}
+        void Trace(TraceVisitor& v) const override {}
     };
 
 } // dodoe

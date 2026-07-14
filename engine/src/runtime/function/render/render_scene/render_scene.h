@@ -10,6 +10,7 @@
 #include "primitive_scene_info.h"
 #include "sprite_scene_info.h"
 #include "light_scene_info.h"
+#include "runtime/function/render/gpu_driven/gpu_scene.h"
 
 #include "runtime/function/graphics/gfx.h"
 
@@ -74,6 +75,7 @@ namespace dodoe {
         UnorderedMap<Size_t, Aabb> m_mesh_bounds_cache{};
         UnorderedMap<UUID, Scope<PrimitiveRenderObject>> m_primitive_objects{};
         UnorderedMap<UUID, Scope<SpriteRenderObject>> m_sprite_objects{};
+        UnorderedMap<UUID, GpuObjectHandle> m_cpu_to_gpu_map{};
         Bool m_scene_data_dirty{true};
 
         UnorderedMap<UUID, Size_t> m_primitive_scene_info_indices{};
@@ -85,6 +87,8 @@ namespace dodoe {
         DynamicArray<PrimitiveSceneInfo> m_primitive_scene_infos{};
         DynamicArray<SpriteSceneInfo> m_sprite_scene_infos{};
         DynamicArray<LightSceneInfo> m_light_scene_infos{};
+
+        Scope<GpuScene> m_gpu_scene{};
 
     public:
         void addPrimitive(Scope<PrimitiveRenderObject> primitive);
@@ -116,6 +120,8 @@ namespace dodoe {
         [[nodiscard]] const PrimitiveRenderObject* findPrimitive(UUID id) const;
         [[nodiscard]] const SpriteRenderObject* findSprite(UUID id) const;
         [[nodiscard]] const SpriteSceneInfo* findSpriteSceneInfo(UUID id) const;
+
+        [[nodiscard]] GpuScene* getGpuScene() const { return m_gpu_scene.get(); }
 
     private:
         Bool initialize(const RenderSceneCreateInfo& info);

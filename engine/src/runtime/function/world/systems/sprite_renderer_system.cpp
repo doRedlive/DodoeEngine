@@ -70,7 +70,7 @@ namespace dodoe {
         sprite_object->setVisible(true);
         sprite_object->setWorldTransform(buildWorldMatrix(transform));
 
-        Renderer::AddSprite(std::move(sprite_object));
+        RenderCommandQueue::AddSprite(std::move(sprite_object));
         m_submitted_sprites.insert(id.id);
         return true;
     }
@@ -78,7 +78,7 @@ namespace dodoe {
     void SpriteRendererSystem::pruneRemovedSprites(const UnorderedSet<UUID>& active_sprites) {
         for (auto it = m_submitted_sprites.begin(); it != m_submitted_sprites.end();) {
             if (active_sprites.find(*it) == active_sprites.end()) {
-                Renderer::RemoveSprite(*it);
+                RenderCommandQueue::RemoveSprite(*it);
                 it = m_submitted_sprites.erase(it);
                 continue;
             }

@@ -52,7 +52,7 @@ namespace dodoe {
         auto render_object = buildRenderObject(foliage);
         render_object->setUUID(id.id);
         render_object->setWorldTransform(buildWorldMatrix(transform));
-        Renderer::AddPrimitive(std::move(render_object));
+        RenderCommandQueue::AddPrimitive(std::move(render_object));
         m_submitted_objects.insert(id.id);
         return true;
     }
@@ -60,7 +60,7 @@ namespace dodoe {
     void FoliageRendererSystem::pruneRemovedObjects(const std::unordered_set<UUID>& active_objects) {
         for (auto it = m_submitted_objects.begin(); it != m_submitted_objects.end();) {
             if (!active_objects.contains(*it)) {
-                Renderer::RemovePrimitive(*it);
+                RenderCommandQueue::RemovePrimitive(*it);
                 it = m_submitted_objects.erase(it);
                 continue;
             }
