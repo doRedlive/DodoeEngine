@@ -1,6 +1,7 @@
 // do@Redlive
 
 #include "EditorCamera.h"
+#include "runtime/core/channel/render_channel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -19,8 +20,10 @@ void EditorCamera::update(float dt)
 {
     if (m_mode == Mode::Orbit) {
         updateOrbit(dt);
-    } else {
+    } else if (m_mode == Mode::Fly) {
         updateFly(dt);
+    } else {
+        updateOrtho2D(dt);
     }
 }
 
@@ -54,6 +57,10 @@ void EditorCamera::updateFly(float dt)
     if (m_keyE) m_flyPos += dodoe::Vector3f{0.0f, speed, 0.0f};
 }
 
+void EditorCamera::updateOrtho2D(float /*dt*/)
+{
+}
+
 dodoe::Vector3f EditorCamera::forward() const
 {
     float pitchRad = glm::radians(m_flyPitch);
@@ -77,7 +84,9 @@ dodoe::Vector3f EditorCamera::right() const
 
 void EditorCamera::commitToRenderChannel()
 {
-    // TODO: write view/proj to editor camera channel in runtime
+    auto& ch = dodoe::GetEditorCameraChannel().get<dodoe::MainCameraData>();
+    ch.view = view();
+    ch.projection = projection();
 }
 
 void EditorCamera::onMouseDown(float x, float y, int button, bool alt)
@@ -128,11 +137,22 @@ void EditorCamera::onMouseMove(float x, float y)
         m_flyYaw   -= dx * kOrbitSpeed;
         m_flyPitch += dy * kOrbitSpeed;
         m_flyPitch = std::clamp(m_flyPitch, -kPitchLimit, kPitchLimit);
+    } else if (m_mode == Mode::Ortho2D) {
+        float panSpeed = m_orthoZoom / m_vpH;
+        if (m_mouseDown[0] || m_mouseDown[1]) {
+            m_orthoPan.x -= dx * panSpeed;
+            m_orthoPan.y += dy * panSpeed;
+        }
     }
 }
 
 void EditorCamera::onScroll(float delta)
 {
+    if (m_mode == Mode::Ortho2D) {
+        m_orthoZoom -= delta * kZoomSpeed * 10.0f;
+        m_orthoZoom = std::clamp(m_orthoZoom, kOrthoZoomMin, kOrthoZoomMax);
+        return;
+    }
     m_distance -= delta * kZoomSpeed;
     m_distance = std::clamp(m_distance, kMinDistance, kMaxDistance);
 }
@@ -162,6 +182,12 @@ dodoe::Matrix4f EditorCamera::view() const
         return glm::lookAt(m_flyPos, m_flyPos + forward(), dodoe::Vector3f{0.0f, 1.0f, 0.0f});
     }
 
+    if (m_mode == Mode::Ortho2D) {
+        dodoe::Vector3f eye(m_orthoPan.x, m_orthoPan.y, 10.0f);
+        dodoe::Vector3f center(m_orthoPan.x, m_orthoPan.y, 0.0f);
+        return glm::lookAt(eye, center, dodoe::Vector3f{0.0f, 1.0f, 0.0f});
+    }
+
     float pitchRad = glm::radians(m_pitch);
     float yawRad   = glm::radians(m_yaw);
 
@@ -178,6 +204,13 @@ dodoe::Matrix4f EditorCamera::view() const
 dodoe::Matrix4f EditorCamera::projection() const
 {
     float aspect = (m_vpH > 0.0f) ? (m_vpW / m_vpH) : 1.0f;
+
+    if (m_mode == Mode::Ortho2D) {
+        float halfH = m_orthoZoom * 0.5f;
+        float halfW = halfH * aspect;
+        return glm::ortho(-halfW, halfW, -halfH, halfH, -100.0f, 100.0f);
+    }
+
     return glm::perspective(glm::radians(m_fov), aspect, 0.1f, 10000.0f);
 }
 

@@ -3,7 +3,11 @@
 #pragma once
 
 #include "Panel.h"
+#include <QWidget>
 #include <QTreeWidget>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QSplitter>
 
 namespace cakery {
 
@@ -13,9 +17,16 @@ public:
     explicit ProjectPanel(EditorContext& ctx, QWidget* parent = nullptr);
 
     void setBasePath(const QString& path);
+    void refresh();
 
 private:
-    QTreeWidget* m_tree = nullptr;
+    void populateFromAssetDatabase();
+
+    QLineEdit* m_searchBox = nullptr;
+    QComboBox* m_filterCombo = nullptr;
+    QSplitter* m_splitter = nullptr;
+    QTreeWidget* m_dirTree = nullptr;
+    QTreeWidget* m_assetGrid = nullptr;
 };
 
 } // namespace cakery

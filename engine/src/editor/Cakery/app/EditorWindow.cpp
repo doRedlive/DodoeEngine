@@ -2,13 +2,18 @@
 
 #include "EditorWindow.h"
 #include "LayoutManager.h"
+#include "PanelRegistry.h"
 #include "framework/EditorContext.h"
+#include "framework/config/EditorConfig.h"
 #include "framework/command/CommandStack.h"
 #include "framework/document/SceneDocument.h"
 #include "framework/playmode/PlayModeController.h"
 #include "framework/gizmo/GizmoService.h"
 #include "framework/camera/EditorCamera.h"
 #include "framework/viewport/ViewportService.h"
+#include "framework/command/commands/CreateEntityCommand.h"
+#include "framework/command/commands/DeleteEntityCommand.h"
+#include "framework/console/CommandRegistry.h"
 #include "Cakery/panels/ScenePanel.h"
 #include "Cakery/panels/GamePanel.h"
 #include "Cakery/panels/HierarchyPanel.h"
@@ -16,8 +21,10 @@
 #include "Cakery/panels/ConsolePanel.h"
 #include "Cakery/panels/ProjectPanel.h"
 #include "Cakery/panels/TerminalPanel.h"
+#include "Cakery/panels/TilePalettePanel.h"
 
 #include "runtime/core/project/project.h"
+#include "runtime/core/utils/json.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/log/log_system.h"
 
@@ -25,6 +32,7 @@
 #include <DockWidget.h>
 #include <DockAreaWidget.h>
 
+#include <functional>
 #include <QMenuBar>
 #include <QToolBar>
 #include <QToolButton>
@@ -53,17 +61,29 @@ EditorWindow::EditorWindow(EditorContext& ctx, QWidget* parent)
     ads::CDockManager::setConfigFlag(ads::CDockManager::OpaqueSplitterResize, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::XmlCompressionEnabled, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::FocusHighlighting, true);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::DisableStylesheet, true);
+
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasCloseButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasUndockButton, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasTabsMenuButton, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHideDisabledButtons, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaDynamicTabsMenuButtonVisibility, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::TabCloseButtonIsTabBarScrollButton, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::EqualSplitOnInsertion, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::FloatingContainerHasWidgetIcon, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::FloatingContainerHasWidgetTitle, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DragPreviewIsDynamic, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DragPreviewShowsContentPixmap, false);
     m_dockManager = new ads::CDockManager(this);
 
+    PanelRegistry::self().registerBuiltinPanels();
+    m_layoutManager = std::make_unique<LayoutManager>(m_dockManager, m_ctx);
     setupDockWidgets();
+
     setupMenuBar();
     setupToolBar();
     setupStatusBar();
     connectActions();
     setupFrameTimer();
-
-    m_layoutManager = std::make_unique<LayoutManager>(m_dockManager);
 }
 
 EditorWindow::~EditorWindow()
@@ -74,25 +94,74 @@ EditorWindow::~EditorWindow()
 
 void EditorWindow::setupMenuBar()
 {
-    auto* fileMenu = menuBar()->addMenu(tr("File"));
-    fileMenu->addAction(tr("New Scene"), this, &EditorWindow::onNewScene, QKeySequence("Ctrl+N"));
-    fileMenu->addAction(tr("Open Scene..."), this, &EditorWindow::onOpenScene, QKeySequence("Ctrl+O"));
-    fileMenu->addSeparator();
-    fileMenu->addAction(tr("Save"), this, &EditorWindow::onSaveScene, QKeySequence("Ctrl+S"));
-    fileMenu->addAction(tr("Save As..."), this, [this]() {
-        QString path = QFileDialog::getSaveFileName(this, tr("Save Scene As"));
-        if (!path.isEmpty()) m_ctx.document().saveAs(path.toStdString());
-    });
+    menuBar()->clear();
 
-    auto* editMenu = menuBar()->addMenu(tr("Edit"));
-    m_actionUndo = editMenu->addAction(tr("Undo"), this, &EditorWindow::onUndo, QKeySequence("Ctrl+Z"));
-    m_actionRedo = editMenu->addAction(tr("Redo"), this, &EditorWindow::onRedo, QKeySequence("Ctrl+Y"));
+    auto& menusJson = EditorConfig::self().menusJson();
+    std::unordered_map<std::string, QMenu*> menuMap;
 
-    menuBar()->addMenu(tr("Assets"));
-    menuBar()->addMenu(tr("GameObject"));
-    menuBar()->addMenu(tr("Component"));
+    std::function<QMenu*(const std::string&)> getOrCreateMenu = [&](const std::string& path) -> QMenu* {
+        auto it = menuMap.find(path);
+        if (it != menuMap.end()) return it->second;
+
+        auto sep = path.rfind('/');
+        if (sep == std::string::npos) {
+            auto* menu = menuBar()->addMenu(QString::fromStdString(path));
+            menuMap[path] = menu;
+            return menu;
+        }
+
+        std::string parentPath = path.substr(0, sep);
+        std::string name = path.substr(sep + 1);
+        QMenu* parent = getOrCreateMenu(parentPath);
+        auto* menu = parent->addMenu(QString::fromStdString(name));
+        menuMap[path] = menu;
+        return menu;
+    };
+
+    if (menusJson.contains("menus") && menusJson["menus"].is_array()) {
+        for (auto& item : menusJson["menus"]) {
+            std::string path = item.value("path", "");
+            std::string command = item.value("command", "");
+            std::string shortcut = item.value("shortcut", "");
+            dodoe::Json args = item.value("args", dodoe::Json::object());
+
+            auto sep = path.rfind('/');
+            if (sep == std::string::npos) continue;
+            std::string menuPath = path.substr(0, sep);
+            std::string actionName = path.substr(sep + 1);
+
+            QMenu* parent = getOrCreateMenu(menuPath);
+
+            QAction* action = parent->addAction(QString::fromStdString(actionName));
+            if (!shortcut.empty()) {
+                action->setShortcut(QKeySequence(QString::fromStdString(shortcut)));
+            }
+            QObject::connect(action, &QAction::triggered, this, [this, command, args]() {
+                CommandRegistry::self().executeStructured(m_ctx, command, args);
+            });
+        }
+    }
+
+    if (!menuMap.count("Edit")) {
+        menuBar()->addMenu(tr("Edit"));
+    }
 
     auto* windowMenu = menuBar()->addMenu(tr("Window"));
+    auto* layoutMenu = windowMenu->addMenu(tr("Layouts"));
+    auto layouts = m_layoutManager->namedLayouts();
+    for (auto& name : layouts) {
+        layoutMenu->addAction(name, this, [this, name]() {
+            m_layoutManager->loadNamed(name);
+        });
+    }
+    layoutMenu->addSeparator();
+    layoutMenu->addAction(tr("Save Layout..."), this, [this]() {
+        m_layoutManager->saveNamed("Custom");
+    });
+    layoutMenu->addAction(tr("Reset to Default"), this, [this]() {
+        m_layoutManager->applyDefault();
+    });
+    windowMenu->addSeparator();
     for (auto* dw : m_dockManager->dockWidgetsMap()) {
         windowMenu->addAction(dw->toggleViewAction());
     }
@@ -101,99 +170,88 @@ void EditorWindow::setupMenuBar()
 void EditorWindow::setupToolBar()
 {
     auto* toolbar = addToolBar(tr("Tools"));
-    toolbar->setObjectName("mainToolBar");
+    toolbar->setObjectName(QStringLiteral("mainToolBar"));
     toolbar->setMovable(true);
 
-    toolbar->addWidget(new QWidget(this)); // spacer
-    toolbar->addWidget(new QWidget(this)); // spacer
-    ((QWidget*)nullptr);
+    auto& menusJson = EditorConfig::self().menusJson();
+    if (!menusJson.contains("toolbar") || !menusJson["toolbar"].is_array()) return;
 
-    m_btnPlay = new QToolButton(this);
-    m_btnPlay->setText("Play");
-    m_btnPlay->setToolTip(tr("Play"));
-    m_btnPlay->setCheckable(true);
-    m_btnPlay->setMinimumWidth(50);
-    toolbar->addWidget(m_btnPlay);
+    std::unordered_map<std::string, std::vector<QToolButton*>> groups;
 
-    m_btnPause = new QToolButton(this);
-    m_btnPause->setText("Pause");
-    m_btnPause->setToolTip(tr("Pause"));
-    m_btnPause->setCheckable(true);
-    m_btnPause->setMinimumWidth(50);
-    toolbar->addWidget(m_btnPause);
+    for (auto& item : menusJson["toolbar"]) {
+        if (item.value("separator", false)) {
+            toolbar->addSeparator();
+            continue;
+        }
 
-    m_btnStop = new QToolButton(this);
-    m_btnStop->setText("Stop");
-    m_btnStop->setToolTip(tr("Stop"));
-    m_btnStop->setMinimumWidth(50);
-    toolbar->addWidget(m_btnStop);
+        std::string id = item.value("id", "");
+        std::string command = item.value("command", "");
+        std::string shortcut = item.value("shortcut", "");
+        std::string group = item.value("group", "");
+        bool checkable = item.value("checkable", false);
+        dodoe::Json args = item.value("args", dodoe::Json::object());
 
-    toolbar->addSeparator();
+        auto* btn = new QToolButton(this);
+        btn->setText(QString::fromStdString(id));
+        btn->setToolTip(QString::fromStdString(id));
+        if (!shortcut.empty()) {
+            btn->setToolTip(QString("%1 (%2)").arg(QString::fromStdString(id), QString::fromStdString(shortcut)));
+        }
+        btn->setCheckable(checkable);
+        btn->setMinimumWidth(50);
+        toolbar->addWidget(btn);
 
-    m_toolMove = new QToolButton(this);
-    m_toolMove->setText("W");
-    m_toolMove->setToolTip(tr("Move (W)"));
-    m_toolMove->setCheckable(true);
-    m_toolMove->setChecked(true);
-    toolbar->addWidget(m_toolMove);
+        if (!group.empty()) {
+            groups[group].push_back(btn);
+        }
 
-    m_toolRotate = new QToolButton(this);
-    m_toolRotate->setText("E");
-    m_toolRotate->setToolTip(tr("Rotate (E)"));
-    m_toolRotate->setCheckable(true);
-    toolbar->addWidget(m_toolRotate);
+        QObject::connect(btn, &QToolButton::clicked, this, [this, btn, command, args, checkable, &groups, group]() {
+            if (checkable && !group.empty()) {
+                auto it = groups.find(group);
+                if (it != groups.end()) {
+                    for (auto* b : it->second) {
+                        if (b != btn) b->setChecked(false);
+                    }
+                    btn->setChecked(true);
+                }
+            }
+            CommandRegistry::self().executeStructured(m_ctx, command, args);
+        });
 
-    m_toolScale = new QToolButton(this);
-    m_toolScale->setText("R");
-    m_toolScale->setToolTip(tr("Scale (R)"));
-    m_toolScale->setCheckable(true);
-    toolbar->addWidget(m_toolScale);
-
-    m_toolHand = new QToolButton(this);
-    m_toolHand->setText("Q");
-    m_toolHand->setToolTip(tr("Hand (Q)"));
-    m_toolHand->setCheckable(true);
-    toolbar->addWidget(m_toolHand);
+        if (id == "Play")  m_btnPlay = btn;
+        if (id == "Pause") m_btnPause = btn;
+        if (id == "Stop")  m_btnStop = btn;
+        if (id == "Hand")   m_toolHand = btn;
+        if (id == "Move")   m_toolMove = btn;
+        if (id == "Rotate") m_toolRotate = btn;
+        if (id == "Scale")  m_toolScale = btn;
+    }
 }
 
 void EditorWindow::setupDockWidgets()
 {
-    m_scenePanel = new ScenePanel(m_ctx, this);
-    auto* sceneDock = new ads::CDockWidget(tr("Scene"));
-    sceneDock->setWidget(m_scenePanel);
+    m_layoutManager->applyDefault();
 
-    m_gamePanel = new GamePanel(m_ctx, this);
-    auto* gameDock = new ads::CDockWidget(tr("Game"));
-    gameDock->setWidget(m_gamePanel);
+    auto findPanel = [this](const char* dockName) {
+        auto* dw = m_dockManager->findDockWidget(QString(dockName));
+        if (dw) return qobject_cast<Panel*>(dw->widget());
+        return static_cast<Panel*>(nullptr);
+    };
 
-    auto* centralArea = m_dockManager->setCentralWidget(sceneDock);
-    m_dockManager->addDockWidget(ads::CenterDockWidgetArea, gameDock, centralArea);
+    m_scenePanel      = qobject_cast<ScenePanel*>(findPanel("Scene"));
+    m_gamePanel       = qobject_cast<GamePanel*>(findPanel("Game"));
+    m_hierarchyPanel  = qobject_cast<HierarchyPanel*>(findPanel("Hierarchy"));
+    m_inspectorPanel  = qobject_cast<InspectorPanel*>(findPanel("Inspector"));
+    m_projectPanel    = qobject_cast<ProjectPanel*>(findPanel("Project"));
+    m_consolePanel    = qobject_cast<ConsolePanel*>(findPanel("Console"));
+    m_terminalPanel   = qobject_cast<TerminalPanel*>(findPanel("Terminal"));
+    m_tilePalettePanel= qobject_cast<TilePalettePanel*>(findPanel("TilePalette"));
 
-    m_hierarchyPanel = new HierarchyPanel(m_ctx, this);
-    auto* hierarchyDock = new ads::CDockWidget(tr("Hierarchy"));
-    hierarchyDock->setWidget(m_hierarchyPanel);
-    m_dockManager->addDockWidget(ads::LeftDockWidgetArea, hierarchyDock, centralArea);
-
-    m_inspectorPanel = new InspectorPanel(m_ctx, this);
-    auto* inspectorDock = new ads::CDockWidget(tr("Inspector"));
-    inspectorDock->setWidget(m_inspectorPanel);
-    m_dockManager->addDockWidget(ads::RightDockWidgetArea, inspectorDock, centralArea);
-
-    m_projectPanel = new ProjectPanel(m_ctx, this);
-    auto* projectDock = new ads::CDockWidget(tr("Project"));
-    projectDock->setWidget(m_projectPanel);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, projectDock, hierarchyDock->dockAreaWidget());
-
-    m_consolePanel = new ConsolePanel(m_ctx, this);
-    auto* consoleDock = new ads::CDockWidget(tr("Console"));
-    consoleDock->setWidget(m_consolePanel);
-
-    m_terminalPanel = new TerminalPanel(m_ctx, this);
-    auto* terminalDock = new ads::CDockWidget(tr("Terminal"));
-    terminalDock->setWidget(m_terminalPanel);
-
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, consoleDock, inspectorDock->dockAreaWidget());
-    m_dockManager->addDockWidget(ads::CenterDockWidgetArea, terminalDock, consoleDock->dockAreaWidget());
+    if (auto* sceneDw = m_dockManager->findDockWidget("Scene")) {
+        sceneDw->setFeature(ads::CDockWidget::DockWidgetClosable, false);
+        sceneDw->setFeature(ads::CDockWidget::DockWidgetFloatable, false);
+        sceneDw->setFeature(ads::CDockWidget::DockWidgetMovable, false);
+    }
 }
 
 void EditorWindow::setupStatusBar()
@@ -201,8 +259,12 @@ void EditorWindow::setupStatusBar()
     m_titleLabel = new QLabel(tr("Ready"), this);
     statusBar()->addWidget(m_titleLabel);
 
+    m_entityCountLabel = new QLabel(this);
+    m_entityCountLabel->setStyleSheet("color: #8C8C8C; font-size: 12px; padding: 0 8px;");
+    statusBar()->addPermanentWidget(m_entityCountLabel);
+
     m_fpsLabel = new QLabel("0 FPS", this);
-    m_fpsLabel->setStyleSheet("color: #6272A4; font-size: 12px; padding-right: 8px;");
+    m_fpsLabel->setStyleSheet("color: #8C8C8C; font-size: 12px; padding-right: 8px;");
     statusBar()->addPermanentWidget(m_fpsLabel);
 }
 
@@ -218,30 +280,21 @@ void EditorWindow::setupFrameTimer()
         m_ctx.viewports().updateAndRenderAll(dt);
         m_scenePanel->update();
         m_gamePanel->update();
+
+        int fps = dt > 0 ? static_cast<int>(1.0f / dt) : 0;
+        m_fpsLabel->setText(QString("%1 FPS").arg(fps));
+
+        auto* scene = m_ctx.activeScene();
+        if (scene && m_entityCountLabel) {
+            auto entities = scene->getEntities();
+            m_entityCountLabel->setText(QString("Entities: %1").arg(entities.size()));
+        }
     });
     m_frameTimer.start(0);
 }
 
 void EditorWindow::connectActions()
 {
-    connect(m_btnPlay, &QToolButton::clicked, this, &EditorWindow::onPlay);
-    connect(m_btnPause, &QToolButton::clicked, this, &EditorWindow::onPause);
-    connect(m_btnStop, &QToolButton::clicked, this, &EditorWindow::onStop);
-
-    auto makeToolGroup = [this](QToolButton* btn, GizmoMode mode) {
-        connect(btn, &QToolButton::clicked, this, [this, btn, mode]() {
-            for (auto* b : {m_toolHand, m_toolMove, m_toolRotate, m_toolScale}) {
-                if (b != btn) b->setChecked(false);
-            }
-            btn->setChecked(true);
-            m_ctx.gizmos().setMode(mode);
-        });
-    };
-    makeToolGroup(m_toolHand,  GizmoMode::None);
-    makeToolGroup(m_toolMove,  GizmoMode::Translate);
-    makeToolGroup(m_toolRotate, GizmoMode::Rotate);
-    makeToolGroup(m_toolScale, GizmoMode::Scale);
-
     m_ctx.document().dirtyChanged.connect([this]() {
         setWindowTitle(QString::fromStdString(m_ctx.document().displayTitle() + " — Cakery"));
     });
@@ -249,8 +302,8 @@ void EditorWindow::connectActions()
     m_ctx.playMode().stateChanged.connect([this](PlayState state) {
         m_isPlaying = (state == PlayState::Playing);
         m_isPaused  = (state == PlayState::Paused);
-        m_btnPlay->setChecked(m_isPlaying);
-        m_btnPause->setChecked(m_isPaused);
+        if (m_btnPlay)  m_btnPlay->setChecked(m_isPlaying);
+        if (m_btnPause) m_btnPause->setChecked(m_isPaused);
     });
 }
 

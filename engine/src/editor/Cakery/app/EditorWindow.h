@@ -23,6 +23,7 @@ class InspectorPanel;
 class ConsolePanel;
 class ProjectPanel;
 class TerminalPanel;
+class TilePalettePanel;
 class LayoutManager;
 
 class EditorWindow : public QMainWindow {
@@ -64,6 +65,7 @@ private:
     ConsolePanel*   m_consolePanel   = nullptr;
     ProjectPanel*   m_projectPanel   = nullptr;
     TerminalPanel*  m_terminalPanel  = nullptr;
+    TilePalettePanel* m_tilePalettePanel = nullptr;
 
     std::unique_ptr<LayoutManager> m_layoutManager;
 
@@ -78,6 +80,7 @@ private:
 
     QLabel* m_fpsLabel   = nullptr;
     QLabel* m_titleLabel  = nullptr;
+    QLabel* m_entityCountLabel = nullptr;
 
     QTimer m_frameTimer;
     QElapsedTimer m_frameClock;

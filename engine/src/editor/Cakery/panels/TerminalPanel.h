@@ -19,6 +19,7 @@ private:
     QListWidget* m_output = nullptr;
     QLineEdit*   m_input  = nullptr;
     QStringList  m_history;
+    int          m_historyPos = 0;
 };
 
 } // namespace cakery

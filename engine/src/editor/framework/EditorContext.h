@@ -25,6 +25,10 @@ class PickingService;
 class PlayModeController;
 class EventBridge;
 class ViewportService;
+class EditHistory;
+class AICommandBridge;
+class AssetDatabase;
+class TilePaintService;
 
 struct EditorBootConfig {
     std::string projectPath;
@@ -62,6 +66,10 @@ public:
     PlayModeController&  playMode()   { return *m_playMode; }
     EventBridge&         events()     { return *m_events; }
     ViewportService&     viewports()  { return *m_viewports; }
+    EditHistory&         history()    { return *m_history; }
+    AICommandBridge&     aiBridge()   { return *m_aiBridge; }
+    AssetDatabase&       assets()     { return *m_assetDb; }
+    TilePaintService&    tilePaint()  { return *m_tilePaint; }
 
 private:
     bool m_booted = false;
@@ -78,6 +86,10 @@ private:
     std::unique_ptr<PlayModeController> m_playMode;
     std::unique_ptr<EventBridge>        m_events;
     std::unique_ptr<ViewportService>    m_viewports;
+    std::unique_ptr<EditHistory>        m_history;
+    std::unique_ptr<AICommandBridge>    m_aiBridge;
+    std::unique_ptr<AssetDatabase>      m_assetDb;
+    std::unique_ptr<TilePaintService>   m_tilePaint;
 };
 
 } // namespace cakery

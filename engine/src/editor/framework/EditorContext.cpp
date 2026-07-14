@@ -22,10 +22,19 @@
 #include "playmode/PlayModeController.h"
 #include "event/EventBridge.h"
 #include "viewport/ViewportService.h"
+#include "history/EditHistory.h"
+#include "console/AICommandBridge.h"
+#include "console/CommandRegistry.h"
+#include "asset/AssetDatabase.h"
+#include "tilemap/TilePaintService.h"
+#include "config/EditorConfig.h"
+#include "property/PropertyDrawer.h"
 
 using namespace dodoe;
 
 namespace cakery {
+
+void RegisterBuiltinCommands();
 
 EditorContext::EditorContext()
 {
@@ -35,7 +44,6 @@ EditorContext::EditorContext()
     m_spec.render_settings.pipeline      = RenderingPipelineType::Deferred;
     m_spec.render_settings.threading_mode = ThreadingMode::DualThread;
 
-    // 服务在构造时创建，boot() 前即可安全访问
     m_commands   = std::make_unique<CommandStack>(*this);
     m_selection  = std::make_unique<SelectionManager>();
     m_document   = std::make_unique<SceneDocument>(*this);
@@ -45,6 +53,10 @@ EditorContext::EditorContext()
     m_playMode   = std::make_unique<PlayModeController>(*this);
     m_events     = std::make_unique<EventBridge>(*this);
     m_viewports  = std::make_unique<ViewportService>(*this);
+    m_history    = std::make_unique<EditHistory>(*this);
+    m_aiBridge   = std::make_unique<AICommandBridge>(*this);
+    m_assetDb    = std::make_unique<AssetDatabase>(*this);
+    m_tilePaint  = std::make_unique<TilePaintService>(*this);
 }
 
 EditorContext::~EditorContext()
@@ -91,6 +103,15 @@ bool EditorContext::boot(const EditorBootConfig& cfg)
     m_ctx->getLayerStack().attach();
     LOG_INFO("[EditorContext] LayerStack attached");
 
+    RegisterBuiltinCommands();
+    LOG_INFO("[EditorContext] Builtin commands registered");
+
+    PropertyDrawerRegistry::self().registerBuiltinDrawers();
+    LOG_INFO("[EditorContext] Builtin property drawers registered");
+
+    LOG_INFO("[EditorContext] EditorConfig: theme={}, layout={}",
+             EditorConfig::self().themeName(), EditorConfig::self().defaultLayoutName());
+
     m_booted = true;
     LOG_INFO("[EditorContext] Fully booted");
 
@@ -99,6 +120,9 @@ bool EditorContext::boot(const EditorBootConfig& cfg)
 
 void EditorContext::shutdown()
 {
+    m_assetDb.reset();
+    m_aiBridge.reset();
+    m_history.reset();
     m_viewports.reset();
     m_events.reset();
     m_playMode.reset();

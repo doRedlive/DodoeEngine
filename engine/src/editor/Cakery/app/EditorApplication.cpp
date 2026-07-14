@@ -3,6 +3,7 @@
 #include "EditorApplication.h"
 #include "EditorWindow.h"
 #include "framework/EditorContext.h"
+#include "framework/config/EditorConfig.h"
 #include "Cakery/project/ProjectManagerWindow.h"
 
 #include "runtime/function/log/log_system.h"
@@ -19,11 +20,29 @@ EditorApplication::EditorApplication(int& argc, char** argv)
     setApplicationName("Cakery");
 
     auto appDir = QDir(applicationDirPath());
-    QString stylePath = appDir.filePath("resources/style.qss");
-    if (QFileInfo::exists(stylePath)) {
-        QFile styleFile(stylePath);
+    QString builtinEditorDir = QDir(appDir.filePath("resources/editor")).absolutePath();
+    if (!QDir(builtinEditorDir).exists()) {
+        QString devDir = appDir.absoluteFilePath("../../engine/res/editor");
+        if (QDir(devDir).exists()) {
+            builtinEditorDir = QDir(devDir).absolutePath();
+        }
+    }
+
+    EditorConfig::self().load(builtinEditorDir.toStdString());
+
+    QString themePath = QString::fromStdString(EditorConfig::self().themePath());
+    if (QFileInfo::exists(themePath)) {
+        QFile styleFile(themePath);
         if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
             setStyleSheet(styleFile.readAll());
+        }
+    } else {
+        QString stylePath = appDir.filePath("resources/style.qss");
+        if (QFileInfo::exists(stylePath)) {
+            QFile styleFile(stylePath);
+            if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
+                setStyleSheet(styleFile.readAll());
+            }
         }
     }
 

@@ -8,7 +8,7 @@ namespace cakery {
 
 class EditorCamera {
 public:
-    enum class Mode { Orbit, Fly };
+    enum class Mode { Orbit, Fly, Ortho2D };
 
     EditorCamera();
 
@@ -36,6 +36,7 @@ public:
 private:
     void updateOrbit(float dt);
     void updateFly(float dt);
+    void updateOrtho2D(float dt);
 
     dodoe::Vector3f forward() const;
     dodoe::Vector3f right() const;
@@ -62,6 +63,9 @@ private:
     bool m_keyW = false, m_keyS = false, m_keyA = false, m_keyD = false;
     bool m_keyQ = false, m_keyE = false;
 
+    dodoe::Vector2f m_orthoPan{0.0f, 0.0f};
+    float m_orthoZoom = 100.0f;
+
     static constexpr float kMinDistance = 0.1f;
     static constexpr float kMaxDistance = 1000.0f;
     static constexpr float kOrbitSpeed  = 0.3f;
@@ -69,6 +73,8 @@ private:
     static constexpr float kZoomSpeed   = 0.5f;
     static constexpr float kFlySpeed    = 10.0f;
     static constexpr float kPitchLimit  = 89.0f;
+    static constexpr float kOrthoZoomMin = 1.0f;
+    static constexpr float kOrthoZoomMax = 10000.0f;
 };
 
 } // namespace cakery

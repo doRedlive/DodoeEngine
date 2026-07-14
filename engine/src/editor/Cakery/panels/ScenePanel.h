@@ -3,6 +3,8 @@
 #pragma once
 
 #include "Panel.h"
+#include <QComboBox>
+#include <QCheckBox>
 
 namespace cakery {
 
@@ -26,8 +28,13 @@ protected:
     void dropEvent(QDropEvent* event) override;
 
 private:
-    bool m_firstShow = true;
+    void buildToolbar();
     void setupViewport();
+
+    bool m_firstShow = true;
+    QComboBox* m_shadingCombo = nullptr;
+    QCheckBox* m_2dCheck = nullptr;
+    QCheckBox* m_gizmoCheck = nullptr;
 };
 
 } // namespace cakery

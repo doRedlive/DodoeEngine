@@ -34,17 +34,23 @@ std::unique_ptr<PropertyDrawer> PropertyDrawerRegistry::create(dodoe::FieldAcces
     const char* typeName = field.getFieldTypeName();
     if (!typeName) return nullptr;
 
+    for (auto& [attr, factory] : m_byAttr) {
+        if (field.hasAttribute(attr.c_str())) {
+            return factory();
+        }
+    }
+
     auto it = m_byType.find(typeName);
     if (it != m_byType.end()) {
         return it->second();
     }
 
-    for (auto& [attr, factory] : m_byAttr) {
-        (void)attr;
-        return factory();
+    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(typeName);
+    if (meta.isValid()) {
+        return std::make_unique<CompositeDrawer>();
     }
 
-    return nullptr;
+    return std::make_unique<ScalarDrawer>();
 }
 
 void PropertyDrawerRegistry::registerBuiltinDrawers()

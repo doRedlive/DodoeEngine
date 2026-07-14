@@ -9,6 +9,8 @@
 #include "runtime/core/utils/json.h"
 
 #include <QComboBox>
+#include <QLabel>
+#include <QHBoxLayout>
 
 namespace cakery {
 
@@ -17,30 +19,41 @@ QWidget* EnumDrawer::build(const PropertyContext& pc)
     const std::string typeName = pc.field->getFieldTypeName();
     auto* combo = new QComboBox();
 
-    if (typeName == "CameraType" || typeName == "dodoe::CameraType") {
-        combo->addItems({"None", "Perspective", "Orthographic"});
-    } else {
-        combo->addItem("Unknown");
+    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(typeName);
+    if (meta.isValid()) {
+        dodoe::FieldAccessor* fields = nullptr;
+        int count = meta.get_field_list(fields);
+        for (int i = 0; i < count; ++i) {
+            if (std::strcmp(fields[i].getFieldName(), "value") == 0) {
+                combo->addItem(QString::fromUtf8(fields[i].getFieldName()));
+            }
+        }
+        delete[] fields;
+    }
+
+    if (combo->count() == 0) {
+        combo->addItem(QString::fromStdString(typeName));
     }
 
     auto field = *pc.field;
     int* val = static_cast<int*>(field.get(pc.componentPtr));
-    combo->setCurrentIndex(*val);
+    if (val) {
+        combo->setCurrentIndex(std::clamp(*val, 0, combo->count() - 1));
+    }
 
     QObject::connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
         [pc, field](int idx) mutable {
             int oldVal = *static_cast<int*>(field.get(pc.componentPtr));
-            int newVal = idx;
-            field.set(pc.componentPtr, &newVal);
+            field.set(pc.componentPtr, &idx);
             auto cmd = std::make_unique<SetFieldValueCommand>(
                 pc.entity, pc.componentName, field.getFieldName(),
-                dodoe::Json(std::to_string(oldVal)), dodoe::Json(std::to_string(newVal)));
+                dodoe::Json(std::to_string(oldVal)), dodoe::Json(std::to_string(idx)));
             pc.ctx->commands().execute(std::move(cmd));
         });
 
     return combo;
 }
 
-void EnumDrawer::updateValue(const PropertyContext& /*pc*/) {}
+void EnumDrawer::updateValue(const PropertyContext&) {}
 
 } // namespace cakery

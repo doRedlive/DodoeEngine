@@ -42,6 +42,7 @@ set(CAKERY_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/EditorApplication.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/EditorWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/LayoutManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/PanelRegistry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/project/ProjectConfig.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/project/ProjectManagerWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/services/LogService.cpp
@@ -53,12 +54,15 @@ set(CAKERY_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/ProjectPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/ConsolePanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/TerminalPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/TilePalettePanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/MemoryPanel.cpp
 )
 
 set(CAKERY_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/EditorApplication.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/EditorWindow.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/LayoutManager.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/app/PanelRegistry.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/project/ProjectConfig.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/project/ProjectManagerWindow.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/services/LogService.h
@@ -71,6 +75,8 @@ set(CAKERY_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/ProjectPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/ConsolePanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/TerminalPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/TilePalettePanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/panels/MemoryPanel.h
 )
 
 set(CAKERY_ALL_SOURCES ${CAKERY_SOURCES} ${CAKERY_HEADERS})
@@ -119,6 +125,7 @@ set(POST_BUILD_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:qtadvanceddocking-qt6>" "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:qtadvanceddocking-qt6>"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}/resources"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Cakery/resources/style.qss" "${BINARY_ROOT_DIR}/resources/style.qss"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res/editor" "${BINARY_ROOT_DIR}/resources/editor"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res/pictures" "${BINARY_ROOT_DIR}/resources/pictures"
 )
 
