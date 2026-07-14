@@ -31,6 +31,8 @@
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/physics/physics_system.h"
 
+#include "runtime/core/gc/cycle_detector.h"
+
 namespace dodoe {
 
     SystemContext::~SystemContext() = default;
@@ -196,6 +198,8 @@ namespace dodoe {
         } else {
             m_render_thread->submitAndWait();
         }
+
+        CycleDetector::instance().tick();
     }
 
 } // dodoe

@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cstring>
+#include <unordered_map>
+#include <string>
 
 namespace dodoe {
 
@@ -260,8 +262,49 @@ namespace dodoe {
             functions_       = dest.functions_;
             field_name_      = dest.field_name_;
             field_type_name_ = dest.field_type_name_;
+            m_attributes     = nullptr;
 
             return *this;
+        }
+
+        void FieldAccessor::setAttribute(const char* key, const char* value) {
+            auto* m = static_cast<std::unordered_map<std::string, std::string>*>(m_attributes);
+            if (!m) {
+                m = new std::unordered_map<std::string, std::string>();
+                m_attributes = m;
+            }
+            (*m)[key] = value;
+        }
+
+        bool FieldAccessor::hasAttribute(const char* key) const {
+            auto* m = static_cast<std::unordered_map<std::string, std::string>*>(m_attributes);
+            return m && m->find(key) != m->end();
+        }
+
+        const char* FieldAccessor::attribute(const char* key) const {
+            auto* m = static_cast<std::unordered_map<std::string, std::string>*>(m_attributes);
+            if (!m) return "";
+            auto it = m->find(key);
+            return it != m->end() ? it->second.c_str() : "";
+        }
+
+        bool FieldAccessor::attributeRange(float& min, float& max) const {
+            const char* val = attribute("Range");
+            if (!val || !val[0]) return false;
+            std::string s(val);
+            auto comma = s.find(',');
+            if (comma == std::string::npos) return false;
+            min = std::stof(s.substr(0, comma));
+            max = std::stof(s.substr(comma + 1));
+            return true;
+        }
+
+        bool FieldAccessor::isHidden() const {
+            return hasAttribute("Hidden");
+        }
+
+        bool FieldAccessor::isReadOnly() const {
+            return hasAttribute("ReadOnly");
         }
 
         MethodAccessor::MethodAccessor() : method_name_(unknownName), functions_(nullptr) { }

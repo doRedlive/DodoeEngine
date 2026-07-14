@@ -18,4 +18,11 @@ namespace dodoe {
         return channel;
     }
 
+    using EditorCameraChannel = DataChannel<MainCameraData>;
+
+    inline EditorCameraChannel& GetEditorCameraChannel() {
+        static EditorCameraChannel channel;
+        return channel;
+    }
+
 } // dodoe

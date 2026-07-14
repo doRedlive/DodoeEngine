@@ -2,6 +2,7 @@
 
 #include "object.h"
 #include "runtime/core/utils/uuid.h"
+#include "runtime/core/object/native_bridge.h"
 
 namespace dodoe {
 
@@ -51,6 +52,31 @@ namespace dodoe {
             s_id_to_instance.erase(makeKey(it->second->m_file_id));
         }
         s_instance_map.erase(id);
+    }
+
+    void Object::releaseRef() {
+        if (m_strong_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            m_alive.store(0, std::memory_order_release);
+            onDestroy();
+            native_bridge::NotifyDestroyed(m_instance_id);
+            ReleaseInstanceID(m_instance_id);
+            m_strong_refs.store(0, std::memory_order_relaxed);
+            delete this;
+        }
+    }
+
+    void Object::releaseWeakRef() {
+        if (m_weak_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            m_weak_refs.store(0, std::memory_order_relaxed);
+        }
+    }
+
+    Object::~Object() {
+        if (m_instance_id) {
+            onDestroy();
+            native_bridge::NotifyDestroyed(m_instance_id);
+            ReleaseInstanceID(m_instance_id);
+        }
     }
 
 } // dodoe

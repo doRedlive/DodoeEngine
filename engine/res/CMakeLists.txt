@@ -37,6 +37,7 @@ set(HLSL_VS_PAIRS
 
 set(HLSL_PS_PAIRS
 	"sprite_pass_ps.hlsl sprite_pass.frag.dxil"
+	"sprite_pass_ps_traditional.hlsl sprite_pass_traditional.frag.dxil"
 	"main_camera_pass_ps.hlsl main_camera_pass.frag.dxil"
 	"directional_light_shadow_pass_ps.hlsl directional_light_shadow_pass.frag.dxil"
 	"deferred_light_pass_ps.hlsl deferred_light_pass.frag.dxil"

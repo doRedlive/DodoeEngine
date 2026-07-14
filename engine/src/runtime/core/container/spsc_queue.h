@@ -48,6 +48,16 @@ namespace dodoe {
             return true;
         }
 
+        bool tryPush(const T& item) {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_count >= Capacity || m_closed) return false;
+            m_buffer[m_tail] = item;
+            m_tail = (m_tail + 1) % Capacity;
+            ++m_count;
+            m_not_empty.notify_one();
+            return true;
+        }
+
         bool tryPop(T& item) {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_count == 0) return false;

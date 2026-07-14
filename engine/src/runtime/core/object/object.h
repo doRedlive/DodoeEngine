@@ -5,7 +5,11 @@
 #include "dopch.h"
 #include "runtime/resource/file/file_id.h"
 
+#include <atomic>
+
 namespace dodoe {
+
+    class TraceVisitor;
 
     class Object {
         FileID m_file_id{};
@@ -22,8 +26,14 @@ namespace dodoe {
 
         static UInt64 makeKey(const FileID& file_id);
 
+        std::atomic<UInt32> m_strong_refs{1};
+        std::atomic<UInt32> m_weak_refs{0};
+        std::atomic<UInt8>  m_alive{1};
+
+        virtual void onDestroy() {}
+
     public:
-        virtual ~Object() = default;
+        virtual ~Object();
 
         [[nodiscard]] InstanceID getInstanceID() const { return m_instance_id; }
         [[nodiscard]] const FileID& getFileID() const { return m_file_id; }
@@ -39,6 +49,13 @@ namespace dodoe {
         static InstanceID AllocateInstanceID(Object* obj);
         static void ReleaseInstanceID(InstanceID id);
 
+        void addRef() { m_strong_refs.fetch_add(1, std::memory_order_relaxed); }
+        void releaseRef();
+        void addWeakRef() { m_weak_refs.fetch_add(1, std::memory_order_relaxed); }
+        void releaseWeakRef();
+        [[nodiscard]] Bool isAlive() const { return m_alive.load(std::memory_order_acquire) != 0; }
+
+        virtual void trace(TraceVisitor& v) const {}
         [[nodiscard]] virtual const char* getObjectTypeName() const = 0;
     };
 

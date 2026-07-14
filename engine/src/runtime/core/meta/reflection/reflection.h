@@ -129,10 +129,18 @@ namespace dodoe {
             bool is_array_type();
             FieldAccessor& operator=(const FieldAccessor& dest);
 
+            bool hasAttribute(const char* key) const;
+            const char* attribute(const char* key) const;
+            bool attributeRange(float& min, float& max) const;
+            bool isHidden() const;
+            bool isReadOnly() const;
+            void setAttribute(const char* key, const char* value);
+
         private:
             FieldFuncTuple* functions_;
             const char* field_name_;
             const char* field_type_name_;
+            void* m_attributes = nullptr;
 
             explicit FieldAccessor(FieldFuncTuple* functions);
         };
