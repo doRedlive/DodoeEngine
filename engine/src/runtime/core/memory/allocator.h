@@ -29,6 +29,7 @@ namespace dodoe {
         [[nodiscard]] const char* name() const override { return "Malloc"; }
 
     private:
+        friend class Memory;
         MallocAllocator() = default;
     };
 
@@ -52,7 +53,7 @@ namespace dodoe {
             Block& operator=(const Block&) = delete;
         };
 
-        DynamicArray<Block> m_blocks{};
+        std::vector<Block> m_blocks{};
         Size_t m_default_block_size{4096};
         Size_t m_used_byte_size{0};
         std::recursive_mutex m_mutex{};
@@ -75,6 +76,7 @@ namespace dodoe {
         [[nodiscard]] const char* name() const override { return "Linear"; }
 
         void reset();
+        void resetTo(Size_t byte_offset);
         void release();
         void reserve(Size_t byte_size);
 
@@ -95,7 +97,7 @@ namespace dodoe {
         Size_t m_block_size{0};
         Size_t m_block_align{0};
         FreeNode* m_free_list{nullptr};
-        DynamicArray<UInt8*> m_chunks{};
+        std::vector<UInt8*> m_chunks{};
         Size_t m_chunk_size{65536};
         std::mutex m_mutex{};
 

@@ -16,10 +16,21 @@ namespace dodoe {
 
     public:
         PPtr() = default;
+        explicit PPtr(const FileID& file_id)
+            : m_file_id(file_id) {}
         PPtr(const FileID& file_id, const UUID& uuid)
             : m_file_id(file_id), m_uuid(uuid) {}
         PPtr(const FileID& file_id, const UUID& uuid, const InstanceID instance_id)
             : m_file_id(file_id), m_uuid(uuid), m_instance_id(instance_id) {}
+        explicit PPtr(T* obj)
+            : m_file_id(obj->getFileID()), m_uuid(obj->getUUID()), m_instance_id(obj->getInstanceID()) {}
+        explicit PPtr(const ObjHandle<T>& handle)
+            : m_instance_id(handle.getInstanceID()) {
+            if (auto* obj = handle.get()) {
+                m_file_id = obj->getFileID();
+                m_uuid = obj->getUUID();
+            }
+        }
 
         [[nodiscard]] T* get() const {
             if (m_instance_id != 0) {

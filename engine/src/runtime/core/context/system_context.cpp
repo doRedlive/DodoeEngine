@@ -1,6 +1,7 @@
 #include "dopch.h"
 
 #include "system_context.h"
+#include "runtime/core/memory/memory.h"
 #include "runtime/resource/resource_manager.h"
 
 #include "runtime/core/event/event.h"
@@ -49,6 +50,7 @@ namespace dodoe {
 
     Bool SystemContext::preInit() {
         Log::Initialize();
+        Memory::Init();
         EventSystem::Initialize();
         TypeMetaRegister::MetaRegister();
         return true;
@@ -104,20 +106,25 @@ namespace dodoe {
             m_draw_thread = create_scope<DrawThread>();
             m_draw_thread->start(device, gfx);
 
-            m_render_thread = create_scope<RenderThread>();
-            m_render_thread->start(m_render_system.get(), m_draw_thread.get());
+            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
+                m_render_system->renderFrame(ThreadingMode::TripleThread, m_draw_thread.get());
+            }));
+            m_render_thread->start(threading_mode);
             m_render_system->setRenderThread(m_render_thread.get());
             break;
 
         case ThreadingMode::DualThread:
-            m_render_thread = create_scope<RenderThread>();
-            m_render_thread->start(m_render_system.get(), device, gfx);
+            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
+                m_render_system->renderFrame(ThreadingMode::DualThread, nullptr);
+            }));
+            m_render_thread->start(threading_mode);
             m_render_system->setRenderThread(m_render_thread.get());
             break;
 
         case ThreadingMode::SingleThread:
-            m_render_thread = create_scope<RenderThread>();
-            m_render_thread->setupForDirect(m_render_system.get(), device, gfx);
+            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
+                m_render_system->renderFrame(ThreadingMode::SingleThread, nullptr);
+            }));
             m_render_system->setRenderThread(m_render_thread.get());
             break;
         }

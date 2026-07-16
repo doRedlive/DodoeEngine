@@ -2,9 +2,7 @@
 
 #include "allocator.h"
 
-#ifdef _WIN32
-#include <malloc.h>
-#endif
+#include <mimalloc.h>
 
 namespace dodoe {
 
@@ -14,22 +12,15 @@ namespace dodoe {
     }
 
     void* MallocAllocator::allocate(Size_t size, Size_t align) {
-#ifdef _WIN32
-        return _aligned_malloc(size, align);
-#else
-        void* ptr = nullptr;
-        posix_memalign(&ptr, align, size);
-        return ptr;
-#endif
+        if (align > alignof(std::max_align_t)) {
+            return mi_aligned_alloc(align, size);
+        }
+        return mi_malloc(size);
     }
 
     void MallocAllocator::deallocate(void* p, Size_t size) {
         (void)size;
-#ifdef _WIN32
-        _aligned_free(p);
-#else
-        free(p);
-#endif
+        mi_free(p);
     }
 
     LinearAllocator::LinearAllocator(LinearAllocator&& other) noexcept {
@@ -98,6 +89,14 @@ namespace dodoe {
             block.offset = 0;
         }
         m_used_byte_size = 0;
+    }
+
+    void LinearAllocator::resetTo(Size_t byte_offset) {
+        std::lock_guard<std::recursive_mutex> lock(m_mutex);
+        if (m_blocks.empty()) return;
+        Block* block = &m_blocks.back();
+        block->offset = byte_offset;
+        m_used_byte_size = byte_offset;
     }
 
     void LinearAllocator::release() {

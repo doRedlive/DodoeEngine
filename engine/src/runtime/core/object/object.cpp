@@ -10,6 +10,16 @@ namespace dodoe {
     UnorderedMap<UInt64, InstanceID> Object::s_id_to_instance{};
     InstanceID Object::s_next_instance_id{1};
 
+    Object::Object(const FileID& file_id)
+        : m_file_id(file_id), m_uuid() {
+        AllocateInstanceID(this);
+    }
+
+    Object::Object(const FileID& file_id, const UUID& uuid)
+        : m_file_id(file_id), m_uuid(uuid) {
+        AllocateInstanceID(this);
+    }
+
     UInt64 Object::makeKey(const FileID& file_id) {
         return file_id.getID();
     }
@@ -60,8 +70,8 @@ namespace dodoe {
             onDestroy();
             native_bridge::NotifyDestroyed(m_instance_id);
             ReleaseInstanceID(m_instance_id);
+            m_instance_id = 0;
             m_strong_refs.store(0, std::memory_order_relaxed);
-            delete this;
         }
     }
 

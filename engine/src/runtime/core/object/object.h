@@ -23,6 +23,8 @@ namespace dodoe {
 
     protected:
         Object() = default;
+        explicit Object(const FileID& file_id);
+        Object(const FileID& file_id, const UUID& uuid);
 
         static UInt64 makeKey(const FileID& file_id);
 

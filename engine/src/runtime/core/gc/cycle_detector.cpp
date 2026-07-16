@@ -23,7 +23,7 @@ namespace dodoe {
 
         for (auto* root : roots) {
             if (root && root->isAlive()) {
-                root->Trace(visitor);
+                root->trace(visitor);
                 visitor.mark(root->getInstanceID());
             }
         }
@@ -32,7 +32,7 @@ namespace dodoe {
         for (InstanceID id : acquired) {
             auto* obj = Object::FindObjectFromInstanceID(id);
             if (obj && obj->isAlive()) {
-                obj->Trace(visitor);
+                obj->trace(visitor);
                 visitor.mark(id);
             }
         }
@@ -60,11 +60,7 @@ namespace dodoe {
             }
 
             if (all_unreachable) {
-                candidate->m_alive.store(0, std::memory_order_release);
-                candidate->onDestroy();
-                native_bridge::NotifyDestroyed(candidate->getInstanceID());
-                Object::ReleaseInstanceID(candidate->getInstanceID());
-                delete candidate;
+                candidate->releaseRef();
             }
         }
     }

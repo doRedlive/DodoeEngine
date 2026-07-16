@@ -13,17 +13,13 @@ namespace dodoe {
         template <typename T, typename... Args>
         static T* Construct(AllocCategory cat, Args&&... args) {
             void* mem = Memory::Allocate(sizeof(T), alignof(T), cat, typeid(T).name());
-            auto* obj = new (mem) T(std::forward<Args>(args)...);
-            if (obj->getInstanceID()) {
-                Object::AllocateInstanceID(obj);
-            }
-            return obj;
+            return new (mem) T(std::forward<Args>(args)...);
         }
 
         static void Destroy(Object* obj) {
             if (!obj) return;
             obj->~Object();
-            Memory::Deallocate(obj, sizeof(*obj), AllocCategory::Object);
+            Memory::DeallocatePersistent(obj, sizeof(*obj), AllocTag::Object);
         }
     };
 

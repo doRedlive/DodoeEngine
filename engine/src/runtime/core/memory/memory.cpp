@@ -1,111 +1,216 @@
 // do@Redlive
 
 #include "memory.h"
+#include "thread_allocator.h"
 #include "runtime/function/log/log_system.h"
 
 namespace dodoe {
 
-    MallocAllocator Memory::s_fallback{};
-    LinearAllocator Memory::s_frame_allocator{LinearAllocator::kDefaultBlockSize};
-    IAllocator* Memory::s_allocators[static_cast<int>(AllocCategory::Count)]{};
-    CategoryStats Memory::s_stats[static_cast<int>(AllocCategory::Count)]{};
+	MallocAllocator Memory::s_fallback{};
 
-    void CategoryStats::recordAlloc(Size_t size) {
-        alloc_count.fetch_add(1, std::memory_order_relaxed);
-        Size_t cur = current_bytes.fetch_add(size, std::memory_order_relaxed) + size;
+	TierStats Memory::s_tier_stats[static_cast<int>(AllocTier::Count)][static_cast<int>(AllocTag::Count)]{};
+	std::atomic<UInt64> Memory::s_frame_epoch{0};
+	std::vector<ThreadAllocator*> Memory::s_thread_allocators{};
+	std::mutex Memory::s_thread_allocators_mutex{};
 
-        Size_t peak = peak_bytes.load(std::memory_order_relaxed);
-        while (cur > peak) {
-            if (peak_bytes.compare_exchange_weak(peak, cur, std::memory_order_relaxed, std::memory_order_relaxed)) {
-                break;
-            }
-        }
-    }
+	void TierStats::recordAlloc(Size_t size) {
+		alloc_count.fetch_add(1, std::memory_order_relaxed);
+		Size_t cur = current_bytes.fetch_add(size, std::memory_order_relaxed) + size;
 
-    void CategoryStats::recordFree(Size_t size) {
-        current_bytes.fetch_sub(size, std::memory_order_relaxed);
-        dealloc_count.fetch_add(1, std::memory_order_relaxed);
-    }
+		Size_t peak = peak_bytes.load(std::memory_order_relaxed);
+		while (cur > peak) {
+			if (peak_bytes.compare_exchange_weak(peak, cur, std::memory_order_relaxed, std::memory_order_relaxed)) {
+				break;
+			}
+		}
+	}
 
-    void* Memory::Allocate(Size_t size, Size_t align, AllocCategory cat, const char* typeName) {
-        (void)typeName;
-        int idx = static_cast<int>(cat);
-        IAllocator* allocator = s_allocators[idx];
-        if (!allocator) {
-            allocator = (cat == AllocCategory::RenderCmd) ? static_cast<IAllocator*>(&s_frame_allocator) : &s_fallback;
-        }
-        void* p = allocator->allocate(size, align);
-        if (p) {
-            s_stats[idx].recordAlloc(size);
-        }
-        return p;
-    }
+	void TierStats::recordFree(Size_t size) {
+		current_bytes.fetch_sub(size, std::memory_order_relaxed);
+		dealloc_count.fetch_add(1, std::memory_order_relaxed);
+	}
 
-    void Memory::Deallocate(void* p, Size_t size, AllocCategory cat) {
-        if (!p) return;
-        int idx = static_cast<int>(cat);
-        IAllocator* allocator = s_allocators[idx];
-        if (!allocator) {
-            allocator = (cat == AllocCategory::RenderCmd) ? static_cast<IAllocator*>(&s_frame_allocator) : &s_fallback;
-        }
-        allocator->deallocate(p, size);
-        s_stats[idx].recordFree(size);
-    }
+	void Memory::Init() {
+	}
 
-    void Memory::SetAllocator(AllocCategory cat, IAllocator* allocator) {
-        int idx = static_cast<int>(cat);
-        s_allocators[idx] = allocator;
-    }
+	void Memory::Shutdown() {
+	}
 
-    IAllocator* Memory::GetAllocator(AllocCategory cat) {
-        int idx = static_cast<int>(cat);
-        return s_allocators[idx] ? s_allocators[idx] : &s_fallback;
-    }
+	void Memory::RegisterThreadAllocator(ThreadAllocator* ta) {
+		std::lock_guard<std::mutex> lock(s_thread_allocators_mutex);
+		s_thread_allocators.push_back(ta);
+	}
 
-    const CategoryStats& Memory::GetStats(AllocCategory cat) {
-        return s_stats[static_cast<int>(cat)];
-    }
+	void Memory::UnregisterThreadAllocator(ThreadAllocator* ta) {
+		std::lock_guard<std::mutex> lock(s_thread_allocators_mutex);
+		for (Size_t i = 0; i < s_thread_allocators.size(); ++i) {
+			if (s_thread_allocators[i] == ta) {
+				s_thread_allocators[i] = s_thread_allocators.back();
+				s_thread_allocators.pop_back();
+				break;
+			}
+		}
+	}
 
-    void Memory::ResetFrame() {
-        s_frame_allocator.reset();
-        int idx = static_cast<int>(AllocCategory::RenderCmd);
-        s_stats[idx].current_bytes.store(0, std::memory_order_relaxed);
-    }
+	void Memory::InitThread() {
+		(void)threadAllocator();
+	}
 
-    void Memory::ResetAllStats() {
-        for (int i = 0; i < static_cast<int>(AllocCategory::Count); ++i) {
-            s_stats[i].current_bytes.store(0, std::memory_order_relaxed);
-            s_stats[i].peak_bytes.store(0, std::memory_order_relaxed);
-            s_stats[i].alloc_count.store(0, std::memory_order_relaxed);
-            s_stats[i].dealloc_count.store(0, std::memory_order_relaxed);
-        }
-    }
+	void Memory::ShutdownThread() {
+		threadAllocatorDestroy();
+	}
 
-    void Memory::DumpAll() {
-        for (int i = 0; i < static_cast<int>(AllocCategory::Count); ++i) {
-            auto& s = s_stats[i];
-            Size_t cur = s.current_bytes.load(std::memory_order_relaxed);
-            Size_t peak = s.peak_bytes.load(std::memory_order_relaxed);
-            Size_t allocs = s.alloc_count.load(std::memory_order_relaxed);
-            Size_t frees = s.dealloc_count.load(std::memory_order_relaxed);
-            LOG_INFO("[Memory] cat={}: current={} peak={} allocs={} frees={}", i, cur, peak, allocs, frees);
-        }
-    }
+	void Memory::AdvanceFrameEpoch() {
+		s_frame_epoch.fetch_add(1, std::memory_order_release);
+	}
 
-    Size_t Memory::FrameUsedBytes() {
-        return s_frame_allocator.usedByteSize();
-    }
+	UInt64 Memory::CurrentFrameEpoch() {
+		return s_frame_epoch.load(std::memory_order_acquire);
+	}
 
-    Size_t Memory::FrameBlockCount() {
-        return s_frame_allocator.blockCount();
-    }
+	void* Memory::Allocate(AllocTier tier, Size_t size, Size_t align, AllocTag tag, const char* type_name) {
+		(void)type_name;
+		int tag_idx = static_cast<int>(tag);
+		void* p = nullptr;
 
-    Size_t Memory::FrameDefaultBlockSize() {
-        return s_frame_allocator.defaultBlockSize();
-    }
+		switch (tier) {
+		case AllocTier::Persistent:
+			p = s_fallback.allocate(size, align);
+			break;
+		case AllocTier::Frame:
+			p = threadAllocator().frame.allocate(size, align);
+			break;
+		case AllocTier::Scratch:
+			p = threadAllocator().scratch.allocate(size, align);
+			break;
+		default:
+			break;
+		}
 
-    void Memory::FrameReserve(Size_t byte_size) {
-        s_frame_allocator.reserve(byte_size);
-    }
+		if (p) {
+			int tier_idx = static_cast<int>(tier);
+			s_tier_stats[tier_idx][tag_idx].recordAlloc(size);
+		}
+		return p;
+	}
+
+	void Memory::Deallocate(AllocTier tier, void* p, Size_t size, AllocTag tag) {
+		if (!p) return;
+		int tag_idx = static_cast<int>(tag);
+
+		switch (tier) {
+		case AllocTier::Persistent:
+			s_fallback.deallocate(p, size);
+			break;
+		case AllocTier::Frame:
+		case AllocTier::Scratch:
+			break;
+		default:
+			break;
+		}
+
+		int tier_idx = static_cast<int>(tier);
+		s_tier_stats[tier_idx][tag_idx].recordFree(size);
+	}
+
+	void* Memory::AllocatePersistent(Size_t size, Size_t align, AllocTag tag) {
+		return Allocate(AllocTier::Persistent, size, align, tag);
+	}
+
+	void Memory::DeallocatePersistent(void* p, Size_t size, AllocTag tag) {
+		Deallocate(AllocTier::Persistent, p, size, tag);
+	}
+
+	void* Memory::AllocateFrame(Size_t size, Size_t align, AllocTag tag) {
+		return Allocate(AllocTier::Frame, size, align, tag);
+	}
+
+	void* Memory::AllocateScratch(Size_t size, Size_t align) {
+		return Allocate(AllocTier::Scratch, size, align, AllocTag::Misc);
+	}
+
+	void Memory::RegisterPool(AllocTag tag, Size_t block_size, Size_t block_align) {
+		(void)tag;
+		(void)block_size;
+		(void)block_align;
+	}
+
+	const TierStats& Memory::GetStats(AllocTier tier, AllocTag tag) {
+		return s_tier_stats[static_cast<int>(tier)][static_cast<int>(tag)];
+	}
+
+	Size_t Memory::FrameUsedBytesTotal() {
+		Size_t total = 0;
+		std::lock_guard<std::mutex> lock(s_thread_allocators_mutex);
+		for (auto* ta : s_thread_allocators) {
+			total += ta->frame.usedByteSize();
+		}
+		return total;
+	}
+
+	void Memory::ResetAllStats() {
+		for (int t = 0; t < static_cast<int>(AllocTier::Count); ++t) {
+			for (int g = 0; g < static_cast<int>(AllocTag::Count); ++g) {
+				s_tier_stats[t][g].current_bytes.store(0, std::memory_order_relaxed);
+				s_tier_stats[t][g].peak_bytes.store(0, std::memory_order_relaxed);
+				s_tier_stats[t][g].alloc_count.store(0, std::memory_order_relaxed);
+				s_tier_stats[t][g].dealloc_count.store(0, std::memory_order_relaxed);
+			}
+		}
+	}
+
+	void Memory::DumpAll() {
+		const char* tier_names[] = {"Persistent", "Frame", "Scratch"};
+		const char* tag_names[] = {"Object", "RenderCmd", "Texture", "Resource", "Misc"};
+		for (int t = 0; t < static_cast<int>(AllocTier::Count); ++t) {
+			for (int g = 0; g < static_cast<int>(AllocTag::Count); ++g) {
+				auto& s = s_tier_stats[t][g];
+				Size_t cur = s.current_bytes.load(std::memory_order_relaxed);
+				Size_t peak = s.peak_bytes.load(std::memory_order_relaxed);
+				Size_t allocs = s.alloc_count.load(std::memory_order_relaxed);
+				Size_t frees = s.dealloc_count.load(std::memory_order_relaxed);
+				LOG_INFO("[Memory] {}/{}: current={} peak={} allocs={} frees={}",
+				         tier_names[t], tag_names[g], cur, peak, allocs, frees);
+			}
+		}
+	}
+
+	void* Memory::Allocate(Size_t size, Size_t align, AllocCategory cat, const char* typeName) {
+		(void)typeName;
+		AllocTag tag = AllocTag::Misc;
+		switch (cat) {
+		case AllocCategory::Object:   tag = AllocTag::Object;   break;
+		case AllocCategory::Texture:  tag = AllocTag::Texture;  break;
+		case AllocCategory::RenderCmd:tag = AllocTag::RenderCmd;break;
+		case AllocCategory::Resource: tag = AllocTag::Resource; break;
+		case AllocCategory::String:
+		case AllocCategory::Container:
+		case AllocCategory::Misc:     tag = AllocTag::Misc;     break;
+		default: break;
+		}
+		AllocTier tier = (cat == AllocCategory::RenderCmd) ? AllocTier::Frame : AllocTier::Persistent;
+		return Allocate(tier, size, align, tag, typeName);
+	}
+
+	void Memory::Deallocate(void* p, Size_t size, AllocCategory cat) {
+		if (!p) return;
+		AllocTag tag = AllocTag::Misc;
+		switch (cat) {
+		case AllocCategory::Object:   tag = AllocTag::Object;   break;
+		case AllocCategory::Texture:  tag = AllocTag::Texture;  break;
+		case AllocCategory::RenderCmd:tag = AllocTag::RenderCmd;break;
+		case AllocCategory::Resource: tag = AllocTag::Resource; break;
+		case AllocCategory::String:
+		case AllocCategory::Container:
+		case AllocCategory::Misc:     tag = AllocTag::Misc;     break;
+		default: break;
+		}
+		AllocTier tier = (cat == AllocCategory::RenderCmd) ? AllocTier::Frame : AllocTier::Persistent;
+		Deallocate(tier, p, size, tag);
+	}
+
+	void Memory::ResetFrame() {
+		AdvanceFrameEpoch();
+	}
 
 } // namespace dodoe

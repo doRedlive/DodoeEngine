@@ -6,63 +6,101 @@
 #include "allocator.h"
 
 #include <atomic>
+#include <vector>
 
 namespace dodoe {
 
-    enum class AllocCategory : UInt8 {
-        Object,
-        Texture,
-        RenderCmd,
-        Resource,
-        String,
-        Container,
-        Misc,
-        Count
-    };
+	enum class AllocCategory : UInt8 {
+		Object,
+		Texture,
+		RenderCmd,
+		Resource,
+		String,
+		Container,
+		Misc,
+		Count
+	};
 
-    struct CategoryStats {
-        std::atomic<Size_t> current_bytes{0};
-        std::atomic<Size_t> peak_bytes{0};
-        std::atomic<UInt64> alloc_count{0};
-        std::atomic<UInt64> dealloc_count{0};
+	enum class AllocTier : UInt8 {
+		Persistent,
+		Frame,
+		Scratch,
+		Count
+	};
 
-        void recordAlloc(Size_t size);
-        void recordFree(Size_t size);
-    };
+	enum class AllocTag : UInt8 {
+		Object,
+		RenderCmd,
+		Texture,
+		Resource,
+		Misc,
+		Count
+	};
 
-    class Memory {
-        static MallocAllocator s_fallback;
-        static LinearAllocator s_frame_allocator;
-        static IAllocator* s_allocators[static_cast<int>(AllocCategory::Count)];
-        static CategoryStats s_stats[static_cast<int>(AllocCategory::Count)];
+	struct TierStats {
+		std::atomic<Size_t> current_bytes{0};
+		std::atomic<Size_t> peak_bytes{0};
+		std::atomic<UInt64> alloc_count{0};
+		std::atomic<UInt64> dealloc_count{0};
 
-    public:
-        static void* Allocate(Size_t size, Size_t align, AllocCategory cat, const char* typeName = nullptr);
-        static void  Deallocate(void* p, Size_t size, AllocCategory cat);
+		void recordAlloc(Size_t size);
+		void recordFree(Size_t size);
+	};
 
-        static void SetAllocator(AllocCategory cat, IAllocator* allocator);
-        static IAllocator* GetAllocator(AllocCategory cat);
+	struct ThreadAllocator;
 
-        static const CategoryStats& GetStats(AllocCategory cat);
-        static void ResetFrame();
-        static void ResetAllStats();
-        static void DumpAll();
+	class Memory {
+		static MallocAllocator s_fallback;
 
-        static Size_t FrameUsedBytes();
-        static Size_t FrameBlockCount();
-        static Size_t FrameDefaultBlockSize();
-        static void FrameReserve(Size_t byte_size);
-    };
+		static TierStats s_tier_stats[static_cast<int>(AllocTier::Count)][static_cast<int>(AllocTag::Count)];
+		static std::atomic<UInt64> s_frame_epoch;
+		static std::vector<ThreadAllocator*> s_thread_allocators;
+		static std::mutex s_thread_allocators_mutex;
 
-    template <typename T>
-    inline constexpr AllocCategory categoryFor() {
-        return AllocCategory::Misc;
-    }
+	public:
+		static void Init();
+		static void Shutdown();
+
+		static void* Allocate(AllocTier tier, Size_t size, Size_t align,
+		                      AllocTag tag = AllocTag::Misc, const char* type_name = nullptr);
+		static void  Deallocate(AllocTier tier, void* p, Size_t size, AllocTag tag = AllocTag::Misc);
+
+		static void* AllocatePersistent(Size_t size, Size_t align, AllocTag tag = AllocTag::Object);
+		static void  DeallocatePersistent(void* p, Size_t size, AllocTag tag = AllocTag::Object);
+		static void* AllocateFrame(Size_t size, Size_t align, AllocTag tag = AllocTag::RenderCmd);
+		static void* AllocateScratch(Size_t size, Size_t align);
+
+		static void InitThread();
+		static void ShutdownThread();
+		static void AdvanceFrameEpoch();
+		static UInt64 CurrentFrameEpoch();
+
+		static void RegisterPool(AllocTag tag, Size_t block_size, Size_t block_align);
+
+		static const TierStats& GetStats(AllocTier tier, AllocTag tag = AllocTag::Misc);
+		static Size_t FrameUsedBytesTotal();
+
+		static void ResetAllStats();
+		static void DumpAll();
+
+		static void RegisterThreadAllocator(ThreadAllocator* ta);
+		static void UnregisterThreadAllocator(ThreadAllocator* ta);
+
+		static void* Allocate(Size_t size, Size_t align, AllocCategory cat, const char* typeName = nullptr);
+		static void  Deallocate(void* p, Size_t size, AllocCategory cat);
+
+		static void ResetFrame();
+	};
+
+	template <typename T>
+	inline constexpr AllocCategory categoryFor() {
+		return AllocCategory::Misc;
+	}
 
 } // namespace dodoe
 
 #define DODOE_NEW(T, cat, ...) \
-    (new (dodoe::Memory::Allocate(sizeof(T), alignof(T), cat, #T)) T(__VA_ARGS__))
+	(new (dodoe::Memory::Allocate(sizeof(T), alignof(T), cat, #T)) T(__VA_ARGS__))
 
 #define DODOE_DELETE(p, T, cat) \
-    do { if (p) { (p)->~T(); dodoe::Memory::Deallocate(p, sizeof(T), cat); } } while(0)
+	do { if (p) { (p)->~T(); dodoe::Memory::Deallocate(p, sizeof(T), cat); } } while(0)
