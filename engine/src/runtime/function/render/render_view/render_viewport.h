@@ -5,50 +5,29 @@
 #include "dopch.h"
 
 #include "runtime/core/utils/util.h"
-#include "runtime/function/window/window.h"
 #include "runtime/function/render/render_view/render_view_family.h"
-#include <optional>
 
 namespace dodoe {
 
-    struct RenderViewportCreateInfo {
-        Vector2f logical{640.0f, 360.0f};
-        Vector2i window{1, 1};
-        Vector2i pixel{1, 1};
-        Window* window_handle{nullptr};
-
-        RenderViewportCreateInfo() = default;
-        explicit RenderViewportCreateInfo(Window* in_window_handle) : window_handle(in_window_handle) { }
-    };
-
-    class DODOE_API RenderViewport : public Managed<RenderViewport, RenderViewportCreateInfo> {
-        friend class Managed<RenderViewport, RenderViewportCreateInfo>;
+    class RenderViewport {
         struct LetterboxMetrics {
             Rect viewport{};
             float scale{1.0f};
         };
 
-        Window* m_window{nullptr};
-
-        Rect m_viewport{};
-        Vector2f m_logical_size{};
-        Vector2i m_window_size{};
-        Vector2i m_pixel_size{};
+        Vector2f m_logical_size{640.0f, 360.0f};
+        Vector2i m_window_size{1, 1};
+        Vector2i m_pixel_size{1, 1};
+        Rect     m_viewport{};
         Vector2f m_viewport_size{};
-
-        bool m_window_dirty{false};
-        bool m_viewport_dirty{false};
-
-        std::optional<Matrix4f> m_overrideView;
-        std::optional<Matrix4f> m_overrideProj;
+        Bool     m_geometry_dirty{true};
 
     public:
+        RenderViewport() = default;
+        RenderViewport(Vector2f logical, Vector2i window, Vector2i pixel);
 
-        void update();
-        void clearDirtyFlags();
-        [[nodiscard]] bool dirty() const { return m_window_dirty || m_viewport_dirty; }
-        [[nodiscard]] bool isViewportDirty() const { return m_viewport_dirty; }
-        [[nodiscard]] bool isWindowDirty() const { return m_window_dirty; }
+        void resize(Vector2i window_size, Vector2i pixel_size);
+        void clearGeometryDirty() { m_geometry_dirty = false; }
 
         void setViewportRect(const Rect& viewport_rect);
         void setLogicalSize(const Vector2f& logical);
@@ -59,22 +38,15 @@ namespace dodoe {
         [[nodiscard]] const Vector2f& getLogicalSize() const { return m_logical_size; }
         [[nodiscard]] const Vector2i& getWindowSize() const { return m_window_size; }
         [[nodiscard]] const Vector2i& getPixelSize() const { return m_pixel_size; }
-        [[nodiscard]] const Rect& viewport() const { return m_viewport; }
+        [[nodiscard]] const Rect& getViewportRect() const { return m_viewport; }
+        [[nodiscard]] Bool isGeometryDirty() const { return m_geometry_dirty; }
 
         [[nodiscard]] RenderViewFamily buildViewFamily(const class RenderScene& scene, Float time, Float delta,
-                                                        const Matrix4f& view, const Matrix4f& proj) const;
+            const Matrix4f& view, const Matrix4f& proj, Bool show_editor_primitives = false) const;
         [[nodiscard]] Vector2f Window2World(const Vector2f& window_pos, const Matrix4f& view_proj) const;
 
-        void setCameraOverride(const Matrix4f& view, const Matrix4f& proj) { m_overrideView = view; m_overrideProj = proj; }
-        void clearCameraOverride() { m_overrideView.reset(); m_overrideProj.reset(); }
-        [[nodiscard]] bool hasCameraOverride() const { return m_overrideView.has_value(); }
-        [[nodiscard]] const Matrix4f& getOverrideView() const { return *m_overrideView; }
-        [[nodiscard]] const Matrix4f& getOverrideProj() const { return *m_overrideProj; }
-
     private:
-        bool initialize(const RenderViewportCreateInfo& info);
-        void shutdown();
         LetterboxMetrics computeLetterboxMetrics(const Vector2i& pixel_size, const Vector2f& logical_size);
     };
 
-} // dodoe
+} // namespace dodoe

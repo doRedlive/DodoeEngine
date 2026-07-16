@@ -5,8 +5,10 @@
 #include "framework/camera/EditorCamera.h"
 
 #include "runtime/function/render/render_system.h"
-#include "runtime/function/render/render_view/render_viewport.h"
-#include "runtime/core/channel/render_channel.h"
+#include "runtime/function/render/render_view/render_view_target.h"
+#include "runtime/function/render/render_view/render_view_manager.h"
+#include "runtime/function/render/render_view/camera_provider.h"
+#include "runtime/core/channel/camera_channel.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 
@@ -18,21 +20,26 @@ EditorViewport* ViewportService::registerViewport(ViewportKind kind, void* hostH
     auto* renderSys = m_ctx.systemContext()->getRenderSystem();
     if (!renderSys) return nullptr;
 
-    dodoe::RenderViewportCreateInfo info;
+    auto* viewMgr = renderSys->getViewManager();
+    if (!viewMgr) return nullptr;
+
+    dodoe::RenderViewTargetCreateInfo info;
     info.logical = dodoe::Vector2f(static_cast<float>(w), static_cast<float>(h));
     info.pixel   = dodoe::Vector2i(static_cast<int>(w * dpr), static_cast<int>(h * dpr));
     info.window  = dodoe::Vector2i(w, h);
 
-    auto backend = dodoe::RenderViewport::Create(info);
-    if (!backend) return nullptr;
+    if (kind == ViewportKind::Scene) {
+        info.camera = m_ctx.editorCameraProvider();
+    }
+
+    auto target = viewMgr->createViewTarget(info);
+    if (!target) return nullptr;
 
     auto vp = std::make_unique<EditorViewport>();
     vp->kind    = kind;
-    vp->backend = backend.get();
+    vp->backend = target;
     auto* ptr = vp.get();
     m_viewports.push_back(std::move(vp));
-
-    renderSys->getRenderViewports().push_back(std::move(backend));
     return ptr;
 }
 
@@ -42,13 +49,9 @@ void ViewportService::unregisterViewport(EditorViewport* vp)
 
     auto* renderSys = m_ctx.systemContext()->getRenderSystem();
     if (renderSys) {
-        auto& viewports = renderSys->getRenderViewports();
-        auto it = std::find_if(viewports.begin(), viewports.end(),
-                               [vp](const auto& e) { return e.get() == vp->backend; });
-        if (it != viewports.end()) {
-            auto scope = std::move(*it);
-            viewports.erase(it);
-            dodoe::RenderViewport::Destroy(scope);
+        auto* viewMgr = renderSys->getViewManager();
+        if (viewMgr) {
+            viewMgr->destroyViewTarget(vp->backend);
         }
     }
 
@@ -62,8 +65,9 @@ void ViewportService::onResized(EditorViewport* vp, int w, int h, float dpr)
 {
     if (!vp || !vp->backend) return;
     vp->backend->setLogicalSize(dodoe::Vector2f(static_cast<float>(w), static_cast<float>(h)));
-    vp->backend->setPixelSize(dodoe::Vector2i(static_cast<int>(w * dpr), static_cast<int>(h * dpr)));
-    vp->backend->setWindowSize(dodoe::Vector2i(w, h));
+    vp->backend->resize(
+        dodoe::Vector2i(w, h),
+        dodoe::Vector2i(static_cast<int>(w * dpr), static_cast<int>(h * dpr)));
 }
 
 void ViewportService::updateAndRenderAll(float dt)
@@ -74,11 +78,7 @@ void ViewportService::updateAndRenderAll(float dt)
         if (!vp->backend) continue;
 
         if (vp->kind == ViewportKind::Scene) {
-            dodoe::Matrix4f view = m_ctx.camera().view();
-            dodoe::Matrix4f proj = m_ctx.camera().projection();
-            vp->backend->setCameraOverride(view, proj);
-        } else {
-            vp->backend->clearCameraOverride();
+            m_ctx.camera().commitToRenderChannel();
         }
     }
 }

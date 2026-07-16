@@ -9,7 +9,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "framework/descriptor_table_manager.h"
 #include "framework/shared_render_service.h"
-#include "render_view/render_viewport.h"
+#include "render_view/render_view_manager.h"
 #include "render_pipeline/render_pipeline.h"
 #include "render_scene/render_scene.h"
 
@@ -31,7 +31,7 @@ namespace dodoe {
         Scope<GfxContext> m_gfx{nullptr};
         Scope<RenderScene> m_render_scene{nullptr};
         Scope<RenderPipeline> m_render_pipeline{nullptr};
-        DynamicArray<Scope<RenderViewport>> m_render_viewports{};
+        Scope<RenderViewManager> m_view_manager{nullptr};
         Scope<TextureManager> m_texture_manager{nullptr};
         Scope<DescriptorTableManager> m_descriptor_table{nullptr};
         Scope<SharedRenderService> m_shared_render_service{nullptr};
@@ -44,9 +44,7 @@ namespace dodoe {
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:
         [[nodiscard]] GfxContext* getGfx() const { return m_gfx.get(); }
-        [[nodiscard]] RenderViewport* getMainRenderViewport() const { return m_render_viewports.empty() ? nullptr : m_render_viewports[0].get(); }
-        [[nodiscard]] const DynamicArray<Scope<RenderViewport>>& getRenderViewports() const { return m_render_viewports; }
-        [[nodiscard]] DynamicArray<Scope<RenderViewport>>& getRenderViewports() { return m_render_viewports; }
+        [[nodiscard]] RenderViewManager* getViewManager() const { return m_view_manager.get(); }
         [[nodiscard]] RenderPipeline* getRenderingPipeline() const { return m_render_pipeline.get(); }
         [[nodiscard]] RenderScene* getRenderScene() const { return m_render_scene.get(); }
         [[nodiscard]] TextureManager* getTextureManager() const { return m_texture_manager.get(); }
@@ -58,9 +56,9 @@ namespace dodoe {
         void renderFrame(ThreadingMode mode, DrawThread* draw_thread);
 
     private:
-        bool initialize(const RenderSystemCreateInfo& info);
+        Bool initialize(const RenderSystemCreateInfo& info);
         void shutdown();
         void applyRenderCommand(RenderScene& scene, RenderCommand& cmd);
     };
 
-} // dodoe
+} // namespace dodoe

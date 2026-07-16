@@ -52,11 +52,15 @@ namespace dodoe {
         m_test_vertex_shader = load_shader(std::string("test_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Test VS");
         m_test_pixel_shader = load_shader(std::string("test_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Test PS");
         m_gpu_culling_compute_shader = load_shader(std::string("gpu_culling_pass") + comp_ext, GfxShaderType::Compute, "ShaderLibrary GpuCulling CS");
+        m_gizmo_vertex_shader = load_shader(std::string("gizmo_pass") + vert_ext, GfxShaderType::Vertex, "ShaderLibrary Gizmo VS");
+        m_gizmo_pixel_shader = load_shader(std::string("gizmo_pass") + frag_ext, GfxShaderType::Pixel, "ShaderLibrary Gizmo PS");
 
         DO_INFO("ShaderLibrary::initialize completed");
     }
 
     void ShaderLibrary::reset() {
+        m_gizmo_pixel_shader = nullptr;
+        m_gizmo_vertex_shader = nullptr;
         m_gpu_culling_compute_shader = nullptr;
         m_test_pixel_shader = nullptr;
         m_test_vertex_shader = nullptr;

@@ -8,45 +8,32 @@
 
 namespace dodoe {
 
-    bool RenderViewport::initialize(const RenderViewportCreateInfo& init_info) {
-        m_window = init_info.window_handle;
-        m_logical_size = Math::Max(Vector2f(1.0f, 1.0f), init_info.logical);
-        m_window_size = Math::Max(Vector2i(1, 1), init_info.window);
-        m_pixel_size = Math::Max(Vector2i(1, 1), init_info.pixel);
+    RenderViewport::RenderViewport(Vector2f logical, Vector2i window, Vector2i pixel) {
+        m_logical_size = Math::Max(Vector2f(1.0f, 1.0f), logical);
+        m_window_size  = Math::Max(Vector2i(1, 1), window);
+        m_pixel_size   = Math::Max(Vector2i(1, 1), pixel);
         m_viewport_size = Vector2f(static_cast<float>(m_pixel_size.x), static_cast<float>(m_pixel_size.y));
 
         const auto metrics = computeLetterboxMetrics(m_pixel_size, m_logical_size);
         m_viewport = metrics.viewport;
-        m_window_dirty = true;
-        m_viewport_dirty = true;
-        return true;
+        m_geometry_dirty = true;
     }
 
-    void RenderViewport::shutdown() {
-        m_window_dirty = false;
-        m_viewport_dirty = false;
-    }
+    void RenderViewport::resize(Vector2i window_size, Vector2i pixel_size) {
+        const Vector2i clamped_window = Math::Max(Vector2i(1, 1), window_size);
+        const Vector2i clamped_pixel  = Math::Max(Vector2i(1, 1), pixel_size);
 
-    void RenderViewport::update() {
-        const Vector2i new_window_size(m_window->getWidth(), m_window->getHeight());
-        const Vector2i new_pixel_size = m_window->getPixelSize();
-
-        if (new_window_size.x != m_window_size.x || new_window_size.y != m_window_size.y) {
-            setWindowSize(new_window_size);
+        if (clamped_window.x != m_window_size.x || clamped_window.y != m_window_size.y) {
+            setWindowSize(clamped_window);
         }
-        if (new_pixel_size.x != m_pixel_size.x || new_pixel_size.y != m_pixel_size.y) {
-            setPixelSize(new_pixel_size);
+        if (clamped_pixel.x != m_pixel_size.x || clamped_pixel.y != m_pixel_size.y) {
+            setPixelSize(clamped_pixel);
         }
 
-        if (m_window_dirty) {
+        if (m_geometry_dirty) {
             const auto metrics = computeLetterboxMetrics(m_pixel_size, m_logical_size);
             m_viewport = metrics.viewport;
         }
-    }
-
-    void RenderViewport::clearDirtyFlags() {
-        m_window_dirty = false;
-        m_viewport_dirty = false;
     }
 
     void RenderViewport::setLogicalSize(const Vector2f& logical) {
@@ -56,7 +43,7 @@ namespace dodoe {
         }
 
         m_logical_size = clamped;
-        m_viewport_dirty = true;
+        m_geometry_dirty = true;
 
         const auto metrics = computeLetterboxMetrics(m_pixel_size, m_logical_size);
         m_viewport = metrics.viewport;
@@ -69,7 +56,7 @@ namespace dodoe {
         }
 
         m_window_size = clamped;
-        m_window_dirty = true;
+        m_geometry_dirty = true;
     }
 
     void RenderViewport::setPixelSize(const Vector2i& pixel) {
@@ -79,7 +66,7 @@ namespace dodoe {
         }
 
         m_pixel_size = clamped;
-        m_window_dirty = true;
+        m_geometry_dirty = true;
     }
 
     void RenderViewport::setViewportRect(const Rect& viewport_rect) {
@@ -117,7 +104,7 @@ namespace dodoe {
 
         m_viewport = pixel_rect;
         m_viewport_size = pixel_rect.size;
-        m_viewport_dirty = true;
+        m_geometry_dirty = true;
     }
 
     RenderViewport::LetterboxMetrics RenderViewport::computeLetterboxMetrics(const Vector2i& pixel_size_i, const Vector2f& logical_size) {
@@ -151,14 +138,21 @@ namespace dodoe {
         return result;
     }
 
-    RenderViewFamily RenderViewport::buildViewFamily(const RenderScene& scene, const Float time, const Float delta,
-                                                       const Matrix4f& view_mat, const Matrix4f& proj_mat) const {
+    RenderViewFamily RenderViewport::buildViewFamily(const RenderScene& scene, Float time, Float delta,
+        const Matrix4f& view_mat, const Matrix4f& proj_mat, Bool show_editor_primitives) const {
         RenderViewFamily family{};
         family.setFrameTime(time, delta);
         auto& view = family.createView(Identifier("main_view"));
         view.setMatrices(view_mat, proj_mat);
-        view.setViewportRect(Vector4i(0, 0, m_pixel_size.x, m_pixel_size.y));
-        (void)scene;
+        view.setViewportRect(Vector4i(
+            static_cast<int>(m_viewport.pos.x),
+            static_cast<int>(m_viewport.pos.y),
+            static_cast<int>(m_viewport.size.x),
+            static_cast<int>(m_viewport.size.y)
+        ));
+        if (show_editor_primitives) {
+            view.enableViewFlag(RenderView::kShowEditorPrimitives);
+        }
         return family;
     }
 
@@ -196,4 +190,4 @@ namespace dodoe {
         return Vector2f(world_pos.x, world_pos.y);
     }
 
-} // dodoe
+} // namespace dodoe

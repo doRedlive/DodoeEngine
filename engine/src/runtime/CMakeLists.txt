@@ -80,6 +80,7 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC ${Vulkan_LIBRARIES}
         PUBLIC d3d12
         PUBLIC dxgi
+        PUBLIC mimalloc::mimalloc
 )
 
 if(DODOE_PYTHON_ENABLED)
@@ -122,3 +123,5 @@ endif()
 if(DODOE_PYTHON_ENABLED)
     add_dependencies(${TARGET_NAME} DodoePythonRuntimeFiles)
 endif()
+
+dodoe_set_folder(${TARGET_NAME} "Engine")

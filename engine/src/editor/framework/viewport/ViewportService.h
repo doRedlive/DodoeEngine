@@ -7,8 +7,7 @@
 #include <memory>
 
 namespace dodoe {
-    class RenderViewport;
-    class Window;
+    class RenderViewTarget;
 }
 
 namespace cakery {
@@ -18,9 +17,8 @@ class EditorContext;
 enum class ViewportKind { Scene, Game };
 
 struct EditorViewport {
-    ViewportKind          kind;
-    dodoe::Window*        window  = nullptr;
-    dodoe::RenderViewport* backend = nullptr;
+    ViewportKind            kind;
+    dodoe::RenderViewTarget* backend = nullptr;
     float aspect = 0.0f;
 };
 

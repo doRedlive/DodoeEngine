@@ -84,6 +84,7 @@ namespace dodoe {
         const auto frustum_planes = ExtractFrustumPlanes(m_view_projection_matrix);
 
         for (const auto& primitive : scene.getPrimitiveSceneInfos()) {
+            if (primitive.isEditorOnly() && !hasViewFlag(kShowEditorPrimitives)) continue;
             if (IsPrimitiveVisible(primitive, frustum_planes)) {
                 mesh_ext.visible_primitives.push_back(&primitive);
             }

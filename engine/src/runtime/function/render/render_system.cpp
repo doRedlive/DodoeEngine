@@ -6,23 +6,19 @@
 #include "render_settings.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/core/thread/draw_thread.h"
-#include "runtime/core/channel/render_channel.h"
 #include "runtime/core/context/system_context.h"
-#include "runtime/core/utils/uuid.h"
 #include "runtime/function/time/time_system.h"
 
 namespace dodoe {
 
-    bool RenderSystem::initialize(const RenderSystemCreateInfo& info) {
+    Bool RenderSystem::initialize(const RenderSystemCreateInfo& info) {
         m_window_manager = info.window_manager;
 
         auto window = m_window_manager->getWindow();
         auto backend_api = RenderSettings::GetRenderBackendApiType();
 
-        auto main_viewport = RenderViewport::Create(RenderViewportCreateInfo{window});
-        if (main_viewport) {
-            m_render_viewports.push_back(std::move(main_viewport));
-        }
+        m_view_manager = RenderViewManager::Create({m_window_manager});
+
         const bool enable_validation =
 #ifdef DO_DEBUG
             true;
@@ -53,10 +49,9 @@ namespace dodoe {
         SharedRenderService::Destroy(m_shared_render_service);
         TextureManager::Destroy(m_texture_manager);
         DescriptorTableManager::Destroy(m_descriptor_table);
-        for (auto& viewport : m_render_viewports) {
-            RenderViewport::Destroy(viewport);
-        }
-        m_render_viewports.clear();
+
+        RenderViewManager::Destroy(m_view_manager);
+
         m_gfx->waitForIdle();
         m_gfx->clearGarbage();
         GfxContext::Destroy(m_gfx);
@@ -69,23 +64,36 @@ namespace dodoe {
     void RenderSystem::renderFrame(const ThreadingMode mode, DrawThread* draw_thread) {
         auto* gfx = m_gfx.get();
         auto* pipeline = m_render_pipeline.get();
+        auto* view_mgr = m_view_manager.get();
 
-        for (auto& viewport : m_render_viewports) {
-            viewport->update();
-            if (viewport->isWindowDirty()) {
-                gfx->recreateSwapchain();
-                gfx->clearGarbage();
+        auto window = m_window_manager->getWindow();
+        Vector2i cur_window(window->getWidth(), window->getHeight());
+        Vector2i cur_pixel  = window->getPixelSize();
+
+        Bool any_window_dirty = false;
+        for (auto& target : view_mgr->getTargets()) {
+            const auto& vp = target->getViewport();
+            if (vp.getWindowSize().x != cur_window.x || vp.getWindowSize().y != cur_window.y ||
+                vp.getPixelSize().x != cur_pixel.x || vp.getPixelSize().y != cur_pixel.y) {
+                target->resize(cur_window, cur_pixel);
+                any_window_dirty = true;
             }
-            viewport->clearDirtyFlags();
+        }
+
+        if (any_window_dirty) {
+            gfx->recreateSwapchain();
+            gfx->clearGarbage();
+        }
+
+        for (auto& target : view_mgr->getTargets()) {
+            target->clearGeometryDirty();
         }
 
         auto* scene = m_render_scene.get();
 
         RenderCommand cmd;
-        Int32 cmd_count = 0;
         while (m_game_command_queue.tryPop(cmd)) {
             applyRenderCommand(*scene, cmd);
-            ++cmd_count;
         }
 
         UInt32 image_index = 0;
@@ -97,6 +105,8 @@ namespace dodoe {
         const Float frame_time = time_sys ? time_sys->current_time() : 0.0f;
         const Float frame_delta = time_sys ? time_sys->getDeltaTime() : 0.0f;
 
+        scene->flushUpdates();
+
         switch (mode) {
         case ThreadingMode::TripleThread: {
             FrameContext frame_ctx;
@@ -104,19 +114,16 @@ namespace dodoe {
             frame_ctx.command_list.setDevice(GDrawCommandList.getDevice());
             frame_ctx.command_list.beginFrame();
 
-
-            scene->flushUpdates();
-
-            auto& cam_data = GetMainCameraChannel().get<MainCameraData>();
-            for (auto& viewport : m_render_viewports) {
-                Matrix4f view = cam_data.view;
-                Matrix4f proj = cam_data.projection;
-                if (viewport->hasCameraOverride()) {
-                    view = viewport->getOverrideView();
-                    proj = viewport->getOverrideProj();
-                }
-                auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta, view, proj);
-                pipeline->render(view_family, *scene, image_index, frame_ctx.command_list);
+            for (auto& target : view_mgr->getTargets()) {
+                auto* cam = target->getCamera();
+                Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
+                Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
+                Bool show_editor = false;
+#ifdef DODOE_EDITOR_ENABLED
+                show_editor = cam && cam->isEditorCamera();
+#endif
+                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
+                pipeline->render(family, *scene, image_index, frame_ctx.command_list);
             }
             draw_thread->submit(std::move(frame_ctx));
             break;
@@ -127,19 +134,16 @@ namespace dodoe {
 
             GDrawCommandList.beginFrame();
 
-
-            scene->flushUpdates();
-
-            auto& cam_data = GetMainCameraChannel().get<MainCameraData>();
-            for (auto& viewport : m_render_viewports) {
-                Matrix4f view = cam_data.view;
-                Matrix4f proj = cam_data.projection;
-                if (viewport->hasCameraOverride()) {
-                    view = viewport->getOverrideView();
-                    proj = viewport->getOverrideProj();
-                }
-                auto view_family = viewport->buildViewFamily(*scene, frame_time, frame_delta, view, proj);
-                pipeline->render(view_family, *scene, image_index, GDrawCommandList);
+            for (auto& target : view_mgr->getTargets()) {
+                auto* cam = target->getCamera();
+                Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
+                Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
+                Bool show_editor = false;
+#ifdef DODOE_EDITOR_ENABLED
+                show_editor = cam && cam->isEditorCamera();
+#endif
+                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
+                pipeline->render(family, *scene, image_index, GDrawCommandList);
             }
             break;
         }
@@ -180,4 +184,4 @@ namespace dodoe {
         }
     }
 
-} // dodoe
+} // namespace dodoe

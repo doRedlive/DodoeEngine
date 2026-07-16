@@ -4,13 +4,16 @@
 
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/event/event_system.h"
-#include "runtime/core/thread/task_scheduler.h"
+#include "runtime/core/async/task_scheduler.h"
 #include "runtime/core/project/project.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/render_view/render_viewport.h"
+#include "runtime/function/render/render_view/camera_provider.h"
+#include "runtime/function/render/render_view/render_view_target.h"
+#include "runtime/function/render/render_view/render_view_manager.h"
 #include "runtime/function/log/log_system.h"
 
 #include "command/CommandStack.h"
@@ -48,6 +51,7 @@ EditorContext::EditorContext()
     m_selection  = std::make_unique<SelectionManager>();
     m_document   = std::make_unique<SceneDocument>(*this);
     m_camera     = std::make_unique<EditorCamera>();
+    m_editorCameraProvider = std::make_unique<dodoe::EditorCameraProvider>();
     m_gizmos     = std::make_unique<GizmoService>(*this);
     m_picking    = std::make_unique<PickingService>(*this);
     m_playMode   = std::make_unique<PlayModeController>(*this);
@@ -172,10 +176,13 @@ void EditorContext::onViewportResized(int w, int h, float dpr)
 
     auto* renderSys = ctx->getRenderSystem();
     if (renderSys) {
-        auto* vp = renderSys->getMainRenderViewport();
-        if (vp) {
-            vp->setLogicalSize(Vector2f(static_cast<float>(pixelW),
-                                         static_cast<float>(pixelH)));
+        auto* viewMgr = renderSys->getViewManager();
+        if (viewMgr) {
+            auto& targets = viewMgr->getTargets();
+            if (!targets.empty()) {
+                targets[0]->setLogicalSize(Vector2f(static_cast<float>(pixelW),
+                                                     static_cast<float>(pixelH)));
+            }
         }
     }
 }
@@ -199,7 +206,11 @@ dodoe::Scene* EditorContext::activeScene() const
 dodoe::RenderViewport* EditorContext::renderViewport() const
 {
     if (!m_ctx || !m_ctx->getRenderSystem()) return nullptr;
-    return m_ctx->getRenderSystem()->getMainRenderViewport();
+    auto* viewMgr = m_ctx->getRenderSystem()->getViewManager();
+    if (!viewMgr) return nullptr;
+    auto& targets = viewMgr->getTargets();
+    if (targets.empty()) return nullptr;
+    return const_cast<dodoe::RenderViewport*>(&targets[0]->getViewport());
 }
 
 } // namespace cakery

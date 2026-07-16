@@ -25,6 +25,7 @@ namespace dodoe {
         Matrix4f m_projection_matrix{1.0f};
         Matrix4f m_view_projection_matrix{1.0f};
         ViewExtensionContainer m_extensions{};
+        UInt8 m_view_flags{0};
 
     public:
         RenderView() = default;
@@ -36,6 +37,13 @@ namespace dodoe {
 
         void buildVisiblePrimitives(const RenderScene& scene);
         void buildVisibleSprites(const RenderScene& scene);
+
+        static constexpr UInt8 kShowEditorPrimitives = 1 << 0;
+
+        void setViewFlags(UInt8 flags) { m_view_flags = flags; }
+        void enableViewFlag(UInt8 flag) { m_view_flags |= flag; }
+        void disableViewFlag(UInt8 flag) { m_view_flags &= ~flag; }
+        [[nodiscard]] Bool hasViewFlag(UInt8 flag) const { return (m_view_flags & flag) != 0; }
 
         [[nodiscard]] Identifier getId() const { return m_id; }
         [[nodiscard]] const Vector4i& getViewportRect() const { return m_viewport_rect; }

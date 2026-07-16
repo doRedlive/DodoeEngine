@@ -12,6 +12,7 @@ namespace dodoe {
     class World;
     class Scene;
     class RenderViewport;
+    class EditorCameraProvider;
 }
 
 namespace cakery {
@@ -56,6 +57,7 @@ public:
     dodoe::World*          world()          const;
     dodoe::Scene*          activeScene()    const;
     dodoe::RenderViewport* renderViewport() const;
+    dodoe::EditorCameraProvider* editorCameraProvider() const { return m_editorCameraProvider.get(); }
 
     CommandStack&        commands()   { return *m_commands; }
     SelectionManager&    selection()  { return *m_selection; }
@@ -81,6 +83,7 @@ private:
     std::unique_ptr<SelectionManager>   m_selection;
     std::unique_ptr<SceneDocument>      m_document;
     std::unique_ptr<EditorCamera>       m_camera;
+    std::unique_ptr<dodoe::EditorCameraProvider> m_editorCameraProvider;
     std::unique_ptr<GizmoService>       m_gizmos;
     std::unique_ptr<PickingService>     m_picking;
     std::unique_ptr<PlayModeController> m_playMode;

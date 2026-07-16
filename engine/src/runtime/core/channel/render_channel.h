@@ -1,16 +1,15 @@
 // do@Redlive
 
+#pragma once
+
 #include "dopch.h"
 
 #include "base_channel.h"
+#include "camera_channel.h"
 
 namespace dodoe {
 
-    struct MainCameraData {
-        Matrix4f view{1.0f};
-        Matrix4f projection{1.0f};
-    };
-
+    using MainCameraData = CameraData;
     using MainCameraChannel = DataChannel<MainCameraData>;
 
     inline MainCameraChannel& GetMainCameraChannel() {
@@ -18,11 +17,4 @@ namespace dodoe {
         return channel;
     }
 
-    using EditorCameraChannel = DataChannel<MainCameraData>;
-
-    inline EditorCameraChannel& GetEditorCameraChannel() {
-        static EditorCameraChannel channel;
-        return channel;
-    }
-
-} // dodoe
+} // namespace dodoe

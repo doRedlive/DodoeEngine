@@ -55,7 +55,7 @@ namespace dodoe {
             }
 
             if (material && material->base_color_texture.isValid()) {
-                auto texture = texture_manager->findTexture(static_cast<InstanceID>(material->base_color_texture.getID()));
+                auto* texture = static_cast<Texture2D*>(texture_manager->findTexture(static_cast<InstanceID>(material->base_color_texture.getID())));
                 if (texture && texture->getDescriptorIndex() >= 0) {
                     texture_index = static_cast<UInt32>(texture->getDescriptorIndex());
                 }
@@ -69,7 +69,7 @@ namespace dodoe {
                 return 0;
             }
 
-            auto texture = texture_manager->findTexture(static_cast<InstanceID>(material->metallic_roughness_texture.getID()));
+            auto* texture = static_cast<Texture2D*>(texture_manager->findTexture(static_cast<InstanceID>(material->metallic_roughness_texture.getID())));
             if (texture && texture->getDescriptorIndex() >= 0) {
                 return static_cast<UInt32>(texture->getDescriptorIndex());
             }

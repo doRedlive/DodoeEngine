@@ -41,6 +41,9 @@ namespace dodoe {
         PrimitiveMobility m_mobility{PrimitiveMobility::Static};
         Bool m_visible{true};
         Bool m_cast_shadow{true};
+#ifdef DODOE_EDITOR_ENABLED
+        Bool m_editor_only{false};
+#endif
         UInt32 m_instance_count{1};
         DynamicArray<InstanceSceneData> m_instance_scene_data{};
 
@@ -81,6 +84,16 @@ namespace dodoe {
         [[nodiscard]] PrimitiveMobility getMobility() const { return m_mobility; }
         [[nodiscard]] Bool isVisible() const { return m_visible; }
         [[nodiscard]] Bool castsShadow() const { return m_cast_shadow; }
+#ifdef DODOE_EDITOR_ENABLED
+        void setEditorOnly(Bool v) { m_editor_only = v; }
+#endif
+        [[nodiscard]] Bool isEditorOnly() const {
+#ifdef DODOE_EDITOR_ENABLED
+            return m_editor_only;
+#else
+            return false;
+#endif
+        }
         [[nodiscard]] const Ref<Material>& getMaterial(const Size_t material_index) const {
             static const Ref<Material> k_null_material{};
             return material_index < m_materials.size() ? m_materials[material_index] : k_null_material;

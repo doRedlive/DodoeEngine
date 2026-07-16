@@ -10,7 +10,6 @@ namespace dodoe {
 
     class DODOE_API DebugDraw {
     public:
-        // ---- Primitive submission ----
         static void Line(const Vector3f& a, const Vector3f& b, const Color& c);
         static void Circle(const Vector3f& center, const Vector3f& normal, float radius, const Color& c, int segments = 64);
         static void Box(const Matrix4f& transform, const Color& c);
@@ -19,10 +18,8 @@ namespace dodoe {
         static void Sphere(const Vector3f& center, float radius, const Color& c, int segments = 16);
         static void ScreenSpaceQuad(const Vector2f& center, const Vector2f& size, const Color& c);
 
-        // Grid helpers
         static void DrawGrid(const Vector3f& origin, float size, int divisions, const Color& c);
 
-        // ---- Lifecycle ----
         static void Flush();
         static void Clear();
 

@@ -8,6 +8,9 @@
 #include "render_feature/render_builtin_features.h"
 #include "render_feature/sprite_feature.h"
 #include "render_feature/imgui_feature.h"
+#ifdef DODOE_EDITOR_ENABLED
+#include "render_feature/gizmo_feature.h"
+#endif
 #include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/directional_shadow_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
@@ -60,6 +63,9 @@ namespace dodoe {
         m_features.push_back(create_scope<LightingFeature>());
         m_features.push_back(create_scope<PostProcessFeature>());
         m_features.push_back(create_scope<SpriteFeature>());
+#ifdef DODOE_EDITOR_ENABLED
+        m_features.push_back(create_scope<GizmoFeature>());
+#endif
         m_features.push_back(create_scope<ImGuiFeature>());
         m_features.push_back(create_scope<PresentFeature>());
         return true;

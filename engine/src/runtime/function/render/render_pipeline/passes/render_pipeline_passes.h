@@ -14,6 +14,10 @@ namespace dodoe {
     class RenderGraphBuilder;
     class RenderView;
 
+#ifdef DODOE_EDITOR_ENABLED
+    class GizmoRenderResource;
+#endif
+
     namespace RenderPipelinePass {
 
         void RenderGBufferPass(RenderGraphBuilder& graph, const RenderView& view, const RenderPassContext& pass_context);
@@ -31,6 +35,10 @@ namespace dodoe {
         void RenderPresentPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
 
         void RenderTestPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context);
+
+#ifdef DODOE_EDITOR_ENABLED
+        void RenderGizmoPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, GizmoRenderResource& resources);
+#endif
 
     } // namespace RenderPipelinePass
 

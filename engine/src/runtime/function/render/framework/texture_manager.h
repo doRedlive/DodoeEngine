@@ -23,21 +23,24 @@ namespace dodoe {
 
         GfxContext* m_gfx{nullptr};
         DescriptorTableManager* m_descriptor_table{nullptr};
-        Ref<Texture> m_fallback{};
-        UnorderedMap<InstanceID, Ref<Texture>> m_texture_cache{};
+        ObjHandle<Texture2D> m_fallback{};
+        UnorderedMap<InstanceID, ObjHandle<Texture2D>> m_texture2d_cache{};
+        UnorderedMap<InstanceID, ObjHandle<TextureCubemap>> m_cubemap_cache{};
         std::mutex m_mutex{};
 
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        Ref<Texture> createTexture(const String& path, DrawCommandList& cmd_list);
+        Texture2D* createTexture(const String& path, DrawCommandList& cmd_list);
         void createFallbackTexture();
 
     public:
-        [[nodiscard]] Ref<Texture> loadTexture(const String& path, DrawCommandList& cmd_list);
-        [[nodiscard]] Ref<Texture> loadTexture(const String& path);
-        [[nodiscard]] Ref<Texture> findTexture(InstanceID id);
-        [[nodiscard]] Ref<Texture> getFallback() const;
+        [[nodiscard]] Texture2D* loadTexture(const String& path, DrawCommandList& cmd_list);
+        [[nodiscard]] Texture2D* loadTexture(const String& path);
+        [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths);
+        [[nodiscard]] Texture* findTexture(InstanceID id);
+        [[nodiscard]] Texture2D* findTexture2D(InstanceID id);
+        [[nodiscard]] Texture2D* getFallback() const;
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
         void removeTexture(InstanceID id);
     };

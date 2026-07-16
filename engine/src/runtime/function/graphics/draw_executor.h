@@ -2,7 +2,7 @@
 
 #include "dopch.h"
 
-#include "runtime/core/thread/frame_context.h"
+#include "runtime/function/render/frame_context.h"
 
 namespace dodoe {
 

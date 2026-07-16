@@ -11,32 +11,68 @@
 namespace dodoe {
 
     class DODOE_API Texture : public Object {
-        Int32 m_width{0};
-        Int32 m_height{0};
+    protected:
         String m_path{};
         GfxTextureHandle m_gpu_handle{};
-        DescriptorIndex m_descriptor_index{-1};
 
     public:
         Texture() = default;
+        explicit Texture(const FileID& file_id)
+            : Object(file_id) {}
+        Texture(const FileID& file_id, const UUID& uuid)
+            : Object(file_id, uuid) {}
 
-        [[nodiscard]] const char* getObjectTypeName() const override { return "Texture"; }
-        [[nodiscard]] Int32 getWidth() const { return m_width; }
-        [[nodiscard]] Int32 getHeight() const { return m_height; }
+        [[nodiscard]] virtual Int32 getWidth() const = 0;
+        [[nodiscard]] virtual Int32 getHeight() const = 0;
         [[nodiscard]] const String& getPath() const { return m_path; }
         [[nodiscard]] GfxTextureHandle getGpuHandle() const { return m_gpu_handle; }
-        [[nodiscard]] DescriptorIndex getDescriptorIndex() const { return m_descriptor_index; }
 
-        void setDimensions(const Int32 w, const Int32 h) { m_width = w; m_height = h; }
         void setPath(const String& p) { m_path = p; }
         void setGpuHandle(GfxTextureHandle handle) { m_gpu_handle = std::move(handle); }
-        void setDescriptorIndex(DescriptorIndex index) { m_descriptor_index = index; }
-
-        [[nodiscard]] static Ref<Texture> Load(const String& path);
 
     protected:
         void onDestroy() override {}
-        void Trace(TraceVisitor& v) const override {}
+        void trace(TraceVisitor& v) const override {}
+    };
+
+    class DODOE_API Texture2D : public Texture {
+        Int32 m_width{0};
+        Int32 m_height{0};
+        DescriptorIndex m_descriptor_index{-1};
+
+    public:
+        Texture2D() = default;
+        explicit Texture2D(const FileID& file_id)
+            : Texture(file_id) {}
+        Texture2D(const FileID& file_id, const UUID& uuid)
+            : Texture(file_id, uuid) {}
+
+        [[nodiscard]] const char* getObjectTypeName() const override { return "Texture2D"; }
+        [[nodiscard]] Int32 getWidth() const override { return m_width; }
+        [[nodiscard]] Int32 getHeight() const override { return m_height; }
+        [[nodiscard]] DescriptorIndex getDescriptorIndex() const { return m_descriptor_index; }
+
+        void setDimensions(const Int32 w, const Int32 h) { m_width = w; m_height = h; }
+        void setDescriptorIndex(DescriptorIndex index) { m_descriptor_index = index; }
+
+        [[nodiscard]] static Texture2D* Load(const String& path);
+    };
+
+    class DODOE_API TextureCubemap : public Texture {
+        Int32 m_face_size{0};
+
+    public:
+        TextureCubemap() = default;
+        explicit TextureCubemap(const FileID& file_id)
+            : Texture(file_id) {}
+
+        [[nodiscard]] const char* getObjectTypeName() const override { return "TextureCubemap"; }
+        [[nodiscard]] Int32 getWidth() const override { return m_face_size; }
+        [[nodiscard]] Int32 getHeight() const override { return m_face_size; }
+
+        void setFaceSize(const Int32 size) { m_face_size = size; }
+
+        [[nodiscard]] static TextureCubemap* LoadFromFaces(const DynamicArray<String>& face_paths);
     };
 
 } // dodoe

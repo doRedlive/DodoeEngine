@@ -29,6 +29,8 @@ namespace dodoe {
         GfxShaderHandle m_test_vertex_shader{};
         GfxShaderHandle m_test_pixel_shader{};
         GfxShaderHandle m_gpu_culling_compute_shader{};
+        GfxShaderHandle m_gizmo_vertex_shader{};
+        GfxShaderHandle m_gizmo_pixel_shader{};
 
     public:
         void initialize(GfxContext& gfx_context);
@@ -53,6 +55,8 @@ namespace dodoe {
         [[nodiscard]] const GfxShaderHandle& getTestVertexShader() const { return m_test_vertex_shader; }
         [[nodiscard]] const GfxShaderHandle& getTestPixelShader() const { return m_test_pixel_shader; }
         [[nodiscard]] const GfxShaderHandle& getGpuCullingComputeShader() const { return m_gpu_culling_compute_shader; }
+        [[nodiscard]] const GfxShaderHandle& getGizmoVertexShader() const { return m_gizmo_vertex_shader; }
+        [[nodiscard]] const GfxShaderHandle& getGizmoPixelShader() const { return m_gizmo_pixel_shader; }
     };
 
 } // dodoe

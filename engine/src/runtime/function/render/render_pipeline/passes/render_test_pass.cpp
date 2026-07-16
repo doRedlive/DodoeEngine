@@ -77,7 +77,7 @@ namespace dodoe::RenderPipelinePass {
                 command_list.commitBarriers();
 
                 auto* tm = pass_context.getTextureManager();
-                Ref<Texture> loaded_tex;
+                Texture2D* loaded_tex = nullptr;
                 GfxTextureHandle test_tex;
                 if (tm) {
                     loaded_tex = tm->loadTexture("engine/res/pictures/grm.jpg", command_list);

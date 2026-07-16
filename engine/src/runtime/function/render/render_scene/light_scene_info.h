@@ -39,7 +39,7 @@ namespace dodoe {
     };
 
     struct SkyLightData {
-        Ref<Texture> cubemap{};
+        ObjHandle<TextureCubemap> cubemap{};
         Float intensity{1.0f};
     };
 
