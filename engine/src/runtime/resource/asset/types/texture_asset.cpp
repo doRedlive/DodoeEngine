@@ -15,7 +15,7 @@ namespace dodoe {
 
     void TextureAsset::unloadRuntime() {
         m_blob.free();
-        m_gpu_texture.reset();
+        m_gpu_texture = {};
     }
 
 } // dodoe

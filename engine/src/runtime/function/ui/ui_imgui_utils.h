@@ -11,17 +11,17 @@
 
 namespace dodoe::ui {
 
-[[nodiscard]] inline Ref<Texture> resolveTexture(const Image& image) {
+[[nodiscard]] inline Texture2D* resolveTexture(const Image& image) {
     auto* texture_manager = GetRenderSystem()->getTextureManager();
     if (!texture_manager) {
         return nullptr;
     }
 
-    Ref<Texture> texture = nullptr;
+    Texture2D* texture = nullptr;
     if (image.getTextureId() != entt::null && !image.getTexturePath().empty()) {
-        texture = Texture::Load(std::string(image.getTexturePath()));
+        texture = Texture2D::Load(std::string(image.getTexturePath()));
     } else if (image.getTextureId() != entt::null) {
-        texture = texture_manager->findTexture(static_cast<InstanceID>(image.getTextureId()));
+        texture = texture_manager->findTexture2D(static_cast<InstanceID>(image.getTextureId()));
     } else if (!image.getTexturePath().empty()) {
         texture = texture_manager->loadTexture(std::string(image.getTexturePath()));
     }

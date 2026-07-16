@@ -140,11 +140,11 @@ Vector2f ResourceManagerFacade::getTextureSize(identifier texture_id, std::strin
         return {0.0f, 0.0f};
     }
 
-    Ref<Texture> texture = nullptr;
+    Texture2D* texture = nullptr;
     if (texture_id != entt::null && !texture_path.empty()) {
-        texture = Texture::Load(std::string(texture_path));
+        texture = Texture2D::Load(std::string(texture_path));
     } else if (texture_id != entt::null) {
-        texture = texture_manager->findTexture(static_cast<InstanceID>(texture_id));
+        texture = texture_manager->findTexture2D(static_cast<InstanceID>(texture_id));
     } else if (!texture_path.empty()) {
         texture = texture_manager->loadTexture(std::string(texture_path));
     }

@@ -60,8 +60,7 @@ Scope<UIElement> UIElement::removeChild(UIElement* child_ptr) {
                            });
 
     if (it != m_children.end()) {
-        Scope<UIElement> removed_child = std::move(*it);
-        m_children.erase(it);
+        Scope<UIElement> removed_child = extract_scope(m_children, it);
         removed_child->setParent(nullptr);
         invalidateLayout();
         return removed_child;
@@ -72,11 +71,10 @@ Scope<UIElement> UIElement::removeChild(UIElement* child_ptr) {
 Scope<UIElement> UIElement::removeChildById(identifier id) {
     auto it = std::find_if(m_children.begin(), m_children.end(),
                            [id](const Scope<UIElement>& p) {
-                                return p->getId() == id; 
+                                return p->getId() == id;
                            });
     if (it != m_children.end()) {
-        Scope<UIElement> removed_child = std::move(*it);
-        m_children.erase(it);
+        Scope<UIElement> removed_child = extract_scope(m_children, it);
         removed_child->setParent(nullptr);
         invalidateLayout();
         return removed_child;

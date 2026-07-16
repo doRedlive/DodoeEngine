@@ -24,7 +24,7 @@ namespace sandbox {
         auto world = dodoe::GetWorld();
         auto cur_scene = world->getCurrentScene();
 
-        auto tex = dodoe::Texture::Load("engine/res/pictures/grm.jpg");
+        auto tex = dodoe::Texture2D::Load("engine/res/pictures/grm.jpg");
         if (!tex) {
             DO_ERROR("Failed to load texture!");
             return;

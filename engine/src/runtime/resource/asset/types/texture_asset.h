@@ -9,11 +9,11 @@
 
 namespace dodoe {
 
-    class Texture;
+    class Texture2D;
 
     class TextureAsset : public Asset {
         TextureBlob m_blob{};
-        Ref<Texture> m_gpu_texture{};
+        ObjHandle<Texture2D> m_gpu_texture{};
         Float m_ppu{100.0f};
         Bool m_flip_vertical{true};
 
@@ -27,7 +27,7 @@ namespace dodoe {
         [[nodiscard]] Bool isReadOnly() const override { return true; }
 
         [[nodiscard]] const TextureBlob& getBlob() const { return m_blob; }
-        [[nodiscard]] Ref<Texture> getGPUTexture() const { return m_gpu_texture; }
+        [[nodiscard]] Texture2D* getGPUTexture() const { return m_gpu_texture.get(); }
         [[nodiscard]] Float getPPU() const { return m_ppu; }
         [[nodiscard]] Bool getFlipVertical() const { return m_flip_vertical; }
         [[nodiscard]] Int32 getWidth() const { return m_blob.width; }

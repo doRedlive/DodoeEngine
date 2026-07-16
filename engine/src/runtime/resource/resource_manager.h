@@ -1,4 +1,5 @@
-// Created by GreenMuffin on 2025/10/28.
+// do@Redlive
+
 #pragma once
 
 #include "dopch.h"
@@ -42,9 +43,6 @@ namespace dodoe {
         ResourceManager() = default;
         Scope<AssetManager> m_assetManager{nullptr};
     };
-
-    // AssetHandle template method implementations
-    // (require full AssetManager and ResourceManager definitions)
 
     template<typename T>
     T* AssetHandle<T>::get() const {

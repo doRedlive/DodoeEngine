@@ -14,7 +14,7 @@
 #include "types/scene_asset.h"
 
 #include "runtime/core/meta/serializer/serializer.h"
-#include "runtime/core/thread/task_scheduler.h"
+#include "runtime/core/async/task_scheduler.h"
 #include "runtime/resource/file/file_id.h"
 
 #include <shared_mutex>
