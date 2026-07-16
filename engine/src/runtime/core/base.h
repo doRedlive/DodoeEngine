@@ -20,7 +20,7 @@
 
 namespace dodoe {
 
-    enum class AllocCategory : UInt8;
+    enum class AllocTag : uint8_t;
     class Memory;
 
     template <typename T>
@@ -55,7 +55,7 @@ namespace dodoe {
         void destroy() {
             if (m_ptr) {
                 m_ptr->~T();
-                Memory::Deallocate(m_ptr, sizeof(T), AllocCategory::Misc);
+                Memory::DeallocatePersistent(m_ptr, sizeof(T), AllocTag::Object);
                 m_ptr = nullptr;
             }
         }
@@ -63,8 +63,20 @@ namespace dodoe {
 
     template <typename T, typename... Args>
     Scope<T> create_scope(Args&&... args) {
-        void* mem = Memory::Allocate(sizeof(T), alignof(T), AllocCategory::Object);
+        void* mem = Memory::AllocatePersistent(sizeof(T), alignof(T), AllocTag::Object);
         return Scope<T>(new (mem) T(std::forward<Args>(args)...));
+    }
+
+    template <typename T>
+    Scope<T> move_scope(Scope<T>& scope) {
+        return std::move(scope);
+    }
+
+    template <typename Container>
+    auto extract_scope(Container& c, typename Container::iterator it) {
+        auto scope = std::move(*it);
+        c.erase(it);
+        return scope;
     }
 
     template <typename T>
@@ -123,7 +135,7 @@ namespace dodoe {
                 m_ctrl->obj.~T();
                 m_ctrl->strong.store(0, std::memory_order_relaxed);
                 if (m_ctrl->weak.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    Memory::Deallocate(m_ctrl, sizeof(ControlBlock), AllocCategory::Object);
+                    Memory::DeallocatePersistent(m_ctrl, sizeof(ControlBlock), AllocTag::Object);
                 }
             }
         }
@@ -131,9 +143,9 @@ namespace dodoe {
 
     template <typename T, typename... Args>
     Ref<T> create_ref(Args&&... args) {
-        void* mem = Memory::Allocate(sizeof(typename Ref<T>::ControlBlock),
+        void* mem = Memory::AllocatePersistent(sizeof(typename Ref<T>::ControlBlock),
                                       alignof(typename Ref<T>::ControlBlock),
-                                      AllocCategory::Object);
+                                      AllocTag::Object);
         auto* cb = new (mem) typename Ref<T>::ControlBlock(std::forward<Args>(args)...);
         return Ref<T>(cb);
     }
@@ -187,7 +199,7 @@ namespace dodoe {
         void incWeak() { if (m_ctrl) m_ctrl->weak.fetch_add(1, std::memory_order_relaxed); }
         void decWeak() {
             if (m_ctrl && m_ctrl->weak.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                Memory::Deallocate(m_ctrl, sizeof(ControlBlock), AllocCategory::Object);
+                Memory::DeallocatePersistent(m_ctrl, sizeof(ControlBlock), AllocTag::Object);
             }
         }
     };
@@ -223,26 +235,7 @@ namespace dodoe {
     using UInt32 = uint32_t;
     using UInt64 = uint64_t;
 
-    using String = std::string;
     using StringView = std::string_view;
-
-    template <typename T>
-    using DynamicArray = std::vector<T>;
-
-    template <typename T, size_t N>
-    using StaticArray = std::array<T, N>;
-
-    template <typename TKey, typename TValue, typename THash = std::hash<TKey>, typename TEqual = std::equal_to<TKey>>
-    using UnorderedMap = std::unordered_map<TKey, TValue, THash, TEqual>;
-
-    template <typename T, typename THash = std::hash<T>, typename TEqual = std::equal_to<T>>
-    using UnorderedSet = std::unordered_set<T, THash, TEqual>;
-
-    template <typename TKey, typename TValue>
-    using Dictionary = UnorderedMap<TKey, TValue> ;
-
-    template <typename T1, typename T2>
-    using Pair = std::pair<T1, T2>;
 
 
     using Vector2f = glm::vec2;

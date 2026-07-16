@@ -1,6 +1,8 @@
 // do@Redlive
 
 #include "task_scheduler.h"
+#include "runtime/core/memory/memory.h"
+#include "runtime/core/memory/thread_allocator.h"
 
 namespace dodoe {
 
@@ -30,7 +32,14 @@ namespace dodoe {
     }
 
     void TaskScheduler::workerLoop() {
+        Memory::InitThread();
         while (true) {
+            UInt64 cur = Memory::CurrentFrameEpoch();
+            ThreadAllocator* ta = threadAllocatorPtr();
+            if (ta && ta->last_reset_epoch.exchange(cur) != cur) {
+                ta->frame.reset();
+            }
+
             std::function<void()> task;
             {
                 std::unique_lock<std::mutex> lock(m_queue_mutex);
@@ -38,6 +47,7 @@ namespace dodoe {
                     return m_stop || !m_tasks.empty();
                 });
                 if (m_stop && m_tasks.empty()) {
+                    Memory::ShutdownThread();
                     return;
                 }
                 task = std::move(m_tasks.front());

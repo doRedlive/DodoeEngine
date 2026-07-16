@@ -43,7 +43,6 @@ namespace dodoe {
         DrawCommand* m_tail{nullptr};
         GfxDeviceHandle m_device{};
         GfxCommandList* m_immediate_target{nullptr};
-        std::recursive_mutex m_enqueue_mutex{};
 
     public:
         void beginImmediateFrame(GfxCommandList& cmd) { m_immediate_target = &cmd; }
@@ -79,7 +78,6 @@ namespace dodoe {
             static_assert(std::is_base_of_v<DrawCommand, TCommand>);
             static_assert(alignof(TCommand) <= alignof(std::max_align_t));
 
-            std::lock_guard<std::recursive_mutex> lock(m_enqueue_mutex);
             void* memory = allocate(sizeof(TCommand), alignof(TCommand));
             auto* command = new (memory) TCommand(std::forward<TArgs>(args)...);
             appendCommand(command);
@@ -94,16 +92,12 @@ namespace dodoe {
         void endFrame();
 
         void reset();
-        void reserve(Size_t byte_size);
         void append(DrawCommandList&& other);
         void execute(GfxCommandList& command_list) const;
         void execute(const GfxCommandListHandle& command_list) const;
 
         [[nodiscard]] Bool isEmpty() const;
         [[nodiscard]] Size_t commandCount() const;
-        [[nodiscard]] Size_t usedByteSize() const;
-        [[nodiscard]] Size_t blockCount() const;
-        [[nodiscard]] Size_t defaultBlockSize() const;
 
         void open();
         void close();

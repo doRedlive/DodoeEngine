@@ -2,14 +2,10 @@
 
 #include "sky_light_system.h"
 
-#include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/render/renderer.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
 #include "runtime/function/render/framework/texture.h"
-#include "runtime/resource/parser/texture_blob.h"
-#include "runtime/resource/file/file_system.h"
-#include "runtime/core/utils/common.h"
 
 namespace dodoe {
 
@@ -72,50 +68,10 @@ namespace dodoe {
         }
     }
 
-    Ref<Texture> SkyLightSystem::loadCubemap(const DynamicArray<String>& paths) {
-        auto& app = Application::Self();
-        auto* rs = app.context().getRenderSystem();
-        if (!rs || !rs->getGfx()) return nullptr;
-        if (paths.size() < 6) return nullptr;
-
-        const auto device = GDrawCommandList.getDevice();
-        constexpr ui32 kFaceCount = 6;
-
-        std::array<TextureBlob, kFaceCount> faces{};
-        for (ui32 i = 0; i < kFaceCount; ++i) {
-            auto fp = FileSystem::relative2absolute(paths[i]);
-            faces[i].load(fp, false);
-            if (!faces[i].isValid() || faces[i].width != faces[i].height) return nullptr;
-        }
-
-        auto desc = GfxTextureDesc()
-            .setDimension(GfxTextureDimension::TextureCube)
-            .setWidth(static_cast<UInt32>(faces[0].width))
-            .setHeight(static_cast<UInt32>(faces[0].height))
-            .setArraySize(kFaceCount)
-            .setMipLevels(1)
-            .setFormat(GfxFormat::RGBA32_FLOAT)
-            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
-            .setDebugName("SkyLight Cubemap");
-        auto cubemap = GDrawCommandList.createTexture(desc);
-        if (!cubemap) return nullptr;
-
-        auto cmd = device->createCommandList();
-        cmd->open();
-        DynamicArray<float> top, bottom;
-        for (ui32 i = 0; i < kFaceCount; ++i) {
-            Size_t rp = static_cast<Size_t>(faces[i].width) * 4u * sizeof(Float);
-            const void* px = faces[i].pixels;
-            if (i == 2) { top = RotateCubemapFaceCW(static_cast<const float*>(faces[i].pixels), faces[i].width, faces[i].height); px = top.data(); }
-            else if (i == 3) { bottom = RotateCubemapFaceCCW(static_cast<const float*>(faces[i].pixels), faces[i].width, faces[i].height); px = bottom.data(); }
-            cmd->writeTexture(cubemap->getRHIHandle(), i, 0, px, rp);
-        }
-        cmd->close();
-        device->executeCommandList(cmd);
-
-        auto texture = create_ref<Texture>();
-        texture->setGpuHandle(cubemap);
-        return texture;
+    TextureCubemap* SkyLightSystem::loadCubemap(const DynamicArray<String>& paths) {
+        auto* tm = GetRenderSystem()->getTextureManager();
+        if (!tm) return nullptr;
+        return tm->loadCubemapTexture(paths);
     }
 
 } // dodoe

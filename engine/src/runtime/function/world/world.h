@@ -9,8 +9,10 @@
 #include "registry.h"
 
 #include "runtime/core/base.h"
+#include "runtime/core/async/task_graph.h"
 #include "scene.h"
 #include "systems/system.h"
+#include "world_commands.h"
 
 namespace dodoe {
 
@@ -45,6 +47,14 @@ namespace dodoe {
 
         std::vector<Ref<System>> m_runtime_systems{};
         std::vector<Ref<System>> m_simulation_systems{};
+
+        TaskGraph m_runtime_task_graph{};
+        TaskGraph m_simulation_task_graph{};
+        WorldCommands m_command_buffer{};
+        bool m_task_graph_dirty{true};
+
+        static bool s_force_sequential;
+
     public:
         World() = default;
 
@@ -55,7 +65,7 @@ namespace dodoe {
         void finalize();
 
         void switchState() { m_state = m_state == WorldState::Runtime ? WorldState::Simulation : WorldState::Runtime; }
-        void setState(WorldState state) { m_state = state; } 
+        void setState(WorldState state) { m_state = state; }
         WorldState getState() const { return m_state; }
 
         Scene* createScene(const std::string& name);
@@ -73,6 +83,9 @@ namespace dodoe {
         void registerRuntimeSystem(Ref<System> system);
         void registerSimulationSystem(Ref<System> system);
 
+        static void SetForceSequential(bool v) { s_force_sequential = v; }
+        [[nodiscard]] static bool IsForceSequential() { return s_force_sequential; }
+
     private:
         bool initialize(const WorldCreateInfo& create_info);
         void shutdown();
@@ -82,6 +95,8 @@ namespace dodoe {
 
         bool setupSystems();
         void cleanupSystems();
+
+        void buildTaskGraphs();
 
         void onRuntimeStart(Registry& reg);
         void onRuntimeUpdate(Registry& reg, float dt);

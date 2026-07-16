@@ -3,8 +3,6 @@
 #include "dopch.h"
 
 #include "runtime/function/render/render_settings.h"
-#include "runtime/function/render/render_command.h"
-#include "runtime/function/graphics/gfx.h"
 
 #include <thread>
 #include <mutex>
@@ -12,12 +10,13 @@
 
 namespace dodoe {
 
-    class RenderSystem;
     class DrawThread;
     class GfxContext;
 
+    using RenderFrameTask = std::function<void()>;
+
     class RenderThread {
-        RenderSystem* m_render_system{};
+        RenderFrameTask m_frame_task;
         DrawThread* m_draw_thread{};
         ThreadingMode m_mode{ThreadingMode::TripleThread};
         std::thread m_thread{};
@@ -28,19 +27,16 @@ namespace dodoe {
         std::condition_variable m_cv{};
 
     public:
-        RenderThread() = default;
+        explicit RenderThread(RenderFrameTask task);
         ~RenderThread();
 
         RenderThread(const RenderThread&) = delete;
         RenderThread& operator=(const RenderThread&) = delete;
 
-        void start(RenderSystem* render_system, DrawThread* draw_thread);
-        void start(RenderSystem* render_system, GfxDeviceHandle device, GfxContext* gfx);
-        void setupForDirect(RenderSystem* render_system, GfxDeviceHandle device, GfxContext* gfx);
+        void start(ThreadingMode mode);
         void stop();
         void submitAndWait();
         void executeFrameOnce();
-        void enqueueRenderCommand(RenderCommand&& cmd);
 
         [[nodiscard]] ThreadingMode getMode() const { return m_mode; }
 
@@ -48,4 +44,4 @@ namespace dodoe {
         void loop();
     };
 
-} // dodoe
+} // namespace dodoe

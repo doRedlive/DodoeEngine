@@ -8,12 +8,12 @@ public class MapImportSystem : CakeSystem
 {
     private bool _imported = false;
 
-    public void Start()
+    public override void OnCreate()
     {
 
     }
 
-    public void Update()
+    public override void OnUpdate()
     {
         if (_imported) return;
         _imported = true;

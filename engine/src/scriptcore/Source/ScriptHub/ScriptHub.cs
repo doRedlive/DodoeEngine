@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 
 public static partial class ScriptHub
 {
-    private static readonly Dictionary<long, object> ObjectRegistry = new();
+    internal static readonly Dictionary<long, object> ObjectRegistry = new();
     private static long NextHandle = 1;
 
     private static readonly Dictionary<string, Type> SystemTypeCache = new();
@@ -23,9 +23,9 @@ public static partial class ScriptHub
         {
             "scan_types"            => ScanAssemblyTypes(args, result),
             "create_instance"       => CreateInstance(args, result),
-            "invoke_start"          => InvokeLifecycle(args, "Start"),
-            "invoke_update"         => InvokeLifecycle(args, "Update"),
-            "invoke_finalize"       => InvokeLifecycle(args, "Finalize"),
+            "invoke_start"          => InvokeSystemOnCreate(args),
+            "invoke_update"         => InvokeSystemOnUpdate(args),
+            "invoke_finalize"       => InvokeSystemOnDestroy(args),
             "get_field"             => GetField(args, result),
             "set_field"             => SetField(args),
             "snapshot"              => SnapshotAll(args, result),

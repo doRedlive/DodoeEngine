@@ -1,27 +1,22 @@
 namespace GreenCake;
 
-using System;
-using System.Linq;
-using System.Reflection;
-
 public static partial class ScriptHub
 {
-    private static unsafe int InvokeLifecycle(void** args, string methodName)
+    private static unsafe int InvokeSystemOnCreate(void** args)
     {
-        var systemTypes = ObjectRegistry.Values
-            .Where(o => o.GetType().IsSubclassOf(typeof(CakeSystem)))
-            .ToList();
+        SystemDispatcher.OnCreate();
+        return 1;
+    }
 
-        foreach (var system in systemTypes)
-        {
-            var m = system.GetType().GetMethod(methodName,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
-            if (m != null && m.GetParameters().Length == 0)
-            {
-                try { m.Invoke(system, null); }
-                catch (Exception e) { Debug.LogError($"{methodName} error in {system.GetType().Name}: {e}"); }
-            }
-        }
+    private static unsafe int InvokeSystemOnUpdate(void** args)
+    {
+        SystemDispatcher.OnUpdate();
+        return 1;
+    }
+
+    private static unsafe int InvokeSystemOnDestroy(void** args)
+    {
+        SystemDispatcher.OnDestroy();
         return 1;
     }
 }

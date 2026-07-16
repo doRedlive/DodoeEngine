@@ -6,7 +6,7 @@ public class GameControllerSystem : CakeSystem
 {
     private GameObject _player;
 
-    public void Start()
+    public override void OnCreate()
     {
         _player = GameObject.Create("Player");        
         _player.AddComponent<PlayerController>();

@@ -9,6 +9,7 @@
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_system.h"
 #include "runtime/core/meta/serializer/serializer.h"
+#include "runtime/core/async/task_scheduler.h"
 
 #include "systems/animation2d_system.h"
 #include "systems/camera_system.h"
@@ -24,6 +25,136 @@
 #include "systems/tilemap_renderer_system.h"
 
 namespace dodoe {
+
+    bool World::s_force_sequential = false;
+
+    namespace {
+
+        void AddEdgeHelper(
+            DynamicArray<DynamicArray<Size_t>>& edges,
+            DynamicArray<Int32>& indegree,
+            Size_t from,
+            Size_t to)
+        {
+            if (from == to) return;
+            edges[from].push_back(to);
+            indegree[to] += 1;
+        }
+
+        void BuildGraphForSystems(
+            TaskGraph& graph,
+            const std::vector<Ref<System>>& systems)
+        {
+            graph.reset();
+
+            const Size_t count = systems.size();
+            if (count == 0) return;
+
+            DynamicArray<SystemAccess> accesses(count);
+            for (Size_t i = 0; i < count; i++) {
+                if (systems[i]) {
+                    accesses[i] = systems[i]->getAccess();
+                }
+            }
+
+            for (Size_t i = 0; i < count; i++) {
+                graph.addNode(String{}, {});
+            }
+
+            UnorderedMap<entt::id_type, Int32> producer{};
+            UnorderedMap<entt::id_type, DynamicArray<Size_t>> readers{};
+
+            for (Size_t i = 0; i < count; i++) {
+                const auto& access = accesses[i];
+
+                for (const auto type_hash : access.writes) {
+                    auto prod_it = producer.find(type_hash);
+                    if (prod_it != producer.end() && prod_it->second >= 0) {
+                        graph.addEdge(
+                            static_cast<TaskGraph::NodeId>(prod_it->second),
+                            static_cast<TaskGraph::NodeId>(i));
+                    }
+
+                    auto rd_it = readers.find(type_hash);
+                    if (rd_it != readers.end()) {
+                        for (const auto reader_idx : rd_it->second) {
+                            graph.addEdge(
+                                static_cast<TaskGraph::NodeId>(reader_idx),
+                                static_cast<TaskGraph::NodeId>(i));
+                        }
+                        rd_it->second.clear();
+                    }
+
+                    producer[type_hash] = static_cast<Int32>(i);
+                }
+
+                for (const auto type_hash : access.reads) {
+                    auto prod_it = producer.find(type_hash);
+                    if (prod_it != producer.end() && prod_it->second >= 0) {
+                        graph.addEdge(
+                            static_cast<TaskGraph::NodeId>(prod_it->second),
+                            static_cast<TaskGraph::NodeId>(i));
+                    }
+                    readers[type_hash].push_back(i);
+                }
+            }
+
+            graph.compile();
+        }
+
+        void ExecuteSystemsParallel(
+            const TaskGraph& graph,
+            const std::vector<Ref<System>>& systems,
+            Registry& reg,
+            float dt,
+            WorldCommands& cmd_buf)
+        {
+            if (World::IsForceSequential()) {
+                for (auto& sys : systems) {
+                    if (sys) {
+                        sys->update(reg, dt);
+                    }
+                }
+                cmd_buf.apply(reg);
+                cmd_buf.reset();
+                return;
+            }
+
+            const auto& levels = graph.getLevels();
+            auto& scheduler = TaskScheduler::Self();
+
+            for (const auto& level : levels) {
+                if (level.size() == 1) {
+                    const auto idx = level[0];
+                    auto& sys = systems[idx];
+                    if (sys) {
+                        sys->update(reg, dt);
+                    }
+                }
+                else {
+                    std::atomic<Size_t> completed{0};
+
+                    for (const auto idx : level) {
+                        scheduler.submit([&systems, &reg, dt, idx, &completed]() {
+                            auto& sys = systems[idx];
+                            if (sys) {
+                                sys->update(reg, dt);
+                            }
+                            completed.fetch_add(1, std::memory_order_relaxed);
+                        });
+                    }
+
+                    while (completed.load(std::memory_order_relaxed) < level.size()) {
+                        std::this_thread::yield();
+                    }
+                }
+            }
+
+            cmd_buf.apply(reg);
+            cmd_buf.reset();
+        }
+
+    } // anonymous namespace
 
     bool World::initialize(const WorldCreateInfo& create_info) {
         m_name = create_info.name;
@@ -118,6 +249,7 @@ namespace dodoe {
     void World::cleanupSystems() {
         m_runtime_systems.clear();
         m_simulation_systems.clear();
+        m_task_graph_dirty = true;
     }
 
     void World::start() {
@@ -171,7 +303,7 @@ namespace dodoe {
         }
     }
 
-    Scene* World::createScene(const std::string& name) { 
+    Scene* World::createScene(const std::string& name) {
         for (const auto& existing_scene : m_scenes) {
             if (existing_scene && existing_scene->getName() == name) {
                 return existing_scene.get();
@@ -286,11 +418,19 @@ namespace dodoe {
     void World::registerRuntimeSystem(Ref<System> system) {
         if (!system) return;
         m_runtime_systems.push_back(std::move(system));
+        m_task_graph_dirty = true;
     }
 
     void World::registerSimulationSystem(Ref<System> system) {
         if (!system) return;
         m_simulation_systems.push_back(std::move(system));
+        m_task_graph_dirty = true;
+    }
+
+    void World::buildTaskGraphs() {
+        BuildGraphForSystems(m_runtime_task_graph, m_runtime_systems);
+        BuildGraphForSystems(m_simulation_task_graph, m_simulation_systems);
+        m_task_graph_dirty = false;
     }
 
     void World::onRuntimeStart(Registry& reg) {
@@ -302,11 +442,10 @@ namespace dodoe {
     }
 
     void World::onRuntimeUpdate(Registry& reg, const float dt) {
-        for (auto& sys : m_runtime_systems) {
-            if (sys) {
-                sys->update(reg, dt);
-            }
+        if (m_task_graph_dirty) {
+            buildTaskGraphs();
         }
+        ExecuteSystemsParallel(m_runtime_task_graph, m_runtime_systems, reg, dt, m_command_buffer);
     }
 
     void World::onRuntimeFinalize(Registry& reg) {
@@ -326,11 +465,10 @@ namespace dodoe {
     }
 
     void World::onSimulationUpdate(Registry& reg, const float dt) {
-        for (auto& sys : m_simulation_systems) {
-            if (sys) {
-                sys->update(reg, dt);
-            }
+        if (m_task_graph_dirty) {
+            buildTaskGraphs();
         }
+        ExecuteSystemsParallel(m_simulation_task_graph, m_simulation_systems, reg, dt, m_command_buffer);
     }
 
     void World::onSimulationFinalize(Registry& reg) {

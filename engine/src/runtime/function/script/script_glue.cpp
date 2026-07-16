@@ -176,7 +176,7 @@ namespace dodoe {
 
         static int native_texture_load(const char* path) {
             if (!path || path[0] == '\0') return 0;
-            auto tex = Texture::Load(String(path));
+            auto tex = Texture2D::Load(String(path));
             return tex ? (int)tex->getInstanceID() : 0;
         }
 

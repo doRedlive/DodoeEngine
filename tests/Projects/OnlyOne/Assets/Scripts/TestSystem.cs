@@ -8,7 +8,7 @@ public class TestSystem : CakeSystem
     private GameObject _testSprite;
     private SpriteRendererComponent _spriteRenderer; 
 
-    public void Start()
+    public override void OnCreate()
     {
         // _testSprite = GameObject.Create("GrmSprite");
         // _testSprite.AddComponent<HierarchyComponent>();

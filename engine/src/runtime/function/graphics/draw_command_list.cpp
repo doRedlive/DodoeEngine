@@ -77,12 +77,7 @@ namespace dodoe {
         m_head = nullptr;
         m_tail = nullptr;
         m_command_count = 0;
-        Memory::ResetFrame();
-    }
-
-    void DrawCommandList::reserve(Size_t byte_size) {
-        if (byte_size == 0) return;
-        Memory::FrameReserve(byte_size);
+        Memory::AdvanceFrameEpoch();
     }
 
     void DrawCommandList::append(DrawCommandList&& other) {
@@ -121,18 +116,6 @@ namespace dodoe {
 
     Size_t DrawCommandList::commandCount() const {
         return m_command_count;
-    }
-
-    Size_t DrawCommandList::usedByteSize() const {
-        return Memory::FrameUsedBytes();
-    }
-
-    Size_t DrawCommandList::blockCount() const {
-        return Memory::FrameBlockCount();
-    }
-
-    Size_t DrawCommandList::defaultBlockSize() const {
-        return Memory::FrameDefaultBlockSize();
     }
 
     void DrawCommandList::open() {
@@ -994,7 +977,6 @@ namespace dodoe {
     }
 
     void DrawCommandList::appendCommand(DrawCommandList::DrawCommand* command) {
-        std::lock_guard<std::recursive_mutex> lock(m_enqueue_mutex);
         DO_ASSERT(command != nullptr, "DrawCommandList command is null");
 
         command->m_next = nullptr;
@@ -1020,10 +1002,9 @@ namespace dodoe {
     }
 
     void* DrawCommandList::allocate(Size_t size, Size_t alignment) {
-        std::lock_guard<std::recursive_mutex> lock(m_enqueue_mutex);
         DO_ASSERT(size > 0, "DrawCommandList allocate size is zero");
         DO_ASSERT(alignment <= alignof(std::max_align_t), "DrawCommandList alignment exceeds max alignment");
-        return Memory::Allocate(size, alignment, AllocCategory::RenderCmd);
+        return Memory::AllocateFrame(size, alignment, AllocTag::RenderCmd);
     }
 
 } // dodoe

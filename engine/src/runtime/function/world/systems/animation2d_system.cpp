@@ -41,7 +41,7 @@ namespace dodoe {
                 continue;
             }
 
-            auto* tex = static_cast<Texture*>(Object::FindObjectFromInstanceID(current_frame.texture_id));
+            auto* tex = static_cast<Texture2D*>(Object::FindObjectFromInstanceID(current_frame.texture_id));
             if (tex) {
                 sprite_renderer.texture = PPtr<Texture>(tex->getFileID(), tex->getUUID(), current_frame.texture_id);
             }

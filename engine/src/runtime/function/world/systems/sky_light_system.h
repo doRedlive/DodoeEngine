@@ -19,7 +19,7 @@ namespace dodoe {
     private:
         bool syncSkyLight(Entity entity);
         void pruneRemoved(const std::unordered_set<UUID>& active);
-        Ref<Texture> loadCubemap(const DynamicArray<String>& paths);
+        TextureCubemap* loadCubemap(const DynamicArray<String>& paths);
     };
 
 } // dodoe

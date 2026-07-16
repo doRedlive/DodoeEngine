@@ -2,7 +2,7 @@ namespace GreenCake;
 
 internal class CakeBehaviourSystem : CakeSystem
 {
-    public void Update()
+    public override void OnUpdate()
     {
         GameObjectManager.ProcessLifecycle(Time.DeltaTime);
     }

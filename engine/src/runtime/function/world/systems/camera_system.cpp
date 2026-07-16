@@ -3,7 +3,8 @@
 #include "camera_system.h"
 
 #include "runtime/core/math/math.h"
-#include "runtime/core/channel/render_channel.h"
+#include "runtime/core/channel/camera_channel.h"
+#include "runtime/core/utils/tags.h"
 
 namespace dodoe {
 
@@ -14,10 +15,10 @@ namespace dodoe {
 
         auto view = reg.view<Camera2dComponent, TransformComponent, TagComponent>();
 
-        for (auto entity : view) {
-            const auto& tag = reg.get<TagComponent>(entity).tag;
-            if (tag != "PrimaryCamera") continue;
+        auto& registry = GetCameraRegistry();
+        Size_t camera_index = 0;
 
+        for (auto entity : view) {
             auto& cam = reg.get<Camera2dComponent>(entity);
             auto& tf  = reg.get<TransformComponent>(entity);
             if (!cam.dirty && !tf.dirty) continue;
@@ -42,14 +43,17 @@ namespace dodoe {
                 cam.projection_matrix = Math::Ortho(-half_w, half_w, -half_h, half_h, cam.near_plane, cam.far_plane);
             }
 
-            auto& ch = GetMainCameraChannel().get<MainCameraData>();
-            ch.view = cam.view_matrix;
-            ch.projection = cam.projection_matrix;
+            if (camera_index < kMaxCameras) {
+                registry.cameras[camera_index].view = cam.view_matrix;
+                registry.cameras[camera_index].projection = cam.projection_matrix;
+                ++camera_index;
+            }
 
             cam.dirty = false;
             tf.dirty = false;
-            return;
         }
+
+        registry.active_count = static_cast<UInt32>(camera_index);
     }
 
 } // dodoe

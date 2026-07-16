@@ -46,10 +46,10 @@ namespace dodoe {
 
         auto* texture_manager = GetRenderSystem()->getTextureManager();
 
-        Ref<Texture> texture = nullptr;
+        Texture2D* texture = nullptr;
         const String& tex_path = sr.texture.getFileID().getPath();
         if (!tex_path.empty()) {
-            texture = Texture::Load(tex_path);
+            texture = Texture2D::Load(tex_path);
         }
 
         if (!texture) {

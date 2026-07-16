@@ -4,6 +4,9 @@
 
 #include "dopch.h"
 
+#include "runtime/core/memory/memory.h"
+#include "runtime/core/memory/thread_allocator.h"
+
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -21,12 +24,20 @@ namespace dodoe {
         ThreadPool(size_t thread_size) : stop_(false) {
             for (size_t i = 0; i < thread_size; i++) {
                 threads_.emplace_back([this]{
+                    Memory::InitThread();
                     while (true) {
-                        std::function<void()> task; 
+                        UInt64 cur = Memory::CurrentFrameEpoch();
+                        ThreadAllocator* ta = threadAllocatorPtr();
+                        if (ta && ta->last_reset_epoch.exchange(cur) != cur) {
+                            ta->frame.reset();
+                        }
+
+                        std::function<void()> task;
                         {
                             std::unique_lock<std::mutex> lock(queue_mutex_);
                             condition_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
                             if (stop_ && tasks_.empty()) {
+                                Memory::ShutdownThread();
                                 return;
                             }
                             task = std::move(tasks_.front());

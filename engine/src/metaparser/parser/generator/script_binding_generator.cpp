@@ -215,7 +215,7 @@ namespace Generator
                         "if (auto* c = TryGetComponent<" + compName + ">(uuid)) { "
                         "if (auto* obj = c->" + fieldName + ".get()) return (int)obj->getInstanceID(); "
                         "const auto& file_id = c->" + fieldName + ".getFileID(); "
-                        "if (file_id.isValid()) { if (auto obj = Texture::Load(file_id.getPath())) return (int)obj->getInstanceID(); } "
+                        "if (file_id.isValid()) { if (auto obj = Texture2D::Load(file_id.getPath())) return (int)obj->getInstanceID(); } "
                         "} return 0;";
                 } else {
                     info.cpp_getter_body =

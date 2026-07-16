@@ -1,4 +1,6 @@
 #include "draw_thread.h"
+#include "runtime/core/memory/memory.h"
+#include "runtime/core/memory/thread_allocator.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
@@ -35,6 +37,7 @@ namespace dodoe {
     }
 
     void DrawThread::loop() {
+        Memory::InitThread();
         while (true) {
             FrameContext frame_ctx;
             if (!m_frame_queue.pop(frame_ctx, [this] { return !m_running; })) {
@@ -42,6 +45,7 @@ namespace dodoe {
             }
             m_executor.execute(m_device, m_gfx, frame_ctx);
         }
+        Memory::ShutdownThread();
     }
 
 } // dodoe
