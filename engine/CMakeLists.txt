@@ -1,4 +1,5 @@
 set(ENGINE_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+include(${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake/DodoeCommon.cmake)
 
 option(DODOE_EDITOR "Build the Cakery editor" ON)
 
@@ -20,11 +21,11 @@ endif()
 
 set(CODEGEN_TARGET "DodoePreCompile")
 include(src/precompile/precompile.cmake)
-set_target_properties("${CODEGEN_TARGET}" PROPERTIES FOLDER "Engine")
+dodoe_set_folder("${CODEGEN_TARGET}" "Engine/Tools")
 
 add_dependencies(DodoeRuntime "${CODEGEN_TARGET}")
 add_dependencies("${CODEGEN_TARGET}" "DodoeParser")
 
-if(TARGET GreenCake)
-    add_dependencies(DodoeRuntime GreenCake)
+if(TARGET GreenCakeBuild)
+    add_dependencies(DodoeRuntime GreenCakeBuild)
 endif()

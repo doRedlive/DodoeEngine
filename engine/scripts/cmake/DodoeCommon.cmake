@@ -1,0 +1,12 @@
+if(NOT DEFINED DODOE_ROOT_DIR)
+    message(FATAL_ERROR "DODOE_ROOT_DIR must be defined by top-level CMakeLists.txt")
+endif()
+if(NOT DEFINED BINARY_ROOT_DIR)
+    message(FATAL_ERROR "BINARY_ROOT_DIR must be defined by top-level CMakeLists.txt")
+endif()
+
+function(dodoe_set_folder target folder)
+    if(TARGET "${target}")
+        set_target_properties("${target}" PROPERTIES FOLDER "${folder}")
+    endif()
+endfunction()

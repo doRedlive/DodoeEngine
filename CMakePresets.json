@@ -7,7 +7,7 @@
   },
   "configurePresets": [
     {
-      "name": "windows-base",
+      "name": "base-common",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_STANDARD": "20",
@@ -17,108 +17,102 @@
       }
     },
     {
-      "name": "msvc-editor-debug",
-      "displayName": "MSVC Editor Debug",
-      "inherits": "windows-base",
+      "name": "gen-msvc",
+      "hidden": true,
       "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
-      "binaryDir": "${sourceDir}/build/editor-debug",
-      "installDir": "${sourceDir}/bin/editor-debug",
+      "architecture": "x64"
+    },
+    {
+      "name": "gen-ninja",
+      "hidden": true,
+      "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe"
+      }
+    },
+    {
+      "name": "cfg-debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "cfg-release",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "mode-editor",
+      "hidden": true,
+      "cacheVariables": {
         "DODOE_EDITOR": "ON"
       }
+    },
+    {
+      "name": "mode-sandbox",
+      "hidden": true,
+      "cacheVariables": {
+        "DODOE_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "msvc-editor-debug",
+      "displayName": "MSVC Editor Debug",
+      "inherits": ["base-common", "gen-msvc", "cfg-debug", "mode-editor"],
+      "binaryDir": "${sourceDir}/build/editor-debug",
+      "installDir": "${sourceDir}/bin/editor-debug"
     },
     {
       "name": "msvc-editor-release",
       "displayName": "MSVC Editor Release",
-      "inherits": "windows-base",
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
+      "inherits": ["base-common", "gen-msvc", "cfg-release", "mode-editor"],
       "binaryDir": "${sourceDir}/build/editor-release",
-      "installDir": "${sourceDir}/bin/editor-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "DODOE_EDITOR": "ON"
-      }
+      "installDir": "${sourceDir}/bin/editor-release"
     },
     {
       "name": "ninja-editor-debug",
       "displayName": "Ninja Editor Debug",
-      "inherits": "windows-base",
-      "generator": "Ninja",
+      "inherits": ["base-common", "gen-ninja", "cfg-debug", "mode-editor"],
       "binaryDir": "${sourceDir}/build/editor-debug",
-      "installDir": "${sourceDir}/bin/editor-debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
-        "DODOE_EDITOR": "ON"
-      }
+      "installDir": "${sourceDir}/bin/editor-debug"
     },
     {
       "name": "ninja-editor-release",
       "displayName": "Ninja Editor Release",
-      "inherits": "windows-base",
-      "generator": "Ninja",
+      "inherits": ["base-common", "gen-ninja", "cfg-release", "mode-editor"],
       "binaryDir": "${sourceDir}/build/editor-release",
-      "installDir": "${sourceDir}/bin/editor-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
-        "DODOE_EDITOR": "ON"
-      }
+      "installDir": "${sourceDir}/bin/editor-release"
     },
     {
       "name": "msvc-sandbox-debug",
       "displayName": "MSVC Sandbox Debug",
-      "inherits": "windows-base",
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
+      "inherits": ["base-common", "gen-msvc", "cfg-debug", "mode-sandbox"],
       "binaryDir": "${sourceDir}/build/sandbox-debug",
-      "installDir": "${sourceDir}/bin/sandbox-debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "DODOE_EDITOR": "OFF"
-      }
+      "installDir": "${sourceDir}/bin/sandbox-debug"
     },
     {
       "name": "msvc-sandbox-release",
       "displayName": "MSVC Sandbox Release",
-      "inherits": "windows-base",
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
+      "inherits": ["base-common", "gen-msvc", "cfg-release", "mode-sandbox"],
       "binaryDir": "${sourceDir}/build/sandbox-release",
-      "installDir": "${sourceDir}/bin/sandbox-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "DODOE_EDITOR": "OFF"
-      }
+      "installDir": "${sourceDir}/bin/sandbox-release"
     },
     {
       "name": "ninja-sandbox-debug",
       "displayName": "Ninja Sandbox Debug",
-      "inherits": "windows-base",
-      "generator": "Ninja",
+      "inherits": ["base-common", "gen-ninja", "cfg-debug", "mode-sandbox"],
       "binaryDir": "${sourceDir}/build/sandbox-debug",
-      "installDir": "${sourceDir}/bin/sandbox-debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
-        "DODOE_EDITOR": "OFF"
-      }
+      "installDir": "${sourceDir}/bin/sandbox-debug"
     },
     {
       "name": "ninja-sandbox-release",
       "displayName": "Ninja Sandbox Release",
-      "inherits": "windows-base",
-      "generator": "Ninja",
+      "inherits": ["base-common", "gen-ninja", "cfg-release", "mode-sandbox"],
       "binaryDir": "${sourceDir}/build/sandbox-release",
-      "installDir": "${sourceDir}/bin/sandbox-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
-        "DODOE_EDITOR": "OFF"
-      }
+      "installDir": "${sourceDir}/bin/sandbox-release"
     }
   ],
   "buildPresets": [

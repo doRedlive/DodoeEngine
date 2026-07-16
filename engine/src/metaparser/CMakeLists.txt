@@ -3,8 +3,6 @@ set(TARGET_NAME DodoeParser)
 
 #set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../CMake")
 
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
 file(GLOB_RECURSE HEADERS "*.h")
 file(GLOB_RECURSE SOURCES "*.cpp")
 

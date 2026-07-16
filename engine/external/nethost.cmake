@@ -95,6 +95,7 @@ if(NOT TARGET dodoe_nethost)
     target_include_directories(dodoe_nethost INTERFACE ${NETHOST_INCLUDE_DIR})
     target_link_libraries(dodoe_nethost INTERFACE ${NETHOST_LIBRARY})
 endif()
+set_target_properties(dodoe_nethost PROPERTIES FOLDER "ThirdParty/nethost")
 
 if(NOT TARGET nethost::nethost)
     add_library(nethost::nethost ALIAS dodoe_nethost)

@@ -22,8 +22,8 @@ target_link_libraries(${TARGET_NAME}
         PRIVATE DodoeRuntime
 )
 
-if(TARGET GreenCake)
-    add_dependencies(${TARGET_NAME} GreenCake)
+if(TARGET GreenCakeBuild)
+    add_dependencies(${TARGET_NAME} GreenCakeBuild)
 endif()
 
 target_include_directories(${TARGET_NAME}

@@ -18,7 +18,7 @@ target_include_directories(EditorFramework
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${FRAMEWORK_SOURCES})
-set_target_properties(EditorFramework PROPERTIES FOLDER "Editor")
+set_target_properties(EditorFramework PROPERTIES FOLDER "Engine/Editor")
 
 file(GLOB_RECURSE PROPERTY_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/property/*.cpp
@@ -35,7 +35,7 @@ target_include_directories(EditorProperty
 )
 set_target_properties(EditorProperty PROPERTIES AUTOMOC ON)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${PROPERTY_SOURCES})
-set_target_properties(EditorProperty PROPERTIES FOLDER "Editor")
+set_target_properties(EditorProperty PROPERTIES FOLDER "Engine/Editor")
 
 set(CAKERY_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Cakery/main.cpp

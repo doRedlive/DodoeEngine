@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 4.1)
-
 find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
 
 set(CS_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -21,6 +19,12 @@ file(GLOB_RECURSE CS_SOURCES
     CONFIGURE_DEPENDS
     ${CS_PROJECT_DIR}/Source/*.cs
 )
+
+include_external_msproject(GreenCake ${CS_PROJECT_FILE}
+    TYPE FAE04EC0-301F-11D3-BF4B-00C04F79EFBC
+    PLATFORM AnyCPU
+)
+set_target_properties(GreenCake PROPERTIES FOLDER "ScriptCore")
 
 add_custom_command(
     OUTPUT ${CS_OUTPUT_DLL}
@@ -58,8 +62,9 @@ add_custom_command(
     COMMENT "Copy GreenCake.runtimeconfig.json -> DodoeRuntime.runtimeconfig.json"
 )
 
-add_custom_target(GreenCake ALL
+add_custom_target(GreenCakeBuild ALL
     DEPENDS ${TARGET_COPY_DIR}/GreenCake.dll
     DEPENDS ${TARGET_COPY_DIR}/DodoeRuntime.runtimeconfig.json
 )
-set_target_properties(GreenCake PROPERTIES FOLDER "Scripts")
+set_target_properties(GreenCakeBuild PROPERTIES FOLDER "ScriptCore")
+add_dependencies(GreenCake GreenCakeBuild)

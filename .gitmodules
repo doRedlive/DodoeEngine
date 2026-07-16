@@ -4,3 +4,6 @@
 [submodule "engine/external/DirectX-Headers"]
 	path = engine/external/DirectX-Headers
 	url = https://github.com/microsoft/DirectX-Headers.git
+[submodule "engine/external/mimalloc"]
+	path = engine/external/mimalloc
+	url = https://github.com/microsoft/mimalloc.git
