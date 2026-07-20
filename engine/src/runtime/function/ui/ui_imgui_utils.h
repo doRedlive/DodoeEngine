@@ -7,7 +7,7 @@
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/utils/util.h"
 #include "runtime/function/render/renderer.h"
-#include "runtime/function/render/framework/texture_manager.h"
+#include "runtime/function/render/texture/texture_manager.h"
 
 namespace dodoe::ui {
 

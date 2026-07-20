@@ -4,9 +4,23 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/framework/mesh.h"
+#include "runtime/resource/file/file_id.h"
 
 namespace dodoe {
+
+    struct MeshVertex {
+        Vector3f position;
+        Vector3f normal;
+        Vector2f tex_coords;
+        Vector3f tangent;
+        Vector3f bitangent;
+    };
+
+    struct MeshData {
+        DynamicArray<MeshVertex> vertices;
+        DynamicArray<UInt32> indices;
+        DynamicArray<FileID> textures;
+    };
 
     struct MeshBlob {
         Ref<MeshData> data{nullptr};
@@ -21,4 +35,4 @@ namespace dodoe {
         [[nodiscard]] bool isValid() const { return data != nullptr; }
     };
 
-} // dodoe
+} // namespace dodoe

@@ -7,7 +7,7 @@
 #include "render_object.h"
 #include "sprite_scene_info.h"
 #include "runtime/core/object/pptr.h"
-#include "runtime/function/render/framework/texture.h"
+#include "runtime/function/render/texture/texture.h"
 
 namespace dodoe {
 

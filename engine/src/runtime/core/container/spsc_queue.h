@@ -5,74 +5,117 @@
 #include "dopch.h"
 
 #include <array>
-#include <mutex>
+#include <atomic>
 #include <condition_variable>
 #include <functional>
+#include <thread>
 
 namespace dodoe {
 
     template <typename T, Size_t Capacity>
     class SpscQueue {
-        std::array<T, Capacity> m_buffer;
-        Size_t m_head{0};
-        Size_t m_tail{0};
-        Size_t m_count{0};
-        Bool m_closed{false};
-        std::mutex m_mutex;
-        std::condition_variable m_not_empty;
-        std::condition_variable m_not_full;
+        static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of 2");
+
+        static constexpr Size_t kMask = Capacity - 1;
+
+        std::array<T, Capacity> m_buffer{};
+        alignas(64) std::atomic<Size_t> m_head{0};
+        alignas(64) std::atomic<Size_t> m_tail{0};
+        std::atomic<Bool> m_closed{false};
+        std::mutex m_block_mutex{};
+        std::condition_variable m_block_cv{};
+
+        Size_t size() const {
+            return m_tail.load(std::memory_order_acquire) - m_head.load(std::memory_order_acquire);
+        }
+
+        Bool isFull() const {
+            return size() >= Capacity;
+        }
+
+        Bool isEmpty() const {
+            return m_head.load(std::memory_order_acquire) == m_tail.load(std::memory_order_acquire);
+        }
 
     public:
         SpscQueue() = default;
 
         void push(T&& item) {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            m_not_full.wait(lock, [this] { return m_count < Capacity || m_closed; });
-            if (m_closed) return;
-            m_buffer[m_tail] = std::move(item);
-            m_tail = (m_tail + 1) % Capacity;
-            ++m_count;
-            m_not_empty.notify_one();
+            while (isFull()) {
+                if (m_closed.load(std::memory_order_relaxed)) {
+                    return;
+                }
+                std::unique_lock<std::mutex> lock(m_block_mutex);
+                m_block_cv.wait_for(lock, std::chrono::microseconds(100), [this] {
+                    return !isFull() || m_closed.load(std::memory_order_relaxed);
+                });
+            }
+            Size_t tail = m_tail.load(std::memory_order_relaxed);
+            m_buffer[tail & kMask] = std::move(item);
+            m_tail.store(tail + 1, std::memory_order_release);
         }
 
         bool pop(T& item, const std::function<bool()>& should_exit) {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            m_not_empty.wait(lock, [this, &should_exit] { return m_count > 0 || m_closed || should_exit(); });
-            if (m_closed && m_count == 0) return false;
-            if (m_count == 0 && should_exit()) return false;
-            if (m_count == 0) return false;
-            item = std::move(m_buffer[m_head]);
-            m_head = (m_head + 1) % Capacity;
-            --m_count;
-            m_not_full.notify_one();
+            while (isEmpty()) {
+                if (m_closed.load(std::memory_order_relaxed)) {
+                    return false;
+                }
+                if (should_exit()) {
+                    return false;
+                }
+                std::unique_lock<std::mutex> lock(m_block_mutex);
+                m_block_cv.wait_for(lock, std::chrono::microseconds(100), [this, &should_exit] {
+                    return !isEmpty() || m_closed.load(std::memory_order_relaxed) || should_exit();
+                });
+            }
+            Size_t head = m_head.load(std::memory_order_relaxed);
+            item = std::move(m_buffer[head & kMask]);
+            m_head.store(head + 1, std::memory_order_release);
             return true;
         }
 
         bool tryPush(const T& item) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_count >= Capacity || m_closed) return false;
-            m_buffer[m_tail] = item;
-            m_tail = (m_tail + 1) % Capacity;
-            ++m_count;
-            m_not_empty.notify_one();
+            if (m_closed.load(std::memory_order_relaxed)) {
+                return false;
+            }
+            Size_t tail = m_tail.load(std::memory_order_relaxed);
+            if (tail - m_head.load(std::memory_order_acquire) >= Capacity) {
+                return false;
+            }
+            m_buffer[tail & kMask] = item;
+            m_tail.store(tail + 1, std::memory_order_release);
+            return true;
+        }
+
+        bool tryPush(T&& item) {
+            if (m_closed.load(std::memory_order_relaxed)) {
+                return false;
+            }
+            Size_t tail = m_tail.load(std::memory_order_relaxed);
+            if (tail - m_head.load(std::memory_order_acquire) >= Capacity) {
+                return false;
+            }
+            m_buffer[tail & kMask] = std::move(item);
+            m_tail.store(tail + 1, std::memory_order_release);
             return true;
         }
 
         bool tryPop(T& item) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_count == 0) return false;
-            item = std::move(m_buffer[m_head]);
-            m_head = (m_head + 1) % Capacity;
-            --m_count;
-            m_not_full.notify_one();
+            Size_t head = m_head.load(std::memory_order_relaxed);
+            if (head == m_tail.load(std::memory_order_acquire)) {
+                return false;
+            }
+            item = std::move(m_buffer[head & kMask]);
+            m_head.store(head + 1, std::memory_order_release);
             return true;
         }
 
         void close() {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_closed = true;
-            m_not_empty.notify_all();
-            m_not_full.notify_all();
+            m_closed.store(true, std::memory_order_release);
+            {
+                std::lock_guard<std::mutex> lock(m_block_mutex);
+            }
+            m_block_cv.notify_all();
         }
     };
 

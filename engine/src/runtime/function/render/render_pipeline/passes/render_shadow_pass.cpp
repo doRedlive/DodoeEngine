@@ -77,11 +77,25 @@ namespace dodoe::RenderPipelinePass {
                     command_list.setBufferState(shadow_cb, GfxResourceStates::ConstantBuffer);
                     command_list.commitBarriers();
 
-                    MeshDrawCommandDispatcher::Dispatch(
+                    MeshDrawCommandDispatcher::DispatchCached(
                         context,
                         MeshPassType::DirectionalShadow,
                         mesh_ext->gbuffer_shader_data,
-                        mesh_ext->mesh_pass_commands[static_cast<size_t>(MeshPassType::DirectionalShadow)],
+                        mesh_ext->cached_draw_instances[static_cast<size_t>(MeshPassType::DirectionalShadow)],
+                        *mesh_ext->cached_commands,
+                        framebuffer,
+                        viewport_state,
+                        GfxGraphicsPipelineHandle{},
+                        parameters.primitive_scene_buffer,
+                        parameters.constant_buffer,
+                        command_list
+                    );
+                    MeshDrawCommandDispatcher::DispatchCached(
+                        context,
+                        MeshPassType::DirectionalShadow,
+                        mesh_ext->dynamic_shader_data,
+                        mesh_ext->dynamic_draw_instances[static_cast<size_t>(MeshPassType::DirectionalShadow)],
+                        mesh_ext->frame_commands,
                         framebuffer,
                         viewport_state,
                         GfxGraphicsPipelineHandle{},

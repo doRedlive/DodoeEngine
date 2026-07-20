@@ -13,10 +13,10 @@ using Json = nlohmann::json;
 namespace dodoe {
 	ProjectSerializer::ProjectSerializer(Ref<Project> proj) : project_(proj) { }
 
-	bool ProjectSerializer::serialize(const std::filesystem::path& file_path) {
+	bool ProjectSerializer::serialize(const FsPath& file_path) {
 		const auto& config = project_->config();
-		const std::filesystem::path configured_project_path = config.project_path.empty() ? file_path.filename() : config.project_path;
-		const std::filesystem::path project_path =
+		const FsPath configured_project_path = config.project_path.empty() ? file_path.filename() : config.project_path;
+		const FsPath project_path =
 			configured_project_path.is_absolute() ? configured_project_path.filename() : configured_project_path;
 
 		Json root;
@@ -37,7 +37,7 @@ namespace dodoe {
 		return true;
 	}
 
-	bool ProjectSerializer::deserialize(const std::filesystem::path& file_path) {
+	bool ProjectSerializer::deserialize(const FsPath& file_path) {
 		auto& config = project_->config();
 
 		Json data;
@@ -76,7 +76,7 @@ namespace dodoe {
 		if (project_node.contains("StartSceneName") && project_node["StartSceneName"].is_string()) {
 			config.start_scene_name = project_node["StartSceneName"].get<std::string>();
 		} else if (project_node.contains("StartScene") && project_node["StartScene"].is_string()) {
-			config.start_scene_name = std::filesystem::path(project_node["StartScene"].get<std::string>()).stem().string();
+			config.start_scene_name = FsPath(project_node["StartScene"].get<std::string>()).stem().string();
 		} else {
 			config.start_scene_name.clear();
 		}

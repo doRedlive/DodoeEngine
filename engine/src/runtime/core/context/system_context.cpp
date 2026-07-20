@@ -97,9 +97,7 @@ namespace dodoe {
 
         auto threading_mode = m_init_info.spec.render_settings.threading_mode;
         auto* gfx = m_render_system->getGfx();
-        auto device = GDrawCommandList.getDevice();
-
-        GDrawCommandList.setDevice(device);
+        auto device = gfx->getDevice();
 
         switch (threading_mode) {
         case ThreadingMode::TripleThread:
@@ -200,10 +198,16 @@ namespace dodoe {
         if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
 
-        if (m_render_thread->getMode() == ThreadingMode::SingleThread) {
+        switch (m_render_thread->getMode()) {
+        case ThreadingMode::SingleThread:
             m_render_thread->executeFrameOnce();
-        } else {
+            break;
+        case ThreadingMode::DualThread:
             m_render_thread->submitAndWait();
+            break;
+        case ThreadingMode::TripleThread:
+            m_render_thread->submit();
+            break;
         }
 
         CycleDetector::instance().tick();

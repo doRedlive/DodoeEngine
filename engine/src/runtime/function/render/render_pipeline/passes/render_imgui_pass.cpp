@@ -7,7 +7,7 @@
 
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
-#include "runtime/function/render/framework/local_vertex_factory.h"
+#include "runtime/function/render/mesh_draw/local_vertex_factory.h"
 #include "runtime/function/render/render_pipeline/render_feature/imgui_render_resource.h"
 
 #ifdef DODOE_DEBUG_ENABLED

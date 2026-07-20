@@ -4,7 +4,7 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/framework/texture.h"
+#include "runtime/function/render/texture/texture.h"
 #include "runtime/core/math/math.h"
 #include "runtime/core/object/pptr.h"
 

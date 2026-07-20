@@ -9,12 +9,12 @@
 namespace dodoe {
 
     class AssetDatabase {
-        std::filesystem::path m_database_path;
+        FsPath m_database_path;
         UnorderedMap<FileID, AssetMetaData> m_metadata_cache;
         Bool m_dirty{false};
 
     public:
-        explicit AssetDatabase(const std::filesystem::path& project_asset_dir);
+        explicit AssetDatabase(const FsPath& project_asset_dir);
         ~AssetDatabase();
 
         [[nodiscard]] Bool load();

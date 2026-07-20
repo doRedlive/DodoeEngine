@@ -34,6 +34,23 @@ namespace dodoe {
         return handle;
     }
 
+    void RenderGraphBuilder::beginViewSubgraph(const String& name) {
+        m_current_subgraph = m_graph.addSubgraph(name);
+    }
+
+    void RenderGraphBuilder::endViewSubgraph() {
+        m_current_subgraph = ~0u;
+    }
+
+    void RenderGraphBuilder::exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state) {
+        DO_ASSERT(handle.isValid(), "RenderGraphBuilder::exportTexture invalid handle");
+        auto& resources = m_graph.getResources();
+        DO_ASSERT(handle.index < resources.size(), "RenderGraphBuilder::exportTexture handle out of range");
+        auto& resource = resources[handle.index];
+        resource.is_exported = true;
+        resource.export_final_state = final_state;
+    }
+
     void RenderGraphBuilder::compile() {
         m_graph.compile();
     }
@@ -123,6 +140,73 @@ namespace dodoe {
     RenderGraphBlackboard& RenderGraphPassBuilder::blackboard() const {
         DO_ASSERT(m_builder, "RenderGraphPassBuilder builder is null");
         return m_builder->blackboard();
+    }
+
+    RenderGraphTextureHandle RenderGraphPassBuilder::readTexture(
+        const RenderGraphTextureHandle handle,
+        const RenderGraphPipelineStage stage,
+        const RenderGraphSubresourceRange& subresource)
+    {
+        DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::readTexture invalid handle");
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Read, stage, subresource);
+        return handle;
+    }
+
+    RenderGraphTextureHandle RenderGraphPassBuilder::writeColor(
+        const RenderGraphTextureHandle handle,
+        const RenderGraphAttachmentInfo& attachment)
+    {
+        DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::writeColor invalid handle");
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Write, RenderGraphPipelineStage::RenderTarget);
+        return handle;
+    }
+
+    RenderGraphTextureHandle RenderGraphPassBuilder::writeDepth(
+        const RenderGraphTextureHandle handle,
+        const RenderGraphAttachmentInfo& attachment)
+    {
+        DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::writeDepth invalid handle");
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Write, RenderGraphPipelineStage::DepthStencil);
+        return handle;
+    }
+
+    RenderGraphTextureHandle RenderGraphPassBuilder::writeUav(
+        const RenderGraphTextureHandle handle,
+        const RenderGraphPipelineStage stage)
+    {
+        DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::writeUav invalid handle");
+        m_pass->addAccess(handle.index, RenderGraphAccessType::ReadWrite, stage);
+        return handle;
+    }
+
+    RenderGraphBufferHandle RenderGraphPassBuilder::readBuffer(
+        const RenderGraphBufferHandle handle,
+        const RenderGraphPipelineStage stage)
+    {
+        DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::readBuffer invalid handle");
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Read, stage);
+        return handle;
+    }
+
+    RenderGraphBufferHandle RenderGraphPassBuilder::writeBuffer(
+        const RenderGraphBufferHandle handle,
+        const RenderGraphPipelineStage stage)
+    {
+        DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::writeBuffer invalid handle");
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Write, stage);
+        return handle;
+    }
+
+    void RenderGraphPassBuilder::exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state) {
+        DO_ASSERT(m_builder, "RenderGraphPassBuilder builder is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::exportTexture invalid handle");
+        m_builder->exportTexture(handle, final_state);
     }
 
 } // dodoe

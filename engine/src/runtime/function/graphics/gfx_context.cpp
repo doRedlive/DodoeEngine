@@ -52,14 +52,17 @@ namespace dodoe {
         } else if (create_info.api_type == RenderBackendApiType::OpenGL) {
             initializeOpenGL(create_info);
         } else if (create_info.api_type == RenderBackendApiType::DX12) {
-            initializeDx12(create_info);
+            initializeD3D12(create_info);
         }
 
-        if (create_info.enable_gpu_driven && device_) {
-            m_gpu_driven_supported = device_->queryFeatureSupport(cutie::Feature::HeapDirectlyIndexed)
-                                  && device_->queryFeatureSupport(cutie::Feature::ComputeQueue);
+        if (device_) {
+            DeviceCapabilities caps{};
+            caps.bindless_supported = device_->queryFeatureSupport(cutie::Feature::HeapDirectlyIndexed);
+            caps.compute_queue_supported = device_->queryFeatureSupport(cutie::Feature::ComputeQueue);
+            RenderSettings::SetDeviceCapabilities(caps);
         }
-        RenderSettings::SetGpuDrivenSupported(m_gpu_driven_supported);
+        RenderSettings::ResolveFeatures(create_info.feature_settings);
+        m_gpu_driven_supported = RenderSettings::GetResolvedFeatures().gpu_driven_active;
     }
 
     void GfxContext::initializeVulkan(const GfxBackendCreateInfo& create_info) {
@@ -126,11 +129,11 @@ namespace dodoe {
         OutputDebugStringA("[GFX] OpenGL initialize done\n");
     }
 
-    void GfxContext::initializeDx12(const GfxBackendCreateInfo& create_info) {
+    void GfxContext::initializeD3D12(const GfxBackendCreateInfo& create_info) {
         OutputDebugStringA("[GFX] DX12 initialize begin\n");
 
         dx12_backend_ = Dx12Backend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation});
-        DO_ASSERT(dx12_backend_ != nullptr, "GfxBackend::initializeDx12: failed to create DX12 backend.");
+        DO_ASSERT(dx12_backend_ != nullptr, "GfxBackend::initializeD3D12: failed to create DX12 backend.");
 
         auto* error_callback = new RhiMessageCallback();
 
@@ -142,11 +145,11 @@ namespace dodoe {
         device_desc.pCopyCommandQueue = dx12_backend_->getCopyQueue();
 
         device_ = dx12::createDevice(device_desc);
-        DO_ASSERT(device_ != nullptr, "GfxBackend::initializeDx12: failed to create cutie d3d12 device.");
+        DO_ASSERT(device_ != nullptr, "GfxBackend::initializeD3D12: failed to create cutie d3d12 device.");
 
         if (create_info.enable_validation) {
             device_ = validation::createValidationLayer(device_);
-            DO_ASSERT(device_ != nullptr, "GfxBackend::initializeDx12: failed to create validation layer.");
+            DO_ASSERT(device_ != nullptr, "GfxBackend::initializeD3D12: failed to create validation layer.");
         }
 
         createSwapchainTexturesDx12();

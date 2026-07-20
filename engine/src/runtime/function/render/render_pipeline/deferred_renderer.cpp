@@ -19,7 +19,7 @@
 #include "runtime/function/render/render_scene/primitive_render_object.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
-#include "runtime/function/render/framework/pipeline_state_cache.h"
+#include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/math/math.h"
 #include "runtime/core/utils/common.h"
@@ -54,6 +54,8 @@ namespace dodoe {
             shader_library->getShadowVertexShader()
         );
 
+        m_gpu_culling = GpuCulling::Create({m_gfx_context, const_cast<ShaderLibrary*>(shader_library)});
+
         m_mesh_processors[static_cast<size_t>(MeshPassType::GBuffer)] = create_scope<GBufferMeshProcessor>();
         static_cast<GBufferMeshProcessor*>(m_mesh_processors[static_cast<size_t>(MeshPassType::GBuffer)].get())->initialize(*m_gfx_context, m_shared_render_service->getDescriptorTable(), m_shared_render_service->getTextureManager());
         m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)] = create_scope<DirectionalShadowMeshProcessor>();
@@ -82,6 +84,7 @@ namespace dodoe {
             m_local_vertex_factory->reset();
             m_local_vertex_factory.reset();
         }
+        GpuCulling::Destroy(m_gpu_culling);
         shutdownBase();
     }
 
@@ -103,8 +106,39 @@ namespace dodoe {
                                    const UInt32 swapchain_image_index, DrawCommandList& out_commands) {
         initViews(scene, view_family);
         setupMeshPassContexts(scene, view_family);
-        buildMeshDrawCommands(view_family, out_commands);
+
+        const auto culling_path = RenderSettings::GetFeatureSettings().culling_path;
+        if (culling_path == CullingPath::GpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
+            executeGpuCulling(view_family, scene, out_commands);
+            buildGpuDrivenDrawCommands(scene, view_family, out_commands);
+        }
+
+        if (culling_path == CullingPath::CpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
+            buildMeshDrawCommands(view_family, out_commands);
+        }
+
         buildFrameDrawCommandList(view_family, scene, swapchain_image_index, out_commands);
+    }
+
+    void DeferredRenderer::executeGpuCulling(RenderViewFamily& view_family, RenderScene& scene, DrawCommandList& cmd_list) const {
+        if (!m_gpu_culling || !m_gpu_culling->isEnabled()) {
+            return;
+        }
+
+        auto* gpu_scene = scene.getGpuScene();
+        if (!gpu_scene) {
+            return;
+        }
+
+        const auto scene_resources = gpu_scene->getPassResources();
+        const UInt32 object_count = gpu_scene->getObjectCount();
+
+        for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
+            const auto& view = view_family.getView(view_index);
+            m_gpu_culling->executeCulling(cmd_list, scene_resources,
+                                          view.getViewProjectionMatrix(), object_count);
+            m_gpu_culling->executeBucketBuild(cmd_list, scene_resources, object_count);
+        }
     }
 
     void DeferredRenderer::setupMeshPassRelevance(RenderView& view) const {
@@ -133,14 +167,12 @@ namespace dodoe {
         for (auto& view : view_family.getViews()) {
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
             mesh_ext.frame_time_data = Vector4f(view_family.getTimeSeconds(), view_family.getDeltaSeconds(), 0.0f, 0.0f);
-            mesh_ext.primitive_first_instance_offsets.reserve(mesh_ext.visible_primitives.size());
             Size_t total_instance_count = 0;
             for (const auto* primitive : mesh_ext.visible_primitives) {
                 total_instance_count += primitive ? primitive->getInstanceCount() : 1;
             }
             mesh_ext.instance_scene_data.reserve(total_instance_count);
             for (const auto* primitive : mesh_ext.visible_primitives) {
-                mesh_ext.primitive_first_instance_offsets.push_back(static_cast<UInt32>(mesh_ext.instance_scene_data.size()));
                 if (primitive) {
                     for (const auto& inst_data : primitive->getInstanceSceneData()) {
                         mesh_ext.instance_scene_data.push_back(inst_data);
@@ -216,12 +248,6 @@ namespace dodoe {
             pipeline_desc.setRenderState(render_state);
             return pipeline_desc;
         };
-        auto assign_pipeline = [](DynamicArray<MeshDrawCommand>& commands, const GfxGraphicsPipelineHandle& pipeline) {
-            for (auto& command : commands) {
-                command.pipeline = pipeline;
-            }
-        };
-
         auto* pso_cache = m_shared_render_service->getPipelineStateCache();
         DO_ASSERT(pso_cache != nullptr, "DeferredRenderer PSO cache is null");
 
@@ -243,23 +269,108 @@ namespace dodoe {
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
-            gbuffer_mesh_processor.buildCommands(
+            mesh_ext.cached_commands = &m_mesh_draw_cache.getCommands();
+
+            gbuffer_mesh_processor.buildCachedCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
                 mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::GBuffer)],
                 view.getViewProjectionMatrix(),
-                mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::GBuffer)],
+                m_mesh_draw_cache,
+                mesh_ext.cached_draw_instances[static_cast<size_t>(MeshPassType::GBuffer)],
                 mesh_ext.gbuffer_shader_data
             );
-            assign_pipeline(mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::GBuffer)], gbuffer_pipeline);
-            directional_shadow_mesh_processor.buildCommands(
+            gbuffer_mesh_processor.buildDynamicCommands(
+                mesh_ext.visible_primitives,
+                mesh_ext.primitive_mesh_pass_relevance,
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::GBuffer)],
+                view.getViewProjectionMatrix(),
+                mesh_ext.frame_commands,
+                mesh_ext.dynamic_draw_instances[static_cast<size_t>(MeshPassType::GBuffer)],
+                mesh_ext.dynamic_shader_data
+            );
+            directional_shadow_mesh_processor.buildCachedCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
                 mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::DirectionalShadow)],
                 mesh_ext.directional_shadow_view_projection,
-                mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::DirectionalShadow)]
+                m_mesh_draw_cache,
+                mesh_ext.cached_draw_instances[static_cast<size_t>(MeshPassType::DirectionalShadow)]
             );
-            assign_pipeline(mesh_ext.mesh_pass_commands[static_cast<size_t>(MeshPassType::DirectionalShadow)], shadow_pipeline);
+            directional_shadow_mesh_processor.buildDynamicCommands(
+                mesh_ext.visible_primitives,
+                mesh_ext.primitive_mesh_pass_relevance,
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::DirectionalShadow)],
+                mesh_ext.directional_shadow_view_projection,
+                mesh_ext.frame_commands,
+                mesh_ext.dynamic_draw_instances[static_cast<size_t>(MeshPassType::DirectionalShadow)]
+            );
+        }
+    }
+
+    void DeferredRenderer::buildGpuDrivenDrawCommands(const RenderScene& scene, RenderViewFamily& view_family, DrawCommandList& cmd_list) const {
+        if (!m_gpu_culling || !m_gpu_culling->isEnabled()) {
+            return;
+        }
+
+        auto* gpu_scene = scene.getGpuScene();
+        if (!gpu_scene) {
+            return;
+        }
+
+        const auto indirect_args = m_gpu_culling->getIndirectArgsBuffer();
+        if (!indirect_args) {
+            return;
+        }
+
+        const UInt32 object_count = gpu_scene->getObjectCount();
+
+        for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
+            auto& view = view_family.getView(view_index);
+            auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
+
+            const auto viewport = GfxViewportState()
+                .setViewport(view.getViewportWidth(), view.getViewportHeight());
+
+            for (Size_t pass_idx = 0; pass_idx < static_cast<Size_t>(MeshPassType::Count); pass_idx++) {
+                const auto& instances = mesh_ext.cached_draw_instances[pass_idx];
+                if (instances.empty()) {
+                    continue;
+                }
+
+                const auto& cached_cmd = m_mesh_draw_cache.getCommand(instances[0].cmd_index);
+
+                auto graphics_state = GfxGraphicsState()
+                    .setViewport(viewport)
+                    .setPipeline(cached_cmd.pipeline->getRHIHandle());
+
+                for (const auto& binding_set : cached_cmd.binding_sets) {
+                    if (binding_set && binding_set->isRHIReady()) {
+                        graphics_state.addBindingSet(binding_set->getRHIHandle());
+                    }
+                }
+
+                for (const auto& vertex_binding : cached_cmd.vertex_bindings) {
+                    graphics_state.addVertexBuffer(vertex_binding);
+                }
+
+                const auto gpu_scene_resources = gpu_scene->getPassResources();
+                if (gpu_scene_resources.primitive_instance && gpu_scene_resources.primitive_instance->getRHI()) {
+                    graphics_state.addVertexBuffer(
+                        GfxVertexBufferBinding()
+                            .setBuffer(gpu_scene_resources.primitive_instance->getRHI())
+                            .setSlot(1)
+                            .setOffset(instances[0].instance_offset)
+                    );
+                }
+
+                graphics_state.setIndexBuffer(cached_cmd.index_binding);
+                cmd_list.setGraphicsState(graphics_state);
+
+                cmd_list.setBufferState(indirect_args, GfxResourceStates::IndirectArgument);
+                cmd_list.commitBarriers();
+                cmd_list.drawIndexedIndirect(0, object_count);
+            }
         }
     }
 

@@ -3,46 +3,10 @@
 #pragma once
 
 #include "dopch.h"
+#include "mesh_pass_type.h"
 #include "runtime/function/graphics/gfx.h"
 
-#include "mesh_pass_type.h"
-
 namespace dodoe {
-
-    struct MeshDrawCommand {
-        MeshPassType pass_type{MeshPassType::GBuffer};
-        GfxGraphicsPipelineHandle pipeline;
-        DynamicArray<GfxBindingSetHandle> binding_sets;
-
-        DynamicArray<GfxVertexBufferBinding> vertex_bindings;
-        UInt32 primitive_scene_buffer_slot{1};
-        UInt64 primitive_scene_buffer_offset{0};
-        Bool uses_primitive_scene_buffer{false};
-        GfxIndexBufferBinding index_binding;
-        GfxDrawArguments draw_args;
-        UInt32 primitive_index{0};
-        UInt32 shader_data_index{std::numeric_limits<UInt32>::max()};
-
-        UInt64 sort_key{0};
-
-        void setPrimitiveSceneBufferBinding(const UInt32 slot, const UInt64 offset) {
-            primitive_scene_buffer_slot = slot;
-            primitive_scene_buffer_offset = offset;
-            uses_primitive_scene_buffer = true;
-        }
-
-        [[nodiscard]] Bool isValid() const {
-            return draw_args.vertexCount > 0;
-        }
-
-        [[nodiscard]] Bool hasShaderData() const {
-            return shader_data_index != std::numeric_limits<UInt32>::max();
-        }
-
-        [[nodiscard]] Bool usesPassPipeline() const {
-            return !pipeline;
-        }
-    };
 
     struct MeshDrawCommandCacheKey {
         Size_t batch_hash{0};
@@ -53,6 +17,25 @@ namespace dodoe {
             return batch_hash == other.batch_hash &&
                    material_hash == other.material_hash &&
                    pass_hash == other.pass_hash;
+        }
+    };
+
+    struct MeshDrawCommand {
+        MeshPassType pass_type{MeshPassType::GBuffer};
+        GfxGraphicsPipelineHandle pipeline;
+        DynamicArray<GfxBindingSetHandle> binding_sets;
+        DynamicArray<GfxVertexBufferBinding> vertex_bindings;
+        GfxIndexBufferBinding index_binding;
+        GfxDrawArguments draw_args;
+    };
+
+    struct MeshDrawInstance {
+        UInt32 cmd_index{0};
+        UInt32 shader_data_index{std::numeric_limits<UInt32>::max()};
+        UInt64 instance_offset{0};
+
+        [[nodiscard]] Bool hasShaderData() const {
+            return shader_data_index != std::numeric_limits<UInt32>::max();
         }
     };
 

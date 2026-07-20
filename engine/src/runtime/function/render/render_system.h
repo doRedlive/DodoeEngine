@@ -7,14 +7,15 @@
 #include "render_command.h"
 #include "render_settings.h"
 #include "runtime/function/graphics/gfx_context.h"
-#include "framework/descriptor_table_manager.h"
-#include "framework/shared_render_service.h"
+#include "runtime/function/render/render_frame/render_frame_scheduler.h"
+#include "runtime/function/render/shader/descriptor_table_manager.h"
+#include "shared_render_service.h"
 #include "render_view/render_view_manager.h"
 #include "render_pipeline/render_pipeline.h"
 #include "render_scene/render_scene.h"
 
 #include "runtime/function/window/window_manager.h"
-#include "runtime/core/thread/spsc_queue.h"
+#include "runtime/core/container/spsc_queue.h"
 
 namespace dodoe {
 
@@ -29,6 +30,7 @@ namespace dodoe {
         static constexpr Size_t kGameCommandQueueCapacity = 256;
 
         Scope<GfxContext> m_gfx{nullptr};
+        Scope<RenderFrameScheduler> m_frame_scheduler{nullptr};
         Scope<RenderScene> m_render_scene{nullptr};
         Scope<RenderPipeline> m_render_pipeline{nullptr};
         Scope<RenderViewManager> m_view_manager{nullptr};

@@ -17,22 +17,6 @@ namespace dodoe {
         }
     }
 
-	inline DynamicArray<char> ReadShaderFile(const std::string& path) {
-		std::ifstream in(path, std::ios::binary | std::ios::ate);
-		if (!in.is_open()) {
-			DO_ERROR("Open shader file {} failed!", path);
-			return {};
-		}
-
-		const std::streamsize size = in.tellg();
-		in.seekg(0, std::ios::beg);
-
-		std::vector<char> content(static_cast<size_t>(size));
-		in.read(content.data(), size);
-		return content;
-	}
-
-
     inline DynamicArray<float> RotateCubemapFaceCW(const float* src, Int32 w, Int32 h) {
         DynamicArray<float> dst(static_cast<Size_t>(w) * static_cast<Size_t>(h) * 4u);
         for (Int32 y = 0; y < h; ++y) {

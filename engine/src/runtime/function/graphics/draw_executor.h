@@ -2,7 +2,7 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/frame_context.h"
+#include "runtime/function/render/render_frame/frame_context.h"
 
 namespace dodoe {
 
@@ -15,4 +15,4 @@ namespace dodoe {
         void execute(GfxDeviceHandle device, GfxContext* gfx, FrameContext& frame_ctx);
     };
 
-} // dodoe
+} // namespace dodoe

@@ -29,7 +29,7 @@ namespace dodoe {
         m_guard.reset();
     }
 
-    Bool ToolInterpreter::Execute(const std::filesystem::path& path) {
+    Bool ToolInterpreter::Execute(const FsPath& path) {
         DO_ASSERT(m_guard != nullptr, "ToolInterpreter: not initialized");
         try {
             pybind11::eval_file(path.string(), pybind11::globals());
@@ -44,7 +44,7 @@ namespace dodoe {
 
     Bool ToolInterpreter::Initialize() { return true; }
     void ToolInterpreter::Shutdown() {}
-    Bool ToolInterpreter::Execute(const std::filesystem::path&) { return false; }
+    Bool ToolInterpreter::Execute(const FsPath&) { return false; }
 
 #endif
 

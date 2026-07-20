@@ -26,7 +26,7 @@ namespace Generator
 
     std::string ReflectionGenerator::processFileName(std::string path)
     {
-        auto relativeDir = fs::path(path).filename().replace_extension("reflection.gen.h").string();
+        auto relativeDir = FsPath(path).filename().replace_extension("reflection.gen.h").string();
         return m_out_path + "/" + relativeDir;
     }
 
@@ -104,7 +104,7 @@ namespace Generator
         mustache_data.set("class_defines", class_defines);
         mustache_data.set("include_headfiles", include_headfiles);
 
-        std::string tmp = Utils::convertNameToUpperCamelCase(fs::path(path).stem().string(), "_");
+        std::string tmp = Utils::convertNameToUpperCamelCase(FsPath(path).stem().string(), "_");
         mustache_data.set("sourefile_name_upper_camel_case", tmp);
 
         std::string render_string =

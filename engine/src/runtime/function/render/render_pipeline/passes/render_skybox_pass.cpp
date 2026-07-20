@@ -9,10 +9,10 @@
 
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_scene/render_scene.h"
-#include "runtime/function/render/framework/pipeline_state_cache.h"
-#include "runtime/function/render/framework/shader_library.h"
-#include "runtime/function/render/framework/shader_parameter.h"
-#include "runtime/function/render/framework/global_samplers.h"
+#include "runtime/function/render/pipeline/pipeline_state_cache.h"
+#include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
+#include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/core/math/math.h"
 

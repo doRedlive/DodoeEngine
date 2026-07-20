@@ -3,7 +3,7 @@
 #include "ui_imgui_utils.h"
 #include "ui_preset_manager.h"
 
-#include "runtime/function/render/framework/texture_manager.h"
+#include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/render_system.h"
 
 namespace dodoe {

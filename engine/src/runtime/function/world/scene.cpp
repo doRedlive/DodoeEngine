@@ -143,7 +143,7 @@ namespace dodoe {
             return;
         }
 
-        const std::string asset_url = (std::filesystem::path("Scenes") / (m_name + ".doscn")).generic_string();
+        const std::string asset_url = (FsPath("Scenes") / (m_name + ".doscn")).generic_string();
         (void)asset_manager->saveAssetFile(serialize(), asset_url);
     }
 

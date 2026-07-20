@@ -5,12 +5,63 @@
 
 namespace dodoe {
 
-    void RenderGraphResourceRegistry::initialize(
+    GfxTextureHandle TransientResourcePool::acquireTexture(const GfxTextureDesc& desc, DrawCommandList& command_list) {
+        for (Size_t i = 0; i < m_textures.size(); i++) {
+            if (!m_texture_in_use[i]) {
+                const auto& pooled = m_textures[i].desc;
+                if (pooled.width == desc.width && pooled.height == desc.height &&
+                    pooled.format == desc.format && pooled.mipLevels == desc.mipLevels) {
+                    m_texture_in_use[i] = true;
+                    return m_textures[i].texture;
+                }
+            }
+        }
+        const auto texture = command_list.createTexture(desc);
+        m_textures.push_back({texture, desc});
+        m_texture_in_use.push_back(true);
+        return texture;
+    }
+
+    GfxBufferHandle TransientResourcePool::acquireBuffer(const GfxBufferDesc& desc, DrawCommandList& command_list) {
+        for (Size_t i = 0; i < m_buffers.size(); i++) {
+            if (!m_buffer_in_use[i]) {
+                const auto& pooled = m_buffers[i].desc;
+                if (pooled.byteSize == desc.byteSize && pooled.format == desc.format) {
+                    m_buffer_in_use[i] = true;
+                    return m_buffers[i].buffer;
+                }
+            }
+        }
+        const auto buffer = command_list.createBuffer(desc);
+        m_buffers.push_back({buffer, desc});
+        m_buffer_in_use.push_back(true);
+        return buffer;
+    }
+
+    void TransientResourcePool::releaseAll() {
+        for (auto& in_use : m_texture_in_use) {
+            in_use = false;
+        }
+        for (auto& in_use : m_buffer_in_use) {
+            in_use = false;
+        }
+    }
+
+    void TransientResourcePool::reset() {
+        m_textures.clear();
+        m_buffers.clear();
+        m_texture_in_use.clear();
+        m_buffer_in_use.clear();
+    }
+
+    RenderGraphResourceRegistry::RenderGraphResourceRegistry(
         const DynamicArray<RenderGraphResourceRecord>& resources,
         GfxContext& gfx_context,
         const UInt32 swapchain_image_index,
-        DrawCommandList& command_list)
+        DrawCommandList& command_list,
+        TransientResourcePool* transient_pool)
     {
+        m_transient_pool = transient_pool;
         reset();
 
         m_texture_handles.resize(resources.size());
@@ -21,7 +72,11 @@ namespace dodoe {
             if (resource.type == RenderGraphResourceType::Texture) {
                 switch (resource.source) {
                     case RenderGraphResourceSource::Transient:
-                        m_texture_handles[resource_index] = command_list.createTexture(resource.texture_desc.desc);
+                        if (m_transient_pool) {
+                            m_texture_handles[resource_index] = m_transient_pool->acquireTexture(resource.texture_desc.desc, command_list);
+                        } else {
+                            m_texture_handles[resource_index] = command_list.createTexture(resource.texture_desc.desc);
+                        }
                         break;
                     case RenderGraphResourceSource::ImportedTexture:
                         DO_ASSERT(resource.imported_texture != nullptr, "RenderGraphResourceRegistry imported texture is null");

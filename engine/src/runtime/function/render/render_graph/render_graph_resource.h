@@ -22,9 +22,50 @@ namespace dodoe {
         ImportedBackBuffer,
     };
 
-    enum class RenderGraphAccessType {
+    enum class RenderGraphAccessType : UInt8 {
         Read = 0,
         Write,
+        ReadWrite,
+    };
+
+    enum class RenderGraphPipelineStage : UInt8 {
+        VertexShader = 0,
+        PixelShader,
+        ComputeShader,
+        Copy,
+        RenderTarget,
+        DepthStencil,
+    };
+
+    struct RenderGraphSubresourceRange {
+        UInt32 base_mip{0};
+        UInt32 mip_count{1};
+        UInt32 base_array_layer{0};
+        UInt32 array_layer_count{1};
+    };
+
+    enum class LoadOp : UInt8 {
+        Load,
+        Clear,
+        DontCare,
+    };
+
+    enum class StoreOp : UInt8 {
+        Store,
+        DontCare,
+    };
+
+    struct RenderGraphAttachmentInfo {
+        LoadOp load_op{LoadOp::DontCare};
+        StoreOp store_op{StoreOp::Store};
+        GfxColor clear_color{0.0f, 0.0f, 0.0f, 0.0f};
+    };
+
+    struct RenderGraphAccessInfo {
+        RenderGraphAccessType access_type{RenderGraphAccessType::Read};
+        RenderGraphPipelineStage stage{RenderGraphPipelineStage::PixelShader};
+        GfxResourceStates required_state{GfxResourceStates::Unknown};
+        RenderGraphSubresourceRange subresource{};
     };
 
     struct RenderGraphTextureDesc {
@@ -78,9 +119,19 @@ namespace dodoe {
         [[nodiscard]] Bool isValid() const { return index != kInvalidRenderGraphHandle; }
     };
 
+    struct RenderGraphBarrier {
+        UInt32 resource_index{kInvalidRenderGraphHandle};
+        RenderGraphResourceType resource_type{RenderGraphResourceType::Texture};
+        GfxResourceStates from_state{GfxResourceStates::Unknown};
+        GfxResourceStates to_state{GfxResourceStates::Unknown};
+        RenderGraphSubresourceRange subresource{};
+    };
+
     struct RenderGraphPassResourceAccess {
         UInt32 resource_index{kInvalidRenderGraphHandle};
         RenderGraphAccessType access_type{RenderGraphAccessType::Read};
+        RenderGraphPipelineStage stage{RenderGraphPipelineStage::PixelShader};
+        RenderGraphSubresourceRange subresource{};
     };
 
     struct RenderGraphResourceRecord {
@@ -95,6 +146,8 @@ namespace dodoe {
         Int32 first_pass_index{-1};
         Int32 last_pass_index{-1};
         DynamicArray<UInt32> reader_passes{};
+        Bool is_exported{false};
+        GfxResourceStates export_final_state{GfxResourceStates::Unknown};
 
         [[nodiscard]] Bool isImported() const {
             return source != RenderGraphResourceSource::Transient;

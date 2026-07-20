@@ -22,10 +22,11 @@ namespace dodoe {
             const RenderGraphBufferHandle& primitive_scene_data,
             DrawCommandList& command_list);
 
-        static void Dispatch(
+        static void DispatchCached(
             const RenderGraphPassContext& context,
             const MeshPassType pass_type,
             const DynamicArray<GBufferMeshDrawShaderData>& gbuffer_shader_data,
+            const DynamicArray<MeshDrawInstance>& instances,
             const DynamicArray<MeshDrawCommand>& commands,
             const GfxFramebufferHandle& framebuffer,
             const GfxViewportState& viewport_state,

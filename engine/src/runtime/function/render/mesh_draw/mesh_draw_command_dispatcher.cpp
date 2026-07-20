@@ -6,31 +6,6 @@
 #include "mesh_draw_types.h"
 
 namespace dodoe {
-    namespace {
-
-        void WritePassShaderData(
-            const RenderGraphPassContext& context,
-            const MeshPassType pass_type,
-            const DynamicArray<GBufferMeshDrawShaderData>& gbuffer_shader_data,
-            const MeshDrawCommand& command,
-            const RenderGraphBufferHandle& pass_constant_buffer,
-            DrawCommandList& command_list)
-        {
-            if (!pass_constant_buffer.isValid() || pass_type != MeshPassType::GBuffer) {
-                return;
-            }
-
-            DO_ASSERT(
-                command.shader_data_index < gbuffer_shader_data.size(),
-                "MeshDrawCommandDispatcher gbuffer shader data index out of range");
-            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::CopyDest);
-            command_list.commitBarriers();
-            command_list.writeBuffer(context.resolveBuffer(pass_constant_buffer), &gbuffer_shader_data[command.shader_data_index], sizeof(gbuffer_shader_data[command.shader_data_index]));
-            command_list.setBufferState(context.resolveBuffer(pass_constant_buffer), GfxResourceStates::ConstantBuffer);
-            command_list.commitBarriers();
-        }
-
-    } // namespace
 
     void MeshDrawCommandDispatcher::UploadInstanceTransforms(
         const RenderGraphPassContext& context,
@@ -48,10 +23,11 @@ namespace dodoe {
         );
     }
 
-    void MeshDrawCommandDispatcher::Dispatch(
+    void MeshDrawCommandDispatcher::DispatchCached(
         const RenderGraphPassContext& context,
         const MeshPassType pass_type,
         const DynamicArray<GBufferMeshDrawShaderData>& gbuffer_shader_data,
+        const DynamicArray<MeshDrawInstance>& instances,
         const DynamicArray<MeshDrawCommand>& commands,
         const GfxFramebufferHandle& framebuffer,
         const GfxViewportState& viewport_state,
@@ -60,48 +36,66 @@ namespace dodoe {
         const RenderGraphBufferHandle& pass_constant_buffer,
         DrawCommandList& command_list)
     {
-        if (commands.empty()) {
+        if (instances.empty()) {
             return;
         }
 
-        for (const auto& command : commands) {
-            if (!command.isValid()) {
-                continue;
+        if (pass_constant_buffer.isValid() && pass_type == MeshPassType::GBuffer) {
+            auto* resolved_buffer = context.resolveBuffer(pass_constant_buffer);
+            command_list.setBufferState(resolved_buffer, GfxResourceStates::CopyDest);
+            command_list.commitBarriers();
+
+            for (const auto& instance : instances) {
+                if (!instance.hasShaderData()) {
+                    continue;
+                }
+                DO_ASSERT(
+                    instance.shader_data_index < gbuffer_shader_data.size(),
+                    "DispatchCached gbuffer shader data index out of range");
+                command_list.writeBuffer(resolved_buffer,
+                    &gbuffer_shader_data[instance.shader_data_index],
+                    sizeof(gbuffer_shader_data[instance.shader_data_index]),
+                    instance.shader_data_index * sizeof(gbuffer_shader_data[instance.shader_data_index]));
             }
 
-            const auto pipeline = command.usesPassPipeline() ? pass_pipeline : command.pipeline;
+            command_list.setBufferState(resolved_buffer, GfxResourceStates::ConstantBuffer);
+            command_list.commitBarriers();
+        }
+
+        for (const auto& instance : instances) {
+            const auto& cached_cmd = commands[instance.cmd_index];
+
+            const auto pipeline = cached_cmd.pipeline ? cached_cmd.pipeline : pass_pipeline;
             if (!pipeline) {
                 continue;
             }
-
-            WritePassShaderData(context, pass_type, gbuffer_shader_data, command, pass_constant_buffer, command_list);
 
             auto graphics_state = GfxGraphicsState()
                 .setFramebuffer(framebuffer->getRHI())
                 .setViewport(viewport_state)
                 .setPipeline(pipeline->getRHIHandle());
 
-            for (const auto& binding_set : command.binding_sets) {
+            for (const auto& binding_set : cached_cmd.binding_sets) {
                 if (binding_set && binding_set->isRHIReady()) {
                     graphics_state.addBindingSet(binding_set->getRHIHandle());
                 }
             }
 
-            for (const auto& vertex_binding : command.vertex_bindings) {
+            for (const auto& vertex_binding : cached_cmd.vertex_bindings) {
                 graphics_state.addVertexBuffer(vertex_binding);
             }
-            if (command.uses_primitive_scene_buffer && primitive_scene_buffer.isValid()) {
+            if (primitive_scene_buffer.isValid()) {
                 graphics_state.addVertexBuffer(
                     GfxVertexBufferBinding()
                         .setBuffer(context.resolveBuffer(primitive_scene_buffer)->getRHI())
-                        .setSlot(command.primitive_scene_buffer_slot)
-                        .setOffset(command.primitive_scene_buffer_offset)
+                        .setSlot(1)
+                        .setOffset(instance.instance_offset)
                 );
             }
 
-            graphics_state.setIndexBuffer(command.index_binding);
+            graphics_state.setIndexBuffer(cached_cmd.index_binding);
             command_list.setGraphicsState(graphics_state);
-            command_list.drawIndexed(command.draw_args);
+            command_list.drawIndexed(cached_cmd.draw_args);
         }
     }
 

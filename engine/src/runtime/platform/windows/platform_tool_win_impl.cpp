@@ -34,13 +34,13 @@ namespace dodoe {
             return value;
         }
 
-        std::string MakeProjectRelativePath(const fs::path& base_dir, const fs::path& target_path) {
+        std::string MakeProjectRelativePath(const FsPath& base_dir, const FsPath& target_path) {
             std::error_code ec;
-            const fs::path relative = fs::relative(target_path, base_dir, ec);
+            const FsPath relative = fs::relative(target_path, base_dir, ec);
             return (ec ? target_path.lexically_normal() : relative.lexically_normal()).generic_string();
         }
 
-        fs::path FindCoreAssemblyPath() {
+        FsPath FindCoreAssemblyPath() {
             const std::array candidates = {
                 FileSystem::GetEngineRootPath() / "bin" / "GreenCake.dll",
                 FileSystem::GetEngineRootPath() / "engine" / "src" / "scriptcore" / "bin" / "Debug" / "net10.0" / "GreenCake.dll",
@@ -55,7 +55,7 @@ namespace dodoe {
             return {};
         }
 
-        bool CollectCSharpFiles(const fs::path& asset_directory, std::vector<fs::path>& out_files) {
+        bool CollectCSharpFiles(const FsPath& asset_directory, std::vector<FsPath>& out_files) {
             out_files.clear();
             if (!fs::exists(asset_directory) || !fs::is_directory(asset_directory)) {
                 return false;
@@ -75,16 +75,16 @@ namespace dodoe {
             return true;
         }
 
-        bool WriteGeneratedProjectFile(const fs::path& project_file,
-            const std::vector<fs::path>& source_files,
-            const fs::path& core_assembly_path,
+        bool WriteGeneratedProjectFile(const FsPath& project_file,
+            const std::vector<FsPath>& source_files,
+            const FsPath& core_assembly_path,
             const std::string& assembly_name) {
             std::ofstream fout(project_file);
             if (!fout.is_open()) {
                 return false;
             }
 
-            const fs::path base_dir = project_file.parent_path();
+            const FsPath base_dir = project_file.parent_path();
 
             fout << "<Project Sdk=\"Microsoft.NET.Sdk\">\n\n";
             fout << "  <PropertyGroup>\n";
@@ -117,7 +117,7 @@ namespace dodoe {
             return true;
         }
 
-        bool RunProcessAndWait(const std::string& command_line, const fs::path& working_directory) {
+        bool RunProcessAndWait(const std::string& command_line, const FsPath& working_directory) {
             STARTUPINFOA startup_info{};
             startup_info.cb = sizeof(startup_info);
             PROCESS_INFORMATION process_info{};
@@ -159,7 +159,7 @@ namespace dodoe {
 
     std::string PlatformTool::OpenProjectFileDialog() {
         char file_buffer[MAX_PATH]{};
-        const std::string initial_dir = FileSystem::GetEngineRootPathString(); // TODO;
+        const String initial_dir = FileSystem::GetEngineRootPathString();
         OPENFILENAMEA ofn{};
         ofn.lStructSize = sizeof(ofn);
         ofn.hwndOwner = nullptr;
@@ -193,7 +193,7 @@ namespace dodoe {
 
         if (!initial_directory.empty()) {
             IShellItem* folder = nullptr;
-            const std::wstring initial_directory_wide = fs::path(initial_directory).wstring();
+            const std::wstring initial_directory_wide = FsPath(initial_directory).wstring();
             if (SUCCEEDED(SHCreateItemFromParsingName(initial_directory_wide.c_str(), nullptr, IID_PPV_ARGS(&folder)))) {
                 dialog->SetFolder(folder);
                 folder->Release();
@@ -206,7 +206,7 @@ namespace dodoe {
             if (SUCCEEDED(dialog->GetResult(&item)) && item) {
                 PWSTR wide_path = nullptr;
                 if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &wide_path)) && wide_path) {
-                    selected_path = fs::path(wide_path).lexically_normal().generic_string();
+                    selected_path = FsPath(wide_path).lexically_normal().generic_string();
                     CoTaskMemFree(wide_path);
                 }
                 item->Release();
@@ -220,10 +220,10 @@ namespace dodoe {
         return selected_path;
     }
 
-    bool PlatformTool::BuildCSharpAssembly(const fs::path& asset_directory,
-        const fs::path& output_directory,
+    bool PlatformTool::BuildCSharpAssembly(const FsPath& asset_directory,
+        const FsPath& output_directory,
         const std::string& assembly_name) {
-        std::vector<fs::path> source_files;
+        std::vector<FsPath> source_files;
         if (!CollectCSharpFiles(asset_directory, source_files)) {
             return false;
         }
@@ -235,12 +235,12 @@ namespace dodoe {
             return true;
         }
 
-        const fs::path core_assembly_path = FindCoreAssemblyPath();
+        const FsPath core_assembly_path = FindCoreAssemblyPath();
         if (core_assembly_path.empty()) {
             return false;
         }
 
-        const fs::path generated_project_path = fs::absolute(output_directory / (assembly_name + ".generated.csproj"));
+        const FsPath generated_project_path = fs::absolute(output_directory / (assembly_name + ".generated.csproj"));
         if (!WriteGeneratedProjectFile(generated_project_path, source_files, core_assembly_path, assembly_name)) {
             return false;
         }

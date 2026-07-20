@@ -69,12 +69,12 @@ namespace dodoe {
             transform_component.dirty = true;
         }
 
-        FileID ImportTexture(const std::filesystem::path& model_directory, const aiString& texture_path) {
+        FileID ImportTexture(const FsPath& model_directory, const aiString& texture_path) {
             if (texture_path.length == 0 || texture_path.C_Str()[0] == '*') {
                 return FileID();
             }
 
-            std::filesystem::path resolved_path = std::filesystem::path(texture_path.C_Str());
+            FsPath resolved_path = FsPath(texture_path.C_Str());
             if (resolved_path.is_relative()) {
                 resolved_path = model_directory / resolved_path;
             }
@@ -86,7 +86,7 @@ namespace dodoe {
 
         FileID LoadMaterialTexture(
             const aiMaterial* material,
-            const std::filesystem::path& model_directory,
+            const FsPath& model_directory,
             const aiTextureType primary_type,
             const aiTextureType fallback_type = aiTextureType_NONE) {
             if (!material) {
@@ -112,7 +112,7 @@ namespace dodoe {
             return FileID();
         }
 
-        Ref<Material> MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const std::filesystem::path& model_directory) {
+        Ref<Material> MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const FsPath& model_directory) {
             if (!imported_scene || source_mesh.mMaterialIndex >= imported_scene->mNumMaterials) {
                 return nullptr;
             }
@@ -156,7 +156,7 @@ namespace dodoe {
         MeshImportResult MakeMesh(
             const aiMesh& source_mesh,
             const aiScene* imported_scene,
-            const std::filesystem::path& model_directory,
+            const FsPath& model_directory,
             const uint mesh_index,
             const String& fallback_name) {
             MeshImportResult result{};
@@ -199,7 +199,7 @@ namespace dodoe {
                 }
             }
 
-            MeshSection section{};
+            SubMesh section{};
             section.section_index = 0;
             section.vertex_count = vertex_count;
             section.index_count = index_count;
@@ -207,7 +207,7 @@ namespace dodoe {
             section.material = MakeMaterial(imported_scene, source_mesh, model_directory);
 
             MeshLODData lod{};
-            lod.sections.push_back(std::move(section));
+            lod.sub_meshes.push_back(std::move(section));
             result.lods.push_back(std::move(lod));
 
             return result;
@@ -216,7 +216,7 @@ namespace dodoe {
         void AttachMeshComponent(
             Entity entity,
             const aiScene* imported_scene,
-            const std::filesystem::path& model_directory,
+            const FsPath& model_directory,
             const uint mesh_index,
             const String& fallback_name) {
             if (!imported_scene || mesh_index >= imported_scene->mNumMeshes) {
@@ -235,7 +235,7 @@ namespace dodoe {
         void ProcessNode(
             Scene* scene,
             const aiScene* imported_scene,
-            const std::filesystem::path& model_directory,
+            const FsPath& model_directory,
             aiNode* node,
             Entity parent_entity) {
             if (!scene || !imported_scene || !node || !parent_entity.valid()) {
@@ -285,8 +285,8 @@ namespace dodoe {
             return;
         }
 
-        const String root_name = std::filesystem::path(path).stem().string();
-        const std::filesystem::path model_directory = std::filesystem::path(path).parent_path();
+        const String root_name = FsPath(path).stem().string();
+        const FsPath model_directory = FsPath(path).parent_path();
         auto root_entity = cur_scene->createEntity(root_name);
 
         ProcessNode(cur_scene, imported_scene, model_directory, imported_scene->mRootNode, root_entity);
@@ -296,7 +296,7 @@ namespace dodoe {
         auto cur_scene = Application::Self().context().getWorld()->getCurrentScene();
         DO_ASSERT(cur_scene);
 
-        const String entity_name = std::filesystem::path(path).stem().string();
+        const String entity_name = FsPath(path).stem().string();
         auto entity = cur_scene->createEntity(entity_name);
 
         auto& sr = entity.addComponent<SpriteRendererComponent>();
@@ -308,7 +308,7 @@ namespace dodoe {
     }
 
     void SceneImporter::ImportAsset(const String& path) {
-        const String ext = std::filesystem::path(path).extension().string();
+        const String ext = FsPath(path).extension().string();
         DO_DEBUG("Import Asset");
 
         if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" ||

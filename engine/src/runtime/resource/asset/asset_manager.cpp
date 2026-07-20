@@ -40,8 +40,8 @@ namespace dodoe {
         }
     }
 
-    std::filesystem::path AssetManager::getFullPath(const String& asset_url) const {
-        return (m_asset_dir / std::filesystem::path(asset_url)).lexically_normal();
+    FsPath AssetManager::getFullPath(const String& asset_url) const {
+        return (m_asset_dir / FsPath(asset_url)).lexically_normal();
     }
 
     Scope<Asset> AssetManager::createAssetInstance(AssetType type) {
@@ -70,7 +70,7 @@ namespace dodoe {
         meta.file_id = file_id;
         meta.type = type;
         meta.source_path = source_path;
-        meta.name = FileSystem::path2name_no_ext(source_path);
+        meta.name = FileSystem::PathToNameNoExt(source_path);
 
         meta.asset_path = source_path;
 
@@ -170,14 +170,14 @@ namespace dodoe {
                 String ext = entry.path().extension().string();
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-                std::filesystem::path rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
+                FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
                 String source_path = rel_path.generic_string();
 
                 if (ext == kSceneExt) {
                     FileID file_id = registerAsset(source_path, AssetType::Scene);
                     auto scene = create_scope<SceneAsset>();
                     scene->setFileID(file_id);
-                    scene->setName(FileSystem::path2name_no_ext(source_path));
+                    scene->setName(FileSystem::PathToNameNoExt(source_path));
                     String abs_path = entry.path().generic_string();
                     if (scene->loadFromSource(abs_path)) {
                         scene->setLoadState(AssetLoadState::Loaded);
@@ -187,7 +187,7 @@ namespace dodoe {
                     FileID file_id = registerAsset(source_path, AssetType::Material);
                     auto mat = create_scope<MaterialAsset>();
                     mat->setFileID(file_id);
-                    mat->setName(FileSystem::path2name_no_ext(source_path));
+                    mat->setName(FileSystem::PathToNameNoExt(source_path));
                     String abs_path = entry.path().generic_string();
                     if (mat->loadFromSource(abs_path)) {
                         mat->setLoadState(AssetLoadState::Loaded);
@@ -197,7 +197,7 @@ namespace dodoe {
                     FileID file_id = registerAsset(source_path, AssetType::AnimationClip);
                     auto anim = create_scope<AnimationClipAsset>();
                     anim->setFileID(file_id);
-                    anim->setName(FileSystem::path2name_no_ext(source_path));
+                    anim->setName(FileSystem::PathToNameNoExt(source_path));
                     String abs_path = entry.path().generic_string();
                     if (anim->loadFromSource(abs_path)) {
                         anim->setLoadState(AssetLoadState::Loaded);
@@ -207,13 +207,13 @@ namespace dodoe {
                     FileID file_id = registerAsset(source_path, AssetType::Texture);
                     auto tex = create_scope<TextureAsset>();
                     tex->setFileID(file_id);
-                    tex->setName(FileSystem::path2name_no_ext(source_path));
+                    tex->setName(FileSystem::PathToNameNoExt(source_path));
                     m_assets[file_id] = std::move(tex);
                 } else if (std::ranges::find(kModelExts, ext) != kModelExts.end()) {
                     FileID file_id = registerAsset(source_path, AssetType::Mesh);
                     auto mesh = create_scope<MeshAsset>();
                     mesh->setFileID(file_id);
-                    mesh->setName(FileSystem::path2name_no_ext(source_path));
+                    mesh->setName(FileSystem::PathToNameNoExt(source_path));
                     m_assets[file_id] = std::move(mesh);
                 }
             }
@@ -237,7 +237,7 @@ namespace dodoe {
         FileSystem::TraverseDirectory(paths, m_asset_dir, {".asset"}, false);
 
         for (const auto& path : paths) {
-            std::filesystem::path rel = std::filesystem::relative(path, m_asset_dir);
+            FsPath rel = std::filesystem::relative(path, m_asset_dir);
             String rel_str = rel.generic_string();
 
             std::unique_lock lock(m_mutex);

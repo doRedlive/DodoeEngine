@@ -6,7 +6,7 @@
 
 namespace dodoe {
 
-    Bool ScriptSystem::Execute(const std::filesystem::path& path) {
+    Bool ScriptSystem::Execute(const FsPath& path) {
         if (m_tool_interp) {
             return m_tool_interp->Execute(path);
         }

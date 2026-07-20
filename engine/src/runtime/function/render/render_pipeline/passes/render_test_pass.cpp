@@ -9,10 +9,10 @@
 
 #include "../render_pipeline_pass_utils.h"
 
-#include "runtime/function/render/framework/pipeline_state_cache.h"
-#include "runtime/function/render/framework/shader_library.h"
-#include "runtime/function/render/framework/texture.h"
-#include "runtime/function/render/framework/texture_manager.h"
+#include "runtime/function/render/pipeline/pipeline_state_cache.h"
+#include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/texture/texture.h"
+#include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "render_pass_blackboard_keys.h"
 

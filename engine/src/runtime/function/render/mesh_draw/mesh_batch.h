@@ -6,7 +6,7 @@
 
 #include "runtime/function/graphics/gfx.h"
 #include "mesh_pass_type.h"
-#include "runtime/function/render/framework/material.h"
+#include "runtime/function/render/material/material.h"
 
 namespace dodoe {
 

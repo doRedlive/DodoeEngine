@@ -24,7 +24,7 @@ namespace dodoe {
 
         Bool reloadScripts();
 
-        [[nodiscard]] Bool Execute(const std::filesystem::path& path);
+        [[nodiscard]] Bool Execute(const FsPath& path);
 
     private:
         Bool initialize(const ScriptSystemCreateInfo& create_info);

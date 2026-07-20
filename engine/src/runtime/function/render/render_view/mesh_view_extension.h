@@ -17,20 +17,21 @@ namespace dodoe {
     public:
         DynamicArray<const PrimitiveSceneInfo*> visible_primitives{};
         DynamicArray<MeshPassRelevance> primitive_mesh_pass_relevance{};
-        DynamicArray<UInt32> mesh_pass_primitive_indices[static_cast<Size_t>(8)]{};
-        DynamicArray<UInt32> primitive_first_instance_offsets{};
+        DynamicArray<UInt32> mesh_pass_primitive_indices[static_cast<Size_t>(MeshPassType::Count)]{};
         DynamicArray<InstanceSceneData> instance_scene_data{};
-        DynamicArray<MeshDrawCommand> mesh_pass_commands[static_cast<Size_t>(8)]{};
+        DynamicArray<MeshDrawInstance> cached_draw_instances[static_cast<Size_t>(MeshPassType::Count)]{};
+        DynamicArray<MeshDrawInstance> dynamic_draw_instances[static_cast<Size_t>(MeshPassType::Count)]{};
+        DynamicArray<MeshDrawCommand> frame_commands{};
         DynamicArray<GBufferMeshDrawShaderData> gbuffer_shader_data{};
+        DynamicArray<GBufferMeshDrawShaderData> dynamic_shader_data{};
         Matrix4f directional_shadow_view_projection{1.0f};
         Vector4f frame_time_data{0.0f};
+        const DynamicArray<MeshDrawCommand>* cached_commands{nullptr};
 
         void reset() override;
         void buildMeshPassPrimitiveIndices();
         [[nodiscard]] const MeshPassRelevance& getMeshPassRelevance(UInt32 primitive_index) const;
         [[nodiscard]] const DynamicArray<UInt32>& getMeshPassPrimitiveIndices(MeshPassType pass_type) const;
-        [[nodiscard]] DynamicArray<MeshDrawCommand>& getMeshPassCommands(MeshPassType pass_type);
-        [[nodiscard]] const DynamicArray<MeshDrawCommand>& getMeshPassCommands(MeshPassType pass_type) const;
     };
 
 } // dodoe

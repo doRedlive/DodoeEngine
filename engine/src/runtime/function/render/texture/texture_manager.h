@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "texture.h"
+#include "runtime/function/render/render_frame/upload_ring.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
 #include <mutex>
@@ -23,6 +24,7 @@ namespace dodoe {
 
         GfxContext* m_gfx{nullptr};
         DescriptorTableManager* m_descriptor_table{nullptr};
+        GfxDeviceHandle m_device{};
         ObjHandle<Texture2D> m_fallback{};
         UnorderedMap<InstanceID, ObjHandle<Texture2D>> m_texture2d_cache{};
         UnorderedMap<InstanceID, ObjHandle<TextureCubemap>> m_cubemap_cache{};
@@ -31,12 +33,13 @@ namespace dodoe {
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        Texture2D* createTexture(const String& path, DrawCommandList& cmd_list);
+        Texture2D* createTexture(const String& path, DrawCommandList& cmd_list, UploadRing* upload_ring = nullptr);
         void createFallbackTexture();
 
     public:
-        [[nodiscard]] Texture2D* loadTexture(const String& path, DrawCommandList& cmd_list);
+        [[nodiscard]] Texture2D* loadTexture(const String& path, DrawCommandList& cmd_list, UploadRing* upload_ring = nullptr);
         [[nodiscard]] Texture2D* loadTexture(const String& path);
+        [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, UploadRing* upload_ring = nullptr);
         [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths);
         [[nodiscard]] Texture* findTexture(InstanceID id);
         [[nodiscard]] Texture2D* findTexture2D(InstanceID id);

@@ -5,8 +5,9 @@
 #include "dopch.h"
 
 #include "mesh_processor_base.h"
-#include "../framework/descriptor_table_manager.h"
-#include "../framework/texture_manager.h"
+#include "cached_mesh_draw_command.h"
+#include "runtime/function/render/shader/descriptor_table_manager.h"
+#include "../texture/texture_manager.h"
 #include "../render_scene/primitive_scene_info.h"
 
 namespace dodoe {
@@ -15,7 +16,6 @@ namespace dodoe {
     class PrimitiveSceneInfo;
     struct InstanceSceneData;
     struct MeshPassRelevance;
-    struct MeshDrawCommand;
     struct GBufferMeshDrawShaderData;
 
     class GBufferMeshProcessor final : public IMeshPassProcessor {
@@ -40,12 +40,22 @@ namespace dodoe {
         [[nodiscard]] const GfxBindingSetHandle& getBindingSet() const { return m_binding_set; }
         [[nodiscard]] const GfxBufferHandle& getConstantBuffer() const override { return m_constant_buffer; }
 
-        void buildCommands(
+        void buildCachedCommands(
             const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
             const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
             const DynamicArray<UInt32>& mesh_pass_primitive_indices,
             const Matrix4f& view_projection,
-            DynamicArray<MeshDrawCommand>& out_commands,
+            MeshDrawCommandCache& cache,
+            DynamicArray<MeshDrawInstance>& out_instances,
+            DynamicArray<GBufferMeshDrawShaderData>& out_shader_data) const;
+
+        void buildDynamicCommands(
+            const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
+            const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
+            const DynamicArray<UInt32>& mesh_pass_primitive_indices,
+            const Matrix4f& view_projection,
+            DynamicArray<MeshDrawCommand>& frame_commands,
+            DynamicArray<MeshDrawInstance>& out_instances,
             DynamicArray<GBufferMeshDrawShaderData>& out_shader_data) const;
     };
 

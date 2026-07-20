@@ -10,8 +10,8 @@ namespace dodoe {
     public:
         static std::string OpenProjectFileDialog();
         static std::string OpenDirectoryDialog(const std::string& initial_directory = {});
-        static bool BuildCSharpAssembly(const std::filesystem::path& asset_directory,
-            const std::filesystem::path& output_directory,
+        static bool BuildCSharpAssembly(const FsPath& asset_directory,
+            const FsPath& output_directory,
             const std::string& assembly_name);
     };
 

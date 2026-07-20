@@ -67,10 +67,13 @@ namespace dodoe {
     using GfxMessageSeverity = cutie::MessageSeverity;
     using GfxSamplerAddressMode = cutie::SamplerAddressMode;
     using GfxSamplerReductionType = cutie::SamplerReductionType;
-    namespace GfxObjectTypes = cutie::ObjectTypes;
     using GfxBindingLayoutItem = cutie::BindingLayoutItem;
     using GfxBindingSetItem = cutie::BindingSetItem;
     using GfxVariableRateShadingState = cutie::VariableRateShadingState;
+    using GfxEventQueryHandle = cutie::EventQueryHandle;
+    using GfxCpuAccessMode = cutie::CpuAccessMode;
+
+    namespace GfxObjectTypes = cutie::ObjectTypes;
 
     inline const auto& GfxAllSubresources = cutie::AllSubresources;
 

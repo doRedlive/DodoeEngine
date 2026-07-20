@@ -17,26 +17,13 @@ namespace dodoe {
     };
 
     class PrimitiveSceneInfo {
-    public:
-        struct Section {
-            Ref<Material> material{};
-            UInt32 index_offset{0};
-            UInt32 vertex_offset{0};
-            UInt32 index_count{0};
-            UInt32 vertex_count{0};
-            Int32 section_index{0};
-            MeshGeometryPrimitiveType primitive_type{MeshGeometryPrimitiveType::Triangles};
-
-            [[nodiscard]] Bool isDrawable() const { return index_count > 0; }
-        };
-
     private:
         Identifier m_id{};
         Matrix4f m_world_transform{1.0f};
         Vector3f m_bounds_min{0.0f};
         Vector3f m_bounds_max{0.0f};
         DynamicArray<Ref<Material>> m_materials{};
-        DynamicArray<Section> m_sections{};
+        DynamicArray<SubMesh> m_sub_meshes{};
         DynamicArray<MeshBatch> m_mesh_batches{};
         PrimitiveMobility m_mobility{PrimitiveMobility::Static};
         Bool m_visible{true};
@@ -53,7 +40,7 @@ namespace dodoe {
 
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
         void setMaterials(const DynamicArray<Ref<Material>>& materials) { m_materials = materials; }
-        void setSections(const DynamicArray<Section>& sections) { m_sections = sections; }
+        void setSubMeshes(const DynamicArray<SubMesh>& sub_meshes) { m_sub_meshes = sub_meshes; }
         void setMeshBatches(const DynamicArray<MeshBatch>& mesh_batches) { m_mesh_batches = mesh_batches; }
         void setMobility(const PrimitiveMobility mobility) { m_mobility = mobility; }
         void setVisible(const Bool visible) { m_visible = visible; }
@@ -70,7 +57,7 @@ namespace dodoe {
         [[nodiscard]] const Vector3f& getBoundsMin() const { return m_bounds_min; }
         [[nodiscard]] const Vector3f& getBoundsMax() const { return m_bounds_max; }
         [[nodiscard]] const DynamicArray<Ref<Material>>& getMaterials() const { return m_materials; }
-        [[nodiscard]] const DynamicArray<Section>& getSections() const { return m_sections; }
+        [[nodiscard]] const DynamicArray<SubMesh>& getSubMeshes() const { return m_sub_meshes; }
         [[nodiscard]] DynamicArray<MeshBatch>& getMeshBatches() { return m_mesh_batches; }
         [[nodiscard]] const DynamicArray<MeshBatch>& getMeshBatches() const { return m_mesh_batches; }
         [[nodiscard]] Bool hasRelevantBatch(const MeshPassType pass_type) const {

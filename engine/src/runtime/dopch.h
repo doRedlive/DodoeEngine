@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include <type_traits>
+#include <bit>
 
 #include "runtime/core/base.h"
 #include "runtime/core/container/containers.h"

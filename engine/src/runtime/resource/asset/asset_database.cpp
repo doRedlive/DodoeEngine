@@ -5,7 +5,7 @@
 
 namespace dodoe {
 
-    AssetDatabase::AssetDatabase(const std::filesystem::path& project_asset_dir)
+    AssetDatabase::AssetDatabase(const FsPath& project_asset_dir)
         : m_database_path(project_asset_dir / "asset_database.json") {}
 
     AssetDatabase::~AssetDatabase() {

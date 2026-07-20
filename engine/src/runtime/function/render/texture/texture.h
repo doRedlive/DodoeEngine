@@ -6,7 +6,7 @@
 #include "runtime/core/object/object.h"
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/draw_command_list.h"
-#include "descriptor_table_manager.h"
+#include "runtime/function/render/shader/descriptor_table_manager.h"
 
 namespace dodoe {
 

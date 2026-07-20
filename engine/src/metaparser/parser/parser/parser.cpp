@@ -88,7 +88,7 @@ bool MetaParser::parseProject()
     bool result = true;
     if (m_project_input_file == "*")
     {
-        if (!fs::exists(fs::path(m_source_include_file_name)))
+        if (!fs::exists(FsPath(m_source_include_file_name)))
         {
             std::cout << "Could not load Source Include file: " << m_source_include_file_name << std::endl;
             return false;
@@ -177,7 +177,7 @@ int MetaParser::parse(void)
         arguments.emplace_back(paths[index].c_str());
     }
 
-    fs::path input_path(m_source_include_file_name);
+    FsPath input_path(m_source_include_file_name);
     if (!fs::exists(input_path))
     {
         std::cerr << input_path << " is not exist" << std::endl;

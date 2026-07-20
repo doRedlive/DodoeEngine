@@ -31,7 +31,7 @@ void SceneDocument::newScene(const std::string& name)
     LOG_INFO("[SceneDocument] New scene created: {}", name);
 }
 
-bool SceneDocument::openScene(const std::filesystem::path& file)
+bool SceneDocument::openScene(const FsPath& file)
 {
     auto* world = m_ctx.world();
     if (!world) return false;
@@ -64,7 +64,7 @@ bool SceneDocument::save()
     return true;
 }
 
-bool SceneDocument::saveAs(const std::filesystem::path& file)
+bool SceneDocument::saveAs(const FsPath& file)
 {
     m_path = file;
     return save();

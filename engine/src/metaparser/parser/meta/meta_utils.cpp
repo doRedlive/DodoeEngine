@@ -158,7 +158,7 @@ namespace Utils
     /// <param name="from"></param>
     /// <param name="to"></param>
     /// <returns></returns>
-    fs::path makeRelativePath(const fs::path& from, const fs::path& to)
+    FsPath makeRelativePath(const FsPath& from, const FsPath& to)
     {
         // Start at the root path and while they are the same then do nothing then when they first
         // diverge take the remainder of the two path and replace the entire from path with ".."
@@ -170,8 +170,8 @@ namespace Utils
         (void)formatPathString(from.string(), form_complete_string);
         (void)formatPathString(to.string(), to_complete_string);
 
-        fs::path form_complete = form_complete_string;
-        fs::path to_complete   = to_complete_string;
+        FsPath form_complete = form_complete_string;
+        FsPath to_complete   = to_complete_string;
 
         auto iter_from = form_complete.begin();
         auto iter_to   = to_complete.begin();
@@ -183,7 +183,7 @@ namespace Utils
             ++iter_from;
         }
 
-        fs::path final_path;
+        FsPath final_path;
         while (iter_from != form_complete.end())
         {
             final_path /= "..";
@@ -367,7 +367,7 @@ namespace Utils
 
     void saveFile(const std::string& outpu_string, const std::string& output_file)
     {
-        fs::path out_path(output_file);
+        FsPath out_path(output_file);
 
         if (!fs::exists(out_path.parent_path()))
         {
@@ -395,7 +395,7 @@ namespace Utils
     {
         unsigned int ulRet             = 0;
         auto         local_path_string = path_string;
-        fs::path     local_path;
+        FsPath     local_path;
 
         local_path = local_path_string;
         if (local_path.is_relative())

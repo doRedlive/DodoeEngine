@@ -1,0 +1,32 @@
+{
+  "shaders": [
+    { "name": "GBufferVS",             "source": "main_camera_pass",              "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "GBufferPS",             "source": "main_camera_pass",              "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "ShadowVS",              "source": "directional_light_shadow_pass", "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "ShadowPS",              "source": "directional_light_shadow_pass", "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "FullscreenVS",          "source": "fullscreen",                    "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "SkyboxPS",              "source": "skybox_pass",                   "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "DeferredLightPS",       "source": "deferred_light_pass",           "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "ToneMappingPS",         "source": "tone_mapping_pass",             "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "ColorGradingPS",        "source": "color_grading_pass",            "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "FxaaPS",                "source": "fxaa_pass",                     "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "PresentPS",             "source": "combine_pass",                  "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "ImGuiVS",               "source": "imgui_pass",                    "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "ImGuiPS",               "source": "imgui_pass",                    "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "SpriteVS",              "source": "sprite_pass",                   "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "SpritePS",              "source": "sprite_pass",                   "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "SpriteTraditionalPS",   "source": "sprite_pass_traditional",       "entry_point": "main", "stage": "pixel",    "platforms": ["dx12"] },
+    { "name": "TestVS",                "source": "test_pass",                     "entry_point": "main", "stage": "vertex",   "platforms": ["dx12"] },
+    { "name": "TestPS",                "source": "test_pass",                     "entry_point": "main", "stage": "pixel",    "platforms": ["dx12"] },
+    { "name": "GpuCullingCS",          "source": "gpu_culling_pass",              "entry_point": "main", "stage": "compute",  "platforms": ["dx12"] },
+    { "name": "GizmoVS",               "source": "gizmo_pass",                    "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "GizmoPS",               "source": "gizmo_pass",                    "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "PickVS",                "source": "pick_pass",                     "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "PickPS",                "source": "pick_pass",                     "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "PointLightShadowVS",    "source": "point_light_shadow_pass",       "entry_point": "main", "stage": "vertex",   "platforms": ["dx12", "vulkan"] },
+    { "name": "PointLightShadowPS",    "source": "point_light_shadow_pass",       "entry_point": "main", "stage": "pixel",    "platforms": ["dx12", "vulkan"] },
+    { "name": "PointLightShadowGS",    "source": "point_light_shadow_pass",       "entry_point": "main", "stage": "geometry", "platforms": ["dx12", "vulkan"] },
+    { "name": "BucketCountCS",         "source": "bucket_count_pass",             "entry_point": "main", "stage": "compute",  "platforms": ["dx12"] },
+    { "name": "BucketFillCS",          "source": "bucket_fill_pass",              "entry_point": "main", "stage": "compute",  "platforms": ["dx12"] }
+  ]
+}

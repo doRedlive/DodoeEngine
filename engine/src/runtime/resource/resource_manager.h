@@ -10,7 +10,7 @@
 namespace dodoe {
 
     struct ResourceManagerInitInfo {
-        std::filesystem::path project_path;
+        FsPath project_path;
     };
 
     class ResourceManager {

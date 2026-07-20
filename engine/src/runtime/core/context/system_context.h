@@ -67,7 +67,7 @@ namespace dodoe {
         void tickOneFrame();
 
     private:
-        [[nodiscard]] bool initialize(SystemContextCreateInfo create_info);
+        [[nodiscard]] Bool initialize(SystemContextCreateInfo create_info);
         void shutdown();
 
         void updateTick(float dt);

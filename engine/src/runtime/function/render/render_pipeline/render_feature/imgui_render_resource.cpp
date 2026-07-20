@@ -2,8 +2,8 @@
 
 #include "imgui_render_resource.h"
 
-#include "runtime/function/render/framework/global_samplers.h"
-#include "runtime/function/render/framework/pipeline_state_cache.h"
+#include "runtime/function/render/shader/global_samplers.h"
+#include "runtime/function/render/pipeline/pipeline_state_cache.h"
 
 #ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"

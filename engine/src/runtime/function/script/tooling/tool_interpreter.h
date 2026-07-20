@@ -10,7 +10,7 @@ namespace dodoe {
     public:
         Bool Initialize();
         void Shutdown();
-        Bool Execute(const std::filesystem::path& path);
+        Bool Execute(const FsPath& path);
 
     private:
 #ifdef DODOE_PYTHON_ENABLED

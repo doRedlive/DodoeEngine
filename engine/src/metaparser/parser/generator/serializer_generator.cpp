@@ -22,7 +22,7 @@ namespace Generator
 
     std::string SerializerGenerator::processFileName(std::string path)
     {
-        auto relativeDir = fs::path(path).filename().replace_extension("serializer.gen.h").string();
+        auto relativeDir = FsPath(path).filename().replace_extension("serializer.gen.h").string();
         return m_out_path + "/" + relativeDir;
     }
     int SerializerGenerator::generate(std::string path, SchemaMoudle schema)

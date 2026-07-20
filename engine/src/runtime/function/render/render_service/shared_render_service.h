@@ -4,11 +4,11 @@
 
 #include "dopch.h"
 
-#include "descriptor_table_manager.h"
-#include "global_samplers.h"
-#include "pipeline_state_cache.h"
-#include "shader_library.h"
-#include "texture_manager.h"
+#include "runtime/function/render/shader/descriptor_table_manager.h"
+#include "runtime/function/render/shader/global_samplers.h"
+#include "runtime/function/render/pipeline/pipeline_state_cache.h"
+#include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {

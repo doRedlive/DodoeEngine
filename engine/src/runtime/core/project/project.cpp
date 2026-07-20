@@ -13,7 +13,7 @@ namespace dodoe {
 		return m_active_project;
 	}
 
-	Ref<Project> Project::Load(const std::filesystem::path& path) {
+	Ref<Project> Project::Load(const FsPath& path) {
 		const Ref<Project> project = create_ref<Project>();
 
 		if (ProjectSerializer serializer(project); serializer.deserialize(path)) {
@@ -26,7 +26,7 @@ namespace dodoe {
 		return nullptr;
 	}
 
-	bool Project::Save(const std::filesystem::path& path) {
+	bool Project::Save(const FsPath& path) {
 		m_active_project->m_config.project_path = path.lexically_normal();
 		if (ProjectSerializer serializer(m_active_project); serializer.serialize(path)) {
 			m_active_project->m_project_directory = path.parent_path();

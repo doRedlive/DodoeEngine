@@ -17,8 +17,11 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
+#include <filesystem>
 
 namespace dodoe {
+
+    using FsPath = std::filesystem::path;
 
     enum class AllocTag : uint8_t;
     class Memory;

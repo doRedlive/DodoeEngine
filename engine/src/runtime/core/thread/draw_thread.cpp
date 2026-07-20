@@ -13,7 +13,6 @@ namespace dodoe {
         if (m_running) return;
         m_device = device;
         m_gfx = gfx;
-        GDrawCommandList.setDevice(device);
         m_running = true;
         m_thread = std::thread(&DrawThread::loop, this);
         DO_INFO("DrawThread Start...");

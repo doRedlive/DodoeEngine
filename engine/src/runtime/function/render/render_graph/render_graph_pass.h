@@ -79,18 +79,27 @@ namespace dodoe {
         String m_name{};
         RenderGraphPassFlags m_flags{RenderGraphPassFlags::None};
         DynamicArray<RenderGraphPassResourceAccess> m_accesses{};
+        DynamicArray<RenderGraphBarrier> m_pre_barriers{};
         std::function<void(const RenderGraphPassContext&, DrawCommandList&)> m_execute_function{};
+        UInt32 m_subgraph_index{~0u};
 
     public:
         RenderGraphPass() = default;
         RenderGraphPass(const String& name, const RenderGraphPassFlags flags) : m_name(name), m_flags(flags) { }
 
-        void addAccess(const UInt32 resource_index, const RenderGraphAccessType access_type) {
+        void addAccess(const UInt32 resource_index, const RenderGraphAccessType access_type,
+                       const RenderGraphPipelineStage stage = RenderGraphPipelineStage::PixelShader,
+                       const RenderGraphSubresourceRange& subresource = {}) {
             RenderGraphPassResourceAccess access{};
             access.resource_index = resource_index;
             access.access_type = access_type;
+            access.stage = stage;
+            access.subresource = subresource;
             m_accesses.push_back(access);
         }
+
+        void setSubgraphIndex(const UInt32 index) { m_subgraph_index = index; }
+        [[nodiscard]] UInt32 getSubgraphIndex() const { return m_subgraph_index; }
 
         void setExecuteFunction(std::function<void(const RenderGraphPassContext&, DrawCommandList&)>&& execute_function) {
             m_execute_function = std::move(execute_function);
@@ -104,6 +113,8 @@ namespace dodoe {
         [[nodiscard]] const String& getName() const { return m_name; }
         [[nodiscard]] RenderGraphPassFlags getFlags() const { return m_flags; }
         [[nodiscard]] const DynamicArray<RenderGraphPassResourceAccess>& getAccesses() const { return m_accesses; }
+        [[nodiscard]] const DynamicArray<RenderGraphBarrier>& getPreBarriers() const { return m_pre_barriers; }
+        void setAutoBarriers(DynamicArray<RenderGraphBarrier>&& barriers) { m_pre_barriers = std::move(barriers); }
     };
 
     class RenderGraphPassBuilder {
@@ -118,6 +129,21 @@ namespace dodoe {
         RenderGraphTextureHandle importTexture(const GfxTextureHandle& texture, const String& name);
         RenderGraphBufferHandle importBuffer(const GfxBufferHandle& buffer, const String& name);
         RenderGraphTextureHandle importBackBuffer(const String& name);
+
+        RenderGraphTextureHandle readTexture(const RenderGraphTextureHandle handle,
+                                             const RenderGraphPipelineStage stage,
+                                             const RenderGraphSubresourceRange& subresource = {});
+        RenderGraphTextureHandle writeColor(const RenderGraphTextureHandle handle,
+                                            const RenderGraphAttachmentInfo& attachment = {});
+        RenderGraphTextureHandle writeDepth(const RenderGraphTextureHandle handle,
+                                            const RenderGraphAttachmentInfo& attachment = {});
+        RenderGraphTextureHandle writeUav(const RenderGraphTextureHandle handle,
+                                          const RenderGraphPipelineStage stage);
+        RenderGraphBufferHandle readBuffer(const RenderGraphBufferHandle handle,
+                                           const RenderGraphPipelineStage stage);
+        RenderGraphBufferHandle writeBuffer(const RenderGraphBufferHandle handle,
+                                            const RenderGraphPipelineStage stage);
+        void exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state);
 
         RenderGraphTextureHandle read(const RenderGraphTextureHandle handle);
         RenderGraphTextureHandle write(const RenderGraphTextureHandle handle);

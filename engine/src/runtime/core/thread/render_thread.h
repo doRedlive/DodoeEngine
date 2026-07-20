@@ -35,6 +35,7 @@ namespace dodoe {
 
         void start(ThreadingMode mode);
         void stop();
+        void submit();
         void submitAndWait();
         void executeFrameOnce();
 

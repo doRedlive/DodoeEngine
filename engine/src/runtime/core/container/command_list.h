@@ -63,10 +63,6 @@ namespace dodoe {
             return *command;
         }
 
-        void beginImmediateFrame(TExecutor& target) { m_immediate_target = &target; }
-        void endImmediateFrame() { m_immediate_target = nullptr; }
-        [[nodiscard]] bool isImmediate() const { return m_immediate_target != nullptr; }
-
         void append(CommandList&& other) {
             if (other.isEmpty()) return;
 
@@ -105,7 +101,6 @@ namespace dodoe {
             m_head = nullptr;
             m_tail = nullptr;
             m_command_count = 0;
-            Memory::AdvanceFrameEpoch();
         }
 
         [[nodiscard]] bool isEmpty() const { return m_head == nullptr; }
@@ -134,20 +129,16 @@ namespace dodoe {
             m_head = other.m_head;
             m_tail = other.m_tail;
             m_command_count = other.m_command_count;
-            m_immediate_target = other.m_immediate_target;
 
             other.m_head = nullptr;
             other.m_tail = nullptr;
             other.m_command_count = 0;
         }
 
-        [[nodiscard]] TExecutor* immediateTarget() const { return m_immediate_target; }
-
     private:
         Command* m_head{nullptr};
         Command* m_tail{nullptr};
         Size_t m_command_count{0};
-        TExecutor* m_immediate_target{nullptr};
     };
 
 } // namespace dodoe

@@ -14,8 +14,8 @@ namespace dodoe {
 	public:
 		explicit ProjectSerializer(Ref<Project> proj);
 
-		bool serialize(const std::filesystem::path& file_path);
-		bool deserialize(const std::filesystem::path& file_path);
+		bool serialize(const FsPath& file_path);
+		bool deserialize(const FsPath& file_path);
 		
 	private:
 		Ref<Project> project_;

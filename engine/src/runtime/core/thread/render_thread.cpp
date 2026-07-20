@@ -40,6 +40,15 @@ namespace dodoe {
         m_draw_thread = nullptr;
     }
 
+    void RenderThread::submit() {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_has_pending_frame = true;
+            m_frame_completed = false;
+        }
+        m_cv.notify_all();
+    }
+
     void RenderThread::submitAndWait() {
         {
             std::lock_guard<std::mutex> lock(m_mutex);

@@ -4,6 +4,7 @@
 #include "render_system.h"
 
 #include "render_settings.h"
+#include "runtime/core/memory/memory.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/core/thread/draw_thread.h"
 #include "runtime/core/context/system_context.h"
@@ -25,8 +26,11 @@ namespace dodoe {
 #else
             false;
 #endif
-        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, false, window->isHostMode() ? window->getNativeHandle() : nullptr});
+        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, RenderFeatureSettings{}, window->isHostMode() ? window->getNativeHandle() : nullptr});
         GDrawCommandList.setDevice(*m_gfx);
+
+        m_frame_scheduler = RenderFrameScheduler::Create({m_gfx->getDevice()});
+
         m_descriptor_table = DescriptorTableManager::Create({m_gfx.get()});
         m_texture_manager = TextureManager::Create({m_gfx.get(), m_descriptor_table.get()});
         m_shared_render_service = SharedRenderService::Create({m_gfx.get(), m_descriptor_table.get(), m_texture_manager.get()});
@@ -37,7 +41,7 @@ namespace dodoe {
             m_shared_render_service.get()
         });
 
-        return m_render_scene && m_descriptor_table && m_texture_manager && m_shared_render_service && m_render_pipeline;
+        return m_render_scene && m_descriptor_table && m_texture_manager && m_shared_render_service && m_render_pipeline && m_frame_scheduler;
     }
 
     void RenderSystem::shutdown() {
@@ -45,6 +49,7 @@ namespace dodoe {
         m_gfx->waitForIdle();
 
         RenderPipeline::Destroy(m_render_pipeline);
+        RenderFrameScheduler::Destroy(m_frame_scheduler);
         RenderScene::Destroy(m_render_scene);
         SharedRenderService::Destroy(m_shared_render_service);
         TextureManager::Destroy(m_texture_manager);
@@ -62,6 +67,8 @@ namespace dodoe {
     }
 
     void RenderSystem::renderFrame(const ThreadingMode mode, DrawThread* draw_thread) {
+        Memory::AdvanceFrameEpoch();
+
         auto* gfx = m_gfx.get();
         auto* pipeline = m_render_pipeline.get();
         auto* view_mgr = m_view_manager.get();
@@ -81,8 +88,9 @@ namespace dodoe {
         }
 
         if (any_window_dirty) {
-            gfx->recreateSwapchain();
-            gfx->clearGarbage();
+            m_gfx->waitForIdle();
+            m_gfx->recreateSwapchain();
+            m_gfx->clearGarbage();
         }
 
         for (auto& target : view_mgr->getTargets()) {
@@ -97,21 +105,21 @@ namespace dodoe {
         }
 
         UInt32 image_index = 0;
-        if (!gfx->acquireNextSwapchainImage(image_index)) {
+        if (!m_gfx->acquireNextSwapchainImage(image_index)) {
             return;
         }
 
-        auto* time_sys = GetTimeSystem();
-        const Float frame_time = time_sys ? time_sys->current_time() : 0.0f;
-        const Float frame_delta = time_sys ? time_sys->getDeltaTime() : 0.0f;
+        auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
 
-        scene->flushUpdates();
+        auto* time_sys = GetTimeSystem();
+        const Float frame_time = time_sys->current_time();
+        const Float frame_delta = time_sys->getDeltaTime();
+
+        frame_ctx.command_list.setRenderMode(m_gfx->getDevice());
+        scene->flushUpdates(frame_ctx.command_list);
 
         switch (mode) {
         case ThreadingMode::TripleThread: {
-            FrameContext frame_ctx;
-            frame_ctx.swapchain_image_index = image_index;
-            frame_ctx.command_list.setDevice(GDrawCommandList.getDevice());
             frame_ctx.command_list.beginFrame();
 
             for (auto& target : view_mgr->getTargets()) {
@@ -123,16 +131,15 @@ namespace dodoe {
                 show_editor = cam && cam->isEditorCamera();
 #endif
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
-                pipeline->render(family, *scene, image_index, frame_ctx.command_list);
+                pipeline->render(family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list);
             }
+            m_frame_scheduler->endFrame(frame_ctx);
             draw_thread->submit(std::move(frame_ctx));
             break;
         }
         case ThreadingMode::DualThread:
         case ThreadingMode::SingleThread: {
-            ImmediateFrameScope frame(GDrawCommandList.getDevice(), gfx, image_index);
-
-            GDrawCommandList.beginFrame();
+            frame_ctx.command_list.beginFrame();
 
             for (auto& target : view_mgr->getTargets()) {
                 auto* cam = target->getCamera();
@@ -143,8 +150,20 @@ namespace dodoe {
                 show_editor = cam && cam->isEditorCamera();
 #endif
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
-                pipeline->render(family, *scene, image_index, GDrawCommandList);
+                pipeline->render(family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list);
             }
+
+            {
+                auto gfx_cmd = m_gfx->getDevice()->createCommandList();
+                gfx_cmd->open();
+                frame_ctx.command_list.execute(gfx_cmd);
+                gfx_cmd->close();
+                m_gfx->getDevice()->executeCommandList(gfx_cmd);
+            }
+            gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
+            m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
+            m_gfx->clearGarbage();
+            frame_ctx.command_list.reset();
             break;
         }
         }

@@ -62,9 +62,9 @@ namespace dodoe {
             return materials;
         }
 
-        materials.reserve(lod->sections.size());
-        for (Size_t section_index = 0; section_index < lod->sections.size(); section_index++) {
-            Ref<Material> material = lod->sections[section_index].material;
+        materials.reserve(lod->sub_meshes.size());
+        for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
+            Ref<Material> material = lod->sub_meshes[section_index].material;
             if (section_index < m_override_materials.size() && m_override_materials[section_index]) {
                 material = m_override_materials[section_index];
             }
@@ -73,18 +73,18 @@ namespace dodoe {
         return materials;
     }
 
-    DynamicArray<PrimitiveSceneInfo::Section> PrimitiveRenderObject::buildSections(const DynamicArray<Ref<Material>>& resolved_materials) const {
-        DynamicArray<PrimitiveSceneInfo::Section> sections{};
+    DynamicArray<SubMesh> PrimitiveRenderObject::buildSections(const DynamicArray<Ref<Material>>& resolved_materials) const {
+        DynamicArray<SubMesh> sections{};
         const auto* lod = activeLOD();
         if (!lod) {
             return sections;
         }
 
-        sections.reserve(lod->sections.size());
-        for (Size_t section_index = 0; section_index < lod->sections.size(); section_index++) {
-            const auto& mesh_section = lod->sections[section_index];
+        sections.reserve(lod->sub_meshes.size());
+        for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
+            const auto& mesh_section = lod->sub_meshes[section_index];
 
-            PrimitiveSceneInfo::Section section{};
+            SubMesh section{};
             section.material = section_index < resolved_materials.size() ? resolved_materials[section_index] : mesh_section.material;
             section.index_offset = mesh_section.index_offset;
             section.vertex_offset = mesh_section.vertex_offset;
@@ -110,9 +110,9 @@ namespace dodoe {
         }
 
         const auto& buffers = lod->buffers;
-        mesh_batches.reserve(lod->sections.size());
-        for (Size_t section_index = 0; section_index < lod->sections.size(); section_index++) {
-            const auto& mesh_section = lod->sections[section_index];
+        mesh_batches.reserve(lod->sub_meshes.size());
+        for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
+            const auto& mesh_section = lod->sub_meshes[section_index];
             if (mesh_section.index_count == 0) {
                 continue;
             }
@@ -148,7 +148,7 @@ namespace dodoe {
     {
         PrimitiveSceneInfo primitive(primitive_id);
         const auto materials = resolveMaterials();
-        primitive.setSections(buildSections(materials));
+        primitive.setSubMeshes(buildSections(materials));
         primitive.setMeshBatches(buildMeshBatches(primitive_id, materials, 0));
         primitive.setWorldTransform(world_transform);
         primitive.setBounds(bounds_min, bounds_max);

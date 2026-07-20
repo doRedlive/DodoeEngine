@@ -49,7 +49,7 @@ namespace dodoe {
 
         void loadMaterialTextures(DynamicArray<FileID>& texture_ids,
                                    const aiMaterial* material,
-                                   const std::filesystem::path& model_directory) {
+                                   const FsPath& model_directory) {
             if (!material) {
                 return;
             }
@@ -60,7 +60,7 @@ namespace dodoe {
                     if (material->GetTexture(type, i, &texture_path) != aiReturn_SUCCESS) {
                         continue;
                     }
-                    std::filesystem::path resolved = model_directory / std::filesystem::path(texture_path.C_Str());
+                    FsPath resolved = model_directory / FsPath(texture_path.C_Str());
                     resolved = resolved.lexically_normal();
                     texture_ids.emplace_back(resolved.string());
                 }
@@ -73,7 +73,7 @@ namespace dodoe {
 
         Ref<MeshData> processMesh(const aiMesh& source_mesh,
                                    const aiScene& scene,
-                                   const std::filesystem::path& model_directory) {
+                                   const FsPath& model_directory) {
             std::vector<MeshVertex> vertices;
             vertices.reserve(source_mesh.mNumVertices);
             for (unsigned int i = 0; i < source_mesh.mNumVertices; ++i) {
@@ -102,7 +102,7 @@ namespace dodoe {
         void processAssimpNode(std::vector<Ref<MeshData>>& meshes,
                                 aiNode& node,
                                 const aiScene& scene,
-                                const std::filesystem::path& model_directory) {
+                                const FsPath& model_directory) {
             for (unsigned int i = 0; i < node.mNumMeshes; ++i) {
                 const aiMesh* source_mesh = scene.mMeshes[node.mMeshes[i]];
                 if (!source_mesh) {
@@ -146,7 +146,7 @@ namespace dodoe {
             return;
         }
 
-        std::filesystem::path model_directory = std::filesystem::path(path).parent_path();
+        FsPath model_directory = FsPath(path).parent_path();
         std::vector<Ref<MeshData>> sub_meshes;
         processAssimpNode(sub_meshes, *scene->mRootNode, *scene, model_directory);
 

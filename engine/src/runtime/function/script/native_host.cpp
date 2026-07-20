@@ -14,10 +14,10 @@ namespace dodoe {
 
         using NethostGetHostFxrPath = int(__cdecl*)(HostFxrChar* buffer, size_t* buffer_size, const NethostGetHostFxrParams* params);
 
-        std::filesystem::path GetExeDir() {
+        FsPath GetExeDir() {
             wchar_t buffer[MAX_PATH]{};
             const DWORD len = GetModuleFileNameW(nullptr, buffer, static_cast<DWORD>(MAX_PATH));
-            return len ? std::filesystem::path(buffer).parent_path() : std::filesystem::path();
+            return len ? FsPath(buffer).parent_path() : FsPath();
         }
 
         String GetHostFxrFileName() {
@@ -143,8 +143,8 @@ namespace dodoe {
     }
 
     NativeHost::HostError NativeHost::loadHostFxr() {
-        const std::filesystem::path exe_dir = GetExeDir();
-        const std::filesystem::path nethost_path = exe_dir / L"nethost.dll";
+        const FsPath exe_dir = GetExeDir();
+        const FsPath nethost_path = exe_dir / L"nethost.dll";
 
         const HMODULE nethost = LoadLibraryW(nethost_path.c_str());
         if (!nethost) {
@@ -209,7 +209,7 @@ namespace dodoe {
             (void)prev_writer;
         }
 
-        const std::filesystem::path runtimeconfig = GetExeDir() / L"GreenCake.runtimeconfig.json";
+        const FsPath runtimeconfig = GetExeDir() / L"GreenCake.runtimeconfig.json";
 
         if (!std::filesystem::exists(runtimeconfig)) {
             DO_ERROR("NativeHost: runtime config NOT FOUND at '{}'", runtimeconfig.string());
@@ -266,12 +266,12 @@ namespace dodoe {
             return nullptr;
         }
 
-        std::filesystem::path asm_path(assembly_path);
+        FsPath asm_path(assembly_path);
         if (asm_path.is_relative()) {
             wchar_t exe_dir[MAX_PATH]{};
             const DWORD len = GetModuleFileNameW(nullptr, exe_dir, static_cast<DWORD>(MAX_PATH));
             if (len) {
-                asm_path = std::filesystem::path(exe_dir).parent_path() / asm_path;
+                asm_path = FsPath(exe_dir).parent_path() / asm_path;
             }
         }
         if (!std::filesystem::exists(asm_path)) {

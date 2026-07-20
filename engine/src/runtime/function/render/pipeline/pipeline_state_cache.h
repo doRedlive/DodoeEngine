@@ -4,7 +4,7 @@
 
 #include "dopch.h"
 
-#include "../framework/pso_key.h"
+#include "pso_key.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {

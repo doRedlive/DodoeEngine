@@ -15,12 +15,18 @@ namespace dodoe {
         DynamicArray<RenderGraphResourceRecord> m_resources{};
         DynamicArray<DynamicArray<Size_t>> m_levels{};
         DynamicArray<Bool> m_culled_passes{};
+        TransientResourcePool m_transient_pool{};
+        DynamicArray<String> m_subgraph_names{};
         Bool m_compiled{false};
 
     public:
         RenderGraph() = default;
 
+        String dumpToJSON() const;
+        String dumpToDOT() const;
+
         void addPass(const Ref<RenderGraphPass>& pass);
+        UInt32 addSubgraph(const String& name);
         UInt32 addTextureResource(const RenderGraphTextureDesc& desc, const String& name);
         UInt32 addBufferResource(const RenderGraphBufferDesc& desc, const String& name);
         UInt32 addImportedTextureResource(const GfxTextureHandle& texture, const String& name);
@@ -34,6 +40,15 @@ namespace dodoe {
         [[nodiscard]] const DynamicArray<Ref<RenderGraphPass>>& getPasses() const { return m_passes; }
         [[nodiscard]] DynamicArray<RenderGraphResourceRecord>& getResources() { return m_resources; }
         [[nodiscard]] const DynamicArray<RenderGraphResourceRecord>& getResources() const { return m_resources; }
+        [[nodiscard]] const DynamicArray<String>& getSubgraphNames() const { return m_subgraph_names; }
+
+    private:
+        void resetResourceTracking();
+        void buildDependencyGraph(DynamicArray<DynamicArray<Size_t>>& edges, DynamicArray<Int32>& indegree);
+        void topologicalSort(const DynamicArray<DynamicArray<Size_t>>& edges, const DynamicArray<Int32>& indegree);
+        void validateAccesses();
+        void deriveBarriers();
+        void cullUnreachablePasses();
     };
 
 } // dodoe

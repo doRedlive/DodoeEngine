@@ -21,9 +21,9 @@ public:
     explicit SceneDocument(EditorContext& ctx) : m_ctx(ctx) {}
 
     void newScene(const std::string& name = "Untitled");
-    bool openScene(const std::filesystem::path& file);
+    bool openScene(const FsPath& file);
     bool save();
-    bool saveAs(const std::filesystem::path& file);
+    bool saveAs(const FsPath& file);
 
     dodoe::Scene* scene() const;
 
@@ -31,7 +31,7 @@ public:
     void markDirty();
     void clearDirty();
 
-    const std::filesystem::path& path() const { return m_path; }
+    const FsPath& path() const { return m_path; }
     std::string displayTitle() const;
 
     Signal<>              dirtyChanged;
@@ -39,7 +39,7 @@ public:
 
 private:
     EditorContext& m_ctx;
-    std::filesystem::path m_path;
+    FsPath m_path;
     bool m_dirty = false;
 };
 

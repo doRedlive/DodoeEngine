@@ -45,13 +45,13 @@ namespace dodoe {
             return 0;
         }
 
-        Bool BuildScriptSourceFingerprint(const fs::path& asset_directory, String& out_fingerprint) {
+        Bool BuildScriptSourceFingerprint(const FsPath& asset_directory, String& out_fingerprint) {
             out_fingerprint.clear();
             if (!fs::exists(asset_directory) || !fs::is_directory(asset_directory)) {
                 return false;
             }
 
-            DynamicArray<fs::path> script_files;
+            DynamicArray<FsPath> script_files;
             for (const auto& entry : fs::recursive_directory_iterator(asset_directory)) {
                 if (!entry.is_regular_file() || entry.path().extension() != ".cs") {
                     continue;
@@ -82,7 +82,7 @@ namespace dodoe {
             return true;
         }
 
-        DynamicArray<Byte> ReadFileBinary(const fs::path& filepath) {
+        DynamicArray<Byte> ReadFileBinary(const FsPath& filepath) {
             std::ifstream stream(filepath, std::ios::binary | std::ios::ate);
             if (!stream.is_open()) {
                 return {};
@@ -191,7 +191,7 @@ namespace dodoe {
             return false;
         }
 
-        const fs::path assembly_path = fs::absolute(Project::ScriptAssemblyPath());
+        const FsPath assembly_path = fs::absolute(Project::ScriptAssemblyPath());
         auto data = ReadFileBinary(assembly_path);
         if (data.empty()) {
             DO_ERROR("ScriptEngine: failed to read app assembly '{}'", assembly_path.string());

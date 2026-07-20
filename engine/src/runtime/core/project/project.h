@@ -9,26 +9,26 @@ namespace dodoe {
 	struct ProjectConfig {
 		std::string name{ "Untitled" };
 
-		std::filesystem::path project_path;
-		std::filesystem::path asset_directory;
+		FsPath project_path;
+		FsPath asset_directory;
 		std::string start_scene_name;
 	};
 
 	class DODOE_API Project {
 	public:
-		static const std::filesystem::path& ProjectDirectory() {
+		static const FsPath& ProjectDirectory() {
 			return m_active_project->m_project_directory;
 		}
 
-		static std::filesystem::path AssetDirectory() {
+		static FsPath AssetDirectory() {
 			return ProjectDirectory() / m_active_project->m_config.asset_directory;
 		}
 
-		static std::filesystem::path BinariesDirectory() {
+		static FsPath BinariesDirectory() {
 			return ProjectDirectory() / "Binaries";
 		}
 
-		static std::filesystem::path ScriptAssemblyPath() {
+		static FsPath ScriptAssemblyPath() {
 			return BinariesDirectory() / (m_active_project->m_config.name + ".dll");
 		}
 
@@ -37,12 +37,12 @@ namespace dodoe {
 		static Ref<Project> ActiveProject() { return m_active_project; }
 
 		static Ref<Project> Create();
-		static Ref<Project> Load(const std::filesystem::path& path);
-		static bool 		Save(const std::filesystem::path& path);
+		static Ref<Project> Load(const FsPath& path);
+		static bool 		Save(const FsPath& path);
 
 	private:
 		ProjectConfig m_config{};
-		std::filesystem::path m_project_directory;
+		FsPath m_project_directory;
 
 		inline static Ref<Project> m_active_project;
 	};

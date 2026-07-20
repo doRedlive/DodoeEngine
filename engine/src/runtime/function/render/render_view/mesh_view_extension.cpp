@@ -7,20 +7,25 @@ namespace dodoe {
 
     void MeshViewExtension::reset() {
         visible_primitives.clear();
-        primitive_first_instance_offsets.clear();
         instance_scene_data.clear();
         primitive_mesh_pass_relevance.clear();
 
         for (auto& indices : mesh_pass_primitive_indices) {
             indices.clear();
         }
-        for (auto& commands : mesh_pass_commands) {
-            commands.clear();
+        for (auto& instances : cached_draw_instances) {
+            instances.clear();
+        }
+        for (auto& instances : dynamic_draw_instances) {
+            instances.clear();
         }
 
+        frame_commands.clear();
         gbuffer_shader_data.clear();
+        dynamic_shader_data.clear();
         directional_shadow_view_projection = Matrix4f(1.0f);
         frame_time_data = Vector4f(0.0f);
+        cached_commands = nullptr;
     }
 
     void MeshViewExtension::buildMeshPassPrimitiveIndices() {
@@ -46,14 +51,6 @@ namespace dodoe {
 
     const DynamicArray<UInt32>& MeshViewExtension::getMeshPassPrimitiveIndices(const MeshPassType pass_type) const {
         return mesh_pass_primitive_indices[static_cast<Size_t>(pass_type)];
-    }
-
-    DynamicArray<MeshDrawCommand>& MeshViewExtension::getMeshPassCommands(const MeshPassType pass_type) {
-        return mesh_pass_commands[static_cast<Size_t>(pass_type)];
-    }
-
-    const DynamicArray<MeshDrawCommand>& MeshViewExtension::getMeshPassCommands(const MeshPassType pass_type) const {
-        return mesh_pass_commands[static_cast<Size_t>(pass_type)];
     }
 
 } // dodoe

@@ -119,15 +119,15 @@ namespace dodoe {
         }
 
         DynamicArray<MeshBatch> batches{};
-        batches.reserve(lod->sections.size() * (m_clusters.empty() ? 1 : m_clusters.size()));
+        batches.reserve(lod->sub_meshes.size() * (m_clusters.empty() ? 1 : m_clusters.size()));
         DynamicArray<Cluster> fallback_clusters{};
         if (m_clusters.empty()) {
             fallback_clusters.push_back(Cluster{0, static_cast<UInt32>(m_instances.size()), -m_instance_bounds_extent, m_instance_bounds_extent});
         }
         const DynamicArray<Cluster>& clusters = m_clusters.empty() ? fallback_clusters : m_clusters;
 
-        for (Size_t section_index = 0; section_index < lod->sections.size(); section_index++) {
-            const auto& mesh_section = lod->sections[section_index];
+        for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
+            const auto& mesh_section = lod->sub_meshes[section_index];
             if (mesh_section.index_count == 0) {
                 continue;
             }

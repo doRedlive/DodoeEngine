@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "runtime/function/graphics/gfx.h"
-#include "runtime/function/render/framework/shared_render_service.h"
+#include "runtime/function/render/shared_render_service.h"
 #include "runtime/function/render/mesh_draw/mesh_processor_base.h"
 
 namespace dodoe {
@@ -34,6 +34,7 @@ namespace dodoe {
         const RenderScene* scene{nullptr};
         LocalVertexFactory* local_vertex_factory{nullptr};
         const IMeshPassProcessor* mesh_processors[static_cast<size_t>(MeshPassType::Count)]{};
+        const MeshDrawCommandCache* mesh_draw_cache{nullptr};
 
         [[nodiscard]] GfxContext* getGfxContext() const { return gfx_context; }
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return shared_render_service; }

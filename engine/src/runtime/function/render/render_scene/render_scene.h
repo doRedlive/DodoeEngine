@@ -8,6 +8,7 @@
 #include "sprite_render_object.h"
 
 #include "primitive_scene_info.h"
+#include "render_scene_delta.h"
 #include "sprite_scene_info.h"
 #include "light_scene_info.h"
 #include "runtime/function/render/gpu_driven/gpu_scene.h"
@@ -65,6 +66,27 @@ namespace dodoe {
         return (static_cast<UInt32>(lhs) & static_cast<UInt32>(rhs)) != 0;
     }
 
+    enum class LightUpdateType : UInt32 {
+        None = 0,
+        Added = 1 << 0,
+        Removed = 1 << 1,
+        TransformChanged = 1 << 2,
+        DataChanged = 1 << 3
+    };
+
+    inline LightUpdateType operator|(const LightUpdateType lhs, const LightUpdateType rhs) {
+        return static_cast<LightUpdateType>(static_cast<UInt32>(lhs) | static_cast<UInt32>(rhs));
+    }
+
+    inline LightUpdateType& operator|=(LightUpdateType& lhs, const LightUpdateType rhs) {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    inline Bool HasAnyFlags(const LightUpdateType lhs, const LightUpdateType rhs) {
+        return (static_cast<UInt32>(lhs) & static_cast<UInt32>(rhs)) != 0;
+    }
+
     class RenderScene : public Managed<RenderScene, RenderSceneCreateInfo> {
         friend class Managed<RenderScene, RenderSceneCreateInfo>;
         struct Aabb {
@@ -83,6 +105,7 @@ namespace dodoe {
         UnorderedMap<UUID, Size_t> m_sprite_scene_info_indices{};
         UnorderedMap<UUID, PrimitiveUpdateType> m_pending_primitive_updates{};
         UnorderedMap<UUID, SpriteUpdateType> m_pending_sprite_updates{};
+        UnorderedMap<UUID, LightUpdateType> m_pending_light_updates{};
 
         DynamicArray<PrimitiveSceneInfo> m_primitive_scene_infos{};
         DynamicArray<SpriteSceneInfo> m_sprite_scene_infos{};
@@ -103,7 +126,7 @@ namespace dodoe {
         void updateSpriteTransform(UUID id, const Matrix4f& world_transform);
         void removeSprite(UUID id);
 
-        void flushUpdates();
+        void flushUpdates(DrawCommandList& cmd_list);
 
         [[nodiscard]] const Aabb& getMeshBounds(const MeshUploadData& upload_data);
 
@@ -128,9 +151,13 @@ namespace dodoe {
         void shutdown();
 
         void reset();
-        void rebuildPipelineSceneData();
+        void rebuildPipelineSceneData(DrawCommandList& cmd_list);
+        void syncPrimitiveGpuScene(const RenderSceneDelta& delta);
+        void syncSpriteGpuScene(const RenderSceneDelta& delta);
+        void syncLightGpuScene(const RenderSceneDelta& delta);
         void markPrimitiveDirty(UUID id, PrimitiveUpdateType update_type);
         void markSpriteDirty(UUID id, SpriteUpdateType update_type);
+        void markLightDirty(UUID id, LightUpdateType update_type);
         void upsertSpriteSceneInfo(UUID id);
         void removeSpriteSceneInfo(UUID id);
         void applySpriteTransform(UUID id);

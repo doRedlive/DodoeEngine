@@ -19,7 +19,7 @@ namespace dodoe {
         GLFWwindow* window_handle{nullptr};
         RenderBackendApiType api_type{};
         Bool enable_validation{true};
-        Bool enable_gpu_driven{false};
+        RenderFeatureSettings feature_settings{};
         void* host_handle{nullptr};
     };
 
@@ -45,6 +45,7 @@ namespace dodoe {
         static Scope<GfxContext> Create(const GfxBackendCreateInfo& create_info);
         static void Destroy(Scope<GfxContext>& backend);
 
+        [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
         [[nodiscard]] const DynamicArray<GfxTextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
         [[nodiscard]] Vector2i getSwapchainExtent2d() const;
         [[nodiscard]] Bool acquireNextSwapchainImage(UInt32& image_index);
@@ -63,13 +64,12 @@ namespace dodoe {
     private:
         friend class DrawCommandList;
 
-        [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
         void initialize(const GfxBackendCreateInfo& create_info);
         void shutdown();
 
         void initializeVulkan(const GfxBackendCreateInfo& create_info);
         void initializeOpenGL(const GfxBackendCreateInfo& create_info);
-        void initializeDx12(const GfxBackendCreateInfo& create_info);
+        void initializeD3D12(const GfxBackendCreateInfo& create_info);
 
         void createSwapchainTexturesVulkan();
         void createSwapchainTexturesOpenGL();

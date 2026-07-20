@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 DEFAULT_EXTENSIONS = {".h", ".hpp", ".c", ".cpp", ".cs", ".inl"}
-DEFAULT_TARGET_DIRS = ["engine/src/runtime", "engine/src/editor", "engine/src/scriptcore"]
+DEFAULT_TARGET_DIRS = ["engine/src/runtime", "engine/src/editor", "engine/src/scriptcore", "engine/src/sandbox"]
 
 
 def count_file_lines(file_path: Path) -> tuple[int, int, int]:

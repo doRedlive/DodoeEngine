@@ -49,10 +49,44 @@ namespace dodoe {
         Float _pad;
     };
 
+    struct alignas(16) LightGpuData {
+        Vector3f position;
+        Float radius;
+        Vector3f direction;
+        Float range;
+        Vector3f color;
+        Float intensity;
+        Float inner_angle;
+        Float outer_angle;
+        UInt32 light_type;
+        UInt32 cast_shadow;
+        UInt32 cubemap_index;
+        UInt32 _pad1;
+    };
+
     struct alignas(16) CullingParams {
         Vector4f frustum_planes[6];
         UInt32 object_count;
         UInt32 padding[3];
+    };
+
+    struct alignas(16) DrawIndexedIndirectArgs {
+        UInt32 index_count;
+        UInt32 instance_count;
+        UInt32 start_index_location;
+        Int32 base_vertex_location;
+        UInt32 start_instance_location;
+    };
+
+    struct alignas(16) BucketKey {
+        UInt32 key;
+        UInt32 _pad[3];
+    };
+
+    struct alignas(16) BucketCount {
+        UInt32 instance_count;
+        UInt32 current_offset;
+        UInt32 _pad[2];
     };
 
 } // dodoe

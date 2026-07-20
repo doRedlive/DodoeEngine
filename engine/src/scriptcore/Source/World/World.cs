@@ -16,6 +16,8 @@ public class World
 
     private static World? _current;
 
+    public CakeCommandBuffer CommandBuffer { get; } = new();
+
     private World()
     {
         _current = this;

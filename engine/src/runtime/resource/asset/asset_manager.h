@@ -30,13 +30,13 @@ namespace dodoe {
         UnorderedMap<FileID, Scope<Asset>> m_assets;
         UnorderedMap<String, FileID> m_path_to_file_id;
         DynamicArray<FileID> m_assets_by_type[static_cast<Size_t>(AssetType::Count)];
-        std::filesystem::path m_asset_dir;
+        FsPath m_asset_dir;
         mutable std::shared_mutex m_mutex;
 
         Bool initialize(const AssetManagerCreateInfo& info);
         void shutdown();
 
-        [[nodiscard]] std::filesystem::path getFullPath(const String& asset_url) const;
+        [[nodiscard]] FsPath getFullPath(const String& asset_url) const;
 
     public:
         [[nodiscard]] AssetDatabase* getDatabase() const { return m_database.get(); }
@@ -136,7 +136,7 @@ namespace dodoe {
 
         template<typename AssetType>
         Bool loadAssetFile(const String& asset_url, AssetType& out_asset) const {
-            std::filesystem::path asset_path = getFullPath(asset_url);
+            FsPath asset_path = getFullPath(asset_url);
             std::ifstream asset_json_file(asset_path);
             if (!asset_json_file) {
                 DO_ERROR("open file: {} failed!", asset_path.generic_string());
@@ -172,7 +172,7 @@ namespace dodoe {
 
         template<typename AssetType>
         Bool saveAssetFile(const AssetType& out_asset, const String& asset_url) const {
-            const std::filesystem::path asset_path = getFullPath(asset_url);
+            const FsPath asset_path = getFullPath(asset_url);
             std::error_code ec;
             std::filesystem::create_directories(asset_path.parent_path(), ec);
 

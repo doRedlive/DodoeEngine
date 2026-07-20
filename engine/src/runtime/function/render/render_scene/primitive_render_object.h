@@ -51,7 +51,7 @@ namespace dodoe {
 
         [[nodiscard]] RenderObjectDirtyFlags diff(const RenderObject& previous) const override;
         [[nodiscard]] virtual DynamicArray<Ref<Material>> resolveMaterials() const;
-        [[nodiscard]] virtual DynamicArray<PrimitiveSceneInfo::Section> buildSections(const DynamicArray<Ref<Material>>& resolved_materials) const;
+        [[nodiscard]] virtual DynamicArray<SubMesh> buildSections(const DynamicArray<Ref<Material>>& resolved_materials) const;
         [[nodiscard]] virtual DynamicArray<MeshBatch> buildMeshBatches(
             Identifier primitive_id,
             const DynamicArray<Ref<Material>>& resolved_materials,

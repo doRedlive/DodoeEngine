@@ -1,0 +1,53 @@
+// do@Redlive
+
+#pragma once
+
+#include "dopch.h"
+
+#include "runtime/core/container/deferred_deletion.h"
+#include "frame_context.h"
+#include "frame_telemetry.h"
+#include "upload_ring.h"
+#include "runtime/function/graphics/gfx.h"
+
+namespace dodoe {
+
+    struct RenderFrameSchedulerCreateInfo {
+        GfxDeviceHandle device{};
+    };
+
+    class RenderFrameScheduler : public Managed<RenderFrameScheduler, RenderFrameSchedulerCreateInfo> {
+        friend class Managed<RenderFrameScheduler, RenderFrameSchedulerCreateInfo>;
+
+        static constexpr Size_t kMaxFramesInFlight = 3;
+
+        struct FrameSlot {
+            UInt64 frame_number{0};
+            UploadRing upload_ring{};
+            UInt32 swapchain_image_index{0};
+            Bool in_flight{false};
+            GfxEventQueryHandle completion_query{};
+        };
+
+        GfxDeviceHandle m_device{};
+        StaticArray<FrameSlot, kMaxFramesInFlight> m_slots{};
+        Size_t m_current_index{0};
+        UInt64 m_frame_counter{0};
+
+        DeferredDeletionQueue m_deletion_queue{};
+        FrameTelemetryCollector m_telemetry{};
+
+    public:
+        FrameContext beginFrame(UInt32 swapchain_image_index);
+        void endFrame(FrameContext& ctx);
+
+        void deferDeleteFunc(std::function<void()> deleter);
+
+        [[nodiscard]] Size_t getInFlightCount() const;
+
+    private:
+        Bool initialize(const RenderFrameSchedulerCreateInfo& info);
+        void shutdown();
+    };
+
+} // namespace dodoe
