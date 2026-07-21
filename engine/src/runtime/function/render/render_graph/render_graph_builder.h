@@ -9,6 +9,10 @@
 
 namespace dodoe {
 
+    class IRenderPass;
+    class RenderView;
+    struct RenderPassContext;
+
     class RenderGraphBuilder {
         RenderGraph m_graph{};
         RenderGraphBlackboard m_blackboard{};
@@ -44,6 +48,8 @@ namespace dodoe {
             );
             m_graph.addPass(pass);
         }
+
+        void addPass(IRenderPass& render_pass, const RenderPassContext& context, const RenderView& view);
 
         void exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state);
         void compile();

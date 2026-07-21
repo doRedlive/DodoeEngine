@@ -2,6 +2,8 @@
 
 #include "render_graph_builder.h"
 
+#include "runtime/function/render/render_pipeline/render_pass.h"
+
 namespace dodoe {
 
     RenderGraphTextureHandle RenderGraphBuilder::createTexture(const RenderGraphTextureDesc& desc, const String& name) {
@@ -40,6 +42,19 @@ namespace dodoe {
 
     void RenderGraphBuilder::endViewSubgraph() {
         m_current_subgraph = ~0u;
+    }
+
+    void RenderGraphBuilder::addPass(IRenderPass& render_pass, const RenderPassContext& context, const RenderView& view) {
+        auto pass = create_ref<RenderGraphPass>(render_pass.getName(), render_pass.getFlags());
+        pass->setSubgraphIndex(m_current_subgraph);
+        RenderGraphPassBuilder pass_builder(*this, *pass);
+        render_pass.setup(pass_builder, context, view);
+        pass->setExecuteFunction(
+            [&render_pass](const RenderGraphPassContext& ctx, DrawCommandList& cmd) {
+                render_pass.execute(ctx, cmd);
+            }
+        );
+        m_graph.addPass(pass);
     }
 
     void RenderGraphBuilder::exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state) {

@@ -92,6 +92,7 @@ namespace dodoe {
         context.view = &view;
         context.view_index = view_index;
         context.gfx_context = m_gfx_context;
+        context.shared_render_service = m_shared_render_service;
         context.swapchain_image_index = swapchain_image_index;
         graph.execute(*m_thread_pool, context, out_commands);
     }

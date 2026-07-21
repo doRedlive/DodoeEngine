@@ -39,12 +39,14 @@ namespace dodoe {
     class RenderScene;
     class RenderView;
     class RenderViewFamily;
+    class SharedRenderService;
 
     struct RenderGraphExecuteContext {
         const RenderViewFamily* view_family{nullptr};
         const RenderScene* scene{nullptr};
         const RenderView* view{nullptr};
         GfxContext* gfx_context{nullptr};
+        SharedRenderService* shared_render_service{nullptr};
         Size_t view_index{0};
         UInt32 swapchain_image_index{0};
     };
@@ -63,6 +65,7 @@ namespace dodoe {
         [[nodiscard]] GfxContext* getGfxContext() const { return m_execute_context->gfx_context; }
         [[nodiscard]] Size_t getViewIndex() const { return m_execute_context->view_index; }
         [[nodiscard]] UInt32 getSwapchainImageIndex() const { return m_execute_context->swapchain_image_index; }
+        [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_execute_context->shared_render_service; }
 
         [[nodiscard]] GfxTextureHandle resolveTexture(const RenderGraphTextureHandle handle) const {
             DO_ASSERT(m_resource_registry != nullptr, "RenderGraphPassContext resource registry is null");
