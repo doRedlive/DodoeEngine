@@ -90,6 +90,7 @@ namespace dodoe {
         if (any_window_dirty) {
             m_gfx->waitForIdle();
             m_gfx->recreateSwapchain();
+            pipeline->onResize(static_cast<UInt32>(cur_pixel.x), static_cast<UInt32>(cur_pixel.y));
             m_gfx->clearGarbage();
         }
 
