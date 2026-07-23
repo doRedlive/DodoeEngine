@@ -2,17 +2,28 @@
 
 #pragma once
 
-#include "imgui_render_resource.h"
-#include "render_builtin_features.h"
+#include "dopch.h"
+
+#include "render_feature.h"
+#include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
 
     class ImGuiFeature final : public IRenderFeature {
-        mutable ImGuiRenderResource m_resources{};
+        GfxTextureHandle m_font_texture{};
+        GfxBufferHandle m_constant_buffer{};
+        GfxBindingLayoutHandle m_binding_layout{};
+        ImGuiPass m_imgui_pass{};
 
     public:
-        ~ImGuiFeature() override { m_resources.reset(); }
-        void registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const override;
+        void initialize(SharedRenderService& resources) override;
+        void shutdown() override;
+
+        void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const override;
+
+        [[nodiscard]] GfxTextureHandle getFontTexture() const { return m_font_texture; }
+        [[nodiscard]] GfxBufferHandle getConstantBuffer() const { return m_constant_buffer; }
+        [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
     };
 
-} // dodoe
+} // namespace dodoe

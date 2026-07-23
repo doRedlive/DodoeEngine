@@ -4,6 +4,7 @@ internal class CakeBehaviourSystem : CakeSystem
 {
     public override void OnUpdate()
     {
-        GameObjectManager.ProcessLifecycle(Time.DeltaTime);
+        var scene = SceneManager.ActiveScene;
+        scene?.NotifyUpdate(Time.DeltaTime);
     }
 }

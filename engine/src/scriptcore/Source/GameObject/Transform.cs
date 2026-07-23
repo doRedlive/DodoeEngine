@@ -14,47 +14,59 @@ public class Transform : CakeComponent
 
     public Vector3f Position
     {
-        get { return EcsTransform.Position; }
-        set { EcsTransform.Position = value; }
+        get => EcsTransform.Position;
+        set => EcsTransform.Position = value;
     }
 
     public Vector3f Rotation
     {
-        get { return EcsTransform.Rotation; }
-        set { EcsTransform.Rotation = value; }
+        get => EcsTransform.Rotation;
+        set => EcsTransform.Rotation = value;
     }
 
     public Vector3f Scale
     {
-        get { return EcsTransform.Scale; }
-        set { EcsTransform.Scale = value; }
+        get => EcsTransform.Scale;
+        set => EcsTransform.Scale = value;
     }
 
     public GameObject GameObject { get; internal set; }
 
     public Transform Parent
     {
-        get { return GameObjectManager.GetParentTransform(Entity.ID); }
+        get
+        {
+            var scene = GameObject != null ? GameObject.Scene : null;
+            return scene != null ? scene.GetParentTransform(Entity.ID) : null;
+        }
         set
         {
             if (value == null)
             {
                 NativeCalls.Native_EntitySetParent(Entity.ID, 0);
-                GameObjectManager.SetParent(Entity.ID, null);
+                GameObject?.Scene?.SetParent(Entity.ID, null);
             }
             else
             {
                 NativeCalls.Native_EntitySetParent(Entity.ID, value.Entity.ID);
-                GameObjectManager.SetParent(Entity.ID, value.GameObject);
+                GameObject?.Scene?.SetParent(Entity.ID, value.GameObject);
             }
         }
     }
 
-    public int ChildCount { get { return GameObjectManager.GetChildCount(Entity.ID); } }
+    public int ChildCount
+    {
+        get
+        {
+            var scene = GameObject != null ? GameObject.Scene : null;
+            return scene != null ? scene.GetChildCount(Entity.ID) : 0;
+        }
+    }
 
     public Transform GetChild(int index)
     {
-        return GameObjectManager.GetChild(Entity.ID, index);
+        var scene = GameObject != null ? GameObject.Scene : null;
+        return scene != null ? scene.GetChild(Entity.ID, index) : null;
     }
 
     public void Translate(Vector3f delta)
@@ -69,7 +81,7 @@ public class Transform : CakeComponent
 
     public override string ToString()
     {
-        return string.Format("Transform(Pos={0}, Rot={1}, Scale={2})", Position, Rotation, Scale);
+        return $"Transform(Pos={Position}, Rot={Rotation}, Scale={Scale})";
     }
 }
 
@@ -78,7 +90,7 @@ internal static class EntityTransformExtensions
     public static Transform GetTransform(this Entity entity)
     {
         if (entity == null) return null;
-        var go = GameObjectManager.FindByID(entity.ID);
+        var go = GameObject.FindByID(entity.ID);
         return go != null ? go.Transform : null;
     }
 }

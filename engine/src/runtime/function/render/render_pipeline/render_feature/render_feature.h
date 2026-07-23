@@ -4,22 +4,20 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/render_pipeline/render_pass_context.h"
+#include "runtime/function/render/render_pipeline/render_pass.h"
 
 namespace dodoe {
 
-    class RenderGraphBuilder;
-    class RenderView;
-
-    struct RenderFeatureContext {
-        const RenderView* view{nullptr};
-        const RenderPassContext* pass_context{nullptr};
-    };
+    class SharedRenderService;
 
     class IRenderFeature {
     public:
         virtual ~IRenderFeature() = default;
-        virtual void registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const = 0;
+
+        virtual void initialize(SharedRenderService& resources) {}
+        virtual void onResize(UInt32 width, UInt32 height) {}
+        virtual void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const = 0;
+        virtual void shutdown() {}
     };
 
 } // dodoe

@@ -5,8 +5,6 @@
 #include "dopch.h"
 
 #include "renderer.h"
-#include "render_pipeline_base.h"
-#include "render_pipeline_registry.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
@@ -14,9 +12,7 @@ namespace dodoe {
     class RenderPipeline : public Managed<RenderPipeline, RendererCreateInfo> {
         friend class Managed<RenderPipeline, RendererCreateInfo>;
 
-        RenderPipelineDefinition m_definition{};
-        RenderPipelineRegistry m_registry{};
-        RenderPipelineInstance m_active_pipeline{};
+        Scope<BaseRenderer> m_active_renderer;
 
     public:
         void onResize(UInt32 width, UInt32 height);

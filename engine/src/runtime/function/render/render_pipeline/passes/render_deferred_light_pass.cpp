@@ -1,6 +1,6 @@
 // do@Redlive
 
-#include "render_pipeline_passes.h"
+#include "render_deferred_light_pass.h"
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -9,7 +9,6 @@
 
 #include "../render_pipeline_pass_utils.h"
 
-#include "runtime/function/render/render_pipeline/render_feature/deferred_light_render_resource.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
@@ -18,7 +17,7 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/core/math/math.h"
 
-namespace dodoe::RenderPipelinePass {
+namespace dodoe {
 
     struct DeferredLightPushConstants {
         Vector4f light_color_intensity{1.0f, 1.0f, 1.0f, 1.0f};
@@ -50,7 +49,9 @@ namespace dodoe::RenderPipelinePass {
         RenderGraphBufferHandle constant_buffer{};
     };
 
-    void RenderDeferredLightPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, DeferredLightRenderResource& resources) {
+    void DeferredLightPass::build(RenderGraphBuilder& graph,
+                                   const RenderPassBuildContext& context) {
+        const auto& pass_context = context.pass_context;
         DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
         const auto& shader_library = *pass_context.getShaderLibrary();
 
@@ -68,10 +69,10 @@ namespace dodoe::RenderPipelinePass {
                 parameters.material = pass_builder.read(gbuffer->material);
                 parameters.shadow_map = pass_builder.read(*shadow);
                 parameters.hdr_color = pass_builder.write(*hdr);
-                parameters.constant_buffer = pass_builder.importBuffer(resources.getOrCreateConstantBuffer(), "DeferredLightConstantBuffer");
+                parameters.constant_buffer = pass_builder.importBuffer(m_constant_buffer, "DeferredLightConstantBuffer");
             },
-            [pass_context, &shader_library](const DeferredLightPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto& light_infos = context.getScene()->getLightSceneInfos();
+            [pass_context, &shader_library](const DeferredLightPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+                const auto& light_infos = ctx.getScene()->getLightSceneInfos();
                 Bool has_enabled_lights = false;
                 for (const auto& light_info : light_infos) {
                     if (light_info.isEnabled() && light_info.getLightType() != LightType::Sky) {
@@ -80,21 +81,21 @@ namespace dodoe::RenderPipelinePass {
                     }
                 }
                 if (!has_enabled_lights) {
-                    const auto hdr = context.resolveTexture(parameters.hdr_color);
+                    const auto hdr = ctx.resolveTexture(parameters.hdr_color);
                     command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
                     command_list.commitBarriers();
                     return;
                 }
 
-                const auto albedo_handle = context.resolveTexture(parameters.albedo);
-                const auto normal_handle = context.resolveTexture(parameters.normal);
-                const auto position_handle = context.resolveTexture(parameters.position);
-                const auto material_handle = context.resolveTexture(parameters.material);
-                const auto shadow_handle = context.resolveTexture(parameters.shadow_map);
-                const auto hdr = context.resolveTexture(parameters.hdr_color);
+                const auto albedo_handle = ctx.resolveTexture(parameters.albedo);
+                const auto normal_handle = ctx.resolveTexture(parameters.normal);
+                const auto position_handle = ctx.resolveTexture(parameters.position);
+                const auto material_handle = ctx.resolveTexture(parameters.material);
+                const auto shadow_handle = ctx.resolveTexture(parameters.shadow_map);
+                const auto hdr = ctx.resolveTexture(parameters.hdr_color);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
-                auto fb = command_list.createFramebuffer( framebuffer_desc);
+                auto fb = command_list.createFramebuffer(framebuffer_desc);
 
                 DeferredLightPassShaderParams shader_params;
                 shader_params.constant_buffer.value = parameters.constant_buffer;
@@ -110,8 +111,8 @@ namespace dodoe::RenderPipelinePass {
 
                 auto bs = ShaderBindingReflector<DeferredLightPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,
-                    [&](auto h) { return context.resolveTexture(h); },
-                    [&](auto h) { return context.resolveBuffer(h); }
+                    [&](auto h) { return ctx.resolveTexture(h); },
+                    [&](auto h) { return ctx.resolveBuffer(h); }
                 );
 
                 if (!bs) {
@@ -138,8 +139,8 @@ namespace dodoe::RenderPipelinePass {
                     return;
                 }
 
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
-                const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*context.getView());
+                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView());
 
                 command_list.setTextureState(albedo_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.setTextureState(normal_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
@@ -186,10 +187,10 @@ namespace dodoe::RenderPipelinePass {
                             continue;
                     }
 
-                    command_list.setBufferState(context.resolveBuffer(parameters.constant_buffer), GfxResourceStates::CopyDest);
+                    command_list.setBufferState(ctx.resolveBuffer(parameters.constant_buffer), GfxResourceStates::CopyDest);
                     command_list.commitBarriers();
-                    command_list.writeBuffer(context.resolveBuffer(parameters.constant_buffer), &push, sizeof(push));
-                    command_list.setBufferState(context.resolveBuffer(parameters.constant_buffer), GfxResourceStates::ConstantBuffer);
+                    command_list.writeBuffer(ctx.resolveBuffer(parameters.constant_buffer), &push, sizeof(push));
+                    command_list.setBufferState(ctx.resolveBuffer(parameters.constant_buffer), GfxResourceStates::ConstantBuffer);
                     command_list.commitBarriers();
 
                     DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
@@ -203,4 +204,4 @@ namespace dodoe::RenderPipelinePass {
         );
     }
 
-} // namespace dodoe::RenderPipelinePass
+} // namespace dodoe

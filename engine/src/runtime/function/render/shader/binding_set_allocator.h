@@ -12,16 +12,17 @@ namespace dodoe {
     public:
         struct BindingSetCacheKey {
             GfxBindingLayoutHandle layout;
+            UInt64 layout_generation{0};
             UnorderedMap<UInt32, GfxBindingSetItem> items;
 
             Bool operator==(const BindingSetCacheKey& other) const {
-                return layout == other.layout && items == other.items;
+                return layout_generation == other.layout_generation && items == other.items;
             }
         };
 
         struct BindingSetCacheKeyHash {
             Size_t operator()(const BindingSetCacheKey& key) const {
-                Size_t hash = reinterpret_cast<Size_t>(key.layout.Get());
+                Size_t hash = key.layout_generation;
                 for (const auto& [slot, item] : key.items) {
                     hash_combine(hash, slot);
                     hash_combine(hash, item.resourceHandle);

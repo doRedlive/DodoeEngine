@@ -1,6 +1,6 @@
 // do@Redlive
 
-#include "render_pipeline_passes.h"
+#include "render_imgui_pass.h"
 
 #include "render_pass_blackboard_keys.h"
 #include "../render_pipeline_pass_utils.h"
@@ -8,233 +8,198 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/mesh_draw/local_vertex_factory.h"
-#include "runtime/function/render/render_pipeline/render_feature/imgui_render_resource.h"
+#include "runtime/function/render/mesh_draw/local_vertex_factory.h"
 
 #ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 
-#endif
-
-namespace dodoe::RenderPipelinePass {
-
-    inline constexpr UInt32 kImGuiMaxVertices = 65536;
-    inline constexpr UInt32 kImGuiMaxIndices  = 65536;
+namespace dodoe {
 
     struct ImGuiPassParameters {
         RenderGraphTextureHandle output{};
-        RenderGraphBufferHandle  vertex_buffer{};
-        RenderGraphBufferHandle  index_buffer{};
+        RenderGraphBufferHandle vertex_buffer{};
+        RenderGraphBufferHandle index_buffer{};
     };
 
-    struct ImGuiConstantBuffer {
-        float inv_display_size[2]{};
-        float display_pos[2]{};
-    };
-
-    void RenderImGuiPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, ImGuiRenderResource& resources) {
-#ifdef DODOE_DEBUG_ENABLED
-        if (!ImGui::GetCurrentContext()) return;
+    void ImGuiPass::build(RenderGraphBuilder& graph,
+                           const RenderPassBuildContext& context) {
+        const auto& pass_context = context.pass_context;
+        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
 
         graph.addPass<ImGuiPassParameters>(
             "ImGuiPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
             [pass_context](RenderGraphPassBuilder& pass_builder, ImGuiPassParameters& parameters) {
                 const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
-                parameters.output = pass_builder.write(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG ImGuiColor"),
-                    "ImGuiColor"));
+                RenderGraphTextureDesc color_desc{};
+                color_desc.desc = GfxTextureDesc()
+                    .setWidth(swapchain_extent.x).setHeight(swapchain_extent.y).setDepth(1)
+                    .setFormat(GfxFormat::RGBA8_UNORM)
+                    .setUsage(GfxResourceStates::RenderTarget)
+                    .setDebugName("RDG ImGuiColor");
+                parameters.output = pass_builder.write(pass_builder.createTransientTexture(color_desc, "ImGuiColor"));
                 pass_builder.blackboard().set<ImGuiColorKey>(parameters.output);
 
                 RenderGraphBufferDesc vb_desc{};
                 vb_desc.desc = GfxBufferDesc()
-                    .setByteSize(kImGuiMaxVertices * static_cast<UInt32>(sizeof(ImDrawVert)))
+                    .setByteSize(65536 * sizeof(ImDrawVert))
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
-                    .setDebugName("RDG ImGuiVertexBuffer");
+                    .setDebugName("RDG ImGuiVB");
                 parameters.vertex_buffer = pass_builder.write(pass_builder.createTransientBuffer(vb_desc, "ImGuiVertexBuffer"));
 
                 RenderGraphBufferDesc ib_desc{};
                 ib_desc.desc = GfxBufferDesc()
-                    .setByteSize(kImGuiMaxIndices * static_cast<UInt32>(sizeof(ImDrawIdx)))
+                    .setByteSize(65536 * sizeof(ImDrawIdx))
                     .setIsIndexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
-                    .setDebugName("RDG ImGuiIndexBuffer");
+                    .setDebugName("RDG ImGuiIB");
                 parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "ImGuiIndexBuffer"));
             },
-            [pass_context, &resources](const ImGuiPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto output = context.resolveTexture(parameters.output);
-                const auto* gfx_context = context.getGfxContext();
-                const auto* shader_library = pass_context.getShaderLibrary();
-                auto* pipeline_cache = pass_context.getPipelineStateCache();
-
-                ImGuiContext* prev_ctx = ImGui::GetCurrentContext();
-                ImGui::SetCurrentContext(ImGuiBuilder::GetContext());
-                if (!ImGui::GetCurrentContext()) {
-                    command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                    command_list.commitBarriers();
-                    command_list.clearTextureFloat(output, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 0.0f));
-                    command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
-                    return;
-                }
-
-                resources.getOrCreateFontTexture(command_list);
-
-                auto input_layout = pass_context.local_vertex_factory
-                    ? pass_context.local_vertex_factory->getOrCreateImGuiInputLayout(command_list, shader_library->getImGuiVertexShader())
-                    : GfxInputLayoutHandle{};
-
-                auto binding_layout = resources.getOrCreateBindingLayout(command_list);
-                auto framebuffer = resources.getOrCreateFramebuffer(command_list, output);
-
-                auto pipeline = resources.getOrCreatePipeline(
-                    pipeline_cache,
-                    shader_library->getImGuiVertexShader(),
-                    shader_library->getImGuiPixelShader(),
-                    input_layout,
-                    framebuffer->getInfo(),
-                    command_list);
-
+            [pass_context](const ImGuiPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 ImGui::Render();
-                ImDrawData* draw_data = ImGui::GetDrawData();
-                if (!draw_data || !pipeline || !framebuffer || !binding_layout) {
-                    command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                    command_list.commitBarriers();
-                    command_list.clearTextureFloat(output, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 0.0f));
-                    command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
-                    ImGui::SetCurrentContext(prev_ctx);
+                auto* draw_data = ImGui::GetDrawData();
+                if (!draw_data || draw_data->TotalVtxCount == 0) {
                     return;
                 }
 
-                const int fb_width = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-                const int fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-                command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                command_list.clearTextureFloat(output, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 0.0f));
+                const auto color_target = ctx.resolveTexture(parameters.output);
+                const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
+                const auto ib = ctx.resolveBuffer(parameters.index_buffer);
 
-                if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount <= 0 || draw_data->TotalIdxCount <= 0) {
-                    command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
-                    ImGui::SetCurrentContext(prev_ctx);
+                command_list.setBufferState(vb, GfxResourceStates::CopyDest);
+                command_list.setBufferState(ib, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+
+                UInt32 vb_offset = 0, ib_offset = 0;
+                for (int n = 0; n < draw_data->CmdListsCount; n++) {
+                    const auto* cmd_list = draw_data->CmdLists[n];
+                    command_list.writeBuffer(vb, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert), vb_offset);
+                    command_list.writeBuffer(ib, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx), ib_offset);
+                    vb_offset += cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
+                    ib_offset += cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
+                }
+
+                command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
+                command_list.setBufferState(ib, GfxResourceStates::IndexBuffer);
+                command_list.commitBarriers();
+
+                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
+                auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
+
+                const auto* shader_library = pass_context.getShaderLibrary();
+                const auto* pso_cache = pass_context.getPipelineStateCache();
+                if (!shader_library || !pso_cache) {
                     return;
                 }
 
-                ImGuiConstantBuffer cb_data;
-                cb_data.inv_display_size[0] = 1.0f / draw_data->DisplaySize.x;
-                cb_data.inv_display_size[1] = 1.0f / draw_data->DisplaySize.y;
-                cb_data.display_pos[0] = draw_data->DisplayPos.x;
-                cb_data.display_pos[1] = draw_data->DisplayPos.y;
-
-                const size_t vertex_byte_size = static_cast<size_t>(draw_data->TotalVtxCount) * sizeof(ImDrawVert);
-                const size_t index_byte_size = static_cast<size_t>(draw_data->TotalIdxCount) * sizeof(ImDrawIdx);
-
-                const auto vertex_buffer = context.resolveBuffer(parameters.vertex_buffer);
-                const auto index_buffer  = context.resolveBuffer(parameters.index_buffer);
-
-                DO_ASSERT(vertex_byte_size <= static_cast<size_t>(vertex_buffer->getByteSize()),
-                          "ImGui vertex count exceeds RDG buffer capacity");
-                DO_ASSERT(index_byte_size <= static_cast<size_t>(index_buffer->getByteSize()),
-                          "ImGui index count exceeds RDG buffer capacity");
-
-                DynamicArray<ImDrawVert> vertex_upload(draw_data->TotalVtxCount);
-                DynamicArray<ImDrawIdx> index_upload(draw_data->TotalIdxCount);
-                {
-                    ImDrawVert* vtx_dst = vertex_upload.data();
-                    ImDrawIdx* idx_dst = index_upload.data();
-                    for (int list_index = 0; list_index < draw_data->CmdListsCount; ++list_index) {
-                        const ImDrawList* draw_list = draw_data->CmdLists[list_index];
-                        std::memcpy(vtx_dst, draw_list->VtxBuffer.Data, static_cast<size_t>(draw_list->VtxBuffer.Size) * sizeof(ImDrawVert));
-                        std::memcpy(idx_dst, draw_list->IdxBuffer.Data, static_cast<size_t>(draw_list->IdxBuffer.Size) * sizeof(ImDrawIdx));
-                        vtx_dst += draw_list->VtxBuffer.Size;
-                        idx_dst += draw_list->IdxBuffer.Size;
-                    }
+                const auto vs = shader_library->getImGuiVertexShader();
+                const auto ps = shader_library->getImGuiPixelShader();
+                if (!vs || !ps) {
+                    return;
                 }
 
-                command_list.setBufferState(vertex_buffer, GfxResourceStates::CopyDest);
-                command_list.commitBarriers();
-                command_list.writeBuffer(vertex_buffer, vertex_upload.data(), vertex_byte_size, 0);
-                command_list.setBufferState(vertex_buffer, GfxResourceStates::CopyDest);
-                command_list.commitBarriers();
-                command_list.writeBuffer(index_buffer, index_upload.data(), index_byte_size, 0);
-                command_list.setBufferState(vertex_buffer, GfxResourceStates::VertexBuffer);
-                command_list.setBufferState(index_buffer, GfxResourceStates::IndexBuffer);
-                command_list.commitBarriers();
-
-                GfxViewportState vp;
-                vp.viewports.push_back(GfxViewport(static_cast<float>(fb_width), static_cast<float>(fb_height)));
-                vp.scissorRects.resize(1);
-                vp.scissorRects[0] = GfxRect(fb_width, fb_height);  // fullscreen default to avoid zero-area scissor
-
-                DynamicArray<GfxVertexBufferBinding> vbs;
-                vbs.push_back(GfxVertexBufferBinding().setBuffer(vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0));
-                GfxIndexBufferBinding ib = GfxIndexBufferBinding()
-                    .setBuffer(index_buffer->getRHIHandle())
-                    .setFormat(sizeof(ImDrawIdx) == 2 ? GfxFormat::R16_UINT : GfxFormat::R32_UINT)
-                    .setOffset(0);
-
-                const ImVec2 clip_off = draw_data->DisplayPos;
-                const ImVec2 clip_scale = draw_data->FramebufferScale;
-                int vtx_offset = 0;
-                int idx_offset = 0;
-                for (int list_index = 0; list_index < draw_data->CmdListsCount; ++list_index) {
-                    const ImDrawList* draw_list = draw_data->CmdLists[list_index];
-                    for (int cmd_index = 0; cmd_index < draw_list->CmdBuffer.Size; ++cmd_index) {
-                        const ImDrawCmd* draw_cmd = &draw_list->CmdBuffer[cmd_index];
-                        if (draw_cmd->UserCallback) {
-                            draw_cmd->UserCallback(draw_list, draw_cmd);
-                            continue;
-                        }
-
-                        ImVec2 clip_min((draw_cmd->ClipRect.x - clip_off.x) * clip_scale.x, (draw_cmd->ClipRect.y - clip_off.y) * clip_scale.y);
-                        ImVec2 clip_max((draw_cmd->ClipRect.z - clip_off.x) * clip_scale.x, (draw_cmd->ClipRect.w - clip_off.y) * clip_scale.y);
-                        clip_min.x = std::clamp(clip_min.x, 0.0f, static_cast<float>(fb_width));
-                        clip_min.y = std::clamp(clip_min.y, 0.0f, static_cast<float>(fb_height));
-                        clip_max.x = std::clamp(clip_max.x, 0.0f, static_cast<float>(fb_width));
-                        clip_max.y = std::clamp(clip_max.y, 0.0f, static_cast<float>(fb_height));
-                        if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y) {
-                            continue;
-                        }
-
-                        auto* texture = reinterpret_cast<GfxTexture*>(draw_cmd->GetTexID());
-                        texture = texture ? texture : resources.getOrCreateFontTexture(command_list).get();
-                        if (!texture) {
-                            continue;
-                        }
-
-                        auto binding_set = resources.getOrCreateBindingSet(command_list, texture);
-                        if (!binding_set) {
-                            continue;
-                        }
-
-                        vp.scissorRects[0] = GfxRect(
-                            static_cast<int>(clip_min.x), static_cast<int>(clip_max.x),
-                            static_cast<int>(clip_min.y), static_cast<int>(clip_max.y));
-                        DynamicArray<GfxBindingSetHandle> bs_arr = {binding_set};
-                        command_list.setGraphicsState(framebuffer, pipeline, bs_arr, vp, vbs, ib);
-                        command_list.setPushConstants(&cb_data, sizeof(cb_data));
-                        command_list.drawIndexed(
-                            GfxDrawArguments()
-                                .setVertexCount(draw_cmd->ElemCount)
-                                .setInstanceCount(1)
-                                .setStartIndexLocation(static_cast<UInt32>(idx_offset + static_cast<int>(draw_cmd->IdxOffset)))
-                                .setStartVertexLocation(static_cast<UInt32>(vtx_offset + static_cast<int>(draw_cmd->VtxOffset))));
-                    }
-                    idx_offset += draw_list->IdxBuffer.Size;
-                    vtx_offset += draw_list->VtxBuffer.Size;
+                GfxInputLayoutHandle input_layout{};
+                if (auto* input_cache = pass_context.getSharedRenderService()->getInputLayoutCache()) {
+                    input_layout = input_cache->find("ImGui");
                 }
 
-                command_list.setTextureState(output, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                auto pipeline_desc = GfxGraphicsPipelineDesc()
+                    .setVertexShader(vs)
+                    .setPixelShader(ps)
+                    .setPrimType(GfxPrimitiveType::TriangleList);
+                if (input_layout) {
+                    pipeline_desc.setInputLayout(input_layout);
+                }
+
+                GfxDepthStencilState ds;
+                ds.disableDepthTest().disableDepthWrite().disableStencil();
+                GfxRasterState raster;
+                raster.setCullNone();
+                GfxBlendState blend;
+                blend.enableBlend().setColorBlendFunc(GfxBlendFactor::SrcAlpha, GfxBlendFactor::OneMinusSrcAlpha);
+                GfxRenderState render_state;
+                render_state.setDepthStencilState(ds).setRasterState(raster).setBlendState(blend);
+                pipeline_desc.setRenderState(render_state);
+
+                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
+                auto pipeline = pso_cache->resolveGraphicsPipeline(pipeline_desc, framebuffer_info, command_list);
+                if (!pipeline) {
+                    return;
+                }
+
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
-                ImGui::SetCurrentContext(prev_ctx);
+
+                const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2d();
+                const float L = draw_data->DisplayPos.x;
+                const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                const float T = draw_data->DisplayPos.y;
+                const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+
+                struct ImGuiPushConstants {
+                    float scale[2];
+                    float translate[2];
+                } push_data;
+                push_data.scale[0] = 2.0f / (R - L);
+                push_data.scale[1] = 2.0f / (T - B);
+                push_data.translate[0] = -(R + L) / (R - L);
+                push_data.translate[1] = -(T + B) / (T - B);
+
+                UInt32 global_vb_offset = 0, global_ib_offset = 0;
+                for (int n = 0; n < draw_data->CmdListsCount; n++) {
+                    const auto* cmd_list = draw_data->CmdLists[n];
+                    for (int i = 0; i < cmd_list->CmdBuffer.Size; i++) {
+                        const auto& draw = cmd_list->CmdBuffer[i];
+                        if (draw.UserCallback) {
+                            draw.UserCallback(cmd_list, &draw);
+                            continue;
+                        }
+
+                        auto vp = GfxViewportState();
+                        vp.addViewport(GfxViewport(L, R, T, B, 0.0f, 1.0f));
+                        vp.addScissorRect(GfxRectangle(
+                            static_cast<Int32>(draw.ClipRect.x - draw_data->DisplayPos.x),
+                            static_cast<Int32>(draw.ClipRect.y - draw_data->DisplayPos.y),
+                            static_cast<Int32>(draw.ClipRect.z - draw.ClipRect.x),
+                            static_cast<Int32>(draw.ClipRect.w - draw.ClipRect.y)));
+
+                        GfxBindingSetHandle tex_set{};
+                        if (draw.TextureId) {
+                            auto* gfx_tex = static_cast<GfxTexture*>(draw.TextureId);
+                            tex_set = command_list.createBindingSet(
+                                GfxBindingSetDesc().addItem(
+                                    GfxBindingSetItem::Texture_SRV(0, gfx_tex ? gfx_tex->getRHIHandle() : GfxTextureHandle{})),
+                                pipeline_desc.getBindingLayout(0));
+                        }
+
+                        DynamicArray<GfxBindingSetHandle> bs_arr;
+                        if (tex_set) {
+                            bs_arr.push_back(tex_set);
+                        }
+
+                        DynamicArray<GfxVertexBufferBinding> vbs;
+                        vbs.push_back(GfxVertexBufferBinding()
+                            .setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(global_vb_offset));
+                        command_list.setIndexBuffer(GfxIndexBufferBinding()
+                            .setBuffer(ib->getRHIHandle()).setOffset(global_ib_offset));
+
+                        command_list.setGraphicsState(framebuffer, pipeline, bs_arr, vp, vbs);
+                        command_list.setPushConstants(GfxShaderType::Vertex, &push_data, sizeof(push_data));
+                        command_list.drawIndexed(draw.ElemCount, draw.IdxOffset, draw.VtxOffset);
+
+                        global_ib_offset += cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
+                    }
+                    global_vb_offset += cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
+                }
+
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                command_list.commitBarriers();
             }
         );
-#else
-        (void)graph;
-        (void)pass_context;
-        (void)resources;
-#endif
     }
 
-} // namespace dodoe::RenderPipelinePass
+} // namespace dodoe
+
+#endif

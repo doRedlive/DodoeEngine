@@ -175,29 +175,16 @@ namespace dodoe {
 
     Bool World::setupScenes() {
         const auto scene_assets = ResourceManager::Self().getAssets<SceneAsset>();
-        DO_INFO("World::setupScenes: scene handle count={}", scene_assets.size());
         for (const auto& scene_handle : scene_assets) {
             const auto& file_id = scene_handle.getFileID();
             SceneAsset* scene_asset = scene_handle.get();
-            DO_INFO(
-                "World::setupScenes: handle valid={} loaded={} path='{}' uuid={} asset_ptr={}",
-                scene_handle.isValid(),
-                scene_handle.isLoaded(),
-                file_id.getPath(),
-                static_cast<UInt64>(file_id.getUUID()),
-                static_cast<const void*>(scene_asset));
             if (!scene_asset) continue;
             const auto& scene_res = scene_asset->getSceneRes();
-            DO_INFO(
-                "World::setupScenes: SceneRes name='{}' entity_count={}",
-                scene_res.m_name,
-                scene_res.m_entities.size());
             const String scene_name = scene_res.m_name.empty()
                 ? "Untitled"
                 : scene_res.m_name;
             Scene* scene = createScene(scene_name);
             scene->deserialize(scene_res);
-            DO_INFO("World::setupScenes: created scene='{}'", scene->getName());
         }
         return true;
     }
@@ -270,6 +257,8 @@ namespace dodoe {
     }
 
     void World::update(const float dt) {
+        drainAsyncCompletions();
+
         switch (m_state) {
             case WorldState::Runtime:
                 for (auto& scene : m_active_scenes) {
@@ -303,7 +292,7 @@ namespace dodoe {
         }
     }
 
-    Scene* World::createScene(const std::string& name) {
+    Scene* World::createScene(const String& name) {
         for (const auto& existing_scene : m_scenes) {
             if (existing_scene && existing_scene->getName() == name) {
                 return existing_scene.get();
@@ -318,7 +307,7 @@ namespace dodoe {
         return created_scene;
     }
 
-    void World::deleteScene(const std::string& name) {
+    void World::deleteScene(const String& name) {
         auto scene = getScene(name);
         if (!scene) return;
 
@@ -340,7 +329,7 @@ namespace dodoe {
         m_scenes.erase(it);
     }
 
-    Scene* World::getScene(const std::string& name) const {
+    Scene* World::getScene(const String& name) const {
         for (const auto& scene : m_scenes) {
             if (scene->getName() == name) {
                 return scene.get();
@@ -349,46 +338,92 @@ namespace dodoe {
         return nullptr;
     }
 
-    Scene* World::getCurrentScene() {
+    Scene* World::getActiveScene() {
         if (!m_current_scene && !m_active_scenes.empty()) {
             m_current_scene = m_active_scenes.front();
         }
         return m_current_scene;
     }
 
-    void World::loadScene(const std::string& name) {
+    Scene* World::loadScene(const String& name, LoadSceneMode mode) {
+        if (mode == LoadSceneMode::Single) {
+            auto scene_to_unload = m_active_scenes;
+            for (auto* scene : scene_to_unload) {
+                deactivateScene(scene->getName());
+            }
+        }
+
+        auto* asset_manager = ResourceManager::Self().getAssetManager();
+        if (!asset_manager) {
+            DO_ERROR("loadScene: AssetManager not available");
+            return nullptr;
+        }
+
+        const std::string asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
+        auto handle = asset_manager->loadSceneAsset(asset_url);
+        if (!handle.isValid() || !handle.isLoaded()) {
+            DO_ERROR("loadScene: failed to load '{}'", asset_url);
+            return nullptr;
+        }
+
+        SceneAsset* scene_asset = handle.get();
+        if (!scene_asset) {
+            DO_ERROR("loadScene: scene asset is null for '{}'", name);
+            return nullptr;
+        }
+
+        const auto& scene_res = scene_asset->getSceneRes();
+        Scene* scene = createScene(scene_res.m_name.empty() ? name : scene_res.m_name);
+        scene->deserialize(scene_res);
+        activateScene(scene->getName());
+
+        if (mode == LoadSceneMode::Single || m_current_scene == nullptr) {
+            setActiveScene(scene);
+        }
+
+        return scene;
+    }
+
+    void World::unloadScene(const String& name) {
+        auto scene = getScene(name);
+        if (!scene) return;
+
+        deactivateScene(name);
+
+        if (m_current_scene == scene) {
+            m_current_scene = m_active_scenes.empty() ? nullptr : m_active_scenes.front();
+        }
+
+        scene->onDelete();
+        auto it = std::find_if(m_scenes.begin(), m_scenes.end(),
+            [&name](const auto& s) { return s->getName() == name; });
+        if (it != m_scenes.end()) {
+            m_scenes.erase(it);
+        }
+    }
+
+    void World::activateScene(const String& name) {
         auto scene = getScene(name);
         if (!scene) return;
 
         auto it = std::find_if(m_active_scenes.begin(), m_active_scenes.end(),
-            [&name](const auto& scene) {
-                return scene->getName() == name; }
-        );
-
+            [&name](const auto& s) { return s->getName() == name; });
         if (it != m_active_scenes.end()) {
-            DO_ERROR("Scene with name '{}' has loaded!", name);
+            DO_ERROR("Scene '{}' is already active!", name);
             return;
         }
 
         m_active_scenes.push_back(scene);
     }
 
-    void World::unloadScene(const std::string& name) {
-        auto scene = getScene(name);
-        if (!scene) return;
-
+    void World::deactivateScene(const String& name) {
         auto it = std::find_if(m_active_scenes.begin(), m_active_scenes.end(),
-            [&name](const auto& scene) {
-                return scene->getName() == name;
-            });
-
+            [&name](const auto& s) { return s->getName() == name; });
         if (it == m_active_scenes.end()) {
-            DO_ERROR("Scene with name '{}' does not loaded!", name);
+            DO_ERROR("Scene '{}' is not active!", name);
             return;
         }
-
         m_active_scenes.erase(it);
-
     }
 
     bool World::activateStartScene() {
@@ -410,8 +445,8 @@ namespace dodoe {
             return false;
         }
 
-        loadScene(start_scene->getName());
-        setCurrentScene(start_scene);
+        activateScene(start_scene->getName());
+        setActiveScene(start_scene);
         return true;
     }
 
@@ -477,5 +512,78 @@ namespace dodoe {
                 sys->finalize(reg);
             }
         }
+    }
+
+    std::future<Scene*> World::loadSceneAsync(const std::string& name, LoadSceneMode mode) {
+        auto promise = create_ref<std::promise<Scene*>>();
+        auto future = promise->get_future();
+
+        auto* asset_manager = ResourceManager::Self().getAssetManager();
+        if (!asset_manager) {
+            DO_ERROR("loadSceneAsync: AssetManager not available");
+            promise->set_value(nullptr);
+            return future;
+        }
+
+        const std::string asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
+
+        auto& scheduler = TaskScheduler::Self();
+        scheduler.async([this, asset_manager, asset_url, name, mode, promise]() {
+            auto data_future = asset_manager->loadAssetFileAsync<SceneRes>(asset_url);
+            SceneRes scene_res;
+            try {
+                scene_res = data_future.get();
+            }
+            catch (const std::exception& e) {
+                DO_ERROR("loadSceneAsync: file load failed '{}', error={}", name, e.what());
+                enqueueAsyncCompletion([promise]() {
+                    promise->set_value(nullptr);
+                });
+                return;
+            }
+
+            enqueueAsyncCompletion([this, scene_res = std::move(scene_res), name, mode, promise]() {
+                Scene* scene = commitSceneAsync(scene_res, name, mode);
+                promise->set_value(scene);
+            });
+        });
+
+        return future;
+    }
+
+    void World::drainAsyncCompletions() {
+        DynamicArray<std::function<void()>> pending;
+        {
+            std::lock_guard<std::mutex> lock(m_async_mutex);
+            pending.swap(m_async_completions);
+        }
+        for (auto& fn : pending) {
+            fn();
+        }
+    }
+
+    void World::enqueueAsyncCompletion(std::function<void()> fn) {
+        std::lock_guard<std::mutex> lock(m_async_mutex);
+        m_async_completions.push_back(std::move(fn));
+    }
+
+    Scene* World::commitSceneAsync(const SceneRes& scene_res, const String& name, LoadSceneMode mode) {
+        if (mode == LoadSceneMode::Single) {
+            auto scenes_to_unload = m_active_scenes;
+            for (auto* scene : scenes_to_unload) {
+                deactivateScene(scene->getName());
+            }
+        }
+
+        const String scene_name = scene_res.m_name.empty() ? name : scene_res.m_name;
+        Scene* scene = createScene(scene_name);
+        scene->deserialize(scene_res);
+        activateScene(scene->getName());
+
+        if (mode == LoadSceneMode::Single || m_current_scene == nullptr) {
+            setActiveScene(scene);
+        }
+
+        return scene;
     }
 } // dodoe

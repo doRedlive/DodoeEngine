@@ -1,11 +1,13 @@
+namespace GreenCake;
+
 using System;
 using System.Collections.Generic;
-
-namespace GreenCake;
 
 public class GameObject
 {
     internal Entity Entity { get; private set; }
+    internal Scene _scene;
+    internal bool _destroyed;
 
     private bool _activeSelf = true;
     private readonly List<CakeComponent> _userComponents = new List<CakeComponent>();
@@ -24,13 +26,15 @@ public class GameObject
         }
     }
 
-    public ulong ID { get { return Entity != null ? Entity.ID : 0; } }
+    public ulong ID => Entity != null ? Entity.ID : 0;
+
+    public Scene Scene => _scene;
 
     public Transform Transform { get; private set; }
 
     public bool ActiveSelf
     {
-        get { return _activeSelf; }
+        get => _activeSelf;
         set
         {
             if (_activeSelf == value) return;
@@ -53,14 +57,19 @@ public class GameObject
     {
         get
         {
-            var parentTf = Transform.Parent;
+            if (_scene == null) return null;
+            var parentTf = _scene.GetParentTransform(Entity.ID);
             return parentTf != null ? parentTf.GameObject : null;
         }
         set
         {
             if (value == this)
                 throw new InvalidOperationException("Cannot set parent to self.");
-            Transform.Parent = value != null ? value.Transform : null;
+            if (_scene != null)
+            {
+                NativeCalls.Native_EntitySetParent(Entity.ID, value != null ? value.Entity.ID : 0);
+                _scene.SetParent(Entity.ID, value);
+            }
         }
     }
 
@@ -111,9 +120,7 @@ public class GameObject
             return;
 
         if (ComponentManager.TryGetUserComponent<T>(Entity, out var component) && component is CakeBehaviour mb)
-        {
             _userComponents.Remove(mb);
-        }
 
         ComponentManager.Remove<T>(Entity);
     }
@@ -127,40 +134,32 @@ public class GameObject
         }
     }
 
-    public Entity GetEntity() { return Entity; }
+    public Entity GetEntity() => Entity;
 
     public static GameObject Create(string name = "GameObject")
     {
-        if (World.Current == null)
-            throw new InvalidOperationException("World not initialized. Cannot create GameObject before engine starts.");
-
-        var entity = World.Current.CreateEntity(name);
-
-        var go = new GameObject { Entity = entity };
-
-        var tf = new Transform { Entity = entity, GameObject = go };
-        World.Current.AddOrReplaceComponent(entity.ID, tf);
-        go.Transform = tf;
-
-        GameObjectManager.Register(go);
-
-        return go;
+        var scene = SceneManager.ActiveScene;
+        if (scene == null)
+            throw new InvalidOperationException("No active scene. Load a scene before creating GameObjects.");
+        return scene.CreateGameObject(name);
     }
 
     public static void Destroy(GameObject obj)
     {
         if (obj == null) return;
-        GameObjectManager.QueueDestroy(obj);
+        obj._scene?.DestroyGameObject(obj);
     }
 
     public static GameObject Find(string name)
     {
-        return GameObjectManager.Find(name);
+        var scene = SceneManager.ActiveScene;
+        return scene != null ? scene.Find(name) : null;
     }
 
     public static GameObject FindByID(ulong id)
     {
-        return GameObjectManager.FindByID(id);
+        var scene = SceneManager.ActiveScene;
+        return scene != null ? scene.FindByID(id) : null;
     }
 
     private void NotifyActiveStateChanged()
@@ -170,15 +169,15 @@ public class GameObject
             if (comp is CakeBehaviour mb && !mb._destroyed)
             {
                 if (_activeSelf && mb.Enabled)
-                    try { mb.OnEnable(); } catch (Exception e) { Debug.LogError(string.Format("OnEnable error: {0}", e)); }
+                    try { mb.OnEnable(); } catch (Exception e) { Debug.LogError($"OnEnable error: {e}"); }
                 else if (!_activeSelf)
-                    try { mb.OnDisable(); } catch (Exception e) { Debug.LogError(string.Format("OnDisable error: {0}", e)); }
+                    try { mb.OnDisable(); } catch (Exception e) { Debug.LogError($"OnDisable error: {e}"); }
             }
         }
     }
 
     public override string ToString()
     {
-        return string.Format("GameObject({0}, ID={1})", Name, ID);
+        return $"GameObject({Name}, ID={ID})";
     }
 }

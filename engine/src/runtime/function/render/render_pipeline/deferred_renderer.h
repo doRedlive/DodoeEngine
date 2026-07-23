@@ -13,16 +13,15 @@
 
 namespace dodoe {
 
-    class DeferredRenderer final : public RendererBase {
+    class DeferredRenderer final : public BaseRenderer {
         Scope<LocalVertexFactory> m_local_vertex_factory{nullptr};
         Scope<GpuCulling> m_gpu_culling{nullptr};
         StaticArray<Scope<IMeshPassProcessor>, static_cast<size_t>(MeshPassType::Count)> m_mesh_processors{};
         MeshDrawCommandCache m_mesh_draw_cache{};
 
-        [[nodiscard]] RenderPassContext buildPassContext(const RenderScene& scene) const override;
+        [[nodiscard]] RenderPassContext buildPassContext(const RenderScene& scene) const;
 
-        void initViews(const RenderScene& scene, RenderViewFamily& view_family) const override;
-
+        void initViews(const RenderScene& scene, RenderViewFamily& view_family) const;
         void setupMeshPassRelevance(RenderView& view) const;
         void setupMeshPassContexts(const RenderScene& scene, RenderViewFamily& view_family) const;
         void executeGpuCulling(RenderViewFamily& view_family, RenderScene& scene, DrawCommandList& cmd_list) const;

@@ -1,6 +1,6 @@
 // do@Redlive
 
-#include "render_pipeline_passes.h"
+#include "render_present_pass.h"
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -15,7 +15,7 @@
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 
-namespace dodoe::RenderPipelinePass {
+namespace dodoe {
 
     struct PresentViewportCB {
         float viewport_pos[2]{};
@@ -35,7 +35,9 @@ namespace dodoe::RenderPipelinePass {
         RenderGraphTextureHandle backbuffer{};
     };
 
-    void RenderPresentPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+    void PresentPass::build(RenderGraphBuilder& graph,
+                             const RenderPassBuildContext& context) {
+        const auto& pass_context = context.pass_context;
         DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
         const auto& shader_library = *pass_context.getShaderLibrary();
 
@@ -50,16 +52,16 @@ namespace dodoe::RenderPipelinePass {
                 parameters.imgui_color = imgui_color ? pass_builder.read(*imgui_color) : parameters.scene_color;
                 parameters.backbuffer = pass_builder.write(pass_builder.importBackBuffer("PresentBackBuffer"));
             },
-            [pass_context, &shader_library](const PresentPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto scene_color_handle = context.resolveTexture(parameters.scene_color);
-                const auto imgui_color_handle = context.resolveTexture(parameters.imgui_color);
-                const auto backbuffer = context.resolveTexture(parameters.backbuffer);
+            [pass_context, &shader_library](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+                const auto scene_color_handle = ctx.resolveTexture(parameters.scene_color);
+                const auto imgui_color_handle = ctx.resolveTexture(parameters.imgui_color);
+                const auto backbuffer = ctx.resolveTexture(parameters.backbuffer);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(backbuffer);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
 
-                const auto viewport_rect = context.getView()->getViewportRect();
-                const auto swapchain_extent = context.getGfxContext()->getSwapchainExtent2d();
+                const auto viewport_rect = ctx.getView()->getViewportRect();
+                const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2d();
 
                 PresentViewportCB viewport_data;
                 viewport_data.viewport_pos[0] = static_cast<float>(viewport_rect.x);
@@ -84,8 +86,8 @@ namespace dodoe::RenderPipelinePass {
 
                 auto bs = ShaderBindingReflector<PresentPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,
-                    [&](auto h) { return context.resolveTexture(h); },
-                    [&](auto h) { return context.resolveBuffer(h); }
+                    [&](auto h) { return ctx.resolveTexture(h); },
+                    [&](auto h) { return ctx.resolveBuffer(h); }
                 );
 
                 if (!bs) {
@@ -103,7 +105,7 @@ namespace dodoe::RenderPipelinePass {
                     framebuffer_info,
                     command_list
                 );
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), swapchain_extent);
+                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), swapchain_extent);
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
                 command_list.setTextureState(scene_color_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
@@ -118,4 +120,4 @@ namespace dodoe::RenderPipelinePass {
         );
     }
 
-} // namespace dodoe::RenderPipelinePass
+} // namespace dodoe

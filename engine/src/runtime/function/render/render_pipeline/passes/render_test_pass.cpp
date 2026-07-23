@@ -1,8 +1,6 @@
 // do@Redlive
 
-#include "dopch.h"
-
-#include "render_pipeline_passes.h"
+#include "render_test_pass.h"
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -16,7 +14,7 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "render_pass_blackboard_keys.h"
 
-namespace dodoe::RenderPipelinePass {
+namespace dodoe {
 
     struct TestTriangleVertex {
         Float px, py, pz;
@@ -24,7 +22,6 @@ namespace dodoe::RenderPipelinePass {
         Float u, v;
     };
 
-    // Fullscreen quad with UVs for checkerboard
     inline constexpr TestTriangleVertex kTestQuadVertices[] = {
         {-1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  0.0f, 1.0f},
         { 1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f,  1.0f, 1.0f},
@@ -40,7 +37,9 @@ namespace dodoe::RenderPipelinePass {
         RenderGraphBufferHandle triangle_vb{};
     };
 
-    void RenderTestPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+    void TestPass::build(RenderGraphBuilder& graph,
+                          const RenderPassBuildContext& context) {
+        const auto& pass_context = context.pass_context;
         DO_ASSERT(pass_context.isValid(), "TestPass: pass context is invalid");
 
         graph.addPass<TestPassParameters>(
@@ -66,9 +65,9 @@ namespace dodoe::RenderPipelinePass {
                     .setDebugName("RDG TestQuadVB");
                 parameters.triangle_vb = pass_builder.write(pass_builder.createTransientBuffer(tri_vb_desc, "TestTriangleVB"));
             },
-            [pass_context](const TestPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto color_target = context.resolveTexture(parameters.color_target);
-                const auto quad_vb = context.resolveBuffer(parameters.triangle_vb);
+            [pass_context](const TestPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+                const auto color_target = ctx.resolveTexture(parameters.color_target);
+                const auto quad_vb = ctx.resolveBuffer(parameters.triangle_vb);
 
                 command_list.setBufferState(quad_vb, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
@@ -104,7 +103,6 @@ namespace dodoe::RenderPipelinePass {
                         .addItem(GfxBindingSetItem::Sampler(0, test_sampler)),
                     binding_layout);
 
-                // Create framebuffer for the color target
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
 
@@ -121,7 +119,6 @@ namespace dodoe::RenderPipelinePass {
                     return;
                 }
 
-                // Create input layout for quad vertices
                 constexpr UInt32 kVertexStride = sizeof(TestTriangleVertex);
                 GfxVertexAttributeDesc attribs[] = {
                     GfxVertexAttributeDesc().setName("POSITION").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
@@ -130,7 +127,6 @@ namespace dodoe::RenderPipelinePass {
                 };
                 auto input_layout = command_list.createInputLayout(attribs, 3, test_vs);
 
-                // Build pipeline
                 GfxDepthStencilState ds;
                 ds.disableDepthTest().disableDepthWrite().disableStencil();
                 GfxRasterState raster;
@@ -159,14 +155,12 @@ namespace dodoe::RenderPipelinePass {
                     return;
                 }
 
-                // Set up viewport
-                const auto swapchain_extent = context.getGfxContext()->getSwapchainExtent2d();
+                const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2d();
                 auto vp = GfxViewportState().addViewportAndScissorRect(GfxViewport(
                     0, static_cast<float>(swapchain_extent.x),
                     0, static_cast<float>(swapchain_extent.y),
                     0, 1));
 
-                // Draw quad to color target
                 command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
 
@@ -184,4 +178,4 @@ namespace dodoe::RenderPipelinePass {
         );
     }
 
-} // namespace dodoe::RenderPipelinePass
+} // namespace dodoe

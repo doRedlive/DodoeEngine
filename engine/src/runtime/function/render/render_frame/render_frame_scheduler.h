@@ -43,6 +43,8 @@ namespace dodoe {
 
         void deferDeleteFunc(std::function<void()> deleter);
 
+        [[nodiscard]] DeferredDeletionQueue* getDeletionQueue() { return &m_deletion_queue; }
+
         [[nodiscard]] Size_t getInFlightCount() const;
 
     private:

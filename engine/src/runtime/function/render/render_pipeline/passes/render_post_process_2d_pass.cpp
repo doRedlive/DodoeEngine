@@ -1,6 +1,6 @@
 // do@Redlive
 
-#include "render_pipeline_passes.h"
+#include "render_post_process_2d_pass.h"
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -15,7 +15,7 @@
 #include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
 
-namespace dodoe::RenderPipelinePass {
+namespace dodoe {
 
     BEGIN_SHADER_PARAMETER_STRUCT(PostProcess2DPassShaderParams)
         SHADER_PARAMETER(TextureSRV, 0, input)
@@ -27,7 +27,9 @@ namespace dodoe::RenderPipelinePass {
         RenderGraphTextureHandle output{};
     };
 
-    void RenderPostProcess2DPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+    void PostProcess2DPass::build(RenderGraphBuilder& graph,
+                                   const RenderPassBuildContext& context) {
+        const auto& pass_context = context.pass_context;
         DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
         const auto& shader_library = *pass_context.getShaderLibrary();
 
@@ -44,9 +46,9 @@ namespace dodoe::RenderPipelinePass {
                     "PostProcess2DOutput"));
                 pass_builder.blackboard().set<SceneColorKey>(parameters.output);
             },
-            [pass_context, &shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto input_handle = context.resolveTexture(parameters.input);
-                const auto output_handle = context.resolveTexture(parameters.output);
+            [pass_context, &shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+                const auto input_handle = ctx.resolveTexture(parameters.input);
+                const auto output_handle = ctx.resolveTexture(parameters.output);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
@@ -59,8 +61,8 @@ namespace dodoe::RenderPipelinePass {
 
                 auto bs = ShaderBindingReflector<PostProcess2DPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,
-                    [&](auto h) { return context.resolveTexture(h); },
-                    [&](auto h) { return context.resolveBuffer(h); }
+                    [&](auto h) { return ctx.resolveTexture(h); },
+                    [&](auto h) { return ctx.resolveBuffer(h); }
                 );
 
                 if (!bs) {
@@ -84,7 +86,7 @@ namespace dodoe::RenderPipelinePass {
                     return;
                 }
 
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d());
+                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
                 command_list.setTextureState(input_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
@@ -97,4 +99,4 @@ namespace dodoe::RenderPipelinePass {
         );
     }
 
-} // namespace dodoe::RenderPipelinePass
+} // namespace dodoe

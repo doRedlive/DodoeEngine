@@ -268,7 +268,7 @@ namespace dodoe {
     }
 
     void SceneImporter::ImportModel(const String& path) {
-        auto cur_scene = Application::Self().context().getWorld()->getCurrentScene();
+        auto cur_scene = Application::Self().context().getWorld()->getActiveScene();
         DO_ASSERT(cur_scene);
 
         Assimp::Importer importer;
@@ -293,7 +293,7 @@ namespace dodoe {
     }
 
     void SceneImporter::ImportSprite(const String& path) {
-        auto cur_scene = Application::Self().context().getWorld()->getCurrentScene();
+        auto cur_scene = Application::Self().context().getWorld()->getActiveScene();
         DO_ASSERT(cur_scene);
 
         const String entity_name = FsPath(path).stem().string();

@@ -2,15 +2,32 @@
 
 #include "sprite_feature.h"
 
-#include "runtime/function/render/render_pipeline/passes/render_pipeline_passes.h"
+#include "runtime/function/render/render_pipeline/passes/render_sprite_pass.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
+#include "runtime/function/render/shared_render_service.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
-    void SpriteFeature::registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const {
-        DO_ASSERT(context.view != nullptr, "SpriteFeature requires view");
-        DO_ASSERT(context.pass_context != nullptr, "SpriteFeature requires pass context");
-        RenderPipelinePass::RenderSpritePass(graph, *context.view, *context.pass_context, m_resources);
+    void SpriteFeature::initialize(SharedRenderService& resources) {
+        (void)resources;
+        m_binding_layout = GDrawCommandList.createBindingLayout(
+            GfxBindingLayoutDesc().setVisibility(GfxShaderType::All)
+                .addItem(GfxBindingLayoutItem::Sampler(0))
+                .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
+
+        m_traditional_tex_layout = GDrawCommandList.createBindingLayout(
+            GfxBindingLayoutDesc().setVisibility(GfxShaderType::Pixel)
+                .addItem(GfxBindingLayoutItem::Texture_SRV(0)));
+    }
+
+    void SpriteFeature::shutdown() {
+        m_binding_layout.reset();
+        m_traditional_tex_layout.reset();
+    }
+
+    void SpriteFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        m_sprite_pass.build(graph, context);
     }
 
 } // dodoe
