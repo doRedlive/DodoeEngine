@@ -1,8 +1,44 @@
-// do@Redlive
-
 #include "material_system.h"
 
+#include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/render_service/binding_layout_cache.h"
+#include "runtime/function/render/texture/texture_manager.h"
+#include "runtime/core/math/math.h"
+
 namespace dodoe {
+
+    Size_t MaterialTemplateDesc::computeHash() const {
+        Size_t h = 0;
+        hash_combine(h, name);
+        hash_combine(h, shader_name);
+        for (const auto& def : param_defs) {
+            hash_combine(h, def.name);
+            hash_combine(h, static_cast<UInt8>(def.type));
+        }
+        for (const auto& [key, val] : permutation_defaults) {
+            hash_combine(h, key);
+            hash_combine(h, val);
+        }
+        return h;
+    }
+
+    void MaterialSystem::initialize(ShaderLibrary* shader_library,
+                                    BindingLayoutCache* binding_layout_cache,
+                                    TextureManager* texture_manager) {
+        m_shader_library = shader_library;
+        m_binding_layout_cache = binding_layout_cache;
+        m_texture_manager = texture_manager;
+    }
+
+    void MaterialSystem::shutdown() {
+        m_instances.clear();
+        m_templates.clear();
+        m_shader_library = nullptr;
+        m_binding_layout_cache = nullptr;
+        m_texture_manager = nullptr;
+        m_global_revision = 0;
+    }
 
     Bool MaterialSystem::registerTemplate(const MaterialTemplateDesc& desc) {
         if (desc.name.empty()) {
@@ -13,14 +49,27 @@ namespace dodoe {
             DO_ERROR("MaterialSystem::registerTemplate duplicate name: {}", desc.name);
             return false;
         }
-        m_templates[desc.name] = desc;
+
+        MaterialTemplate tpl{};
+        tpl.desc = desc;
+        m_templates[desc.name] = std::move(tpl);
+        ++m_global_revision;
         return true;
     }
 
-    const MaterialTemplateDesc* MaterialSystem::findTemplate(const String& name) const {
+    const MaterialTemplate* MaterialSystem::findTemplate(const String& name) const {
         auto it = m_templates.find(name);
         if (it != m_templates.end()) {
             return &it->second;
+        }
+        return nullptr;
+    }
+
+    const MaterialTemplate* MaterialSystem::findTemplateByShader(const String& shader_name) const {
+        for (const auto& [name, tpl] : m_templates) {
+            if (tpl.desc.shader_name == shader_name) {
+                return &tpl;
+            }
         }
         return nullptr;
     }
@@ -38,11 +87,16 @@ namespace dodoe {
             DO_ERROR("MaterialSystem::createInstance duplicate name: {}", desc.name);
             return false;
         }
-        m_instances[desc.name] = desc;
+
+        MaterialInstance inst{};
+        inst.desc = desc;
+        inst.tpl = &m_templates[desc.template_name];
+        m_instances[desc.name] = std::move(inst);
+        ++m_global_revision;
         return true;
     }
 
-    const MaterialInstanceDesc* MaterialSystem::findInstance(const String& name) const {
+    const MaterialInstance* MaterialSystem::findInstance(const String& name) const {
         auto it = m_instances.find(name);
         if (it != m_instances.end()) {
             return &it->second;
@@ -58,7 +112,177 @@ namespace dodoe {
             DO_ERROR("MaterialSystem::setInstanceParam instance not found: {}", instance_name);
             return;
         }
-        it->second.param_overrides[param_name] = value;
+        it->second.desc.param_overrides[param_name] = value;
+        it->second.revision++;
+        ++m_global_revision;
+    }
+
+    Bool MaterialSystem::resolveTemplate(const String& name) {
+        auto it = m_templates.find(name);
+        if (it == m_templates.end()) {
+            DO_ERROR("MaterialSystem::resolveTemplate not found: {}", name);
+            return false;
+        }
+
+        if (it->second.resolved) {
+            return true;
+        }
+
+        if (!m_shader_library) {
+            DO_ERROR("MaterialSystem::resolveTemplate ShaderLibrary not set");
+            return false;
+        }
+
+        auto& tpl = it->second;
+
+        const String vs_name = tpl.desc.shader_name + "VS";
+        const String ps_name = tpl.desc.shader_name + "PS";
+
+        const auto* vs_handle = m_shader_library->findShader(vs_name);
+        const auto* ps_handle = m_shader_library->findShader(ps_name);
+
+        if (!vs_handle) {
+            DO_ERROR("MaterialSystem::resolveTemplate vertex shader not found: {}", vs_name);
+            return false;
+        }
+        if (!ps_handle) {
+            DO_ERROR("MaterialSystem::resolveTemplate pixel shader not found: {}", ps_name);
+            return false;
+        }
+
+        tpl.vertex_shader = *vs_handle;
+        tpl.pixel_shader = *ps_handle;
+
+        if (m_binding_layout_cache) {
+            GfxBindingLayoutDesc layout_desc{};
+            layout_desc.setVisibility(GfxShaderType::All);
+
+            UInt32 cb_slot = 0;
+            UInt32 tex_slot = 0;
+            UInt32 sampler_slot = 0;
+
+            const auto* vs_refl = m_shader_library->getReflection(vs_name);
+            const auto* ps_refl = m_shader_library->getReflection(ps_name);
+
+            auto addReflection = [&](const ShaderReflectionData* refl) {
+                if (!refl) return;
+                for (const auto& cb : refl->constant_buffers) {
+                    layout_desc.addItem(GfxBindingLayoutItem::VolatileConstantBuffer(cb.slot));
+                    cb_slot = std::max(cb_slot, cb.slot + 1);
+                }
+                for (const auto& tex : refl->textures) {
+                    layout_desc.addItem(
+                        ShaderResourceKindToBindingItem(tex.kind, tex.slot, tex.array_size));
+                    tex_slot = std::max(tex_slot, tex.slot + 1);
+                }
+                for (const auto& samp : refl->samplers) {
+                    layout_desc.addItem(GfxBindingLayoutItem::Sampler(samp.slot));
+                    sampler_slot = std::max(sampler_slot, samp.slot + 1);
+                }
+            };
+
+            addReflection(vs_refl);
+            addReflection(ps_refl);
+
+            tpl.binding_layout = m_binding_layout_cache->getOrCreate(layout_desc, GDrawCommandList);
+        }
+
+        tpl.resolved = true;
+        ++tpl.revision;
+        ++m_global_revision;
+        return true;
+    }
+
+    Bool MaterialSystem::resolveInstance(const String& name) {
+        auto it = m_instances.find(name);
+        if (it == m_instances.end()) {
+            DO_ERROR("MaterialSystem::resolveInstance not found: {}", name);
+            return false;
+        }
+
+        if (it->second.resolved) {
+            return true;
+        }
+
+        auto& inst = it->second;
+
+        if (!inst.tpl->resolved) {
+            if (!resolveTemplate(inst.tpl->desc.name)) {
+                return false;
+            }
+        }
+
+        const auto& param_defs = inst.tpl->desc.param_defs;
+
+        UnorderedMap<String, MaterialParamValue> resolved_params;
+        getResolvedParams(name, resolved_params);
+
+        if (m_texture_manager) {
+            inst.textures.clear();
+            for (const auto& def : param_defs) {
+                auto param_it = resolved_params.find(def.name);
+                if (param_it == resolved_params.end()) {
+                    continue;
+                }
+                if (def.type == MaterialParamType::Texture2D ||
+                    def.type == MaterialParamType::TextureCube) {
+                    resolveTextureSlot(inst, def, param_it->second);
+                }
+            }
+        }
+
+        inst.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
+
+        inst.resolved = true;
+        ++inst.revision;
+        ++m_global_revision;
+        return true;
+    }
+
+    void MaterialSystem::resolveAll() {
+        for (auto& [name, tpl] : m_templates) {
+            resolveTemplate(name);
+        }
+        for (auto& [name, inst] : m_instances) {
+            resolveInstance(name);
+        }
+    }
+
+    Bool MaterialSystem::getResolvedMaterial(
+        const String& instance_name,
+        const UnorderedMap<String, UInt32>& permutation_overrides,
+        ResolvedMaterial& out_material) {
+
+        const auto* inst = findInstance(instance_name);
+        if (!inst) {
+            DO_ERROR("MaterialSystem::getResolvedMaterial instance not found: {}", instance_name);
+            return false;
+        }
+
+        if (!inst->resolved) {
+            DO_ERROR("MaterialSystem::getResolvedMaterial instance not resolved: {}", instance_name);
+            return false;
+        }
+
+        const auto* tpl = inst->tpl;
+        if (!tpl || !tpl->resolved) {
+            DO_ERROR("MaterialSystem::getResolvedMaterial template not resolved for: {}", instance_name);
+            return false;
+        }
+
+        out_material.vertex_shader = tpl->vertex_shader;
+        out_material.pixel_shader = tpl->pixel_shader;
+        out_material.binding_layout = tpl->binding_layout;
+        out_material.rasterizer = tpl->desc.rasterizer;
+        out_material.depth_stencil = tpl->desc.depth_stencil;
+        out_material.blend = tpl->desc.blend;
+        out_material.textures = inst->textures;
+        out_material.sampler = inst->sampler;
+        out_material.revision = tpl->revision ^ inst->revision;
+
+        out_material.parameter_data.clear();
+
+        return true;
     }
 
     void MaterialSystem::getResolvedParams(const String& instance_name,
@@ -68,18 +292,38 @@ namespace dodoe {
             return;
         }
 
-        const auto* tmpl = findTemplate(instance->template_name);
-        if (!tmpl) {
+        const auto* tpl = instance->tpl;
+        if (!tpl) {
             return;
         }
 
-        for (const auto& def : tmpl->param_defs) {
+        for (const auto& def : tpl->desc.param_defs) {
             out_params[def.name] = def.default_value;
         }
 
-        for (const auto& [name, value] : instance->param_overrides) {
+        for (const auto& [name, value] : instance->desc.param_overrides) {
             out_params[name] = value;
         }
+    }
+
+    Bool MaterialSystem::resolveTextureSlot(MaterialInstance& instance,
+                                            const MaterialParamDef& def,
+                                            MaterialParamValue value) {
+        if (!m_texture_manager) {
+            return false;
+        }
+
+        const auto& tex_handle = value.texture;
+        if (tex_handle) {
+            instance.textures.push_back(tex_handle);
+            return true;
+        }
+
+        auto* fallback = m_texture_manager->getFallback();
+        if (fallback && fallback->getGpuHandle()) {
+            instance.textures.push_back(fallback->getGpuHandle());
+        }
+        return true;
     }
 
     Bool MaterialSystem::buildConstantBufferData(const String& instance_name,
@@ -98,7 +342,7 @@ namespace dodoe {
             }
 
             const auto& value = param_it->second;
-            Size_t copy_size = var.size < sizeof(MaterialParamValue)
+            const Size_t copy_size = var.size < sizeof(MaterialParamValue)
                 ? static_cast<Size_t>(var.size) : sizeof(MaterialParamValue);
 
             if (var.offset + copy_size > cb_reflection.size) {
@@ -110,6 +354,49 @@ namespace dodoe {
         }
 
         return true;
+    }
+
+    void MaterialSystem::invalidateForShader(const String& shader_name) {
+        for (auto& [name, tpl] : m_templates) {
+            if (tpl.desc.shader_name == shader_name) {
+                tpl.resolved = false;
+                tpl.vertex_shader = {};
+                tpl.pixel_shader = {};
+                tpl.binding_layout = {};
+                tpl.revision++;
+            }
+        }
+
+        for (auto& [name, inst] : m_instances) {
+            if (inst.tpl && inst.tpl->desc.shader_name == shader_name) {
+                inst.resolved = false;
+                inst.revision++;
+            }
+        }
+
+        ++m_global_revision;
+    }
+
+    void MaterialSystem::invalidateForTexture(const GfxTextureHandle& texture) {
+        for (auto& [name, inst] : m_instances) {
+            for (const auto& tex : inst.textures) {
+                if (tex.get() == texture.get()) {
+                    inst.revision++;
+                    break;
+                }
+            }
+        }
+        ++m_global_revision;
+    }
+
+    void MaterialSystem::invalidateAll() {
+        for (auto& [name, tpl] : m_templates) {
+            tpl.resolved = false;
+        }
+        for (auto& [name, inst] : m_instances) {
+            inst.resolved = false;
+        }
+        ++m_global_revision;
     }
 
 } // namespace dodoe

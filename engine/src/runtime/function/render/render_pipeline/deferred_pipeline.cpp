@@ -19,8 +19,9 @@ namespace dodoe {
     }
 
     void DeferredPipeline::onResize(UInt32 width, UInt32 height) {
-        (void)width;
-        (void)height;
+        if (m_renderer) {
+            m_renderer->onResize(width, height);
+        }
     }
 
     void DeferredPipeline::render(RenderViewFamily& view_family,

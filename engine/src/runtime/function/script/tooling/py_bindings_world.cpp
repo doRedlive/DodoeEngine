@@ -36,8 +36,10 @@ namespace dodoe::py_bindings {
             .def("create_scene", &World::createScene)
             .def("delete_scene", &World::deleteScene)
             .def("get_scene", &World::getScene, py::return_value_policy::reference)
-            .def("get_current_scene", &World::getCurrentScene, py::return_value_policy::reference)
-            .def("load_scene", &World::loadScene);
+            .def("get_active_scene", &World::getActiveScene, py::return_value_policy::reference)
+            .def("load_scene", &World::loadScene)
+            .def("load_scene_async", &World::loadSceneAsync)
+            .def("drain_async_completions", &World::drainAsyncCompletions);
 
         m.def("get_world", []() -> World* {
             return dodoe::GetWorld();

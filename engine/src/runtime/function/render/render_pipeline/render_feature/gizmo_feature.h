@@ -7,16 +7,20 @@
 #ifdef DODOE_EDITOR_ENABLED
 
 #include "render_feature.h"
-#include "gizmo_render_resource.h"
+#include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
 
     class GizmoFeature final : public IRenderFeature {
-        mutable GizmoRenderResource m_resources{};
+        GfxBindingLayoutHandle m_binding_layout{};
 
     public:
-        ~GizmoFeature() override { m_resources.reset(); }
-        void registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const override;
+        void initialize(SharedRenderService& resources) override;
+        void shutdown() override;
+
+        void registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const override;
+
+        [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
     };
 
 } // namespace dodoe

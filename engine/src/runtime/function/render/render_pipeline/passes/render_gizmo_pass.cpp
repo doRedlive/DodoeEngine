@@ -4,7 +4,7 @@
 
 #ifdef DODOE_EDITOR_ENABLED
 
-#include "render_pipeline_passes.h"
+#include "render_gizmo_pass.h"
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -14,30 +14,20 @@
 #include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
-#include "runtime/function/render/render_pipeline/render_feature/gizmo_render_resource.h"
-#include "runtime/core/channel/gizmo_channel.h"
 #include "render_pass_blackboard_keys.h"
 
-namespace dodoe::RenderPipelinePass {
-
-    inline constexpr UInt32 kGizmoMaxVertices = 65536;
-    inline constexpr UInt32 kGizmoMaxIndices  = 65536;
-
-    struct GizmoConstantBuffer {
-        Matrix4f mvp;
-    };
+namespace dodoe {
 
     struct GizmoPassParameters {
         RenderGraphTextureHandle color_target{};
-        RenderGraphBufferHandle  vertex_buffer{};
-        RenderGraphBufferHandle  index_buffer{};
+        RenderGraphBufferHandle vertex_buffer{};
+        RenderGraphBufferHandle index_buffer{};
     };
 
-    void RenderGizmoPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context, GizmoRenderResource& resources) {
-        DO_ASSERT(pass_context.isValid(), "GizmoPass: pass context is invalid");
-
-        auto& channel_data = GetGizmoChannel().get<GizmoChannelData>();
-        if (!channel_data.has_data || channel_data.commands.empty()) return;
+    void GizmoPass::build(RenderGraphBuilder& graph,
+                           const RenderPassBuildContext& context) {
+        const auto& pass_context = context.pass_context;
+        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
 
         graph.addPass<GizmoPassParameters>(
             "GizmoPass",
@@ -56,159 +46,97 @@ namespace dodoe::RenderPipelinePass {
 
                 RenderGraphBufferDesc vb_desc{};
                 vb_desc.desc = GfxBufferDesc()
-                    .setByteSize(kGizmoMaxVertices * static_cast<UInt32>(sizeof(GizmoVertex)))
+                    .setByteSize(65536 * sizeof(GizmoVertex))
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG GizmoVB");
-                parameters.vertex_buffer = pass_builder.write(pass_builder.createTransientBuffer(vb_desc, "GizmoVB"));
+                parameters.vertex_buffer = pass_builder.write(pass_builder.createTransientBuffer(vb_desc, "GizmoVertexBuffer"));
 
                 RenderGraphBufferDesc ib_desc{};
                 ib_desc.desc = GfxBufferDesc()
-                    .setByteSize(kGizmoMaxIndices * static_cast<UInt32>(sizeof(UInt32)))
+                    .setByteSize(65536 * sizeof(UInt32))
                     .setIsIndexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG GizmoIB");
-                parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "GizmoIB"));
+                parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer"));
             },
-            [pass_context, &resources](const GizmoPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                auto& channel_data = GetGizmoChannel().get<GizmoChannelData>();
-                if (!channel_data.has_data || channel_data.commands.empty()) return;
+            [pass_context](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+                const auto color_target = ctx.resolveTexture(parameters.color_target);
+                const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
+                const auto ib = ctx.resolveBuffer(parameters.index_buffer);
 
-                const auto color_target = context.resolveTexture(parameters.color_target);
-                const auto vertex_buffer = context.resolveBuffer(parameters.vertex_buffer);
-                const auto index_buffer  = context.resolveBuffer(parameters.index_buffer);
-
-                const size_t vertex_byte_size = channel_data.vertices.size() * sizeof(GizmoVertex);
-                const size_t index_byte_size  = channel_data.indices.size() * sizeof(UInt32);
-
-                if (vertex_byte_size == 0 || index_byte_size == 0) return;
-
-                DO_ASSERT(vertex_byte_size <= static_cast<size_t>(vertex_buffer->getByteSize()),
-                          "Gizmo vertex count exceeds RDG buffer capacity");
-                DO_ASSERT(index_byte_size <= static_cast<size_t>(index_buffer->getByteSize()),
-                          "Gizmo index count exceeds RDG buffer capacity");
-
-                // Upload vertex and index data
-                command_list.setBufferState(vertex_buffer, GfxResourceStates::CopyDest);
-                command_list.setBufferState(index_buffer, GfxResourceStates::CopyDest);
-                command_list.commitBarriers();
-                command_list.writeBuffer(vertex_buffer, channel_data.vertices.data(), vertex_byte_size, 0);
-                command_list.writeBuffer(index_buffer, channel_data.indices.data(), index_byte_size, 0);
-                command_list.setBufferState(vertex_buffer, GfxResourceStates::VertexBuffer);
-                command_list.setBufferState(index_buffer, GfxResourceStates::IndexBuffer);
-                command_list.commitBarriers();
+                struct GizmoPushConstants {
+                    Matrix4f mvp;
+                    Vector4f color;
+                };
 
                 const auto* shader_library = pass_context.getShaderLibrary();
-                if (!shader_library) {
-                    DO_ERROR("GizmoPass: shader_library is null");
+                const auto* pso_cache = pass_context.getPipelineStateCache();
+                if (!shader_library || !pso_cache) {
                     return;
                 }
 
-                const auto gizmo_vs = shader_library->getGizmoVertexShader();
-                const auto gizmo_ps = shader_library->getGizmoPixelShader();
-                if (!gizmo_vs || !gizmo_ps) {
-                    DO_ERROR("GizmoPass: gizmo shaders not loaded");
+                const auto vs = shader_library->getGizmoVertexShader();
+                const auto ps = shader_library->getGizmoPixelShader();
+                if (!vs || !ps) {
                     return;
                 }
-
-                auto binding_layout = resources.getOrCreateBindingLayout(command_list);
-                if (!binding_layout) {
-                    DO_ERROR("GizmoPass: failed to create binding layout");
-                    return;
-                }
-
-                constexpr UInt32 kVertexStride = sizeof(GizmoVertex);
-                GfxVertexAttributeDesc attribs[] = {
-                    GfxVertexAttributeDesc().setName("POSITION").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
-                    GfxVertexAttributeDesc().setName("COLOR").setFormat(GfxFormat::RGBA32_FLOAT).setOffset(12).setElementStride(kVertexStride),
-                };
-                auto input_layout = command_list.createInputLayout(attribs, 2, gizmo_vs);
-
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                auto fb = command_list.createFramebuffer(framebuffer_desc);
 
                 GfxDepthStencilState ds;
-                ds.disableDepthTest().disableDepthWrite().disableStencil();
+                ds.enableDepthTest().setDepthFunc(GfxComparisonFunc::Less).disableDepthWrite().disableStencil();
                 GfxRasterState raster;
                 raster.setCullNone();
-                GfxBlendState blend;
-                blend.enableAlphaBlend();
                 GfxRenderState render_state;
-                render_state.setDepthStencilState(ds).setRasterState(raster).setBlendState(blend);
+                render_state.setDepthStencilState(ds).setRasterState(raster);
 
-                auto* pipeline_cache = pass_context.getPipelineStateCache();
-                if (!pipeline_cache) {
-                    DO_ERROR("GizmoPass: pipeline_cache is null");
-                    return;
-                }
-
-                const auto* view = context.getView();
-                const auto swapchain_extent = context.getGfxContext()->getSwapchainExtent2d();
-                auto vp = GfxViewportState().addViewportAndScissorRect(GfxViewport(
-                    0, static_cast<float>(swapchain_extent.x),
-                    0, static_cast<float>(swapchain_extent.y),
-                    0, 1));
+                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
+                auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
 
                 command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
 
-                DynamicArray<GfxVertexBufferBinding> vbs;
-                vbs.push_back(GfxVertexBufferBinding()
-                    .setBuffer(vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0));
+                const auto mvp = ctx.getView()->getViewProjectionMatrix();
 
-                GfxIndexBufferBinding ib = GfxIndexBufferBinding()
-                    .setBuffer(index_buffer->getRHIHandle())
-                    .setFormat(GfxFormat::R32_UINT)
-                    .setOffset(0);
+                const auto& gizmo_data = GizmoChannel::getDrawData();
+                UInt32 vb_offset = 0, ib_offset = 0;
+                for (const auto& cmd : gizmo_data.commands) {
+                    command_list.setBufferState(vb, GfxResourceStates::CopyDest);
+                    command_list.setBufferState(ib, GfxResourceStates::CopyDest);
+                    command_list.commitBarriers();
+                    command_list.writeBuffer(vb, cmd.vertices.data(), cmd.vertices.size() * sizeof(GizmoVertex), vb_offset);
+                    command_list.writeBuffer(ib, cmd.indices.data(), cmd.indices.size() * sizeof(UInt32), ib_offset);
+                    command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
+                    command_list.setBufferState(ib, GfxResourceStates::IndexBuffer);
+                    command_list.commitBarriers();
 
-                auto pipeline_desc_base = GfxGraphicsPipelineDesc()
-                    .setVertexShader(gizmo_vs)
-                    .setPixelShader(gizmo_ps)
-                    .setInputLayout(input_layout)
-                    .addBindingLayout(binding_layout)
-                    .setRenderState(render_state);
-
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-
-                GizmoConstantBuffer cb_data{};
-                if (view) {
-                    cb_data.mvp = view->getProjectionMatrix() * view->getViewMatrix();
-                } else {
-                    cb_data.mvp = Matrix4f(1.0f);
-                }
-
-                for (const auto& cmd : channel_data.commands) {
-                    if (cmd.vertex_count == 0) continue;
-
-                    auto pipeline_desc = pipeline_desc_base;
-                    pipeline_desc.setPrimType(cmd.topology);
-
-                    auto pipeline = pipeline_cache->resolveGraphicsPipeline(pipeline_desc, framebuffer_info, command_list);
-                    if (!pipeline) continue;
-
-                    GizmoConstantBuffer per_cmd_cb;
-                    per_cmd_cb.mvp = cb_data.mvp * cmd.transform;
-
-                    DynamicArray<GfxBindingSetHandle> bs_arr = {binding_layout};
-
-                    if (cmd.index_count > 0) {
-                        command_list.setGraphicsState(fb, pipeline, bs_arr, vp, vbs, ib);
-                        command_list.setPushConstants(&per_cmd_cb, sizeof(per_cmd_cb));
-                        command_list.drawIndexed(
-                            GfxDrawArguments()
-                                .setVertexCount(cmd.index_count)
-                                .setInstanceCount(1)
-                                .setStartIndexLocation(cmd.index_offset)
-                                .setStartVertexLocation(cmd.vertex_offset));
-                    } else {
-                        command_list.setGraphicsState(fb, pipeline, bs_arr, vp, vbs);
-                        command_list.setPushConstants(&per_cmd_cb, sizeof(per_cmd_cb));
-                        command_list.draw(
-                            GfxDrawArguments()
-                                .setVertexCount(cmd.vertex_count)
-                                .setInstanceCount(1)
-                                .setStartVertexLocation(cmd.vertex_offset));
+                    auto pipeline_desc = GfxGraphicsPipelineDesc()
+                        .setVertexShader(vs)
+                        .setPixelShader(ps)
+                        .setPrimType(cmd.topology);
+                    GfxFramebufferInfo fb_info(framebuffer_desc);
+                    auto pipeline = pso_cache->resolveGraphicsPipeline(
+                        pipeline_desc, fb_info, command_list);
+                    if (!pipeline) {
+                        continue;
                     }
+
+                    GizmoPushConstants push;
+                    push.mvp = mvp;
+                    push.color = cmd.color;
+
+                    DynamicArray<GfxVertexBufferBinding> vbs;
+                    vbs.push_back(GfxVertexBufferBinding()
+                        .setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(vb_offset));
+                    command_list.setIndexBuffer(GfxIndexBufferBinding()
+                        .setBuffer(ib->getRHIHandle()).setOffset(ib_offset));
+
+                    const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                    command_list.setGraphicsState(framebuffer, pipeline, {}, viewport_state, vbs);
+                    command_list.setPushConstants(GfxShaderType::Vertex, &push, sizeof(push));
+                    command_list.drawIndexed(static_cast<UInt32>(cmd.indices.size()), 0, 0);
+
+                    vb_offset += cmd.vertices.size() * sizeof(GizmoVertex);
+                    ib_offset += cmd.indices.size() * sizeof(UInt32);
                 }
 
                 command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
@@ -217,6 +145,6 @@ namespace dodoe::RenderPipelinePass {
         );
     }
 
-} // namespace dodoe::RenderPipelinePass
+} // namespace dodoe
 
-#endif // DODOE_EDITOR_ENABLED
+#endif

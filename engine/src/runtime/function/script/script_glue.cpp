@@ -54,7 +54,7 @@ namespace dodoe {
         template<typename... TC>
         static void RegisterNativeComponents(ComponentGroup<TC...>) { RegisterNativeComponents<TC...>(); }
 
-        static Scene* GetCurrentScene() { Scene* s = GetWorld()->getCurrentScene(); DO_ASSERT(s); return s; }
+        static Scene* GetCurrentScene() { Scene* s = GetWorld()->getActiveScene(); DO_ASSERT(s); return s; }
 
         static Entity TryGetEntityByUuid(uint64_t uuid) {
             if (Scene* s = GetCurrentScene()) {
@@ -178,6 +178,48 @@ namespace dodoe {
             if (!path || path[0] == '\0') return 0;
             auto tex = Texture2D::Load(String(path));
             return tex ? (int)tex->getInstanceID() : 0;
+        }
+
+        static int native_world_load_scene(const char* name, int mode) {
+            if (!name) return 0;
+            auto* world = GetWorld();
+            if (!world) return 0;
+            world->loadScene(name, static_cast<LoadSceneMode>(mode));
+            return 1;
+        }
+
+        static void native_world_unload_scene(const char* name) {
+            if (!name) return;
+            auto* world = GetWorld();
+            if (!world) return;
+            world->unloadScene(name);
+        }
+
+        static std::mutex s_async_load_mutex{};
+        static std::atomic<int> s_async_load_next_token{1};
+        static UnorderedMap<int, std::future<Scene*>> s_async_load_futures{};
+
+        static int native_world_load_scene_async(const char* name, int mode) {
+            if (!name) return -1;
+            auto* world = GetWorld();
+            if (!world) return -1;
+            auto future = world->loadSceneAsync(name, static_cast<LoadSceneMode>(mode));
+            const int token = s_async_load_next_token.fetch_add(1, std::memory_order_relaxed);
+            std::lock_guard<std::mutex> lock(s_async_load_mutex);
+            s_async_load_futures[token] = std::move(future);
+            return token;
+        }
+
+        static int native_world_is_load_complete(int token) {
+            std::lock_guard<std::mutex> lock(s_async_load_mutex);
+            auto it = s_async_load_futures.find(token);
+            if (it == s_async_load_futures.end()) return 0;
+            if (it->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                it->second.get();
+                s_async_load_futures.erase(it);
+                return 1;
+            }
+            return 0;
         }
 
 #define FOR_EACH_NATIVE_BINDING(X) \
@@ -343,7 +385,11 @@ X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
     X(native_entity_set_parent, void, (uint64_t child, uint64_t parent), child, parent) \
     X(native_get_asset_directory, const char*, (), ) \
     X(native_object_get_type_name, const char*, (int instanceID), instanceID) \
-    X(native_texture_load, int, (const char* path), path)
+    X(native_texture_load, int, (const char* path), path) \
+    X(native_world_load_scene, int, (const char* name, int mode), name, mode) \
+    X(native_world_unload_scene, void, (const char* name), name) \
+    X(native_world_load_scene_async, int, (const char* name, int mode), name, mode) \
+    X(native_world_is_load_complete, int, (int token), token)
 
 #include "_generated/script/script_glue.generated.cpp"
 

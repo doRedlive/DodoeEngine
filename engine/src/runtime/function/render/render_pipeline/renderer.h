@@ -26,6 +26,7 @@ namespace dodoe {
     class IRenderer {
     public:
         virtual ~IRenderer() = default;
+        virtual void onResize(UInt32 width, UInt32 height) {}
         virtual void render(RenderViewFamily& view_family, RenderScene& scene,
                             UInt32 swapchain_image_index, DrawCommandList& out_commands) = 0;
     };
@@ -62,6 +63,8 @@ namespace dodoe {
 
         Bool initializeBase(const RendererCreateInfo& info);
         void shutdownBase();
+
+        void onResize(UInt32 width, UInt32 height) override;
     };
 
 } // dodoe

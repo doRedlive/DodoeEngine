@@ -31,6 +31,12 @@ namespace dodoe {
         m_thread_pool.reset();
     }
 
+    void RendererBase::onResize(const UInt32 width, const UInt32 height) {
+        for (const auto& feature : m_features) {
+            feature->onResize(width, height);
+        }
+    }
+
     RenderPassContext RendererBase::buildPassContext(const RenderScene& scene) const {
         RenderPassContext context{};
         context.gfx_context = m_gfx_context;
@@ -59,12 +65,9 @@ namespace dodoe {
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             RenderGraphBuilder graph{};
             const auto& view = view_family.getView(view_index);
-            const RenderFeatureContext feature_context{
-                .view = &view,
-                .pass_context = &pass_context
-            };
+            const RenderPassBuildContext build_ctx{pass_context, view};
             for (const auto& feature : m_features) {
-                feature->registerPass(graph, feature_context);
+                feature->registerPass(graph, build_ctx);
             }
             graph.compile();
             graphs.push_back(std::move(graph));

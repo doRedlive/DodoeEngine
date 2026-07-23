@@ -1,13 +1,14 @@
 // do@Redlive
 
-#include "render_pipeline_passes.h"
+#include "render_skybox_pass.h"
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 #include "render_pass_blackboard_keys.h"
 
-#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "../render_pipeline_pass_utils.h"
+
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
@@ -16,7 +17,7 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/core/math/math.h"
 
-namespace dodoe::RenderPipelinePass {
+namespace dodoe {
 
     struct SkyboxConstantBuffer {
         Matrix4f inv_view_projection{1.0f};
@@ -34,7 +35,9 @@ namespace dodoe::RenderPipelinePass {
         RenderGraphTextureHandle hdr_color{};
     };
 
-    void RenderSkyboxPass(RenderGraphBuilder& graph, const RenderPassContext& pass_context) {
+    void SkyboxPass::build(RenderGraphBuilder& graph,
+                            const RenderPassBuildContext& context) {
+        const auto& pass_context = context.pass_context;
         DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
         const auto& shader_library = *pass_context.getShaderLibrary();
 
@@ -52,16 +55,16 @@ namespace dodoe::RenderPipelinePass {
                     "MainCameraHdrColor"));
                 pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
             },
-            [pass_context, &shader_library](const SkyboxPassParameters& parameters, const RenderGraphPassContext& context, DrawCommandList& command_list) {
-                const auto depth_handle = context.resolveTexture(parameters.depth);
-                const auto hdr = context.resolveTexture(parameters.hdr_color);
+            [pass_context, &shader_library](const SkyboxPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+                const auto depth_handle = ctx.resolveTexture(parameters.depth);
+                const auto hdr = ctx.resolveTexture(parameters.hdr_color);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
 
                 Bool has_sky = false;
                 GfxTextureHandle cubemap_handle{};
-                for (const auto& light_info : context.getScene()->getLightSceneInfos()) {
+                for (const auto& light_info : ctx.getScene()->getLightSceneInfos()) {
                     if (light_info.getLightType() == LightType::Sky && light_info.isEnabled()) {
                         cubemap_handle = light_info.getSkyLightData().cubemap
                             ? light_info.getSkyLightData().cubemap->getGpuHandle()
@@ -81,7 +84,7 @@ namespace dodoe::RenderPipelinePass {
                 }
 
                 SkyboxConstantBuffer cb_data;
-                cb_data.inv_view_projection = Math::Inverse(context.getView()->getViewProjectionMatrix());
+                cb_data.inv_view_projection = Math::Inverse(ctx.getView()->getViewProjectionMatrix());
                 auto skybox_cb = command_list.createBuffer(
                     GfxBufferDesc()
                         .setByteSize(sizeof(SkyboxConstantBuffer))
@@ -100,8 +103,8 @@ namespace dodoe::RenderPipelinePass {
 
                 auto bs = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSetDeferred(
                     command_list, binding_layout, shader_params,
-                    [&](auto h) { return context.resolveTexture(h); },
-                    [&](auto h) { return context.resolveBuffer(h); }
+                    [&](auto h) { return ctx.resolveTexture(h); },
+                    [&](auto h) { return ctx.resolveBuffer(h); }
                 );
 
                 if (!bs) {
@@ -130,10 +133,10 @@ namespace dodoe::RenderPipelinePass {
                 command_list.setTextureState(depth_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.commitBarriers();
                 command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(fb, pipeline, bs_arr, rendering_pipeline_utils::BuildViewportState(*context.getView(), context.getGfxContext()->getSwapchainExtent2d()));
+                command_list.setGraphicsState(fb, pipeline, bs_arr, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()));
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }
         );
     }
 
-} // namespace dodoe::RenderPipelinePass
+} // namespace dodoe

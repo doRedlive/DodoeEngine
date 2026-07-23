@@ -164,6 +164,10 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, int, void> native_TileLayerComponent_offset_y_set;
 // === GENERATED BINDINGS END ===
 // === NATIVE_BINDINGS_GENERATED_END ===
+        public delegate* unmanaged<byte*, int, int>                                     native_world_load_scene;
+        public delegate* unmanaged<byte*, void>                                           native_world_unload_scene;
+        public delegate* unmanaged<byte*, int, int>                                     native_world_load_scene_async;
+        public delegate* unmanaged<int, int>                                              native_world_is_load_complete;
         public delegate* unmanaged<byte*, ulong>                                           native_create_entity;
         public delegate* unmanaged<ulong, void>                                            native_destroy_entity;
         public delegate* unmanaged<ulong, int, int, int, int, void>                         native_tilemap_set_data;
@@ -252,6 +256,29 @@ internal static unsafe partial class NativeCalls
     {
         var ptr = StrToPtr(name);
         try { b->native_id_component_set_name(entityId, ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static int Native_WorldLoadScene(string name, int mode)
+    {
+        var ptr = StrToPtr(name);
+        try { return b->native_world_load_scene(ptr, mode); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static int Native_WorldLoadSceneAsync(string name, int mode)
+    {
+        var ptr = StrToPtr(name);
+        try { return b->native_world_load_scene_async(ptr, mode); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_WorldIsLoadComplete(int token)
+    {
+        return b->native_world_is_load_complete(token) != 0;
+    }
+
+    internal static void Native_WorldUnloadScene(string name)
+    {
+        var ptr = StrToPtr(name);
+        try { b->native_world_unload_scene(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
 
     internal static ulong Native_CreateEntity(string name)

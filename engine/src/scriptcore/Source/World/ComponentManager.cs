@@ -37,8 +37,13 @@ internal static class ComponentManager
 
         if (instance is CakeBehaviour mb)
         {
-            mb.GameObject = GameObjectManager.FindByID(e.ID);
-            GameObjectManager.QueueAwake(mb);
+            var scene = SceneManager.ActiveScene;
+            if (scene != null)
+            {
+                var go = scene.FindByID(e.ID);
+                mb.GameObject = go;
+                scene.QueueAwake(mb);
+            }
         }
 
         return instance;

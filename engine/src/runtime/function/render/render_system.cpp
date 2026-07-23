@@ -33,7 +33,7 @@ namespace dodoe {
 
         m_descriptor_table = DescriptorTableManager::Create({m_gfx.get()});
         m_texture_manager = TextureManager::Create({m_gfx.get(), m_descriptor_table.get()});
-        m_shared_render_service = SharedRenderService::Create({m_gfx.get(), m_descriptor_table.get(), m_texture_manager.get()});
+        m_shared_render_service = SharedRenderService::Create({m_gfx.get(), m_descriptor_table.get(), m_texture_manager.get(), m_frame_scheduler->getDeletionQueue()});
         m_render_scene = RenderScene::Create({});
         m_render_pipeline = RenderPipeline::Create({
             std::thread::hardware_concurrency(),

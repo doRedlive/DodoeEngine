@@ -4,27 +4,23 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/render_graph/render_graph_pass.h"
-
 namespace dodoe {
 
-    class RenderGraphPassBuilder;
+    class RenderGraphBuilder;
     class RenderView;
     struct RenderPassContext;
+
+    struct RenderPassBuildContext {
+        const RenderPassContext& pass_context;
+        const RenderView& view;
+    };
 
     class IRenderPass {
     public:
         virtual ~IRenderPass() = default;
 
-        [[nodiscard]] virtual const String& getName() const = 0;
-        [[nodiscard]] virtual RenderGraphPassFlags getFlags() const = 0;
-
-        virtual void setup(RenderGraphPassBuilder& builder,
-                           const RenderPassContext& context,
-                           const RenderView& view) = 0;
-
-        virtual void execute(const RenderGraphPassContext& context,
-                             DrawCommandList& cmd) = 0;
+        virtual void build(RenderGraphBuilder& graph,
+                           const RenderPassBuildContext& context) = 0;
     };
 
 } // namespace dodoe

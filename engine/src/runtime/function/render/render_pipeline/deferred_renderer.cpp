@@ -3,7 +3,6 @@
 #include "deferred_renderer.h"
 
 #include "render_graph/render_graph_builder.h"
-#include "passes/render_pipeline_passes.h"
 #include "render_pipeline_pass_utils.h"
 #include "render_feature/render_builtin_features.h"
 #include "render_feature/sprite_feature.h"

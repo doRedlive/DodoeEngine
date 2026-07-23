@@ -86,7 +86,7 @@ public static partial class ScriptHub
         SystemTypeCache.Clear();
         SystemDispatcher.InvalidateCache();
         World.Reset();
-        GameObjectManager.Reset();
+        SceneManager.Reset();
         return 1;
     }
 

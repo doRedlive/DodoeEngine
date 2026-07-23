@@ -15,7 +15,7 @@ namespace dodoe {
         DynamicArray<RenderGraphResourceRecord> m_resources{};
         DynamicArray<DynamicArray<Size_t>> m_levels{};
         DynamicArray<Bool> m_culled_passes{};
-        TransientResourcePool m_transient_pool{};
+        RenderGraphTransientPool m_transient_pool{};
         DynamicArray<String> m_subgraph_names{};
         Bool m_compiled{false};
 

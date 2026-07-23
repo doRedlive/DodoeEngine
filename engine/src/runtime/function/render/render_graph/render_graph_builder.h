@@ -5,17 +5,18 @@
 #include "dopch.h"
 
 #include "render_graph_blackboard.h"
+#include "runtime/function/render/render_service/render_product_store.h"
 #include "render_graph.h"
 
 namespace dodoe {
 
     class IRenderPass;
-    class RenderView;
-    struct RenderPassContext;
+    struct RenderPassBuildContext;
 
     class RenderGraphBuilder {
         RenderGraph m_graph{};
         RenderGraphBlackboard m_blackboard{};
+        RenderProductStore m_product_store{};
         UInt32 m_current_subgraph{~0u};
 
     public:
@@ -49,7 +50,7 @@ namespace dodoe {
             m_graph.addPass(pass);
         }
 
-        void addPass(IRenderPass& render_pass, const RenderPassContext& context, const RenderView& view);
+        void addPass(IRenderPass& render_pass, const RenderPassBuildContext& context);
 
         void exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state);
         void compile();
@@ -60,6 +61,8 @@ namespace dodoe {
         [[nodiscard]] const RenderGraph& graph() const { return m_graph; }
         [[nodiscard]] RenderGraphBlackboard& blackboard() { return m_blackboard; }
         [[nodiscard]] const RenderGraphBlackboard& blackboard() const { return m_blackboard; }
+        [[nodiscard]] RenderProductStore& products() { return m_product_store; }
+        [[nodiscard]] const RenderProductStore& products() const { return m_product_store; }
 
         UInt32 registerTexture(const RenderGraphTextureDesc& desc, const String& name);
         UInt32 registerBuffer(const RenderGraphBufferDesc& desc, const String& name);
