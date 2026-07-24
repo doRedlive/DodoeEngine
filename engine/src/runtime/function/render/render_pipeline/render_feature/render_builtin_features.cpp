@@ -136,15 +136,15 @@ namespace dodoe {
         m_primitive_scene_capacity = new_capacity;
     }
 
-    void BaseSceneFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        GBufferPass{}.build(graph, context);
-        DirectionalShadowPass{}.build(graph, context);
-        SkyboxPass{}.build(graph, context);
+    void BaseSceneFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        m_gbuffer_pass.build(graph, context);
+        m_shadow_pass.build(graph, context);
+        m_skybox_pass.build(graph, context);
     }
 
     void LightingFeature::initialize(SharedRenderService& resources) {
         (void)resources;
-        m_constant_buffer = GDrawCommandList.createBuffer(
+        m_resource.constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(256)
                 .setIsConstantBuffer(true)
@@ -153,23 +153,23 @@ namespace dodoe {
     }
 
     void LightingFeature::shutdown() {
-        m_constant_buffer.reset();
+        m_resource.constant_buffer.reset();
     }
 
-    void LightingFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        DeferredLightPass{m_constant_buffer}.build(graph, context);
+    void LightingFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        DeferredLightPass{m_resource.constant_buffer}.build(graph, context);
     }
 
-    void PostProcessFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        PostProcessPass{}.build(graph, context);
+    void PostProcessFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        m_post_process_pass.build(graph, context);
     }
 
-    void PostProcess2DFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        PostProcess2DPass{}.build(graph, context);
+    void PostProcess2DFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        m_post_process_2d_pass.build(graph, context);
     }
 
-    void PresentFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        PresentPass{}.build(graph, context);
+    void PresentFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        m_present_pass.build(graph, context);
     }
 
-} // namespace dodoe
+} // dodoe

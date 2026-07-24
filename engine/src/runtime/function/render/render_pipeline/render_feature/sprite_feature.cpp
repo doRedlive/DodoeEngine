@@ -26,8 +26,8 @@ namespace dodoe {
         m_traditional_tex_layout.reset();
     }
 
-    void SpriteFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        SpritePass{}.build(graph, context);
+    void SpriteFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        m_sprite_pass.build(graph, context);
     }
 
-} // namespace dodoe
+} // dodoe

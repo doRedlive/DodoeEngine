@@ -13,12 +13,13 @@ namespace dodoe {
         GfxTextureHandle m_font_texture{};
         GfxBufferHandle m_constant_buffer{};
         GfxBindingLayoutHandle m_binding_layout{};
+        ImGuiPass m_imgui_pass{};
 
     public:
         void initialize(SharedRenderService& resources) override;
         void shutdown() override;
 
-        void registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const override;
+        void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const override;
 
         [[nodiscard]] GfxTextureHandle getFontTexture() const { return m_font_texture; }
         [[nodiscard]] GfxBufferHandle getConstantBuffer() const { return m_constant_buffer; }

@@ -61,8 +61,8 @@ namespace dodoe {
         m_binding_layout.reset();
     }
 
-    void ImGuiFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        ImGuiPass{}.build(graph, context);
+    void ImGuiFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+        m_imgui_pass.build(graph, context);
     }
 
 } // namespace dodoe

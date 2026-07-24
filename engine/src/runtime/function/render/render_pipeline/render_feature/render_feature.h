@@ -16,8 +16,8 @@ namespace dodoe {
 
         virtual void initialize(SharedRenderService& resources) {}
         virtual void onResize(UInt32 width, UInt32 height) {}
-        virtual void registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const = 0;
+        virtual void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const = 0;
         virtual void shutdown() {}
     };
 
-} // namespace dodoe
+} // dodoe

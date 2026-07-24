@@ -40,9 +40,19 @@ namespace dodoe {
     }
 
     Bool DeferredRenderer::initialize(const RendererCreateInfo& info) {
-        if (!initializeBase(info)) {
-            return false;
+        Size_t worker_count = info.worker_count;
+        if (worker_count == 0) {
+            worker_count = std::thread::hardware_concurrency();
         }
+
+        m_thread_pool = create_scope<ThreadPool>(std::max(Size_t{1}, worker_count));
+        m_gfx_context = info.gfx_context;
+        m_shared_render_service = info.shared_render_service;
+        DO_ASSERT(m_gfx_context != nullptr, "DeferredRenderer requires valid gfx_context");
+        DO_ASSERT(m_shared_render_service != nullptr, "DeferredRenderer requires shared render service");
+        DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "DeferredRenderer requires shader library");
+        DO_ASSERT(m_shared_render_service->getDescriptorTable() != nullptr, "DeferredRenderer requires descriptor table");
+        DO_ASSERT(m_shared_render_service->getTextureManager() != nullptr, "DeferredRenderer requires texture manager");
 
         const auto* shader_library = m_shared_render_service->getShaderLibrary();
 
@@ -60,15 +70,16 @@ namespace dodoe {
         m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)] = create_scope<DirectionalShadowMeshProcessor>();
         static_cast<DirectionalShadowMeshProcessor*>(m_mesh_processors[static_cast<size_t>(MeshPassType::DirectionalShadow)].get())->initialize(*m_gfx_context);
 
-        m_features.push_back(create_scope<BaseSceneFeature>());
-        m_features.push_back(create_scope<LightingFeature>());
-        m_features.push_back(create_scope<PostProcessFeature>());
-        m_features.push_back(create_scope<SpriteFeature>());
+        addFeature<BaseSceneFeature>();
+        addFeature<LightingFeature>();
+        addFeature<PostProcessFeature>();
+        addFeature<SpriteFeature>();
 #ifdef DODOE_EDITOR_ENABLED
-        m_features.push_back(create_scope<GizmoFeature>());
+        addFeature<GizmoFeature>();
 #endif
-        m_features.push_back(create_scope<ImGuiFeature>());
-        m_features.push_back(create_scope<PresentFeature>());
+        addFeature<ImGuiFeature>();
+        addFeature<PresentFeature>();
+
         return true;
     }
 
@@ -84,11 +95,14 @@ namespace dodoe {
             m_local_vertex_factory.reset();
         }
         GpuCulling::Destroy(m_gpu_culling);
-        shutdownBase();
+        clearFeatures();
+        m_shared_render_service = nullptr;
+        m_gfx_context = nullptr;
+        m_thread_pool.reset();
     }
 
     RenderPassContext DeferredRenderer::buildPassContext(const RenderScene& scene) const {
-        auto context = RendererBase::buildPassContext(scene);
+        auto context = makePassContext(scene);
         context.local_vertex_factory = m_local_vertex_factory.get();
         for (size_t i = 0; i < static_cast<size_t>(MeshPassType::Count); ++i) {
             context.mesh_processors[i] = m_mesh_processors[i].get();
@@ -97,7 +111,7 @@ namespace dodoe {
     }
 
     void DeferredRenderer::initViews(const RenderScene& scene, RenderViewFamily& view_family) const {
-        RendererBase::initViews(scene, view_family);
+        clearViewExtensions(view_family);
         view_family.buildVisiblePrimitives(scene);
     }
 
@@ -116,7 +130,7 @@ namespace dodoe {
             buildMeshDrawCommands(view_family, out_commands);
         }
 
-        buildFrameDrawCommandList(view_family, scene, swapchain_image_index, out_commands);
+        setupFramePasses(view_family, scene, swapchain_image_index, out_commands);
     }
 
     void DeferredRenderer::executeGpuCulling(RenderViewFamily& view_family, RenderScene& scene, DrawCommandList& cmd_list) const {

@@ -23,13 +23,13 @@ namespace dodoe {
         m_binding_layout.reset();
     }
 
-    void GizmoFeature::registerPass(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
+    void GizmoFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
         if (!context.view.hasViewFlag(RenderView::kShowEditorPrimitives)) return;
 
         auto& channel_data = GetGizmoChannel().get<GizmoChannelData>();
         if (!channel_data.has_data || channel_data.commands.empty()) return;
 
-        GizmoPass{}.build(graph, context);
+        m_gizmo_pass.build(graph, context);
     }
 
 } // namespace dodoe

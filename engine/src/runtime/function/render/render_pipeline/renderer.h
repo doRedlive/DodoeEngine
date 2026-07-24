@@ -15,56 +15,49 @@
 
 namespace dodoe {
 
-    class RenderGraphBuilder;
-
     struct RendererCreateInfo {
         Size_t worker_count{0};
         GfxContext* gfx_context{nullptr};
         SharedRenderService* shared_render_service{nullptr};
     };
 
-    class IRenderer {
-    public:
-        virtual ~IRenderer() = default;
-        virtual void onResize(UInt32 width, UInt32 height) {}
-        virtual void render(RenderViewFamily& view_family, RenderScene& scene,
-                            UInt32 swapchain_image_index, DrawCommandList& out_commands) = 0;
-    };
-
-    class RendererBase : public IRenderer {
+    class BaseRenderer {
     protected:
-        GfxContext* m_gfx_context{nullptr};
-        SharedRenderService* m_shared_render_service{nullptr};
-        Scope<ThreadPool> m_thread_pool{nullptr};
+        GfxContext*           m_gfx_context{nullptr};
+        SharedRenderService*  m_shared_render_service{nullptr};
+        Scope<ThreadPool>     m_thread_pool{nullptr};
         DynamicArray<Scope<IRenderFeature>> m_features{};
 
-        [[nodiscard]] virtual RenderPassContext buildPassContext(const RenderScene& scene) const;
+        [[nodiscard]] RenderPassContext makePassContext(const RenderScene& scene) const;
 
-        virtual void initViews(const RenderScene& scene, RenderViewFamily& view_family) const;
+        void clearViewExtensions(RenderViewFamily& view_family) const;
 
-        void buildFrameDrawCommandList(
-            const RenderViewFamily& view_family,
-            RenderScene& scene,
-            const UInt32 swapchain_image_index,
-            DrawCommandList& out_commands) const;
-
-        void executeFrameGraph(
-            RenderGraphBuilder& graph,
-            const RenderViewFamily& view_family,
-            RenderScene& scene,
-            const RenderView& view,
-            Size_t view_index,
-            UInt32 swapchain_image_index,
-            DrawCommandList& out_commands) const;
+        void setupFramePasses(RenderViewFamily& view_family, RenderScene& scene,
+                              UInt32 swapchain_image_index, DrawCommandList& out_commands) const;
 
     public:
-        [[nodiscard]] GfxContext* getGfxContext() const { return m_gfx_context; }
-        [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_shared_render_service; }
+        virtual ~BaseRenderer() = default;
 
-        Bool initializeBase(const RendererCreateInfo& info);
-        void shutdownBase();
+        template <typename T, typename... Args>
+        void addFeature(Args&&... args) {
+            m_features.push_back(create_scope<T>(std::forward<Args>(args)...));
+        }
 
-        void onResize(UInt32 width, UInt32 height) override;
+        void clearFeatures() { m_features.clear(); }
+
+        void onResize(UInt32 width, UInt32 height) {
+            for (const auto& feature : m_features) {
+                feature->onResize(width, height);
+            }
+        }
+
+        [[nodiscard]] GfxContext*          getGfx()           const { return m_gfx_context; }
+        [[nodiscard]] SharedRenderService* getSharedService() const { return m_shared_render_service; }
+        [[nodiscard]] ThreadPool*          getThreadPool()    const { return m_thread_pool.get(); }
+
+    protected:
+        virtual void render(RenderViewFamily& view_family, RenderScene& scene,
+                            UInt32 swapchain_image_index, DrawCommandList& out_commands) = 0;
     };
 
 } // dodoe

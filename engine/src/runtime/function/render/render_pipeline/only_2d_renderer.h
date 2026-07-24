@@ -8,7 +8,10 @@
 
 namespace dodoe {
 
-    class Only2DRenderer final : public RendererBase {
+    class Only2DRenderer final : public BaseRenderer {
+
+        void initViews(const RenderScene& scene, RenderViewFamily& view_family) const;
+
     public:
         ~Only2DRenderer() override = default;
 
@@ -17,10 +20,6 @@ namespace dodoe {
 
         void render(RenderViewFamily& view_family, RenderScene& scene,
                     UInt32 swapchain_image_index, DrawCommandList& out_commands) override;
-
-    private:
-        void initViews(const RenderScene& scene, RenderViewFamily& view_family) const override;
-
     };
 
 } // dodoe
