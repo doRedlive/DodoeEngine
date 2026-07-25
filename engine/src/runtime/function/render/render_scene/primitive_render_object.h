@@ -25,7 +25,7 @@ namespace dodoe {
     protected:
         MeshUploadData m_upload_data{};
         DynamicArray<MeshLODData> m_lods{};
-        DynamicArray<Ref<Material>> m_override_materials{};
+        DynamicArray<MaterialProperties> m_override_materials{};
         PrimitiveMobility m_mobility{PrimitiveMobility::Static};
         Bool m_visible{true};
         Bool m_cast_shadow{true};
@@ -33,14 +33,14 @@ namespace dodoe {
     public:
         void setUploadData(const MeshUploadData& upload_data) { m_upload_data = upload_data; }
         void setLODData(const DynamicArray<MeshLODData>& lods) { m_lods = lods; }
-        void setOverrideMaterials(const DynamicArray<Ref<Material>>& override_materials) { m_override_materials = override_materials; }
+        void setOverrideMaterials(const DynamicArray<MaterialProperties>& override_materials) { m_override_materials = override_materials; }
         void setMobility(const PrimitiveMobility mobility) { m_mobility = mobility; }
         void setVisible(const Bool visible) { m_visible = visible; }
         void setCastShadow(const Bool cast_shadow) { m_cast_shadow = cast_shadow; }
 
         [[nodiscard]] const DynamicArray<MeshLODData>& getLODData() const { return m_lods; }
         [[nodiscard]] const MeshUploadData& getUploadData() const { return m_upload_data; }
-        [[nodiscard]] const DynamicArray<Ref<Material>>& getOverrideMaterials() const { return m_override_materials; }
+        [[nodiscard]] const DynamicArray<MaterialProperties>& getOverrideMaterials() const { return m_override_materials; }
         [[nodiscard]] PrimitiveMobility getMobility() const { return m_mobility; }
         [[nodiscard]] Bool isVisible() const { return m_visible; }
         [[nodiscard]] Bool castsShadow() const { return m_cast_shadow; }
@@ -50,11 +50,11 @@ namespace dodoe {
         virtual void appendInstanceSceneData(DynamicArray<InstanceSceneData>& out_instance_scene_data, const Matrix4f& world_transform) const;
 
         [[nodiscard]] RenderObjectDirtyFlags diff(const RenderObject& previous) const override;
-        [[nodiscard]] virtual DynamicArray<Ref<Material>> resolveMaterials() const;
-        [[nodiscard]] virtual DynamicArray<SubMesh> buildSections(const DynamicArray<Ref<Material>>& resolved_materials) const;
+        [[nodiscard]] virtual DynamicArray<MaterialProperties> resolveMaterials() const;
+        [[nodiscard]] virtual DynamicArray<SubMesh> buildSections(const DynamicArray<MaterialProperties>& resolved_materials) const;
         [[nodiscard]] virtual DynamicArray<MeshBatch> buildMeshBatches(
             Identifier primitive_id,
-            const DynamicArray<Ref<Material>>& resolved_materials,
+            const DynamicArray<MaterialProperties>& resolved_materials,
             UInt32 first_instance) const;
         [[nodiscard]] virtual PrimitiveSceneInfo buildSceneInfo(
             Identifier primitive_id,

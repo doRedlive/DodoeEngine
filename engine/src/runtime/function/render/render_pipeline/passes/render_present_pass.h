@@ -5,13 +5,29 @@
 #include "dopch.h"
 
 #include "../render_pass.h"
+#include "render_pass_blackboard_keys.h"
 
 namespace dodoe {
 
-    class PresentPass : public IRenderPass {
-    public:
-        void build(RenderGraphBuilder& graph,
-                   const RenderPassBuildContext& context) override;
-    };
+	class PresentPass : public IRenderPass {
+	    GfxBufferHandle m_present_cb{};
+
+	public:
+	    PresentPass() = default;
+	    explicit PresentPass(GfxBufferHandle present_cb)
+	        : m_present_cb(present_cb) {}
+
+	    using Produces = TypeList<>;
+	    using Consumes = TypeList<SceneColorKey>;
+
+	    RenderPhase getPhase() const override { return RenderPhase::Present; }
+
+	    DynamicArray<Size_t> getConsumedKeys() const override {
+	        return MakeKeyHashes(Consumes{});
+	    }
+
+	    void build(RenderGraphBuilder& graph,
+	               const RenderPassBuildContext& context) override;
+	};
 
 } // namespace dodoe

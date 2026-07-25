@@ -22,16 +22,14 @@ namespace dodoe {
 
     struct SharedRenderServiceCreateInfo {
         GfxContext* gfx_context{nullptr};
-        DescriptorTableManager* descriptor_table{nullptr};
-        TextureManager* texture_manager{nullptr};
     };
 
     class SharedRenderService : public Managed<SharedRenderService, SharedRenderServiceCreateInfo> {
         friend class Managed<SharedRenderService, SharedRenderServiceCreateInfo>;
 
         GfxContext* m_gfx_context{nullptr};
-        DescriptorTableManager* m_descriptor_table{nullptr};
-        TextureManager* m_texture_manager{nullptr};
+        Scope<DescriptorTableManager> m_descriptor_table{nullptr};
+        Scope<TextureManager> m_texture_manager{nullptr};
         Scope<DeferredDeletionQueue> m_deletion_queue{nullptr};
         Scope<ShaderLibrary> m_shader_library{nullptr};
         Scope<PipelineStateCache> m_pipeline_state_cache{nullptr};
@@ -43,12 +41,10 @@ namespace dodoe {
         Scope<MaterialSystem> m_material_system{nullptr};
 
     public:
-        SharedRenderService() = default;
-        ~SharedRenderService() = default;
 
         [[nodiscard]] GfxContext* getGfxContext() const { return m_gfx_context; }
-        [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
-        [[nodiscard]] TextureManager* getTextureManager() const { return m_texture_manager; }
+        [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table.get(); }
+        [[nodiscard]] TextureManager* getTextureManager() const { return m_texture_manager.get(); }
         [[nodiscard]] DeferredDeletionQueue* getDeletionQueue() const { return m_deletion_queue.get(); }
         [[nodiscard]] ShaderLibrary* getShaderLibrary() const { return m_shader_library.get(); }
         [[nodiscard]] PipelineStateCache* getPipelineStateCache() const { return m_pipeline_state_cache.get(); }

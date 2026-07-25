@@ -15,7 +15,7 @@
 namespace dodoe {
 
     Texture2D* Texture2D::Load(const String& path) {
-        auto* texture_manager = GetRenderSystem()->getTextureManager();
+        auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
         if (!texture_manager) {
             return nullptr;
         }
@@ -23,7 +23,7 @@ namespace dodoe {
     }
 
     TextureCubemap* TextureCubemap::LoadFromFaces(const DynamicArray<String>& face_paths) {
-        auto* texture_manager = GetRenderSystem()->getTextureManager();
+        auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
         if (!texture_manager) {
             return nullptr;
         }
@@ -51,7 +51,7 @@ namespace dodoe {
         return loadTexture(path, GDrawCommandList, nullptr);
     }
 
-    Texture2D* TextureManager::loadTexture(const String& path, DrawCommandList& cmd_list, UploadRing* upload_ring) {
+    Texture2D* TextureManager::loadTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
         const FileID file_id(path);
         const InstanceID existing = Object::FindInstanceID(file_id);
         if (existing != 0) {
@@ -61,7 +61,7 @@ namespace dodoe {
             }
         }
 
-        return createTexture(path, cmd_list, upload_ring);
+        return createTexture(path, cmd_list, staging);
     }
 
     Texture* TextureManager::findTexture(const InstanceID id) {
@@ -97,7 +97,7 @@ namespace dodoe {
         m_cubemap_cache.erase(id);
     }
 
-    Texture2D* TextureManager::createTexture(const String& path, DrawCommandList& cmd_list, UploadRing* upload_ring) {
+    Texture2D* TextureManager::createTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
         TextureBlob data(path);
         if (!data.isValid()) {
             DO_ERROR("TextureManager: Create texture {} failed!", path);
@@ -126,8 +126,8 @@ namespace dodoe {
         if (data.pixels && data_size > 0) {
             const UInt32 bytes_per_pixel = data.is_hdr ? 16u : 4u;
             const Size_t row_pitch = static_cast<Size_t>(data.width) * bytes_per_pixel;
-            if (upload_ring) {
-                auto alloc = upload_ring->allocate(data_size, 256);
+            if (staging) {
+                auto alloc = staging->allocate(data_size, 256);
                 if (alloc.mapped_data) {
                     std::memcpy(alloc.mapped_data, data.pixels, data_size);
                     cmd_list.writeTexture(handle, 0, 0, alloc.mapped_data, row_pitch);
@@ -186,7 +186,7 @@ namespace dodoe {
         return loadCubemapTexture(face_paths, GDrawCommandList, nullptr);
     }
 
-    TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, UploadRing* upload_ring) {
+    TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
         if (face_paths.size() < 6) return nullptr;
 
         const FileID file_id(face_paths[0]);

@@ -20,7 +20,7 @@ namespace dodoe {
         GfxBufferHandle m_constant_buffer{};
 
     public:
-        void initialize(GfxContext& gfx_context);
+        DirectionalShadowMeshProcessor();
         void reset() override;
 
         [[nodiscard]] const GfxBindingLayoutHandle& getBindingLayout() const override { return m_binding_layout; }
@@ -42,6 +42,7 @@ namespace dodoe {
             const Matrix4f& light_view_projection,
             DynamicArray<MeshDrawCommand>& frame_commands,
             DynamicArray<MeshDrawInstance>& out_instances) const;
+
     };
 
 } // dodoe

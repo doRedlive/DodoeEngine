@@ -6,12 +6,13 @@ namespace dodoe {
 
     Bool SharedRenderService::initialize(const SharedRenderServiceCreateInfo& info) {
         m_gfx_context = info.gfx_context;
-        m_descriptor_table = info.descriptor_table;
-        m_texture_manager = info.texture_manager;
 
         DO_ASSERT(m_gfx_context != nullptr, "SharedRenderService requires gfx_context");
         const auto device = GDrawCommandList.getDevice();
         DO_ASSERT(device != nullptr, "SharedRenderService requires valid device");
+
+        m_descriptor_table = DescriptorTableManager::Create({m_gfx_context});
+        m_texture_manager = TextureManager::Create({m_gfx_context, m_descriptor_table.get()});
 
         m_deletion_queue = create_scope<DeferredDeletionQueue>();
         m_shader_library = create_scope<ShaderLibrary>();
@@ -22,11 +23,12 @@ namespace dodoe {
         m_render_target_system = create_scope<RenderTargetSystem>();
         m_render_target_system->initialize(*m_gfx_context, m_deletion_queue.get());
         m_framebuffer_cache = create_scope<FramebufferCache>();
+        m_framebuffer_cache->initialize(*m_gfx_context);
         m_binding_layout_cache = BindingLayoutCache::Create({m_gfx_context});
         m_binding_set_cache = BindingSetCache::Create({m_gfx_context});
         m_input_layout_cache = InputLayoutCache::Create({m_gfx_context});
         m_material_system = create_scope<MaterialSystem>();
-        m_material_system->initialize(m_shader_library.get(), m_binding_layout_cache.get(), m_texture_manager);
+        m_material_system->initialize(m_shader_library.get(), m_binding_layout_cache.get(), m_texture_manager.get());
 
         return m_shader_library != nullptr
             && m_pipeline_state_cache != nullptr
@@ -70,8 +72,8 @@ namespace dodoe {
             m_deletion_queue->clear();
             m_deletion_queue.reset();
         }
-        m_texture_manager = nullptr;
-        m_descriptor_table = nullptr;
+        TextureManager::Destroy(m_texture_manager);
+        DescriptorTableManager::Destroy(m_descriptor_table);
         m_gfx_context = nullptr;
     }
 

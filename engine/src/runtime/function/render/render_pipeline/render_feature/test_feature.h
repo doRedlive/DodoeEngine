@@ -8,11 +8,11 @@
 
 namespace dodoe {
 
-    class TestFeature : public IRenderFeature {
-    public:
-        ~TestFeature() override = default;
+	class TestFeature : public IRenderFeature {
+	public:
+	    ~TestFeature() override = default;
 
-        void registerPass(RenderGraphBuilder& graph, const RenderFeatureContext& context) const override;
-    };
+	    void collectPasses(PassCollector& collector) override {}
+	};
 
-} // dodoe
+} // namespace dodoe

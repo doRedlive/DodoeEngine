@@ -30,15 +30,14 @@ namespace dodoe {
         m_gfx_context = nullptr;
     }
 
-    GfxBindingLayoutHandle BindingLayoutCache::getOrCreate(const GfxBindingLayoutDesc& desc,
-                                                             DrawCommandList& cmd) {
+    GfxBindingLayoutHandle BindingLayoutCache::getOrCreate(const GfxBindingLayoutDesc& desc) {
         const auto hash = HashBindingLayoutDesc(desc);
         auto it = m_cache.find(hash);
         if (it != m_cache.end()) {
             return it->second.layout;
         }
 
-        auto layout = cmd.createBindingLayout(desc);
+        auto layout = GDrawCommandList.createBindingLayout(desc);
         m_cache[hash] = {layout, m_next_generation++};
         return layout;
     }

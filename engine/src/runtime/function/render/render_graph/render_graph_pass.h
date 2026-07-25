@@ -40,6 +40,9 @@ namespace dodoe {
     class RenderView;
     class RenderViewFamily;
     class SharedRenderService;
+    class ShaderLibrary;
+    class PipelineStateCache;
+    class TextureManager;
 
     struct RenderGraphExecuteContext {
         const RenderViewFamily* view_family{nullptr};
@@ -66,6 +69,10 @@ namespace dodoe {
         [[nodiscard]] Size_t getViewIndex() const { return m_execute_context->view_index; }
         [[nodiscard]] UInt32 getSwapchainImageIndex() const { return m_execute_context->swapchain_image_index; }
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_execute_context->shared_render_service; }
+
+        [[nodiscard]] const ShaderLibrary* getShaderLibrary() const;
+        [[nodiscard]] PipelineStateCache* getPipelineStateCache() const;
+        [[nodiscard]] TextureManager* getTextureManager() const;
 
         [[nodiscard]] GfxTextureHandle resolveTexture(const RenderGraphTextureHandle handle) const {
             DO_ASSERT(m_resource_registry != nullptr, "RenderGraphPassContext resource registry is null");

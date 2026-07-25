@@ -17,7 +17,9 @@
 
 namespace dodoe {
 
-    struct RenderSceneCreateInfo {};
+    struct RenderSceneCreateInfo {
+        class SharedRenderService* shared_render_service{nullptr};
+    };
 
     enum class PrimitiveUpdateType : UInt32 {
         None = 0,
@@ -112,6 +114,7 @@ namespace dodoe {
         DynamicArray<LightSceneInfo> m_light_scene_infos{};
 
         Scope<GpuScene> m_gpu_scene{};
+        class SharedRenderService* m_shared_render_service{nullptr};
 
     public:
         void addPrimitive(Scope<PrimitiveRenderObject> primitive);
@@ -168,6 +171,7 @@ namespace dodoe {
         void updatePrimitiveMaterials(UUID id);
         void updatePrimitiveState(UUID id);
         void removePrimitiveSceneInfo(UUID id);
+        void resolveBatchMaterialInstances(PrimitiveSceneInfo& info);
     };
 
 } // dodoe

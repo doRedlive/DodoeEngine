@@ -20,8 +20,7 @@ namespace dodoe {
 
     GfxInputLayoutHandle InputLayoutCache::getOrCreate(
         const DynamicArray<GfxVertexAttributeDesc>& attributes,
-        GfxShaderHandle vertex_shader,
-        DrawCommandList& cmd)
+        GfxShaderHandle vertex_shader)
     {
         Size_t h = 0;
         for (const auto& attr : attributes) {
@@ -36,7 +35,7 @@ namespace dodoe {
             return it->second;
         }
 
-        auto input_layout = cmd.createInputLayout(
+        auto input_layout = GDrawCommandList.createInputLayout(
             attributes.data(),
             static_cast<UInt32>(attributes.size()),
             vertex_shader);

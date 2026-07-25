@@ -9,14 +9,14 @@
 namespace dodoe {
 
     class GfxEventQueryHandle;
-    class UploadRing;
+    class FrameStagingAllocator;
 
     struct FrameContext {
         DrawCommandList command_list{};
         UInt32 swapchain_image_index{0};
         UInt64 frame_number{0};
         GfxEventQueryHandle completion_query{};
-        UploadRing* upload_ring{nullptr};
+        FrameStagingAllocator* staging{nullptr};
         Bool valid{false};
     };
 

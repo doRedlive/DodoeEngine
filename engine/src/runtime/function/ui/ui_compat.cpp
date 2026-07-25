@@ -24,7 +24,7 @@ AudioPlayerFacade g_audio_player{};
 RendererFacade g_renderer{};
 
 TextureManager* getTextureManager() {
-    return GetRenderSystem()->getTextureManager();
+    return GetRenderSystem()->getSharedRenderService()->getTextureManager();
 }
 
 } // namespace

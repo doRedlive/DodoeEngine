@@ -20,8 +20,7 @@ namespace dodoe {
 
     public:
         GfxInputLayoutHandle getOrCreate(const DynamicArray<GfxVertexAttributeDesc>& attributes,
-                                          GfxShaderHandle vertex_shader,
-                                          DrawCommandList& cmd);
+                                          GfxShaderHandle vertex_shader);
         void invalidateForShader(GfxShaderHandle shader);
         void clear();
 

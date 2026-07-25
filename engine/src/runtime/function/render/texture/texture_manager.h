@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "texture.h"
-#include "runtime/function/render/render_frame/upload_ring.h"
+#include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
 #include <mutex>
@@ -33,18 +33,19 @@ namespace dodoe {
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        Texture2D* createTexture(const String& path, DrawCommandList& cmd_list, UploadRing* upload_ring = nullptr);
+        Texture2D* createTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
         void createFallbackTexture();
 
     public:
-        [[nodiscard]] Texture2D* loadTexture(const String& path, DrawCommandList& cmd_list, UploadRing* upload_ring = nullptr);
+        [[nodiscard]] Texture2D* loadTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
         [[nodiscard]] Texture2D* loadTexture(const String& path);
-        [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, UploadRing* upload_ring = nullptr);
+        [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
         [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths);
         [[nodiscard]] Texture* findTexture(InstanceID id);
         [[nodiscard]] Texture2D* findTexture2D(InstanceID id);
         [[nodiscard]] Texture2D* getFallback() const;
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
+        [[nodiscard]] const UnorderedMap<InstanceID, ObjHandle<Texture2D>>& getTexture2DCache() const { return m_texture2d_cache; }
         void removeTexture(InstanceID id);
     };
 

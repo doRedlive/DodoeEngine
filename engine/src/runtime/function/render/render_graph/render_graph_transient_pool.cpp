@@ -34,7 +34,14 @@ namespace dodoe {
                 if (pooled.byteSize == desc.byteSize && pooled.structStride == desc.structStride &&
                     pooled.format == desc.format && pooled.canHaveUAVs == desc.canHaveUAVs &&
                     pooled.canHaveTypedViews == desc.canHaveTypedViews &&
-                    pooled.isVertexBuffer == desc.isVertexBuffer) {
+                    pooled.isVertexBuffer == desc.isVertexBuffer &&
+                    pooled.isIndexBuffer == desc.isIndexBuffer &&
+                    pooled.isConstantBuffer == desc.isConstantBuffer &&
+                    pooled.isDrawIndirectArgs == desc.isDrawIndirectArgs &&
+                    pooled.isAccelStructBuildInput == desc.isAccelStructBuildInput &&
+                    pooled.isAccelStructStorage == desc.isAccelStructStorage &&
+                    pooled.isShaderBindingTable == desc.isShaderBindingTable &&
+                    pooled.isVolatile == desc.isVolatile) {
                     m_buffer_in_use[i] = true;
                     return m_buffers[i].buffer;
                 }

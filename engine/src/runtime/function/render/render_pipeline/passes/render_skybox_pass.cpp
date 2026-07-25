@@ -37,15 +37,11 @@ namespace dodoe {
 
     void SkyboxPass::build(RenderGraphBuilder& graph,
                             const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-        const auto& shader_library = *pass_context.getShaderLibrary();
-
         graph.addPass<SkyboxPassParameters>(
             "SkyboxPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, SkyboxPassParameters& parameters) {
-                const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
+            [&context](RenderGraphPassBuilder& pass_builder, SkyboxPassParameters& parameters) {
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey, SceneTextures>();
                 DO_ASSERT(scene_textures, "SkyboxPass scene textures are missing");
 
@@ -55,7 +51,7 @@ namespace dodoe {
                     "MainCameraHdrColor"));
                 pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
             },
-            [pass_context, &shader_library](const SkyboxPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [this](const SkyboxPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto depth_handle = ctx.resolveTexture(parameters.depth);
                 const auto hdr = ctx.resolveTexture(parameters.hdr_color);
 
@@ -85,16 +81,10 @@ namespace dodoe {
 
                 SkyboxConstantBuffer cb_data;
                 cb_data.inv_view_projection = Math::Inverse(ctx.getView()->getViewProjectionMatrix());
-                auto skybox_cb = command_list.createBuffer(
-                    GfxBufferDesc()
-                        .setByteSize(sizeof(SkyboxConstantBuffer))
-                        .setIsConstantBuffer(true)
-                        .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
-                        .setDebugName("SkyboxCB"),
-                    &cb_data, sizeof(cb_data));
+                command_list.writeBuffer(m_skybox_cb, &cb_data, sizeof(cb_data));
 
                 SkyboxPassShaderParams shader_params;
-                shader_params.skybox_cb.value = skybox_cb;
+                shader_params.skybox_cb.value = m_skybox_cb;
                 shader_params.skybox_texture.value = cubemap_handle;
                 shader_params.depth.value = parameters.depth;
                 shader_params.sampler.value = GlobalSamplers::screen();
@@ -113,10 +103,10 @@ namespace dodoe {
                 }
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
-                        shader_library.getFullscreenVertexShader(),
-                        shader_library.getSkyboxPixelShader(),
+                        ctx.getShaderLibrary()->getFullscreenVertexShader(),
+                        ctx.getShaderLibrary()->getSkyboxPixelShader(),
                         binding_layout
                     ),
                     framebuffer_info,

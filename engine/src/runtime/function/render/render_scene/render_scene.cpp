@@ -3,11 +3,12 @@
 #include "render_scene.h"
 #include "runtime/core/math/math.h"
 #include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 
 namespace dodoe {
 
     Bool RenderScene::initialize(const RenderSceneCreateInfo& info) {
-        (void)info;
+        m_shared_render_service = info.shared_render_service;
         reset();
         m_gpu_scene = GpuScene::Create({});
         return m_gpu_scene != nullptr;
@@ -246,6 +247,8 @@ namespace dodoe {
             bounds.min,
             bounds.max);
 
+        resolveBatchMaterialInstances(info);
+
         const auto it = m_primitive_scene_info_indices.find(id);
         if (it != m_primitive_scene_info_indices.end()) {
             m_primitive_scene_infos[it->second] = std::move(info);
@@ -280,6 +283,49 @@ namespace dodoe {
         info->setMaterials(materials);
         info->setSubMeshes(primitive->buildSections(materials));
         info->setMeshBatches(primitive->buildMeshBatches(info->getId(), materials, 0));
+        resolveBatchMaterialInstances(*info);
+    }
+
+    void RenderScene::resolveBatchMaterialInstances(PrimitiveSceneInfo& info) {
+        auto* material_system = m_shared_render_service->getMaterialSystem();
+        auto* texture_manager = m_shared_render_service->getTextureManager();
+
+        const auto& materials = info.getMaterials();
+        auto& batches = info.getMeshBatches();
+
+        auto resolveTexture = [&](const FileID& file_id) -> GfxTextureHandle {
+            if (!file_id.isValid() || !texture_manager) return {};
+            const InstanceID tex_id = Object::FindInstanceID(file_id);
+            if (auto* tex = texture_manager->findTexture2D(tex_id)) {
+                return tex->getGpuHandle();
+            }
+            return {};
+        };
+
+        for (Size_t i = 0; i < batches.size(); i++) {
+            auto& batch = batches[i];
+            if (batch.material_instance) continue;
+
+            const auto& props = i < materials.size() ? materials[i] : MaterialProperties{};
+
+            UnorderedMap<String, MaterialParamValue> overrides;
+            auto addTex = [&](const String& name, const FileID& file_id) {
+                GfxTextureHandle handle = resolveTexture(file_id);
+                if (handle) {
+                    MaterialParamValue val{};
+                    val.texture = handle;
+                    overrides[name] = val;
+                }
+            };
+            addTex("base_color_texture", props.base_color_texture);
+            addTex("normal_texture", props.normal_texture);
+            addTex("metallic_roughness_texture", props.metallic_roughness_texture);
+            addTex("emissive_texture", props.emissive_texture);
+
+            String instance_name = fmt::format("Mat_{}_{}", info.getId(), i);
+            batch.material_instance = const_cast<MaterialInstance*>(
+                material_system->getOrCreateInstance(instance_name, "GBuffer", overrides));
+        }
     }
 
     void RenderScene::updatePrimitiveState(const UUID id) {

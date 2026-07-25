@@ -74,6 +74,8 @@ namespace dodoe {
         [[nodiscard]] static Bool IsGpuDrivenSupported() { return m_gpu_driven_supported; }
         static void SetGpuDrivenSupported(const Bool supported) { m_gpu_driven_supported = supported; }
 
+        [[nodiscard]] static Bool IsBindlessActive() { return m_resolved_features.bindless_active; }
+
         [[nodiscard]] static const DeviceCapabilities& GetDeviceCapabilities() { return m_device_caps; }
         static void SetDeviceCapabilities(const DeviceCapabilities& caps) { m_device_caps = caps; }
 

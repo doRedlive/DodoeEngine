@@ -6,6 +6,7 @@
 
 #include "render_graph_pass.h"
 #include "render_graph_resource.h"
+#include "render_graph_transient_pool.h"
 #include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {

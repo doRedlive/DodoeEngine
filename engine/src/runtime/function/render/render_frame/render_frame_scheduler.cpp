@@ -11,7 +11,7 @@ namespace dodoe {
 
         for (Size_t i = 0; i < kMaxFramesInFlight; i++) {
             m_slots[i].completion_query = m_device->createEventQuery();
-            m_slots[i].upload_ring.initialize(m_device);
+            m_slots[i].staging = FrameStagingAllocator::Create(FrameStagingAllocatorCreateInfo{m_device});
         }
         return true;
     }
@@ -21,7 +21,7 @@ namespace dodoe {
             m_device->waitForIdle();
         }
         for (Size_t i = 0; i < kMaxFramesInFlight; i++) {
-            m_slots[i].upload_ring.shutdown();
+            FrameStagingAllocator::Destroy(m_slots[i].staging);
             m_slots[i].completion_query = nullptr;
         }
         m_device = nullptr;
@@ -37,7 +37,7 @@ namespace dodoe {
             m_deletion_queue.processCompleted(slot.frame_number);
         }
 
-        slot.upload_ring.reset();
+        if (slot.staging) slot.staging->reset();
         slot.frame_number = m_frame_counter++;
         slot.swapchain_image_index = swapchain_image_index;
         slot.in_flight = true;
@@ -48,7 +48,7 @@ namespace dodoe {
         ctx.frame_number = slot.frame_number;
         ctx.swapchain_image_index = slot.swapchain_image_index;
         ctx.completion_query = slot.completion_query;
-        ctx.upload_ring = &slot.upload_ring;
+        ctx.staging = slot.staging.get();
         ctx.valid = true;
         return ctx;
     }

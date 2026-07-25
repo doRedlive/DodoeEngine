@@ -5,20 +5,30 @@
 #include "dopch.h"
 
 #include "../render_pass.h"
+#include "render_pass_blackboard_keys.h"
 #include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
 
-    class DeferredLightPass : public IRenderPass {
-        GfxBufferHandle m_constant_buffer{};
+	class DeferredLightPass : public IRenderPass {
+	    GfxBufferHandle m_constant_buffer{};
 
-    public:
-        DeferredLightPass() = default;
-        explicit DeferredLightPass(GfxBufferHandle constant_buffer)
-            : m_constant_buffer(constant_buffer) {}
+	public:
+	    using Produces = TypeList<>;
+	    using Consumes = TypeList<SceneTexturesKey, ShadowMapKey, SceneHdrKey>;
 
-        void build(RenderGraphBuilder& graph,
-                   const RenderPassBuildContext& context) override;
-    };
+	    DeferredLightPass() = default;
+	    explicit DeferredLightPass(GfxBufferHandle constant_buffer)
+	        : m_constant_buffer(constant_buffer) {}
+
+	    RenderPhase getPhase() const override { return RenderPhase::DeferredLighting; }
+
+	    DynamicArray<Size_t> getConsumedKeys() const override {
+	        return MakeKeyHashes(Consumes{});
+	    }
+
+	    void build(RenderGraphBuilder& graph,
+	               const RenderPassBuildContext& context) override;
+	};
 
 } // namespace dodoe

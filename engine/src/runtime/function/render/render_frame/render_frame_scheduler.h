@@ -7,7 +7,7 @@
 #include "runtime/core/container/deferred_deletion.h"
 #include "frame_context.h"
 #include "frame_telemetry.h"
-#include "upload_ring.h"
+#include "frame_staging_allocator.h"
 #include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
@@ -23,7 +23,7 @@ namespace dodoe {
 
         struct FrameSlot {
             UInt64 frame_number{0};
-            UploadRing upload_ring{};
+            Scope<FrameStagingAllocator> staging{nullptr};
             UInt32 swapchain_image_index{0};
             Bool in_flight{false};
             GfxEventQueryHandle completion_query{};

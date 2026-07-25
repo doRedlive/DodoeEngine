@@ -9,21 +9,23 @@
 
 namespace dodoe {
 
-    class ImGuiFeature final : public IRenderFeature {
-        GfxTextureHandle m_font_texture{};
-        GfxBufferHandle m_constant_buffer{};
-        GfxBindingLayoutHandle m_binding_layout{};
-        ImGuiPass m_imgui_pass{};
+	class ImGuiFeature final : public IRenderFeature {
+	    GfxTextureHandle m_font_texture{};
+	    GfxBufferHandle m_constant_buffer{};
+	    GfxBindingLayoutHandle m_binding_layout{};
 
-    public:
-        void initialize(SharedRenderService& resources) override;
-        void shutdown() override;
+	public:
+	    void initialize(SharedRenderService& resources) override;
+	    void shutdown() override;
 
-        void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const override;
+	    void exportResources(ResourceRegistry& registry,
+	                         const RenderView& view) override;
 
-        [[nodiscard]] GfxTextureHandle getFontTexture() const { return m_font_texture; }
-        [[nodiscard]] GfxBufferHandle getConstantBuffer() const { return m_constant_buffer; }
-        [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
-    };
+	    void collectPasses(PassCollector& collector) override;
+
+	    [[nodiscard]] GfxTextureHandle getFontTexture() const { return m_font_texture; }
+	    [[nodiscard]] GfxBufferHandle getConstantBuffer() const { return m_constant_buffer; }
+	    [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
+	};
 
 } // namespace dodoe

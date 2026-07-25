@@ -13,56 +13,65 @@
 
 namespace dodoe {
 
-    void ImGuiFeature::initialize(SharedRenderService& resources) {
-        (void)resources;
+	void ImGuiFeature::initialize(SharedRenderService& resources) {
 #ifdef DODOE_DEBUG_ENABLED
-        ImGuiIO& io = ImGui::GetIO();
-        unsigned char* pixels = nullptr;
-        int width = 0;
-        int height = 0;
-        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        if (pixels && width > 0 && height > 0) {
-            GfxTextureDesc font_desc = GfxTextureDesc()
-                .setDimension(GfxTextureDimension::Texture2D)
-                .setWidth(width)
-                .setHeight(height)
-                .setFormat(GfxFormat::RGBA8_UNORM)
-                .setMipLevels(1)
-                .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
-                .setDebugName("ImGui Font Texture");
-            m_font_texture = GDrawCommandList.createTexture(font_desc, pixels, static_cast<Size_t>(width) * height * 4u);
-            io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_font_texture.get()));
-        }
+	    ImGuiIO& io = ImGui::GetIO();
+	    unsigned char* pixels = nullptr;
+	    int width = 0;
+	    int height = 0;
+	    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+	    if (pixels && width > 0 && height > 0) {
+	        GfxTextureDesc font_desc = GfxTextureDesc()
+	            .setDimension(GfxTextureDimension::Texture2D)
+	            .setWidth(width)
+	            .setHeight(height)
+	            .setFormat(GfxFormat::RGBA8_UNORM)
+	            .setMipLevels(1)
+	            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+	            .setDebugName("ImGui Font Texture");
+	        m_font_texture = GDrawCommandList.createTexture(font_desc, pixels, static_cast<Size_t>(width) * height * 4u);
+	        io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_font_texture.get()));
+	    }
 #endif
 
-        m_constant_buffer = GDrawCommandList.createBuffer(
-            GfxBufferDesc()
-                .setByteSize(256)
-                .setIsConstantBuffer(true)
-                .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
-                .setDebugName("ImGui ConstantBuffer"));
+	    m_constant_buffer = GDrawCommandList.createBuffer(
+	        GfxBufferDesc()
+	            .setByteSize(256)
+	            .setIsConstantBuffer(true)
+	            .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
+	            .setDebugName("ImGui ConstantBuffer"));
 
-        m_binding_layout = GDrawCommandList.createBindingLayout(
-            GfxBindingLayoutDesc()
-                .setVisibility(GfxShaderType::All)
-                .addItem(GfxBindingLayoutItem::PushConstants(0, 16))
-                .addItem(GfxBindingLayoutItem::Texture_SRV(0))
-                .addItem(GfxBindingLayoutItem::Sampler(0)));
-    }
+	    auto* cache = resources.getBindingLayoutCache();
+	    m_binding_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc()
+	            .setVisibility(GfxShaderType::All)
+	            .addItem(GfxBindingLayoutItem::PushConstants(0, 16))
+	            .addItem(GfxBindingLayoutItem::Texture_SRV(0))
+	            .addItem(GfxBindingLayoutItem::Sampler(0)));
+	}
 
-    void ImGuiFeature::shutdown() {
+	void ImGuiFeature::shutdown() {
 #ifdef DODOE_DEBUG_ENABLED
-        if (ImGui::GetCurrentContext()) {
-            ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
-        }
+	    if (ImGui::GetCurrentContext()) {
+	        ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
+	    }
 #endif
-        m_font_texture.reset();
-        m_constant_buffer.reset();
-        m_binding_layout.reset();
-    }
+	    m_font_texture.reset();
+	    m_constant_buffer.reset();
+	    m_binding_layout.reset();
+	}
 
-    void ImGuiFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        m_imgui_pass.build(graph, context);
-    }
+	void ImGuiFeature::exportResources(ResourceRegistry& registry,
+	                                   const RenderView& view) {
+	    if (m_font_texture) {
+	        registry.registerTexture("ImGuiFontTexture", m_font_texture,
+	                                 GfxFormat::RGBA8_UNORM,
+	                                 RenderTargetScalePolicy::Fixed);
+	    }
+	}
+
+	void ImGuiFeature::collectPasses(PassCollector& collector) {
+	    collector.addPass<ImGuiPass>();
+	}
 
 } // namespace dodoe

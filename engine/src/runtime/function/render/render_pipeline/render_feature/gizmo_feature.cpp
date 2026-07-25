@@ -11,26 +11,21 @@
 
 namespace dodoe {
 
-    void GizmoFeature::initialize(SharedRenderService& resources) {
-        (void)resources;
-        m_binding_layout = GDrawCommandList.createBindingLayout(
-            GfxBindingLayoutDesc().setVisibility(GfxShaderType::All)
-                .addItem(GfxBindingLayoutItem::PushConstants(0, sizeof(float) * 16))
-                .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
-    }
+	void GizmoFeature::initialize(SharedRenderService& resources) {
+	    auto* cache = resources.getBindingLayoutCache();
+	    m_binding_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::All)
+	            .addItem(GfxBindingLayoutItem::PushConstants(0, sizeof(float) * 16))
+	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
+	}
 
-    void GizmoFeature::shutdown() {
-        m_binding_layout.reset();
-    }
+	void GizmoFeature::shutdown() {
+	    m_binding_layout.reset();
+	}
 
-    void GizmoFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        if (!context.view.hasViewFlag(RenderView::kShowEditorPrimitives)) return;
-
-        auto& channel_data = GetGizmoChannel().get<GizmoChannelData>();
-        if (!channel_data.has_data || channel_data.commands.empty()) return;
-
-        m_gizmo_pass.build(graph, context);
-    }
+	void GizmoFeature::collectPasses(PassCollector& collector) {
+	    collector.addPass<GizmoPass>();
+	}
 
 } // namespace dodoe
 

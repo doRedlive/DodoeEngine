@@ -9,25 +9,25 @@
 
 namespace dodoe {
 
-    void SpriteFeature::initialize(SharedRenderService& resources) {
-        (void)resources;
-        m_binding_layout = GDrawCommandList.createBindingLayout(
-            GfxBindingLayoutDesc().setVisibility(GfxShaderType::All)
-                .addItem(GfxBindingLayoutItem::Sampler(0))
-                .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
+	void SpriteFeature::initialize(SharedRenderService& resources) {
+	    auto* cache = resources.getBindingLayoutCache();
+	    m_binding_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::All)
+	            .addItem(GfxBindingLayoutItem::Sampler(0))
+	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
 
-        m_traditional_tex_layout = GDrawCommandList.createBindingLayout(
-            GfxBindingLayoutDesc().setVisibility(GfxShaderType::Pixel)
-                .addItem(GfxBindingLayoutItem::Texture_SRV(0)));
-    }
+	    m_traditional_tex_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Pixel)
+	            .addItem(GfxBindingLayoutItem::Texture_SRV(0)));
+	}
 
-    void SpriteFeature::shutdown() {
-        m_binding_layout.reset();
-        m_traditional_tex_layout.reset();
-    }
+	void SpriteFeature::shutdown() {
+	    m_binding_layout.reset();
+	    m_traditional_tex_layout.reset();
+	}
 
-    void SpriteFeature::setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const {
-        m_sprite_pass.build(graph, context);
-    }
+	void SpriteFeature::collectPasses(PassCollector& collector) {
+	    collector.addPass<SpritePass>(m_binding_layout, m_traditional_tex_layout);
+	}
 
-} // dodoe
+} // namespace dodoe

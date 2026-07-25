@@ -10,11 +10,16 @@ namespace dodoe {
 
 #ifdef DODOE_EDITOR_ENABLED
 
-    class GizmoPass : public IRenderPass {
-    public:
-        void build(RenderGraphBuilder& graph,
-                   const RenderPassBuildContext& context) override;
-    };
+	class GizmoPass : public IRenderPass {
+	public:
+	    using Produces = TypeList<>;
+	    using Consumes = TypeList<>;
+
+	    RenderPhase getPhase() const override { return RenderPhase::EditorGizmo; }
+
+	    void build(RenderGraphBuilder& graph,
+	               const RenderPassBuildContext& context) override;
+	};
 
 #endif
 

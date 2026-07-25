@@ -1,17 +1,17 @@
 // do@Redlive
 
-#include "upload_ring.h"
+#include "frame_staging_allocator.h"
 
 namespace dodoe {
 
-    Bool UploadRing::initialize(GfxDeviceHandle device, UInt64 ring_size_bytes) {
-        m_device = device;
-        m_ring_size = ring_size_bytes;
+    Bool FrameStagingAllocator::initialize(const FrameStagingAllocatorCreateInfo& info) {
+        m_device = info.device;
+        m_ring_size = info.ring_size_bytes;
 
         GfxBufferDesc desc;
-        desc.byteSize = ring_size_bytes;
+        desc.byteSize = m_ring_size;
         desc.cpuAccess = GfxCpuAccessMode::Write;
-        desc.debugName = "UploadRing";
+        desc.debugName = "FrameStagingAllocator";
         desc.keepInitialState = true;
 
         m_ring_buffer = create_ref<GfxBuffer>(desc);
@@ -25,7 +25,7 @@ namespace dodoe {
         return m_mapped_base != nullptr;
     }
 
-    void UploadRing::shutdown() {
+    void FrameStagingAllocator::shutdown() {
         if (m_ring_buffer && m_mapped_base) {
             m_device->unmapBuffer(m_ring_buffer->getRHI());
         }
@@ -36,17 +36,17 @@ namespace dodoe {
         m_head = 0;
     }
 
-    UploadRing::Allocation UploadRing::allocate(UInt64 size, UInt64 alignment) {
+    FrameStagingAllocator::Allocation FrameStagingAllocator::allocate(UInt64 size, UInt64 alignment) {
         UInt64 aligned_offset = (m_head + alignment - 1) & ~(alignment - 1);
 
         if (aligned_offset + size > m_ring_size) {
             if (size > m_ring_size) {
                 m_overflow_count++;
-                DO_ASSERT(false, "UploadRing::allocate: requested size exceeds total ring capacity");
+                DO_ERROR("FrameStagingAllocator::allocate: requested size exceeds total ring capacity");
                 return {};
             }
             m_stall_count++;
-            DO_ASSERT(false, "UploadRing::allocate: ring buffer exhausted for this frame");
+            DO_WARN("FrameStagingAllocator::allocate: ring buffer exhausted for this frame");
             return {};
         }
 
@@ -61,7 +61,7 @@ namespace dodoe {
         return alloc;
     }
 
-    void UploadRing::reset() {
+    void FrameStagingAllocator::reset() {
         m_head = 0;
     }
 

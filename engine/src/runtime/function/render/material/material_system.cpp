@@ -4,6 +4,7 @@
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/texture/texture_manager.h"
+#include "runtime/function/render/texture/texture.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -29,6 +30,18 @@ namespace dodoe {
         m_shader_library = shader_library;
         m_binding_layout_cache = binding_layout_cache;
         m_texture_manager = texture_manager;
+        registerBuiltinTemplates();
+    }
+
+    void MaterialSystem::registerBuiltinTemplates() {
+        MaterialTemplateDesc gbuffer;
+        gbuffer.name = "GBuffer";
+        gbuffer.shader_name = "GBuffer";
+        gbuffer.param_defs.push_back({"base_color_texture", "Base Color", MaterialParamType::Texture2D});
+        gbuffer.param_defs.push_back({"metallic_roughness_texture", "Metallic Roughness", MaterialParamType::Texture2D});
+        gbuffer.param_defs.push_back({"normal_texture", "Normal", MaterialParamType::Texture2D});
+        gbuffer.param_defs.push_back({"emissive_texture", "Emissive", MaterialParamType::Texture2D});
+        registerTemplate(gbuffer);
     }
 
     void MaterialSystem::shutdown() {
@@ -184,7 +197,7 @@ namespace dodoe {
             addReflection(vs_refl);
             addReflection(ps_refl);
 
-            tpl.binding_layout = m_binding_layout_cache->getOrCreate(layout_desc, GDrawCommandList);
+            tpl.binding_layout = m_binding_layout_cache->getOrCreate(layout_desc);
         }
 
         tpl.resolved = true;
@@ -316,12 +329,24 @@ namespace dodoe {
         const auto& tex_handle = value.texture;
         if (tex_handle) {
             instance.textures.push_back(tex_handle);
+            Int32 desc_index = -1;
+            if (auto* tex = findTexture2DByHandle(tex_handle)) {
+                desc_index = tex->getDescriptorIndex();
+            }
+            instance.texture_descriptor_indices.push_back(desc_index);
             return true;
         }
 
         auto* fallback = m_texture_manager->getFallback();
         if (fallback && fallback->getGpuHandle()) {
             instance.textures.push_back(fallback->getGpuHandle());
+            Int32 desc_index = -1;
+            if (auto* tex = findTexture2DByHandle(fallback->getGpuHandle())) {
+                desc_index = tex->getDescriptorIndex();
+            } else if (fallback) {
+                desc_index = fallback->getDescriptorIndex();
+            }
+            instance.texture_descriptor_indices.push_back(desc_index);
         }
         return true;
     }
@@ -354,6 +379,35 @@ namespace dodoe {
         }
 
         return true;
+    }
+
+    const MaterialInstance* MaterialSystem::getOrCreateInstance(
+        const String& name,
+        const String& template_name,
+        const UnorderedMap<String, MaterialParamValue>& param_overrides) {
+        if (name.empty() || template_name.empty()) {
+            return nullptr;
+        }
+
+        auto* existing = findInstance(name);
+        if (existing) {
+            return existing;
+        }
+
+        MaterialInstanceDesc desc;
+        desc.name = name;
+        desc.template_name = template_name;
+        desc.param_overrides = param_overrides;
+
+        if (!createInstance(desc)) {
+            return nullptr;
+        }
+
+        if (!resolveInstance(name)) {
+            return nullptr;
+        }
+
+        return findInstance(name);
     }
 
     void MaterialSystem::invalidateForShader(const String& shader_name) {
@@ -397,6 +451,19 @@ namespace dodoe {
             inst.resolved = false;
         }
         ++m_global_revision;
+    }
+
+    Texture2D* MaterialSystem::findTexture2DByHandle(GfxTextureHandle handle) const {
+        if (!m_texture_manager || !handle) {
+            return nullptr;
+        }
+
+        for (const auto& [id, tex] : m_texture_manager->getTexture2DCache()) {
+            if (tex && tex->getGpuHandle() && tex->getGpuHandle().get() == handle.get()) {
+                return tex.get();
+            }
+        }
+        return nullptr;
     }
 
 } // namespace dodoe

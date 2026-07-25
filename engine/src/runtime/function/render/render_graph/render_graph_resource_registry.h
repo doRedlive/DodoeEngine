@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "render_graph_resource.h"
-#include "runtime/function/render/render_service/render_graph_transient_pool.h"
+#include "render_graph_transient_pool.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {

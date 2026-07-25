@@ -28,8 +28,7 @@ namespace dodoe {
     public:
         GfxBindingSetHandle getOrCreate(const GfxBindingSetDesc& desc,
                                          GfxBindingLayoutHandle layout,
-                                         UInt64 layout_generation,
-                                         DrawCommandList& cmd);
+                                         UInt64 layout_generation);
         void invalidateForLayout(GfxBindingLayoutHandle layout);
         void clear();
 

@@ -7,8 +7,7 @@
 
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
-#include "runtime/function/render/mesh_draw/local_vertex_factory.h"
-#include "runtime/function/render/mesh_draw/local_vertex_factory.h"
+
 
 #ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
@@ -24,14 +23,11 @@ namespace dodoe {
 
     void ImGuiPass::build(RenderGraphBuilder& graph,
                            const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-
         graph.addPass<ImGuiPassParameters>(
             "ImGuiPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, ImGuiPassParameters& parameters) {
-                const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
+            [&context](RenderGraphPassBuilder& pass_builder, ImGuiPassParameters& parameters) {
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 RenderGraphTextureDesc color_desc{};
                 color_desc.desc = GfxTextureDesc()
                     .setWidth(swapchain_extent.x).setHeight(swapchain_extent.y).setDepth(1)
@@ -57,7 +53,7 @@ namespace dodoe {
                     .setDebugName("RDG ImGuiIB");
                 parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "ImGuiIndexBuffer"));
             },
-            [pass_context](const ImGuiPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [&context](const ImGuiPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 ImGui::Render();
                 auto* draw_data = ImGui::GetDrawData();
                 if (!draw_data || draw_data->TotalVtxCount == 0) {
@@ -88,8 +84,8 @@ namespace dodoe {
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
                 auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
 
-                const auto* shader_library = pass_context.getShaderLibrary();
-                const auto* pso_cache = pass_context.getPipelineStateCache();
+                const auto* shader_library = ctx.getShaderLibrary();
+                const auto* pso_cache = ctx.getPipelineStateCache();
                 if (!shader_library || !pso_cache) {
                     return;
                 }
@@ -101,7 +97,7 @@ namespace dodoe {
                 }
 
                 GfxInputLayoutHandle input_layout{};
-                if (auto* input_cache = pass_context.getSharedRenderService()->getInputLayoutCache()) {
+                if (auto* input_cache = context.shared_render_service->getInputLayoutCache()) {
                     input_layout = input_cache->find("ImGui");
                 }
 

@@ -6,7 +6,12 @@
 
 #include "runtime/function/graphics/gfx.h"
 #include "mesh_pass_type.h"
-#include "runtime/function/render/material/material.h"
+
+namespace dodoe {
+
+    class MaterialSystem;
+    struct MaterialInstance;
+    struct MaterialProperties;
 
 namespace dodoe {
 
@@ -40,7 +45,7 @@ namespace dodoe {
 
     struct MeshBatch {
         Identifier primitive_id{};
-        Ref<Material> material;
+        MaterialInstance* material_instance{nullptr};
         MeshBatchPassMask pass_mask{};
         DynamicArray<MeshBatchElement> elements;
         Bool uses_custom_bounds{false};

@@ -17,7 +17,7 @@ namespace dodoe {
     };
 
     struct SubMesh {
-        Ref<Material> material{};
+        MaterialProperties material{};
         UInt32 index_offset{0};
         UInt32 vertex_offset{0};
         UInt32 index_count{0};

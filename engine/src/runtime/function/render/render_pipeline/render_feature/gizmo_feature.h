@@ -12,18 +12,17 @@
 
 namespace dodoe {
 
-    class GizmoFeature final : public IRenderFeature {
-        GfxBindingLayoutHandle m_binding_layout{};
-        GizmoPass m_gizmo_pass{};
+	class GizmoFeature final : public IRenderFeature {
+	    GfxBindingLayoutHandle m_binding_layout{};
 
-    public:
-        void initialize(SharedRenderService& resources) override;
-        void shutdown() override;
+	public:
+	    void initialize(SharedRenderService& resources) override;
+	    void shutdown() override;
 
-        void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const override;
+	    void collectPasses(PassCollector& collector) override;
 
-        [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
-    };
+	    [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
+	};
 
 } // namespace dodoe
 

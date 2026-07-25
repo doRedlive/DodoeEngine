@@ -44,7 +44,7 @@ namespace dodoe {
             return false;
         }
 
-        auto* texture_manager = GetRenderSystem()->getTextureManager();
+        auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
 
         Texture2D* texture = nullptr;
         const String& tex_path = sr.texture.getFileID().getPath();

@@ -37,10 +37,6 @@ namespace dodoe {
 
     void PresentPass::build(RenderGraphBuilder& graph,
                              const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-        const auto& shader_library = *pass_context.getShaderLibrary();
-
         graph.addPass<PresentPassParameters>(
             "PresentPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
@@ -52,7 +48,7 @@ namespace dodoe {
                 parameters.imgui_color = imgui_color ? pass_builder.read(*imgui_color) : parameters.scene_color;
                 parameters.backbuffer = pass_builder.write(pass_builder.importBackBuffer("PresentBackBuffer"));
             },
-            [pass_context, &shader_library](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [this](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto scene_color_handle = ctx.resolveTexture(parameters.scene_color);
                 const auto imgui_color_handle = ctx.resolveTexture(parameters.imgui_color);
                 const auto backbuffer = ctx.resolveTexture(parameters.backbuffer);
@@ -68,16 +64,10 @@ namespace dodoe {
                 viewport_data.viewport_pos[1] = static_cast<float>(viewport_rect.y);
                 viewport_data.viewport_size[0] = viewport_rect.z > 0 ? static_cast<float>(viewport_rect.z) : static_cast<float>(swapchain_extent.x);
                 viewport_data.viewport_size[1] = viewport_rect.w > 0 ? static_cast<float>(viewport_rect.w) : static_cast<float>(swapchain_extent.y);
-                auto viewport_cb_handle = command_list.createBuffer(
-                    GfxBufferDesc()
-                        .setByteSize(sizeof(PresentViewportCB))
-                        .setIsConstantBuffer(true)
-                        .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
-                        .setDebugName("PresentViewportCB"),
-                    &viewport_data, sizeof(viewport_data));
+                command_list.writeBuffer(m_present_cb, &viewport_data, sizeof(viewport_data));
 
                 PresentPassShaderParams shader_params;
-                shader_params.viewport_cb.value = viewport_cb_handle;
+                shader_params.viewport_cb.value = m_present_cb;
                 shader_params.scene_color.value = parameters.scene_color;
                 shader_params.imgui_color.value = parameters.imgui_color;
                 shader_params.sampler.value = GlobalSamplers::screen();
@@ -96,10 +86,10 @@ namespace dodoe {
                 }
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
-                        shader_library.getFullscreenVertexShader(),
-                        shader_library.getPresentPixelShader(),
+                        ctx.getShaderLibrary()->getFullscreenVertexShader(),
+                        ctx.getShaderLibrary()->getPresentPixelShader(),
                         binding_layout
                     ),
                     framebuffer_info,

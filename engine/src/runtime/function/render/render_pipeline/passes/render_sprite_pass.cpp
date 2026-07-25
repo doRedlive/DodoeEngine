@@ -14,7 +14,7 @@
 #include "runtime/function/render/gpu_driven/gpu_scene.h"
 #include "runtime/function/render/gpu_driven/gpu_driven_renderer.h"
 #include "runtime/function/render/shader/global_samplers.h"
-#include "runtime/function/render/mesh_draw/local_vertex_factory.h"
+
 #include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/shader/descriptor_table_manager.h"
 #include "runtime/function/render/render_settings.h"
@@ -35,14 +35,11 @@ namespace dodoe {
 
     void SpritePass::build(RenderGraphBuilder& graph,
                             const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-
         graph.addPass<SpritePassParameters>(
             "SpritePass",
             RenderGraphPassFlags::Raster,
-            [pass_context](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
-                const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
+            [&context](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.write(*scene_color);
@@ -61,7 +58,7 @@ namespace dodoe {
                     .setDebugName("RDG SpriteVP");
                 parameters.vp_buffer = pass_builder.write(pass_builder.createTransientBuffer(vp_desc, "SpriteVpBuffer"));
             },
-            [pass_context](const SpritePassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [&context](const SpritePassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 if (!parameters.instance_buffer.isValid() || !parameters.indirect_args.isValid()) {
                     return;
                 }
@@ -87,20 +84,20 @@ namespace dodoe {
 
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
 
-                const auto* descriptor_table = pass_context.getSharedRenderService()->getDescriptorTable();
+                const auto* descriptor_table = context.shared_render_service->getDescriptorTable();
                 if (!descriptor_table || !descriptor_table->getDescriptorTable()) {
                     return;
                 }
-                const auto* texture_manager = pass_context.getTextureManager();
+                const auto* texture_manager = ctx.getTextureManager();
                 const auto* sampler = texture_manager ? texture_manager->getScreenSampler() : GfxSamplerHandle{};
                 if (!sampler) {
                     sampler = command_list.createSampler(GfxSamplerDesc());
                 }
 
-                auto sprite_ps = pass_context.getShaderLibrary()->getSpritePixelShader();
-                auto sprite_vs = pass_context.getShaderLibrary()->getSpriteVertexShader();
-                auto vertex_factory = pass_context.getSharedRenderService()->getInputLayoutCache()
-                    ? pass_context.getSharedRenderService()->getInputLayoutCache()->find("Sprite")
+                auto sprite_ps = ctx.getShaderLibrary()->getSpritePixelShader();
+                auto sprite_vs = ctx.getShaderLibrary()->getSpriteVertexShader();
+                auto vertex_factory = context.shared_render_service->getInputLayoutCache()
+                    ? context.shared_render_service->getInputLayoutCache()->find("Sprite")
                     : GfxInputLayoutHandle{};
 
                 auto binding_layout = command_list.createBindingLayout(
@@ -138,7 +135,7 @@ namespace dodoe {
                 pipeline_desc.setRenderState(render_state);
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(pipeline_desc, framebuffer_info, command_list);
+                auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(pipeline_desc, framebuffer_info, command_list);
                 if (!pipeline) {
                     DO_ERROR("SpritePass: Failed to create pipeline");
                     return;

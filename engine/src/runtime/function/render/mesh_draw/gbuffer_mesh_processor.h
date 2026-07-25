@@ -6,39 +6,32 @@
 
 #include "mesh_processor_base.h"
 #include "cached_mesh_draw_command.h"
-#include "runtime/function/render/shader/descriptor_table_manager.h"
-#include "../texture/texture_manager.h"
+
 #include "../render_scene/primitive_scene_info.h"
+#include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
 
-    class RenderView;
     class PrimitiveSceneInfo;
     struct InstanceSceneData;
     struct MeshPassRelevance;
     struct GBufferMeshDrawShaderData;
 
     class GBufferMeshProcessor final : public IMeshPassProcessor {
-        DescriptorTableManager* m_descriptor_table{nullptr};
-        TextureManager* m_texture_manager{nullptr};
+        GfxBindingSetHandle m_descriptor_binding_set{};
         GfxSamplerHandle m_sampler{};
         GfxBindingLayoutHandle m_binding_layout{};
         GfxBindingSetHandle m_binding_set{};
         GfxBufferHandle m_constant_buffer{};
 
     public:
-        GBufferMeshProcessor() = default;
-        GBufferMeshProcessor(DescriptorTableManager* descriptor_table, TextureManager* texture_manager)
-            : m_descriptor_table(descriptor_table), m_texture_manager(texture_manager) { }
-
-        void initialize(GfxContext& gfx_context, DescriptorTableManager* descriptor_table, TextureManager* texture_manager);
+        GBufferMeshProcessor(GfxBindingSetHandle descriptor_binding_set = {});
         void reset() override;
 
-        void setDescriptorTable(DescriptorTableManager* descriptor_table) { m_descriptor_table = descriptor_table; }
-        void setTextureManager(TextureManager* texture_manager) { m_texture_manager = texture_manager; }
         [[nodiscard]] const GfxBindingLayoutHandle& getBindingLayout() const override { return m_binding_layout; }
         [[nodiscard]] const GfxBindingSetHandle& getBindingSet() const { return m_binding_set; }
         [[nodiscard]] const GfxBufferHandle& getConstantBuffer() const override { return m_constant_buffer; }
+        [[nodiscard]] const GfxBindingSetHandle& getDescriptorBindingSet() const { return m_descriptor_binding_set; }
 
         void buildCachedCommands(
             const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
@@ -59,4 +52,4 @@ namespace dodoe {
             DynamicArray<GBufferMeshDrawShaderData>& out_shader_data) const;
     };
 
-} // dodoe
+} // namespace dodoe

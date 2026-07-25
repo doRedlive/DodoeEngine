@@ -26,18 +26,20 @@ namespace dodoe {
 
     void GizmoPass::build(RenderGraphBuilder& graph,
                            const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
+        if (!context.view.hasViewFlag(RenderView::kShowEditorPrimitives)) return;
+
+        auto& channel_data = GetGizmoChannel().get<GizmoChannelData>();
+        if (!channel_data.has_data || channel_data.commands.empty()) return;
 
         graph.addPass<GizmoPassParameters>(
             "GizmoPass",
             RenderGraphPassFlags::Raster,
-            [pass_context](RenderGraphPassBuilder& pass_builder, GizmoPassParameters& parameters) {
+            [&context](RenderGraphPassBuilder& pass_builder, GizmoPassParameters& parameters) {
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.write(*scene_color);
                 } else {
-                    const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
+                    const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                     parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG GizmoColor"),
                         "GizmoColor"));
@@ -60,7 +62,7 @@ namespace dodoe {
                     .setDebugName("RDG GizmoIB");
                 parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer"));
             },
-            [pass_context](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto color_target = ctx.resolveTexture(parameters.color_target);
                 const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
                 const auto ib = ctx.resolveBuffer(parameters.index_buffer);
@@ -70,8 +72,8 @@ namespace dodoe {
                     Vector4f color;
                 };
 
-                const auto* shader_library = pass_context.getShaderLibrary();
-                const auto* pso_cache = pass_context.getPipelineStateCache();
+                const auto* shader_library = ctx.getShaderLibrary();
+                const auto* pso_cache = ctx.getPipelineStateCache();
                 if (!shader_library || !pso_cache) {
                     return;
                 }

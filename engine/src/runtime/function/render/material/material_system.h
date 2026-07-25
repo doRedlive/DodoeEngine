@@ -10,6 +10,7 @@ namespace dodoe {
     class ShaderLibrary;
     class BindingLayoutCache;
     class TextureManager;
+    class Texture2D;
     class DrawCommandList;
 
     enum class MaterialParamType : UInt8 {
@@ -81,6 +82,7 @@ namespace dodoe {
         const MaterialTemplate* tpl{nullptr};
 
         DynamicArray<GfxTextureHandle> textures;
+        DynamicArray<Int32> texture_descriptor_indices;
         GfxSamplerHandle sampler{};
 
         UInt64 revision{0};
@@ -116,6 +118,7 @@ namespace dodoe {
                         BindingLayoutCache* binding_layout_cache,
                         TextureManager* texture_manager);
 
+        void registerBuiltinTemplates();
         void shutdown();
 
         Bool registerTemplate(const MaterialTemplateDesc& desc);
@@ -124,6 +127,10 @@ namespace dodoe {
 
         Bool createInstance(const MaterialInstanceDesc& desc);
         const MaterialInstance* findInstance(const String& name) const;
+
+        const MaterialInstance* getOrCreateInstance(const String& name,
+                                                    const String& template_name,
+                                                    const UnorderedMap<String, MaterialParamValue>& param_overrides);
 
         void setInstanceParam(const String& instance_name,
                               const String& param_name,
@@ -156,6 +163,8 @@ namespace dodoe {
         Bool resolveTextureSlot(MaterialInstance& instance,
                                 const MaterialParamDef& def,
                                 MaterialParamValue value);
+
+        Texture2D* findTexture2DByHandle(GfxTextureHandle handle) const;
 
         UnorderedMap<String, MaterialTemplate> m_templates{};
         UnorderedMap<String, MaterialInstance> m_instances{};

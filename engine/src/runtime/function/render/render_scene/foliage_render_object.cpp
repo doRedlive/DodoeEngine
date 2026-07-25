@@ -110,7 +110,7 @@ namespace dodoe {
 
     DynamicArray<MeshBatch> FoliageRenderObject::buildMeshBatches(
         const Identifier primitive_id,
-        const DynamicArray<Ref<Material>>& resolved_materials,
+        const DynamicArray<MaterialProperties>& resolved_materials,
         const UInt32 first_instance) const
     {
         const auto* lod = activeLOD();
@@ -150,7 +150,6 @@ namespace dodoe {
 
                 MeshBatch batch{};
                 batch.primitive_id = primitive_id;
-                batch.material = section_index < resolved_materials.size() ? resolved_materials[section_index] : mesh_section.material;
                 batch.pass_mask.setRelevant(MeshPassType::GBuffer, m_visible);
                 batch.pass_mask.setRelevant(MeshPassType::DirectionalShadow, m_visible && m_cast_shadow);
                 batch.uses_custom_bounds = true;

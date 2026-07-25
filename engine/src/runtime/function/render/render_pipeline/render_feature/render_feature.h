@@ -5,19 +5,25 @@
 #include "dopch.h"
 
 #include "runtime/function/render/render_pipeline/render_pass.h"
+#include "runtime/function/render/render_pipeline/resource_registry.h"
+#include "runtime/function/render/render_pipeline/pass_collector.h"
 
 namespace dodoe {
 
-    class SharedRenderService;
+	class SharedRenderService;
 
-    class IRenderFeature {
-    public:
-        virtual ~IRenderFeature() = default;
+	class IRenderFeature {
+	public:
+	    virtual ~IRenderFeature() = default;
 
-        virtual void initialize(SharedRenderService& resources) {}
-        virtual void onResize(UInt32 width, UInt32 height) {}
-        virtual void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const = 0;
-        virtual void shutdown() {}
-    };
+	    virtual void initialize(SharedRenderService& resources) {}
+	    virtual void onResize(UInt32 width, UInt32 height) {}
+	    virtual void shutdown() {}
 
-} // dodoe
+	    virtual void exportResources(ResourceRegistry& registry,
+	                                 const RenderView& view) {}
+
+	    virtual void collectPasses(PassCollector& collector) = 0;
+	};
+
+} // namespace dodoe

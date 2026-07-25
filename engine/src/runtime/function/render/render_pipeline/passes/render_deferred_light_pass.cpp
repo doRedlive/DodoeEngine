@@ -51,14 +51,12 @@ namespace dodoe {
 
     void DeferredLightPass::build(RenderGraphBuilder& graph,
                                    const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-        const auto& shader_library = *pass_context.getShaderLibrary();
+        const auto& shader_library = *context.shared_render_service->getShaderLibrary();
 
         graph.addPass<DeferredLightPassParameters>(
             "DeferredLightPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context, &resources](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
+            [&resources](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
                 const auto* gbuffer = pass_builder.blackboard().get<SceneTexturesKey, SceneTextures>();
                 const auto* shadow = pass_builder.blackboard().get<ShadowMapKey, RenderGraphTextureHandle>();
                 const auto* hdr = pass_builder.blackboard().get<SceneHdrKey, RenderGraphTextureHandle>();
@@ -71,7 +69,7 @@ namespace dodoe {
                 parameters.hdr_color = pass_builder.write(*hdr);
                 parameters.constant_buffer = pass_builder.importBuffer(m_constant_buffer, "DeferredLightConstantBuffer");
             },
-            [pass_context, &shader_library](const DeferredLightPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [&shader_library](const DeferredLightPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto& light_infos = ctx.getScene()->getLightSceneInfos();
                 Bool has_enabled_lights = false;
                 for (const auto& light_info : light_infos) {
@@ -123,7 +121,7 @@ namespace dodoe {
                 }
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library.getFullscreenVertexShader(),
                         shader_library.getDeferredLightPixelShader(),

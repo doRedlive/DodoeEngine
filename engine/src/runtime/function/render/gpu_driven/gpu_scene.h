@@ -8,7 +8,6 @@
 #include "gpu_scene_buffers.h"
 #include "gpu_dirty_flags.h"
 #include "runtime/function/render/render_scene/sprite_scene_info.h"
-#include "runtime/function/render/render_pipeline/render_pass_context.h"
 #include "runtime/core/container/slot_map.h"
 #include "runtime/function/graphics/gfx.h"
 

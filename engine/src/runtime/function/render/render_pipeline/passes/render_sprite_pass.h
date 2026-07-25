@@ -9,19 +9,24 @@
 
 namespace dodoe {
 
-    class SpritePass : public IRenderPass {
-        GfxBindingLayoutHandle m_binding_layout{};
-        GfxBindingLayoutHandle m_traditional_tex_layout{};
+	class SpritePass : public IRenderPass {
+	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingLayoutHandle m_traditional_tex_layout{};
 
-    public:
-        SpritePass() = default;
-        SpritePass(GfxBindingLayoutHandle binding_layout,
-                   GfxBindingLayoutHandle traditional_tex_layout)
-            : m_binding_layout(binding_layout)
-            , m_traditional_tex_layout(traditional_tex_layout) {}
+	public:
+	    using Produces = TypeList<>;
+	    using Consumes = TypeList<>;
 
-        void build(RenderGraphBuilder& graph,
-                   const RenderPassBuildContext& context) override;
-    };
+	    SpritePass() = default;
+	    SpritePass(GfxBindingLayoutHandle binding_layout,
+	               GfxBindingLayoutHandle traditional_tex_layout)
+	        : m_binding_layout(binding_layout)
+	        , m_traditional_tex_layout(traditional_tex_layout) {}
+
+	    RenderPhase getPhase() const override { return RenderPhase::Sprite; }
+
+	    void build(RenderGraphBuilder& graph,
+	               const RenderPassBuildContext& context) override;
+	};
 
 } // namespace dodoe

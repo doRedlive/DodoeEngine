@@ -69,7 +69,7 @@ namespace dodoe {
     }
 
     TextureCubemap* SkyLightSystem::loadCubemap(const DynamicArray<String>& paths) {
-        auto* tm = GetRenderSystem()->getTextureManager();
+        auto* tm = GetRenderSystem()->getSharedRenderService()->getTextureManager();
         if (!tm) return nullptr;
         return tm->loadCubemapTexture(paths);
     }

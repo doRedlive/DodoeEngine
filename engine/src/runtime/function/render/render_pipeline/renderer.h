@@ -4,7 +4,9 @@
 
 #include "dopch.h"
 
-#include "render_pass_context.h"
+#include "render_pass.h"
+#include "resource_registry.h"
+#include "pass_collector.h"
 #include "render_feature/render_feature.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_view/render_view_family.h"
@@ -15,49 +17,72 @@
 
 namespace dodoe {
 
-    struct RendererCreateInfo {
-        Size_t worker_count{0};
-        GfxContext* gfx_context{nullptr};
-        SharedRenderService* shared_render_service{nullptr};
-    };
+	struct RendererCreateInfo {
+	    Size_t worker_count{0};
+	    GfxContext* gfx_context{nullptr};
+	    SharedRenderService* shared_render_service{nullptr};
+	};
 
-    class BaseRenderer {
-    protected:
-        GfxContext*           m_gfx_context{nullptr};
-        SharedRenderService*  m_shared_render_service{nullptr};
-        Scope<ThreadPool>     m_thread_pool{nullptr};
-        DynamicArray<Scope<IRenderFeature>> m_features{};
+	class BaseRenderer {
+	protected:
+	    GfxContext*           m_gfx_context{nullptr};
+	    SharedRenderService*  m_shared_render_service{nullptr};
+	    Scope<ThreadPool>     m_thread_pool{nullptr};
+	    DynamicArray<Scope<IRenderFeature>> m_features{};
+	    DynamicArray<Scope<IRenderPass>>    m_pass_storage{};
+	    DynamicArray<IRenderPass*>          m_ordered_passes{};
 
-        [[nodiscard]] RenderPassContext makePassContext(const RenderScene& scene) const;
+	    void clearViewExtensions(RenderViewFamily& view_family) const;
 
-        void clearViewExtensions(RenderViewFamily& view_family) const;
+	    void buildOrderedPasses(RenderViewFamily& view_family, RenderScene& scene,
+	                            UInt32 swapchain_image_index, DrawCommandList& out_commands) const;
 
-        void setupFramePasses(RenderViewFamily& view_family, RenderScene& scene,
-                              UInt32 swapchain_image_index, DrawCommandList& out_commands) const;
+	    static void validateBlackboard(const DynamicArray<IRenderPass*>& sorted_passes);
 
-    public:
-        virtual ~BaseRenderer() = default;
+	    void bakePasses();
 
-        template <typename T, typename... Args>
-        void addFeature(Args&&... args) {
-            m_features.push_back(create_scope<T>(std::forward<Args>(args)...));
-        }
+	public:
+	    virtual ~BaseRenderer() = default;
 
-        void clearFeatures() { m_features.clear(); }
+	    template <typename T, typename... Args>
+	    T* addFeature(Args&&... args) {
+	        auto feature = create_scope<T>(std::forward<Args>(args)...);
+	        T* ptr = feature.get();
+	        if (m_shared_render_service) {
+	            ptr->initialize(*m_shared_render_service);
+	        }
+	        m_features.push_back(std::move(feature));
+	        return ptr;
+	    }
 
-        void onResize(UInt32 width, UInt32 height) {
-            for (const auto& feature : m_features) {
-                feature->onResize(width, height);
-            }
-        }
+	    template <typename T>
+	    T* getFeature() {
+	        for (const auto& feature : m_features) {
+	            auto* casted = dynamic_cast<T*>(feature.get());
+	            if (casted) return casted;
+	        }
+	        return nullptr;
+	    }
 
-        [[nodiscard]] GfxContext*          getGfx()           const { return m_gfx_context; }
-        [[nodiscard]] SharedRenderService* getSharedService() const { return m_shared_render_service; }
-        [[nodiscard]] ThreadPool*          getThreadPool()    const { return m_thread_pool.get(); }
+	    void clearFeatures() {
+	        m_features.clear();
+	        m_ordered_passes.clear();
+	        m_pass_storage.clear();
+	    }
 
-    protected:
-        virtual void render(RenderViewFamily& view_family, RenderScene& scene,
-                            UInt32 swapchain_image_index, DrawCommandList& out_commands) = 0;
-    };
+	    void onResize(UInt32 width, UInt32 height) {
+	        for (const auto& feature : m_features) {
+	            feature->onResize(width, height);
+	        }
+	    }
+
+	    [[nodiscard]] GfxContext*          getGfx()           const { return m_gfx_context; }
+	    [[nodiscard]] SharedRenderService* getSharedService() const { return m_shared_render_service; }
+	    [[nodiscard]] ThreadPool*          getThreadPool()    const { return m_thread_pool.get(); }
+
+	protected:
+	    virtual void render(RenderViewFamily& view_family, RenderScene& scene,
+	                        UInt32 swapchain_image_index, DrawCommandList& out_commands) = 0;
+	};
 
 } // dodoe

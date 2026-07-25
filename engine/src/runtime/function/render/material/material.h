@@ -8,17 +8,15 @@
 
 namespace dodoe {
 
-    class Material {
-    public:
+    struct MaterialProperties {
         Vector4f color{1.0f, 1.0f, 1.0f, 1.0f};
         Vector3f emissive{0.0f, 0.0f, 0.0f};
-        float metallic{0.0f};
-        float roughness{1.0f};
+        Float metallic{0.0f};
+        Float roughness{1.0f};
         FileID base_color_texture{};
         FileID normal_texture{};
         FileID metallic_roughness_texture{};
         FileID emissive_texture{};
     };
-
 
 } // dodoe

@@ -48,7 +48,7 @@ namespace dodoe {
 
             switch (resource.source) {
                 case RenderGraphResourceSource::Transient:
-                    m_buffer_handles[resource_index] = command_list.createBuffer(resource.buffer_desc.desc);
+                    m_buffer_handles[resource_index] = m_transient_pool->acquireBuffer(resource.buffer_desc.desc, command_list);
                     break;
                 case RenderGraphResourceSource::ImportedBuffer:
                     DO_ASSERT(resource.imported_buffer != nullptr, "RenderGraphResourceRegistry imported buffer is null");

@@ -39,18 +39,15 @@ namespace dodoe {
 
     void TestPass::build(RenderGraphBuilder& graph,
                           const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "TestPass: pass context is invalid");
-
         graph.addPass<TestPassParameters>(
             "TestTrianglePass",
             RenderGraphPassFlags::Raster,
-            [pass_context](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
+            [&context](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.write(*scene_color);
                 } else {
-                    const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
+                    const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                     parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG TestColor"),
                         "TestColor"));
@@ -65,7 +62,7 @@ namespace dodoe {
                     .setDebugName("RDG TestQuadVB");
                 parameters.triangle_vb = pass_builder.write(pass_builder.createTransientBuffer(tri_vb_desc, "TestTriangleVB"));
             },
-            [pass_context](const TestPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [](const TestPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto color_target = ctx.resolveTexture(parameters.color_target);
                 const auto quad_vb = ctx.resolveBuffer(parameters.triangle_vb);
 
@@ -75,7 +72,7 @@ namespace dodoe {
                 command_list.setBufferState(quad_vb, GfxResourceStates::VertexBuffer);
                 command_list.commitBarriers();
 
-                auto* tm = pass_context.getTextureManager();
+                auto* tm = ctx.getTextureManager();
                 Texture2D* loaded_tex = nullptr;
                 GfxTextureHandle test_tex;
                 if (tm) {
@@ -106,7 +103,7 @@ namespace dodoe {
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
 
-                const auto* shader_library = pass_context.getShaderLibrary();
+                const auto* shader_library = ctx.getShaderLibrary();
                 if (!shader_library) {
                     DO_ERROR("TestPass: shader_library is null");
                     return;
@@ -142,7 +139,7 @@ namespace dodoe {
                     .setPrimType(GfxPrimitiveType::TriangleList)
                     .setRenderState(render_state);
 
-                auto* pipeline_cache = pass_context.getPipelineStateCache();
+                auto* pipeline_cache = ctx.getPipelineStateCache();
                 if (!pipeline_cache) {
                     DO_ERROR("TestPass: pipeline_cache is null");
                     return;

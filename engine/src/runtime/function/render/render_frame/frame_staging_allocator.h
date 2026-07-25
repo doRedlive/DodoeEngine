@@ -8,7 +8,14 @@
 
 namespace dodoe {
 
-    class UploadRing {
+    struct FrameStagingAllocatorCreateInfo {
+        GfxDeviceHandle device{};
+        UInt64 ring_size_bytes{64 * 1024 * 1024};
+    };
+
+    class FrameStagingAllocator final : public Managed<FrameStagingAllocator, FrameStagingAllocatorCreateInfo> {
+        friend class Managed<FrameStagingAllocator, FrameStagingAllocatorCreateInfo>;
+
     public:
         struct Allocation {
             GfxBufferHandle buffer{};
@@ -16,9 +23,6 @@ namespace dodoe {
             UInt64 size{0};
             void* mapped_data{nullptr};
         };
-
-        Bool initialize(GfxDeviceHandle device, UInt64 ring_size_bytes = 64 * 1024 * 1024);
-        void shutdown();
 
         Allocation allocate(UInt64 size, UInt64 alignment = 256);
         void reset();
@@ -30,6 +34,9 @@ namespace dodoe {
         [[nodiscard]] UInt32 getOverflowCount() const { return m_overflow_count; }
 
     private:
+        Bool initialize(const FrameStagingAllocatorCreateInfo& info);
+        void shutdown();
+
         GfxDeviceHandle m_device{};
         GfxBufferHandle m_ring_buffer{};
         UInt8* m_mapped_base{nullptr};

@@ -7,9 +7,10 @@
 #include "mesh_draw_command.h"
 #include "mesh_batch.h"
 #include "../render_scene/primitive_scene_info.h"
-#include "../material/material.h"
 
 namespace dodoe {
+
+    struct MaterialInstance;
 
     namespace CacheHashUtils {
 
@@ -24,14 +25,8 @@ namespace dodoe {
             return h;
         }
 
-        inline Size_t ComputeMaterialHash(const Ref<Material>& material,
-                                          const UInt32 base_color_tex_idx,
-                                          const UInt32 metallic_roughness_tex_idx) {
-            Size_t h = 0;
-            h ^= reinterpret_cast<Size_t>(material.get());
-            h ^= static_cast<Size_t>(base_color_tex_idx) << 7;
-            h ^= static_cast<Size_t>(metallic_roughness_tex_idx) << 13;
-            return h;
+        inline Size_t ComputeMaterialHash(const MaterialInstance* mi) {
+            return reinterpret_cast<Size_t>(mi);
         }
 
         inline Size_t ComputePassHash(const MeshPassType pass_type) {
@@ -39,13 +34,11 @@ namespace dodoe {
         }
 
         inline MeshDrawCommandCacheKey MakeCacheKey(const MeshBatchElement& element,
-                                                     const Ref<Material>& material,
-                                                     const UInt32 base_color_tex_idx,
-                                                     const UInt32 metallic_roughness_tex_idx,
+                                                     const MaterialInstance* mi,
                                                      const MeshPassType pass_type) {
             return MeshDrawCommandCacheKey{
                 .batch_hash    = ComputeBatchHash(element),
-                .material_hash = ComputeMaterialHash(material, base_color_tex_idx, metallic_roughness_tex_idx),
+                .material_hash = ComputeMaterialHash(mi),
                 .pass_hash     = ComputePassHash(pass_type),
             };
         }

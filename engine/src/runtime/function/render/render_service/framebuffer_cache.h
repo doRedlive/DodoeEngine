@@ -32,9 +32,10 @@ namespace dodoe {
     public:
         FramebufferCache() = default;
 
+        void initialize(GfxContext& gfx);
+
         GfxFramebufferHandle getOrCreate(const FramebufferCacheKey& key,
-                                          const GfxFramebufferDesc& desc,
-                                          DrawCommandList& cmd);
+                                          const GfxFramebufferDesc& desc);
         void invalidateTexture(const void* texture_ptr);
         void endFrame();
         void reset();
@@ -44,6 +45,7 @@ namespace dodoe {
             FramebufferCacheKey key;
             GfxFramebufferHandle framebuffer;
         };
+        GfxContext* m_gfx_context{nullptr};
         DynamicArray<Entry> m_entries{};
     };
 

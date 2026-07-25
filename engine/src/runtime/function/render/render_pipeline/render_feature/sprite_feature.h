@@ -10,19 +10,18 @@
 
 namespace dodoe {
 
-    class SpriteFeature final : public IRenderFeature {
-        GfxBindingLayoutHandle m_binding_layout{};
-        GfxBindingLayoutHandle m_traditional_tex_layout{};
-        SpritePass m_sprite_pass{};
+	class SpriteFeature final : public IRenderFeature {
+	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingLayoutHandle m_traditional_tex_layout{};
 
-    public:
-        void initialize(SharedRenderService& resources) override;
-        void shutdown() override;
+	public:
+	    void initialize(SharedRenderService& resources) override;
+	    void shutdown() override;
 
-        void setupPasses(RenderGraphBuilder& graph, const RenderPassBuildContext& context) const override;
+	    void collectPasses(PassCollector& collector) override;
 
-        [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
-        [[nodiscard]] GfxBindingLayoutHandle getTraditionalTextureLayout() const { return m_traditional_tex_layout; }
-    };
+	    [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
+	    [[nodiscard]] GfxBindingLayoutHandle getTraditionalTextureLayout() const { return m_traditional_tex_layout; }
+	};
 
-} // dodoe
+} // namespace dodoe

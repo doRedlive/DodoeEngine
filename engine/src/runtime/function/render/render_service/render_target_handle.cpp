@@ -29,10 +29,8 @@ namespace dodoe {
         createAllTextures(gfx);
     }
 
-    Bool RenderTargetHandle::resolve(const UInt32 reference_width,
-                                      const UInt32 reference_height,
-                                      GfxContext& gfx,
-                                      const UInt64 current_frame) {
+    Bool RenderTargetHandle::resolve(const UInt32 reference_width, const UInt32 reference_height,
+        GfxContext& gfx, const UInt64 current_frame) {
         UInt32 target_width  = reference_width;
         UInt32 target_height = reference_height;
 
@@ -57,8 +55,7 @@ namespace dodoe {
                     old_framebuffer.reset();
                     old_depth_texture.reset();
                     old_color_textures.clear();
-                },
-                current_frame + kDeferredFrameDelay);
+                }, current_frame + kDeferredFrameDelay);
         } else {
             destroyAllTextures();
         }

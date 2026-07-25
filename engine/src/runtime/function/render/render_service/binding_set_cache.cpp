@@ -20,8 +20,7 @@ namespace dodoe {
 
     GfxBindingSetHandle BindingSetCache::getOrCreate(const GfxBindingSetDesc& desc,
                                                        GfxBindingLayoutHandle layout,
-                                                       UInt64 layout_generation,
-                                                       DrawCommandList& cmd) {
+                                                       UInt64 layout_generation) {
         Size_t h = layout_generation;
         for (Size_t i = 0; i < desc.getItemCount(); ++i) {
             hash_combine(h, static_cast<Size_t>(desc.getItems()[i].type));
@@ -33,7 +32,7 @@ namespace dodoe {
             return it->second;
         }
 
-        auto binding_set = cmd.createBindingSet(desc, layout);
+        auto binding_set = GDrawCommandList.createBindingSet(desc, layout);
         m_cache[h] = binding_set;
         return binding_set;
     }

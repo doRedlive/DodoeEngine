@@ -55,8 +55,8 @@ namespace dodoe {
         return dirty_flags;
     }
 
-    DynamicArray<Ref<Material>> PrimitiveRenderObject::resolveMaterials() const {
-        DynamicArray<Ref<Material>> materials{};
+    DynamicArray<MaterialProperties> PrimitiveRenderObject::resolveMaterials() const {
+        DynamicArray<MaterialProperties> materials{};
         const auto* lod = activeLOD();
         if (!lod) {
             return materials;
@@ -64,7 +64,7 @@ namespace dodoe {
 
         materials.reserve(lod->sub_meshes.size());
         for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
-            Ref<Material> material = lod->sub_meshes[section_index].material;
+            MaterialProperties material = lod->sub_meshes[section_index].material;
             if (section_index < m_override_materials.size() && m_override_materials[section_index]) {
                 material = m_override_materials[section_index];
             }
@@ -73,7 +73,7 @@ namespace dodoe {
         return materials;
     }
 
-    DynamicArray<SubMesh> PrimitiveRenderObject::buildSections(const DynamicArray<Ref<Material>>& resolved_materials) const {
+    DynamicArray<SubMesh> PrimitiveRenderObject::buildSections(const DynamicArray<MaterialProperties>& resolved_materials) const {
         DynamicArray<SubMesh> sections{};
         const auto* lod = activeLOD();
         if (!lod) {
@@ -100,7 +100,7 @@ namespace dodoe {
 
     DynamicArray<MeshBatch> PrimitiveRenderObject::buildMeshBatches(
         const Identifier primitive_id,
-        const DynamicArray<Ref<Material>>& resolved_materials,
+        const DynamicArray<MaterialProperties>& resolved_materials,
         const UInt32 first_instance) const
     {
         DynamicArray<MeshBatch> mesh_batches{};
@@ -130,7 +130,6 @@ namespace dodoe {
 
             MeshBatch batch{};
             batch.primitive_id = primitive_id;
-            batch.material = section_index < resolved_materials.size() ? resolved_materials[section_index] : mesh_section.material;
             batch.pass_mask.setRelevant(MeshPassType::GBuffer, m_visible);
             batch.pass_mask.setRelevant(MeshPassType::DirectionalShadow, m_visible && m_cast_shadow);
             batch.elements.push_back(element);

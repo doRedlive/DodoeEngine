@@ -13,19 +13,8 @@ namespace dodoe {
         for (auto& indices : mesh_pass_primitive_indices) {
             indices.clear();
         }
-        for (auto& instances : cached_draw_instances) {
-            instances.clear();
-        }
-        for (auto& instances : dynamic_draw_instances) {
-            instances.clear();
-        }
-
-        frame_commands.clear();
-        gbuffer_shader_data.clear();
-        dynamic_shader_data.clear();
         directional_shadow_view_projection = Matrix4f(1.0f);
         frame_time_data = Vector4f(0.0f);
-        cached_commands = nullptr;
     }
 
     void MeshViewExtension::buildMeshPassPrimitiveIndices() {
@@ -53,4 +42,4 @@ namespace dodoe {
         return mesh_pass_primitive_indices[static_cast<Size_t>(pass_type)];
     }
 
-} // dodoe
+} // namespace dodoe

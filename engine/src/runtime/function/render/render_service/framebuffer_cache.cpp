@@ -3,6 +3,7 @@
 #include "framebuffer_cache.h"
 
 #include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/graphics/gfx_context.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -23,9 +24,12 @@ namespace dodoe {
         return h;
     }
 
+    void FramebufferCache::initialize(GfxContext& gfx) {
+        m_gfx_context = &gfx;
+    }
+
     GfxFramebufferHandle FramebufferCache::getOrCreate(const FramebufferCacheKey& key,
-                                                         const GfxFramebufferDesc& desc,
-                                                         DrawCommandList& cmd) {
+                                                         const GfxFramebufferDesc& desc) {
         const auto hash = key.computeHash();
         for (const auto& entry : m_entries) {
             if (entry.key == key) {
@@ -33,7 +37,7 @@ namespace dodoe {
             }
         }
 
-        auto framebuffer = cmd.createFramebuffer(desc);
+        auto framebuffer = GDrawCommandList.createFramebuffer(desc);
         m_entries.push_back({key, framebuffer});
         return framebuffer;
     }
@@ -60,8 +64,7 @@ namespace dodoe {
     }
 
     void FramebufferCache::endFrame() {
-        // 帧末不清理缓存，只在下帧继续复用
-        // 当纹理重建时通过 invalidateTexture 或 RenderTargetHandle::resolve 触发失效
+
     }
 
     void FramebufferCache::reset() {

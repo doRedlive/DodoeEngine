@@ -19,8 +19,7 @@ namespace dodoe {
         friend class Managed<BindingLayoutCache, BindingLayoutCacheCreateInfo>;
 
     public:
-        GfxBindingLayoutHandle getOrCreate(const GfxBindingLayoutDesc& desc,
-                                            DrawCommandList& cmd);
+        GfxBindingLayoutHandle getOrCreate(const GfxBindingLayoutDesc& desc);
         UInt64 getLayoutGeneration(GfxBindingLayoutHandle layout) const;
         void clear();
 

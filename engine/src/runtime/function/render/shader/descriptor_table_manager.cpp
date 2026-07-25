@@ -11,7 +11,7 @@ namespace dodoe {
     bool DescriptorTableManager::initialize(const DescriptorTableManagerCreateInfo& info) {
         gfx_ = info.gfx;
 
-        if (!RenderSettings::IsGpuDrivenSupported()) {
+        if (!RenderSettings::IsBindlessActive()) {
             return false;
         }
 

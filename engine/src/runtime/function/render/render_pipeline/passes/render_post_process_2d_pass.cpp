@@ -29,15 +29,13 @@ namespace dodoe {
 
     void PostProcess2DPass::build(RenderGraphBuilder& graph,
                                    const RenderPassBuildContext& context) {
-        const auto& pass_context = context.pass_context;
-        DO_ASSERT(pass_context.isValid(), "RenderingPipeline pass context is invalid");
-        const auto& shader_library = *pass_context.getShaderLibrary();
+        const auto& shader_library = *context.shared_render_service->getShaderLibrary();
 
         graph.addPass<PostProcess2DPassParameters>(
             "PostProcess2DPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [pass_context](RenderGraphPassBuilder& pass_builder, PostProcess2DPassParameters& parameters) {
-                const auto swapchain_extent = pass_context.gfx_context->getSwapchainExtent2d();
+            [&context](RenderGraphPassBuilder& pass_builder, PostProcess2DPassParameters& parameters) {
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 DO_ASSERT(scene_color, "PostProcess2DPass scene color is missing");
                 parameters.input = pass_builder.read(*scene_color);
@@ -46,7 +44,7 @@ namespace dodoe {
                     "PostProcess2DOutput"));
                 pass_builder.blackboard().set<SceneColorKey>(parameters.output);
             },
-            [pass_context, &shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [&shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto input_handle = ctx.resolveTexture(parameters.input);
                 const auto output_handle = ctx.resolveTexture(parameters.output);
 
@@ -71,7 +69,7 @@ namespace dodoe {
                 }
 
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pass_context.getPipelineStateCache()->resolveGraphicsPipeline(
+                auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library.getFullscreenVertexShader(),
                         shader_library.getFxaaPixelShader(),

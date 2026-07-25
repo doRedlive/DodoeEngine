@@ -2,7 +2,8 @@
 
 #include "only_2d_renderer.h"
 
-#include "render_feature/render_builtin_features.h"
+#include "render_feature/post_process_2d_feature.h"
+#include "render_feature/present_feature.h"
 #include "render_feature/sprite_feature.h"
 #include "render_feature/imgui_feature.h"
 
@@ -23,6 +24,8 @@ namespace dodoe {
         addFeature<ImGuiFeature>();
         addFeature<PresentFeature>();
 
+        bakePasses();
+
         return true;
     }
 
@@ -41,7 +44,7 @@ namespace dodoe {
     void Only2DRenderer::render(RenderViewFamily& view_family, RenderScene& scene,
                                  const UInt32 swapchain_image_index, DrawCommandList& out_commands) {
         initViews(scene, view_family);
-        setupFramePasses(view_family, scene, swapchain_image_index, out_commands);
+        buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands);
     }
 
 } // dodoe

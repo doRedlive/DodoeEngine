@@ -112,35 +112,35 @@ namespace dodoe {
             return FileID();
         }
 
-        Ref<Material> MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const FsPath& model_directory) {
+        MaterialProperties MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const FsPath& model_directory) {
+            MaterialProperties material{};
+
             if (!imported_scene || source_mesh.mMaterialIndex >= imported_scene->mNumMaterials) {
-                return nullptr;
+                return material;
             }
 
             const aiMaterial* source_material = imported_scene->mMaterials[source_mesh.mMaterialIndex];
             if (!source_material) {
-                return nullptr;
+                return material;
             }
-
-            auto material = create_ref<Material>();
 
             aiColor4D base_color{};
             if (aiGetMaterialColor(source_material, AI_MATKEY_BASE_COLOR, &base_color) == aiReturn_SUCCESS ||
                 aiGetMaterialColor(source_material, AI_MATKEY_COLOR_DIFFUSE, &base_color) == aiReturn_SUCCESS) {
-                material->color = {base_color.r, base_color.g, base_color.b, base_color.a};
+                material.color = {base_color.r, base_color.g, base_color.b, base_color.a};
             }
 
-            material->base_color_texture = LoadMaterialTexture(
+            material.base_color_texture = LoadMaterialTexture(
                 source_material,
                 model_directory,
                 aiTextureType_BASE_COLOR,
                 aiTextureType_DIFFUSE);
-            material->normal_texture = LoadMaterialTexture(
+            material.normal_texture = LoadMaterialTexture(
                 source_material,
                 model_directory,
                 aiTextureType_NORMALS,
                 aiTextureType_NORMAL_CAMERA);
-            material->emissive_texture = LoadMaterialTexture(
+            material.emissive_texture = LoadMaterialTexture(
                 source_material,
                 model_directory,
                 aiTextureType_EMISSIVE);
