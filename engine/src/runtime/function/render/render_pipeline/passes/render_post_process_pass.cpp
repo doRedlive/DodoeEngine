@@ -29,22 +29,23 @@ namespace dodoe {
 
     void PostProcessPass::build(RenderGraphBuilder& graph,
                                  const RenderPassBuildContext& context) {
-        const auto& shader_library = *context.shared_render_service->getShaderLibrary();
+        const auto* shader_library = context.shared_render_service->getShaderLibrary();
+        DO_ASSERT(shader_library != nullptr, "PostProcessPass shader library is null");
 
         graph.addPass<PostProcessPassParameters>(
             "PostProcessPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [](RenderGraphPassBuilder& pass_builder, PostProcessPassParameters& parameters) {
+            [&context](RenderGraphPassBuilder& pass_builder, PostProcessPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* hdr = pass_builder.blackboard().get<SceneHdrKey, RenderGraphTextureHandle>();
                 DO_ASSERT(hdr, "PostProcessPass hdr input is missing");
                 parameters.input = pass_builder.read(*hdr);
-                parameters.output = pass_builder.write(pass_builder.createTransientTexture(
+                parameters.output = pass_builder.writeColor(pass_builder.createTransientTexture(
                     rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG PostProcessOutput"),
                     "PostProcessOutput"));
                 pass_builder.blackboard().set<SceneColorKey>(parameters.output);
             },
-            [&shader_library](const PostProcessPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [shader_library](const PostProcessPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto input_handle = ctx.resolveTexture(parameters.input);
                 const auto output_handle = ctx.resolveTexture(parameters.output);
 
@@ -71,8 +72,8 @@ namespace dodoe {
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
-                        shader_library.getFullscreenVertexShader(),
-                        shader_library.getToneMappingPixelShader(),
+                        shader_library->getFullscreenVertexShader(),
+                        shader_library->getToneMappingPixelShader(),
                         binding_layout
                     ),
                     framebuffer_info,
@@ -93,6 +94,8 @@ namespace dodoe {
                 command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                 command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                command_list.commitBarriers();
             }
         );
     }

@@ -25,6 +25,7 @@
 #include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/function/render/render_settings.h"
+#include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/material/material_system.h"
 #include "runtime/resource/file/file_id.h"
@@ -97,15 +98,25 @@ namespace dodoe {
     static GfxGraphicsPipelineDesc MakeGBufferPipelineDesc(const ShaderLibrary& shader_library,
                                                             GfxInputLayoutHandle gbuffer_input_layout,
                                                             const GfxBindingLayoutHandle& binding_layout,
-                                                            DescriptorTableManager* descriptor_table) {
+                                                            DescriptorTableManager* descriptor_table,
+                                                            BindingLayoutCache* binding_layout_cache) {
         auto pipeline_desc = GfxGraphicsPipelineDesc()
             .setVertexShader(shader_library.getGBufferVertexShader())
             .setPixelShader(shader_library.getGBufferPixelShader())
             .setInputLayout(gbuffer_input_layout)
             .addBindingLayout(binding_layout)
             .setPrimType(GfxPrimitiveType::TriangleList);
-        if (descriptor_table && descriptor_table->getDescriptorTable()) {
-            pipeline_desc.addBindingLayout(descriptor_table->getDescriptorTable()->getLayout());
+        if (RenderSettings::IsBindlessActive()) {
+            if (descriptor_table && descriptor_table->getDescriptorTable()) {
+                pipeline_desc.addBindingLayout(descriptor_table->getDescriptorTable()->getLayout());
+            }
+        } else if (binding_layout_cache) {
+            auto texture_layout = binding_layout_cache->getOrCreate(
+                GfxBindingLayoutDesc()
+                    .setVisibility(GfxShaderType::Pixel)
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(0))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(1)));
+            pipeline_desc.addBindingLayout(texture_layout);
         }
         GfxDepthStencilState depth_stencil_state;
         depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
@@ -168,7 +179,14 @@ namespace dodoe {
             descriptor_binding_set = create_ref<GfxBindingSet>(
                 cutie::BindingSetHandle(descriptor_table->getDescriptorTable()));
         }
-        m_gbuffer_processor = create_scope<GBufferMeshProcessor>(descriptor_binding_set);
+        auto* binding_layout_cache = resources.getBindingLayoutCache();
+        auto* binding_set_cache = resources.getBindingSetCache();
+        DO_ASSERT(binding_layout_cache != nullptr, "BaseSceneFeature binding layout cache is null");
+        DO_ASSERT(binding_set_cache != nullptr, "BaseSceneFeature binding set cache is null");
+        m_gbuffer_processor = create_scope<GBufferMeshProcessor>(
+            descriptor_binding_set, *binding_layout_cache, *binding_set_cache);
+	    m_shadow_processor = create_scope<DirectionalShadowMeshProcessor>(
+            *binding_layout_cache, *binding_set_cache);
 
         m_skybox_cb = create_ref<GfxBuffer>(
             GfxBufferDesc()
@@ -280,6 +298,8 @@ namespace dodoe {
     }
 
     void BaseSceneFeature::collectPasses(PassCollector& collector) {
+	    DO_ASSERT(m_gbuffer_processor != nullptr, "BaseSceneFeature GBuffer processor is null");
+	    DO_ASSERT(m_shadow_processor != nullptr, "BaseSceneFeature shadow processor is null");
         collector.addPass<GBufferPass>(m_gbuffer_processor.get());
         collector.addPass<DirectionalShadowPass>(m_shadow_processor.get());
         collector.addPass<SkyboxPass>(m_skybox_cb);
@@ -369,7 +389,8 @@ namespace dodoe {
             MeshPassType::GBuffer,
             MakeGBufferPipelineDesc(shader_library, gbuffer_input_layout,
                 m_gbuffer_processor->getBindingLayout(),
-                m_shared_render_service->getDescriptorTable()),
+                m_shared_render_service->getDescriptorTable(),
+                m_shared_render_service->getBindingLayoutCache()),
             gbuffer_fb_info,
             cmd_list);
 

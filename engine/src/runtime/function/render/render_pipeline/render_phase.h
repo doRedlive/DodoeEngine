@@ -7,10 +7,10 @@
 namespace dodoe {
 
 	enum class RenderPhase : UInt8 {
-	    Shadow,
 	    GBuffer,
-	    DeferredLighting,
+	    Shadow,
 	    Skybox,
+	    DeferredLighting,
 	    Decals,
 	    Forward,
 	    Sprite,

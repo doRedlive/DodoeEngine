@@ -8,16 +8,21 @@
 #include "runtime/core/math/math.h"
 #include "../render_scene/primitive_render_object.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/render/render_settings.h"
+#include "runtime/function/render/render_service/binding_layout_cache.h"
+#include "runtime/function/render/render_service/binding_set_cache.h"
 
 namespace dodoe {
     namespace {
         constexpr UInt32 kVolatileConstantBufferVersions = 4096;
     }
 
-    GBufferMeshProcessor::GBufferMeshProcessor(GfxBindingSetHandle descriptor_binding_set)
+    GBufferMeshProcessor::GBufferMeshProcessor(GfxBindingSetHandle descriptor_binding_set,
+                                               BindingLayoutCache& binding_layout_cache,
+                                               BindingSetCache& binding_set_cache)
         : m_descriptor_binding_set(std::move(descriptor_binding_set)) {
         m_sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
-        m_binding_layout = GDrawCommandList.createBindingLayout(
+        m_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
                 .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
@@ -30,11 +35,12 @@ namespace dodoe {
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
                 .setDebugName("GBufferMeshProcessor ConstantBuffer"));
-        m_binding_set = GDrawCommandList.createBindingSet(
+        m_binding_set = binding_set_cache.getOrCreate(
             GfxBindingSetDesc()
                 .addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer->getRHIHandle()))
                 .addItem(GfxBindingSetItem::Sampler(0, m_sampler)),
-            m_binding_layout
+            m_binding_layout,
+            binding_layout_cache.getLayoutGeneration(m_binding_layout)
         );
     }
 
@@ -96,8 +102,11 @@ namespace dodoe {
                 const auto cache_key = CacheHashUtils::MakeCacheKey(
                     element, batch.material_instance, MeshPassType::GBuffer);
 
-                const UInt32 cmd_index = cache.findOrCreate(cache_key,
-                    BuildDrawCommand(element, MeshPassType::GBuffer, m_binding_set));
+                auto cmd = BuildDrawCommand(element, MeshPassType::GBuffer, m_binding_set);
+                if (!RenderSettings::IsBindlessActive() && mi && mi->texture_binding_set) {
+                    cmd.binding_sets.push_back(mi->texture_binding_set);
+                }
+                const UInt32 cmd_index = cache.findOrCreate(cache_key, std::move(cmd));
 
                 MeshDrawInstance instance{};
                 instance.cmd_index = cmd_index;
@@ -164,8 +173,12 @@ namespace dodoe {
                 const UInt32 shader_data_index = static_cast<UInt32>(out_shader_data.size());
                 out_shader_data.push_back(draw_shader_data);
 
+                auto cmd = BuildDrawCommand(element, MeshPassType::GBuffer, m_binding_set);
+                if (!RenderSettings::IsBindlessActive() && mi && mi->texture_binding_set) {
+                    cmd.binding_sets.push_back(mi->texture_binding_set);
+                }
                 const UInt32 cmd_index = static_cast<UInt32>(local_commands.size());
-                local_commands.push_back(BuildDrawCommand(element, MeshPassType::GBuffer, m_binding_set));
+                local_commands.push_back(std::move(cmd));
 
                 MeshDrawInstance instance{};
                 instance.cmd_index = cmd_index;

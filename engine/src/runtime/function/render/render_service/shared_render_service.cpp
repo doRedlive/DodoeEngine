@@ -28,7 +28,7 @@ namespace dodoe {
         m_binding_set_cache = BindingSetCache::Create({m_gfx_context});
         m_input_layout_cache = InputLayoutCache::Create({m_gfx_context});
         m_material_system = create_scope<MaterialSystem>();
-        m_material_system->initialize(m_shader_library.get(), m_binding_layout_cache.get(), m_texture_manager.get());
+        m_material_system->initialize(m_shader_library.get(), m_binding_layout_cache.get(), m_binding_set_cache.get(), m_texture_manager.get());
 
         return m_shader_library != nullptr
             && m_pipeline_state_cache != nullptr

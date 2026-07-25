@@ -12,6 +12,8 @@
 namespace dodoe {
 
     class PrimitiveSceneInfo;
+    class BindingLayoutCache;
+    class BindingSetCache;
     struct MeshPassRelevance;
 
     class DirectionalShadowMeshProcessor final : public IMeshPassProcessor {
@@ -20,7 +22,8 @@ namespace dodoe {
         GfxBufferHandle m_constant_buffer{};
 
     public:
-        DirectionalShadowMeshProcessor();
+        DirectionalShadowMeshProcessor(BindingLayoutCache& binding_layout_cache,
+                                       BindingSetCache& binding_set_cache);
         void reset() override;
 
         [[nodiscard]] const GfxBindingLayoutHandle& getBindingLayout() const override { return m_binding_layout; }

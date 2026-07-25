@@ -13,6 +13,8 @@
 namespace dodoe {
 
     class PrimitiveSceneInfo;
+    class BindingLayoutCache;
+    class BindingSetCache;
     struct InstanceSceneData;
     struct MeshPassRelevance;
     struct GBufferMeshDrawShaderData;
@@ -25,7 +27,9 @@ namespace dodoe {
         GfxBufferHandle m_constant_buffer{};
 
     public:
-        GBufferMeshProcessor(GfxBindingSetHandle descriptor_binding_set = {});
+        GBufferMeshProcessor(GfxBindingSetHandle descriptor_binding_set,
+                             BindingLayoutCache& binding_layout_cache,
+                             BindingSetCache& binding_set_cache);
         void reset() override;
 
         [[nodiscard]] const GfxBindingLayoutHandle& getBindingLayout() const override { return m_binding_layout; }

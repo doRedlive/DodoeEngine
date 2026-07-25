@@ -11,30 +11,28 @@
 
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_scene/render_scene.h"
+#include "runtime/function/render/render_scene/sprite_scene_info.h"
 #include "runtime/function/render/gpu_driven/gpu_scene.h"
-#include "runtime/function/render/gpu_driven/gpu_driven_renderer.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/shader/descriptor_table_manager.h"
 #include "runtime/function/render/shader/global_samplers.h"
 
-#include "runtime/function/render/texture/texture_manager.h"
-#include "runtime/function/render/shader/descriptor_table_manager.h"
-#include "runtime/function/render/render_settings.h"
-#include "runtime/core/utils/common.h"
-#include "runtime/core/math/math.h"
-#include "render_pass_blackboard_keys.h"
+#include <algorithm>
 
 namespace dodoe {
 
     struct SpritePassParameters {
         RenderGraphTextureHandle color_target{};
+        Bool clear_target{false};
         RenderGraphBufferHandle instance_buffer{};
         RenderGraphBufferHandle quad_vertex_buffer{};
         RenderGraphBufferHandle quad_index_buffer{};
         RenderGraphBufferHandle vp_buffer{};
-        RenderGraphBufferHandle indirect_args{};
+        DynamicArray<SpriteInstance> instances{};
     };
 
     void SpritePass::build(RenderGraphBuilder& graph,
-                            const RenderPassBuildContext& context) {
+                           const RenderPassBuildContext& context) {
         graph.addPass<SpritePassParameters>(
             "SpritePass",
             RenderGraphPassFlags::Raster,
@@ -42,126 +40,166 @@ namespace dodoe {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
-                    parameters.color_target = pass_builder.write(*scene_color);
+                    parameters.color_target = pass_builder.writeColor(*scene_color);
                 } else {
-                    parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
-                        rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
+                    parameters.clear_target = true;
+                    parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
+                        rendering_pipeline_utils::MakeSwapchainRT2D(
+                            swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
                         "SpriteColor"));
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
                 }
+
+                if (const auto* sprite_extension = context.view.getExtension<SpriteViewExtension>()) {
+                    parameters.instances.reserve(sprite_extension->visible_sprites.size());
+                    for (const auto* sprite : sprite_extension->visible_sprites) {
+                        if (sprite) {
+                            parameters.instances.push_back(sprite->toInstance());
+                        }
+                    }
+                }
+
+                RenderGraphBufferDesc instance_desc{};
+                instance_desc.desc = GfxBufferDesc()
+                    .setByteSize(static_cast<UInt32>(std::max<Size_t>(parameters.instances.size(), 1) * sizeof(SpriteInstance)))
+                    .setIsVertexBuffer(true)
+                    .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
+                    .setDebugName("RDG VisibleSpriteInstances");
+                parameters.instance_buffer = pass_builder.writeBuffer(
+                    pass_builder.createTransientBuffer(instance_desc, "VisibleSpriteInstances"),
+                    RenderGraphPipelineStage::Copy);
 
                 RenderGraphBufferDesc vp_desc{};
                 vp_desc.desc = GfxBufferDesc()
                     .setByteSize(sizeof(Matrix4f))
                     .setIsConstantBuffer(true)
-                    .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
+                    .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG SpriteVP");
-                parameters.vp_buffer = pass_builder.write(pass_builder.createTransientBuffer(vp_desc, "SpriteVpBuffer"));
+                parameters.vp_buffer = pass_builder.writeBuffer(
+                    pass_builder.createTransientBuffer(vp_desc, "SpriteVpBuffer"),
+                    RenderGraphPipelineStage::Copy);
+
+                const auto* gpu_scene = context.scene ? context.scene->getGpuScene() : nullptr;
+                if (!gpu_scene) {
+                    return;
+                }
+                const auto scene_resources = gpu_scene->getPassResources();
+                if (scene_resources.quad_vb && scene_resources.quad_ib) {
+                    parameters.quad_vertex_buffer = pass_builder.importBuffer(scene_resources.quad_vb, "SpriteQuadVB");
+                    parameters.quad_index_buffer = pass_builder.importBuffer(scene_resources.quad_ib, "SpriteQuadIB");
+                }
             },
-            [&context](const SpritePassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                if (!parameters.instance_buffer.isValid() || !parameters.indirect_args.isValid()) {
-                    return;
-                }
-
-                const auto* view = ctx.getView();
-                const auto* sprite_ext = view->getExtension<SpriteViewExtension>();
-                if (!sprite_ext || sprite_ext->visible_count == 0) {
-                    return;
-                }
-
+            [this](const SpritePassParameters& parameters, const RenderGraphPassContext& ctx,
+                   DrawCommandList& command_list) {
                 const auto color_target = ctx.resolveTexture(parameters.color_target);
-                const auto vp_buffer = ctx.resolveBuffer(parameters.vp_buffer);
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
+                command_list.commitBarriers();
+                if (parameters.clear_target) {
+                    command_list.clearTextureFloat(color_target, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
+                }
 
-                Matrix4f vp_matrix = view->getViewProjectionMatrix();
+                if (parameters.instances.empty() || !parameters.quad_vertex_buffer.isValid() ||
+                    !parameters.quad_index_buffer.isValid() || !m_binding_layout) {
+                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
+                }
+
+                auto* shared_service = ctx.getSharedRenderService();
+                const auto* shader_library = ctx.getShaderLibrary();
+                const auto* pipeline_cache = ctx.getPipelineStateCache();
+                const auto* descriptor_manager = shared_service ? shared_service->getDescriptorTable() : nullptr;
+                if (!shader_library || !pipeline_cache || !descriptor_manager ||
+                    !descriptor_manager->getDescriptorTable() || !m_input_layout) {
+                    DO_ERROR("SpritePass: bindless sprite resources are unavailable");
+                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
+                }
+
+                const auto instance_buffer = ctx.resolveBuffer(parameters.instance_buffer);
+                const auto vp_buffer = ctx.resolveBuffer(parameters.vp_buffer);
+                const auto quad_vertex_buffer = ctx.resolveBuffer(parameters.quad_vertex_buffer);
+                const auto quad_index_buffer = ctx.resolveBuffer(parameters.quad_index_buffer);
+
+                command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
                 command_list.setBufferState(vp_buffer, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
-                command_list.writeBuffer(vp_buffer, &vp_matrix, sizeof(Matrix4f));
+                command_list.writeBuffer(instance_buffer, parameters.instances.data(),
+                                         parameters.instances.size() * sizeof(SpriteInstance));
+                const Matrix4f view_projection = ctx.getView()->getViewProjectionMatrix();
+                command_list.writeBuffer(vp_buffer, &view_projection, sizeof(view_projection));
+                command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
                 command_list.setBufferState(vp_buffer, GfxResourceStates::ConstantBuffer);
+                command_list.setBufferState(quad_vertex_buffer, GfxResourceStates::VertexBuffer);
+                command_list.setBufferState(quad_index_buffer, GfxResourceStates::IndexBuffer);
                 command_list.commitBarriers();
+
+                const auto binding_set = command_list.createBindingSet(
+                    GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::ConstantBuffer_VS(0, vp_buffer->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                    m_binding_layout);
+                if (!binding_set) {
+                    DO_ERROR("SpritePass: failed to create binding set");
+                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
+                }
+
+                const auto descriptor_binding_set = create_ref<GfxBindingSet>(
+                    cutie::BindingSetHandle(descriptor_manager->getDescriptorTable()));
+                GfxGraphicsPipelineDesc pipeline_desc = GfxGraphicsPipelineDesc()
+                    .setVertexShader(shader_library->getSpriteVertexShader())
+                    .setPixelShader(shader_library->getSpritePixelShader())
+                    .setInputLayout(m_input_layout)
+                    .addBindingLayout(m_binding_layout)
+                    .addBindingLayout(descriptor_manager->getDescriptorTable()->getLayout())
+                    .setPrimType(GfxPrimitiveType::TriangleList);
+                GfxDepthStencilState depth_stencil;
+                depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
+                GfxRasterState raster;
+                raster.setCullNone();
+                GfxBlendState blend;
+                GfxBlendState::RenderTarget blend_target;
+                blend_target.enableBlend()
+                    .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                    .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                    .setSrcBlendAlpha(GfxBlendFactor::One)
+                    .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
+                blend.setRenderTarget(0, blend_target);
+                GfxRenderState render_state;
+                render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
+                pipeline_desc.setRenderState(render_state);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
                 auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
-
-                const auto* descriptor_table = context.shared_render_service->getDescriptorTable();
-                if (!descriptor_table || !descriptor_table->getDescriptorTable()) {
-                    return;
-                }
-                const auto* texture_manager = ctx.getTextureManager();
-                const auto* sampler = texture_manager ? texture_manager->getScreenSampler() : GfxSamplerHandle{};
-                if (!sampler) {
-                    sampler = command_list.createSampler(GfxSamplerDesc());
-                }
-
-                auto sprite_ps = ctx.getShaderLibrary()->getSpritePixelShader();
-                auto sprite_vs = ctx.getShaderLibrary()->getSpriteVertexShader();
-                auto vertex_factory = context.shared_render_service->getInputLayoutCache()
-                    ? context.shared_render_service->getInputLayoutCache()->find("Sprite")
-                    : GfxInputLayoutHandle{};
-
-                auto binding_layout = command_list.createBindingLayout(
-                    GfxBindingLayoutDesc()
-                        .setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
-                        .addItem(GfxBindingLayoutItem::ConstantBuffer(0, GfxShaderType::Vertex))
-                        .addItem(GfxBindingLayoutItem::Texture_SRV_Array(0, GfxShaderType::Pixel))
-                        .addItem(GfxBindingLayoutItem::Sampler(0, GfxShaderType::Pixel)));
-
-                auto gfx_vp_buf = ctx.resolveBuffer(parameters.vp_buffer);
-                auto binding_set = command_list.createBindingSet(
-                    GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::ConstantBuffer_VS(0, gfx_vp_buf->getRHIHandle()))
-                        .addItem(GfxBindingSetItem::Texture_SRV_Array(0, texture_manager
-                            ? texture_manager->getTextureArrayRHI()
-                            : GfxTextureHandle{}, 0, 1))
-                        .addItem(GfxBindingSetItem::Sampler(0, sampler)),
-                    binding_layout);
-
-                DynamicArray<GfxBindingSetHandle> bs_arr = {binding_set};
-                GfxGraphicsPipelineDesc pipeline_desc = GfxGraphicsPipelineDesc()
-                    .setVertexShader(sprite_vs)
-                    .setPixelShader(sprite_ps)
-                    .addBindingLayout(binding_layout)
-                    .setPrimType(GfxPrimitiveType::TriangleList);
-                if (vertex_factory) {
-                    pipeline_desc.setInputLayout(vertex_factory);
-                }
-                GfxDepthStencilState depth_stencil;
-                depth_stencil.enableDepthTest().setDepthFunc(GfxComparisonFunc::Less).disableDepthWrite().disableStencil();
-                GfxRasterState raster;
-                raster.setCullNone();
-                GfxRenderState render_state;
-                render_state.setDepthStencilState(depth_stencil).setRasterState(raster);
-                pipeline_desc.setRenderState(render_state);
-
                 GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(pipeline_desc, framebuffer_info, command_list);
+                const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
+                    pipeline_desc, framebuffer_info, command_list);
                 if (!pipeline) {
-                    DO_ERROR("SpritePass: Failed to create pipeline");
+                    DO_ERROR("SpritePass: failed to create pipeline");
+                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
                     return;
                 }
 
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-
-                DynamicArray<GfxVertexBufferBinding> vbs;
-                vbs.push_back(GfxVertexBufferBinding()
-                    .setBuffer(ctx.resolveBuffer(parameters.quad_vertex_buffer)->getRHIHandle()).setSlot(0).setOffset(0));
-                vbs.push_back(GfxVertexBufferBinding()
-                    .setBuffer(ctx.resolveBuffer(parameters.instance_buffer)->getRHIHandle()).setSlot(1).setOffset(0));
-                command_list.setIndexBuffer(GfxIndexBufferBinding()
-                    .setBuffer(ctx.resolveBuffer(parameters.quad_index_buffer)->getRHIHandle()));
-
-                command_list.setBufferState(ctx.resolveBuffer(parameters.indirect_args), GfxResourceStates::IndirectArgument);
-                command_list.commitBarriers();
-
-                command_list.setGraphicsState(framebuffer, pipeline, bs_arr, viewport_state, vbs);
-                command_list.drawIndexedIndirect(0, sprite_ext->visible_count);
+                DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set, descriptor_binding_set};
+                DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
+                    GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
+                    GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+                command_list.setIndexBuffer(GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                command_list.setGraphicsState(
+                    framebuffer, pipeline, binding_sets,
+                    rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
+                    vertex_buffers);
+                command_list.drawIndexed(GfxDrawArguments()
+                    .setVertexCount(6)
+                    .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
 
                 command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.commitBarriers();
-            }
-        );
+            });
     }
 
 } // namespace dodoe

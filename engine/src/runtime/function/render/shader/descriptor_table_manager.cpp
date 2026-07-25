@@ -48,6 +48,8 @@ namespace dodoe {
     }
 
     DescriptorIndex DescriptorTableManager::createDescriptor(GfxBindingSetItem item) {
+        if (!descriptor_table_) { return -1; }
+
         const GfxBindingSetItem cache_key = item;
         const auto& it = descriptor_index_umap_.find(cache_key);
         if (it != descriptor_index_umap_.end()) { return it->second; }
@@ -116,6 +118,8 @@ namespace dodoe {
     }
 
     UInt32 DescriptorTableManager::allocateSlot() {
+        if (!descriptor_table_) { return 0; }
+
         ui32 capacity = descriptor_table_->getCapacity();
         ui32 index = 0;
 

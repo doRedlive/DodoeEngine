@@ -6,14 +6,17 @@
 #include "../render_scene/primitive_render_object.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "mesh_draw_list.h"
+#include "runtime/function/render/render_service/binding_layout_cache.h"
+#include "runtime/function/render/render_service/binding_set_cache.h"
 
 namespace dodoe {
     namespace {
         constexpr UInt32 kVolatileConstantBufferVersions = 4096;
     }
 
-    DirectionalShadowMeshProcessor::DirectionalShadowMeshProcessor() {
-        m_binding_layout = GDrawCommandList.createBindingLayout(
+    DirectionalShadowMeshProcessor::DirectionalShadowMeshProcessor(BindingLayoutCache& binding_layout_cache,
+                                                                     BindingSetCache& binding_set_cache) {
+        m_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
                 .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
@@ -25,9 +28,10 @@ namespace dodoe {
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
                 .setDebugName("DirectionalShadowMeshProcessor ConstantBuffer"));
-        m_binding_set = GDrawCommandList.createBindingSet(
+        m_binding_set = binding_set_cache.getOrCreate(
             GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer->getRHIHandle())),
-            m_binding_layout
+            m_binding_layout,
+            binding_layout_cache.getLayoutGeneration(m_binding_layout)
         );
     }
 

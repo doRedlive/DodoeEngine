@@ -12,6 +12,11 @@
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/render_service/binding_layout_cache.h"
+#include "runtime/function/render/render_service/binding_set_cache.h"
+#include "runtime/function/render/render_service/input_layout_cache.h"
+#include "runtime/function/render/shader/global_samplers.h"
 #include "render_pass_blackboard_keys.h"
 
 namespace dodoe {
@@ -45,10 +50,10 @@ namespace dodoe {
             [&context](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
                 if (scene_color) {
-                    parameters.color_target = pass_builder.write(*scene_color);
+                    parameters.color_target = pass_builder.writeColor(*scene_color);
                 } else {
                     const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
-                    parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
+                    parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG TestColor"),
                         "TestColor"));
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
@@ -60,7 +65,9 @@ namespace dodoe {
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG TestQuadVB");
-                parameters.triangle_vb = pass_builder.write(pass_builder.createTransientBuffer(tri_vb_desc, "TestTriangleVB"));
+                parameters.triangle_vb = pass_builder.writeBuffer(
+                    pass_builder.createTransientBuffer(tri_vb_desc, "TestTriangleVB"),
+                    RenderGraphPipelineStage::Copy);
             },
             [](const TestPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto color_target = ctx.resolveTexture(parameters.color_target);
@@ -86,19 +93,20 @@ namespace dodoe {
                     return;
                 }
 
-                auto test_sampler = command_list.createSampler(GfxSamplerDesc());
+                auto* shared_service = ctx.getSharedRenderService();
+                auto* binding_layout_cache = shared_service ? shared_service->getBindingLayoutCache() : nullptr;
+                auto* binding_set_cache = shared_service ? shared_service->getBindingSetCache() : nullptr;
+                auto* input_layout_cache = shared_service ? shared_service->getInputLayoutCache() : nullptr;
+                if (!binding_layout_cache || !binding_set_cache || !input_layout_cache) {
+                    DO_ERROR("TestPass: render resource caches are unavailable");
+                    return;
+                }
 
-                auto binding_layout = command_list.createBindingLayout(
+                const auto binding_layout = binding_layout_cache->getOrCreate(
                     GfxBindingLayoutDesc()
                         .setVisibility(GfxShaderType::Pixel)
                         .addItem(GfxBindingLayoutItem::Texture_SRV(0))
                         .addItem(GfxBindingLayoutItem::Sampler(0)));
-
-                auto binding_set = command_list.createBindingSet(
-                    GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::Texture_SRV(0, test_tex->getRHIHandle()))
-                        .addItem(GfxBindingSetItem::Sampler(0, test_sampler)),
-                    binding_layout);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
@@ -117,12 +125,18 @@ namespace dodoe {
                 }
 
                 constexpr UInt32 kVertexStride = sizeof(TestTriangleVertex);
-                GfxVertexAttributeDesc attribs[] = {
+                const DynamicArray<GfxVertexAttributeDesc> attribs = {
                     GfxVertexAttributeDesc().setName("POSITION").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
                     GfxVertexAttributeDesc().setName("COLOR").setFormat(GfxFormat::RGBA32_FLOAT).setOffset(12).setElementStride(kVertexStride),
                     GfxVertexAttributeDesc().setName("TEXCOORD").setFormat(GfxFormat::RG32_FLOAT).setOffset(28).setElementStride(kVertexStride),
                 };
-                auto input_layout = command_list.createInputLayout(attribs, 3, test_vs);
+                const auto input_layout = input_layout_cache->getOrCreate(attribs, test_vs);
+                const auto binding_set = binding_set_cache->getOrCreate(
+                    GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::Texture_SRV(0, test_tex->getRHIHandle()))
+                        .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                    binding_layout,
+                    binding_layout_cache->getLayoutGeneration(binding_layout));
 
                 GfxDepthStencilState ds;
                 ds.disableDepthTest().disableDepthWrite().disableStencil();

@@ -10,6 +10,7 @@
 #include "../../render_view/render_view.h"
 #include "../../render_view/mesh_view_extension.h"
 #include "../render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_settings.h"
 
 #include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/directional_shadow_mesh_processor.h"
@@ -48,11 +49,11 @@ namespace dodoe {
                 p.gbuffer_rt = registry->findRenderTarget("GBuffer");
                 DO_ASSERT(p.gbuffer_rt != nullptr, "GBufferPass requires GBuffer RenderTargetHandle from BaseSceneFeature");
 
-                p.albedo   = b.write(b.importTexture(p.gbuffer_rt->getColorTexture(0), "BaseAlbedo"));
-                p.normal   = b.write(b.importTexture(p.gbuffer_rt->getColorTexture(1), "BaseNormal"));
-                p.position = b.write(b.importTexture(p.gbuffer_rt->getColorTexture(2), "BasePosition"));
-                p.material = b.write(b.importTexture(p.gbuffer_rt->getColorTexture(3), "BaseMaterial"));
-                p.depth    = b.write(b.importTexture(p.gbuffer_rt->getDepthTexture(), "BaseDepth"));
+                p.albedo   = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(0), "BaseAlbedo"));
+                p.normal   = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(1), "BaseNormal"));
+                p.position = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(2), "BasePosition"));
+                p.material = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(3), "BaseMaterial"));
+                p.depth    = b.writeDepth(b.importTexture(p.gbuffer_rt->getDepthTexture(), "BaseDepth"));
 
                 RenderGraphBufferDesc primitive_scene_buffer_desc{};
                 primitive_scene_buffer_desc.desc = GfxBufferDesc()
@@ -111,7 +112,7 @@ namespace dodoe {
                 const auto& draw_list = feature->getGBufferDrawLists()[ctx.getViewIndex()];
 
                 DynamicArray<GfxBindingSetHandle> extra_bindings;
-                if (processor->getDescriptorBindingSet()) {
+                if (RenderSettings::IsBindlessActive() && processor->getDescriptorBindingSet()) {
                     extra_bindings.push_back(processor->getDescriptorBindingSet());
                 }
 
@@ -152,7 +153,7 @@ namespace dodoe {
                 parameters.shadow_rt = registry ? registry->findRenderTarget("ShadowMap") : nullptr;
                 DO_ASSERT(parameters.shadow_rt != nullptr, "DirectionalShadowPass requires ShadowMap RenderTargetHandle from BaseSceneFeature");
 
-                parameters.shadow_map = pass_builder.write(pass_builder.importTexture(
+                parameters.shadow_map = pass_builder.writeDepth(pass_builder.importTexture(
                     parameters.shadow_rt->getDepthTexture(), "ShadowMap"));
                 parameters.primitive_scene_buffer = pass_builder.read(scene_textures->instance_scene_data);
 
@@ -174,12 +175,7 @@ namespace dodoe {
                 command_list.commitBarriers();
                 command_list.clearDepthStencilTexture(shadow_map, GfxAllSubresources, true, 1.0f, false, 0);
 
-                const auto& instance_data = mesh_ext->instance_scene_data;
                 const auto resolved_psb = ctx.resolveBuffer(parameters.primitive_scene_buffer);
-                command_list.setBufferState(resolved_psb, GfxResourceStates::CopyDest);
-                command_list.commitBarriers();
-                command_list.writeBuffer(resolved_psb, instance_data.data(), instance_data.size() * sizeof(InstanceSceneData));
-                command_list.setBufferState(resolved_psb, GfxResourceStates::VertexBuffer);
 
                 auto* feature = static_cast<BaseSceneFeature*>(m_owning_feature);
                 const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];

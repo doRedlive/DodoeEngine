@@ -6,6 +6,8 @@
 
 #include "dopch.h"
 
+#include <future>
+
 #include "registry.h"
 
 #include "runtime/core/base.h"

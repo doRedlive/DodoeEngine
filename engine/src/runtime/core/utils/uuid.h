@@ -26,12 +26,9 @@ namespace dodoe {
 
 } // dodoe
 
-namespace std {
-    template<>
-    struct hash<dodoe::Uuid> {
-        std::size_t operator()(const dodoe::Uuid& uuid) const noexcept {
-            return static_cast<uint64_t>(uuid);
-        }
-    };
-    
-} // std
+template<>
+struct std::hash<dodoe::Uuid> {
+    std::size_t operator()(const dodoe::Uuid& uuid) const noexcept {
+        return static_cast<uint64_t>(uuid);
+    }
+};

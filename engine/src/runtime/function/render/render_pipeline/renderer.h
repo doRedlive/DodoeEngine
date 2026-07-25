@@ -17,6 +17,8 @@
 
 namespace dodoe {
 
+    class FrameStagingAllocator;
+
 	struct RendererCreateInfo {
 	    Size_t worker_count{0};
 	    GfxContext* gfx_context{nullptr};
@@ -35,7 +37,8 @@ namespace dodoe {
 	    void clearViewExtensions(RenderViewFamily& view_family) const;
 
 	    void buildOrderedPasses(RenderViewFamily& view_family, RenderScene& scene,
-	                            UInt32 swapchain_image_index, DrawCommandList& out_commands) const;
+	                            UInt32 swapchain_image_index, DrawCommandList& out_commands,
+	                            FrameStagingAllocator* frame_staging_allocator) const;
 
 	    static void validateBlackboard(const DynamicArray<IRenderPass*>& sorted_passes);
 
@@ -82,7 +85,8 @@ namespace dodoe {
 
 	protected:
 	    virtual void render(RenderViewFamily& view_family, RenderScene& scene,
-	                        UInt32 swapchain_image_index, DrawCommandList& out_commands) = 0;
+	                        UInt32 swapchain_image_index, DrawCommandList& out_commands,
+	                        FrameStagingAllocator* frame_staging_allocator) = 0;
 	};
 
 } // dodoe

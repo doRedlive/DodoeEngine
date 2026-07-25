@@ -9,6 +9,8 @@
 
 namespace dodoe {
 
+    class FrameStagingAllocator;
+
     class RenderPipeline : public Managed<RenderPipeline, RendererCreateInfo> {
         friend class Managed<RenderPipeline, RendererCreateInfo>;
 
@@ -17,7 +19,8 @@ namespace dodoe {
     public:
         void onResize(UInt32 width, UInt32 height);
         void render(RenderViewFamily& view_family, RenderScene& scene,
-                    const UInt32 swapchain_image_index, DrawCommandList& out_commands);
+                    const UInt32 swapchain_image_index, DrawCommandList& out_commands,
+                    FrameStagingAllocator* frame_staging_allocator);
 
     private:
         Bool initialize(const RendererCreateInfo& info);

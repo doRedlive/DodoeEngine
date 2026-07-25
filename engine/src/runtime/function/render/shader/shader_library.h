@@ -25,7 +25,12 @@ namespace dodoe {
         const ShaderManifest& getManifest() const { return m_manifest; }
 
         GfxShaderHandle getGBufferVertexShader() const { return findShaderValue("GBufferVS"); }
-        GfxShaderHandle getGBufferPixelShader() const { return findShaderValue("GBufferPS"); }
+        GfxShaderHandle getGBufferPixelShader() const {
+            if (RenderSettings::IsBindlessActive()) {
+                return findShaderValue("GBufferPS");
+            }
+            return findShaderValue("GBufferNoBindlessPS");
+        }
         GfxShaderHandle getShadowVertexShader() const { return findShaderValue("ShadowVS"); }
         GfxShaderHandle getShadowPixelShader() const { return findShaderValue("ShadowPS"); }
         GfxShaderHandle getFullscreenVertexShader() const { return findShaderValue("FullscreenVS"); }

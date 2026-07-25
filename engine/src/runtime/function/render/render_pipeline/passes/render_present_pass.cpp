@@ -46,7 +46,7 @@ namespace dodoe {
                 parameters.scene_color = pass_builder.read(*scene_color);
                 const auto* imgui_color = pass_builder.blackboard().get<ImGuiColorKey, RenderGraphTextureHandle>();
                 parameters.imgui_color = imgui_color ? pass_builder.read(*imgui_color) : parameters.scene_color;
-                parameters.backbuffer = pass_builder.write(pass_builder.importBackBuffer("PresentBackBuffer"));
+                parameters.backbuffer = pass_builder.writeColor(pass_builder.importBackBuffer("PresentBackBuffer"));
             },
             [this](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto scene_color_handle = ctx.resolveTexture(parameters.scene_color);

@@ -70,7 +70,8 @@ namespace dodoe {
 	void BaseRenderer::buildOrderedPasses(RenderViewFamily& view_family,
 	                                      RenderScene& scene,
 	                                      const UInt32 swapchain_image_index,
-	                                      DrawCommandList& out_commands) const {
+	                                      DrawCommandList& out_commands,
+	                                      FrameStagingAllocator* frame_staging_allocator) const {
 	    DynamicArray<RenderGraphBuilder> graphs;
 	    graphs.reserve(view_family.getSize());
 
@@ -101,6 +102,7 @@ namespace dodoe {
 	        context.view_index            = view_index;
 	        context.gfx_context           = m_gfx_context;
 	        context.shared_render_service = m_shared_render_service;
+	        context.frame_staging_allocator = frame_staging_allocator;
 	        context.swapchain_image_index  = swapchain_image_index;
 	        graphs[view_index].execute(*m_thread_pool, context, out_commands);
 	    }

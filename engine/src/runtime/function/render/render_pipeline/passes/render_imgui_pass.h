@@ -10,6 +10,11 @@
 namespace dodoe {
 
 	class ImGuiPass : public IRenderPass {
+	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingSetHandle m_font_binding_set{};
+	    GfxTextureHandle m_font_texture{};
+	    GfxInputLayoutHandle m_input_layout{};
+
 	public:
 	    using Produces = TypeList<ImGuiColorKey>;
 	    using Consumes = TypeList<>;
@@ -19,6 +24,16 @@ namespace dodoe {
 	    DynamicArray<Size_t> getProducedKeys() const override {
 	        return MakeKeyHashes(Produces{});
 	    }
+
+	    ImGuiPass() = default;
+	    ImGuiPass(GfxBindingLayoutHandle binding_layout,
+	              GfxBindingSetHandle font_binding_set,
+	              GfxTextureHandle font_texture,
+	              GfxInputLayoutHandle input_layout)
+	        : m_binding_layout(std::move(binding_layout))
+	        , m_font_binding_set(std::move(font_binding_set))
+	        , m_font_texture(std::move(font_texture))
+	        , m_input_layout(std::move(input_layout)) {}
 
 	    void build(RenderGraphBuilder& graph,
 	               const RenderPassBuildContext& context) override;

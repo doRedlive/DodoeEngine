@@ -4,3 +4,5 @@
 #include <vector>
 
 typedef std::vector<std::string> Namespace;
+
+using FsPath = std::filesystem::path;

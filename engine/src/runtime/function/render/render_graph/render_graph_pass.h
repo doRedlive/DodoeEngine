@@ -43,6 +43,7 @@ namespace dodoe {
     class ShaderLibrary;
     class PipelineStateCache;
     class TextureManager;
+    class FrameStagingAllocator;
 
     struct RenderGraphExecuteContext {
         const RenderViewFamily* view_family{nullptr};
@@ -50,6 +51,7 @@ namespace dodoe {
         const RenderView* view{nullptr};
         GfxContext* gfx_context{nullptr};
         SharedRenderService* shared_render_service{nullptr};
+        FrameStagingAllocator* frame_staging_allocator{nullptr};
         Size_t view_index{0};
         UInt32 swapchain_image_index{0};
     };
@@ -69,6 +71,7 @@ namespace dodoe {
         [[nodiscard]] Size_t getViewIndex() const { return m_execute_context->view_index; }
         [[nodiscard]] UInt32 getSwapchainImageIndex() const { return m_execute_context->swapchain_image_index; }
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_execute_context->shared_render_service; }
+        [[nodiscard]] FrameStagingAllocator* getFrameStagingAllocator() const { return m_execute_context->frame_staging_allocator; }
 
         [[nodiscard]] const ShaderLibrary* getShaderLibrary() const;
         [[nodiscard]] PipelineStateCache* getPipelineStateCache() const;

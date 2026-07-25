@@ -42,6 +42,7 @@ namespace dodoe {
     using GfxGraphicsState = cutie::GraphicsState;
     using GfxTextureDesc = cutie::TextureDesc;
     using GfxBufferDesc = cutie::BufferDesc;
+    using GfxBufferRange = cutie::BufferRange;
     using GfxShaderDesc = cutie::ShaderDesc;
     using GfxSamplerDesc = cutie::SamplerDesc;
     using GfxBindingLayoutDesc = cutie::BindingLayoutDesc;

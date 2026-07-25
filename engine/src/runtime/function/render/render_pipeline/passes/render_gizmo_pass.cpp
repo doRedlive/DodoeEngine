@@ -135,7 +135,8 @@ namespace dodoe {
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                     command_list.setGraphicsState(framebuffer, pipeline, {}, viewport_state, vbs);
                     command_list.setPushConstants(GfxShaderType::Vertex, &push, sizeof(push));
-                    command_list.drawIndexed(static_cast<UInt32>(cmd.indices.size()), 0, 0);
+                    command_list.drawIndexed(GfxDrawArguments()
+                        .setVertexCount(static_cast<UInt32>(cmd.indices.size())));
 
                     vb_offset += cmd.vertices.size() * sizeof(GizmoVertex);
                     ib_offset += cmd.indices.size() * sizeof(UInt32);

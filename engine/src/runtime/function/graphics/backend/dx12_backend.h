@@ -11,11 +11,11 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
-using Microsoft::WRL::ComPtr;
-
 struct GLFWwindow;
 
 namespace dodoe {
+
+    using Microsoft::WRL::ComPtr;
 
     struct Dx12BackendCreateInfo {
         GLFWwindow* window_handle{nullptr};

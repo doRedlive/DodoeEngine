@@ -9,6 +9,7 @@ namespace dodoe {
 
     class ShaderLibrary;
     class BindingLayoutCache;
+    class BindingSetCache;
     class TextureManager;
     class Texture2D;
     class DrawCommandList;
@@ -84,6 +85,7 @@ namespace dodoe {
         DynamicArray<GfxTextureHandle> textures;
         DynamicArray<Int32> texture_descriptor_indices;
         GfxSamplerHandle sampler{};
+        GfxBindingSetHandle texture_binding_set{};
 
         UInt64 revision{0};
         Bool resolved{false};
@@ -116,6 +118,7 @@ namespace dodoe {
 
         void initialize(ShaderLibrary* shader_library,
                         BindingLayoutCache* binding_layout_cache,
+                        BindingSetCache* binding_set_cache,
                         TextureManager* texture_manager);
 
         void registerBuiltinTemplates();
@@ -171,6 +174,7 @@ namespace dodoe {
 
         ShaderLibrary* m_shader_library{nullptr};
         BindingLayoutCache* m_binding_layout_cache{nullptr};
+        BindingSetCache* m_binding_set_cache{nullptr};
         TextureManager* m_texture_manager{nullptr};
 
         UInt64 m_global_revision{0};

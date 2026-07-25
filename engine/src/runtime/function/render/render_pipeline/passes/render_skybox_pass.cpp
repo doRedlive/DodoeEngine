@@ -46,7 +46,7 @@ namespace dodoe {
                 DO_ASSERT(scene_textures, "SkyboxPass scene textures are missing");
 
                 parameters.depth = pass_builder.read(scene_textures->depth);
-                parameters.hdr_color = pass_builder.write(pass_builder.createTransientTexture(
+                parameters.hdr_color = pass_builder.writeColor(pass_builder.createTransientTexture(
                     rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG MainCameraHdrColor"),
                     "MainCameraHdrColor"));
                 pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
@@ -76,7 +76,11 @@ namespace dodoe {
                     return;
                 }
                 if (!cubemap_handle) {
-                    cubemap_handle = hdr;
+                    DO_ERROR("SkyboxPass: enabled sky light has no cubemap");
+                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
+                    command_list.commitBarriers();
+                    command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
+                    return;
                 }
 
                 SkyboxConstantBuffer cb_data;

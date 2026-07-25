@@ -9,6 +9,7 @@
 #include "runtime/resource/file/file_system.h"
 #include "runtime/resource/parser/texture_blob.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/gc/object_heap.h"
 
@@ -140,11 +141,11 @@ namespace dodoe {
         }
         texture->setGpuHandle(handle);
 
-        auto item = GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle());
-        DescriptorIndex descriptor_index = m_descriptor_table->createDescriptor(item);
-        const UInt32 slot = static_cast<UInt32>(descriptor_index);
-
-        texture->setDescriptorIndex(static_cast<DescriptorIndex>(slot));
+        if (RenderSettings::IsBindlessActive()) {
+            auto item = GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle());
+            DescriptorIndex descriptor_index = m_descriptor_table->createDescriptor(item);
+            texture->setDescriptorIndex(static_cast<DescriptorIndex>(descriptor_index));
+        }
 
         m_texture2d_cache.emplace(texture->getInstanceID(), ObjHandle<Texture2D>(texture));
         return texture;
@@ -175,9 +176,11 @@ namespace dodoe {
         fb->setName("<fallback>");
         fb->setDimensions(1, 1);
         fb->setGpuHandle(handle);
-        auto fallback_item = GfxBindingSetItem::Texture_SRV(0, handle_rhi);
-        DescriptorIndex fallback_descriptor_index = m_descriptor_table->createDescriptor(fallback_item);
-        fb->setDescriptorIndex(fallback_descriptor_index);
+        if (RenderSettings::IsBindlessActive()) {
+            auto fallback_item = GfxBindingSetItem::Texture_SRV(0, handle_rhi);
+            DescriptorIndex fallback_descriptor_index = m_descriptor_table->createDescriptor(fallback_item);
+            fb->setDescriptorIndex(fallback_descriptor_index);
+        }
 
         m_fallback = ObjHandle<Texture2D>(fb);
     }

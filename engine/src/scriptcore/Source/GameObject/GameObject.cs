@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 public class GameObject
 {
-    internal Entity Entity { get; private set; }
+    public Entity Entity { get; internal set; }
     internal Scene _scene;
     internal bool _destroyed;
 
@@ -30,7 +30,7 @@ public class GameObject
 
     public Scene Scene => _scene;
 
-    public Transform Transform { get; private set; }
+    public Transform Transform { get; internal set; }
 
     public bool ActiveSelf
     {
@@ -73,7 +73,7 @@ public class GameObject
         }
     }
 
-    private GameObject() { }
+    internal GameObject() { }
 
     public T AddComponent<T>() where T : CakeComponent, new()
     {

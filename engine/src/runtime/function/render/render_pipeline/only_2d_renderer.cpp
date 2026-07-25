@@ -42,9 +42,10 @@ namespace dodoe {
     }
 
     void Only2DRenderer::render(RenderViewFamily& view_family, RenderScene& scene,
-                                 const UInt32 swapchain_image_index, DrawCommandList& out_commands) {
+                                 const UInt32 swapchain_image_index, DrawCommandList& out_commands,
+                                 FrameStagingAllocator* frame_staging_allocator) {
         initViews(scene, view_family);
-        buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands);
+        buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands, frame_staging_allocator);
     }
 
 } // dodoe

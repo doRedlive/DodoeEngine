@@ -3,8 +3,10 @@
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
+#include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/texture/texture.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -26,9 +28,11 @@ namespace dodoe {
 
     void MaterialSystem::initialize(ShaderLibrary* shader_library,
                                     BindingLayoutCache* binding_layout_cache,
+                                    BindingSetCache* binding_set_cache,
                                     TextureManager* texture_manager) {
         m_shader_library = shader_library;
         m_binding_layout_cache = binding_layout_cache;
+        m_binding_set_cache = binding_set_cache;
         m_texture_manager = texture_manager;
         registerBuiltinTemplates();
     }
@@ -49,6 +53,7 @@ namespace dodoe {
         m_templates.clear();
         m_shader_library = nullptr;
         m_binding_layout_cache = nullptr;
+        m_binding_set_cache = nullptr;
         m_texture_manager = nullptr;
         m_global_revision = 0;
     }
@@ -245,6 +250,23 @@ namespace dodoe {
         }
 
         inst.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
+
+        if (!RenderSettings::IsBindlessActive() && m_binding_layout_cache && m_binding_set_cache && !inst.textures.empty()) {
+            auto texture_layout = m_binding_layout_cache->getOrCreate(
+                GfxBindingLayoutDesc()
+                    .setVisibility(GfxShaderType::Pixel)
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(0))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(1)));
+
+            GfxBindingSetDesc set_desc;
+            set_desc.addItem(GfxBindingSetItem::Texture_SRV(0, inst.textures[0]->getRHIHandle()));
+            set_desc.addItem(GfxBindingSetItem::Texture_SRV(1,
+                (inst.textures.size() > 1 ? inst.textures[1] : inst.textures[0])->getRHIHandle()));
+            inst.texture_binding_set = m_binding_set_cache->getOrCreate(
+                set_desc,
+                texture_layout,
+                m_binding_layout_cache->getLayoutGeneration(texture_layout));
+        }
 
         inst.resolved = true;
         ++inst.revision;

@@ -38,9 +38,9 @@ namespace dodoe {
         }
 
         DynamicArray<Object*> candidates{};
-        for (auto& [id, obj] : Object::s_instance_map) {
+        for (auto& [id, obj] : Object::GetInstanceMap()) {
             if (obj && obj->isAlive() && !visitor.isMarked(id)) {
-                if (obj->m_strong_refs.load(std::memory_order_relaxed) > 0) {
+                if (obj->getStrongRefCount() > 0) {
                     candidates.push_back(obj);
                 }
             }

@@ -21,10 +21,19 @@ namespace dodoe {
     GfxBindingSetHandle BindingSetCache::getOrCreate(const GfxBindingSetDesc& desc,
                                                        GfxBindingLayoutHandle layout,
                                                        UInt64 layout_generation) {
-        Size_t h = layout_generation;
+        Size_t h = reinterpret_cast<Size_t>(layout.Get());
+        hash_combine(h, static_cast<Size_t>(layout_generation));
+        hash_combine(h, desc.getItemCount());
         for (Size_t i = 0; i < desc.getItemCount(); ++i) {
-            hash_combine(h, static_cast<Size_t>(desc.getItems()[i].type));
-            hash_combine(h, static_cast<Size_t>(desc.getItems()[i].slot));
+            const auto& item = desc.getItems()[i];
+            hash_combine(h, reinterpret_cast<Size_t>(item.resourceHandle));
+            hash_combine(h, static_cast<Size_t>(item.slot));
+            hash_combine(h, static_cast<Size_t>(item.arrayElement));
+            hash_combine(h, static_cast<Size_t>(item.type));
+            hash_combine(h, static_cast<Size_t>(item.format));
+            hash_combine(h, static_cast<Size_t>(item.dimension));
+            hash_combine(h, static_cast<Size_t>(item.rawData[0]));
+            hash_combine(h, static_cast<Size_t>(item.rawData[1]));
         }
 
         auto it = m_cache.find(h);

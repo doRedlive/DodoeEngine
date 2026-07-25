@@ -11,8 +11,9 @@ namespace dodoe {
 
 	class ImGuiFeature final : public IRenderFeature {
 	    GfxTextureHandle m_font_texture{};
-	    GfxBufferHandle m_constant_buffer{};
 	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingSetHandle m_font_binding_set{};
+	    GfxInputLayoutHandle m_input_layout{};
 
 	public:
 	    void initialize(SharedRenderService& resources) override;
@@ -24,8 +25,9 @@ namespace dodoe {
 	    void collectPasses(PassCollector& collector) override;
 
 	    [[nodiscard]] GfxTextureHandle getFontTexture() const { return m_font_texture; }
-	    [[nodiscard]] GfxBufferHandle getConstantBuffer() const { return m_constant_buffer; }
 	    [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
+	    [[nodiscard]] GfxBindingSetHandle getFontBindingSet() const { return m_font_binding_set; }
+	    [[nodiscard]] GfxInputLayoutHandle getInputLayout() const { return m_input_layout; }
 	};
 
 } // namespace dodoe

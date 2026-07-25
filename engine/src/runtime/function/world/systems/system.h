@@ -7,6 +7,8 @@
 
 #include "dopch.h"
 
+#include <entt/entt.hpp>
+
 #include "runtime/function/world/registry.h"
 
 namespace dodoe {
@@ -15,29 +17,29 @@ namespace dodoe {
         DynamicArray<entt::id_type> reads{};
         DynamicArray<entt::id_type> writes{};
         bool structural{false};
+    };
 
-        struct Builder {
-            SystemAccess access{};
+    struct SystemAccessBuilder {
+        SystemAccess access{};
 
-            template<typename... Ts>
-            Builder& readsComponents() {
-                (access.reads.push_back(entt::type_hash<Ts>::value()), ...);
-                return *this;
-            }
+        template<typename... Ts>
+        SystemAccessBuilder& readsComponents() {
+            (access.reads.push_back(entt::type_hash<Ts>::value()), ...);
+            return *this;
+        }
 
-            template<typename... Ts>
-            Builder& writesComponents() {
-                (access.writes.push_back(entt::type_hash<Ts>::value()), ...);
-                return *this;
-            }
+        template<typename... Ts>
+        SystemAccessBuilder& writesComponents() {
+            (access.writes.push_back(entt::type_hash<Ts>::value()), ...);
+            return *this;
+        }
 
-            Builder& hasStructuralChanges(bool v = true) {
-                access.structural = v;
-                return *this;
-            }
+        SystemAccessBuilder& hasStructuralChanges(bool v = true) {
+            access.structural = v;
+            return *this;
+        }
 
-            SystemAccess build() { return std::move(access); }
-        };
+        SystemAccess build() { return std::move(access); }
     };
 
     class System {

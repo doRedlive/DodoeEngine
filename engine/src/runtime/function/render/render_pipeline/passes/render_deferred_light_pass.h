@@ -11,15 +11,9 @@
 namespace dodoe {
 
 	class DeferredLightPass : public IRenderPass {
-	    GfxBufferHandle m_constant_buffer{};
-
 	public:
 	    using Produces = TypeList<>;
 	    using Consumes = TypeList<SceneTexturesKey, ShadowMapKey, SceneHdrKey>;
-
-	    DeferredLightPass() = default;
-	    explicit DeferredLightPass(GfxBufferHandle constant_buffer)
-	        : m_constant_buffer(constant_buffer) {}
 
 	    RenderPhase getPhase() const override { return RenderPhase::DeferredLighting; }
 

@@ -5,10 +5,10 @@
 #include "dopch.h"
 
 #include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
 
-    class GfxEventQueryHandle;
     class FrameStagingAllocator;
 
     struct FrameContext {

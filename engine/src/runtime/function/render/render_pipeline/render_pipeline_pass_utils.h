@@ -64,7 +64,8 @@ namespace dodoe::rendering_pipeline_utils {
     [[nodiscard]] inline GfxGraphicsPipelineDesc BuildFullscreenPipelineDesc(
         const GfxShaderHandle& vertex_shader,
         const GfxShaderHandle& pixel_shader,
-        const GfxBindingLayoutHandle& binding_layout)
+        const GfxBindingLayoutHandle& binding_layout,
+        const Bool additive_blend = false)
     {
         if (!binding_layout) {
             DO_ERROR("BuildFullscreenPipelineDesc: binding_layout is null!");
@@ -87,6 +88,15 @@ namespace dodoe::rendering_pipeline_utils {
         GfxRenderState render_state;
         render_state.setDepthStencilState(depth_stencil_state);
         render_state.setRasterState(raster_state);
+        if (additive_blend) {
+            GfxBlendState blend_state;
+            GfxBlendState::RenderTarget blend_target;
+            blend_target.enableBlend()
+                .setSrcBlend(GfxBlendFactor::One)
+                .setDestBlend(GfxBlendFactor::One);
+            blend_state.setRenderTarget(0, blend_target);
+            render_state.setBlendState(blend_state);
+        }
         pipeline_desc.setRenderState(render_state);
         return pipeline_desc;
     }

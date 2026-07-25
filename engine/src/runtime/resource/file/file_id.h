@@ -2,7 +2,9 @@
 
 #pragma once
 
-#include "dopch.h"
+#include <cstdint>
+#include <functional>
+
 #include "runtime/core/utils/uuid.h"
 
 namespace dodoe {
@@ -30,11 +32,9 @@ namespace dodoe {
 
 } // dodoe
 
-namespace std {
-    template<>
-    struct hash<dodoe::FileID> {
-        dodoe::Size_t operator()(const dodoe::FileID& id) const noexcept {
-            return static_cast<dodoe::Size_t>(id.getID());
-        }
-    };
-} // std
+template<>
+struct std::hash<dodoe::FileID> {
+    dodoe::Size_t operator()(const dodoe::FileID& id) const noexcept {
+        return static_cast<dodoe::Size_t>(id.getID());
+    }
+};

@@ -11,8 +11,9 @@ namespace dodoe {
         GfxBufferDesc desc;
         desc.byteSize = m_ring_size;
         desc.cpuAccess = GfxCpuAccessMode::Write;
+        desc.isConstantBuffer = true;
         desc.debugName = "FrameStagingAllocator";
-        desc.keepInitialState = true;
+        desc.enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer);
 
         m_ring_buffer = create_ref<GfxBuffer>(desc);
         m_ring_buffer->initializeRHI(m_device);

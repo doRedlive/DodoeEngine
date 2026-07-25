@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "dopch.h"
-#include "runtime/resource/file/file_id.h"
-
 #include <atomic>
+#include <cstdint>
+
+#include "runtime/resource/file/file_id.h"
 
 namespace dodoe {
 
@@ -56,6 +56,9 @@ namespace dodoe {
         void addWeakRef() { m_weak_refs.fetch_add(1, std::memory_order_relaxed); }
         void releaseWeakRef();
         [[nodiscard]] Bool isAlive() const { return m_alive.load(std::memory_order_acquire) != 0; }
+        [[nodiscard]] UInt32 getStrongRefCount() const { return m_strong_refs.load(std::memory_order_relaxed); }
+
+        [[nodiscard]] static const auto& GetInstanceMap() { return s_instance_map; }
 
         virtual void trace(TraceVisitor& v) const {}
         [[nodiscard]] virtual const char* getObjectTypeName() const = 0;

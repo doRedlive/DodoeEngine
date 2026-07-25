@@ -8,8 +8,6 @@
 #include "glm/ext/matrix_float3x3.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
 
-#include "entt/entt.hpp"
-
 #include <string>
 #include <string_view>
 #include <vector>
@@ -17,6 +15,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
+#include <atomic>
 #include <filesystem>
 
 namespace dodoe {
@@ -26,12 +25,17 @@ namespace dodoe {
     enum class AllocTag : uint8_t;
     class Memory;
 
+    using Bool = bool;
+    using Size_t = size_t;
+    using UInt = unsigned int;
+
     template <typename T>
     class Scope {
         T* m_ptr{nullptr};
     public:
         Scope() = default;
         explicit Scope(T* ptr) : m_ptr(ptr) {}
+        Scope(std::nullptr_t) : m_ptr(nullptr) {}
         ~Scope() { destroy(); }
 
         Scope(const Scope&) = delete;
@@ -240,7 +244,6 @@ namespace dodoe {
 
     using StringView = std::string_view;
 
-
     using Vector2f = glm::vec2;
     using Vector2i = glm::ivec2;
     using Vector3f = glm::vec3;
@@ -250,8 +253,8 @@ namespace dodoe {
     using Matrix3f = glm::mat3;
     using Matrix4f = glm::mat4;
 
-    using identifier = entt::id_type;
-    using Identifier = entt::id_type;
+    using identifier = UInt32;
+    using Identifier = UInt32;
 
     using InstanceID = Int32;
 
