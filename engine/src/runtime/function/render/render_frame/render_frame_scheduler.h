@@ -8,6 +8,7 @@
 #include "frame_context.h"
 #include "frame_telemetry.h"
 #include "frame_staging_allocator.h"
+#include "runtime/function/render/render_graph/render_graph_transient_pool.h"
 #include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
@@ -24,6 +25,7 @@ namespace dodoe {
         struct FrameSlot {
             UInt64 frame_number{0};
             Scope<FrameStagingAllocator> staging{nullptr};
+            RenderGraphTransientPool transient_resource_pool{};
             UInt32 swapchain_image_index{0};
             Bool in_flight{false};
             GfxEventQueryHandle completion_query{};

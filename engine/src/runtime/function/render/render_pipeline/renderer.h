@@ -17,6 +17,7 @@
 namespace dodoe {
 
     class FrameStagingAllocator;
+    class RenderGraphTransientPool;
 
 	struct RendererCreateInfo {
 	    Size_t worker_count{0};
@@ -37,7 +38,8 @@ namespace dodoe {
 
 	    void buildOrderedPasses(RenderViewFamily& view_family, RenderScene& scene,
 	                            UInt32 swapchain_image_index, DrawCommandList& out_commands,
-	                            FrameStagingAllocator* frame_staging_allocator) const;
+	                            FrameStagingAllocator* frame_staging_allocator,
+	                            RenderGraphTransientPool* transient_resource_pool) const;
 
 	    static void validateBlackboard(const DynamicArray<IRenderPass*>& sorted_passes);
 
@@ -85,7 +87,8 @@ namespace dodoe {
 	protected:
 	    virtual void render(RenderViewFamily& view_family, RenderScene& scene,
 	                        UInt32 swapchain_image_index, DrawCommandList& out_commands,
-	                        FrameStagingAllocator* frame_staging_allocator) = 0;
+	                        FrameStagingAllocator* frame_staging_allocator,
+	                        RenderGraphTransientPool* transient_resource_pool) = 0;
 	};
 
 } // dodoe

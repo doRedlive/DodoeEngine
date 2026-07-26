@@ -369,7 +369,11 @@ namespace dodoe {
         DO_ASSERT(m_compiled, "RenderGraph must be compiled before execute");
         DO_ASSERT(context.gfx_context != nullptr, "RenderGraphContext gfx_context is null");
 
-        RenderGraphResourceResolver resource_resolver(m_resources, *context.gfx_context, context.swapchain_image_index, out_commands, &m_transient_pool);
+        DO_ASSERT(context.transient_resource_pool != nullptr,
+                  "RenderGraphExecuteContext transient resource pool is null");
+        RenderGraphResourceResolver resource_resolver(
+            m_resources, *context.gfx_context, context.swapchain_image_index,
+            out_commands, context.transient_resource_pool);
 
         const bool direct_mode = out_commands.isImmediate();
 
@@ -437,7 +441,6 @@ namespace dodoe {
             }
         }
 
-        m_transient_pool.releaseAll();
     }
 
     void RenderGraph::reset() {
@@ -446,7 +449,6 @@ namespace dodoe {
         m_levels.clear();
         m_culled_passes.clear();
         m_subgraph_names.clear();
-        m_transient_pool.releaseAll();
         m_compiled = false;
     }
 

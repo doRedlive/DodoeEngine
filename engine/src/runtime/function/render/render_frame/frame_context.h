@@ -10,6 +10,7 @@
 namespace dodoe {
 
     class FrameStagingAllocator;
+    class RenderGraphTransientPool;
 
     struct FrameContext {
         DrawCommandList command_list{};
@@ -17,6 +18,7 @@ namespace dodoe {
         UInt64 frame_number{0};
         GfxEventQueryHandle completion_query{};
         FrameStagingAllocator* staging{nullptr};
+        RenderGraphTransientPool* transient_resource_pool{nullptr};
         Bool valid{false};
     };
 

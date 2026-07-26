@@ -48,10 +48,13 @@ namespace dodoe {
     }
 
     void RenderPipeline::render(RenderViewFamily& view_family, RenderScene& scene,
-                                 const UInt32 swapchain_image_index, DrawCommandList& out_commands,
-                                 FrameStagingAllocator* frame_staging_allocator) {
+        const UInt32 swapchain_image_index, DrawCommandList& out_commands, FrameStagingAllocator* frame_staging_allocator,
+        RenderGraphTransientPool* transient_resource_pool) 
+    {
         DO_ASSERT(m_active_renderer != nullptr, "RenderPipeline has no active renderer");
-        m_active_renderer->render(view_family, scene, swapchain_image_index, out_commands, frame_staging_allocator);
+        m_active_renderer->render(
+            view_family, scene, swapchain_image_index, out_commands,
+            frame_staging_allocator, transient_resource_pool);
     }
 
 } // dodoe

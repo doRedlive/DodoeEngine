@@ -44,6 +44,7 @@ namespace dodoe {
     class PipelineStateCache;
     class TextureManager;
     class FrameStagingAllocator;
+    class RenderGraphTransientPool;
 
     struct RenderGraphExecuteContext {
         const RenderViewFamily* view_family{nullptr};
@@ -52,6 +53,7 @@ namespace dodoe {
         GfxContext* gfx_context{nullptr};
         SharedRenderService* shared_render_service{nullptr};
         FrameStagingAllocator* frame_staging_allocator{nullptr};
+        RenderGraphTransientPool* transient_resource_pool{nullptr};
         Size_t view_index{0};
         UInt32 swapchain_image_index{0};
     };

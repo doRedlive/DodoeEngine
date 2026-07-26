@@ -128,7 +128,9 @@ namespace dodoe {
                 show_editor = cam && cam->isEditorCamera();
 #endif
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
-                pipeline->render(family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list, frame_ctx.staging);
+                pipeline->render(
+                    family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list,
+                    frame_ctx.staging, frame_ctx.transient_resource_pool);
             }
             m_frame_scheduler->endFrame(frame_ctx);
             draw_thread->submit(std::move(frame_ctx));
@@ -147,7 +149,9 @@ namespace dodoe {
                 show_editor = cam && cam->isEditorCamera();
 #endif
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
-                pipeline->render(family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list, frame_ctx.staging);
+                pipeline->render(
+                    family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list,
+                    frame_ctx.staging, frame_ctx.transient_resource_pool);
             }
 
             {

@@ -6,7 +6,6 @@
 
 #include "render_graph_pass.h"
 #include "render_graph_resource.h"
-#include "render_graph_transient_pool.h"
 #include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
@@ -16,7 +15,6 @@ namespace dodoe {
         DynamicArray<RenderGraphResourceRecord> m_resources{};
         DynamicArray<DynamicArray<Size_t>> m_levels{};
         DynamicArray<Bool> m_culled_passes{};
-        RenderGraphTransientPool m_transient_pool{};
         DynamicArray<String> m_subgraph_names{};
         Bool m_compiled{false};
 

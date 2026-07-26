@@ -73,7 +73,10 @@ namespace dodoe {
 	                                      RenderScene& scene,
 	                                      const UInt32 swapchain_image_index,
 	                                      DrawCommandList& out_commands,
-	                                      FrameStagingAllocator* frame_staging_allocator) const {
+	                                      FrameStagingAllocator* frame_staging_allocator,
+	                                      RenderGraphTransientPool* transient_resource_pool) const {
+	    DO_ASSERT(transient_resource_pool != nullptr,
+	              "BaseRenderer requires a transient resource pool");
 	    DynamicArray<RenderGraphBuilder> graphs;
 	    graphs.reserve(view_family.getSize());
 
@@ -106,6 +109,7 @@ namespace dodoe {
 	        context.gfx_context           = m_gfx_context;
 	        context.shared_render_service = m_shared_render_service;
 	        context.frame_staging_allocator = frame_staging_allocator;
+	        context.transient_resource_pool = transient_resource_pool;
 	        context.swapchain_image_index  = swapchain_image_index;
 	        graphs[view_index].execute(*m_thread_pool, context, out_commands);
 	    }

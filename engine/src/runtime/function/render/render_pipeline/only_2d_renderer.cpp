@@ -43,9 +43,11 @@ namespace dodoe {
 
     void Only2DRenderer::render(RenderViewFamily& view_family, RenderScene& scene,
                                  const UInt32 swapchain_image_index, DrawCommandList& out_commands,
-                                 FrameStagingAllocator* frame_staging_allocator) {
+                                 FrameStagingAllocator* frame_staging_allocator,
+                                 RenderGraphTransientPool* transient_resource_pool) {
         initViews(scene, view_family);
-        buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands, frame_staging_allocator);
+        buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,
+            frame_staging_allocator, transient_resource_pool);
     }
 
 } // dodoe

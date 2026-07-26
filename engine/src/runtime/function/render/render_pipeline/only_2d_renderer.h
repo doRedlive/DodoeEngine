@@ -20,7 +20,8 @@ namespace dodoe {
 
         void render(RenderViewFamily& view_family, RenderScene& scene,
                     UInt32 swapchain_image_index, DrawCommandList& out_commands,
-                    FrameStagingAllocator* frame_staging_allocator) override;
+                    FrameStagingAllocator* frame_staging_allocator,
+                    RenderGraphTransientPool* transient_resource_pool) override;
     };
 
 } // dodoe

@@ -37,6 +37,7 @@ namespace dodoe {
             m_deletion_queue.processCompleted(slot.frame_number);
         }
 
+        slot.transient_resource_pool.releaseAll();
         if (slot.staging) slot.staging->reset();
         slot.frame_number = m_frame_counter++;
         slot.swapchain_image_index = swapchain_image_index;
@@ -49,6 +50,7 @@ namespace dodoe {
         ctx.swapchain_image_index = slot.swapchain_image_index;
         ctx.completion_query = slot.completion_query;
         ctx.staging = slot.staging.get();
+        ctx.transient_resource_pool = &slot.transient_resource_pool;
         ctx.valid = true;
         return ctx;
     }
