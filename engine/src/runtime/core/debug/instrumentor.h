@@ -17,14 +17,14 @@ namespace dodoe {
     using FloatingPointMicroseconds = std::chrono::duration<double, std::micro>;
 
     struct ProfileResult {
-        std::string name;
+        String name;
         FloatingPointMicroseconds start;
         std::chrono::microseconds elapsed_time;
         std::thread::id thread_id;
     };
 
     struct InstrumentationSession {
-        std::string name;
+        String name;
     };
 
     class Instrumentor {
@@ -40,7 +40,7 @@ namespace dodoe {
             return instance;
         }
 
-        void beginSession(const std::string& name, const std::string& file_path = "result.json") {
+        void beginSession(const String& name, const String& file_path = "result.json") {
             std::lock_guard lock(m_mutex);
             if (m_cur_session) {
                 std::cerr << "Instrumentor::beginSession error\n";

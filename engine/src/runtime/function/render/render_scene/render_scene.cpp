@@ -322,7 +322,7 @@ namespace dodoe {
             addTex("metallic_roughness_texture", props.metallic_roughness_texture);
             addTex("emissive_texture", props.emissive_texture);
 
-            String instance_name = fmt::format("Mat_{}_{}", info.getId(), i);
+            String instance_name = String(fmt::format("Mat_{}_{}", info.getId(), i).c_str());
             batch.material_instance = const_cast<MaterialInstance*>(
                 material_system->getOrCreateInstance(instance_name, "GBuffer", overrides));
         }

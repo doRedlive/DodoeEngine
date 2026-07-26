@@ -140,7 +140,7 @@ namespace dodoe {
         Entity entity = node.entity;
         if (!entity.valid()) return;
 
-        const std::string& name = entity.name();
+        const String& name = entity.name();
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (node.children.empty()) {
             flags |= ImGuiTreeNodeFlags_Leaf;

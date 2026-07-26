@@ -25,9 +25,9 @@ namespace dodoe {
     };
 
     struct LogMessage {
-        std::string content;
-        std::string payload;
-        std::string logger_name;
+        String content;
+        String payload;
+        String logger_name;
         LogLevel level{ LogLevel::Trace };
         uint32_t repeat_count{1};
         uint64_t sequence{0};

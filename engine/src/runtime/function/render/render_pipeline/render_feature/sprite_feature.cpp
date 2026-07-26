@@ -4,7 +4,7 @@
 
 #include "runtime/function/render/render_pipeline/passes/render_sprite_pass.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
-#include "runtime/function/render/shared_render_service.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_scene/sprite_scene_info.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/shader/shader_library.h"

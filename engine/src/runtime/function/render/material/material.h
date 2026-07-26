@@ -17,6 +17,7 @@ namespace dodoe {
         FileID normal_texture{};
         FileID metallic_roughness_texture{};
         FileID emissive_texture{};
+        Bool operator==(const MaterialProperties& other) const = default;
     };
 
 } // dodoe

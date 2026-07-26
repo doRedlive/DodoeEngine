@@ -17,7 +17,7 @@ namespace dodoe {
 
         m_ring_buffer = create_ref<GfxBuffer>(desc);
         m_ring_buffer->initializeRHI(m_device);
-        m_mapped_base = static_cast<UInt8*>(m_device->mapBuffer(m_ring_buffer->getRHI(), CpuAccessMode::Write));
+        m_mapped_base = static_cast<UInt8*>(m_device->mapBuffer(m_ring_buffer->getRHI(), GfxCpuAccessMode::Write));
 
         m_head = 0;
         m_stall_count = 0;

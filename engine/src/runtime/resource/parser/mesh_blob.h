@@ -26,10 +26,10 @@ namespace dodoe {
         Ref<MeshData> data{nullptr};
 
         MeshBlob() = default;
-        explicit MeshBlob(const std::string& path);
+        explicit MeshBlob(const String& path);
         ~MeshBlob();
 
-        void load(const std::string& path);
+        void load(const String& path);
         void free();
 
         [[nodiscard]] bool isValid() const { return data != nullptr; }

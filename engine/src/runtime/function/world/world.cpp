@@ -359,7 +359,7 @@ namespace dodoe {
             return nullptr;
         }
 
-        const std::string asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
+        const String asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
         auto handle = asset_manager->loadSceneAsset(asset_url);
         if (!handle.isValid() || !handle.isLoaded()) {
             DO_ERROR("loadScene: failed to load '{}'", asset_url);
@@ -514,7 +514,7 @@ namespace dodoe {
         }
     }
 
-    std::future<Scene*> World::loadSceneAsync(const std::string& name, LoadSceneMode mode) {
+    std::future<Scene*> World::loadSceneAsync(const String& name, LoadSceneMode mode) {
         auto promise = create_ref<std::promise<Scene*>>();
         auto future = promise->get_future();
 
@@ -525,7 +525,7 @@ namespace dodoe {
             return future;
         }
 
-        const std::string asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
+        const String asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
 
         auto& scheduler = TaskScheduler::Self();
         scheduler.async([this, asset_manager, asset_url, name, mode, promise]() {

@@ -19,7 +19,7 @@ namespace dodoe {
 
     public:
         META(Enable)
-        std::string m_name;
+        String m_name;
         META(Enable)
         std::vector<EntityRes> m_entities;
     };

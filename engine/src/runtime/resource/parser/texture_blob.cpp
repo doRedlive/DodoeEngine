@@ -10,7 +10,7 @@
 
 namespace dodoe {
 
-    TextureBlob::TextureBlob(const std::string& path) {
+    TextureBlob::TextureBlob(const String& path) {
         load(path);
     }
 
@@ -20,7 +20,7 @@ namespace dodoe {
         }
     }
 
-    void TextureBlob::load(const std::string& path, bool flip_vertical) {
+    void TextureBlob::load(const String& path, bool flip_vertical) {
         stbi_set_flip_vertically_on_load(flip_vertical);
         is_hdr = stbi_is_hdr(path.c_str()) != 0;
         if (is_hdr) {

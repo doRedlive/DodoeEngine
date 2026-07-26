@@ -46,7 +46,7 @@ namespace dodoe {
 
         void UnregisterRoot(InstanceID id) {
             auto* obj = Object::FindObjectFromInstanceID(id);
-            if (obj) GCRootRegistry::instance().unregisterRoot(obj);
+            if (obj) GCRootRegistry::instance().unregisterRoot(obj->getInstanceID());
         }
 
         const UnorderedSet<InstanceID>& GetAcquiredSet() {

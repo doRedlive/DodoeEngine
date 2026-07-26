@@ -19,7 +19,7 @@
 namespace dodoe {
 
     struct WorldCreateInfo {
-        std::string name;
+        String name;
     };
 
     enum class WorldState {
@@ -78,16 +78,16 @@ namespace dodoe {
         void setState(WorldState state) { m_state = state; }
         WorldState getState() const { return m_state; }
 
-        Scene* createScene(const std::string& name);
-        void deleteScene(const std::string& name);
+        Scene* createScene(const String& name);
+        void deleteScene(const String& name);
 
-        Scene* loadScene(const std::string& name, LoadSceneMode mode = LoadSceneMode::Single);
-        std::future<Scene*> loadSceneAsync(const std::string& name, LoadSceneMode mode = LoadSceneMode::Single);
+        Scene* loadScene(const String& name, LoadSceneMode mode = LoadSceneMode::Single);
+        std::future<Scene*> loadSceneAsync(const String& name, LoadSceneMode mode = LoadSceneMode::Single);
         void drainAsyncCompletions();
-        void unloadScene(const std::string& name);
+        void unloadScene(const String& name);
 
-        void activateScene(const std::string& name);
-        void deactivateScene(const std::string& name);
+        void activateScene(const String& name);
+        void deactivateScene(const String& name);
         bool activateStartScene();
 
         [[nodiscard]] Scene* getScene(const String& name) const;

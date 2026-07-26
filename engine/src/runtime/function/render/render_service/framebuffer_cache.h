@@ -8,6 +8,7 @@
 
 namespace dodoe {
 
+	class GfxContext;
     class DrawCommandList;
 
     struct FramebufferCacheKey {

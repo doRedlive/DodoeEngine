@@ -25,7 +25,7 @@ namespace dodoe {
         Size_t h = reinterpret_cast<Size_t>(vertex_shader.Get());
         hash_combine(h, attributes.size());
         for (const auto& attr : attributes) {
-            hash_combine(h, std::hash<std::string>{}(attr.name));
+            hash_combine(h, std::hash<String>{}(attr.name));
             hash_combine(h, static_cast<Size_t>(attr.format));
             hash_combine(h, static_cast<Size_t>(attr.arraySize));
             hash_combine(h, static_cast<Size_t>(attr.bufferIndex));

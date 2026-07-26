@@ -40,7 +40,7 @@ namespace dodoe {
 
         graph.addPass<GBufferPassParameters>(
             "GBufferPass",
-            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
+            RenderGraphPassFlags::Raster,
             [view = &context.view, imports = context.graph_imports, processor = m_mesh_processor]
             (RenderGraphPassBuilder& b, GBufferPassParameters& p) {
                 const auto* mesh_ext = view->getExtension<MeshViewExtension>();
@@ -50,11 +50,23 @@ namespace dodoe {
                 p.gbuffer_rt = imports->require<GBufferRenderTargetKey>();
                 DO_ASSERT(p.gbuffer_rt != nullptr, "GBufferPass requires a GBuffer RenderTargetHandle");
 
-                p.albedo   = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(0), "BaseAlbedo"));
-                p.normal   = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(1), "BaseNormal"));
-                p.position = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(2), "BasePosition"));
-                p.material = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(3), "BaseMaterial"));
-                p.depth    = b.writeDepth(b.importTexture(p.gbuffer_rt->getDepthTexture(), "BaseDepth"));
+                RenderGraphAttachmentInfo color_attach{};
+                color_attach.load_op = LoadOp::Clear;
+                color_attach.clear_color = GfxColor(0.08f, 0.09f, 0.11f, 1.0f);
+                p.albedo = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(0), "BaseAlbedo"), color_attach);
+
+                color_attach.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
+                p.normal = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(1), "BaseNormal"), color_attach);
+
+                color_attach.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
+                p.position = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(2), "BasePosition"), color_attach);
+
+                color_attach.clear_color = GfxColor(0.0f, 1.0f, 1.0f, 1.0f);
+                p.material = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(3), "BaseMaterial"), color_attach);
+
+                RenderGraphAttachmentInfo depth_attach{};
+                depth_attach.load_op = LoadOp::Clear;
+                p.depth = b.writeDepth(b.importTexture(p.gbuffer_rt->getDepthTexture(), "BaseDepth"), depth_attach);
 
                 RenderGraphBufferDesc primitive_scene_buffer_desc{};
                 primitive_scene_buffer_desc.desc = GfxBufferDesc()
@@ -78,30 +90,10 @@ namespace dodoe {
             [this, processor = m_mesh_processor](const GBufferPassParameters& p, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 DO_ASSERT(ctx.getView() != nullptr, "BasePass view is null");
 
-                const auto albedo = ctx.resolveTexture(p.albedo);
-                const auto normal = ctx.resolveTexture(p.normal);
-                const auto position = ctx.resolveTexture(p.position);
-                const auto material = ctx.resolveTexture(p.material);
-                const auto depth = ctx.resolveTexture(p.depth);
-
-                auto framebuffer = p.gbuffer_rt->getFramebuffer(command_list);
-
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
 
-                command_list.setTextureState(albedo, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.setTextureState(normal, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.setTextureState(position, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.setTextureState(material, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.setTextureState(depth, GfxAllSubresources, GfxResourceStates::DepthWrite);
-                command_list.commitBarriers();
-                command_list.clearTextureFloat(albedo, GfxAllSubresources, GfxColor(0.08f, 0.09f, 0.11f, 1.0f));
-                command_list.clearTextureFloat(normal, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.clearTextureFloat(position, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.clearTextureFloat(material, GfxAllSubresources, GfxColor(0.0f, 1.0f, 1.0f, 1.0f));
-                command_list.clearDepthStencilTexture(depth, GfxAllSubresources, true, 1.0f, false, 0);
-
                 const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
-                const auto& instance_data = mesh_ext ? mesh_ext->instance_scene_data : DynamicArray<InstanceSceneData>{};
+                const auto& instance_data = mesh_ext->instance_scene_data;
                 const auto resolved_psb = ctx.resolveBuffer(p.primitive_scene_buffer);
                 command_list.setBufferState(resolved_psb, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
@@ -117,17 +109,11 @@ namespace dodoe {
                     extra_bindings.push_back(processor->getDescriptorBindingSet());
                 }
 
+                const auto fb = ctx.getFramebuffer();
                 SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    framebuffer, viewport_state, resolved_psb, extra_bindings, command_list);
+                    fb, viewport_state, resolved_psb, extra_bindings, command_list);
                 SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    framebuffer, viewport_state, resolved_psb, extra_bindings, command_list);
-
-                command_list.setTextureState(albedo, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(normal, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(position, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(material, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(depth, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
+                    fb, viewport_state, resolved_psb, extra_bindings, command_list);
             }
         );
     }
@@ -145,7 +131,7 @@ namespace dodoe {
 
         graph.addPass<ShadowPassParameters>(
             "DirectionalShadowPass",
-            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
+            RenderGraphPassFlags::Raster,
             [view = &context.view, imports = context.graph_imports, processor = m_mesh_processor]
             (RenderGraphPassBuilder& pass_builder, ShadowPassParameters& parameters) {
                 const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
@@ -155,8 +141,10 @@ namespace dodoe {
                 parameters.shadow_rt = imports->require<ShadowMapRenderTargetKey>();
                 DO_ASSERT(parameters.shadow_rt != nullptr, "DirectionalShadowPass requires a ShadowMap RenderTargetHandle");
 
+                RenderGraphAttachmentInfo depth_attach{};
+                depth_attach.load_op = LoadOp::Clear;
                 parameters.shadow_map = pass_builder.writeDepth(pass_builder.importTexture(
-                    parameters.shadow_rt->getDepthTexture(), "ShadowMap"));
+                    parameters.shadow_rt->getDepthTexture(), "ShadowMap"), depth_attach);
                 parameters.primitive_scene_buffer = pass_builder.read(scene_textures->instance_scene_data);
 
                 parameters.constant_buffer = pass_builder.importBuffer(processor->getConstantBuffer(), "DirectionalShadowConstantBuffer");
@@ -168,27 +156,18 @@ namespace dodoe {
                 const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
                 if (!mesh_ext) return;
 
-                const auto shadow_map = ctx.resolveTexture(parameters.shadow_map);
-                auto framebuffer = parameters.shadow_rt->getFramebuffer(command_list);
-
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
-
-                command_list.setTextureState(shadow_map, GfxAllSubresources, GfxResourceStates::DepthWrite);
-                command_list.commitBarriers();
-                command_list.clearDepthStencilTexture(shadow_map, GfxAllSubresources, true, 1.0f, false, 0);
 
                 const auto resolved_psb = ctx.resolveBuffer(parameters.primitive_scene_buffer);
 
                 auto* feature = static_cast<BaseSceneFeature*>(m_owning_feature);
                 const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];
 
+                const auto fb = ctx.getFramebuffer();
                 SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    framebuffer, viewport_state, resolved_psb, {}, command_list);
+                    fb, viewport_state, resolved_psb, {}, command_list);
                 SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    framebuffer, viewport_state, resolved_psb, {}, command_list);
-
-                command_list.setTextureState(shadow_map, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
+                    fb, viewport_state, resolved_psb, {}, command_list);
             }
         );
     }

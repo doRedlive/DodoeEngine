@@ -11,7 +11,7 @@
 namespace dodoe {
 
     class RectRendererSystem : public System {
-        std::unordered_set<UUID> m_submitted{};
+        UnorderedSet<UUID> m_submitted{};
 
     public:
         ~RectRendererSystem() override;
@@ -20,7 +20,7 @@ namespace dodoe {
 
     private:
         Bool syncRect(Entity entity);
-        void pruneRemoved(const std::unordered_set<UUID>& active);
+        void pruneRemoved(const UnorderedSet<UUID>& active);
         Bool needsSync(Entity entity) const;
         Matrix4f buildWorldMatrix(const TransformComponent& transform, const RectRendererComponent& rect) const;
     };

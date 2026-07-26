@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "texture.h"
+#include "runtime/core/object/obj_handle.h"
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/graphics/draw_command_list.h"
 

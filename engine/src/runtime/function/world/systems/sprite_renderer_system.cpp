@@ -3,7 +3,7 @@
 #include "sprite_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
 #include "runtime/function/render/texture/texture_manager.h"
 

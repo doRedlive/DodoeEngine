@@ -28,7 +28,7 @@ namespace dodoe {
             return GetScriptSystem()->getScriptRuntime();
         }
 
-        bool ParseJsonText(const std::string& json_text, Json& out_json) {
+        bool ParseJsonText(const String& json_text, Json& out_json) {
             try {
                 out_json = Json::parse(json_text);
                 return true;
@@ -128,7 +128,7 @@ namespace dodoe {
 
     Scene::Scene(const SceneCreateInfo& info) : Scene(info.world, info.name) { }
 
-    Scene::Scene(World& world, const std::string& name) : m_world(world), m_name(name), m_reg(this) { }
+    Scene::Scene(World& world, const String& name) : m_world(world), m_name(name), m_reg(this) { }
 
     void Scene::save() {
         const auto active_project = Project::ActiveProject();
@@ -143,7 +143,7 @@ namespace dodoe {
             return;
         }
 
-        const std::string asset_url = (FsPath("Scenes") / (m_name + ".doscn")).generic_string();
+        const String asset_url = (FsPath("Scenes") / (m_name + ".doscn")).generic_string();
         (void)asset_manager->saveAssetFile(serialize(), asset_url);
     }
 
@@ -227,11 +227,11 @@ namespace dodoe {
         }
     }
 
-    Entity Scene::createEntity(const std::string& name) {
+    Entity Scene::createEntity(const String& name) {
         return createEntity(Uuid(), name);
     }
 
-    Entity Scene::createEntity(Uuid uuid, const std::string& name) {
+    Entity Scene::createEntity(Uuid uuid, const String& name) {
         auto entity = m_reg.create();
         auto id = entity.addComponent<IDComponent>(uuid, name);
         id.name = name.empty() ? "Entity" : name;
@@ -267,7 +267,7 @@ namespace dodoe {
         m_reg.destroy(entity);
     }
 
-    Entity Scene::getEntityByTag(const std::string& tag) {
+    Entity Scene::getEntityByTag(const String& tag) {
         for (auto entity : m_reg.view<TagComponent>()) {
             if (entity.getComponent<TagComponent>().tag == tag) {
                 return entity;
@@ -277,7 +277,7 @@ namespace dodoe {
         return Entity::NullEntity();
     }
 
-    DynamicArray<Entity> Scene::getEntitiesByTag(const std::string& tag) {
+    DynamicArray<Entity> Scene::getEntitiesByTag(const String& tag) {
         DynamicArray<Entity> result;
         for (auto entity : m_reg.view<TagComponent>()) {
             if (entity.getComponent<TagComponent>().tag == tag) {

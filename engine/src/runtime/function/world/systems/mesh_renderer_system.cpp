@@ -1,7 +1,7 @@
 #include "mesh_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/static_mesh_render_object.h"
 
 #include "runtime/core/math/math.h"
@@ -14,7 +14,7 @@ namespace dodoe {
         (void)dt;
 
         auto mesh_view = reg.view<IDComponent, TransformComponent, MeshRendererComponent>();
-        std::unordered_set<UUID> active_renderers{};
+        UnorderedSet<UUID> active_renderers{};
 
         for (auto entity : mesh_view) {
             auto& id = entity.getComponent<IDComponent>();
@@ -58,7 +58,7 @@ namespace dodoe {
         return true;
     }
 
-    void MeshRendererSystem::pruneRemovedObjects(const std::unordered_set<UUID>& active_renderers) {
+    void MeshRendererSystem::pruneRemovedObjects(const UnorderedSet<UUID>& active_renderers) {
         for (auto it = m_submitted_objects.begin(); it != m_submitted_objects.end();) {
             if (active_renderers.find(*it) == active_renderers.end()) {
                 RenderCommandQueue::RemovePrimitive(*it);
@@ -69,7 +69,7 @@ namespace dodoe {
         }
     }
 
-    bool MeshRendererSystem::needsRenderObjectSync(Entity entity, const std::unordered_set<UUID>& submitted) {
+    bool MeshRendererSystem::needsRenderObjectSync(Entity entity, const UnorderedSet<UUID>& submitted) {
         const auto& id = entity.getComponent<IDComponent>();
         const auto& transform = entity.getComponent<TransformComponent>();
         const auto& mesh = entity.getComponent<MeshRendererComponent>();

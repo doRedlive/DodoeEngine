@@ -4,7 +4,7 @@
 
 #include "physics_debug.h"
 
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 
 namespace dodoe {
 

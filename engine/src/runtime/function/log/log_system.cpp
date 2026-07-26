@@ -58,9 +58,9 @@ namespace dodoe {
             const auto sequence = ++s_log_sequence;
 
             LogMessage log_msg;
-            log_msg.content = std::string(formatted.begin(), formatted.end());
-            log_msg.payload = std::string(msg.payload.begin(), msg.payload.end());
-            log_msg.logger_name = std::string(msg.logger_name.begin(), msg.logger_name.end());
+            log_msg.content = String(formatted.begin(), formatted.end());
+            log_msg.payload = String(msg.payload.begin(), msg.payload.end());
+            log_msg.logger_name = String(msg.logger_name.begin(), msg.logger_name.end());
             log_msg.level = kLogLevelUmap.at(msg.level);
             log_msg.sequence = sequence;
 
@@ -91,8 +91,8 @@ namespace dodoe {
     std::shared_ptr<spdlog::logger> Log::m_client_logger = spdlog::stdout_color_mt("Client");
     LogLevel Log::m_core_level   = LogLevel::Trace;
     LogLevel Log::m_client_level = LogLevel::Debug;
-    Ref<MemSinkMt> s_editor_console_sink = create_ref<MemSinkMt>();
-    Ref<MemSinkMt> s_engine_console_sink = create_ref<MemSinkMt>();
+    std::shared_ptr<MemSinkMt> s_editor_console_sink = std::make_shared<MemSinkMt>();
+    std::shared_ptr<MemSinkMt> s_engine_console_sink = std::make_shared<MemSinkMt>();
 
     void Log::Initialize() {
         m_core_logger->set_pattern("%^[%T] %n: %v%$");
@@ -101,9 +101,9 @@ namespace dodoe {
         SetLoggerLevel(m_core_logger, LogLevel::Trace);
         SetLoggerLevel(m_client_logger, LogLevel::Debug);
 
-        const auto console_sink = create_ref<spdlog::sinks::stdout_color_sink_mt>();
-        const auto core_file_sink = create_ref<spdlog::sinks::basic_file_sink_mt>("engine.log", true);
-        const auto client_file_sink = create_ref<spdlog::sinks::basic_file_sink_mt>("client.log", true);
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        auto core_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("engine.log", true);
+        auto client_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("client.log", true);
 
         console_sink->set_pattern("%^[%T] %n: %v%$");
         core_file_sink->set_pattern("[%T] [%l] %n: %v");

@@ -47,7 +47,7 @@ Image::Image(identifier texture_id, Rect source_rect, bool flipped)
       flipped_(flipped) {}
 
 void Image::setTexture(std::string_view texture_path) {
-    texture_path_ = std::string(texture_path);
+    texture_path_ = String(texture_path);
     texture_id_ = hashOrNull(texture_path);
 }
 
@@ -142,11 +142,11 @@ Vector2f ResourceManagerFacade::getTextureSize(identifier texture_id, std::strin
 
     Texture2D* texture = nullptr;
     if (texture_id != entt::null && !texture_path.empty()) {
-        texture = Texture2D::Load(std::string(texture_path));
+        texture = Texture2D::Load(String(texture_path));
     } else if (texture_id != entt::null) {
         texture = texture_manager->findTexture2D(static_cast<InstanceID>(texture_id));
     } else if (!texture_path.empty()) {
-        texture = texture_manager->loadTexture(std::string(texture_path));
+        texture = texture_manager->loadTexture(String(texture_path));
     }
 
     if (!texture) {

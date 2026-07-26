@@ -12,10 +12,10 @@ namespace dodoe {
         const char* unknownType = "unknownType";
         const char* unknownName = "unknownName";
 
-        static std::map<std::string, ClassFuncTuple*> class_map;
-        static std::multimap<std::string, FieldFuncTuple*> field_map;
-        static std::multimap<std::string, MethodFuncTuple*> method_map;
-        static std::map<std::string, ArrayFuncTuple*> array_map;
+        static std::map<String, ClassFuncTuple*> class_map;
+        static std::multimap<String, FieldFuncTuple*> field_map;
+        static std::multimap<String, MethodFuncTuple*> method_map;
+        static std::map<String, ArrayFuncTuple*> array_map;
 
         void TypeMetaRegisterInterface::register2classmap(const char* name, ClassFuncTuple* value) {
             if (class_map.find(name) == class_map.end()) {
@@ -66,7 +66,7 @@ namespace dodoe {
         }
 
 
-        TypeMeta::TypeMeta(const std::string& name) : type_name_(name) {
+        TypeMeta::TypeMeta(const String& name) : type_name_(name) {
             fields_.clear();
             methods_.clear();
 
@@ -94,12 +94,12 @@ namespace dodoe {
             methods_.clear();
         }
 
-        TypeMeta TypeMeta::newMetaFromName(const std::string& name) {
+        TypeMeta TypeMeta::newMetaFromName(const String& name) {
             TypeMeta type_meta(name);
             return type_meta;
         }
 
-        bool TypeMeta::new_array_accessor_from_name(const std::string& array_type_name, ArrayAccessor& accessor) {
+        bool TypeMeta::new_array_accessor_from_name(const String& array_type_name, ArrayAccessor& accessor) {
             auto it = array_map.find(array_type_name);
 
             if (it != array_map.end()) {
@@ -111,7 +111,7 @@ namespace dodoe {
             return false;
         }
 
-        ReflectionInstance TypeMeta::new_from_name_and_json(const std::string& type_name, const Json& json_context) {
+        ReflectionInstance TypeMeta::new_from_name_and_json(const String& type_name, const Json& json_context) {
             auto it = class_map.find(type_name);
 
             if (it != class_map.end()) {
@@ -121,7 +121,7 @@ namespace dodoe {
             return ReflectionInstance();
         }
 
-        Json TypeMeta::write_by_name(const std::string& name, void* instance) {
+        Json TypeMeta::write_by_name(const String& name, void* instance) {
             auto it = class_map.find(name);
 
             if (it != class_map.end()) {
@@ -131,15 +131,15 @@ namespace dodoe {
             return Json();
         }
 
-        ReflectionInstance TypeMeta::newFromNameAndJson(const std::string& type_name, const Json& json_context) {
+        ReflectionInstance TypeMeta::newFromNameAndJson(const String& type_name, const Json& json_context) {
             return new_from_name_and_json(type_name, json_context);
         }
 
-        Json TypeMeta::writeByName(const std::string& name, void* instance) {
+        Json TypeMeta::writeByName(const String& name, void* instance) {
             return write_by_name(name, instance);
         }
 
-        const std::string& TypeMeta::get_type_name() const {
+        const String& TypeMeta::get_type_name() const {
             return type_name_;
         }
 
@@ -268,21 +268,21 @@ namespace dodoe {
         }
 
         void FieldAccessor::setAttribute(const char* key, const char* value) {
-            auto* m = static_cast<std::unordered_map<std::string, std::string>*>(m_attributes);
+            auto* m = static_cast<std::unordered_map<String, String>*>(m_attributes);
             if (!m) {
-                m = new std::unordered_map<std::string, std::string>();
+                m = new std::unordered_map<String, String>();
                 m_attributes = m;
             }
             (*m)[key] = value;
         }
 
         bool FieldAccessor::hasAttribute(const char* key) const {
-            auto* m = static_cast<std::unordered_map<std::string, std::string>*>(m_attributes);
+            auto* m = static_cast<std::unordered_map<String, String>*>(m_attributes);
             return m && m->find(key) != m->end();
         }
 
         const char* FieldAccessor::attribute(const char* key) const {
-            auto* m = static_cast<std::unordered_map<std::string, std::string>*>(m_attributes);
+            auto* m = static_cast<std::unordered_map<String, String>*>(m_attributes);
             if (!m) return "";
             auto it = m->find(key);
             return it != m->end() ? it->second.c_str() : "";
@@ -291,11 +291,13 @@ namespace dodoe {
         bool FieldAccessor::attributeRange(float& min, float& max) const {
             const char* val = attribute("Range");
             if (!val || !val[0]) return false;
-            std::string s(val);
+            String s(val);
             auto comma = s.find(',');
-            if (comma == std::string::npos) return false;
-            min = std::stof(s.substr(0, comma));
-            max = std::stof(s.substr(comma + 1));
+            if (comma == String::npos) return false;
+            std::string s0(s.substr(0, comma));
+            std::string s1(s.substr(comma + 1));
+            min = std::stof(s0);
+            max = std::stof(s1);
             return true;
         }
 

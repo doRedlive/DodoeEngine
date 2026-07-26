@@ -16,13 +16,13 @@ namespace dodoe {
         REFLECTION_BODY(TagComponent)
 
         META(Enable)
-        std::string tag{"default"};
+        String tag{"default"};
 
         identifier id{string2hash("default")};
         bool dirty{false};
 
-        void setTag(const std::string& v) { tag = v; id = string2hash(v); dirty = true; }
-        [[nodiscard]] const std::string& getTag() const { return tag; }
+        void setTag(const String& v) { tag = v; id = string2hash(v); dirty = true; }
+        [[nodiscard]] const String& getTag() const { return tag; }
     };
 
 } // dodoe

@@ -9,8 +9,8 @@ namespace dodoe {
 class UIPresetManager final {
     std::unordered_map<identifier, UIButtonSkin> button_presets_{};
     std::unordered_map<identifier, Image> image_presets_{};
-    std::unordered_map<identifier, std::string> button_preset_keys_{};
-    std::unordered_map<identifier, std::string> image_preset_keys_{};
+    std::unordered_map<identifier, String> button_preset_keys_{};
+    std::unordered_map<identifier, String> image_preset_keys_{};
 
     static std::optional<Image> parseImageDefinition(const nlohmann::json& json_value);
     static std::optional<NineSliceMargins> parseNineSlice(const nlohmann::json& json_value);

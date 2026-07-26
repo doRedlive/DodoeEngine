@@ -1,7 +1,7 @@
 #include "light_system.h"
 
 #include "runtime/core/context/system_context.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
 
 #include "runtime/core/math/math.h"
@@ -13,7 +13,7 @@ namespace dodoe {
     void LightSystem::update(Registry& reg, float dt) {
         (void)dt;
 
-        std::unordered_set<UUID> active_lights{};
+        UnorderedSet<UUID> active_lights{};
         bool dirty = false;
 
         auto point_view = reg.view<IDComponent, TransformComponent, PointLightComponent>();
@@ -107,7 +107,7 @@ namespace dodoe {
         return true;
     }
 
-    void LightSystem::pruneRemovedLights(const std::unordered_set<UUID>& active_lights) {
+    void LightSystem::pruneRemovedLights(const UnorderedSet<UUID>& active_lights) {
         for (auto it = m_submitted_lights.begin(); it != m_submitted_lights.end();) {
             if (!active_lights.contains(it->first)) {
                 RenderCommandQueue::RemoveLight(it->first);

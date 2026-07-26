@@ -7,11 +7,11 @@
 namespace dodoe {
 
 	struct ProjectConfig {
-		std::string name{ "Untitled" };
+		String name{ "Untitled" };
 
 		FsPath project_path;
 		FsPath asset_directory;
-		std::string start_scene_name;
+		String start_scene_name;
 	};
 
 	class DODOE_API Project {

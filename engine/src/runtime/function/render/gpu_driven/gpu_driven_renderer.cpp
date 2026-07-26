@@ -36,7 +36,7 @@ namespace dodoe {
         m_visible_count_readback_buffer = cmd_list.createBuffer(
             GfxBufferDesc()
                 .setByteSize(sizeof(UInt32))
-                .setIsReadbackBuffer(true)
+                .setCpuAccess(GfxCpuAccessMode::Read)
                 .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                 .setDebugName("VisibleCountReadback"));
     }
@@ -182,7 +182,7 @@ namespace dodoe {
         cmd_list.setBufferState(m_visible_count_buffer, GfxResourceStates::CopySource);
         cmd_list.setBufferState(m_visible_count_readback_buffer, GfxResourceStates::CopyDest);
         cmd_list.commitBarriers();
-        cmd_list.copyBuffer(m_visible_count_readback_buffer, m_visible_count_buffer, sizeof(UInt32), 0, 0);
+        cmd_list.copyBuffer(m_visible_count_readback_buffer, 0, m_visible_count_buffer, 0, sizeof(UInt32));
 
         cmd_list.setBufferState(m_visible_objects_buffer, GfxResourceStates::ShaderResource);
         cmd_list.setBufferState(m_visible_count_buffer, GfxResourceStates::ShaderResource);

@@ -19,9 +19,9 @@ namespace dodoe {
 
         static ScriptEngine* s_ScriptEngine = nullptr;
 
-        static std::unordered_map<std::string, std::function<int(Entity)>> s_EntityHasComponentFuncUmap;
-        static std::unordered_map<std::string, std::function<void(Entity)>> s_EntityAddComponentFuncUmap;
-        static std::unordered_map<std::string, std::function<void(Entity)>> s_EntityRemoveComponentFuncUmap;
+        static std::unordered_map<String, std::function<int(Entity)>> s_EntityHasComponentFuncUmap;
+        static std::unordered_map<String, std::function<void(Entity)>> s_EntityAddComponentFuncUmap;
+        static std::unordered_map<String, std::function<void(Entity)>> s_EntityRemoveComponentFuncUmap;
 
         template<typename... T> struct ComponentGroup { };
 
@@ -33,13 +33,13 @@ namespace dodoe {
         >;
 
         template<typename TC>
-        static std::string ResolveManagedComponentName() {
+        static String ResolveManagedComponentName() {
             std::string_view tn = typeid(TC).name();
             size_t p = tn.find_last_of(':');
             std::string_view n = (p == std::string_view::npos) ? tn : tn.substr(p + 1);
             if (n.starts_with("struct ")) n.remove_prefix(7);
             else if (n.starts_with("class ")) n.remove_prefix(6);
-            return std::string(n);
+            return String(n);
         }
 
         template<typename TC>
@@ -78,7 +78,7 @@ namespace dodoe {
             return &e.getComponent<TC>();
         }
 
-#define DEF_STR_RET(id) thread_local static std::string _s_##id
+#define DEF_STR_RET(id) thread_local static String _s_##id
 
         static void native_log(const char* msg) { if (msg) LOG_INFO("{}", msg); }
 
@@ -132,13 +132,13 @@ namespace dodoe {
             auto& m = e.getComponent<TilemapComponent>(); auto ts = create_ref<TilesetAsset>();
             try {
                 Json j = Json::parse(json_str);
-                if (j.contains("Name")) ts->name = j["Name"].get<std::string>();
+                if (j.contains("Name")) ts->name = j["Name"].get<String>();
                 if (j.contains("FirstGid")) ts->first_gid = j["FirstGid"].get<UInt32>();
                 if (j.contains("TileWidth")) ts->tile_width = j["TileWidth"].get<UInt32>();
                 if (j.contains("TileHeight")) ts->tile_height = j["TileHeight"].get<UInt32>();
                 if (j.contains("Columns")) ts->columns = j["Columns"].get<UInt32>();
                 if (j.contains("TileCount")) ts->tile_count = j["TileCount"].get<UInt32>();
-                if (j.contains("ImagePath")) ts->image_path = j["ImagePath"].get<std::string>();
+                if (j.contains("ImagePath")) ts->image_path = j["ImagePath"].get<String>();
                 if (j.contains("TextureId")) ts->texture_id = j["TextureId"].get<UInt32>();
             } catch (...) { DO_ERROR("tilemap_add_tileset parse error"); return; }
             m.tilesets.push_back(std::move(ts)); m.dirty = true;

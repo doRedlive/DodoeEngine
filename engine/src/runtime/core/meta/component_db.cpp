@@ -39,7 +39,7 @@ namespace dodoe {
         registerBuiltinComponents();
     }
 
-    const ComponentDB::Entry* ComponentDB::find(const std::string& name) const {
+    const ComponentDB::Entry* ComponentDB::find(const String& name) const {
         const auto it = m_name2index.find(name);
         if (it == m_name2index.end()) {
             return nullptr;
@@ -59,21 +59,21 @@ namespace dodoe {
         return m_entries;
     }
 
-    const std::vector<std::pair<entt::id_type, std::string>>& ComponentDB::allComponents() const {
+    const std::vector<std::pair<entt::id_type, String>>& ComponentDB::allComponents() const {
         return m_addable_components;
     }
 
-    bool ComponentDB::hasComponent(Entity& entity, const std::string& name) const {
+    bool ComponentDB::hasComponent(Entity& entity, const String& name) const {
         const Entry* entry = find(name);
         return entry && entry->contains(entity);
     }
 
-    void* ComponentDB::getComponentPtr(Entity& entity, const std::string& name) const {
+    void* ComponentDB::getComponentPtr(Entity& entity, const String& name) const {
         const Entry* entry = find(name);
         return entry ? entry->get(entity) : nullptr;
     }
 
-    bool ComponentDB::addComponent(Entity& entity, const std::string& name) const {
+    bool ComponentDB::addComponent(Entity& entity, const String& name) const {
         const Entry* entry = find(name);
         if (!entry || !entry->canAdd()) {
             return false;
@@ -82,7 +82,7 @@ namespace dodoe {
         return true;
     }
 
-    bool ComponentDB::removeComponent(Entity& entity, const std::string& name) const {
+    bool ComponentDB::removeComponent(Entity& entity, const String& name) const {
         const Entry* entry = find(name);
         if (!entry || entry->remove == nullptr) {
             return false;
@@ -91,7 +91,7 @@ namespace dodoe {
         return true;
     }
 
-    bool ComponentDB::markComponentDirty(Entity& entity, const std::string& name) const {
+    bool ComponentDB::markComponentDirty(Entity& entity, const String& name) const {
         const Entry* entry = find(name);
         if (!entry || entry->markDirty == nullptr) {
             return false;
@@ -101,7 +101,7 @@ namespace dodoe {
     }
 
     template <typename T>
-    void ComponentDB::registerComponent(const std::string& name, bool addable) {
+    void ComponentDB::registerComponent(const String& name, bool addable) {
         Entry entry{};
         entry.type = entt::type_hash<T>::value();
         entry.name = name;

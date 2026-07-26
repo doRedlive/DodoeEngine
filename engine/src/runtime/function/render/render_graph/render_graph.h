@@ -47,7 +47,7 @@ namespace dodoe {
         void topologicalSort(const DynamicArray<DynamicArray<Size_t>>& edges, const DynamicArray<Int32>& indegree);
         void validateAccesses();
         void deriveBarriers();
-        void cullUnreachablePasses();
+        void cullUnreachablePasses(const DynamicArray<DynamicArray<Size_t>>& edges);
     };
 
 } // dodoe

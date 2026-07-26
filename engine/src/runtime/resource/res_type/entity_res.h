@@ -20,7 +20,7 @@ namespace dodoe {
         META(Enable)
         Uuid m_uuid{};
         META(Enable)
-        std::string m_name;
+        String m_name;
         META(Enable)
         std::vector<ComponentRes> m_native_components;
         META(Enable)

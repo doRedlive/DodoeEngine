@@ -12,8 +12,8 @@ class UILabel final : public UIElement {
 private:
     TextRenderer& text_renderer_;
 
-    std::string text_;
-    std::string font_path_;
+    String text_;
+    String font_path_;
     identifier font_id_;
     int font_size_;
     identifier style_id_{entt::null};

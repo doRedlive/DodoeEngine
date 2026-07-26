@@ -16,9 +16,9 @@ namespace dodoe {
 
     public:
         META(Enable)
-        std::string m_type_name;
+        String m_type_name;
         META(Enable)
-        std::string m_component;
+        String m_component;
     };
 
     template<>

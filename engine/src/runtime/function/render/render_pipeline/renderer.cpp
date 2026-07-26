@@ -4,7 +4,7 @@
 
 #include "render_graph_import_registry.h"
 
-#include "render_graph/render_graph_builder.h"
+#include "../render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_view/render_view.h"
 
 namespace dodoe {

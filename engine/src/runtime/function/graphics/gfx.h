@@ -49,6 +49,7 @@ namespace dodoe {
     using GfxBindingSetDesc = cutie::BindingSetDesc;
     using GfxBindlessLayoutDesc = cutie::BindlessLayoutDesc;
     using GfxGraphicsPipelineDesc = cutie::GraphicsPipelineDesc;
+    using GfxComputePipelineDesc = cutie::ComputePipelineDesc;
     using GfxVertexAttributeDesc = cutie::VertexAttributeDesc;
     using GfxVertexBufferBinding = cutie::VertexBufferBinding;
     using GfxIndexBufferBinding = cutie::IndexBufferBinding;

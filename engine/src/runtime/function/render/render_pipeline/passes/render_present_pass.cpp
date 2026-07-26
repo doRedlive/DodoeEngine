@@ -15,6 +15,7 @@
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
 
 namespace dodoe {
 
@@ -54,13 +55,7 @@ namespace dodoe {
                     context.graph_imports->require<PresentViewportConstantBufferKey>(), "PresentViewportCB"));
             },
             [this](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                const auto scene_color_handle = ctx.resolveTexture(parameters.scene_color);
-                const auto imgui_color_handle = ctx.resolveTexture(parameters.imgui_color);
-                const auto backbuffer = ctx.resolveTexture(parameters.backbuffer);
                 const auto viewport_cb = ctx.resolveBuffer(parameters.viewport_cb);
-
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(backbuffer);
-                auto fb = command_list.createFramebuffer(framebuffer_desc);
 
                 const auto viewport_rect = ctx.getView()->getViewportRect();
                 const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2d();
@@ -94,27 +89,20 @@ namespace dodoe {
                     return;
                 }
 
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         ctx.getShaderLibrary()->getFullscreenVertexShader(),
                         ctx.getShaderLibrary()->getPresentPixelShader(),
                         binding_layout
                     ),
-                    framebuffer_info,
+                    ctx.getRenderTargetSignature(),
                     command_list
                 );
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), swapchain_extent);
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setTextureState(scene_color_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(imgui_color_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(backbuffer, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                command_list.setTextureState(backbuffer, GfxAllSubresources, GfxResourceStates::Present);
-                command_list.commitBarriers();
             }
         );
     }

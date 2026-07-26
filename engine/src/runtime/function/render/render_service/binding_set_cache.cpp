@@ -23,9 +23,9 @@ namespace dodoe {
                                                        UInt64 layout_generation) {
         Size_t h = reinterpret_cast<Size_t>(layout.Get());
         hash_combine(h, static_cast<Size_t>(layout_generation));
-        hash_combine(h, desc.getItemCount());
-        for (Size_t i = 0; i < desc.getItemCount(); ++i) {
-            const auto& item = desc.getItems()[i];
+        hash_combine(h, desc.bindings.size());
+        for (Size_t i = 0; i < desc.bindings.size(); ++i) {
+            const auto& item = desc.bindings[i];
             hash_combine(h, reinterpret_cast<Size_t>(item.resourceHandle));
             hash_combine(h, static_cast<Size_t>(item.slot));
             hash_combine(h, static_cast<Size_t>(item.arrayElement));

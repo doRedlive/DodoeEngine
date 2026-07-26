@@ -190,7 +190,7 @@ namespace dodoe {
         }
     }
 
-    void RenderGraph::cullUnreachablePasses() {
+    void RenderGraph::cullUnreachablePasses(const DynamicArray<DynamicArray<Size_t>>& edges) {
         const Size_t pass_count = m_passes.size();
         DynamicArray<Bool> reachable_passes(pass_count, false);
         DynamicArray<Bool> reachable_resources(m_resources.size(), false);
@@ -235,6 +235,32 @@ namespace dodoe {
                             if (!reachable_resources[access.resource_index]) {
                                 reachable_resources[access.resource_index] = true;
                                 resource_queue.push_back(access.resource_index);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        DynamicArray<Size_t> pass_queue{};
+        for (Size_t i = 0; i < pass_count; i++) {
+            if (reachable_passes[i]) {
+                pass_queue.push_back(i);
+            }
+        }
+        while (!pass_queue.empty()) {
+            const Size_t pass_idx = pass_queue.back();
+            pass_queue.pop_back();
+            for (const auto pred : edges[pass_idx]) {
+                if (!reachable_passes[pred] && !m_culled_passes[pred]) {
+                    reachable_passes[pred] = true;
+                    pass_queue.push_back(pred);
+                    const auto& pred_pass = m_passes[pred];
+                    for (const auto& access : pred_pass->getAccesses()) {
+                        if (access.access_type != RenderGraphAccessType::Write &&
+                            access.access_type != RenderGraphAccessType::ReadWrite) {
+                            if (!reachable_resources[access.resource_index]) {
+                                reachable_resources[access.resource_index] = true;
                             }
                         }
                     }
@@ -357,8 +383,8 @@ namespace dodoe {
         buildDependencyGraph(edges, indegree);
 
         validateAccesses();
+        cullUnreachablePasses(edges);
         deriveBarriers();
-        cullUnreachablePasses();
 
         topologicalSort(edges, indegree);
 
@@ -376,6 +402,51 @@ namespace dodoe {
             out_commands, context.transient_resource_pool);
 
         const bool direct_mode = out_commands.isImmediate();
+
+        auto setupPassAttachments = [&](const Ref<RenderGraphPass>& pass, RenderGraphPassContext& pass_context, DrawCommandList& cmd) {
+            if (!pass->hasRenderTargetSlots()) return;
+
+            GfxFramebufferDesc fb_desc{};
+            Bool has_attachments = false;
+
+            for (const auto& slot : pass->getColorSlots()) {
+                const auto tex = resource_resolver.getTexture(slot.texture);
+                cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::RenderTarget);
+                fb_desc.addColorAttachment(tex);
+                has_attachments = true;
+            }
+
+            if (pass->getDepthSlot().has_value()) {
+                const auto& ds = pass->getDepthSlot().value();
+                const auto tex = resource_resolver.getTexture(ds.texture);
+                cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::DepthWrite);
+                fb_desc.setDepthAttachment(tex);
+                has_attachments = true;
+            }
+
+            if (!has_attachments) return;
+
+            cmd.commitBarriers();
+
+            for (const auto& slot : pass->getColorSlots()) {
+                if (slot.load_op == LoadOp::Clear) {
+                    cmd.clearTextureFloat(resource_resolver.getTexture(slot.texture),
+                                          GfxAllSubresources, slot.clear_color);
+                }
+            }
+
+            if (pass->getDepthSlot().has_value()) {
+                const auto& ds = pass->getDepthSlot().value();
+                if (ds.depth_load_op == LoadOp::Clear) {
+                    cmd.clearDepthStencilTexture(resource_resolver.getTexture(ds.texture),
+                                                 GfxAllSubresources, true, ds.clear_depth, false, 0);
+                }
+            }
+
+            const auto fb = cmd.createFramebuffer(fb_desc);
+            pass_context.setFramebuffer(fb);
+            pass_context.setFramebufferInfo(GfxFramebufferInfo(fb_desc));
+        };
 
         for (Size_t graph_level_index = 0; graph_level_index < m_levels.size(); ++graph_level_index) {
             const auto& level = m_levels[graph_level_index];
@@ -397,6 +468,7 @@ namespace dodoe {
                     if (!pass->getPreBarriers().empty()) {
                         out_commands.commitBarriers();
                     }
+                    setupPassAttachments(pass, pass_context, out_commands);
                     out_commands.beginMarker(pass->getName().c_str());
                     pass->execute(pass_context, out_commands);
                     out_commands.endMarker();
@@ -413,7 +485,7 @@ namespace dodoe {
                     const auto pass = m_passes[pass_index];
                     auto* cmd_list = &pass_command_lists[i];
 
-                    pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list] {
+                    pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list, &setupPassAttachments] {
                         RenderGraphPassContext pass_context(context, resource_resolver);
                         for (const auto& barrier : pass->getPreBarriers()) {
                             if (barrier.resource_type == RenderGraphResourceType::Texture) {
@@ -427,6 +499,7 @@ namespace dodoe {
                         if (!pass->getPreBarriers().empty()) {
                             cmd_list->commitBarriers();
                         }
+                        setupPassAttachments(pass, pass_context, *cmd_list);
                         cmd_list->beginMarker(pass->getName().c_str());
                         pass->execute(pass_context, *cmd_list);
                         cmd_list->endMarker();
@@ -478,7 +551,7 @@ namespace dodoe {
                 << ", \"last_pass\": " << m_resources[i].last_pass_index << " }";
         }
         oss << "\n  ]\n}\n";
-        return oss.str();
+        return String(oss.str().data(), oss.str().size());
     }
 
     String RenderGraph::dumpToDOT() const {
@@ -502,7 +575,7 @@ namespace dodoe {
             }
         }
         oss << "}\n";
-        return oss.str();
+        return String(oss.str().data(), oss.str().size());
     }
 
 } // dodoe

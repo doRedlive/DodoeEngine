@@ -108,13 +108,13 @@ namespace dodoe {
     }
 
     template <>
-    Json Serializer::write(const std::string& instance) {
+    Json Serializer::write(const String& instance) {
         return Json(instance);
     }
     template <>
-    std::string& Serializer::read(const Json& json_context, std::string& instance) {
-        DO_ASSERT(json_context.is_string(), "Serializer::read<std::string> expects string");
-        return instance = json_context.get_ref<const std::string&>();
+    String& Serializer::read(const Json& json_context, String& instance) {
+        DO_ASSERT(json_context.is_string(), "Serializer::read<String> expects string");
+        return instance = json_context.get<String>();
     }
 
     template <>

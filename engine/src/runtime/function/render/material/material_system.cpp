@@ -436,9 +436,9 @@ namespace dodoe {
         for (auto& [name, tpl] : m_templates) {
             if (tpl.desc.shader_name == shader_name) {
                 tpl.resolved = false;
-                tpl.vertex_shader = {};
-                tpl.pixel_shader = {};
-                tpl.binding_layout = {};
+                tpl.vertex_shader = nullptr;
+                tpl.pixel_shader = nullptr;
+                tpl.binding_layout = nullptr;
                 tpl.revision++;
             }
         }

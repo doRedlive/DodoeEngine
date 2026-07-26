@@ -59,7 +59,7 @@ void UIProgressBar::showLabel(bool show) {
 
 void UIProgressBar::setLabelText(std::string_view text) {
     if (label_) {
-        label_->setText(std::string(text));
+        label_->setText(String(text));
         invalidateLayout();
     }
 }

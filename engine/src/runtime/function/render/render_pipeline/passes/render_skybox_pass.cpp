@@ -16,6 +16,7 @@
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -43,16 +44,19 @@ namespace dodoe {
                             const RenderPassBuildContext& context) {
         graph.addPass<SkyboxPassParameters>(
             "SkyboxPass",
-            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
+            RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, SkyboxPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
                 DO_ASSERT(scene_textures, "SkyboxPass scene textures are missing");
 
                 parameters.depth = pass_builder.read(scene_textures->depth);
+                RenderGraphAttachmentInfo hdr_attachment{};
+                hdr_attachment.load_op = LoadOp::Clear;
+                hdr_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
                 parameters.hdr_color = pass_builder.writeColor(pass_builder.createTransientTexture(
                     rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG MainCameraHdrColor"),
-                    "MainCameraHdrColor"));
+                    "MainCameraHdrColor"), hdr_attachment);
                 pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
 
                 DO_ASSERT(context.graph_imports != nullptr, "SkyboxPass graph imports are null");
@@ -76,23 +80,11 @@ namespace dodoe {
                 }
             },
             [this](const SkyboxPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                const auto depth_handle = ctx.resolveTexture(parameters.depth);
-                const auto hdr = ctx.resolveTexture(parameters.hdr_color);
-
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
-                auto fb = command_list.createFramebuffer(framebuffer_desc);
-
                 if (!parameters.has_sky_light) {
-                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                    command_list.commitBarriers();
-                    command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                     return;
                 }
                 if (!parameters.skybox_texture.isValid()) {
                     DO_ERROR("SkyboxPass: enabled sky light has no cubemap");
-                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                    command_list.commitBarriers();
-                    command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                     return;
                 }
 
@@ -125,14 +117,13 @@ namespace dodoe {
                     return;
                 }
 
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         ctx.getShaderLibrary()->getFullscreenVertexShader(),
                         ctx.getShaderLibrary()->getSkyboxPixelShader(),
                         binding_layout
                     ),
-                    framebuffer_info,
+                    ctx.getRenderTargetSignature(),
                     command_list
                 );
 
@@ -142,12 +133,7 @@ namespace dodoe {
                 }
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.setTextureState(depth_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(cubemap_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
-                command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(fb, pipeline, bs_arr, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()));
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()));
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }
         );

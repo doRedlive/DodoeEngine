@@ -20,7 +20,7 @@ namespace dodoe {
     private:
         bool syncPointLight(Entity entity);
         bool syncSpotLight(Entity entity);
-        void pruneRemovedLights(const std::unordered_set<UUID>& active_lights);
+        void pruneRemovedLights(const UnorderedSet<UUID>& active_lights);
 
         [[nodiscard]] bool needsLightSync(Entity entity, LightType kind) const;
         [[nodiscard]] static Matrix4f buildWorldMatrix(const TransformComponent& transform);

@@ -17,8 +17,8 @@ enum class UIButtonVisualState : std::uint8_t {
 };
 
 struct UIButtonLabelStyle {
-    std::string text;
-    std::string font_path;
+    String text;
+    String font_path;
     int font_size{16};
     Color color{1.0f, 1.0f, 1.0f, 1.0f};
     Vector2f offset{0.0f, 0.0f};
@@ -41,7 +41,7 @@ struct UIButtonSkin {
     std::optional<UIButtonLabelOverrides> pressed_label{};
     std::optional<UIButtonLabelOverrides> disabled_label{};
 
-    std::unordered_map<identifier, std::string> sound_events{};
+    std::unordered_map<identifier, String> sound_events{};
 };
 
 class UIButton final : public UIInteractive {
@@ -62,7 +62,7 @@ private:
     TextLayoutMode m_text_layout_mode{TextLayoutMode::Fixed};
     Thickness m_text_padding{};
 
-    std::string m_label_text{};
+    String m_label_text{};
     Vector2f m_base_text_size{0.0f, 0.0f};
     std::uint64_t m_last_label_layout_revision{0};
     identifier m_label_font_id{entt::null};
@@ -94,7 +94,7 @@ public:
     void hover_enter() override { if (m_hover_enter_callback) m_hover_enter_callback(); }
     void hover_leave() override { if (m_hover_leave_callback) m_hover_leave_callback(); }
 
-    void setLabelText(std::string text);
+    void setLabelText(String text);
     [[nodiscard]] std::string_view getLabelText() const { return m_label_text; }
 
     void setTextLayoutFixed();

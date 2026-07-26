@@ -3,7 +3,7 @@
 #include "sky_light_system.h"
 
 #include "runtime/core/context/system_context.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
 #include "runtime/function/render/texture/texture.h"
 
@@ -15,7 +15,7 @@ namespace dodoe {
         (void)dt;
 
         auto view = reg.view<IDComponent, SkyLightComponent>();
-        std::unordered_set<UUID> active{};
+        UnorderedSet<UUID> active{};
         bool dirty = false;
 
         for (auto entity : view) {
@@ -57,7 +57,7 @@ namespace dodoe {
         return true;
     }
 
-    void SkyLightSystem::pruneRemoved(const std::unordered_set<UUID>& active) {
+    void SkyLightSystem::pruneRemoved(const UnorderedSet<UUID>& active) {
         for (auto it = m_submitted.begin(); it != m_submitted.end();) {
             if (!active.contains(*it)) {
                 RenderCommandQueue::RemoveLight(*it);

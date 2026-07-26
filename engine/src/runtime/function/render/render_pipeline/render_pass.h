@@ -56,9 +56,6 @@ namespace dodoe {
 
 	    void setOwningFeature(IRenderFeature* feature) { m_owning_feature = feature; }
 
-	protected:
-	    IRenderFeature* m_owning_feature{nullptr};
-
 	    virtual RenderPhase getPhase() const = 0;
 
 	    virtual DynamicArray<Size_t> getProducedKeys() const { return {}; }
@@ -67,6 +64,9 @@ namespace dodoe {
 
 	    virtual void build(RenderGraphBuilder& graph,
 	                       const RenderPassBuildContext& context) = 0;
+
+	protected:
+	    IRenderFeature* m_owning_feature{nullptr};
 	};
 
 } // namespace dodoe

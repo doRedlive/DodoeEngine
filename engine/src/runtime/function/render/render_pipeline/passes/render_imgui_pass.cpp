@@ -7,6 +7,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/shader/global_samplers.h"
 
@@ -36,10 +37,13 @@ namespace dodoe {
                 color_desc.desc = GfxTextureDesc()
                     .setWidth(swapchain_extent.x).setHeight(swapchain_extent.y).setDepth(1)
                     .setFormat(GfxFormat::RGBA8_UNORM)
-                    .setUsage(GfxResourceStates::RenderTarget)
+                    .setIsRenderTarget(true).setInitialState(GfxResourceStates::RenderTarget)
                     .setDebugName("RDG ImGuiColor");
+                RenderGraphAttachmentInfo color_attachment{};
+                color_attachment.load_op = LoadOp::Clear;
+                color_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 0.0f);
                 parameters.output = pass_builder.writeColor(
-                    pass_builder.createTransientTexture(color_desc, "ImGuiColor"));
+                    pass_builder.createTransientTexture(color_desc, "ImGuiColor"), color_attachment);
                 pass_builder.blackboard().set<ImGuiColorKey>(parameters.output);
 
                 DO_ASSERT(context.graph_imports != nullptr, "ImGuiPass graph imports are null");
@@ -71,20 +75,14 @@ namespace dodoe {
             },
             [this](const ImGuiPassParameters& parameters, const RenderGraphPassContext& ctx,
                DrawCommandList& command_list) {
-                const auto color_target = ctx.resolveTexture(parameters.output);
                 GfxTextureHandle font_texture{};
                 if (parameters.font_texture.isValid()) {
                     font_texture = ctx.resolveTexture(parameters.font_texture);
                 }
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                command_list.clearTextureFloat(color_target, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 0.0f));
 
                 ImGui::Render();
                 const auto* draw_data = ImGui::GetDrawData();
                 if (!draw_data || draw_data->TotalVtxCount == 0 || draw_data->TotalIdxCount == 0) {
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -94,8 +92,6 @@ namespace dodoe {
                 const UInt64 index_bytes = static_cast<UInt64>(draw_data->TotalIdxCount) * sizeof(ImDrawIdx);
                 if (vertex_bytes > vb->getByteSize() || index_bytes > ib->getByteSize()) {
                     DO_ERROR("ImGuiPass: transient UI buffers are too small");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -123,13 +119,9 @@ namespace dodoe {
                 const auto* pipeline_cache = ctx.getPipelineStateCache();
                 if (!shader_library || !pipeline_cache || !m_binding_layout || !m_input_layout) {
                     DO_ERROR("ImGuiPass: shader or pipeline resources are unavailable");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
                 auto pipeline_desc = GfxGraphicsPipelineDesc()
                     .setVertexShader(shader_library->getImGuiVertexShader())
                     .setPixelShader(shader_library->getImGuiPixelShader())
@@ -152,13 +144,10 @@ namespace dodoe {
                 render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
                 pipeline_desc.setRenderState(render_state);
 
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
-                    pipeline_desc, framebuffer_info, command_list);
+                    pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                 if (!pipeline) {
                     DO_ERROR("ImGuiPass: failed to create pipeline");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -167,8 +156,6 @@ namespace dodoe {
                 const Float top = draw_data->DisplayPos.y;
                 const Float bottom = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
                 if (right <= left || bottom <= top) {
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -179,6 +166,7 @@ namespace dodoe {
                     {2.0f / (right - left), 2.0f / (top - bottom)},
                     {-(right + left) / (right - left), -(top + bottom) / (top - bottom)}};
 
+                const auto framebuffer = ctx.getFramebuffer();
                 UInt32 global_vertex_offset = 0;
                 UInt32 global_index_offset = 0;
                 for (int n = 0; n < draw_data->CmdListsCount; n++) {
@@ -201,7 +189,7 @@ namespace dodoe {
                             ? m_font_binding_set
                             : command_list.createBindingSet(
                                 GfxBindingSetDesc()
-                                    .addItem(GfxBindingSetItem::Texture_SRV(0, texture->getRHIHandle().Get()))
+                                    .addItem(GfxBindingSetItem::Texture_SRV(0, texture->getRHI()))
                                     .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
                                 m_binding_layout);
                         if (!binding_set) {
@@ -218,9 +206,9 @@ namespace dodoe {
 
                         GfxViewportState viewport;
                         viewport.addViewport(GfxViewport(left, right, top, bottom, 0.0f, 1.0f));
-                        viewport.addScissorRect(GfxRectangle(
-                            static_cast<Int32>(clip_x), static_cast<Int32>(clip_y),
-                            static_cast<Int32>(clip_z - clip_x), static_cast<Int32>(clip_w - clip_y)));
+                        viewport.addScissorRect(GfxRect(
+                            static_cast<Int32>(clip_x), static_cast<Int32>(clip_z),
+                            static_cast<Int32>(clip_y), static_cast<Int32>(clip_w)));
 
                         DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
                         DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
@@ -237,9 +225,6 @@ namespace dodoe {
                     global_vertex_offset += draw_list->VtxBuffer.Size * sizeof(ImDrawVert);
                     global_index_offset += draw_list->IdxBuffer.Size * sizeof(ImDrawIdx);
                 }
-
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             });
     }
 

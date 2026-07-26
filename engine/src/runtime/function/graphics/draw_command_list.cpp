@@ -68,7 +68,7 @@ namespace dodoe {
             m_device->executeCommandList(cmd);
             return;
         }
-        WriteBufferCommand::Create(*this, data_size, data, buffer, destination_offset_bytes);
+        WriteBufferCommand::Create(*this, buffer, data, data_size, destination_offset_bytes);
     }
     void DrawCommandList::writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch) {
         DO_ASSERT(texture != nullptr, "writeTexture: texture is null");
@@ -82,11 +82,11 @@ namespace dodoe {
             return;
         }
         const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
-        WriteTextureCommand::Create(*this, data_size, data, texture, mip_level, array_slice, row_pitch);
+        WriteTextureCommand::Create(*this, texture, mip_level, array_slice, data, row_pitch, data_size);
     }
     void DrawCommandList::setPushConstants(const void* data, Size_t byte_size) {
         DO_ASSERT(!m_resource_mode, "setPushConstants() not allowed in resource mode");
-        PushConstantsCommand::Create(*this, byte_size, data);
+        PushConstantsCommand::Create(*this, data, byte_size);
     }
 
     void DrawCommandList::setTextureState(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, GfxResourceStates state_bits) {
@@ -190,7 +190,6 @@ namespace dodoe {
     void DrawCommandList::ClearStateCommand::execute(GfxCommandList& c) const { c.clearState(); }
     void DrawCommandList::EndMarkerCommand::execute(GfxCommandList& c) const { c.endMarker(); }
     void DrawCommandList::CommitBarriersCommand::execute(GfxCommandList& c) const { c.commitBarriers(); }
-    void DrawCommandList::SetGraphicsStateByValueCommand::execute(GfxCommandList& c) const { c.setGraphicsState(m_st); }
     void DrawCommandList::SetComputeStateCommand::execute(GfxCommandList& c) const { c.setComputeState(m_st); }
     void DrawCommandList::DrawPrimitiveCommand::execute(GfxCommandList& c) const { c.draw(m_args); }
     void DrawCommandList::DrawIndexedPrimitiveCommand::execute(GfxCommandList& c) const { c.drawIndexed(m_args); }

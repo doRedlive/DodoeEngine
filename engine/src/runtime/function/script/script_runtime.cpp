@@ -41,16 +41,16 @@ namespace dodoe {
         m_call("scan_types", args, &result);
         if (!result) return;
 
-        std::string json_str((char*)result);
+        String json_str((char*)result);
 
         try {
             json types = json::parse(json_str);
             for (const auto& t : types) {
-                std::string ns = t.value("ns", "");
-                std::string name = t.value("name", "");
-                std::string base_ns = t.value("baseNs", "");
-                std::string base_name = t.value("baseName", "");
-                std::string full_name = ns.empty() ? name : ns + "." + name;
+                String ns = String(t.value("ns", "").c_str());
+                String name = String(t.value("name", "").c_str());
+                String base_ns = String(t.value("baseNs", "").c_str());
+                String base_name = String(t.value("baseName", "").c_str());
+                String full_name = ns.empty() ? name : ns + "." + name;
 
                 if (base_ns == "GreenCake" && base_name == "CakeComponent") {
                     m_component_class_umap[full_name] = {full_name, ns, name};
@@ -105,7 +105,7 @@ namespace dodoe {
         m_call("snapshot", nullptr, &result);
         if (!result) return;
 
-        std::string json_str((char*)result);
+        String json_str((char*)result);
         try {
             json snapshot = json::parse(json_str);
             for (auto& [entityStr, fields_obj] : snapshot.items()) {
@@ -124,7 +124,7 @@ namespace dodoe {
         if (!m_call) return;
 
         void* args[1] = { nullptr };
-        std::string json_str = "{}";
+        String json_str = "{}";
         if (!m_field_snapshot.empty()) {
             json restoreJson = json::object();
             for (const auto& [entity_uuid, snapshots] : m_field_snapshot) {
@@ -163,7 +163,7 @@ namespace dodoe {
         m_call("get_entity_components", args, &result);
     }
 
-    bool ScriptRuntime::addEntityMonoComponentFromManaged(uint64_t entity_uuid, const std::string& full_name) {
+    bool ScriptRuntime::addEntityMonoComponentFromManaged(uint64_t entity_uuid, const String& full_name) {
         if (!m_call) return false;
 
         void* args[2] = { &entity_uuid, (void*)full_name.c_str() };

@@ -17,10 +17,10 @@ namespace dodoe {
 
     namespace {
 
-        std::string EscapeXml(std::string value) {
-            auto replace_all = [](std::string& text, const std::string& from, const std::string& to) {
+        String EscapeXml(String value) {
+            auto replace_all = [](String& text, const String& from, const String& to) {
                 size_t pos = 0;
-                while ((pos = text.find(from, pos)) != std::string::npos) {
+                while ((pos = text.find(from, pos)) != String::npos) {
                     text.replace(pos, from.size(), to);
                     pos += to.size();
                 }
@@ -34,7 +34,7 @@ namespace dodoe {
             return value;
         }
 
-        std::string MakeProjectRelativePath(const FsPath& base_dir, const FsPath& target_path) {
+        String MakeProjectRelativePath(const FsPath& base_dir, const FsPath& target_path) {
             std::error_code ec;
             const FsPath relative = fs::relative(target_path, base_dir, ec);
             return (ec ? target_path.lexically_normal() : relative.lexically_normal()).generic_string();
@@ -78,7 +78,7 @@ namespace dodoe {
         bool WriteGeneratedProjectFile(const FsPath& project_file,
             const std::vector<FsPath>& source_files,
             const FsPath& core_assembly_path,
-            const std::string& assembly_name) {
+            const String& assembly_name) {
             std::ofstream fout(project_file);
             if (!fout.is_open()) {
                 return false;
@@ -117,13 +117,13 @@ namespace dodoe {
             return true;
         }
 
-        bool RunProcessAndWait(const std::string& command_line, const FsPath& working_directory) {
+        bool RunProcessAndWait(const String& command_line, const FsPath& working_directory) {
             STARTUPINFOA startup_info{};
             startup_info.cb = sizeof(startup_info);
             PROCESS_INFORMATION process_info{};
 
-            std::string mutable_command = command_line;
-            const std::string working_dir_string = working_directory.string();
+            String mutable_command = command_line;
+            const String working_dir_string = working_directory.string();
             const BOOL launched = CreateProcessA(
                 nullptr,
                 mutable_command.data(),
@@ -157,7 +157,7 @@ namespace dodoe {
 
     } // namespace
 
-    std::string PlatformTool::OpenProjectFileDialog() {
+    String PlatformTool::OpenProjectFileDialog() {
         char file_buffer[MAX_PATH]{};
         const String initial_dir = FileSystem::GetEngineRootPathString();
         OPENFILENAMEA ofn{};
@@ -169,10 +169,10 @@ namespace dodoe {
         ofn.nFilterIndex = 1;
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
         ofn.lpstrInitialDir = initial_dir.c_str();
-        return GetOpenFileNameA(&ofn) ? std::string(file_buffer) : std::string();
+        return GetOpenFileNameA(&ofn) ? String(file_buffer) : String();
     }
 
-    std::string PlatformTool::OpenDirectoryDialog(const std::string& initial_directory) {
+    String PlatformTool::OpenDirectoryDialog(const String& initial_directory) {
         const HRESULT init_result = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
         const bool should_uninitialize = SUCCEEDED(init_result);
 
@@ -200,7 +200,7 @@ namespace dodoe {
             }
         }
 
-        std::string selected_path;
+        String selected_path;
         if (SUCCEEDED(dialog->Show(nullptr))) {
             IShellItem* item = nullptr;
             if (SUCCEEDED(dialog->GetResult(&item)) && item) {
@@ -222,7 +222,7 @@ namespace dodoe {
 
     bool PlatformTool::BuildCSharpAssembly(const FsPath& asset_directory,
         const FsPath& output_directory,
-        const std::string& assembly_name) {
+        const String& assembly_name) {
         std::vector<FsPath> source_files;
         if (!CollectCSharpFiles(asset_directory, source_files)) {
             return false;
@@ -245,7 +245,7 @@ namespace dodoe {
             return false;
         }
 
-        const std::string command = "dotnet build \"" + generated_project_path.string() + "\" -c Debug --nologo";
+        const String command = "dotnet build \"" + generated_project_path.string() + "\" -c Debug --nologo";
         return RunProcessAndWait(command, output_directory);
     }
 

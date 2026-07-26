@@ -66,17 +66,17 @@ namespace dodoe {
 			return false;
 		}
 
-		config.name = project_node["Name"].get<std::string>();
+		config.name = project_node["Name"].get<String>();
 		if (project_node.contains("ProjectPath") && project_node["ProjectPath"].is_string()) {
-			config.project_path = project_node["ProjectPath"].get<std::string>();
+			config.project_path = project_node["ProjectPath"].get<String>();
 		} else {
 			config.project_path = file_path.lexically_normal();
 		}
-		config.asset_directory = project_node["AssetDirectory"].get<std::string>();
+		config.asset_directory = project_node["AssetDirectory"].get<String>();
 		if (project_node.contains("StartSceneName") && project_node["StartSceneName"].is_string()) {
-			config.start_scene_name = project_node["StartSceneName"].get<std::string>();
+			config.start_scene_name = project_node["StartSceneName"].get<String>();
 		} else if (project_node.contains("StartScene") && project_node["StartScene"].is_string()) {
-			config.start_scene_name = FsPath(project_node["StartScene"].get<std::string>()).stem().string();
+			config.start_scene_name = FsPath(project_node["StartScene"].get<String>()).stem().string();
 		} else {
 			config.start_scene_name.clear();
 		}

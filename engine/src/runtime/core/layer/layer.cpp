@@ -6,7 +6,7 @@
 
 namespace dodoe {
 
-    Layer::Layer(std::string name) : m_name(std::move(name)) {
+    Layer::Layer(String name) : m_name(std::move(name)) {
 
     }
 

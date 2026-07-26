@@ -68,7 +68,7 @@ namespace dodoe {
 		[[nodiscard]] entt::entity handle() const { return handle_; }
 		[[nodiscard]] bool valid() const { return handle_ != entt::null; }	
 		[[nodiscard]] Uuid uuid() { return getComponent<IDComponent>().id; }	
-		[[nodiscard]] const std::string& name() { return getComponent<IDComponent>().name; }
+		[[nodiscard]] const String& name() { return getComponent<IDComponent>().name; }
 		
 		explicit operator bool() const { return valid(); }
 		bool operator==(const Entity&) const = default;

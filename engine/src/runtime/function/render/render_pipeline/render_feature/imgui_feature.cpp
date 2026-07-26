@@ -5,7 +5,7 @@
 #include "runtime/function/render/render_pipeline/passes/render_imgui_pass.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
-#include "runtime/function/render/shared_render_service.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/shader/global_samplers.h"

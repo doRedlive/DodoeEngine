@@ -9,6 +9,11 @@ namespace dodoe {
 	using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
 	using StringView = std::string_view;
 
+	inline std::string string_to_std(const String& s) { return std::string(s.data(), s.size()); }
+
+	template <typename T>
+	using Optional = std::optional<T>;
+
 	template <typename T>
 	using DynamicArray = std::vector<T, StdAllocator<T>>;
 

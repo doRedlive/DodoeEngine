@@ -3,7 +3,7 @@
 #include "line_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
 
 #include "runtime/core/math/math.h"
@@ -16,7 +16,7 @@ namespace dodoe {
         (void)dt;
 
         auto view = reg.view<IDComponent, TransformComponent, LineRendererComponent>();
-        std::unordered_set<UUID> active{};
+        UnorderedSet<UUID> active{};
         Bool dirty = false;
 
         for (auto entity : view) {
@@ -59,7 +59,7 @@ namespace dodoe {
         return true;
     }
 
-    void LineRendererSystem::pruneRemoved(const std::unordered_set<UUID>& active) {
+    void LineRendererSystem::pruneRemoved(const UnorderedSet<UUID>& active) {
         for (auto it = m_submitted.begin(); it != m_submitted.end();) {
             if (active.find(*it) == active.end()) {
                 RenderCommandQueue::RemoveSprite(*it);

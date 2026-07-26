@@ -45,7 +45,7 @@ namespace dodoe {
             DO_ASSERT(json_context.contains("$typeName"), "Serializer::read_pointer missing $typeName");
             DO_ASSERT(json_context.contains("$context"), "Serializer::read_pointer missing $context");
 
-            std::string type_name = json_context.at("$typeName").get<std::string>();
+            String type_name = json_context.at("$typeName").get<String>();
             DO_ASSERT(!type_name.empty(), "Serializer::read_pointer empty $typeName");
 
             if ('*' == type_name[0]) {
@@ -62,7 +62,7 @@ namespace dodoe {
         template <typename T>
         static Json write(const ReflectionPtr<T>& instance) {
             T* instance_ptr = instance.get_ptr();
-            const std::string& type_name    = instance.get_type_name();
+            const String& type_name    = instance.get_type_name();
             if (!instance_ptr) {
                 return Json{ { "$typeName", type_name }, { "$context", Json() } };
             }
@@ -74,7 +74,7 @@ namespace dodoe {
         static T*& read(const Json& json_context, ReflectionPtr<T>& instance) {
             DO_ASSERT(json_context.is_object(), "Serializer::read expects object");
             DO_ASSERT(json_context.contains("$typeName"), "Serializer::read missing $typeName");
-            std::string type_name = json_context.at("$typeName").get<std::string>();
+            String type_name = json_context.at("$typeName").get<String>();
             instance.set_type_name(type_name);
             return read_pointer(json_context, instance.get_ptr_reference());
         }
@@ -219,9 +219,9 @@ namespace dodoe {
     bool& Serializer::read(const Json& json_context, bool& instance);
 
     template<>
-    Json Serializer::write(const std::string& instance);
+    Json Serializer::write(const String& instance);
     template<>
-    std::string& Serializer::read(const Json& json_context, std::string& instance);
+    String& Serializer::read(const Json& json_context, String& instance);
 
     template<>
     Json Serializer::write(const Uuid& instance);

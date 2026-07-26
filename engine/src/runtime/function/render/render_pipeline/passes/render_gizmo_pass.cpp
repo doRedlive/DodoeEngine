@@ -36,13 +36,15 @@ namespace dodoe {
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, GizmoPassParameters& parameters) {
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
+                RenderGraphAttachmentInfo color_attachment{};
+                color_attachment.load_op = LoadOp::Load;
                 if (scene_color) {
-                    parameters.color_target = pass_builder.write(*scene_color);
+                    parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
                     const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
-                    parameters.color_target = pass_builder.write(pass_builder.createTransientTexture(
+                    parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG GizmoColor"),
-                        "GizmoColor"));
+                        "GizmoColor"), color_attachment);
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
                 }
 
@@ -63,7 +65,6 @@ namespace dodoe {
                 parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer"));
             },
             [](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                const auto color_target = ctx.resolveTexture(parameters.color_target);
                 const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
                 const auto ib = ctx.resolveBuffer(parameters.index_buffer);
 
@@ -91,16 +92,11 @@ namespace dodoe {
                 GfxRenderState render_state;
                 render_state.setDepthStencilState(ds).setRasterState(raster);
 
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-
                 const auto mvp = ctx.getView()->getViewProjectionMatrix();
 
                 const auto& gizmo_data = GizmoChannel::getDrawData();
                 UInt32 vb_offset = 0, ib_offset = 0;
+                const auto framebuffer = ctx.getFramebuffer();
                 for (const auto& cmd : gizmo_data.commands) {
                     command_list.setBufferState(vb, GfxResourceStates::CopyDest);
                     command_list.setBufferState(ib, GfxResourceStates::CopyDest);
@@ -115,9 +111,8 @@ namespace dodoe {
                         .setVertexShader(vs)
                         .setPixelShader(ps)
                         .setPrimType(cmd.topology);
-                    GfxFramebufferInfo fb_info(framebuffer_desc);
                     auto pipeline = pso_cache->resolveGraphicsPipeline(
-                        pipeline_desc, fb_info, command_list);
+                        pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                     if (!pipeline) {
                         continue;
                     }
@@ -141,9 +136,6 @@ namespace dodoe {
                     vb_offset += cmd.vertices.size() * sizeof(GizmoVertex);
                     ib_offset += cmd.indices.size() * sizeof(UInt32);
                 }
-
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             }
         );
     }

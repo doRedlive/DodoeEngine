@@ -6,7 +6,7 @@
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/utils/util.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/texture/texture_manager.h"
 
 namespace dodoe::ui {
@@ -19,11 +19,11 @@ namespace dodoe::ui {
 
     Texture2D* texture = nullptr;
     if (image.getTextureId() != entt::null && !image.getTexturePath().empty()) {
-        texture = Texture2D::Load(std::string(image.getTexturePath()));
+        texture = Texture2D::Load(String(image.getTexturePath()));
     } else if (image.getTextureId() != entt::null) {
         texture = texture_manager->findTexture2D(static_cast<InstanceID>(image.getTextureId()));
     } else if (!image.getTexturePath().empty()) {
-        texture = texture_manager->loadTexture(std::string(image.getTexturePath()));
+        texture = texture_manager->loadTexture(String(image.getTexturePath()));
     }
 
     return texture;

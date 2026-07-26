@@ -9,12 +9,66 @@
 namespace dodoe {
 
     class TypedKeyValueStore {
-        UnorderedMap<std::type_index, Ref<void>> m_values{};
+    private:
+        struct Holder {
+            struct Base {
+                std::atomic<Size_t> refs{1};
+                virtual ~Base() = default;
+                virtual void* ptr() = 0;
+            };
+
+            template <typename T>
+            struct Impl : Base {
+                T value;
+                explicit Impl(const T& v) : value(v) {}
+                void* ptr() override { return &value; }
+            };
+
+            Base* ctrl{nullptr};
+
+            Holder() = default;
+            explicit Holder(Base* b) : ctrl(b) {}
+            ~Holder() { release(); }
+
+            Holder(const Holder& other) : ctrl(other.ctrl) {
+                if (ctrl) ctrl->refs.fetch_add(1, std::memory_order_relaxed);
+            }
+            Holder(Holder&& other) noexcept : ctrl(other.ctrl) { other.ctrl = nullptr; }
+
+            Holder& operator=(const Holder& other) {
+                if (this != &other) {
+                    release();
+                    ctrl = other.ctrl;
+                    if (ctrl) ctrl->refs.fetch_add(1, std::memory_order_relaxed);
+                }
+                return *this;
+            }
+            Holder& operator=(Holder&& other) noexcept {
+                if (this != &other) { release(); ctrl = other.ctrl; other.ctrl = nullptr; }
+                return *this;
+            }
+
+            void* get() const { return ctrl ? ctrl->ptr() : nullptr; }
+            explicit operator Bool() const { return ctrl != nullptr; }
+
+        private:
+            void release() {
+                if (ctrl && ctrl->refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                    delete ctrl;
+                }
+            }
+        };
+
+        UnorderedMap<std::type_index, Holder> m_values{};
 
     public:
         template <typename TKey, typename TValue>
         void set(const TValue& value) {
-            m_values[std::type_index(typeid(TKey))] = create_ref<TValue>(value);
+            using ImplType = typename Holder::template Impl<TValue>;
+            void* mem = Memory::AllocatePersistent(
+                sizeof(ImplType), alignof(ImplType), AllocTag::Object);
+            m_values[std::type_index(typeid(TKey))] =
+                Holder(new (mem) ImplType(value));
         }
 
         template <typename TKey, typename TValue>

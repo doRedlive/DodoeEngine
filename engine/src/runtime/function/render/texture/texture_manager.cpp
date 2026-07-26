@@ -11,6 +11,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/context/system_context.h"
+#include "runtime/core/object/obj_handle.h"
 #include "runtime/core/gc/object_heap.h"
 
 namespace dodoe {
@@ -116,7 +117,7 @@ namespace dodoe {
             .setFormat(texture_format)
             .setMipLevels(1)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
-            .setDebugName(path);
+            .setDebugName(path.c_str());
 
         const FileID file_id(path);
         auto* texture = ObjectHeap::Construct<Texture2D>(AllocCategory::Texture, file_id);

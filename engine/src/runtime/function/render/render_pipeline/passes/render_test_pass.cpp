@@ -59,13 +59,15 @@ namespace dodoe {
             RenderGraphPassFlags::Raster,
             [&context, test_texture](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
+                RenderGraphAttachmentInfo color_attachment{};
+                color_attachment.load_op = LoadOp::Load;
                 if (scene_color) {
-                    parameters.color_target = pass_builder.writeColor(*scene_color);
+                    parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
                     const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                     parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG TestColor"),
-                        "TestColor"));
+                        "TestColor"), color_attachment);
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
                 }
 
@@ -85,7 +87,6 @@ namespace dodoe {
                 }
             },
             [](const TestPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                const auto color_target = ctx.resolveTexture(parameters.color_target);
                 const auto quad_vb = ctx.resolveBuffer(parameters.triangle_vb);
 
                 command_list.setBufferState(quad_vb, GfxResourceStates::CopyDest);
@@ -114,9 +115,6 @@ namespace dodoe {
                         .setVisibility(GfxShaderType::Pixel)
                         .addItem(GfxBindingLayoutItem::Texture_SRV(0))
                         .addItem(GfxBindingLayoutItem::Sampler(0)));
-
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                auto fb = command_list.createFramebuffer(framebuffer_desc);
 
                 const auto* shader_library = ctx.getShaderLibrary();
                 if (!shader_library) {
@@ -166,8 +164,7 @@ namespace dodoe {
                     return;
                 }
 
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-                auto pipeline = pipeline_cache->resolveGraphicsPipeline(pipeline_desc, framebuffer_info, command_list);
+                auto pipeline = pipeline_cache->resolveGraphicsPipeline(pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                 if (!pipeline) {
                     DO_ERROR("TestPass: failed to create pipeline");
                     return;
@@ -179,19 +176,13 @@ namespace dodoe {
                     0, static_cast<float>(swapchain_extent.y),
                     0, 1));
 
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-
                 DynamicArray<GfxBindingSetHandle> bs_arr = {binding_set};
                 DynamicArray<GfxVertexBufferBinding> vbs;
                 vbs.push_back(GfxVertexBufferBinding()
                     .setBuffer(quad_vb->getRHIHandle()).setSlot(0).setOffset(0));
 
-                command_list.setGraphicsState(fb, pipeline, bs_arr, vp, vbs);
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, vp, vbs);
                 command_list.draw(GfxDrawArguments().setVertexCount(kTestQuadVertexCount).setInstanceCount(1));
-
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             }
         );
     }

@@ -22,11 +22,11 @@ namespace dodoe::py_bindings {
 
         py::class_<Scene>(m, "Scene")
             .def_property("name",
-                [](Scene& s) -> const std::string& { return s.getName(); },
+                [](Scene& s) -> const String& { return s.getName(); },
                 &Scene::setName)
             .def("create_entity",
-                [](Scene& scene, const std::string& name) -> Entity { return scene.createEntity(name); },
-                py::arg("name") = std::string("Entity"))
+                [](Scene& scene, const String& name) -> Entity { return scene.createEntity(name); },
+                py::arg("name") = String("Entity"))
             .def("destroy_entity", &Scene::destroyEntity)
             .def("get_registry", [](Scene& scene) -> Registry* { return &scene.registry(); },
                 py::return_value_policy::reference);

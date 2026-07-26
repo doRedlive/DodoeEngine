@@ -47,10 +47,22 @@ namespace dodoe {
             return *this;
         }
 
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+        Scope(Scope<U>&& other) noexcept : m_ptr(static_cast<T*>(other.release())) {}
+
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+        Scope& operator=(Scope<U>&& other) noexcept {
+            destroy();
+            m_ptr = static_cast<T*>(other.release());
+            return *this;
+        }
+
         T* get() const { return m_ptr; }
         T* operator->() const { return m_ptr; }
         T& operator*() const { return *m_ptr; }
         explicit operator Bool() const { return m_ptr != nullptr; }
+        bool operator==(std::nullptr_t) const { return m_ptr == nullptr; }
+        bool operator!=(std::nullptr_t) const { return m_ptr != nullptr; }
 
         void reset(T* ptr = nullptr) {
             if (m_ptr != ptr) { destroy(); m_ptr = ptr; }
@@ -103,15 +115,31 @@ namespace dodoe {
 
         explicit Ref(ControlBlock* cb) : m_ctrl(cb) {}
         friend class Weak<T>;
+        template <typename U, typename... Args>
+        friend Ref<U> create_ref(Args&&... args);
 
     public:
         Ref() = default;
+        Ref(std::nullptr_t) : m_ctrl(nullptr) {}
         ~Ref() { release(); }
+
+        template <typename U>
+        friend class Ref;
 
         Ref(const Ref& other) : m_ctrl(other.m_ctrl) {
             if (m_ctrl) m_ctrl->strong.fetch_add(1, std::memory_order_relaxed);
         }
         Ref(Ref&& other) noexcept : m_ctrl(other.m_ctrl) { other.m_ctrl = nullptr; }
+
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+        Ref(const Ref<U>& other) noexcept : m_ctrl(reinterpret_cast<ControlBlock*>(other.m_ctrl)) {
+            if (m_ctrl) m_ctrl->strong.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+        Ref(Ref<U>&& other) noexcept : m_ctrl(reinterpret_cast<ControlBlock*>(other.m_ctrl)) {
+            other.m_ctrl = nullptr;
+        }
 
         Ref& operator=(const Ref& other) {
             if (this != &other) {
@@ -130,6 +158,8 @@ namespace dodoe {
         T* operator->() const { return get(); }
         T& operator*() const { return *get(); }
         explicit operator Bool() const { return m_ctrl != nullptr; }
+        bool operator==(std::nullptr_t) const { return m_ctrl == nullptr; }
+        bool operator!=(std::nullptr_t) const { return m_ctrl != nullptr; }
         Size_t use_count() const {
             return m_ctrl ? m_ctrl->strong.load(std::memory_order_relaxed) : 0;
         }

@@ -20,7 +20,7 @@ namespace dodoe {
 
     private:
         bool syncSpriteRenderer(Entity entity);
-        void pruneRemovedSprites(const std::unordered_set<UUID>& active_sprites);
+        void pruneRemovedSprites(const UnorderedSet<UUID>& active_sprites);
         bool needsSync(Entity entity) const;
         Matrix4f buildWorldMatrix(const TransformComponent& transform);
     };

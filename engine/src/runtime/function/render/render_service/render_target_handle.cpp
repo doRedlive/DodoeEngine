@@ -117,11 +117,11 @@ namespace dodoe {
             tex_desc.width  = m_current_width;
             tex_desc.height = m_current_height;
             tex_desc.format = ca.format;
-            tex_desc.dimension = GfxTextureDimension::Tex2D;
+            tex_desc.dimension = GfxTextureDimension::Texture2D;
             tex_desc.mipLevels = 1;
             tex_desc.arraySize = 1;
             tex_desc.sampleCount = m_desc.sample_count;
-            tex_desc.state = GfxResourceStates::ShaderResource;
+            tex_desc.setInitialState(GfxResourceStates::ShaderResource);
 
             auto tex = create_ref<GfxTexture>(tex_desc, ca.debug_name);
             tex->initializeRHI(device);
@@ -133,11 +133,11 @@ namespace dodoe {
             depth_desc.width  = m_current_width;
             depth_desc.height = m_current_height;
             depth_desc.format = m_desc.depth_format;
-            depth_desc.dimension = GfxTextureDimension::Tex2D;
+            depth_desc.dimension = GfxTextureDimension::Texture2D;
             depth_desc.mipLevels = 1;
             depth_desc.arraySize = 1;
             depth_desc.sampleCount = m_desc.sample_count;
-            depth_desc.state = GfxResourceStates::DepthWrite;
+            depth_desc.setInitialState(GfxResourceStates::DepthWrite);
 
             m_depth_texture = create_ref<GfxTexture>(depth_desc, m_desc.depth_debug_name);
             m_depth_texture->initializeRHI(device);

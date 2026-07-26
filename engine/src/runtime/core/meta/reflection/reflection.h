@@ -88,15 +88,15 @@ namespace dodoe {
         public:
             TypeMeta();
 
-            static TypeMeta newMetaFromName(const std::string& name);
-            static bool new_array_accessor_from_name(const std::string& array_type_name, ArrayAccessor& accessor);
-            static ReflectionInstance new_from_name_and_json(const std::string& type_name, const Json& json_context);
-            static Json write_by_name(const std::string& name, void* instance);
+            static TypeMeta newMetaFromName(const String& name);
+            static bool new_array_accessor_from_name(const String& array_type_name, ArrayAccessor& accessor);
+            static ReflectionInstance new_from_name_and_json(const String& type_name, const Json& json_context);
+            static Json write_by_name(const String& name, void* instance);
 
-            static ReflectionInstance newFromNameAndJson(const std::string& type_name, const Json& json_context);
-            static Json writeByName(const std::string& name, void* instance);
+            static ReflectionInstance newFromNameAndJson(const String& type_name, const Json& json_context);
+            static Json writeByName(const String& name, void* instance);
 
-            const std::string& get_type_name() const;
+            const String& get_type_name() const;
             int get_field_list(FieldAccessor*& out_list);
             int get_method_list(MethodAccessor*& out_list);
             int get_base_class_reflection_instance_list(ReflectionInstance*& out_list, void* instance);
@@ -108,10 +108,10 @@ namespace dodoe {
         private:
             std::vector<FieldAccessor> fields_;
             std::vector<MethodAccessor> methods_;
-            std::string type_name_;
+            String type_name_;
             bool is_valid_{ false };
 
-            explicit TypeMeta(const std::string& type_name);
+            explicit TypeMeta(const String& type_name);
         };
 
         class DODOE_API FieldAccessor {
@@ -200,7 +200,7 @@ namespace dodoe {
             friend class ReflectionPtr;
 
         public:
-            ReflectionPtr(std::string type_name, T* instance) : type_name_(std::move(type_name)), instance_(instance) {}
+            ReflectionPtr(String type_name, T* instance) : type_name_(std::move(type_name)), instance_(instance) {}
             ReflectionPtr() = default;
 
             ReflectionPtr(const ReflectionPtr& dest) : type_name_(dest.type_name_), instance_(dest.instance_) {}
@@ -243,11 +243,11 @@ namespace dodoe {
                 return *this;
             }
 
-            std::string getTypeName() const { return type_name_; }
-            void setTypeName(std::string name) { type_name_ = std::move(name); }
+            String getTypeName() const { return type_name_; }
+            void setTypeName(String name) { type_name_ = std::move(name); }
 
-            const std::string& get_type_name() const { return type_name_; }
-            void set_type_name(std::string name) { type_name_ = std::move(name); }
+            const String& get_type_name() const { return type_name_; }
+            void set_type_name(String name) { type_name_ = std::move(name); }
 
             bool operator==(const T* ptr) const { return (instance_ == ptr); }
             bool operator!=(const T* ptr) const { return (instance_ != ptr); }
@@ -290,7 +290,7 @@ namespace dodoe {
             operator bool() const { return (instance_ != nullptr); }
 
         private:
-            std::string type_name_{};
+            String type_name_{};
             T* instance_{ nullptr };
         };
 

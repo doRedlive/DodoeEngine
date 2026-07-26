@@ -34,24 +34,21 @@ namespace dodoe {
 
         graph.addPass<PostProcess2DPassParameters>(
             "PostProcess2DPass",
-            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
+            RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, PostProcess2DPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 DO_ASSERT(scene_color, "PostProcess2DPass scene color is missing");
                 parameters.input = pass_builder.read(*scene_color);
+                RenderGraphAttachmentInfo output_attachment{};
+                output_attachment.load_op = LoadOp::Clear;
+                output_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
                 parameters.output = pass_builder.writeColor(pass_builder.createTransientTexture(
                     rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG PostProcess2DOutput"),
-                    "PostProcess2DOutput"));
+                    "PostProcess2DOutput"), output_attachment);
                 pass_builder.blackboard().set<SceneColorKey>(parameters.output);
             },
             [shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                const auto input_handle = ctx.resolveTexture(parameters.input);
-                const auto output_handle = ctx.resolveTexture(parameters.output);
-
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(output_handle);
-                auto fb = command_list.createFramebuffer(framebuffer_desc);
-
                 PostProcess2DPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
                 shader_params.sampler.value = GlobalSamplers::screen();
@@ -69,14 +66,13 @@ namespace dodoe {
                     return;
                 }
 
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library->getFullscreenVertexShader(),
                         shader_library->getFxaaPixelShader(),
                         binding_layout
                     ),
-                    framebuffer_info,
+                    ctx.getRenderTargetSignature(),
                     command_list
                 );
 
@@ -88,14 +84,8 @@ namespace dodoe {
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setTextureState(input_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                command_list.clearTextureFloat(output_handle, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                command_list.setGraphicsState(fb, pipeline, bs_arr, viewport_state);
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                command_list.setTextureState(output_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             }
         );
     }

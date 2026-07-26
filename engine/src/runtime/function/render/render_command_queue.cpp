@@ -1,5 +1,6 @@
 // do@Redlive
 
+#include "render_command_queue.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/render/render_command.h"
 #include "runtime/function/render/render_settings.h"

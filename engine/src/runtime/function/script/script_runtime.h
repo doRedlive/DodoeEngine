@@ -40,10 +40,10 @@ namespace dodoe {
         void restoreFields();
 
         void loadEntityMonoComponentsFromManaged(uint64_t entity_uuid);
-        bool addEntityMonoComponentFromManaged(uint64_t entity_uuid, const std::string& full_name);
+        bool addEntityMonoComponentFromManaged(uint64_t entity_uuid, const String& full_name);
         void removeEntityFromManagedWorld(uint64_t entity_uuid);
-        [[nodiscard]] const std::unordered_map<std::string, ComponentTypeInfo>& getComponentClassUmap() const { return m_component_class_umap; }
-        [[nodiscard]] const std::unordered_map<ui64, std::vector<std::pair<std::string, std::string>>>& getFieldSnapshot() const { return m_field_snapshot; }
+        [[nodiscard]] const UnorderedMap<String, ComponentTypeInfo>& getComponentClassUmap() const { return m_component_class_umap; }
+        [[nodiscard]] const UnorderedMap<ui64, DynamicArray<Pair<String, String>>>& getFieldSnapshot() const { return m_field_snapshot; }
 
         void onRuntimeStart();
         void onRuntimeUpdate();

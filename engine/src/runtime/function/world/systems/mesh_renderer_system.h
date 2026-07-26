@@ -11,7 +11,7 @@
 namespace dodoe {
 
     class MeshRendererSystem : public System {
-        std::unordered_set<UUID> m_submitted_objects{};
+        UnorderedSet<UUID> m_submitted_objects{};
 
     public:
         ~MeshRendererSystem() override;
@@ -20,9 +20,9 @@ namespace dodoe {
 
     private:
         bool syncRenderObject(Entity entity);
-        void pruneRemovedObjects(const std::unordered_set<UUID>& active_renderers);
+        void pruneRemovedObjects(const UnorderedSet<UUID>& active_renderers);
 
-        [[nodiscard]] static bool needsRenderObjectSync(Entity entity, const std::unordered_set<UUID>& submitted);
+        [[nodiscard]] static bool needsRenderObjectSync(Entity entity, const UnorderedSet<UUID>& submitted);
         [[nodiscard]] static Matrix4f buildWorldMatrix(const TransformComponent& transform);
         [[nodiscard]] static Scope<PrimitiveRenderObject> buildRenderObject(const MeshRendererComponent& mesh);
     };

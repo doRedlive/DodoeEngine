@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 
+#include "runtime/core/object/obj_handle.h"
 #include "runtime/resource/asset/asset.h"
 #include "runtime/resource/parser/texture_blob.h"
 

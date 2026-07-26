@@ -48,6 +48,11 @@ namespace dodoe {
 	public:
 	    virtual ~BaseRenderer() = default;
 
+	    virtual void render(RenderViewFamily& view_family, RenderScene& scene,
+	                        UInt32 swapchain_image_index, DrawCommandList& out_commands,
+	                        FrameStagingAllocator* frame_staging_allocator,
+	                        RenderGraphTransientPool* transient_resource_pool) = 0;
+
 	    template <typename T, typename... Args>
 	    T* addFeature(Args&&... args) {
 	        auto feature = create_scope<T>(std::forward<Args>(args)...);
@@ -83,12 +88,6 @@ namespace dodoe {
 	    [[nodiscard]] GfxContext*          getGfx()           const { return m_gfx_context; }
 	    [[nodiscard]] SharedRenderService* getSharedService() const { return m_shared_render_service; }
 	    [[nodiscard]] ThreadPool*          getThreadPool()    const { return m_thread_pool.get(); }
-
-	protected:
-	    virtual void render(RenderViewFamily& view_family, RenderScene& scene,
-	                        UInt32 swapchain_image_index, DrawCommandList& out_commands,
-	                        FrameStagingAllocator* frame_staging_allocator,
-	                        RenderGraphTransientPool* transient_resource_pool) = 0;
 	};
 
 } // dodoe

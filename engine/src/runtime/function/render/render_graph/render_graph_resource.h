@@ -61,6 +61,52 @@ namespace dodoe {
         GfxColor clear_color{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
+    struct RenderGraphTextureHandle {
+        UInt32 index{kInvalidRenderGraphHandle};
+        [[nodiscard]] Bool isValid() const { return index != kInvalidRenderGraphHandle; }
+    };
+
+    struct RenderGraphBufferHandle {
+        UInt32 index{kInvalidRenderGraphHandle};
+        [[nodiscard]] Bool isValid() const { return index != kInvalidRenderGraphHandle; }
+    };
+
+    struct RenderGraphColorAttachment {
+        RenderGraphTextureHandle texture{};
+        LoadOp load_op{LoadOp::DontCare};
+        StoreOp store_op{StoreOp::Store};
+        GfxColor clear_color{0.0f, 0.0f, 0.0f, 0.0f};
+    };
+
+    struct RenderGraphDepthStencilAttachment {
+        RenderGraphTextureHandle texture{};
+        LoadOp depth_load_op{LoadOp::DontCare};
+        StoreOp depth_store_op{StoreOp::Store};
+        LoadOp stencil_load_op{LoadOp::DontCare};
+        StoreOp stencil_store_op{StoreOp::DontCare};
+        Float clear_depth{1.0f};
+        UInt8 clear_stencil{0};
+    };
+
+    static constexpr UInt32 kRenderGraphMaxColorAttachments = 8;
+
+    struct RenderGraphRenderTargetBindingSlots {
+        RenderGraphColorAttachment color[kRenderGraphMaxColorAttachments]{};
+        RenderGraphDepthStencilAttachment depth{};
+        UInt32 color_count{0};
+        Bool has_depth{false};
+
+        [[nodiscard]] RenderGraphColorAttachment& operator[](const UInt32 index) {
+            DO_ASSERT(index < kRenderGraphMaxColorAttachments, "RenderGraphRenderTargetBindingSlots index out of range");
+            return color[index];
+        }
+
+        [[nodiscard]] const RenderGraphColorAttachment& operator[](const UInt32 index) const {
+            DO_ASSERT(index < kRenderGraphMaxColorAttachments, "RenderGraphRenderTargetBindingSlots index out of range");
+            return color[index];
+        }
+    };
+
     struct RenderGraphAccessInfo {
         RenderGraphAccessType access_type{RenderGraphAccessType::Read};
         RenderGraphPipelineStage stage{RenderGraphPipelineStage::PixelShader};
@@ -87,7 +133,7 @@ namespace dodoe {
             .setFormat(format)
             .setIsRenderTarget(true)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
-            .setDebugName(debug_name);
+            .setDebugName(string_to_std(debug_name));
         return desc;
     }
 
@@ -103,21 +149,9 @@ namespace dodoe {
             .setIsRenderTarget(true)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .enableAutomaticStateTracking(GfxResourceStates::DepthWrite)
-            .setDebugName(debug_name);
+            .setDebugName(string_to_std(debug_name));
         return desc;
     }
-
-    struct RenderGraphTextureHandle {
-        UInt32 index{kInvalidRenderGraphHandle};
-
-        [[nodiscard]] Bool isValid() const { return index != kInvalidRenderGraphHandle; }
-    };
-
-    struct RenderGraphBufferHandle {
-        UInt32 index{kInvalidRenderGraphHandle};
-
-        [[nodiscard]] Bool isValid() const { return index != kInvalidRenderGraphHandle; }
-    };
 
     struct RenderGraphBarrier {
         UInt32 resource_index{kInvalidRenderGraphHandle};

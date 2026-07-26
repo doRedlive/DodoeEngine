@@ -6,9 +6,9 @@
 
 namespace dodoe {
     class DODOE_API Layer {
-        std::string m_name;
+        String m_name;
     public:
-        explicit Layer(std::string name);
+        explicit Layer(String name);
 
         virtual ~Layer() = default;
 
@@ -18,7 +18,7 @@ namespace dodoe {
         virtual void renderTick() = 0;
 
         [[nodiscard]]
-        const std::string& getName() const { return m_name; }
+        const String& getName() const { return m_name; }
     };
 
 } // dodoe

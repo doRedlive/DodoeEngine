@@ -2,7 +2,7 @@
 
 #include "render_graph_pass.h"
 
-#include "runtime/function/render/shared_render_service.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 
 namespace dodoe {
 

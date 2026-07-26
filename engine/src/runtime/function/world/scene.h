@@ -14,7 +14,7 @@ namespace dodoe {
 
     struct SceneCreateInfo {
         World& world;
-        std::string name;
+        String name;
     };
 
     class DODOE_API Scene : public Managed<Scene, SceneCreateInfo> {
@@ -26,12 +26,12 @@ namespace dodoe {
 
         World& m_world;
         Registry m_reg;
-        std::string m_name;
+        String m_name;
         std::unordered_map<Uuid, Entity> m_entity_umap{};
     public: 
 
         Scene(const SceneCreateInfo& info);
-        Scene(World& world, const std::string& name);
+        Scene(World& world, const String& name);
         ~Scene() = default;
         Scene(const Scene&) = delete;
         Scene(Scene&&) = delete;
@@ -52,19 +52,19 @@ namespace dodoe {
         [[nodiscard]] SceneRes serialize() const;
         void deserialize(const SceneRes& scene_res);
 
-        [[nodiscard]] const std::string& getName() const { return m_name; }
-        void setName(const std::string& name) { m_name = name; }
+        [[nodiscard]] const String& getName() const { return m_name; }
+        void setName(const String& name) { m_name = name; }
 
         [[nodiscard]] Registry& registry() { return m_reg; }
         [[nodiscard]] const Registry& registry() const { return m_reg; }
 
-        Entity createEntity(const std::string& name);
-        Entity createEntity(Uuid uuid, const std::string& name = std::string());
+        Entity createEntity(const String& name);
+        Entity createEntity(Uuid uuid, const String& name = String());
         void destroyEntity(Entity entity);
         void addEntity(Entity entity);
         [[nodiscard]] Entity getEntity(ui32 entity_id);
-        [[nodiscard]] Entity getEntityByTag(const std::string& tag);
-        [[nodiscard]] DynamicArray<Entity> getEntitiesByTag(const std::string& tag);
+        [[nodiscard]] Entity getEntityByTag(const String& tag);
+        [[nodiscard]] DynamicArray<Entity> getEntitiesByTag(const String& tag);
         [[nodiscard]] std::vector<Entity> getEntities();
         [[nodiscard]] Entity tryGetEntityByUUID(Uuid uuid) const;
         [[nodiscard]] Entity getEntityByUUID(Uuid uuid);

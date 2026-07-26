@@ -8,6 +8,7 @@
 #include "runtime/function/render/render_scene/primitive_scene_info.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"
 #include "runtime/function/render/mesh_draw/mesh_data.h"
+#include "runtime/function/render/material/material.h"
 
 REFLECTION_TYPE(MeshRendererComponent)
 
@@ -21,7 +22,7 @@ namespace dodoe {
         META(Enable)
         DynamicArray<MeshLODData> lods;
         META(Enable)
-        DynamicArray<Ref<Material>> override_materials{};
+        DynamicArray<Ref<MaterialProperties>> override_materials{};
         META(Enable)
         bool visible{true};
         META(Enable)

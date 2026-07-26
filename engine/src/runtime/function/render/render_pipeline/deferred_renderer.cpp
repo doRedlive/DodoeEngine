@@ -2,7 +2,7 @@
 
 #include "deferred_renderer.h"
 
-#include "render_graph/render_graph_builder.h"
+#include "../render_graph/render_graph_builder.h"
 #include "render_pipeline_pass_utils.h"
 #include "render_feature/base_scene_feature.h"
 #include "render_feature/lighting_feature.h"
@@ -138,11 +138,13 @@ namespace dodoe {
 	        auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
 
 	        const auto viewport = GfxViewportState()
-	            .setViewport(view.getViewportWidth(), view.getViewportHeight());
+	            .addViewportAndScissorRect(GfxViewport(
+                static_cast<Float>(view.getViewportRect().z),
+                static_cast<Float>(view.getViewportRect().w)));
 
 	        for (Size_t pass_idx = 0; pass_idx < static_cast<Size_t>(MeshPassType::Count); pass_idx++) {
                 const auto& draw_lists = (pass_idx == static_cast<Size_t>(MeshPassType::GBuffer))
-                    ? base_feature->getGBufferDrawList() : base_feature->getShadowDrawLists();
+                    ? base_feature->getGBufferDrawLists() : base_feature->getShadowDrawLists();
 	            const auto& instances = draw_lists[view_index].cached_intances;
 	            if (instances.empty()) {
 	                continue;

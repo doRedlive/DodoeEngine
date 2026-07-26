@@ -2,6 +2,8 @@
 
 #include "vulkan_backend.h"
 
+#include <set>
+
 namespace dodoe {
 
 	namespace {
@@ -604,7 +606,7 @@ namespace dodoe {
         std::vector<VkExtensionProperties> available_extensions(extension_count);
         vkEnumerateDeviceExtensionProperties(gpu, nullptr, &extension_count, available_extensions.data());
 
-        std::set<std::string> required_extensions(device_extensions_.begin(), device_extensions_.end());
+        std::set<String> required_extensions(device_extensions_.begin(), device_extensions_.end());
         for (const auto& extension : available_extensions) {
             required_extensions.erase(extension.extensionName);
         }

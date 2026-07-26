@@ -121,7 +121,7 @@ namespace dodoe {
 
     } // namespace
 
-    MeshBlob::MeshBlob(const std::string& path) {
+    MeshBlob::MeshBlob(const String& path) {
         load(path);
     }
 
@@ -131,7 +131,7 @@ namespace dodoe {
         }
     }
 
-    void MeshBlob::load(const std::string& path) {
+    void MeshBlob::load(const String& path) {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
             path,

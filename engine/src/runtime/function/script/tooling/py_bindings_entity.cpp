@@ -18,16 +18,16 @@ namespace {
         std::function<void(Entity&)> remove_func;
     };
 
-    std::unordered_map<std::string, ComponentRegistry> s_component_registry{};
+    std::unordered_map<String, ComponentRegistry> s_component_registry{};
 
-    const ComponentRegistry* FindComponentRegistry(const std::string& type_name) {
+    const ComponentRegistry* FindComponentRegistry(const String& type_name) {
         auto it = s_component_registry.find(type_name);
         if (it == s_component_registry.end()) { return nullptr; }
         return &it->second;
     }
 
     template <typename T>
-    void RegisterComponentType(const std::string& type_name) {
+    void RegisterComponentType(const String& type_name) {
         ComponentRegistry registry{};
         registry.add_func = [](Entity& self) -> py::object {
             if (self.hasComponent<T>()) {
@@ -77,23 +77,23 @@ namespace {
         py::class_<Entity>(m, "Entity")
             .def(py::init<>())
             .def_property_readonly("valid", &Entity::valid)
-            .def_property_readonly("name", [](Entity& self) -> const std::string& { return self.name(); })
-            .def("add_component", [](Entity& self, const std::string& type_name) -> py::object {
+            .def_property_readonly("name", [](Entity& self) -> const String& { return self.name(); })
+            .def("add_component", [](Entity& self, const String& type_name) -> py::object {
                 const auto* reg = FindComponentRegistry(type_name);
                 if (!reg) { throw py::key_error("unregistered component type: " + type_name); }
                 return reg->add_func(self);
             })
-            .def("get_component", [](Entity& self, const std::string& type_name) -> py::object {
+            .def("get_component", [](Entity& self, const String& type_name) -> py::object {
                 const auto* reg = FindComponentRegistry(type_name);
                 if (!reg) { return py::none(); }
                 return reg->get_func(self);
             })
-            .def("has_component", [](Entity& self, const std::string& type_name) -> bool {
+            .def("has_component", [](Entity& self, const String& type_name) -> bool {
                 const auto* reg = FindComponentRegistry(type_name);
                 if (!reg) { return false; }
                 return reg->has_func(self);
             })
-            .def("remove_component", [](Entity& self, const std::string& type_name) {
+            .def("remove_component", [](Entity& self, const String& type_name) {
                 const auto* reg = FindComponentRegistry(type_name);
                 if (!reg) { return; }
                 reg->remove_func(self);

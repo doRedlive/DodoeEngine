@@ -4,7 +4,7 @@
 #include "ui_preset_manager.h"
 
 #include "ui_compat.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/core/utils/util.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -246,7 +246,7 @@ void UIButton::applyStateVisual(identifier state_id) {
     }
 }
 
-void UIButton::setLabelText(std::string text) {
+void UIButton::setLabelText(String text) {
     m_label_text = std::move(text);
     refreshBaseTextSize();
 }

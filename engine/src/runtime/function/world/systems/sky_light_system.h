@@ -10,7 +10,7 @@
 namespace dodoe {
 
     class SkyLightSystem : public System {
-        std::unordered_set<UUID> m_submitted{};
+        UnorderedSet<UUID> m_submitted{};
 
     public:
         ~SkyLightSystem() override;
@@ -18,7 +18,7 @@ namespace dodoe {
 
     private:
         bool syncSkyLight(Entity entity);
-        void pruneRemoved(const std::unordered_set<UUID>& active);
+        void pruneRemoved(const UnorderedSet<UUID>& active);
         TextureCubemap* loadCubemap(const DynamicArray<String>& paths);
     };
 

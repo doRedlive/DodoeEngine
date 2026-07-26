@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 #include "runtime/core/math/math.h"
+#include "runtime/core/utils/common.h"
 
 namespace dodoe {
 

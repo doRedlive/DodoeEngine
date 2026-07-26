@@ -16,7 +16,7 @@ namespace dodoe {
         Scope<NativeHost> m_native_host;
         ScriptCallFn m_call{nullptr};
         void* m_alc_gchandle{nullptr};
-        std::string m_script_sources_fingerprint{};
+        String m_script_sources_fingerprint{};
 
     public:
         [[nodiscard]] ScriptCallFn getCallFn() const { return m_call; }
@@ -34,7 +34,7 @@ namespace dodoe {
 
         bool loadCoreAssembly();
 
-        std::string m_pending_fingerprint{};
+        String m_pending_fingerprint{};
         int m_reload_counter{0};
     };
 

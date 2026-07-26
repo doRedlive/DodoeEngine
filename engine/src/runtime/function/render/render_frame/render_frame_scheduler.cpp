@@ -57,7 +57,7 @@ namespace dodoe {
 
     void RenderFrameScheduler::endFrame(FrameContext& ctx) {
         if (ctx.completion_query) {
-            m_device->setEventQuery(ctx.completion_query, CommandQueue::Graphics);
+            m_device->setEventQuery(ctx.completion_query, GfxCommandQueue::Graphics);
         }
     }
 

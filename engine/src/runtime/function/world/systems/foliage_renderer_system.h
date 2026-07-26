@@ -9,7 +9,7 @@
 namespace dodoe {
 
     class FoliageRendererSystem : public System {
-        std::unordered_set<UUID> m_submitted_objects{};
+        UnorderedSet<UUID> m_submitted_objects{};
 
     public:
         ~FoliageRendererSystem() override;
@@ -18,7 +18,7 @@ namespace dodoe {
 
     private:
         bool syncFoliageRenderer(Entity entity);
-        void pruneRemovedObjects(const std::unordered_set<UUID>& active_objects);
+        void pruneRemovedObjects(const UnorderedSet<UUID>& active_objects);
 
         [[nodiscard]] bool needsObjectSync(Entity entity) const;
         [[nodiscard]] static Matrix4f buildWorldMatrix(const TransformComponent& transform);

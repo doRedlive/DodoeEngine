@@ -3,6 +3,7 @@
 #include "shader_reflection.h"
 
 #include <directx/d3d12shader.h>
+#include <wrl/client.h>
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -84,7 +85,7 @@ namespace dodoe {
         result.shader_name = name;
         result.stage = stage;
 
-        ComPtr<ID3D12ShaderReflection> reflection;
+        Microsoft::WRL::ComPtr<ID3D12ShaderReflection> reflection;
         HRESULT hr = D3DReflect(bytecode.data(), bytecode.size(),
                                 IID_PPV_ARGS(&reflection));
 
@@ -473,7 +474,7 @@ namespace dodoe {
                 }
             }
             if (!found) {
-                out_error = "CBV at slot " + std::to_string(cb.slot) + " (" + cb.name + ") not found in layout";
+                out_error = String(("CBV at slot " + std::to_string(cb.slot) + " (" + cb.name.c_str() + ") not found in layout").c_str());
                 return false;
             }
         }
@@ -487,7 +488,7 @@ namespace dodoe {
                 }
             }
             if (!found) {
-                out_error = "Texture at slot " + std::to_string(tex.slot) + " (" + tex.name + ") not found in layout";
+                out_error = String(("Texture at slot " + std::to_string(tex.slot) + " (" + tex.name.c_str() + ") not found in layout").c_str());
                 return false;
             }
         }
@@ -502,7 +503,7 @@ namespace dodoe {
                 }
             }
             if (!found) {
-                out_error = "Sampler at slot " + std::to_string(smp.slot) + " (" + smp.name + ") not found in layout";
+                out_error = String(("Sampler at slot " + std::to_string(smp.slot) + " (" + smp.name.c_str() + ") not found in layout").c_str());
                 return false;
             }
         }

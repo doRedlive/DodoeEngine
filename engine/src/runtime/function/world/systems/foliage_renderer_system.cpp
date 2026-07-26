@@ -1,7 +1,7 @@
 #include "foliage_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
-#include "runtime/function/render/renderer.h"
+#include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/foliage_render_object.h"
 
 #include "runtime/core/math/math.h"
@@ -14,7 +14,7 @@ namespace dodoe {
         (void)dt;
 
         auto foliage_view = reg.view<IDComponent, TransformComponent, FoliageRendererComponent>();
-        std::unordered_set<UUID> active_objects{};
+        UnorderedSet<UUID> active_objects{};
         bool dirty = false;
 
         for (auto entity : foliage_view) {
@@ -57,7 +57,7 @@ namespace dodoe {
         return true;
     }
 
-    void FoliageRendererSystem::pruneRemovedObjects(const std::unordered_set<UUID>& active_objects) {
+    void FoliageRendererSystem::pruneRemovedObjects(const UnorderedSet<UUID>& active_objects) {
         for (auto it = m_submitted_objects.begin(); it != m_submitted_objects.end();) {
             if (!active_objects.contains(*it)) {
                 RenderCommandQueue::RemovePrimitive(*it);

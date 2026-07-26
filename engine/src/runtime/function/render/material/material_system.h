@@ -33,6 +33,11 @@ namespace dodoe {
         GfxTextureHandle texture;
 
         MaterialParamValue() : f{0.0f, 0.0f, 0.0f, 0.0f} {}
+        ~MaterialParamValue() { texture.~GfxTextureHandle(); }
+        MaterialParamValue(const MaterialParamValue& other) : f{0.0f, 0.0f, 0.0f, 0.0f} { texture = other.texture; }
+        MaterialParamValue(MaterialParamValue&& other) noexcept : f{0.0f, 0.0f, 0.0f, 0.0f} { texture = other.texture; other.texture = {}; }
+        MaterialParamValue& operator=(const MaterialParamValue& other) { texture = other.texture; return *this; }
+        MaterialParamValue& operator=(MaterialParamValue&& other) noexcept { texture = other.texture; other.texture = {}; return *this; }
     };
 
     struct MaterialParamDef {

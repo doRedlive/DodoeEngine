@@ -65,7 +65,7 @@ namespace dodoe {
         materials.reserve(lod->sub_meshes.size());
         for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
             MaterialProperties material = lod->sub_meshes[section_index].material;
-            if (section_index < m_override_materials.size() && m_override_materials[section_index]) {
+            if (section_index < m_override_materials.size()) {
                 material = m_override_materials[section_index];
             }
             materials.push_back(material);

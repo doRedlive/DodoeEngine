@@ -17,16 +17,16 @@ namespace dodoe {
         META(Enable)
         Uuid id{};
         META(Enable)
-        std::string name{};
+        String name{};
 
         IDComponent() = default;
-        IDComponent(const Uuid& in_id, std::string in_name) : id(in_id), name(std::move(in_name)) {}
+        IDComponent(const Uuid& in_id, String in_name) : id(in_id), name(std::move(in_name)) {}
         IDComponent(const IDComponent&) = default;
 
         bool dirty{false};
 
-        void setName(const std::string& in_name) { name = in_name; dirty = true; }
-        [[nodiscard]] const std::string& getName() const { return name; }
+        void setName(const String& in_name) { name = in_name; dirty = true; }
+        [[nodiscard]] const String& getName() const { return name; }
     };
 
 } // dodoe

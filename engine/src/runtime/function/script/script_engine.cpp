@@ -200,7 +200,7 @@ namespace dodoe {
 
         ++m_reload_counter;
 
-        std::string assembly_path_str;
+        String assembly_path_str;
 #ifdef DO_PLATFORM_WINDOWS
         const std::wstring wpath = assembly_path.wstring();
         int utf8_len = WideCharToMultiByte(CP_UTF8, 0, wpath.c_str(), (int)wpath.length(), nullptr, 0, nullptr, nullptr);

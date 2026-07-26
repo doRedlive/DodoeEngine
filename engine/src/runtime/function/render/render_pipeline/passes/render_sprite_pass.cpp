@@ -39,14 +39,18 @@ namespace dodoe {
             [&context](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
+                RenderGraphAttachmentInfo color_attachment{};
                 if (scene_color) {
-                    parameters.color_target = pass_builder.writeColor(*scene_color);
+                    color_attachment.load_op = LoadOp::Load;
+                    parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
                     parameters.clear_target = true;
+                    color_attachment.load_op = LoadOp::Clear;
+                    color_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
                     parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(
                             swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
-                        "SpriteColor"));
+                        "SpriteColor"), color_attachment);
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
                 }
 
@@ -91,17 +95,8 @@ namespace dodoe {
             },
             [this](const SpritePassParameters& parameters, const RenderGraphPassContext& ctx,
                    DrawCommandList& command_list) {
-                const auto color_target = ctx.resolveTexture(parameters.color_target);
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                if (parameters.clear_target) {
-                    command_list.clearTextureFloat(color_target, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                }
-
                 if (parameters.instances.empty() || !parameters.quad_vertex_buffer.isValid() ||
                     !parameters.quad_index_buffer.isValid() || !m_binding_layout) {
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -112,8 +107,6 @@ namespace dodoe {
                 if (!shader_library || !pipeline_cache || !descriptor_manager ||
                     !descriptor_manager->getDescriptorTable() || !m_input_layout) {
                     DO_ERROR("SpritePass: bindless sprite resources are unavailable");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -137,13 +130,11 @@ namespace dodoe {
 
                 const auto binding_set = command_list.createBindingSet(
                     GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::ConstantBuffer_VS(0, vp_buffer->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
                         .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
                     m_binding_layout);
                 if (!binding_set) {
                     DO_ERROR("SpritePass: failed to create binding set");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -172,15 +163,10 @@ namespace dodoe {
                 render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
                 pipeline_desc.setRenderState(render_state);
 
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
-                    pipeline_desc, framebuffer_info, command_list);
+                    pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                 if (!pipeline) {
                     DO_ERROR("SpritePass: failed to create pipeline");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -190,15 +176,12 @@ namespace dodoe {
                     GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
                 command_list.setIndexBuffer(GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
                 command_list.setGraphicsState(
-                    framebuffer, pipeline, binding_sets,
+                    ctx.getFramebuffer(), pipeline, binding_sets,
                     rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
                     vertex_buffers);
                 command_list.drawIndexed(GfxDrawArguments()
                     .setVertexCount(6)
                     .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
-
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             });
     }
 

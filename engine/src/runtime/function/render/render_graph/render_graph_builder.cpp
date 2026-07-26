@@ -166,6 +166,12 @@ namespace dodoe {
         DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
         DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::writeColor invalid handle");
         m_pass->addAccess(handle.index, RenderGraphAccessType::Write, RenderGraphPipelineStage::RenderTarget);
+        RenderGraphColorAttachment slot{};
+        slot.texture = handle;
+        slot.load_op = attachment.load_op;
+        slot.store_op = attachment.store_op;
+        slot.clear_color = attachment.clear_color;
+        m_pass->addColorSlot(slot);
         return handle;
     }
 
@@ -176,6 +182,11 @@ namespace dodoe {
         DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
         DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::writeDepth invalid handle");
         m_pass->addAccess(handle.index, RenderGraphAccessType::Write, RenderGraphPipelineStage::DepthStencil);
+        RenderGraphDepthStencilAttachment slot{};
+        slot.texture = handle;
+        slot.depth_load_op = attachment.load_op;
+        slot.depth_store_op = attachment.store_op;
+        m_pass->setDepthSlot(slot);
         return handle;
     }
 

@@ -42,7 +42,7 @@ public:
     void markNineSliceDirty() const { nine_slice_dirty_ = true; }
 
 private:
-    std::string texture_path_{};
+    String texture_path_{};
     identifier texture_id_{entt::null};
     Rect source_rect_{};
     bool flipped_{false};
@@ -55,7 +55,7 @@ struct LayoutOptions {
 };
 
 struct TextStyle {
-    std::string key{"default_ui"};
+    String key{"default_ui"};
     LayoutOptions layout{};
 };
 

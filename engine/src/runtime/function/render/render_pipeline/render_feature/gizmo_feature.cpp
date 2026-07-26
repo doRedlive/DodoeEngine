@@ -6,7 +6,7 @@
 
 #include "runtime/function/render/render_pipeline/passes/render_gizmo_pass.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
-#include "runtime/function/render/shared_render_service.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {

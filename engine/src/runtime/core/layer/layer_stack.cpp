@@ -55,7 +55,7 @@ namespace dodoe {
         }
     }
 
-    Layer* LayerStack::getLayer(const std::string& name) {
+    Layer* LayerStack::getLayer(const String& name) {
         for (auto layer : m_layers) {
             if (layer->getName() == name) {
                 return layer;

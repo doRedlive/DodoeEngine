@@ -42,6 +42,7 @@ namespace dodoe {
             m_device = device;
             m_resource_mode = false;
         }
+        [[nodiscard]] Bool isImmediate() const { return m_resource_mode; }
         void setDevice(GfxDeviceHandle device) { m_device = device; }
         void setDevice(class GfxContext& gfx);
         [[nodiscard]] GfxDeviceHandle getDevice() const { return m_device; }
@@ -180,6 +181,7 @@ namespace dodoe {
             static BeginMarkerCommand& Create(DrawCommandList& cl, const char* name) { const char* n=name?name:""; Size_t l=std::strlen(n)+1; auto& c=VarCmd::Create(cl,l,(const void*)n); return c; }
             const char* name() const { return (const char*)data(); }
             void execute(GfxCommandList& c) const { c.beginMarker(name()); }
+            friend class VarCmd<BeginMarkerCommand>;
         private: explicit BeginMarkerCommand(Size_t l) : VarCmd(CalcSize(l)) {}
         };
 

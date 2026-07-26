@@ -13,10 +13,10 @@ namespace dodoe {
         void* pixels{nullptr};
 
         TextureBlob() = default;
-        explicit TextureBlob(const std::string& paht);
+        explicit TextureBlob(const String& paht);
         ~TextureBlob();
 
-        void load(const std::string& path, bool flip_vertical = true);
+        void load(const String& path, bool flip_vertical = true);
         void free();
 
         bool isValid() const { return pixels != nullptr; }

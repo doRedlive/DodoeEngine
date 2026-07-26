@@ -61,6 +61,8 @@ namespace dodoe {
     class RenderGraphPassContext {
         const RenderGraphExecuteContext* m_execute_context{nullptr};
         const RenderGraphResourceResolver* m_resource_resolver{nullptr};
+        GfxFramebufferHandle m_framebuffer{};
+        GfxFramebufferInfo m_framebuffer_info{};
 
     public:
         RenderGraphPassContext(const RenderGraphExecuteContext& execute_context, const RenderGraphResourceResolver& resource_resolver)
@@ -88,6 +90,11 @@ namespace dodoe {
             DO_ASSERT(m_resource_resolver != nullptr, "RenderGraphPassContext resource resolver is null");
             return m_resource_resolver->getBuffer(handle);
         }
+
+        void setFramebuffer(const GfxFramebufferHandle fb) { m_framebuffer = fb; }
+        [[nodiscard]] GfxFramebufferHandle getFramebuffer() const { return m_framebuffer; }
+        void setFramebufferInfo(const GfxFramebufferInfo& info) { m_framebuffer_info = info; }
+        [[nodiscard]] const GfxFramebufferInfo& getRenderTargetSignature() const { return m_framebuffer_info; }
     };
 
     class RenderGraphPass {
@@ -97,6 +104,8 @@ namespace dodoe {
         DynamicArray<RenderGraphBarrier> m_pre_barriers{};
         std::function<void(const RenderGraphPassContext&, DrawCommandList&)> m_execute_function{};
         UInt32 m_subgraph_index{~0u};
+        DynamicArray<RenderGraphColorAttachment> m_color_slots{};
+        Optional<RenderGraphDepthStencilAttachment> m_depth_slot{};
 
     public:
         RenderGraphPass() = default;
@@ -130,6 +139,12 @@ namespace dodoe {
         [[nodiscard]] const DynamicArray<RenderGraphPassResourceAccess>& getAccesses() const { return m_accesses; }
         [[nodiscard]] const DynamicArray<RenderGraphBarrier>& getPreBarriers() const { return m_pre_barriers; }
         void setAutoBarriers(DynamicArray<RenderGraphBarrier>&& barriers) { m_pre_barriers = std::move(barriers); }
+
+        void addColorSlot(const RenderGraphColorAttachment& slot) { m_color_slots.push_back(slot); }
+        [[nodiscard]] const DynamicArray<RenderGraphColorAttachment>& getColorSlots() const { return m_color_slots; }
+        void setDepthSlot(const RenderGraphDepthStencilAttachment& slot) { m_depth_slot = slot; }
+        [[nodiscard]] const Optional<RenderGraphDepthStencilAttachment>& getDepthSlot() const { return m_depth_slot; }
+        [[nodiscard]] Bool hasRenderTargetSlots() const { return !m_color_slots.empty() || m_depth_slot.has_value(); }
     };
 
     class RenderGraphPassBuilder {

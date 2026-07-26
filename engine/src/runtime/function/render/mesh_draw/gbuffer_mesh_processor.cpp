@@ -7,6 +7,7 @@
 #include "cached_mesh_draw_command.h"
 #include "runtime/core/math/math.h"
 #include "../render_scene/primitive_render_object.h"
+#include "../material/material_system.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"

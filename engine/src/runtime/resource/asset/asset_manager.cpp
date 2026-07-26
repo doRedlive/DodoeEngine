@@ -133,7 +133,7 @@ namespace dodoe {
         if (asset->isReadOnly() || !asset->isLoaded()) {
             return false;
         }
-        String abs_path = (m_asset_dir / asset->getSourcePath()).string();
+        String abs_path = String((m_asset_dir / asset->getSourcePath()).string().c_str());
         return asset->saveToSource(abs_path);
     }
 
@@ -166,12 +166,12 @@ namespace dodoe {
                     continue;
                 }
 
-                const String path = entry.path().generic_string();
-                String ext = entry.path().extension().string();
+                const String path = String(entry.path().generic_string().c_str());
+                String ext = String(entry.path().extension().string().c_str());
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
                 FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
-                String source_path = rel_path.generic_string();
+                String source_path = String(rel_path.generic_string().c_str());
 
                 if (ext == kSceneExt) {
                     FileID file_id = registerAsset(source_path, AssetType::Scene);
@@ -238,7 +238,7 @@ namespace dodoe {
 
         for (const auto& path : paths) {
             FsPath rel = std::filesystem::relative(path, m_asset_dir);
-            String rel_str = rel.generic_string();
+            String rel_str = String(rel.generic_string().c_str());
 
             std::unique_lock lock(m_mutex);
             if (m_path_to_file_id.find(rel_str) != m_path_to_file_id.end()) {

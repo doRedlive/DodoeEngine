@@ -52,9 +52,9 @@ namespace {
     return fallback;
 }
 
-[[nodiscard]] std::optional<std::string> jsonToString(const nlohmann::json& value) {
+[[nodiscard]] std::optional<String> jsonToString(const nlohmann::json& value) {
     if (const auto* v = value.get_ptr<const nlohmann::json::string_t*>()) {
-        return std::string(*v);
+        return String(*v);
     }
     return std::nullopt;
 }
@@ -90,13 +90,13 @@ std::optional<Vector2f> parseVec2(const nlohmann::json& value) {
 } // namespace
 
 bool UIPresetManager::loadButtonPresets(std::string_view file_path) {
-    std::ifstream file{std::string(file_path)};
+    std::ifstream file{String(file_path)};
     if (!file.is_open()) {
         DO_WARN("UIPresetManager: failed to open button preset file {}.", file_path);
         return false;
     }
 
-    const std::string file_content(
+    const String file_content(
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>()
     );
@@ -179,9 +179,9 @@ bool UIPresetManager::loadButtonPresets(std::string_view file_path) {
                     }
 
                     if (sound_value.is_null()) {
-                        skin.sound_events.insert_or_assign(event_id, std::string{});
+                        skin.sound_events.insert_or_assign(event_id, String{});
                     } else if (sound_value.is_string()) {
-                        skin.sound_events.insert_or_assign(event_id, sound_value.get<std::string>());
+                        skin.sound_events.insert_or_assign(event_id, sound_value.get<String>());
                     } else {
                         DO_WARN("UIPresetManager: preset '{}' sounds.{} is invalid (expected string or null).", key, sound_key);
                     }
@@ -205,13 +205,13 @@ void UIPresetManager::clearButtonPresets() {
 }
 
 bool UIPresetManager::loadImagePresets(std::string_view file_path) {
-    std::ifstream file{std::string(file_path)};
+    std::ifstream file{String(file_path)};
     if (!file.is_open()) {
         DO_WARN("UIPresetManager: failed to open image preset file {}.", file_path);
         return false;
     }
 
-    const std::string file_content(
+    const String file_content(
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>()
     );
@@ -385,7 +385,7 @@ std::optional<Image> UIPresetManager::parseImageDefinition(const nlohmann::json&
         return std::nullopt;
     }
 
-    std::optional<std::string> texture_path{};
+    std::optional<String> texture_path{};
     if (auto it = json_value.find("path"); it != json_value.end()) {
         texture_path = jsonToString(*it);
     }

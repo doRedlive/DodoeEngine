@@ -69,7 +69,7 @@ namespace dodoe {
 
         graph.addPass<DeferredLightPassParameters>(
             "DeferredLightPass",
-            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
+            RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
                 const auto* gbuffer = pass_builder.blackboard().get<SceneTexturesKey>();
                 const auto* shadow = pass_builder.blackboard().get<ShadowMapKey>();
@@ -80,7 +80,9 @@ namespace dodoe {
                 parameters.position = pass_builder.read(gbuffer->position);
                 parameters.material = pass_builder.read(gbuffer->material);
                 parameters.shadow_map = pass_builder.read(*shadow);
-                parameters.hdr_color = pass_builder.writeColor(*hdr);
+                RenderGraphAttachmentInfo hdr_attachment{};
+                hdr_attachment.load_op = LoadOp::Load;
+                parameters.hdr_color = pass_builder.writeColor(*hdr, hdr_attachment);
 
                 if (!context.scene) {
                     return;
@@ -111,18 +113,13 @@ namespace dodoe {
                     }
                 }
 
-                const auto hdr = ctx.resolveTexture(parameters.hdr_color);
                 if (!has_enabled_lights) {
-                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
                 auto* staging = ctx.getFrameStagingAllocator();
                 if (!staging) {
                     DO_ERROR("DeferredLightPass: frame staging allocator is null");
-                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -136,39 +133,22 @@ namespace dodoe {
                     skybox_texture = ctx.resolveTexture(parameters.skybox_texture);
                 }
 
-                auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
-                auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-
-                GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                 const auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library->getFullscreenVertexShader(),
                         shader_library->getDeferredLightPixelShader(),
                         binding_layout,
                         true),
-                    framebuffer_info,
+                    ctx.getRenderTargetSignature(),
                     command_list);
                 if (!pipeline) {
                     DO_ERROR("DeferredLightPass: failed to create pipeline");
-                    command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                     *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                 const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView());
-
-                command_list.setTextureState(albedo_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(normal_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(position_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(material_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.setTextureState(shadow_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                if (skybox_texture) {
-                    command_list.setTextureState(skybox_texture, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                }
-                command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
 
                 for (const auto& light_info : light_infos) {
                     if (!light_info.isEnabled() || light_info.getLightType() == LightType::Sky) {
@@ -237,12 +217,9 @@ namespace dodoe {
                     }
 
                     DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
-                    command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport_state);
+                    command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
                     command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                 }
-
-                command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             });
     }
 
