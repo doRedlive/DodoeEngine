@@ -23,10 +23,7 @@ namespace dodoe {
     class BaseSceneFeature final : public IRenderFeature {
         Scope<RenderTargetHandle> m_gbuffer{nullptr};
         Scope<RenderTargetHandle> m_shadow_map{nullptr};
-        GfxBufferHandle m_primitive_scene_buffer{};
-        UInt32 m_primitive_scene_capacity{0};
         SharedRenderService* m_shared_render_service{nullptr};
-        DeferredDeletionQueue* m_deletion_queue{nullptr};
         Scope<GBufferMeshProcessor> m_gbuffer_processor{nullptr};
         Scope<DirectionalShadowMeshProcessor> m_shadow_processor{nullptr};
         GfxBufferHandle m_skybox_cb{};
@@ -44,20 +41,16 @@ namespace dodoe {
         void onResize(UInt32 width, UInt32 height) override;
         void shutdown() override;
 
-        void exportResources(ResourceRegistry& registry,
-                             const RenderView& view) override;
+        void registerGraphImports(RenderGraphImportRegistry& imports,
+                                  const RenderView& view) override;
 
         void collectPasses(PassCollector& collector) override;
-
-        void ensurePrimitiveSceneBufferCapacity(UInt32 instance_count, GfxContext& gfx, UInt64 current_frame);
 
         void setupMeshPassContexts(const RenderScene& scene, RenderViewFamily& view_family) const;
         void buildMeshDrawCommands(RenderViewFamily& view_family, DrawCommandList& cmd_list);
 
         [[nodiscard]] RenderTargetHandle* getGBuffer() const { return m_gbuffer.get(); }
         [[nodiscard]] RenderTargetHandle* getShadowMap() const { return m_shadow_map.get(); }
-        [[nodiscard]] GfxBufferHandle getPrimitiveSceneBuffer() const { return m_primitive_scene_buffer; }
-        [[nodiscard]] UInt32 getPrimitiveSceneCapacity() const { return m_primitive_scene_capacity; }
         [[nodiscard]] GBufferMeshProcessor* getGBufferProcessor() const { return m_gbuffer_processor.get(); }
         [[nodiscard]] DirectionalShadowMeshProcessor* getShadowProcessor() const { return m_shadow_processor.get(); }
         [[nodiscard]] const MeshDrawCommandCache& getMeshDrawCache() const { return m_mesh_draw_cache; }

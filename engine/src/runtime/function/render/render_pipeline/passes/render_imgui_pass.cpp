@@ -6,6 +6,7 @@
 
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/shader/global_samplers.h"
 
@@ -19,6 +20,7 @@ namespace dodoe {
 
     struct ImGuiPassParameters {
         RenderGraphTextureHandle output{};
+        RenderGraphTextureHandle font_texture{};
         RenderGraphBufferHandle vertex_buffer{};
         RenderGraphBufferHandle index_buffer{};
     };
@@ -39,6 +41,13 @@ namespace dodoe {
                 parameters.output = pass_builder.writeColor(
                     pass_builder.createTransientTexture(color_desc, "ImGuiColor"));
                 pass_builder.blackboard().set<ImGuiColorKey>(parameters.output);
+
+                DO_ASSERT(context.graph_imports != nullptr, "ImGuiPass graph imports are null");
+                if (const auto* font_texture = context.graph_imports->find<ImGuiFontTextureKey>();
+                    font_texture && *font_texture) {
+                    parameters.font_texture = pass_builder.read(
+                        pass_builder.importTexture(*font_texture, "ImGuiFontTexture"));
+                }
 
                 RenderGraphBufferDesc vb_desc{};
                 vb_desc.desc = GfxBufferDesc()
@@ -63,6 +72,10 @@ namespace dodoe {
             [this](const ImGuiPassParameters& parameters, const RenderGraphPassContext& ctx,
                DrawCommandList& command_list) {
                 const auto color_target = ctx.resolveTexture(parameters.output);
+                GfxTextureHandle font_texture{};
+                if (parameters.font_texture.isValid()) {
+                    font_texture = ctx.resolveTexture(parameters.font_texture);
+                }
                 command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
                 command_list.clearTextureFloat(color_target, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 0.0f));
@@ -184,7 +197,7 @@ namespace dodoe {
                         if (!texture || !texture->isRHIReady()) {
                             continue;
                         }
-                        const auto binding_set = texture == m_font_texture.get() && m_font_binding_set
+                        const auto binding_set = texture == font_texture.get() && m_font_binding_set
                             ? m_font_binding_set
                             : command_list.createBindingSet(
                                 GfxBindingSetDesc()

@@ -17,6 +17,9 @@ namespace dodoe {
         void initialize(SharedRenderService& resources) override;
         void shutdown() override;
 
+        void registerGraphImports(RenderGraphImportRegistry& imports,
+                                  const RenderView& view) override;
+
         void collectPasses(PassCollector& collector) override;
     };
 

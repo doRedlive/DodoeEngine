@@ -15,6 +15,7 @@
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -33,6 +34,9 @@ namespace dodoe {
     struct SkyboxPassParameters {
         RenderGraphTextureHandle depth{};
         RenderGraphTextureHandle hdr_color{};
+        RenderGraphTextureHandle skybox_texture{};
+        RenderGraphBufferHandle skybox_cb{};
+        Bool has_sky_light{false};
     };
 
     void SkyboxPass::build(RenderGraphBuilder& graph,
@@ -42,7 +46,7 @@ namespace dodoe {
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
             [&context](RenderGraphPassBuilder& pass_builder, SkyboxPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
-                const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey, SceneTextures>();
+                const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
                 DO_ASSERT(scene_textures, "SkyboxPass scene textures are missing");
 
                 parameters.depth = pass_builder.read(scene_textures->depth);
@@ -50,6 +54,26 @@ namespace dodoe {
                     rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG MainCameraHdrColor"),
                     "MainCameraHdrColor"));
                 pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
+
+                DO_ASSERT(context.graph_imports != nullptr, "SkyboxPass graph imports are null");
+                parameters.skybox_cb = pass_builder.write(pass_builder.importBuffer(
+                    context.graph_imports->require<SkyboxConstantBufferKey>(), "SkyboxConstantBuffer"));
+
+                if (!context.scene) {
+                    return;
+                }
+                for (const auto& light_info : context.scene->getLightSceneInfos()) {
+                    if (light_info.getLightType() != LightType::Sky || !light_info.isEnabled()) {
+                        continue;
+                    }
+                    parameters.has_sky_light = true;
+                    const auto cubemap = light_info.getSkyLightData().cubemap;
+                    if (cubemap && cubemap->getGpuHandle()) {
+                        parameters.skybox_texture = pass_builder.read(pass_builder.importTexture(
+                            cubemap->getGpuHandle(), "SkyboxCubemap"));
+                    }
+                    break;
+                }
             },
             [this](const SkyboxPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto depth_handle = ctx.resolveTexture(parameters.depth);
@@ -58,24 +82,13 @@ namespace dodoe {
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
 
-                Bool has_sky = false;
-                GfxTextureHandle cubemap_handle{};
-                for (const auto& light_info : ctx.getScene()->getLightSceneInfos()) {
-                    if (light_info.getLightType() == LightType::Sky && light_info.isEnabled()) {
-                        cubemap_handle = light_info.getSkyLightData().cubemap
-                            ? light_info.getSkyLightData().cubemap->getGpuHandle()
-                            : GfxTextureHandle{};
-                        has_sky = true;
-                        break;
-                    }
-                }
-                if (!has_sky) {
+                if (!parameters.has_sky_light) {
                     command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
                     command_list.commitBarriers();
                     command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                     return;
                 }
-                if (!cubemap_handle) {
+                if (!parameters.skybox_texture.isValid()) {
                     DO_ERROR("SkyboxPass: enabled sky light has no cubemap");
                     command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
                     command_list.commitBarriers();
@@ -83,12 +96,18 @@ namespace dodoe {
                     return;
                 }
 
+                const auto skybox_cb = ctx.resolveBuffer(parameters.skybox_cb);
+                const auto cubemap_handle = ctx.resolveTexture(parameters.skybox_texture);
+
                 SkyboxConstantBuffer cb_data;
                 cb_data.inv_view_projection = Math::Inverse(ctx.getView()->getViewProjectionMatrix());
-                command_list.writeBuffer(m_skybox_cb, &cb_data, sizeof(cb_data));
+                command_list.setBufferState(skybox_cb, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(skybox_cb, &cb_data, sizeof(cb_data));
+                command_list.setBufferState(skybox_cb, GfxResourceStates::ConstantBuffer);
 
                 SkyboxPassShaderParams shader_params;
-                shader_params.skybox_cb.value = m_skybox_cb;
+                shader_params.skybox_cb.value = skybox_cb;
                 shader_params.skybox_texture.value = cubemap_handle;
                 shader_params.depth.value = parameters.depth;
                 shader_params.sampler.value = GlobalSamplers::screen();
@@ -125,6 +144,7 @@ namespace dodoe {
                 DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
                 command_list.setTextureState(hdr, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.setTextureState(depth_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                command_list.setTextureState(cubemap_handle, GfxAllSubresources, GfxResourceStates::ShaderResource);
                 command_list.commitBarriers();
                 command_list.clearTextureFloat(hdr, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
                 command_list.setGraphicsState(fb, pipeline, bs_arr, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()));

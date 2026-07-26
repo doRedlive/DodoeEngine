@@ -10,12 +10,8 @@
 namespace dodoe {
 
 	class PresentPass : public IRenderPass {
-	    GfxBufferHandle m_present_cb{};
-
 	public:
 	    PresentPass() = default;
-	    explicit PresentPass(GfxBufferHandle present_cb)
-	        : m_present_cb(present_cb) {}
 
 	    using Produces = TypeList<>;
 	    using Consumes = TypeList<SceneColorKey>;

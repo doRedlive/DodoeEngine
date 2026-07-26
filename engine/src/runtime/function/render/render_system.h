@@ -8,7 +8,7 @@
 #include "render_settings.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_frame/render_frame_scheduler.h"
-#include "shared_render_service.h"
+#include "render_service/shared_render_service.h"
 #include "render_view/render_view_manager.h"
 #include "render_pipeline/render_pipeline.h"
 #include "render_scene/render_scene.h"

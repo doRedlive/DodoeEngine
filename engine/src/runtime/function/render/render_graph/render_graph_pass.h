@@ -7,7 +7,7 @@
 
 #include "render_graph_blackboard.h"
 #include "render_graph_resource.h"
-#include "render_graph_resource_registry.h"
+#include "render_graph_resource_resolver.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
 
@@ -58,11 +58,11 @@ namespace dodoe {
 
     class RenderGraphPassContext {
         const RenderGraphExecuteContext* m_execute_context{nullptr};
-        const RenderGraphResourceRegistry* m_resource_registry{nullptr};
+        const RenderGraphResourceResolver* m_resource_resolver{nullptr};
 
     public:
-        RenderGraphPassContext(const RenderGraphExecuteContext& execute_context, const RenderGraphResourceRegistry& resource_registry)
-            : m_execute_context(&execute_context), m_resource_registry(&resource_registry) { }
+        RenderGraphPassContext(const RenderGraphExecuteContext& execute_context, const RenderGraphResourceResolver& resource_resolver)
+            : m_execute_context(&execute_context), m_resource_resolver(&resource_resolver) { }
 
         [[nodiscard]] const RenderViewFamily* getViewFamily() const { return m_execute_context->view_family; }
         [[nodiscard]] const RenderScene* getScene() const { return m_execute_context->scene; }
@@ -78,13 +78,13 @@ namespace dodoe {
         [[nodiscard]] TextureManager* getTextureManager() const;
 
         [[nodiscard]] GfxTextureHandle resolveTexture(const RenderGraphTextureHandle handle) const {
-            DO_ASSERT(m_resource_registry != nullptr, "RenderGraphPassContext resource registry is null");
-            return m_resource_registry->getTexture(handle);
+            DO_ASSERT(m_resource_resolver != nullptr, "RenderGraphPassContext resource resolver is null");
+            return m_resource_resolver->getTexture(handle);
         }
 
         [[nodiscard]] GfxBufferHandle resolveBuffer(const RenderGraphBufferHandle handle) const {
-            DO_ASSERT(m_resource_registry != nullptr, "RenderGraphPassContext resource registry is null");
-            return m_resource_registry->getBuffer(handle);
+            DO_ASSERT(m_resource_resolver != nullptr, "RenderGraphPassContext resource resolver is null");
+            return m_resource_resolver->getBuffer(handle);
         }
     };
 

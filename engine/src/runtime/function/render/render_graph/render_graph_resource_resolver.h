@@ -14,13 +14,13 @@ namespace dodoe {
 
     using TransientResourcePool = RenderGraphTransientPool;
 
-    class RenderGraphResourceRegistry {
+    class RenderGraphResourceResolver {
         DynamicArray<GfxTextureHandle> m_texture_handles{};
         DynamicArray<GfxBufferHandle> m_buffer_handles{};
         RenderGraphTransientPool* m_transient_pool{nullptr};
 
     public:
-        RenderGraphResourceRegistry(const DynamicArray<RenderGraphResourceRecord>& resources, GfxContext& gfx_context,
+        RenderGraphResourceResolver(const DynamicArray<RenderGraphResourceRecord>& resources, GfxContext& gfx_context,
             const UInt32 swapchain_image_index, DrawCommandList& command_list,
             RenderGraphTransientPool* transient_pool = nullptr);
 

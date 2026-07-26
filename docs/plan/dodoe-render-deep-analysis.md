@@ -52,7 +52,7 @@
 | R2.2 | RenderGraphPassBuilder 语义化 API | R2 | ✅ 完成 | 2026-07-18 | `render_graph_pass.h/.cpp`: readTexture/writeColor/writeDepth/writeUav/readBuffer/writeBuffer/exportTexture |
 | R2.3 | 编译期 validation（未初始化 read / 重复 write） | R2 | ✅ 完成 | 2026-07-18 | `render_graph.cpp`: validateAccesses() — 未初始化读/写未读/UAV 冲突检测 |
 | R2.4 | 自动 barrier 生成（access 声明 → transition） | R2 | ✅ 完成 | 2026-07-18 | `render_graph.cpp`: deriveBarriers() + accessToRequiredState()，execute() 中自动应用 pre-barriers |
-| R2.5 | Transient resource pool（lifetime + 池化） | R2 | ✅ 完成 | 2026-07-18 | `render_graph_resource_registry.h/.cpp`: TransientResourcePool，desc 匹配复用，releaseAll 每帧归还 |
+| R2.5 | Transient resource pool（lifetime + 池化） | R2 | ✅ 完成 | 2026-07-18 | `render_graph_resource_resolver.h/.cpp`: TransientResourcePool，desc 匹配复用，releaseAll 每帧归还 |
 | R2.6 | Export root + 反向可达性 pass culling | R2 | ✅ 完成 | 2026-07-18 | `render_graph.cpp`: cullUnreachablePasses() — 从 export/backbuffer 反向 BFS，不可达 pass 剔除 |
 | R2.7 | Graph dump（JSON/DOT 导出） | R2 | ✅ 完成 | 2026-07-18 | `render_graph.cpp`: dumpToJSON() + dumpToDOT()，pass/resource/barrier 完整信息导出 |
 | R2.8 | Transient aliasing + memory budget（延后） | R2 | 🔵 延后 | — | 待 profiling 数据支撑 |
@@ -572,7 +572,7 @@ GfxResourceStates accessToState(RenderGraphAccessType access, RenderGraphPipelin
 
 #### Task R2.5：Transient Resource Pool
 
-- 文件：[render_graph_resource_registry.cpp](render_graph_resource_registry.cpp) / `.h`
+- 文件：[render_graph_resource_resolver.cpp](render_graph_resource_resolver.cpp) / `.h`
 - 依赖：R2.3（validation 保证 lifetime 正确）
 
 **目标**：根据资源在 graph 中的 first_pass / last_pass 推导 lifetime，实现池化复用，减少每帧 `createTexture` / `createBuffer` 调用。
@@ -771,8 +771,8 @@ void RenderGraph::cullUnreachablePasses() {
 | [render_graph_builder.cpp](render_graph_builder.cpp) | 扩展 | 实现所有新 Builder API + `exportTexture` |
 | [render_graph.h](render_graph.h) | 扩展 | 新增 `TransientResourcePool` 成员 + `validateAccesses/deriveBarriers/cullUnreachablePasses/dumpToJSON/dumpToDOT` |
 | [render_graph.cpp](render_graph.cpp) | 重构 | `accessToRequiredState()` 映射函数；`validateAccesses()` 3 条规则；`deriveBarriers()` per-resource 状态追踪；`cullUnreachablePasses()` 反向 BFS；`execute()` 自动应用 barrier + pool release；`dumpToJSON/dumpToDOT` |
-| [render_graph_resource_registry.h](render_graph_resource_registry.h) | 扩展 | 新增 `TransientResourcePool` 类 |
-| [render_graph_resource_registry.cpp](render_graph_resource_registry.cpp) | 扩展 | Pool acquire/release 实现 + `initialize()` 集成 |
+| [render_graph_resource_resolver.h](render_graph_resource_resolver.h) | 扩展 | 新增 `TransientResourcePool` 类 |
+| [render_graph_resource_resolver.cpp](render_graph_resource_resolver.cpp) | 扩展 | Pool acquire/release 实现 + `initialize()` 集成 |
 
 **R2 完成标准达成**：
 - ✅ 语义化 API 可声明 Read/Write/ReadWrite + 管线阶段 + 子资源范围
@@ -2000,7 +2000,7 @@ public:
 | `render/render_graph/render_graph_resource.h` | ~104 → ~200 | R2.1 | AccessType/Stage/Subresource/Attachment |
 | `render/render_graph/render_graph_pass.h` | ~131 → ~250 | R2.2 | 语义化 readTexture/writeColor 等 API |
 | `render/render_graph/render_graph.cpp` | ~256 → ~600 | R2.3-2.4 | Validation + barrier 推导 |
-| `render/render_graph/render_graph_resource_registry.cpp` | ~修改 | R2.5 | Transient pool + lifetime |
+| `render/render_graph/render_graph_resource_resolver.cpp` | ~修改 | R2.5 | Transient pool + lifetime |
 | `render/shader/shader_manifest.h/.cpp` | ~90 / ~95 | R3.1 ✅ | JSON manifest parser + ReadShaderFile |
 | `render/shader/shader_reflection.h/.cpp` | ~100 / ~300 | R3.2 | DXIL/SPIRV 反射 |
 | `render/shader/binding_layout_generator.h/.cpp` | ~60 / ~150 | R3.3 | 反射 → binding layout |

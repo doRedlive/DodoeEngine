@@ -179,7 +179,7 @@ attachment、load/store/clear 显式声明
 调试
 marker
 graph dump、barrier、资源寿命、显存预算
-涉及：render_graph_resource.h、render_graph_pass.h、render_graph.cpp、render_graph_resource_registry.cpp。
+涉及：render_graph_resource.h、render_graph_pass.h、render_graph.cpp、render_graph_resource_resolver.cpp。
 4.2 建议的资源访问 API
 将 Read/Write 两态扩展为显式 usage：
 builder.readTexture(input, RGTextureAccess::SampledPixel);
@@ -402,7 +402,7 @@ Phase R4：GPU-driven 与多队列
 - 顶层帧循环和 threading mode：function/render/render_system.cpp
 - 延迟 renderer 与 feature 组合：function/render/render_pipeline/deferred_renderer.cpp
 - RenderGraph 编译/并行执行：function/render/render_graph/render_graph.cpp
-- RenderGraph 资源 registry：function/render/render_graph/render_graph_resource_registry.cpp
+- RenderGraph 资源 resolver：function/render/render_graph/render_graph_resource_resolver.cpp
 - 图访问类型和 pass flags：function/render/render_graph/render_graph_resource.h、render_graph_pass.h
 - deferred command list 与全局 frame memory：function/graphics/draw_command_list.cpp、core/memory/memory.cpp
 - GPU Scene 同步：function/render/render_scene/render_scene.cpp

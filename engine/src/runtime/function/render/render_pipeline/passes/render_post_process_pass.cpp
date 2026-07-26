@@ -37,7 +37,7 @@ namespace dodoe {
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
             [&context](RenderGraphPassBuilder& pass_builder, PostProcessPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
-                const auto* hdr = pass_builder.blackboard().get<SceneHdrKey, RenderGraphTextureHandle>();
+                const auto* hdr = pass_builder.blackboard().get<SceneHdrKey>();
                 DO_ASSERT(hdr, "PostProcessPass hdr input is missing");
                 parameters.input = pass_builder.read(*hdr);
                 parameters.output = pass_builder.writeColor(pass_builder.createTransientTexture(

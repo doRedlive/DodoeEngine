@@ -38,7 +38,7 @@ namespace dodoe {
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
-                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.writeColor(*scene_color);
                 } else {

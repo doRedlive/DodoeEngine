@@ -3,6 +3,7 @@
 #include "imgui_feature.h"
 
 #include "runtime/function/render/render_pipeline/passes/render_imgui_pass.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/shared_render_service.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
@@ -81,17 +82,15 @@ namespace dodoe {
 	    m_binding_layout.reset();
 	}
 
-	void ImGuiFeature::exportResources(ResourceRegistry& registry,
-	                                   const RenderView& view) {
+	void ImGuiFeature::registerGraphImports(RenderGraphImportRegistry& imports,
+	                                        const RenderView& view) {
 	    if (m_font_texture) {
-	        registry.registerTexture("ImGuiFontTexture", m_font_texture,
-	                                 GfxFormat::RGBA8_UNORM,
-	                                 RenderTargetScalePolicy::Fixed);
+	        imports.publish<ImGuiFontTextureKey>(m_font_texture);
 	    }
 	}
 
 	void ImGuiFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_font_texture, m_input_layout);
+	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_input_layout);
 	}
 
 } // namespace dodoe

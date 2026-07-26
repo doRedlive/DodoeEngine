@@ -369,7 +369,7 @@ namespace dodoe {
         DO_ASSERT(m_compiled, "RenderGraph must be compiled before execute");
         DO_ASSERT(context.gfx_context != nullptr, "RenderGraphContext gfx_context is null");
 
-        RenderGraphResourceRegistry resource_registry(m_resources, *context.gfx_context, context.swapchain_image_index, out_commands, &m_transient_pool);
+        RenderGraphResourceResolver resource_resolver(m_resources, *context.gfx_context, context.swapchain_image_index, out_commands, &m_transient_pool);
 
         const bool direct_mode = out_commands.isImmediate();
 
@@ -380,13 +380,13 @@ namespace dodoe {
                 for (Size_t i = 0; i < level.size(); ++i) {
                     const auto pass_index = level[i];
                     const auto pass = m_passes[pass_index];
-                    RenderGraphPassContext pass_context(context, resource_registry);
+                    RenderGraphPassContext pass_context(context, resource_resolver);
                     for (const auto& barrier : pass->getPreBarriers()) {
                         if (barrier.resource_type == RenderGraphResourceType::Texture) {
-                            const auto texture = resource_registry.getTexture({barrier.resource_index});
+                            const auto texture = resource_resolver.getTexture({barrier.resource_index});
                             out_commands.setTextureState(texture, {}, barrier.to_state);
                         } else {
-                            const auto buffer = resource_registry.getBuffer({barrier.resource_index});
+                            const auto buffer = resource_resolver.getBuffer({barrier.resource_index});
                             out_commands.setBufferState(buffer, barrier.to_state);
                         }
                     }
@@ -409,14 +409,14 @@ namespace dodoe {
                     const auto pass = m_passes[pass_index];
                     auto* cmd_list = &pass_command_lists[i];
 
-                    pool.enqueue([pass, &context, &resource_registry, &wg, cmd_list] {
-                        RenderGraphPassContext pass_context(context, resource_registry);
+                    pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list] {
+                        RenderGraphPassContext pass_context(context, resource_resolver);
                         for (const auto& barrier : pass->getPreBarriers()) {
                             if (barrier.resource_type == RenderGraphResourceType::Texture) {
-                                const auto texture = resource_registry.getTexture({barrier.resource_index});
+                                const auto texture = resource_resolver.getTexture({barrier.resource_index});
                                 cmd_list->setTextureState(texture, {}, barrier.to_state);
                             } else {
-                                const auto buffer = resource_registry.getBuffer({barrier.resource_index});
+                                const auto buffer = resource_resolver.getBuffer({barrier.resource_index});
                                 cmd_list->setBufferState(buffer, barrier.to_state);
                             }
                         }

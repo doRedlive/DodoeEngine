@@ -45,6 +45,7 @@ namespace dodoe {
         RenderGraphTextureHandle material{};
         RenderGraphTextureHandle shadow_map{};
         RenderGraphTextureHandle hdr_color{};
+        RenderGraphTextureHandle skybox_texture{};
     };
 
     void DeferredLightPass::build(RenderGraphBuilder& graph,
@@ -69,10 +70,10 @@ namespace dodoe {
         graph.addPass<DeferredLightPassParameters>(
             "DeferredLightPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
-                const auto* gbuffer = pass_builder.blackboard().get<SceneTexturesKey, SceneTextures>();
-                const auto* shadow = pass_builder.blackboard().get<ShadowMapKey, RenderGraphTextureHandle>();
-                const auto* hdr = pass_builder.blackboard().get<SceneHdrKey, RenderGraphTextureHandle>();
+            [&context](RenderGraphPassBuilder& pass_builder, DeferredLightPassParameters& parameters) {
+                const auto* gbuffer = pass_builder.blackboard().get<SceneTexturesKey>();
+                const auto* shadow = pass_builder.blackboard().get<ShadowMapKey>();
+                const auto* hdr = pass_builder.blackboard().get<SceneHdrKey>();
                 DO_ASSERT(gbuffer && shadow && hdr, "DeferredLightPass blackboard resources are missing");
                 parameters.albedo = pass_builder.read(gbuffer->albedo);
                 parameters.normal = pass_builder.read(gbuffer->normal);
@@ -80,21 +81,33 @@ namespace dodoe {
                 parameters.material = pass_builder.read(gbuffer->material);
                 parameters.shadow_map = pass_builder.read(*shadow);
                 parameters.hdr_color = pass_builder.writeColor(*hdr);
+
+                if (!context.scene) {
+                    return;
+                }
+                for (const auto& light_info : context.scene->getLightSceneInfos()) {
+                    if (light_info.getLightType() != LightType::Sky || !light_info.isEnabled()) {
+                        continue;
+                    }
+                    const auto cubemap = light_info.getSkyLightData().cubemap;
+                    if (cubemap && cubemap->getGpuHandle()) {
+                        parameters.skybox_texture = pass_builder.read(pass_builder.importTexture(
+                            cubemap->getGpuHandle(), "DeferredLightSkyboxCubemap"));
+                    }
+                    break;
+                }
             },
             [shader_library, binding_layout](const DeferredLightPassParameters& parameters,
                                              const RenderGraphPassContext& ctx,
                                              DrawCommandList& command_list) {
                 const auto& light_infos = ctx.getScene()->getLightSceneInfos();
                 Bool has_enabled_lights = false;
-                GfxTextureHandle skybox_texture{};
                 for (const auto& light_info : light_infos) {
                     if (!light_info.isEnabled()) {
                         continue;
                     }
                     if (light_info.getLightType() != LightType::Sky) {
                         has_enabled_lights = true;
-                    } else if (!skybox_texture && light_info.getSkyLightData().cubemap) {
-                        skybox_texture = light_info.getSkyLightData().cubemap->getGpuHandle();
                     }
                 }
 
@@ -118,6 +131,10 @@ namespace dodoe {
                 const auto position_handle = ctx.resolveTexture(parameters.position);
                 const auto material_handle = ctx.resolveTexture(parameters.material);
                 const auto shadow_handle = ctx.resolveTexture(parameters.shadow_map);
+                GfxTextureHandle skybox_texture{};
+                if (parameters.skybox_texture.isValid()) {
+                    skybox_texture = ctx.resolveTexture(parameters.skybox_texture);
+                }
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(hdr);
                 auto framebuffer = command_list.createFramebuffer(framebuffer_desc);

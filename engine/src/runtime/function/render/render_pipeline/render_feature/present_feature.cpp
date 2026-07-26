@@ -2,6 +2,7 @@
 
 #include "present_feature.h"
 
+#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 
 namespace dodoe {
@@ -21,8 +22,15 @@ namespace dodoe {
         m_present_cb.reset();
     }
 
+    void PresentFeature::registerGraphImports(RenderGraphImportRegistry& imports,
+                                              const RenderView& view) {
+        if (m_present_cb) {
+            imports.publish<PresentViewportConstantBufferKey>(m_present_cb);
+        }
+    }
+
     void PresentFeature::collectPasses(PassCollector& collector) {
-        collector.addPass<PresentPass>(m_present_cb);
+        collector.addPass<PresentPass>();
     }
 
 } // namespace dodoe

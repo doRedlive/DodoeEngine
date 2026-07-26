@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "runtime/function/render/render_pipeline/render_pass.h"
-#include "runtime/function/render/render_pipeline/resource_registry.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
 #include "runtime/function/render/render_pipeline/pass_collector.h"
 
 namespace dodoe {
@@ -20,8 +20,8 @@ namespace dodoe {
 	    virtual void onResize(UInt32 width, UInt32 height) {}
 	    virtual void shutdown() {}
 
-	    virtual void exportResources(ResourceRegistry& registry,
-	                                 const RenderView& view) {}
+	    virtual void registerGraphImports(RenderGraphImportRegistry& imports,
+	                                      const RenderView& view) {}
 
 	    virtual void collectPasses(PassCollector& collector) = 0;
 	};

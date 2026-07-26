@@ -26,6 +26,7 @@ namespace dodoe {
         [[nodiscard]] virtual Int32 getHeight() const = 0;
         [[nodiscard]] const String& getPath() const { return m_path; }
         [[nodiscard]] GfxTextureHandle getGpuHandle() const { return m_gpu_handle; }
+        [[nodiscard]] virtual DescriptorIndex getDescriptorIndex() const { return -1; }
 
         void setPath(const String& p) { m_path = p; }
         void setGpuHandle(GfxTextureHandle handle) { m_gpu_handle = std::move(handle); }

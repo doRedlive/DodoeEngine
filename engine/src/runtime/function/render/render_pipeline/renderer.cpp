@@ -2,6 +2,8 @@
 
 #include "renderer.h"
 
+#include "render_graph_import_registry.h"
+
 #include "render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_view/render_view.h"
 
@@ -78,14 +80,15 @@ namespace dodoe {
 	    for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
 	        const auto& view = view_family.getView(view_index);
 
-	        ResourceRegistry registry;
+	        RenderGraphImportRegistry graph_imports;
 	        for (const auto& feature : m_features) {
-	            feature->exportResources(registry, view);
+	            feature->registerGraphImports(graph_imports, view);
 	        }
+	        graph_imports.freeze();
 
 	        RenderGraphBuilder graph{};
 	        const RenderPassBuildContext build_ctx{
-	            view, &registry, m_gfx_context, m_shared_render_service, &scene
+	            view, &graph_imports, m_gfx_context, m_shared_render_service, &scene
 	        };
 	        for (auto* pass : m_ordered_passes) {
 	            pass->build(graph, build_ctx);

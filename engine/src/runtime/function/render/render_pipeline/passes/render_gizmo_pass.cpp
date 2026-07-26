@@ -35,7 +35,7 @@ namespace dodoe {
             "GizmoPass",
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, GizmoPassParameters& parameters) {
-                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.write(*scene_color);
                 } else {

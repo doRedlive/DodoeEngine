@@ -77,7 +77,7 @@ public struct RTHandle
 public struct PassBuildContext
 {
     public ManagedRenderView view;        // 当前 view 的只读信息
-    public RenderProductStore products;   // GBuffer / Depth / Shadow 等产品存取
+    public RenderGraphBlackboard blackboard; // GBuffer / Depth / Shadow 等产品存取
 }
 
 // ── 只读 View 信息 ──
@@ -172,11 +172,11 @@ public struct RenderQueueRange
 }
 ```
 
-### 2.5 产品存储（Pass 间数据交接）
+### 2.5 Render Graph Blackboard（Pass 间数据交接）
 
 ```csharp
-// 和 C++ RenderProductStore 对应的托管包装
-public class RenderProductStore
+// C++ RenderGraphBlackboard 的托管包装
+public class RenderGraphBlackboard
 {
     public void Set<TKey, TValue>(TValue value);
     public TValue? Get<TKey, TValue>();
@@ -527,7 +527,7 @@ void RasterCommandContext::DrawRenderers(const MeshDrawSettings& settings) {
 | `MaterialHandle` | `MaterialSystem` material ID + revision | `id`, `revision`, `IsValid` |
 | `RTHandle` | `RenderTargetHandle*` | `id`, `Resize()`, `IsValid` |
 | `ManagedRenderView` | `RenderView*` | 矩阵、viewport、时间（只读） |
-| `RenderProductStore` | 已有的 `RenderProductStore` | `Set<T>`, `Get<T>` |
+| `RenderGraphBlackboard` | 已有的 `RenderGraphBlackboard` | `Set<T>`, `Get<T>` |
 | `MeshDrawSettings` | struct（传值） | phase, queue, layer, override |
 | `RasterCommandContext` | 执行回调参数 | `DrawRenderers`, `DrawMesh`, `DrawProcedural`, `Clear*` |
 | `ComputeCommandContext` | 执行回调参数 | `SetTexture`, `SetBuffer`, `Dispatch` |

@@ -37,7 +37,7 @@ namespace dodoe {
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
             [&context](RenderGraphPassBuilder& pass_builder, PostProcess2DPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
-                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 DO_ASSERT(scene_color, "PostProcess2DPass scene color is missing");
                 parameters.input = pass_builder.read(*scene_color);
                 parameters.output = pass_builder.writeColor(pass_builder.createTransientTexture(

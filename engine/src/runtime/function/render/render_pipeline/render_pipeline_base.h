@@ -9,7 +9,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_view/render_view_family.h"
-#include "runtime/function/render/shared_render_service.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 
 namespace dodoe {
 

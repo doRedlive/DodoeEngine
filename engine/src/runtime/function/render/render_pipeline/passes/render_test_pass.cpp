@@ -40,15 +40,25 @@ namespace dodoe {
     struct TestPassParameters {
         RenderGraphTextureHandle color_target{};
         RenderGraphBufferHandle triangle_vb{};
+        RenderGraphTextureHandle test_texture{};
     };
 
     void TestPass::build(RenderGraphBuilder& graph,
                           const RenderPassBuildContext& context) {
+        GfxTextureHandle test_texture{};
+        if (auto* texture_manager = context.shared_render_service
+                ? context.shared_render_service->getTextureManager()
+                : nullptr) {
+            if (auto* texture = texture_manager->loadTexture("engine/res/pictures/grm.jpg")) {
+                test_texture = texture->getGpuHandle();
+            }
+        }
+
         graph.addPass<TestPassParameters>(
             "TestTrianglePass",
             RenderGraphPassFlags::Raster,
-            [&context](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
-                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+            [&context, test_texture](RenderGraphPassBuilder& pass_builder, TestPassParameters& parameters) {
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.writeColor(*scene_color);
                 } else {
@@ -68,6 +78,11 @@ namespace dodoe {
                 parameters.triangle_vb = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(tri_vb_desc, "TestTriangleVB"),
                     RenderGraphPipelineStage::Copy);
+
+                if (test_texture) {
+                    parameters.test_texture = pass_builder.read(
+                        pass_builder.importTexture(test_texture, "TestTriangleTexture"));
+                }
             },
             [](const TestPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto color_target = ctx.resolveTexture(parameters.color_target);
@@ -79,19 +94,11 @@ namespace dodoe {
                 command_list.setBufferState(quad_vb, GfxResourceStates::VertexBuffer);
                 command_list.commitBarriers();
 
-                auto* tm = ctx.getTextureManager();
-                Texture2D* loaded_tex = nullptr;
-                GfxTextureHandle test_tex;
-                if (tm) {
-                    loaded_tex = tm->loadTexture("engine/res/pictures/grm.jpg", command_list);
-                    if (loaded_tex && loaded_tex->getGpuHandle()) {
-                        test_tex = loaded_tex->getGpuHandle();
-                    }
-                }
-                if (!test_tex) {
+                if (!parameters.test_texture.isValid()) {
                     DO_ERROR("TestPass: failed to load grm.jpg");
                     return;
                 }
+                const auto test_tex = ctx.resolveTexture(parameters.test_texture);
 
                 auto* shared_service = ctx.getSharedRenderService();
                 auto* binding_layout_cache = shared_service ? shared_service->getBindingLayoutCache() : nullptr;

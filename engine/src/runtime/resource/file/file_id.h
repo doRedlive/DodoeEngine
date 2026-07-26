@@ -34,7 +34,7 @@ namespace dodoe {
 
 template<>
 struct std::hash<dodoe::FileID> {
-    dodoe::Size_t operator()(const dodoe::FileID& id) const noexcept {
-        return static_cast<dodoe::Size_t>(id.getID());
+    std::size_t operator()(const dodoe::FileID& id) const noexcept {
+        return static_cast<std::size_t>(id.getID());
     }
 };

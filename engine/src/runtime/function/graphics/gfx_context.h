@@ -8,6 +8,7 @@
 #include "backend/dx12_backend.h"
 
 #include "gfx.h"
+#include "runtime/function/render/render_settings.h"
 
 struct GLFWwindow;
 

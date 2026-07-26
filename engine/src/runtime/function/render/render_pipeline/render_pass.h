@@ -10,7 +10,7 @@ namespace dodoe {
 
 	class RenderGraphBuilder;
 	class RenderView;
-	class ResourceRegistry;
+	class RenderGraphImportRegistry;
 	class GfxContext;
 	class SharedRenderService;
 	class RenderScene;
@@ -42,7 +42,7 @@ namespace dodoe {
 
 	struct RenderPassBuildContext {
 	    const RenderView&        view;
-	    const ResourceRegistry*  resource_registry{nullptr};
+	    const RenderGraphImportRegistry* graph_imports{nullptr};
 	    GfxContext*              gfx_context{nullptr};
 	    SharedRenderService*     shared_render_service{nullptr};
 	    const RenderScene*       scene{nullptr};

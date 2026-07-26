@@ -19,7 +19,7 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_service/render_target_handle.h"
 #include "runtime/function/render/render_pipeline/render_feature/base_scene_feature.h"
-#include "../resource_registry.h"
+#include "../render_graph_import_keys.h"
 
 namespace dodoe {
 
@@ -41,13 +41,14 @@ namespace dodoe {
         graph.addPass<GBufferPassParameters>(
             "GBufferPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [view = &context.view, registry = context.resource_registry, processor = m_mesh_processor]
+            [view = &context.view, imports = context.graph_imports, processor = m_mesh_processor]
             (RenderGraphPassBuilder& b, GBufferPassParameters& p) {
                 const auto* mesh_ext = view->getExtension<MeshViewExtension>();
                 const Size_t visible_instance_count = mesh_ext ? mesh_ext->instance_scene_data.size() : 0;
 
-                p.gbuffer_rt = registry->findRenderTarget("GBuffer");
-                DO_ASSERT(p.gbuffer_rt != nullptr, "GBufferPass requires GBuffer RenderTargetHandle from BaseSceneFeature");
+                DO_ASSERT(imports != nullptr, "GBufferPass graph imports are null");
+                p.gbuffer_rt = imports->require<GBufferRenderTargetKey>();
+                DO_ASSERT(p.gbuffer_rt != nullptr, "GBufferPass requires a GBuffer RenderTargetHandle");
 
                 p.albedo   = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(0), "BaseAlbedo"));
                 p.normal   = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(1), "BaseNormal"));
@@ -145,13 +146,14 @@ namespace dodoe {
         graph.addPass<ShadowPassParameters>(
             "DirectionalShadowPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [view = &context.view, registry = context.resource_registry, processor = m_mesh_processor]
+            [view = &context.view, imports = context.graph_imports, processor = m_mesh_processor]
             (RenderGraphPassBuilder& pass_builder, ShadowPassParameters& parameters) {
-                const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey, SceneTextures>();
+                const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
                 DO_ASSERT(scene_textures, "DirectionalShadowPass scene textures are missing");
 
-                parameters.shadow_rt = registry ? registry->findRenderTarget("ShadowMap") : nullptr;
-                DO_ASSERT(parameters.shadow_rt != nullptr, "DirectionalShadowPass requires ShadowMap RenderTargetHandle from BaseSceneFeature");
+                DO_ASSERT(imports != nullptr, "DirectionalShadowPass graph imports are null");
+                parameters.shadow_rt = imports->require<ShadowMapRenderTargetKey>();
+                DO_ASSERT(parameters.shadow_rt != nullptr, "DirectionalShadowPass requires a ShadowMap RenderTargetHandle");
 
                 parameters.shadow_map = pass_builder.writeDepth(pass_builder.importTexture(
                     parameters.shadow_rt->getDepthTexture(), "ShadowMap"));

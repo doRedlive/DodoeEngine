@@ -5,6 +5,7 @@
 #include "runtime/function/render/render_pipeline/passes/render_base_pass.h"
 #include "runtime/function/render/render_pipeline/passes/render_skybox_pass.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
@@ -32,8 +33,6 @@
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
-
-    static constexpr UInt64 kDeferredFrameDelay = 3;
 
     static RenderTargetDesc BuildGBufferDesc() {
         RenderTargetDesc desc{};
@@ -165,7 +164,6 @@ namespace dodoe {
             ? resources.getRenderTargetSystem()->getDeletionQueue()
             : nullptr;
         m_shared_render_service = &resources;
-        m_deletion_queue = deletion_queue;
 
         m_gbuffer = create_scope<RenderTargetHandle>();
         m_gbuffer->initialize(BuildGBufferDesc(), *gfx, deletion_queue);
@@ -226,74 +224,19 @@ namespace dodoe {
             m_shadow_processor->reset();
             m_shadow_processor.reset();
         }
-        m_primitive_scene_buffer.reset();
         m_skybox_cb.reset();
-        m_primitive_scene_capacity = 0;
-        m_deletion_queue = nullptr;
     }
 
-    void BaseSceneFeature::ensurePrimitiveSceneBufferCapacity(
-        const UInt32 instance_count,
-        GfxContext& gfx,
-        const UInt64 current_frame)
-    {
-        const UInt32 required = std::max(instance_count, 1u);
-        if (required <= m_primitive_scene_capacity && m_primitive_scene_buffer) {
-            return;
-        }
-
-        const UInt32 new_capacity = std::max(required,
-                                              std::max(m_primitive_scene_capacity * 2, 64u));
-
-        GfxBufferDesc desc{};
-        desc.byteSize = new_capacity * sizeof(InstanceSceneData);
-        desc.format = GfxFormat::Unknown;
-        desc.state = GfxResourceStates::VertexBuffer;
-        desc.debugName = "BaseScene PrimitiveSceneBuffer";
-
-        auto new_buffer = create_ref<GfxBuffer>(desc, desc.debugName);
-        new_buffer->initializeRHI(gfx.getDevice());
-
-        if (m_primitive_scene_buffer && m_deletion_queue) {
-            auto old_buffer = m_primitive_scene_buffer;
-            m_deletion_queue->enqueueFunc(
-                [old_buffer]() mutable { old_buffer.reset(); },
-                current_frame + kDeferredFrameDelay);
-        }
-
-        m_primitive_scene_buffer = new_buffer;
-        m_primitive_scene_capacity = new_capacity;
-    }
-
-    void BaseSceneFeature::exportResources(ResourceRegistry& registry,
-                                           const RenderView& view) {
+    void BaseSceneFeature::registerGraphImports(RenderGraphImportRegistry& imports,
+                                                const RenderView& view) {
         if (m_gbuffer) {
-            registry.registerRenderTarget("GBuffer", m_gbuffer.get());
-            const auto& desc = m_gbuffer->getDesc();
-            for (UInt32 i = 0; i < desc.color_attachments.size(); i++) {
-                registry.registerTexture(
-                    desc.color_attachments[i].debug_name,
-                    m_gbuffer->getColorTexture(i),
-                    desc.color_attachments[i].format,
-                    desc.scale_policy);
-            }
-            if (desc.has_depth) {
-                registry.registerTexture(
-                    desc.depth_debug_name,
-                    m_gbuffer->getDepthTexture(),
-                    desc.depth_format,
-                    desc.scale_policy);
-            }
+            imports.publish<GBufferRenderTargetKey>(m_gbuffer.get());
         }
-
         if (m_shadow_map) {
-            registry.registerRenderTarget("ShadowMap", m_shadow_map.get());
-            const auto& desc = m_shadow_map->getDesc();
-            registry.registerTexture(
-                desc.depth_debug_name,
-                m_shadow_map->getDepthTexture(),
-                desc.depth_format,
-                desc.scale_policy);
+            imports.publish<ShadowMapRenderTargetKey>(m_shadow_map.get());
+        }
+        if (m_skybox_cb) {
+            imports.publish<SkyboxConstantBufferKey>(m_skybox_cb);
         }
     }
 
@@ -302,7 +245,7 @@ namespace dodoe {
 	    DO_ASSERT(m_shadow_processor != nullptr, "BaseSceneFeature shadow processor is null");
         collector.addPass<GBufferPass>(m_gbuffer_processor.get());
         collector.addPass<DirectionalShadowPass>(m_shadow_processor.get());
-        collector.addPass<SkyboxPass>(m_skybox_cb);
+        collector.addPass<SkyboxPass>();
     }
 
     void BaseSceneFeature::setupMeshPassContexts(const RenderScene& scene,

@@ -5,12 +5,11 @@
 #include "dopch.h"
 
 #include "render_pass.h"
-#include "resource_registry.h"
 #include "pass_collector.h"
 #include "render_feature/render_feature.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_view/render_view_family.h"
-#include "runtime/function/render/shared_render_service.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/core/thread/thread_pool.h"

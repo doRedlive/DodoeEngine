@@ -10,11 +10,8 @@
 namespace dodoe {
 
 	class SkyboxPass : public IRenderPass {
-		GfxBufferHandle m_skybox_cb{};
 	public:
 		SkyboxPass() = default;
-		explicit SkyboxPass(GfxBufferHandle skybox_cb)
-			: m_skybox_cb(skybox_cb) {}
 	    using Produces = TypeList<SceneHdrKey>;
 	    using Consumes = TypeList<SceneTexturesKey>;
 

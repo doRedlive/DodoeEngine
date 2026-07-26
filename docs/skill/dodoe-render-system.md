@@ -197,7 +197,8 @@ RenderSystem::renderFrame()
 
 - **RenderGraphBuilder**：pass 注册入口，提供 `createTransientTexture/Buffer`、`importTexture/Buffer`、`read`/`write`
 - **RenderGraphPassBuilder**：单个 pass 的 setup lambda，通过 `pass_builder.read(handle)` / `pass_builder.write(handle)` 声明资源访问
-- **RenderGraphBlackboard**：type-erased key-value store，pass 间通过 tag 类型传递数据
+- **RenderGraphImportRegistry**：Feature 在建图前发布可 import 的长期资源；Pass 通过类型 key 查询
+- **RenderGraphBlackboard**：pass 间传递 RDG 数据；每个 key 用 `using Value = ...` 固定值类型
 - **RenderGraphPassFlags**：`Raster`、`Compute`、`Copy`、`NeverCull`、`AsyncCompute`
 
 ### Pass 标准结构
@@ -208,12 +209,16 @@ struct MyPassParameters {
     RenderGraphBufferHandle output{};
 };
 
+struct SomeKey {
+    using Value = RenderGraphTextureHandle;
+};
+
 graph.addPass<MyPassParameters>(
     "PassName",
     RenderGraphPassFlags::Raster,
     // Setup lambda — 声明资源依赖
     [&](RenderGraphPassBuilder& builder, MyPassParameters& params) {
-        params.input = builder.read(builder.blackboard().get<SomeKey, Handle>());
+        params.input = builder.read(*builder.blackboard().get<SomeKey>());
         params.output = builder.write(builder.createTransientBuffer(desc, "name"));
     },
     // Execute lambda — 实际操作

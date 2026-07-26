@@ -14,6 +14,7 @@
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 
 namespace dodoe {
 
@@ -33,6 +34,7 @@ namespace dodoe {
         RenderGraphTextureHandle scene_color{};
         RenderGraphTextureHandle imgui_color{};
         RenderGraphTextureHandle backbuffer{};
+        RenderGraphBufferHandle viewport_cb{};
     };
 
     void PresentPass::build(RenderGraphBuilder& graph,
@@ -40,18 +42,22 @@ namespace dodoe {
         graph.addPass<PresentPassParameters>(
             "PresentPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
-            [](RenderGraphPassBuilder& pass_builder, PresentPassParameters& parameters) {
-                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+            [&context](RenderGraphPassBuilder& pass_builder, PresentPassParameters& parameters) {
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 DO_ASSERT(scene_color, "PresentPass scene color is missing");
                 parameters.scene_color = pass_builder.read(*scene_color);
-                const auto* imgui_color = pass_builder.blackboard().get<ImGuiColorKey, RenderGraphTextureHandle>();
+                const auto* imgui_color = pass_builder.blackboard().get<ImGuiColorKey>();
                 parameters.imgui_color = imgui_color ? pass_builder.read(*imgui_color) : parameters.scene_color;
                 parameters.backbuffer = pass_builder.writeColor(pass_builder.importBackBuffer("PresentBackBuffer"));
+                DO_ASSERT(context.graph_imports != nullptr, "PresentPass graph imports are null");
+                parameters.viewport_cb = pass_builder.write(pass_builder.importBuffer(
+                    context.graph_imports->require<PresentViewportConstantBufferKey>(), "PresentViewportCB"));
             },
             [this](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto scene_color_handle = ctx.resolveTexture(parameters.scene_color);
                 const auto imgui_color_handle = ctx.resolveTexture(parameters.imgui_color);
                 const auto backbuffer = ctx.resolveTexture(parameters.backbuffer);
+                const auto viewport_cb = ctx.resolveBuffer(parameters.viewport_cb);
 
                 auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(backbuffer);
                 auto fb = command_list.createFramebuffer(framebuffer_desc);
@@ -64,10 +70,13 @@ namespace dodoe {
                 viewport_data.viewport_pos[1] = static_cast<float>(viewport_rect.y);
                 viewport_data.viewport_size[0] = viewport_rect.z > 0 ? static_cast<float>(viewport_rect.z) : static_cast<float>(swapchain_extent.x);
                 viewport_data.viewport_size[1] = viewport_rect.w > 0 ? static_cast<float>(viewport_rect.w) : static_cast<float>(swapchain_extent.y);
-                command_list.writeBuffer(m_present_cb, &viewport_data, sizeof(viewport_data));
+                command_list.setBufferState(viewport_cb, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(viewport_cb, &viewport_data, sizeof(viewport_data));
+                command_list.setBufferState(viewport_cb, GfxResourceStates::ConstantBuffer);
 
                 PresentPassShaderParams shader_params;
-                shader_params.viewport_cb.value = m_present_cb;
+                shader_params.viewport_cb.value = viewport_cb;
                 shader_params.scene_color.value = parameters.scene_color;
                 shader_params.imgui_color.value = parameters.imgui_color;
                 shader_params.sampler.value = GlobalSamplers::screen();

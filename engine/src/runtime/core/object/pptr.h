@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 #include "object.h"
+#include "obj_handle.h"
 #include "runtime/resource/file/file_id.h"
 
 namespace dodoe {

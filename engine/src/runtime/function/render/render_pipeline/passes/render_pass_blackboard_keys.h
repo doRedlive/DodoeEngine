@@ -16,20 +16,28 @@ namespace dodoe {
     };
 
     struct SceneTexturesKey {
+        using Value = SceneTextures;
     };
     struct ShadowMapKey {
+        using Value = RenderGraphTextureHandle;
     };
     struct SceneHdrKey {
+        using Value = RenderGraphTextureHandle;
     };
     struct ToneMappedColorKey {
+        using Value = RenderGraphTextureHandle;
     };
     struct SceneColorKey {
+        using Value = RenderGraphTextureHandle;
     };
     struct FxaaColorKey {
+        using Value = RenderGraphTextureHandle;
     };
     struct SpriteColorKey {
+        using Value = RenderGraphTextureHandle;
     };
     struct ImGuiColorKey {
+        using Value = RenderGraphTextureHandle;
     };
 
 } // dodoe
