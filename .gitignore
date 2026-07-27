@@ -43,3 +43,13 @@ __pycache__/
 *.[Jj][Pp][Gg]
 *.[Jj][Pp][Ee][Gg]
 *.[Pp][Nn][Gg]
+
+engine/external/python/
+engine/src/metaparser/3rd_party/LLVM/bin/
+
+*.dll
+*.so
+*.dylib
+*.a
+*.7z
+*.zip
