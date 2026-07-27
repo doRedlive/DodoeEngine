@@ -1,126 +1,49 @@
-#pragma once
-
 // do@Redlive
 
+#pragma once
+
 #include "dopch.h"
+
 #include "ui_interactive.h"
-#include "ui_compat.h"
+#include "ui_types.h"
 
 namespace dodoe {
 
-enum class UIButtonVisualState : std::uint8_t {
-    Normal = 0,
-    Hover,
-    Pressed,
-    Disabled,
-    Count
-};
+    struct ButtonPreset;
+    class Texture2D;
 
-struct UIButtonLabelStyle {
-    std::string text;
-    std::string font_path;
-    int font_size{16};
-    Color color{1.0f, 1.0f, 1.0f, 1.0f};
-    Vector2f offset{0.0f, 0.0f};
-};
-
-struct UIButtonLabelOverrides {
-    std::optional<Color> color{};
-    std::optional<Vector2f> offset{};
-};
-
-struct UIButtonSkin {
-    std::optional<Image> normal_image{};
-    std::optional<Image> hover_image{};
-    std::optional<Image> pressed_image{};
-    std::optional<Image> disabled_image{};
-    std::optional<NineSliceMargins> nine_slice_margins{};
-
-    std::optional<UIButtonLabelStyle> normal_label{};
-    std::optional<UIButtonLabelOverrides> hover_label{};
-    std::optional<UIButtonLabelOverrides> pressed_label{};
-    std::optional<UIButtonLabelOverrides> disabled_label{};
-
-    std::unordered_map<identifier, std::string> sound_events{};
-};
-
-class UIButton final : public UIInteractive {
-private:
-    enum class TextLayoutMode : std::uint8_t {
-        Fixed = 0,
-        ScaleToFit
+    struct ButtonVisual {
+        Texture2D* texture{nullptr};
+        Rect uv_rect{0, 0, 1, 1};
+        Color color{1, 1, 1, 1};
     };
-    static std::optional<UIButtonVisualState> fromStateId(identifier state_id);
 
-    std::function<void()> m_click_callback{};
-    std::function<void()> m_hover_enter_callback{};
-    std::function<void()> m_hover_leave_callback{};
+    class UIButton : public UIInteractive {
+    private:
+        ButtonState m_state{ButtonState::Normal};
+        UIImage* m_icon{nullptr};
+        UILabel* m_label{nullptr};
+        identifier m_preset_id{entt::null};
+        ButtonVisual m_visuals[4]{};
 
-    identifier m_preset_id{entt::null};
-    UIButtonVisualState m_current_visual_state{UIButtonVisualState::Normal};
+    public:
+        void setPreset(identifier presetId) { m_preset_id = presetId; }
+        void setLabel(const String& text);
+        [[nodiscard]] String getLabel() const { return m_label ? m_label->getText() : String(); }
+        void setStateImage(ButtonState state, Texture2D* texture, Rect uv);
+        void setStateColor(ButtonState state, Color color);
+        void applyPreset(const ButtonPreset& preset);
 
-    TextLayoutMode m_text_layout_mode{TextLayoutMode::Fixed};
-    Thickness m_text_padding{};
+    protected:
+        void onCollectRenderData(class UIRenderBatch& batch) override;
+        void onMouseEnter() override;
+        void onMouseExit() override;
+        void onMouseDown() override;
+        void onMouseUp(Bool isInside) override;
 
-    std::string m_label_text{};
-    Vector2f m_base_text_size{0.0f, 0.0f};
-    std::uint64_t m_last_label_layout_revision{0};
-    identifier m_label_font_id{entt::null};
-    int m_label_font_size{0};
-
-public:
-    [[nodiscard]] static Scope<UIButton> Create(Context& context,
-                                                 identifier preset_id,
-                                                 Vector2f position = {0.0f, 0.0f},
-                                                 Vector2f size = {0.0f, 0.0f},
-                                                 std::function<void()> click_callback = nullptr,
-                                                 std::function<void()> hover_enter_callback = nullptr,
-                                                 std::function<void()> hover_leave_callback = nullptr);
-
-    [[nodiscard]] static Scope<UIButton> Create(Context& context,
-                                                 std::string_view preset_key,
-                                                 Vector2f position = {0.0f, 0.0f},
-                                                 Vector2f size = {0.0f, 0.0f},
-                                                 std::function<void()> click_callback = nullptr,
-                                                 std::function<void()> hover_enter_callback = nullptr,
-                                                 std::function<void()> hover_leave_callback = nullptr);
-
-    ~UIButton() override = default;
-
-    void update(float delta_time, Context& context) override;
-    void applyStateVisual(identifier state_id) override;
-
-    void clicked() override { if (m_click_callback) m_click_callback(); }
-    void hover_enter() override { if (m_hover_enter_callback) m_hover_enter_callback(); }
-    void hover_leave() override { if (m_hover_leave_callback) m_hover_leave_callback(); }
-
-    void setLabelText(std::string text);
-    [[nodiscard]] std::string_view getLabelText() const { return m_label_text; }
-
-    void setTextLayoutFixed();
-    void setTextLayoutScaleToFit(const Thickness& padding = {});
-
-private:
-    void renderSelf(Context& context) override;
-    void renderLabel(Context& context, const UIButtonSkin& skin,
-                     const Vector2f& position, const Vector2f& size);
-
-    [[nodiscard]] const UIButtonSkin* getPreset() const;
-
-    UIButton(Context& context,
-             Vector2f position,
-             Vector2f size,
-             std::function<void()> click_callback,
-             std::function<void()> hover_enter_callback,
-             std::function<void()> hover_leave_callback);
-
-    [[nodiscard]] bool initFromPreset(identifier preset_id);
-
-    void refreshBaseTextSize();
-    void refreshBaseTextSizeIfNeeded();
-};
+    private:
+        void transitionTo(ButtonState state);
+        void applyVisuals();
+    };
 
 } // namespace dodoe
-
-
-

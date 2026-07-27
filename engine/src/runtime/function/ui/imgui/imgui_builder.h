@@ -2,6 +2,8 @@
 
 #ifdef DODOE_DEBUG_ENABLED
 
+#pragma once
+
 #include "dopch.h"
 
 #include "glfw/glfw3.h"
@@ -19,10 +21,10 @@ namespace dodoe {
         static ImGuiContext* GetContext() { return s_context; }
 
     private:
-        static inline bool s_glfwBackendInit = false;
+        static inline Bool s_glfwBackendInit = false;
         static inline ImGuiContext* s_context = nullptr;
     };
 
-} // dodoe
+} // namespace dodoe
 
-#endif//DODOE_DEBUG_ENABLED
+#endif // DODOE_DEBUG_ENABLED

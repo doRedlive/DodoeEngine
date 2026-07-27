@@ -39,6 +39,7 @@ namespace dodoe {
         Int32 m_width{0};
         Int32 m_height{0};
         DescriptorIndex m_descriptor_index{-1};
+        UInt32 m_slot{0};
 
     public:
         Texture2D() = default;
@@ -51,9 +52,11 @@ namespace dodoe {
         [[nodiscard]] Int32 getWidth() const override { return m_width; }
         [[nodiscard]] Int32 getHeight() const override { return m_height; }
         [[nodiscard]] DescriptorIndex getDescriptorIndex() const { return m_descriptor_index; }
+        [[nodiscard]] UInt32 getSlot() const { return m_slot; }
 
         void setDimensions(const Int32 w, const Int32 h) { m_width = w; m_height = h; }
         void setDescriptorIndex(DescriptorIndex index) { m_descriptor_index = index; }
+        void setSlot(UInt32 slot) { m_slot = slot; }
 
         [[nodiscard]] static Texture2D* Load(const String& path);
     };

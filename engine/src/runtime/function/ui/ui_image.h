@@ -1,53 +1,40 @@
-#pragma once
-
 // do@Redlive
 
+#pragma once
+
 #include "dopch.h"
-#include "ui_element.h"
-#include "runtime/core/utils/util.h"
-#include "ui_compat.h"
+
+#include "ui_widget.h"
 
 namespace dodoe {
 
-class UIImage final : public UIElement {
-private:
-    Image image_;
+    class Texture2D;
 
-public:
-    UIImage(std::string_view texture_path,
-            Vector2f position = {0.0f, 0.0f},
-            Vector2f size = {0.0f, 0.0f},
-            Rect source_rect = {},
-            bool is_flipped = false);
+    class UIImage : public UIWidget {
+    private:
+        Texture2D* m_texture{nullptr};
+        Rect m_uv_rect{0, 0, 1, 1};
+        Bool m_flip_h{false};
+        Bool m_flip_v{false};
+        FillMethod m_fill_method{FillMethod::None};
+        Float m_fill_amount{1};
+        Bool m_preserve_aspect{false};
 
-    UIImage(identifier texture_id,
-            Vector2f position = {0.0f, 0.0f},
-            Vector2f size = {0.0f, 0.0f},
-            Rect source_rect = {},
-            bool is_flipped = false);
+    public:
+        void setTexture(Texture2D* texture) { m_texture = texture; }
+        void setUVRect(const Rect& uv) { m_uv_rect = uv; }
+        void setFlipped(Bool horizontal, Bool vertical) { m_flip_h = horizontal; m_flip_v = vertical; }
+        [[nodiscard]] Bool isFlippedH() const { return m_flip_h; }
+        [[nodiscard]] Bool isFlippedV() const { return m_flip_v; }
+        void setFlippedH(Bool v) { m_flip_h = v; }
+        void setFlippedV(Bool v) { m_flip_v = v; }
+        void setFillMethod(FillMethod method, Float fillAmount) { m_fill_method = method; m_fill_amount = fillAmount; }
+        void setPreserveAspect(Bool preserve) { m_preserve_aspect = preserve; }
+        [[nodiscard]] Bool isPreserveAspect() const { return m_preserve_aspect; }
 
-    UIImage(Image image,
-            Vector2f position = {0.0f, 0.0f},
-            Vector2f size = {0.0f, 0.0f});
-
-    using UIElement::render;
-
-    const Image& getImage() const { return image_; }
-    void setImage(Image image) { image_ = std::move(image); }
-
-    std::string_view getTexturePath() const { return image_.getTexturePath(); }
-    identifier getTextureId() const { return image_.getTextureId(); }
-    void setTexture(std::string_view texture_path) { image_.setTexture(texture_path); }
-
-    const Rect& getSourceRect() const { return image_.getSourceRect(); }
-    void setSourceRect(const Rect& source_rect) { image_.setSourceRect(source_rect); }
-
-    bool isFlipped() const { return image_.isFlipped(); }
-    void setFlipped(bool flipped) { image_.setFlipped(flipped); }
-protected:
-    void renderSelf(Context& context) override;
-};
+    protected:
+        void onCollectRenderData(class UIRenderBatch& batch) override;
+        void onLayout() override;
+    };
 
 } // namespace dodoe
-
-

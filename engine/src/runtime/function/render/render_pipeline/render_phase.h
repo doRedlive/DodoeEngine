@@ -14,6 +14,7 @@ namespace dodoe {
 	    Decals,
 	    Forward,
 	    Sprite,
+	    UI,              // do@Redlive — UI 渲染（所有场景内容之后、ImGui 之前）
 	    PostProcess,
 	    EditorGizmo,
 	    DebugUI,

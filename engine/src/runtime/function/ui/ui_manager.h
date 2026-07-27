@@ -1,76 +1,55 @@
-#pragma once
-
 // do@Redlive
 
+#pragma once
+
 #include "dopch.h"
-#include "ui_compat.h"
-#include "ui_defaults.h"
 
-namespace dodoe {
-    class UIElement;
-    class UIPanel;
-    class UIInteractive;
-    class UIDragPreview;
-}
+#include "ui_element.h"
+#include "ui_input_router.h"
+#include "ui_render_batch.h"
+#include "ui_preset_manager.h"
 
 namespace dodoe {
 
-class UIManager final {
-private:
-    Context& context_;
-    dodoe::Scope<UIPanel> root_element_;
-    UIInteractive* hovered_element_{nullptr};
-    UIInteractive* pressed_element_{nullptr};
-    UIDragPreview* drag_preview_{nullptr};
-    std::optional<Image> cursor_image_{};
-    Vector2f cursor_size_{0.0f, 0.0f};
-    Vector2f cursor_hotspot_{0.0f, 0.0f};
-    bool hid_system_cursor_{false};
-    bool was_mouse_down_{false};
-    
-public:
-    UIManager(Context& context, const Vector2f& window_size);
+    class WindowManager;
 
-    ~UIManager();
+    struct UIManagerCreateInfo {
+        WindowManager* window_manager{nullptr};
+    };
 
-    void addElement(dodoe::Scope<UIElement> element);
-    UIPanel* getRootElement() const;
-    void clearElements();
+    class UIManager : public Managed<UIManager, UIManagerCreateInfo> {
+    private:
+        friend class Managed<UIManager, UIManagerCreateInfo>;
 
-    void update(float delta_time, Context&);
-    void render(Context&);
+        WindowManager* m_window_manager{nullptr};
+        Scope<UIElement> m_root{nullptr};
+        Scope<UIInputRouter> m_input_router{nullptr};
+        Scope<UIRenderBatch> m_render_batch{nullptr};
+        Scope<UIPresetManager> m_preset_manager{nullptr};
 
-    void beginDragPreview(const Image& image,
-                          int count,
-                          const Vector2f& slot_size,
-                          float alpha = 0.6f,
-                          std::string_view font_path = DEFAULT_UI_FONT_PATH);
-    void updateDragPreview(const Vector2f& screen_pos);
-    void endDragPreview();
-    bool hasDragPreview() const { return drag_preview_ != nullptr; }
-    UIInteractive* findInteractiveAt(const Vector2f& screen_pos) const;
+    public:
+        Bool initialize(const UIManagerCreateInfo& info);
+        void shutdown();
 
-    UIManager(const UIManager&) = delete;
-    UIManager& operator=(const UIManager&) = delete;
-    UIManager(UIManager&&) = delete;
-    UIManager& operator=(UIManager&&) = delete;
+        void update(Float deltaTime);
 
-private:
-    void processMouseHover();
-    UIInteractive* findTargetAtMouse() const;
-    void updateHovered(UIInteractive* target);
-    void clearMouseState();
-    void initCursor();
-    void renderCursor(Context& context);
+        void setRoot(Scope<UIElement> root);
+        [[nodiscard]] UIElement* getRoot() const { return m_root.get(); }
+        [[nodiscard]] UIInputRouter* getInputRouter() const { return m_input_router.get(); }
+        [[nodiscard]] UIPresetManager* getPresetManager() const { return m_preset_manager.get(); }
 
-    bool onMousePressed();
-    bool onMouseReleased();
+        Bool loadLayout(const String& filePath);
+        void unloadLayout();
+        void clearAll();
+        [[nodiscard]] UIElement* findElementById(const String& id) const;
 
-    void registerMouseEvents();
-    void unregisterMouseEvents();
+        [[nodiscard]] UIElement* createElement(const String& type, const String& id, const String& parentId);
+        Bool removeElement(const String& id);
 
-};
+        void onMouseMove(Vector2f pos);
+        void onMouseDown(Vector2f pos);
+        void onMouseUp(Vector2f pos);
+        void onScroll(Vector2f pos, Float delta);
+    };
 
 } // namespace dodoe
-
-

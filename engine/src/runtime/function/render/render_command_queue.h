@@ -25,6 +25,8 @@ namespace dodoe {
         static void AddSprite(Scope<SpriteRenderObject> sprite);
         static void RemoveSprite(UUID id);
         static void UpdateSpriteTransform(UUID id, const Matrix4f& world_transform);
+
+        static void SubmitUI(DynamicArray<UISceneInfo> instances);
     };
 
 } // dodoe

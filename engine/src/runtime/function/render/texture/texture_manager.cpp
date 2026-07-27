@@ -40,6 +40,7 @@ namespace dodoe {
     }
 
     void TextureManager::shutdown() {
+        m_slot_lut.clear();
         m_texture2d_cache.clear();
         m_cubemap_cache.clear();
         m_fallback = {};
@@ -142,9 +143,23 @@ namespace dodoe {
         texture->setGpuHandle(handle);
 
         if (RenderSettings::IsBindlessActive()) {
+            UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
+            m_slot_lut.push_back(texture);
+            texture->setSlot(slot);
+
+            DescriptorIndex desc_idx = static_cast<DescriptorIndex>(m_descriptor_table->allocateSlot());
+            DO_ASSERT(static_cast<UInt32>(desc_idx) == slot);
+
             auto item = GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle());
-            DescriptorIndex descriptor_index = m_descriptor_table->createDescriptor(item);
-            texture->setDescriptorIndex(static_cast<DescriptorIndex>(descriptor_index));
+            item.slot = desc_idx;
+            handle->getRHIHandle()->AddRef();
+            m_device->writeDescriptorTable(m_descriptor_table->getDescriptorTable(), item);
+
+            texture->setDescriptorIndex(desc_idx);
+        } else {
+            UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
+            m_slot_lut.push_back(texture);
+            texture->setSlot(slot);
         }
 
         m_texture2d_cache.emplace(texture->getInstanceID(), ObjHandle<Texture2D>(texture));
@@ -237,6 +252,10 @@ namespace dodoe {
 
         m_cubemap_cache.emplace(texture->getInstanceID(), ObjHandle<TextureCubemap>(texture));
         return texture;
+    }
+    Texture2D* TextureManager::resolveDescriptorIndex(const UInt32 index) const {
+        if (index >= m_descriptor_lut.size()) return nullptr;
+        return m_descriptor_lut[index];
     }
 
 } // dodoe
