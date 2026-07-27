@@ -77,4 +77,10 @@ namespace dodoe {
         m_gfx_context = nullptr;
     }
 
+    GfxTextureHandle SharedRenderService::resolveTextureBySlot(const UInt32 slot) const {
+        if (!m_texture_manager) return {};
+        auto* tex = m_texture_manager->resolveSlot(slot);
+        return tex ? tex->getGpuHandle() : GfxTextureHandle{};
+    }
+
 } // dodoe

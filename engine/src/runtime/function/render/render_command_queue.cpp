@@ -119,4 +119,16 @@ namespace dodoe {
         }
     }
 
+    void RenderCommandQueue::SubmitUI(DynamicArray<UISceneInfo> instances) {
+        auto* rs = GetRenderSystem();
+        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
+            rs->getRenderScene()->submitUIInstances(std::move(instances));
+        } else {
+            RenderCommand cmd;
+            cmd.type = RenderCommandType::SubmitUIBatch;
+            cmd.ui_scene_infos = std::move(instances);
+            rs->enqueueRenderCommand(std::move(cmd));
+        }
+    }
+
 } // dodoe

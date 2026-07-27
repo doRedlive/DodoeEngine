@@ -7,6 +7,7 @@
 #include "render_scene/primitive_render_object.h"
 #include "render_scene/sprite_render_object.h"
 #include "render_scene/light_scene_info.h"
+#include "render_scene/ui_scene_info.h"
 
 namespace dodoe {
 
@@ -21,6 +22,7 @@ namespace dodoe {
         AddSprite,
         RemoveSprite,
         UpdateSpriteTransform,
+        SubmitUIBatch,
     };
 
     struct RenderCommand {
@@ -30,6 +32,7 @@ namespace dodoe {
         Scope<PrimitiveRenderObject> primitive{};
         LightSceneInfo light{};
         Scope<SpriteRenderObject> sprite{};
+        DynamicArray<UISceneInfo> ui_scene_infos{};
     };
 
 } // dodoe

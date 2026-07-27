@@ -52,6 +52,15 @@ namespace dodoe {
         GfxShaderHandle getBucketFillComputeShader() const { return findShaderValue("BucketFillCS"); }
         GfxShaderHandle getGizmoVertexShader() const { return findShaderValue("GizmoVS"); }
         GfxShaderHandle getGizmoPixelShader() const { return findShaderValue("GizmoPS"); }
+        GfxShaderHandle getUIVertexShader() const { return findShaderValue("UIVS"); }
+        GfxShaderHandle getUIPixelShader() const {
+            if (RenderSettings::IsBindlessActive()) {
+                return findShaderValue("UIPS");
+            }
+            return findShaderValue("UIPSArray");
+        }
+        GfxShaderHandle getUIPixelShaderBindless() const { return findShaderValue("UIPS"); }
+        GfxShaderHandle getUIPixelShaderArray() const { return findShaderValue("UIPSArray"); }
 
     private:
         GfxShaderHandle findShaderValue(const String& name) const {

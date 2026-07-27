@@ -199,6 +199,9 @@ namespace dodoe {
         case RenderCommandType::UpdateSpriteTransform:
             scene.updateSpriteTransform(cmd.id, cmd.transform);
             break;
+        case RenderCommandType::SubmitUIBatch:
+            scene.submitUIInstances(std::move(cmd.ui_scene_infos));
+            break;
         default:
             break;
         }

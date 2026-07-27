@@ -10,6 +10,7 @@
 #include "primitive_scene_info.h"
 #include "render_scene_delta.h"
 #include "sprite_scene_info.h"
+#include "ui_scene_info.h"
 #include "light_scene_info.h"
 #include "runtime/function/render/gpu_driven/gpu_scene.h"
 
@@ -112,6 +113,7 @@ namespace dodoe {
         DynamicArray<PrimitiveSceneInfo> m_primitive_scene_infos{};
         DynamicArray<SpriteSceneInfo> m_sprite_scene_infos{};
         DynamicArray<LightSceneInfo> m_light_scene_infos{};
+        DynamicArray<UISceneInfo> m_ui_scene_infos{};
 
         Scope<GpuScene> m_gpu_scene{};
         class SharedRenderService* m_shared_render_service{nullptr};
@@ -129,6 +131,8 @@ namespace dodoe {
         void updateSpriteTransform(UUID id, const Matrix4f& world_transform);
         void removeSprite(UUID id);
 
+        void submitUIInstances(DynamicArray<UISceneInfo> instances);
+
         void flushUpdates(DrawCommandList& cmd_list);
 
         [[nodiscard]] const Aabb& getMeshBounds(const MeshUploadData& upload_data);
@@ -136,6 +140,7 @@ namespace dodoe {
         [[nodiscard]] const DynamicArray<PrimitiveSceneInfo>& getPrimitiveSceneInfos() const { return m_primitive_scene_infos; }
         [[nodiscard]] const DynamicArray<SpriteSceneInfo>& getSpriteSceneInfos() const { return m_sprite_scene_infos; }
         [[nodiscard]] const DynamicArray<LightSceneInfo>& getLightSceneInfos() const { return m_light_scene_infos; }
+        [[nodiscard]] const DynamicArray<UISceneInfo>& getUISceneInfo() const { return m_ui_scene_infos; }
         [[nodiscard]] const LightSceneInfo* findLightSceneInfo(UUID id) const;
 
         [[nodiscard]] Bool hasPrimitive(UUID id) const { return m_primitive_objects.find(id) != m_primitive_objects.end(); }

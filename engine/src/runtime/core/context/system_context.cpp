@@ -25,7 +25,6 @@
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/render_settings.h"
-#include "runtime/function/ui/ui_system.h"
 
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
@@ -75,7 +74,8 @@ namespace dodoe {
         render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
 
-        m_ui_system     = UISystem::Create({m_window_manager.get()});
+        m_ui_manager = UIManager::Create({m_window_manager.get()});
+
         m_debugger      = Debugger::Create({});
 #ifdef DODOE_DEBUG_ENABLED
         DebugImGui::RegisterDebugPanel();
@@ -159,7 +159,7 @@ namespace dodoe {
 
         ResourceManager::Self().shutdown();
         RenderSystem::Destroy(m_render_system);
-        UISystem::Destroy(m_ui_system);
+        UIManager::Destroy(m_ui_manager);
 #ifdef DODOE_DEBUG_ENABLED
         DebugImGui::UnregisterDebugPanel();
 #endif
@@ -185,16 +185,12 @@ namespace dodoe {
         }
 
         m_input_manager->update();
-        if (m_world) {
-            m_world->update(delta_time);
-        }
-        if (m_physics_system) {
-            m_physics_system->step(delta_time);
-        }
+        m_world->update(delta_time);
+        m_physics_system->step(delta_time);
+        m_ui_manager->update(delta_time);
     }
 
     void SystemContext::renderTick() {
-        if (m_ui_system) { m_ui_system->prepare(); }
         if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
 

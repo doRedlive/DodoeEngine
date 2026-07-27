@@ -15,6 +15,7 @@ namespace dodoe::py_bindings {
     void RegisterAll(py::module_& dodoe_module);
 
     void RegisterCore(py::module_& dodoe_module);
+    void RegisterUI(py::module_& dodoe_module);
     void RegisterResource(py::module_& dodoe_module);
     void RegisterEntity(py::module_& dodoe_module);
     void RegisterWorld(py::module_& dodoe_module);

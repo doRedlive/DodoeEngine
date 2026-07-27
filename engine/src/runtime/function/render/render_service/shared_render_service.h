@@ -54,6 +54,7 @@ namespace dodoe {
         [[nodiscard]] BindingSetCache* getBindingSetCache() const { return m_binding_set_cache.get(); }
         [[nodiscard]] InputLayoutCache* getInputLayoutCache() const { return m_input_layout_cache.get(); }
         [[nodiscard]] MaterialSystem* getMaterialSystem() const { return m_material_system.get(); }
+        [[nodiscard]] GfxTextureHandle resolveTextureBySlot(UInt32 slot) const;
 
     private:
         Bool initialize(const SharedRenderServiceCreateInfo& info);

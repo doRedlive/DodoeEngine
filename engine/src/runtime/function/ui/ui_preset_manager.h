@@ -1,43 +1,34 @@
+// do@Redlive
+
 #pragma once
 
 #include "dopch.h"
-#include "ui_button.h"
-#include <nlohmann/json_fwd.hpp>
+
+#include "ui_types.h"
 
 namespace dodoe {
 
-class UIPresetManager final {
-    std::unordered_map<identifier, UIButtonSkin> button_presets_{};
-    std::unordered_map<identifier, Image> image_presets_{};
-    std::unordered_map<identifier, String> button_preset_keys_{};
-    std::unordered_map<identifier, String> image_preset_keys_{};
+    class Texture2D;
 
-    static std::optional<Image> parseImageDefinition(const nlohmann::json& json_value);
-    static std::optional<NineSliceMargins> parseNineSlice(const nlohmann::json& json_value);
-    static std::optional<UIButtonLabelStyle> parseLabelStyle(const nlohmann::json& json_value);
-    static std::optional<UIButtonLabelOverrides> parseLabelOverrides(const nlohmann::json& json_value);
+    struct ButtonPreset {
+        identifier id{entt::null};
+        String name{};
+        Texture2D* normal_texture{nullptr};
+        Texture2D* hovered_texture{nullptr};
+        Texture2D* pressed_texture{nullptr};
+        Color normal_color{1, 1, 1, 1};
+        Color hovered_color{1, 1, 1, 1};
+        Color pressed_color{1, 1, 1, 1};
+    };
 
-public:
-    static UIPresetManager& Self();
+    class UIPresetManager {
+    private:
+        UnorderedMap<identifier, ButtonPreset> m_button_presets{};
 
-    UIPresetManager() = default;
-
-    bool loadButtonPresets(std::string_view file_path);
-    bool loadImagePresets(std::string_view file_path);
-    void clearButtonPresets();
-    void clearImagePresets();
-
-    [[nodiscard]] const UIButtonSkin* getButtonPreset(identifier preset_id) const;
-    [[nodiscard]] const Image* getImagePreset(identifier preset_id) const;
-    [[nodiscard]] UIButtonSkin* getButtonPresetMutable(identifier preset_id);
-    [[nodiscard]] Image* getImagePresetMutable(identifier preset_id);
-    [[nodiscard]] std::vector<identifier> listButtonPresetIds() const;
-    [[nodiscard]] std::vector<identifier> listImagePresetIds() const;
-    [[nodiscard]] std::string_view getButtonPresetKey(identifier preset_id) const;
-    [[nodiscard]] std::string_view getImagePresetKey(identifier preset_id) const;
-    bool registerButtonPreset(identifier preset_id, UIButtonSkin skin, bool overwrite = true);
-    bool registerImagePreset(identifier preset_id, Image image, bool overwrite = true);
-};
+    public:
+        void registerButtonPreset(const ButtonPreset& preset);
+        [[nodiscard]] const ButtonPreset* findButtonPreset(identifier id) const;
+        void clear();
+    };
 
 } // namespace dodoe
-

@@ -178,6 +178,10 @@ namespace dodoe {
         markSpriteDirty(id, SpriteUpdateType::Removed);
     }
 
+    void RenderScene::submitUIInstances(DynamicArray<UISceneInfo> instances) {
+        m_ui_scene_infos = std::move(instances);
+    }
+
     void RenderScene::flushUpdates(DrawCommandList& cmd_list) {
         if (!m_scene_data_dirty && m_pending_primitive_updates.empty() && m_pending_sprite_updates.empty() && m_pending_light_updates.empty()) {
             return;

@@ -177,6 +177,48 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<byte*>                                                  native_get_asset_directory;
         public delegate* unmanaged<int, byte*>                                            native_object_get_type_name;
         public delegate* unmanaged<byte*, int>                                            native_texture_load;
+        // === UI Bindings ===
+        public delegate* unmanaged<byte*, int>                                            native_ui_load_layout;
+        public delegate* unmanaged<void>                                                  native_ui_clear_all;
+        public delegate* unmanaged<byte*, byte*, uint>                                    native_ui_find_element;
+        public delegate* unmanaged<uint, byte*, byte*, void>                              native_ui_element_set_property;
+        public delegate* unmanaged<uint, byte*, byte*>                                    native_ui_element_get_property;
+        public delegate* unmanaged<byte*, byte*, byte*, uint>                              native_ui_create_element;
+        public delegate* unmanaged<uint, byte*, int>                                       native_ui_poll_event;
+        public delegate* unmanaged<uint, int>                                             native_ui_UIElement_visible_get;
+        public delegate* unmanaged<uint, int, void>                                       native_ui_UIElement_visible_set;
+        public delegate* unmanaged<uint, float>                                            native_ui_UIElement_depth_get;
+        public delegate* unmanaged<uint, float, void>                                     native_ui_UIElement_depth_set;
+        public delegate* unmanaged<uint, float*, float*, void>                            native_ui_UIElement_position_get;
+        public delegate* unmanaged<uint, float, float, void>                              native_ui_UIElement_position_set;
+        public delegate* unmanaged<uint, float*, float*, void>                            native_ui_UIElement_size_get;
+        public delegate* unmanaged<uint, float, float, void>                              native_ui_UIElement_size_set;
+        public delegate* unmanaged<uint, float*, float*, float*, float*, void>             native_ui_UIWidget_color_get;
+        public delegate* unmanaged<uint, float, float, float, float, void>                native_ui_UIWidget_color_set;
+        public delegate* unmanaged<uint, float>                                            native_ui_UIWidget_alpha_get;
+        public delegate* unmanaged<uint, float, void>                                     native_ui_UIWidget_alpha_set;
+        public delegate* unmanaged<uint, byte*>                                           native_ui_UILabel_text_get;
+        public delegate* unmanaged<uint, byte*, void>                                     native_ui_UILabel_text_set;
+        public delegate* unmanaged<uint, int>                                             native_ui_UILabel_font_size_get;
+        public delegate* unmanaged<uint, int, void>                                       native_ui_UILabel_font_size_set;
+        public delegate* unmanaged<uint, int>                                             native_ui_UIImage_preserve_aspect_get;
+        public delegate* unmanaged<uint, int, void>                                       native_ui_UIImage_preserve_aspect_set;
+        public delegate* unmanaged<uint, int>                                             native_ui_UIImage_flip_h_get;
+        public delegate* unmanaged<uint, int, void>                                       native_ui_UIImage_flip_h_set;
+        public delegate* unmanaged<uint, int>                                             native_ui_UIImage_flip_v_get;
+        public delegate* unmanaged<uint, int, void>                                       native_ui_UIImage_flip_v_set;
+        public delegate* unmanaged<uint, float*, float*, float*, float*, void>             native_ui_UIImage_color_get;
+        public delegate* unmanaged<uint, float, float, float, float, void>                native_ui_UIImage_color_set;
+        public delegate* unmanaged<uint, float>                                            native_ui_UIImage_alpha_get;
+        public delegate* unmanaged<uint, float, void>                                     native_ui_UIImage_alpha_set;
+        public delegate* unmanaged<uint, byte*>                                           native_ui_UIButton_label_get;
+        public delegate* unmanaged<uint, byte*, void>                                     native_ui_UIButton_label_set;
+        public delegate* unmanaged<uint, int>                                             native_ui_UIButton_interactable_get;
+        public delegate* unmanaged<uint, int, void>                                       native_ui_UIButton_interactable_set;
+        public delegate* unmanaged<uint, float*, float*, float*, float*, void>             native_ui_UIPanel_background_color_get;
+        public delegate* unmanaged<uint, float, float, float, float, void>                native_ui_UIPanel_background_color_set;
+        public delegate* unmanaged<uint, int>                                             native_ui_UIPanel_clip_children_get;
+        public delegate* unmanaged<uint, int, void>                                       native_ui_UIPanel_clip_children_set;
     }
 
     private static NativeBindings* b;
@@ -320,5 +362,70 @@ internal static unsafe partial class NativeCalls
     {
         var ptr = StrToPtr(path);
         try { return b->native_texture_load(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    // === UI Wrapper Methods ===
+
+    internal static bool Native_UILoadLayout(string filePath)
+    {
+        var ptr = StrToPtr(filePath);
+        try { return b->native_ui_load_layout(ptr) != 0; } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static void Native_UIClearAll()
+    {
+        b->native_ui_clear_all();
+    }
+
+    internal static uint Native_UIFindElement(string elementId, string typeName)
+    {
+        var idPtr = StrToPtr(elementId);
+        var typePtr = StrToPtr(typeName);
+        try { return b->native_ui_find_element(idPtr, typePtr); }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)idPtr);
+            Marshal.FreeCoTaskMem((IntPtr)typePtr);
+        }
+    }
+
+    internal static void Native_UISetProperty(uint elementId, string propName, string value)
+    {
+        var nPtr = StrToPtr(propName);
+        var vPtr = StrToPtr(value);
+        try { b->native_ui_element_set_property(elementId, nPtr, vPtr); }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)nPtr);
+            Marshal.FreeCoTaskMem((IntPtr)vPtr);
+        }
+    }
+
+    internal static string Native_UIGetProperty(uint elementId, string propName)
+    {
+        var nPtr = StrToPtr(propName);
+        try { return PtrToStr(b->native_ui_element_get_property(elementId, nPtr)); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)nPtr); }
+    }
+
+    internal static uint Native_UICreateElement(string type, string id, string parentId)
+    {
+        var tPtr = StrToPtr(type);
+        var iPtr = StrToPtr(id);
+        var pPtr = StrToPtr(parentId ?? "");
+        try { return b->native_ui_create_element(tPtr, iPtr, pPtr); }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)tPtr);
+            Marshal.FreeCoTaskMem((IntPtr)iPtr);
+            Marshal.FreeCoTaskMem((IntPtr)pPtr);
+        }
+    }
+
+    internal static int Native_UIPollEvent(uint elementId, string eventName)
+    {
+        var ptr = StrToPtr(eventName);
+        try { return b->native_ui_poll_event(elementId, ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
 }

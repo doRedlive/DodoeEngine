@@ -30,6 +30,7 @@ namespace dodoe {
         UnorderedMap<InstanceID, ObjHandle<Texture2D>> m_texture2d_cache{};
         UnorderedMap<InstanceID, ObjHandle<TextureCubemap>> m_cubemap_cache{};
         std::mutex m_mutex{};
+        DynamicArray<Texture2D*> m_slot_lut{};
 
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
@@ -48,6 +49,7 @@ namespace dodoe {
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
         [[nodiscard]] const UnorderedMap<InstanceID, ObjHandle<Texture2D>>& getTexture2DCache() const { return m_texture2d_cache; }
         void removeTexture(InstanceID id);
+        [[nodiscard]] Texture2D* resolveSlot(UInt32 slot) const;
     };
 
 } // dodoe

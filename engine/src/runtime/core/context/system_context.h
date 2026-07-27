@@ -15,7 +15,7 @@
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/time/time_system.h"
-#include "runtime/function/ui/ui_system.h"
+#include "runtime/function/ui/ui_manager.h"
 #include "runtime/function/window/window_manager.h"
 
 namespace dodoe {
@@ -37,7 +37,8 @@ namespace dodoe {
         Scope<InputManager>  m_input_manager  {nullptr};
         Scope<ScriptSystem>  m_script_system  {nullptr};
         Scope<TimeSystem>    m_time_system    {nullptr};
-        Scope<UISystem>      m_ui_system      {nullptr};
+        Scope<UIManager>     m_ui_manager     {nullptr};
+
         Scope<World>         m_world          {nullptr};
         Scope<Debugger>      m_debugger       {nullptr};
         LayerStack m_layer_stack{};
@@ -50,7 +51,7 @@ namespace dodoe {
         [[nodiscard]] InputManager*  getInputManager()  const { return m_input_manager.get(); }
         [[nodiscard]] ScriptSystem*  getScriptSystem()  const { return m_script_system.get(); }
         [[nodiscard]] TimeSystem*    getTimeSystem()    const { return m_time_system.get(); }
-        [[nodiscard]] UISystem*      getUISystem()      const { return m_ui_system.get(); }
+        [[nodiscard]] UIManager*     getUIManager()     const { return m_ui_manager.get(); }
         [[nodiscard]] World*         getWorld()         const { return m_world.get(); }
         [[nodiscard]] Debugger*      getDebugger()      const { return m_debugger.get(); }
         [[nodiscard]] LayerStack& getLayerStack() { return m_layer_stack; }
@@ -81,8 +82,8 @@ namespace dodoe {
     inline World*         GetWorld()         { return Application::Self().context().getWorld(); }
     inline ScriptSystem*  GetScriptSystem()  { return Application::Self().context().getScriptSystem(); }
     inline PhysicsSystem* GetPhysicsSystem() { return Application::Self().context().getPhysicsSystem(); }
-    inline UISystem*      GetUISystem()      { return Application::Self().context().getUISystem(); }
     inline InputManager*  GetInputManager()  { return Application::Self().context().getInputManager(); }
+    inline UIManager*     GetUIManager()     { return Application::Self().context().getUIManager(); }
     inline Debugger*      GetDebugger()      { return Application::Self().context().getDebugger(); }
 
 } // dodoe

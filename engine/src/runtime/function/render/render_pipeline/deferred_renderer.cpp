@@ -9,6 +9,7 @@
 #include "render_feature/post_process_feature.h"
 #include "render_feature/present_feature.h"
 #include "render_feature/sprite_feature.h"
+#include "render_feature/ui_feature.h"
 #include "render_feature/imgui_feature.h"
 #ifdef DODOE_EDITOR_ENABLED
 #include "render_feature/gizmo_feature.h"
@@ -43,7 +44,8 @@ namespace dodoe {
 	    addFeature<LightingFeature>();
 	    addFeature<PostProcessFeature>();
 	    addFeature<SpriteFeature>();
-	#ifdef DODOE_EDITOR_ENABLED
+	    addFeature<UIFeature>();  // do@Redlive
+#ifdef DODOE_EDITOR_ENABLED
 	    addFeature<GizmoFeature>();
 	#endif
 	    addFeature<ImGuiFeature>();

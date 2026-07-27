@@ -1,66 +1,35 @@
+// do@Redlive
+
 #pragma once
 
 #include "dopch.h"
-#include "ui_element.h"
-#include "ui_defaults.h"
-#include "runtime/core/utils/util.h"
-#include "ui_compat.h"
+
+#include "ui_widget.h"
 
 namespace dodoe {
 
-class UILabel final : public UIElement {
-private:
-    TextRenderer& text_renderer_;
+    class Texture2D;
 
-    String text_;
-    String font_path_;
-    identifier font_id_;
-    int font_size_;
-    identifier style_id_{entt::null};
-    using TextRenderOverrides = TextRenderOverrides;
-    TextRenderOverrides overrides_{};
-    std::uint64_t last_layout_revision_{0};
+    class UILabel : public UIWidget {
+    private:
+        String m_text{};
+        Int m_font_size{16};
+        Texture2D* m_font_atlas{nullptr};
+        TextAnchor m_alignment{TextAnchor::MiddleCenter};
+        Float m_line_spacing{1};
 
-public:
-    UILabel(TextRenderer& text_renderer,
-            std::string_view text,
-            std::string_view font_path = DEFAULT_UI_FONT_PATH,
-            int font_size = DEFAULT_UI_FONT_SIZE_PX,
-            Vector2f position = {0.0f, 0.0f},
-            std::optional<Color> text_color = std::nullopt);
+    public:
+        void setText(String text) { m_text = std::move(text); }
+        [[nodiscard]] const String& getText() const { return m_text; }
+        void setFontSize(Int size) { m_font_size = size; }
+        [[nodiscard]] Int getFontSize() const { return m_font_size; }
+        void setFontAtlas(Texture2D* atlas) { m_font_atlas = atlas; }
+        void setTextAlignment(TextAnchor alignment) { m_alignment = alignment; }
+        void setLineSpacing(Float spacing) { m_line_spacing = spacing; }
 
-    using UIElement::render;
-
-    std::string_view getText() const { return text_; }
-    identifier getFontId() const { return font_id_; }
-    int getFontSize() const { return font_size_; }
-    identifier getStyleId() const { return style_id_; }
-    std::string_view getStyleKey() const {
-        if (style_id_ == entt::null || !text_renderer_.hasTextStyle(style_id_)) {
-            return text_renderer_.getDefaultUIStyleKey();
-        }
-        return text_renderer_.getTextStyleKey(style_id_);
-    }
-
-    void setText(std::string_view text);
-    void setFontPath(std::string_view font_path);
-    void setFontSize(int font_size);
-    void setStyleKey(std::string_view style_key);
-    void setTextColor(Color text_color);
-    void setShadowColor(Color shadow_color);
-    void setShadowOffset(Vector2f shadow_offset);
-    void setShadowEnabled(bool enabled);
-    void clearOverrides();
-    
-protected:
-    void update(float delta_time, Context& context) override;
-    void renderSelf(Context& context) override;
-
-private:
-    void refreshSize();
-};
-
+    protected:
+        void onCollectRenderData(class UIRenderBatch& batch) override;
+        void onLayout() override;
+    };
 
 } // namespace dodoe
-
-

@@ -1,91 +1,50 @@
-#pragma once
-
 // do@Redlive
 
+#pragma once
+
 #include "dopch.h"
+
 #include "ui_element.h"
-#include "state/ui_state.h"
-#include "behavior/interaction_behavior.h"
-#include "ui_compat.h"
 
 namespace dodoe {
 
-    inline constexpr identifier UI_IMAGE_NORMAL_ID = entt::hashed_string{"normal"}.value();
-    inline constexpr identifier UI_IMAGE_HOVER_ID = entt::hashed_string{"hover"}.value();
-    inline constexpr identifier UI_IMAGE_PRESSED_ID = entt::hashed_string{"pressed"}.value();
-    inline constexpr identifier UI_IMAGE_DISABLED_ID = entt::hashed_string{"disabled"}.value();
-
-    inline constexpr identifier UI_SOUND_EVENT_HOVER_ID = UI_IMAGE_HOVER_ID;
-    inline constexpr identifier UI_SOUND_EVENT_CLICK_ID = entt::hashed_string{"click"}.value();
-
     class UIInteractive : public UIElement {
-    protected:
-        Context& m_context;
-        Scope<UIState> m_state;
-        Scope<UIState> m_next_state;
-        std::unordered_map<identifier, Image> m_images;
-        std::unordered_map<identifier, identifier> m_sound_overrides;
-        identifier m_current_image_id = entt::null;
-        bool m_interactive = true;
-        std::vector<Scope<InteractionBehavior>> m_behaviors;
-        bool m_is_pressed{false};
-        bool m_is_dragging{false};
-        Vector2f m_last_mouse_pos{0.0f, 0.0f};
+    private:
+        Bool m_interactable{true};
+        Bool m_raycast_target{true};
+        Bool m_is_hovered{false};
+        Bool m_is_pressed{false};
+        Bool m_clicked{false};
+        Bool m_entered{false};
+        Bool m_exited{false};
 
     public:
-        UIInteractive(Context& context, Vector2f position = {0.0f, 0.0f}, Vector2f size = {0.0f, 0.0f});
-        ~UIInteractive() override;
+        std::function<void()> on_click;
+        std::function<void()> on_hover_enter;
+        std::function<void()> on_hover_leave;
+        std::function<void(Bool)> on_press_changed;
+        std::function<void(Float)> on_scroll;
 
-        virtual void clicked() {}
-        virtual void hover_enter() {}
-        virtual void hover_leave() {}
+        [[nodiscard]] Bool isHovered() const { return m_is_hovered; }
+        [[nodiscard]] Bool isPressed() const { return m_is_pressed; }
+        [[nodiscard]] Bool isInteractable() const { return m_interactable; }
+        void setInteractable(Bool interactable) { m_interactable = interactable; }
 
-        void addImage(identifier name_id, Image image);
-        void setCurrentImage(identifier name_id);
-        virtual void applyStateVisual(identifier state_id);
+        [[nodiscard]] Bool isRaycastTarget() const { return m_raycast_target; }
+        void setRaycastTarget(Bool enabled) { m_raycast_target = enabled; }
 
-        void setSoundEvent(identifier event_id, identifier sound_id, std::string_view path = "");
-        void setSoundEvent(identifier event_id, std::string_view path);
-        void disableSoundEvent(identifier event_id);
-        void clearSoundEventOverride(identifier event_id);
-        void clearSoundOverrides();
-        void playSoundEvent(identifier event_id);
+        [[nodiscard]] Bool pollClicked() { Bool v = m_clicked; m_clicked = false; return v; }
+        [[nodiscard]] Bool pollEntered() { Bool v = m_entered; m_entered = false; return v; }
+        [[nodiscard]] Bool pollExited() { Bool v = m_exited; m_exited = false; return v; }
 
-        void setHoverSound(identifier id, std::string_view path = "") { setSoundEvent(UI_SOUND_EVENT_HOVER_ID, id, path); }
-        void setClickSound(identifier id, std::string_view path = "") { setSoundEvent(UI_SOUND_EVENT_CLICK_ID, id, path); }
-        void disableHoverSound() { disableSoundEvent(UI_SOUND_EVENT_HOVER_ID); }
-        void disableClickSound() { disableSoundEvent(UI_SOUND_EVENT_CLICK_ID); }
-        void clearHoverSoundOverride() { clearSoundEventOverride(UI_SOUND_EVENT_HOVER_ID); }
-        void clearClickSoundOverride() { clearSoundEventOverride(UI_SOUND_EVENT_CLICK_ID); }
-
-        Context& getContext() const { return m_context; }
-        void setState(Scope<UIState> state);
-        void setNextState(Scope<UIState> state);
-        UIState* getState() const { return m_state.get(); }
-
-        void setInteractive(bool interactive) { m_interactive = interactive; }
-        bool isInteractive() const { return m_interactive; }
-
-        InteractionBehavior* addBehavior(Scope<InteractionBehavior> behavior);
-        void clearBehaviors() { m_behaviors.clear(); }
-
-        Vector2f screenToLocal(const Vector2f& screen_pos) const;
-        void setPositionByScreen(const Vector2f& screen_pos);
-
-        bool isHovered() const { return m_state && m_state->isHovered(); }
-        bool isPressed() const { return m_state && m_state->isPressed(); }
-        bool isDragging() const { return m_is_dragging; }
-
-        void mouseEnter();
-        void mouseExit();
-        void mousePressed();
-        void mouseReleased(bool is_inside);
-
-        void update(float delta_time, Context& context) override;
     protected:
-        void renderSelf(Context& context) override;
+        virtual void onMouseEnter();
+        virtual void onMouseExit();
+        virtual void onMouseDown();
+        virtual void onMouseUp(Bool isInside);
+        virtual void onScroll(Float delta);
+
+        friend class UIInputRouter;
     };
 
 } // namespace dodoe
-
-
