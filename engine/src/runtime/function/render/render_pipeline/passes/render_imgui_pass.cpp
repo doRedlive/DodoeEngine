@@ -177,11 +177,11 @@ namespace dodoe {
                             draw.UserCallback(draw_list, &draw);
                             continue;
                         }
-                        if (!draw.TextureId) {
+                        if (!draw.GetTexID()) {
                             continue;
                         }
 
-                        auto* texture = static_cast<GfxTexture*>(draw.TextureId);
+                        auto* texture = reinterpret_cast<GfxTexture*>(draw.GetTexID());
                         if (!texture || !texture->isRHIReady()) {
                             continue;
                         }
@@ -213,10 +213,9 @@ namespace dodoe {
                         DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
                         DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                             GfxVertexBufferBinding().setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(global_vertex_offset)};
-                        command_list.setIndexBuffer(
+                        command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport, vertex_buffers,
                             GfxIndexBufferBinding().setBuffer(ib->getRHIHandle()).setOffset(global_index_offset));
-                        command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport, vertex_buffers);
-                        command_list.setPushConstants(GfxShaderType::Vertex, &push_data, sizeof(push_data));
+                        command_list.setPushConstants(&push_data, sizeof(push_data));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(draw.ElemCount)
                             .setStartIndexLocation(draw.IdxOffset)

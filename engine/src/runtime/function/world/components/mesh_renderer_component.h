@@ -22,7 +22,7 @@ namespace dodoe {
         META(Enable)
         DynamicArray<MeshLODData> lods;
         META(Enable)
-        DynamicArray<Ref<MaterialProperties>> override_materials{};
+        DynamicArray<MaterialProperties> override_materials{};
         META(Enable)
         bool visible{true};
         META(Enable)

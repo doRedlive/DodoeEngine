@@ -7,3 +7,6 @@
 [submodule "engine/external/mimalloc"]
 	path = engine/external/mimalloc
 	url = https://github.com/microsoft/mimalloc.git
+[submodule "engine/external/SPIRV-Cross"]
+	path = engine/external/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git

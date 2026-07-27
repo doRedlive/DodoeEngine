@@ -8,6 +8,7 @@
 #include "runtime/function/render/shader/shader_reflection.h"
 
 namespace dodoe {
+    class DrawCommandList;
 
     struct GeneratedBindingLayout {
         GfxBindingLayoutDesc desc;

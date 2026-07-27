@@ -37,7 +37,7 @@ namespace dodoe {
         String MakeProjectRelativePath(const FsPath& base_dir, const FsPath& target_path) {
             std::error_code ec;
             const FsPath relative = fs::relative(target_path, base_dir, ec);
-            return (ec ? target_path.lexically_normal() : relative.lexically_normal()).generic_string();
+            return String((ec ? target_path.lexically_normal() : relative.lexically_normal()).generic_string().c_str());
         }
 
         FsPath FindCoreAssemblyPath() {
@@ -123,7 +123,7 @@ namespace dodoe {
             PROCESS_INFORMATION process_info{};
 
             String mutable_command = command_line;
-            const String working_dir_string = working_directory.string();
+            const String working_dir_string(working_directory.string().c_str());
             const BOOL launched = CreateProcessA(
                 nullptr,
                 mutable_command.data(),
@@ -245,7 +245,7 @@ namespace dodoe {
             return false;
         }
 
-        const String command = "dotnet build \"" + generated_project_path.string() + "\" -c Debug --nologo";
+        const String command(std::string("dotnet build \"" + generated_project_path.string() + "\" -c Debug --nologo").c_str());
         return RunProcessAndWait(command, output_directory);
     }
 

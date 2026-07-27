@@ -80,7 +80,7 @@ namespace dodoe {
             }
             if (asset_json.contains("import_settings")) {
                 for (const auto& [k, v] : asset_json["import_settings"].items()) {
-                    meta.import_settings[k] = v.get<String>();
+                    meta.import_settings[String(k.c_str())] = v.get<String>();
                 }
             }
             if (asset_json.contains("tags")) {
@@ -129,7 +129,7 @@ namespace dodoe {
 
             Json import_settings = Json::object();
             for (const auto& [k, v] : meta.import_settings) {
-                import_settings[k] = v;
+                import_settings[k.c_str()] = v;
             }
             asset_json["import_settings"] = import_settings;
 
@@ -145,8 +145,8 @@ namespace dodoe {
             }
             asset_json["dependencies"] = deps;
 
-            String key_str = std::to_string(file_id.getID());
-            assets[key_str] = asset_json;
+            String key_str(std::to_string(file_id.getID()).c_str());
+            assets[key_str.c_str()] = asset_json;
         }
 
         root["assets"] = assets;

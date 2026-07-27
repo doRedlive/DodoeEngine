@@ -3,6 +3,7 @@
 #include "sky_light_system.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
 #include "runtime/function/render/texture/texture.h"
@@ -16,18 +17,16 @@ namespace dodoe {
 
         auto view = reg.view<IDComponent, SkyLightComponent>();
         UnorderedSet<UUID> active{};
-        bool dirty = false;
 
         for (auto entity : view) {
             auto& id = entity.getComponent<IDComponent>();
             auto& sky = entity.getComponent<SkyLightComponent>();
             active.insert(id.id);
             if (!sky.enabled) continue;
-            dirty |= syncSkyLight(entity);
+            syncSkyLight(entity);
         }
 
         pruneRemoved(active);
-        if (dirty) GetRenderSystem()->getRenderScene()->flushUpdates();
     }
 
     bool SkyLightSystem::syncSkyLight(Entity entity) {
@@ -45,7 +44,7 @@ namespace dodoe {
         info.setEnabled(sky.enabled);
 
         SkyLightData data{};
-        data.cubemap = cubemap;
+        data.cubemap = ObjHandle<TextureCubemap>(cubemap);
         data.intensity = sky.intensity;
         info.setSkyLightData(data);
 

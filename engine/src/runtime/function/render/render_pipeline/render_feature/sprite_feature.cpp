@@ -16,8 +16,8 @@ namespace dodoe {
 	    auto* cache = resources.getBindingLayoutCache();
 	    m_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
-	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0, GfxShaderType::Vertex))
-	            .addItem(GfxBindingLayoutItem::Sampler(0, GfxShaderType::Pixel)));
+	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+	            .addItem(GfxBindingLayoutItem::Sampler(0)));
 
 	    if (auto* input_layout_cache = resources.getInputLayoutCache()) {
 	        const DynamicArray<GfxVertexAttributeDesc> attributes = {
@@ -36,8 +36,8 @@ namespace dodoe {
 	}
 
 	void SpriteFeature::shutdown() {
-	    m_input_layout.reset();
-	    m_binding_layout.reset();
+	    m_input_layout = nullptr;
+	    m_binding_layout = nullptr;
 	}
 
 	void SpriteFeature::collectPasses(PassCollector& collector) {

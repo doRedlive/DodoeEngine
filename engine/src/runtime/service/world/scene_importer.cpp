@@ -80,7 +80,7 @@ namespace dodoe {
             }
             resolved_path = resolved_path.lexically_normal();
 
-            const auto texture_res = ResourceManager::Self().getTexture(resolved_path.string());
+            const auto texture_res = ResourceManager::Self().getTexture(String(resolved_path.string().c_str()));
             return texture_res.getFileID();
         }
 
@@ -252,7 +252,7 @@ namespace dodoe {
             } else {
                 for (uint mesh_offset = 0; mesh_offset < node->mNumMeshes; ++mesh_offset) {
                     const uint mesh_index = node->mMeshes[mesh_offset];
-                    const String mesh_entity_name = fmt::format("{}_Mesh{}", node_name, mesh_offset);
+                    const String mesh_entity_name(fmt::format("{}_Mesh{}", node_name, mesh_offset).c_str());
 
                     auto mesh_entity = scene->createEntity(mesh_entity_name);
                     AttachChild(node_entity, mesh_entity);
@@ -273,7 +273,7 @@ namespace dodoe {
 
         Assimp::Importer importer;
         const aiScene* imported_scene = importer.ReadFile(
-            path,
+            path.c_str(),
             aiProcess_Triangulate |
             aiProcess_GenSmoothNormals |
             aiProcess_CalcTangentSpace |
@@ -285,7 +285,7 @@ namespace dodoe {
             return;
         }
 
-        const String root_name = FsPath(path).stem().string();
+        const String root_name(FsPath(path).stem().string().c_str());
         const FsPath model_directory = FsPath(path).parent_path();
         auto root_entity = cur_scene->createEntity(root_name);
 
@@ -296,7 +296,7 @@ namespace dodoe {
         auto cur_scene = Application::Self().context().getWorld()->getActiveScene();
         DO_ASSERT(cur_scene);
 
-        const String entity_name = FsPath(path).stem().string();
+        const String entity_name(FsPath(path).stem().string().c_str());
         auto entity = cur_scene->createEntity(entity_name);
 
         auto& sr = entity.addComponent<SpriteRendererComponent>();
@@ -308,7 +308,7 @@ namespace dodoe {
     }
 
     void SceneImporter::ImportAsset(const String& path) {
-        const String ext = FsPath(path).extension().string();
+        const String ext(FsPath(path).extension().string().c_str());
         DO_DEBUG("Import Asset");
 
         if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" ||

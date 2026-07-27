@@ -10,12 +10,13 @@
 #include "runtime/function/render/render_pipeline/passes/render_skybox_pass.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_list.h"
 #include "runtime/function/render/mesh_draw/cached_mesh_draw_command.h"
+#include "runtime/function/render/mesh_draw/directional_shadow_mesh_processor.h"
+#include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
 #include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
 
     class GBufferMeshProcessor;
-    class DirectionalShadowMeshProcessor;
     class RenderScene;
     class RenderViewFamily;
     class DrawCommandList;

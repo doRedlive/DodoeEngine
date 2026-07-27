@@ -1,6 +1,7 @@
 #include "light_system.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
 
@@ -14,7 +15,6 @@ namespace dodoe {
         (void)dt;
 
         UnorderedSet<UUID> active_lights{};
-        bool dirty = false;
 
         auto point_view = reg.view<IDComponent, TransformComponent, PointLightComponent>();
         for (auto entity : point_view) {
@@ -24,7 +24,7 @@ namespace dodoe {
             if (!light.enabled) {
                 continue;
             }
-            dirty |= syncPointLight(entity);
+            syncPointLight(entity);
         }
 
         auto spot_view = reg.view<IDComponent, TransformComponent, SpotLightComponent>();
@@ -35,14 +35,10 @@ namespace dodoe {
             if (entity.hasComponent<PointLightComponent>() || !light.enabled) {
                 continue;
             }
-            dirty |= syncSpotLight(entity);
+            syncSpotLight(entity);
         }
 
         pruneRemovedLights(active_lights);
-
-        if (dirty) {
-            GetRenderSystem()->getRenderScene()->flushUpdates();
-        }
     }
 
     bool LightSystem::syncPointLight(Entity entity) {

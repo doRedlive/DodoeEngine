@@ -8,6 +8,7 @@
 #include "render_pass_blackboard_keys.h"
 
 #include "../render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/shader/shader_parameter.h"

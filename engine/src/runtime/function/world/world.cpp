@@ -43,7 +43,7 @@ namespace dodoe {
 
         void BuildGraphForSystems(
             TaskGraph& graph,
-            const std::vector<Ref<System>>& systems)
+            const DynamicArray<Ref<System>>& systems)
         {
             graph.reset();
 
@@ -104,7 +104,7 @@ namespace dodoe {
 
         void ExecuteSystemsParallel(
             const TaskGraph& graph,
-            const std::vector<Ref<System>>& systems,
+            const DynamicArray<Ref<System>>& systems,
             Registry& reg,
             float dt,
             WorldCommands& cmd_buf)
@@ -359,8 +359,8 @@ namespace dodoe {
             return nullptr;
         }
 
-        const String asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
-        auto handle = asset_manager->loadSceneAsset(asset_url);
+        const String asset_url((FsPath("Scenes") / (name + ".doscn")).generic_string().c_str());
+        auto handle = asset_manager->getHandleByPath<SceneAsset>(asset_url);
         if (!handle.isValid() || !handle.isLoaded()) {
             DO_ERROR("loadScene: failed to load '{}'", asset_url);
             return nullptr;
@@ -525,7 +525,7 @@ namespace dodoe {
             return future;
         }
 
-        const String asset_url = (FsPath("Scenes") / (name + ".doscn")).generic_string();
+        const String asset_url((FsPath("Scenes") / (name + ".doscn")).generic_string().c_str());
 
         auto& scheduler = TaskScheduler::Self();
         scheduler.async([this, asset_manager, asset_url, name, mode, promise]() {

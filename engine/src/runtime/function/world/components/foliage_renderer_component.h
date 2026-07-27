@@ -38,7 +38,7 @@ namespace dodoe {
         META(Enable)
         DynamicArray<MeshLODData> lods;
         META(Enable)
-        DynamicArray<Ref<MaterialProperties>> override_materials{};
+        DynamicArray<MaterialProperties> override_materials{};
         META(Enable)
         PrimitiveMobility mobility{PrimitiveMobility::Static};
         META(Enable)

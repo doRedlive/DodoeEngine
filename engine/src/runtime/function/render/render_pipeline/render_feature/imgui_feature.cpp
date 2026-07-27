@@ -76,10 +76,10 @@ namespace dodoe {
 	        ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
 	    }
 #endif
-	    m_font_texture.reset();
-	    m_font_binding_set.reset();
-	    m_input_layout.reset();
-	    m_binding_layout.reset();
+	    m_font_texture = nullptr;
+	    m_font_binding_set = nullptr;
+	    m_input_layout = nullptr;
+	    m_binding_layout = nullptr;
 	}
 
 	void ImGuiFeature::registerGraphImports(RenderGraphImportRegistry& imports,

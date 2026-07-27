@@ -133,7 +133,7 @@ namespace dodoe {
         if (asset->isReadOnly() || !asset->isLoaded()) {
             return false;
         }
-        String abs_path = String((m_asset_dir / asset->getSourcePath()).string().c_str());
+        String abs_path((m_asset_dir / asset->getSourcePath()).string().c_str());
         return asset->saveToSource(abs_path);
     }
 
@@ -178,7 +178,7 @@ namespace dodoe {
                     auto scene = create_scope<SceneAsset>();
                     scene->setFileID(file_id);
                     scene->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path = entry.path().generic_string();
+                    String abs_path(entry.path().generic_string().c_str());
                     if (scene->loadFromSource(abs_path)) {
                         scene->setLoadState(AssetLoadState::Loaded);
                     }
@@ -188,7 +188,7 @@ namespace dodoe {
                     auto mat = create_scope<MaterialAsset>();
                     mat->setFileID(file_id);
                     mat->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path = entry.path().generic_string();
+                    String abs_path(entry.path().generic_string().c_str());
                     if (mat->loadFromSource(abs_path)) {
                         mat->setLoadState(AssetLoadState::Loaded);
                     }
@@ -198,7 +198,7 @@ namespace dodoe {
                     auto anim = create_scope<AnimationClipAsset>();
                     anim->setFileID(file_id);
                     anim->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path = entry.path().generic_string();
+                    String abs_path(entry.path().generic_string().c_str());
                     if (anim->loadFromSource(abs_path)) {
                         anim->setLoadState(AssetLoadState::Loaded);
                     }
@@ -245,7 +245,7 @@ namespace dodoe {
                 continue;
             }
 
-            std::ifstream file(path);
+            std::ifstream file(path.c_str());
             if (!file.is_open()) {
                 continue;
             }

@@ -21,7 +21,7 @@ namespace dodoe {
 
         Json import_settings = Json::object();
         for (const auto& [key, value] : m_meta.import_settings) {
-            import_settings[key] = value;
+            import_settings[key.c_str()] = value;
         }
         json["import_settings"] = import_settings;
 
@@ -72,7 +72,7 @@ namespace dodoe {
         }
         if (json.contains("import_settings")) {
             for (const auto& [key, value] : json["import_settings"].items()) {
-                m_meta.import_settings[key] = value.get<String>();
+                m_meta.import_settings[String(key.c_str())] = value.get<String>();
             }
         }
         if (json.contains("tags")) {

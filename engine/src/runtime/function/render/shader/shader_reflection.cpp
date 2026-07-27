@@ -2,10 +2,13 @@
 
 #include "shader_reflection.h"
 
+#include "spirv_reflect.hpp"
+
+#ifdef DODOE_EDITOR_ENABLED
 #include <directx/d3d12shader.h>
 #include <wrl/client.h>
-
 #pragma comment(lib, "d3dcompiler.lib")
+#endif
 
 namespace dodoe {
 
@@ -67,17 +70,20 @@ namespace dodoe {
     ShaderReflectionData ShaderReflector::ReflectBytecode(const DynamicArray<UInt8>& bytecode,
                                                           GfxShaderType stage,
                                                           const String& name) {
-        if (IsDXIL(bytecode)) {
-            return ReflectDXIL(bytecode, stage, name);
-        }
         if (IsSPIRV(bytecode)) {
             return ReflectSPIRV(bytecode, stage, name);
         }
+#ifdef DODOE_EDITOR_ENABLED
+        if (IsDXIL(bytecode)) {
+            return ReflectDXIL(bytecode, stage, name);
+        }
+#endif
 
-        DO_ERROR("ShaderReflector::ReflectBytecode unknown bytecode format for {}", name);
+        DO_ERROR("ShaderReflector::ReflectBytecode unknown or unsupported bytecode format for {}", name);
         return {};
     }
 
+#ifdef DODOE_EDITOR_ENABLED
     ShaderReflectionData ShaderReflector::ReflectDXIL(const DynamicArray<UInt8>& bytecode,
                                                       GfxShaderType stage,
                                                       const String& name) {
@@ -247,6 +253,7 @@ namespace dodoe {
 
         return result;
     }
+#endif
 
     ShaderReflectionData ShaderReflector::ReflectSPIRV(const DynamicArray<UInt8>& bytecode,
                                                        GfxShaderType stage,
@@ -259,201 +266,113 @@ namespace dodoe {
             return result;
         }
 
-        const auto words = reinterpret_cast<const UInt32*>(bytecode.data());
-        const Size_t word_count = bytecode.size() / 4;
+        const auto* words = reinterpret_cast<const UInt32*>(bytecode.data());
+        const size_t word_count = bytecode.size() / 4;
 
-        UnorderedMap<UInt32, String> debug_names;
-        UnorderedMap<UInt32, UInt32> pointer_types;
-        UnorderedMap<UInt32, UInt32> variable_types;
-        UnorderedMap<UInt32, UInt32> type_array_element;
-        UnorderedMap<UInt32, Bool> struct_is_block;
-        UnorderedMap<UInt32, DynamicArray<UInt32>> struct_members;
-        UnorderedMap<UInt32, UInt32> type_image_dim;
-        UnorderedMap<UInt32, UInt32> type_sampler;
-        UnorderedMap<UInt32, UInt32> binding_ids;
-        UnorderedMap<UInt32, Bool> image_is_uav;
+        spirv_cross::CompilerReflection compiler(words, word_count);
+        spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-        Size_t pos = 5;
-        while (pos < word_count) {
-            UInt32 inst_word = words[pos];
-            UInt32 word_len = inst_word & 0xFFFF;
-            UInt32 opcode = (inst_word >> 16) & 0xFFFF;
+        // Uniform buffers → Constant buffers
+        for (const auto& ub : resources.uniform_buffers) {
+            ShaderCBReflection cb;
+            cb.name = String(ub.name.c_str());
+            cb.slot = compiler.get_decoration(ub.id, spv::DecorationBinding);
 
-            if (word_len == 0 || pos + word_len > word_count) {
-                break;
+            const auto& type = compiler.get_type(ub.type_id);
+            cb.size = static_cast<UInt32>(compiler.get_declared_struct_size(type));
+
+            for (UInt32 mi = 0; mi < static_cast<UInt32>(type.member_types.size()); ++mi) {
+                ShaderCBVariable cv;
+                cv.name = String(compiler.get_member_name(ub.type_id, mi).c_str());
+                cv.offset = compiler.type_struct_member_offset(type, mi);
+                cv.size = static_cast<UInt32>(compiler.get_declared_struct_member_size(type, mi));
+                cb.variables.push_back(cv);
             }
 
-            switch (opcode) {
-                case 5:  {
-                    if (word_len >= 2) {
-                        UInt32 result_id = words[pos + 1];
-                        if (pos + 2 < word_count) {
-                            debug_names[result_id] = reinterpret_cast<const char*>(&words[pos + 2]);
-                        }
-                    }
-                    break;
-                }
-                case 6:  {
-                    if (word_len >= 4) {
-                        UInt32 type_id = words[pos + 1];
-                        UInt32 member_idx = words[pos + 2];
-                        String member_name;
-                        for (Size_t ci = 3; ci < static_cast<Size_t>(word_len); ++ci) {
-                            const char* str = reinterpret_cast<const char*>(&words[pos + ci]);
-                            member_name += str;
-                        }
-                        (void)type_id;
-                        (void)member_idx;
-                        (void)member_name;
-                    }
-                    break;
-                }
-                case 71:  {
-                    if (word_len >= 3) {
-                        UInt32 target_id = words[pos + 1];
-                        UInt32 decoration = words[pos + 2];
-                        if (decoration == 33 && word_len >= 4) {
-                            binding_ids[target_id] = words[pos + 3];
-                        } else if (decoration == 34 && word_len >= 4) {
-                            (void)words[pos + 3];
-                        } else if (decoration == 1) {
-                            struct_is_block[target_id] = true;
-                        }
-                    }
-                    break;
-                }
-                case 72:  {
-                    if (word_len >= 4) {
-                        UInt32 type_id = words[pos + 1];
-                        UInt32 member_idx = words[pos + 2];
-                        UInt32 decoration = words[pos + 3];
-                        if (decoration == 35 && word_len >= 5) {
-                            if (!struct_members.contains(type_id)) {
-                                struct_members[type_id] = DynamicArray<UInt32>();
-                            }
-                            while (struct_members[type_id].size() <= static_cast<Size_t>(member_idx)) {
-                                struct_members[type_id].push_back(0);
-                            }
-                            struct_members[type_id][static_cast<Size_t>(member_idx)] = words[pos + 4];
-                        }
-                    }
-                    break;
-                }
-                case 30:  {
-                    if (word_len >= 3) {
-                        UInt32 result_id = words[pos + 1];
-                        UInt32 pointee_type = words[pos + 2];
-                        pointer_types[result_id] = pointee_type;
-                    }
-                    break;
-                }
-                case 19:  {
-                    if (word_len >= 3) {
-                        UInt32 result_id = words[pos + 1];
-                        if (word_len >= 4) {
-                            type_image_dim[result_id] = words[pos + 3];
-                        }
-                    }
-                    break;
-                }
-                case 26:  {
-                    if (word_len >= 2) {
-                        UInt32 result_id = words[pos + 1];
-                        type_sampler[result_id] = 1;
-                    }
-                    break;
-                }
-                case 28:  {
-                    if (word_len >= 3) {
-                        UInt32 result_id = words[pos + 1];
-                        UInt32 element_type = words[pos + 2];
-                        type_array_element[result_id] = element_type;
-                    }
-                    break;
-                }
-                case 59:  {
-                    if (word_len >= 3) {
-                        UInt32 result_id = words[pos + 1];
-                        UInt32 id = words[pos + 2];
-                        variable_types[result_id] = id;
-                    }
-                    break;
-                }
-                case 15:  {
-                    for (Size_t oi = 1; oi < static_cast<Size_t>(word_len); ++oi) {
-                        UInt32 mode = words[pos + oi];
-                        if (mode == 17 && oi + 1 < static_cast<Size_t>(word_len)) {
-                            result.push_constant_size = words[pos + oi + 1];
-                            result.uses_push_constants = true;
-                        }
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-
-            pos += word_len;
+            result.constant_buffers.push_back(std::move(cb));
         }
 
-        for (const auto& [var_id, type_id] : variable_types) {
-            UInt32 slot = 0;
-            auto binding_it = binding_ids.find(var_id);
-            if (binding_it != binding_ids.end()) {
-                slot = binding_it->second;
+        // Storage buffers (read-only → StructuredBufferSRV, read-write → StructuredBufferUAV)
+        for (const auto& sb : resources.storage_buffers) {
+            ShaderTextureReflection tex;
+            tex.name = String(sb.name.c_str());
+            tex.slot = compiler.get_decoration(sb.id, spv::DecorationBinding);
+            tex.dimension = GfxTextureDimension::Unknown;
+            tex.kind = ShaderResourceKind::StructuredBufferSRV;
+            // Check for NonWritable / NonReadable decorations to distinguish SRV vs UAV
+            bool is_non_writable = compiler.get_buffer_block_flags(sb.id).get(spv::DecorationNonWritable);
+            if (!is_non_writable) {
+                tex.kind = ShaderResourceKind::StructuredBufferUAV;
             }
+            result.textures.push_back(tex);
+        }
 
-            String var_name;
-            auto name_it = debug_names.find(var_id);
-            if (name_it != debug_names.end()) {
-                var_name = name_it->second;
+        // Sampled images (textures)
+        for (const auto& si : resources.sampled_images) {
+            ShaderTextureReflection tex;
+            tex.name = String(si.name.c_str());
+            tex.slot = compiler.get_decoration(si.id, spv::DecorationBinding);
+
+            const auto& type = compiler.get_type(si.type_id);
+            switch (type.image.dim) {
+                case spv::Dim1D: tex.dimension = GfxTextureDimension::Texture1D; break;
+                case spv::Dim2D: tex.dimension = type.image.arrayed ? GfxTextureDimension::Texture2DArray : GfxTextureDimension::Texture2D; break;
+                case spv::Dim3D: tex.dimension = GfxTextureDimension::Texture3D; break;
+                case spv::DimCube: tex.dimension = GfxTextureDimension::TextureCube; break;
+                default: tex.dimension = GfxTextureDimension::Unknown; break;
             }
+            tex.kind = ShaderResourceKind::TextureSRV;
+            result.textures.push_back(tex);
+        }
 
-            UInt32 actual_type = type_id;
-            auto ptr_it = pointer_types.find(type_id);
-            if (ptr_it != pointer_types.end()) {
-                actual_type = ptr_it->second;
+        // Storage images (UAV textures)
+        for (const auto& img : resources.storage_images) {
+            ShaderTextureReflection tex;
+            tex.name = String(img.name.c_str());
+            tex.slot = compiler.get_decoration(img.id, spv::DecorationBinding);
+            const auto& type = compiler.get_type(img.type_id);
+            switch (type.image.dim) {
+                case spv::Dim2D: tex.dimension = GfxTextureDimension::Texture2D; break;
+                default: tex.dimension = GfxTextureDimension::Unknown; break;
             }
+            tex.kind = ShaderResourceKind::TextureUAV;
+            result.textures.push_back(tex);
+        }
 
-            if (type_image_dim.contains(actual_type)) {
-                ShaderTextureReflection tex;
-                tex.name = var_name;
-                tex.slot = slot;
+        // Separate samplers
+        for (const auto& smp : resources.separate_samplers) {
+            ShaderSamplerReflection s;
+            s.name = String(smp.name.c_str());
+            s.slot = compiler.get_decoration(smp.id, spv::DecorationBinding);
+            result.samplers.push_back(s);
+        }
 
-                UInt32 dim = type_image_dim[actual_type];
-                switch (dim) {
-                    case 1:  tex.dimension = GfxTextureDimension::Texture1D;       break;
-                    case 2:  tex.dimension = GfxTextureDimension::Texture2D;       break;
-                    case 3:  tex.dimension = GfxTextureDimension::Texture3D;       break;
-                    case 4:  tex.dimension = GfxTextureDimension::TextureCube;     break;
-                    case 5:  tex.dimension = GfxTextureDimension::Texture2DArray;  break;
-                    default: tex.dimension = GfxTextureDimension::Unknown;          break;
-                }
-
-                tex.kind = image_is_uav.contains(var_id) && image_is_uav[var_id]
-                    ? ShaderResourceKind::TextureUAV : ShaderResourceKind::TextureSRV;
-                result.textures.push_back(tex);
-            } else if (type_sampler.contains(actual_type)) {
-                ShaderSamplerReflection smp;
-                smp.name = var_name;
-                smp.slot = slot;
-                result.samplers.push_back(smp);
-            } else if (struct_is_block.contains(actual_type)) {
-                ShaderCBReflection cb;
-                cb.name = var_name;
-                cb.slot = slot;
-
-                if (struct_members.contains(actual_type)) {
-                    for (Size_t mi = 0; mi < struct_members[actual_type].size(); ++mi) {
-                        UInt32 member_offset = struct_members[actual_type][mi];
-                        ShaderCBVariable cv;
-                        cv.offset = member_offset;
-                        cb.variables.push_back(cv);
-                    }
-                }
-
-                result.constant_buffers.push_back(cb);
+        // Push constants
+        if (!resources.push_constant_buffers.empty()) {
+            result.uses_push_constants = true;
+            for (const auto& pc : resources.push_constant_buffers) {
+                const auto& type = compiler.get_type(pc.base_type_id);
+                result.push_constant_size = static_cast<UInt32>(compiler.get_declared_struct_size(type));
+                break;
             }
+        }
+
+        // Stage inputs (vertex inputs)
+        for (const auto& input : resources.stage_inputs) {
+            ShaderVertexInput vi;
+            vi.semantic_name = String(input.name.c_str());
+            vi.semantic_index = 0;
+            vi.location = compiler.get_decoration(input.id, spv::DecorationLocation);
+
+            const auto& type = compiler.get_type(input.type_id);
+            switch (type.vecsize) {
+                case 1: vi.format = GfxFormat::R32_FLOAT; break;
+                case 2: vi.format = GfxFormat::RG32_FLOAT; break;
+                case 3: vi.format = GfxFormat::RGB32_FLOAT; break;
+                case 4: vi.format = GfxFormat::RGBA32_FLOAT; break;
+                default: vi.format = GfxFormat::UNKNOWN; break;
+            }
+            result.vertex_inputs.push_back(vi);
         }
 
         return result;

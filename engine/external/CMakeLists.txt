@@ -131,6 +131,10 @@ if(NOT TARGET Vulkan::Headers)
     endif()
 endif()
 
+if(NOT TARGET spirv-cross-core)
+    include(spirv-cross.cmake)
+endif()
+
 if(NOT TARGET cutie)
     include(cutie-rhi.cmake)
     set_target_properties(cutie PROPERTIES FOLDER ${external_folder}/cutie-rhi)

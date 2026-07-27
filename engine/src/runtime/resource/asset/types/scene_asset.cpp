@@ -7,7 +7,7 @@
 namespace dodoe {
 
     Bool SceneAsset::loadFromSource(const String& absolute_source_path) {
-        std::ifstream file(absolute_source_path);
+        std::ifstream file(absolute_source_path.c_str());
         if (!file.is_open()) {
             return false;
         }
@@ -32,7 +32,7 @@ namespace dodoe {
     }
 
     Bool SceneAsset::saveToSource(const String& absolute_path) const {
-        std::ofstream file(absolute_path);
+        std::ofstream file(absolute_path.c_str());
         if (!file.is_open()) {
             return false;
         }

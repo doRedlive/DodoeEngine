@@ -79,7 +79,7 @@ namespace dodoe {
             if (m_id == 0) return nullptr;
             auto* obj = Object::FindObjectFromInstanceID(m_id);
             if (!obj) return nullptr;
-            return static_cast<T*>(obj);
+            return reinterpret_cast<T*>(obj);
         }
 
         T* operator->() const { return get(); }

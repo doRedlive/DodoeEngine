@@ -65,7 +65,7 @@ namespace dodoe {
 	    }
 
 	    template <typename T>
-	    T* getFeature() {
+	    T* getFeature() const {
 	        for (const auto& feature : m_features) {
 	            auto* casted = dynamic_cast<T*>(feature.get());
 	            if (casted) return casted;

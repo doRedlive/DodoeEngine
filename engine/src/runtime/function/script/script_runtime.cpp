@@ -130,7 +130,7 @@ namespace dodoe {
             for (const auto& [entity_uuid, snapshots] : m_field_snapshot) {
                 json fields_obj = json::object();
                 for (const auto& [key, value] : snapshots) {
-                    fields_obj[key] = value;
+                    fields_obj[key.c_str()] = value;
                 }
                 restoreJson[std::to_string(entity_uuid)] = fields_obj;
             }

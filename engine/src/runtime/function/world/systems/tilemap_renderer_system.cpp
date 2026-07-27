@@ -3,6 +3,7 @@
 #include "tilemap_renderer_system.h"
 
 #include "runtime/core/math/math.h"
+#include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
 

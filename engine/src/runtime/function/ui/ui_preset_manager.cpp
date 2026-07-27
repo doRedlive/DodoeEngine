@@ -90,7 +90,7 @@ std::optional<Vector2f> parseVec2(const nlohmann::json& value) {
 } // namespace
 
 bool UIPresetManager::loadButtonPresets(std::string_view file_path) {
-    std::ifstream file{String(file_path)};
+    std::ifstream file{file_path.data()};
     if (!file.is_open()) {
         DO_WARN("UIPresetManager: failed to open button preset file {}.", file_path);
         return false;
@@ -205,7 +205,7 @@ void UIPresetManager::clearButtonPresets() {
 }
 
 bool UIPresetManager::loadImagePresets(std::string_view file_path) {
-    std::ifstream file{String(file_path)};
+    std::ifstream file{file_path.data()};
     if (!file.is_open()) {
         DO_WARN("UIPresetManager: failed to open image preset file {}.", file_path);
         return false;

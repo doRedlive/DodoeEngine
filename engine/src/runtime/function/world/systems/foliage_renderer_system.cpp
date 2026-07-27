@@ -1,6 +1,7 @@
 #include "foliage_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/foliage_render_object.h"
 
@@ -15,7 +16,6 @@ namespace dodoe {
 
         auto foliage_view = reg.view<IDComponent, TransformComponent, FoliageRendererComponent>();
         UnorderedSet<UUID> active_objects{};
-        bool dirty = false;
 
         for (auto entity : foliage_view) {
             auto& id = entity.getComponent<IDComponent>();
@@ -23,7 +23,7 @@ namespace dodoe {
             auto& foliage = entity.getComponent<FoliageRendererComponent>();
             active_objects.insert(id.id);
 
-            dirty |= syncFoliageRenderer(entity);
+            syncFoliageRenderer(entity);
 
             transform.dirty = false;
             if (entity.hasComponent<HierarchyComponent>()) {
@@ -34,10 +34,6 @@ namespace dodoe {
         }
 
         pruneRemovedObjects(active_objects);
-
-        if (dirty) {
-            GetRenderSystem()->getRenderScene()->flushUpdates();
-        }
     }
 
     bool FoliageRendererSystem::syncFoliageRenderer(Entity entity) {

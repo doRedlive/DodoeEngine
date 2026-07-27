@@ -8,6 +8,7 @@
 #include "../../render_view/render_view.h"
 #include "../../render_view/sprite_view_extension.h"
 #include "../render_pipeline_pass_utils.h"
+#include "render_pass_blackboard_keys.h"
 
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_scene/render_scene.h"
@@ -174,11 +175,11 @@ namespace dodoe {
                 DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                     GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
                     GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
-                command_list.setIndexBuffer(GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
                 command_list.setGraphicsState(
                     ctx.getFramebuffer(), pipeline, binding_sets,
                     rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
-                    vertex_buffers);
+                    vertex_buffers,
+                    GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
                 command_list.drawIndexed(GfxDrawArguments()
                     .setVertexCount(6)
                     .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));

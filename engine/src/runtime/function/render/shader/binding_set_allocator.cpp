@@ -18,7 +18,7 @@ namespace dodoe {
             desc.addItem(item);
         }
 
-        auto binding_set = device->createBindingSet(desc, key.layout);
+        auto binding_set = create_ref<GfxBindingSet>(device->createBindingSet(desc, key.layout), desc, key.layout);
         m_cache[key] = binding_set;
         return binding_set;
     }

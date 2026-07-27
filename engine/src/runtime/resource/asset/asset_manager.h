@@ -85,7 +85,7 @@ namespace dodoe {
                 return nullptr;
             }
             asset->setLoadState(AssetLoadState::Loading);
-            String absolute_path = (m_asset_dir / asset->getSourcePath()).string();
+            String absolute_path((m_asset_dir / asset->getSourcePath()).string().c_str());
             if (!asset->loadFromSource(absolute_path)) {
                 asset->setLoadState(AssetLoadState::Failed);
                 return nullptr;
@@ -183,7 +183,7 @@ namespace dodoe {
             }
 
             auto asset_json = Serializer::write(out_asset);
-            String asset_json_text = asset_json.dump(4);
+            String asset_json_text(asset_json.dump(4).c_str());
 
             asset_json_file << asset_json_text;
             asset_json_file.flush();

@@ -58,7 +58,7 @@ namespace dodoe {
     void DebugImGui::RenderHierarchyPanel() {
         ImGui::Begin("Hierarchy");
 
-        Scene* scene = GetWorld()->getCurrentScene();
+        Scene* scene = GetWorld()->getActiveScene();
         if (!scene) {
             ImGui::TextUnformatted("No active scene.");
             ImGui::End();

@@ -2,6 +2,8 @@
 
 #include "binding_layout_generator.h"
 
+#include "runtime/function/graphics/draw_command_list.h"
+
 namespace dodoe {
 
     void BindingLayoutGenerator::MergeReflection(const ShaderReflectionData& refl,

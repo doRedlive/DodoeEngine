@@ -145,7 +145,7 @@ namespace dodoe {
 	        for (Size_t pass_idx = 0; pass_idx < static_cast<Size_t>(MeshPassType::Count); pass_idx++) {
                 const auto& draw_lists = (pass_idx == static_cast<Size_t>(MeshPassType::GBuffer))
                     ? base_feature->getGBufferDrawLists() : base_feature->getShadowDrawLists();
-	            const auto& instances = draw_lists[view_index].cached_intances;
+	            const auto& instances = draw_lists[view_index].cached_instances;
 	            if (instances.empty()) {
 	                continue;
 	            }

@@ -1,6 +1,7 @@
 #include "mesh_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/static_mesh_render_object.h"
 

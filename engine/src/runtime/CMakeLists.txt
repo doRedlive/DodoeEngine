@@ -81,6 +81,9 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC d3d12
         PUBLIC dxgi
         PUBLIC mimalloc::mimalloc
+        PUBLIC spirv-cross-core
+        PUBLIC spirv-cross-glsl
+        PUBLIC spirv-cross-reflect
 )
 
 if(DODOE_PYTHON_ENABLED)

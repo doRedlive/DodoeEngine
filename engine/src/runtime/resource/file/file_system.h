@@ -16,13 +16,13 @@ namespace dodoe {
     public:
         [[nodiscard]] static const String& GetCWD();
         [[nodiscard]] static const FsPath& GetDocumentsPath();
-        [[nodiscard]] static const String GetDocumentsPathString();
+        [[nodiscard]] static String GetDocumentsPathString();
         [[nodiscard]] static const FsPath& GetExecutableDir();
-        [[nodiscard]] static const String GetExecutableDirString();
+        [[nodiscard]] static String GetExecutableDirString();
         [[nodiscard]] static const FsPath& GetEngineRootPath();
-        [[nodiscard]] static const String GetEngineRootPathString();
+        [[nodiscard]] static String GetEngineRootPathString();
         [[nodiscard]] static const FsPath& GetEngineResPath();
-        [[nodiscard]] static const String GetEngineResPathString();
+        [[nodiscard]] static String GetEngineResPathString();
 
         [[nodiscard]] static Bool IsFileExists(const FsPath& path);
         [[nodisacrd]] static Bool IsDirExists(const FsPath& path);

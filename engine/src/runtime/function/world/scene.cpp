@@ -143,7 +143,7 @@ namespace dodoe {
             return;
         }
 
-        const String asset_url = (FsPath("Scenes") / (m_name + ".doscn")).generic_string();
+        const String asset_url((FsPath("Scenes") / (m_name + ".doscn")).generic_string().c_str());
         (void)asset_manager->saveAssetFile(serialize(), asset_url);
     }
 

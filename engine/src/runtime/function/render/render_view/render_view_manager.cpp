@@ -3,6 +3,7 @@
 #include "render_view_manager.h"
 
 #include "runtime/function/window/window.h"
+#include "runtime/function/window/window_manager.h"
 
 namespace dodoe {
 

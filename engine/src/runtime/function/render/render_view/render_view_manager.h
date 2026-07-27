@@ -8,6 +8,7 @@
 
 namespace dodoe {
 
+    class Window;
     class WindowManager;
 
     struct RenderViewManagerCreateInfo {

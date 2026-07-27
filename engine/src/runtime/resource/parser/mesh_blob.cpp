@@ -62,7 +62,7 @@ namespace dodoe {
                     }
                     FsPath resolved = model_directory / FsPath(texture_path.C_Str());
                     resolved = resolved.lexically_normal();
-                    texture_ids.emplace_back(resolved.string());
+                    texture_ids.emplace_back(resolved.string().c_str());
                 }
             };
             loadType(aiTextureType_DIFFUSE);
@@ -74,14 +74,12 @@ namespace dodoe {
         Ref<MeshData> processMesh(const aiMesh& source_mesh,
                                    const aiScene& scene,
                                    const FsPath& model_directory) {
-            std::vector<MeshVertex> vertices;
-            vertices.reserve(source_mesh.mNumVertices);
+            DynamicArray<MeshVertex> vertices;            vertices.reserve(source_mesh.mNumVertices);
             for (unsigned int i = 0; i < source_mesh.mNumVertices; ++i) {
                 vertices.push_back(makeMeshVertex(source_mesh, i));
             }
 
-            std::vector<ui32> indices;
-            for (unsigned int i = 0; i < source_mesh.mNumFaces; ++i) {
+            DynamicArray<ui32> indices;            for (unsigned int i = 0; i < source_mesh.mNumFaces; ++i) {
                 const aiFace& face = source_mesh.mFaces[i];
                 for (unsigned int j = 0; j < face.mNumIndices; ++j) {
                     indices.push_back(face.mIndices[j]);
@@ -134,7 +132,7 @@ namespace dodoe {
     void MeshBlob::load(const String& path) {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
-            path,
+            path.c_str(),
             aiProcess_Triangulate |
             aiProcess_GenSmoothNormals |
             aiProcess_CalcTangentSpace |

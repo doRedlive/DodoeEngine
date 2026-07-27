@@ -8,6 +8,7 @@
 
 namespace dodoe {
 
+    class DrawCommandList;
     class BindingSetAllocator {
     public:
         struct BindingSetCacheKey {

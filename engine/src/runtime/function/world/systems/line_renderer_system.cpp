@@ -3,6 +3,7 @@
 #include "line_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
 
@@ -17,12 +18,11 @@ namespace dodoe {
 
         auto view = reg.view<IDComponent, TransformComponent, LineRendererComponent>();
         UnorderedSet<UUID> active{};
-        Bool dirty = false;
 
         for (auto entity : view) {
             auto& id = entity.getComponent<IDComponent>();
             active.insert(id.id);
-            dirty |= syncLine(entity);
+            syncLine(entity);
 
             auto& t = entity.getComponent<TransformComponent>();
             auto& lc = entity.getComponent<LineRendererComponent>();
@@ -32,10 +32,6 @@ namespace dodoe {
         }
 
         pruneRemoved(active);
-
-        if (dirty) {
-            GetRenderSystem()->getRenderScene()->flushUpdates();
-        }
     }
 
     Bool LineRendererSystem::syncLine(Entity entity) {
