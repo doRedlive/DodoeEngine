@@ -11,6 +11,8 @@ namespace dodoe {
 
     struct ButtonPreset;
     class Texture2D;
+    class UIImage;
+    class UILabel;
 
     struct ButtonVisual {
         Texture2D* texture{nullptr};
@@ -23,13 +25,13 @@ namespace dodoe {
         ButtonState m_state{ButtonState::Normal};
         UIImage* m_icon{nullptr};
         UILabel* m_label{nullptr};
-        identifier m_preset_id{entt::null};
+        identifier m_preset_id{0};
         ButtonVisual m_visuals[4]{};
 
     public:
         void setPreset(identifier presetId) { m_preset_id = presetId; }
         void setLabel(const String& text);
-        [[nodiscard]] String getLabel() const { return m_label ? m_label->getText() : String(); }
+        [[nodiscard]] String getLabel() const;
         void setStateImage(ButtonState state, Texture2D* texture, Rect uv);
         void setStateColor(ButtonState state, Color color);
         void applyPreset(const ButtonPreset& preset);

@@ -51,7 +51,16 @@ namespace dodoe {
 
         Size_t processed = 0;
         while (processed < node_count) {
-            DO_ASSERT(!current_level.empty(), "TaskGraph has cyclic dependency");
+            if (current_level.empty()) {
+                String remaining;
+                for (Size_t i = 0; i < node_count; i++) {
+                    if (indegree[i] > 0) {
+                        remaining += String("node[") + std::to_string(i).c_str() + "] indegree=" + std::to_string(indegree[i]).c_str() + " ";
+                    }
+                }
+                DO_ERROR("TaskGraph has cyclic dependency, remaining: {}", remaining);
+                DO_ASSERT(false, "TaskGraph has cyclic dependency");
+            }
 
             DynamicArray<Size_t> next_level{};
             DynamicArray<Size_t> execution_level{};

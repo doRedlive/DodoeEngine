@@ -11,6 +11,12 @@ namespace dodoe {
 
     LightSystem::~LightSystem() = default;
 
+    SystemAccess LightSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, TransformComponent, PointLightComponent, SpotLightComponent>()
+            .build();
+    }
+
     void LightSystem::update(Registry& reg, float dt) {
         (void)dt;
 

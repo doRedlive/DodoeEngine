@@ -13,6 +13,12 @@ namespace dodoe {
 
     LineRendererSystem::~LineRendererSystem() = default;
 
+    SystemAccess LineRendererSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, TransformComponent, LineRendererComponent>()
+            .build();
+    }
+
     void LineRendererSystem::update(Registry& reg, Float dt) {
         (void)dt;
 

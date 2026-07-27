@@ -11,7 +11,7 @@ namespace dodoe {
     class Texture2D;
 
     struct ButtonPreset {
-        identifier id{entt::null};
+        identifier id{0};
         String name{};
         Texture2D* normal_texture{nullptr};
         Texture2D* hovered_texture{nullptr};

@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "ui_element.h"
+#include "ui_interactive.h"
 
 namespace dodoe {
 

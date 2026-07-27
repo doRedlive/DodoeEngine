@@ -7,17 +7,18 @@
 #include "render_object.h"
 #include "sprite_scene_info.h"
 #include "runtime/core/object/pptr.h"
-#include "runtime/function/render/texture/texture.h"
+#include "runtime/function/render/texture/sprite.h"
 
 namespace dodoe {
 
     class SpriteRenderObject : public RenderObject {
     private:
-        PPtr<Texture> m_texture{};
+        PPtr<Sprite> m_sprite{};
         Float m_uv_min_x{0.0f};
         Float m_uv_min_y{0.0f};
         Float m_uv_max_x{1.0f};
         Float m_uv_max_y{1.0f};
+        UInt32 m_atlas_index{0};
         UInt32 m_color{0xFFFFFFFF};
         UInt8 m_sorting_layer{0};
         UInt16 m_order_in_layer{0};
@@ -29,12 +30,20 @@ namespace dodoe {
     public:
         SpriteRenderObject() = default;
 
-        void setTexture(const PPtr<Texture>& texture) { m_texture = texture; }
+        void setSprite(const PPtr<Sprite>& sprite) {
+            m_sprite = sprite;
+            if (auto* sp = sprite.get()) {
+                m_atlas_index = sp->getAtlasIndex();
+                m_uv_min_x = sp->getUVMinX();
+                m_uv_min_y = sp->getUVMinY();
+                m_uv_max_x = sp->getUVMaxX();
+                m_uv_max_y = sp->getUVMaxY();
+            }
+        }
+        void setAtlasIndex(UInt32 index) { m_atlas_index = index; }
         void setUVRect(Float min_x, Float min_y, Float max_x, Float max_y) {
-            m_uv_min_x = min_x;
-            m_uv_min_y = min_y;
-            m_uv_max_x = max_x;
-            m_uv_max_y = max_y;
+            m_uv_min_x = min_x; m_uv_min_y = min_y;
+            m_uv_max_x = max_x; m_uv_max_y = max_y;
         }
         void setColor(UInt32 color) { m_color = color; }
         void setSortingLayer(UInt8 layer, UInt16 order) {
@@ -46,7 +55,8 @@ namespace dodoe {
         void setVisible(Bool visible) { m_visible = visible; }
         void setCastShadow(Bool cast_shadow) { m_cast_shadow = cast_shadow; }
 
-        [[nodiscard]] const PPtr<Texture>& getTexture() const { return m_texture; }
+        [[nodiscard]] const PPtr<Sprite>& getSprite() const { return m_sprite; }
+        [[nodiscard]] UInt32 getAtlasIndex() const { return m_atlas_index; }
         [[nodiscard]] Float getUVMinX() const { return m_uv_min_x; }
         [[nodiscard]] Float getUVMinY() const { return m_uv_min_y; }
         [[nodiscard]] Float getUVMaxX() const { return m_uv_max_x; }
@@ -63,4 +73,4 @@ namespace dodoe {
         [[nodiscard]] RenderObjectDirtyFlags diff(const RenderObject& previous) const override;
     };
 
-} // dodoe
+} // namespace dodoe

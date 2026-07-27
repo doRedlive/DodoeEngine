@@ -112,6 +112,11 @@ namespace dodoe {
 			return registry_.valid(entity);
 		}
 
+		template<typename T>
+		void ensurePoolExists() {
+			registry_.template view<T>();
+		}
+
 		void clear() {
 			registry_.clear();
 		}

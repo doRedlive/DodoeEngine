@@ -11,6 +11,12 @@ namespace dodoe {
 
     MeshRendererSystem::~MeshRendererSystem() = default;
 
+    SystemAccess MeshRendererSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, TransformComponent, MeshRendererComponent, HierarchyComponent>()
+            .build();
+    }
+
     void MeshRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
 

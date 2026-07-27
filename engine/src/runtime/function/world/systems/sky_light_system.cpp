@@ -12,6 +12,12 @@ namespace dodoe {
 
     SkyLightSystem::~SkyLightSystem() = default;
 
+    SystemAccess SkyLightSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, SkyLightComponent>()
+            .build();
+    }
+
     void SkyLightSystem::update(Registry& reg, float dt) {
         (void)dt;
 

@@ -121,7 +121,8 @@ namespace dodoe {
                 DO_ASSERT(false, "RenderGraph validation: uninitialized read - resource read before any write");
             }
             if (has_writer && !has_readers && !resource.is_exported) {
-                DO_ASSERT(false, "RenderGraph validation: resource written but never read and not exported");
+                DO_ERROR("RenderGraph validation: resource {} written but never read and not exported", resource.name);
+                DO_ASSERT(false);
             }
         }
 

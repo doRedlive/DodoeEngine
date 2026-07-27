@@ -112,13 +112,12 @@ namespace dodoe {
         const Float frame_time = time_sys->current_time();
         const Float frame_delta = time_sys->getDeltaTime();
 
-        frame_ctx.command_list.setRenderMode(m_gfx->getDevice());
+        frame_ctx.command_list.beginFrame();
+        frame_ctx.command_list.setDevice(m_gfx->getDevice());
         scene->flushUpdates(frame_ctx.command_list);
 
         switch (mode) {
         case ThreadingMode::TripleThread: {
-            frame_ctx.command_list.beginFrame();
-
             for (auto& target : view_mgr->getTargets()) {
                 auto* cam = target->getCamera();
                 Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
@@ -138,8 +137,6 @@ namespace dodoe {
         }
         case ThreadingMode::DualThread:
         case ThreadingMode::SingleThread: {
-            frame_ctx.command_list.beginFrame();
-
             for (auto& target : view_mgr->getTargets()) {
                 auto* cam = target->getCamera();
                 Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);

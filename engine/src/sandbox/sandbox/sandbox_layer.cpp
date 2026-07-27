@@ -17,12 +17,12 @@
 namespace sandbox {
 
     SandboxLayer::SandboxLayer(const std::string& name)
-        : dodoe::Layer(name) {
+        : dodoe::Layer(name.c_str()) {
     }
 
     void SandboxLayer::attach() {
         auto world = dodoe::GetWorld();
-        auto cur_scene = world->getCurrentScene();
+        auto cur_scene = world->getActiveScene();
 
         auto tex = dodoe::Texture2D::Load("engine/res/pictures/grm.jpg");
         if (!tex) {
@@ -39,7 +39,7 @@ namespace sandbox {
         //     auto& sr = entity.addComponent<dodoe::SpriteRendererComponent>();
         //     sr.pivot = {0.5f, 0.5f};
         //     sr.depth = 0.0f;
-        //     sr.texture = dodoe::PPtr<dodoe::Texture>(tex->getFileID(), tex->getUUID(), tex->getInstanceID());
+        //     sr.sprite = dodoe::PPtr<dodoe::Sprite>(tex->getFileID(), tex->getUUID());
         //     sr.dirty = true;
         // }
 
@@ -52,7 +52,7 @@ namespace sandbox {
             auto& sr = entity.addComponent<dodoe::SpriteRendererComponent>();
             sr.pivot = {0.5f, 0.5f};
             sr.depth = 0.0f;
-            sr.texture = dodoe::PPtr<dodoe::Texture>(tex->getFileID(), tex->getUUID(), tex->getInstanceID());
+            sr.sprite = dodoe::PPtr<dodoe::Sprite>(tex->getFileID(), tex->getUUID());
             sr.dirty = true;
         }
     }

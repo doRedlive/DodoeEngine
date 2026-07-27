@@ -4,6 +4,13 @@ namespace dodoe {
 
     Physics2dSystem::~Physics2dSystem() = default;
 
+    SystemAccess Physics2dSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<Rigidbody2dComponent, TransformComponent, BoxCollider2dComponent>()
+            .hasStructuralChanges(true)
+            .build();
+    }
+
     void Physics2dSystem::start(Registry& reg) {
         auto world_id = GetPhysicsSystem()->world_id_;
         if (!B2_IS_NON_NULL(world_id)) {

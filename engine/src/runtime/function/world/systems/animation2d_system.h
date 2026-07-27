@@ -13,6 +13,8 @@ namespace dodoe {
     public:
         ~Animation2dSystem() override;
 
+        [[nodiscard]] SystemAccess getAccess() const override;
+
         void update(Registry& reg, float dt) override;
     };
 

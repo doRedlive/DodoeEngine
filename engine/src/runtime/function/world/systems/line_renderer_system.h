@@ -16,6 +16,7 @@ namespace dodoe {
     public:
         ~LineRendererSystem() override;
 
+        [[nodiscard]] SystemAccess getAccess() const override;
         void update(Registry& reg, Float dt) override;
 
     private:

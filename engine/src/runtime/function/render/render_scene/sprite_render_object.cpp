@@ -11,7 +11,7 @@ namespace dodoe {
         instance.scale_x = scale.x;
         instance.scale_y = scale.y;
         instance.rotation = rotation;
-        instance.atlas_index = 0;
+        instance.atlas_index = m_atlas_index;
         instance.uv_min_x = m_uv_min_x;
         instance.uv_min_y = m_uv_min_y;
         instance.uv_max_x = m_uv_max_x;
@@ -47,4 +47,4 @@ namespace dodoe {
         return flags;
     }
 
-} // dodoe
+} // namespace dodoe

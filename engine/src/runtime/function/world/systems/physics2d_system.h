@@ -21,6 +21,7 @@ namespace dodoe {
     public:
         ~Physics2dSystem() override;
 
+        [[nodiscard]] SystemAccess getAccess() const override;
         void start(Registry& reg) override;
         void update(Registry& reg, float dt) override;
         void finalize(Registry& reg) override;

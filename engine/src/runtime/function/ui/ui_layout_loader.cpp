@@ -32,7 +32,7 @@ namespace dodoe {
     }
 
     Scope<UIElement> UILayoutLoader::LoadFromFile(const String& filePath, UIPresetManager* preset_manager) {
-        std::ifstream file(filePath);
+        std::ifstream file(filePath.c_str());
         if (!file.is_open()) return nullptr;
 
         std::stringstream buffer;

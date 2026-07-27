@@ -384,12 +384,11 @@ namespace dodoe {
         info.setPosition(Vector2f(translation.x, translation.y));
         info.setScale(Vector2f(scale.x, scale.y));
         info.setRotation(0.0f);
-        info.setUVRect(sprite->getUVMinX(), sprite->getUVMinY(), sprite->getUVMaxX(), sprite->getUVMaxY());
+        info.setSprite(sprite->getSprite());
         info.setColor(sprite->getColor());
         info.setSortingKey(0);
         info.setMaterialId(sprite->getMaterialId());
         info.setFlags(sprite->getFlags());
-        info.setTexture(sprite->getTexture());
 
         const auto it = m_sprite_scene_info_indices.find(id);
         if (it != m_sprite_scene_info_indices.end()) {
@@ -628,8 +627,7 @@ namespace dodoe {
                 gpu_data.scale_x = info->getScale().x;
                 gpu_data.scale_y = info->getScale().y;
                 gpu_data.rotation = info->getRotation();
-                const auto* tex = info->getTexture().get();
-                gpu_data.atlas_index = (tex && tex->getDescriptorIndex() >= 0) ? static_cast<UInt32>(tex->getDescriptorIndex()) : 0;
+                gpu_data.atlas_index = info->getAtlasIndex();
                 gpu_data.uv_min_x = info->getUVMinX();
                 gpu_data.uv_min_y = info->getUVMinY();
                 gpu_data.uv_max_x = info->getUVMaxX();

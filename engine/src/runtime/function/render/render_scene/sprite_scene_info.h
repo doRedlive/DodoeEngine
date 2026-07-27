@@ -4,9 +4,8 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/texture/texture.h"
+#include "runtime/function/render/texture/sprite.h"
 #include "runtime/core/math/math.h"
-#include "runtime/core/object/pptr.h"
 
 namespace dodoe {
 
@@ -62,23 +61,22 @@ namespace dodoe {
     class SpriteSceneInfo {
     public:
         SpriteSceneInfo() = default;
-        explicit SpriteSceneInfo(const Identifier id) : m_id(id) { }
+        explicit SpriteSceneInfo(Identifier id);
 
         void setRenderObject(const RenderObject* render_object) { m_render_object = render_object; }
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
         void setPosition(const Vector2f& position) { m_position = position; }
         void setScale(const Vector2f& scale) { m_scale = scale; }
-        void setRotation(const Float rotation) { m_rotation = rotation; }
-        void setUVRect(Float min_x, Float min_y, Float max_x, Float max_y) {
-            m_uv_min_x = min_x; m_uv_min_y = min_y;
-            m_uv_max_x = max_x; m_uv_max_y = max_y;
-        }
-        void setColor(const UInt32 color) { m_color = color; }
-        void setSortingKey(const UInt32 sorting_key) { m_sorting_key = sorting_key; }
-        void setMaterialId(const UInt32 material_id) { m_material_id = material_id; }
-        void setFlags(const UInt32 flags) { m_flags = flags; }
-        void setTexture(const PPtr<Texture>& texture) { m_texture = texture; }
-        void setVisible(const Bool visible) { m_visible = visible; }
+        void setRotation(Float rotation) { m_rotation = rotation; }
+        void setColor(UInt32 color) { m_color = color; }
+        void setSortingKey(UInt32 sorting_key) { m_sorting_key = sorting_key; }
+        void setMaterialId(UInt32 material_id) { m_material_id = material_id; }
+        void setFlags(UInt32 flags) { m_flags = flags; }
+        void setVisible(Bool visible) { m_visible = visible; }
+
+        void setSprite(const PPtr<Sprite>& sprite);
+        void setAtlasIndex(UInt32 index) { m_atlas_index = index; }
+        void setUVRect(Float min_x, Float min_y, Float max_x, Float max_y);
 
         [[nodiscard]] Identifier getId() const { return m_id; }
         [[nodiscard]] const RenderObject* getRenderObject() const { return m_render_object; }
@@ -86,41 +84,19 @@ namespace dodoe {
         [[nodiscard]] const Vector2f& getPosition() const { return m_position; }
         [[nodiscard]] const Vector2f& getScale() const { return m_scale; }
         [[nodiscard]] Float getRotation() const { return m_rotation; }
-        [[nodiscard]] Float getUVMinX() const { return m_uv_min_x; }
-        [[nodiscard]] Float getUVMinY() const { return m_uv_min_y; }
-        [[nodiscard]] Float getUVMaxX() const { return m_uv_max_x; }
-        [[nodiscard]] Float getUVMaxY() const { return m_uv_max_y; }
         [[nodiscard]] UInt32 getColor() const { return m_color; }
         [[nodiscard]] UInt32 getSortingKey() const { return m_sorting_key; }
         [[nodiscard]] UInt32 getMaterialId() const { return m_material_id; }
         [[nodiscard]] UInt32 getFlags() const { return m_flags; }
-        [[nodiscard]] const PPtr<Texture>& getTexture() const { return m_texture; }
+        [[nodiscard]] const PPtr<Sprite>& getSprite() const { return m_sprite; }
+        [[nodiscard]] UInt32 getAtlasIndex() const { return m_atlas_index; }
+        [[nodiscard]] Float getUVMinX() const { return m_uv_min_x; }
+        [[nodiscard]] Float getUVMinY() const { return m_uv_min_y; }
+        [[nodiscard]] Float getUVMaxX() const { return m_uv_max_x; }
+        [[nodiscard]] Float getUVMaxY() const { return m_uv_max_y; }
         [[nodiscard]] Bool isVisible() const { return m_visible; }
 
-        [[nodiscard]] SpriteInstance toInstance() const {
-            SpriteInstance instance{};
-            instance.position_x = m_position.x;
-            instance.position_y = m_position.y;
-            instance.scale_x = m_scale.x;
-            instance.scale_y = m_scale.y;
-            instance.rotation = m_rotation;
-            if (auto* texture = m_texture.get();
-                texture != nullptr && texture->getDescriptorIndex() >= 0) {
-                instance.atlas_index = static_cast<UInt32>(texture->getDescriptorIndex());
-            } else {
-                instance.atlas_index = 0;
-            }
-
-            instance.uv_min_x = m_uv_min_x;
-            instance.uv_min_y = m_uv_min_y;
-            instance.uv_max_x = m_uv_max_x;
-            instance.uv_max_y = m_uv_max_y;
-            instance.color = m_color;
-            instance.sorting_key = m_sorting_key;
-            instance.material_id = m_material_id;
-            instance.flags = m_flags;
-            return instance;
-        }
+        [[nodiscard]] SpriteInstance toInstance() const;
 
     private:
         Identifier m_id{};
@@ -129,16 +105,17 @@ namespace dodoe {
         Vector2f m_position{0.0f};
         Vector2f m_scale{1.0f};
         Float m_rotation{0.0f};
-        Float m_uv_min_x{0.0f};
-        Float m_uv_min_y{0.0f};
-        Float m_uv_max_x{1.0f};
-        Float m_uv_max_y{1.0f};
         UInt32 m_color{0xFFFFFFFF};
         UInt32 m_sorting_key{0};
         UInt32 m_material_id{0};
         UInt32 m_flags{0};
-        PPtr<Texture> m_texture{};
+        PPtr<Sprite> m_sprite{};
+        Float m_uv_min_x{0.0f};
+        Float m_uv_min_y{0.0f};
+        Float m_uv_max_x{1.0f};
+        Float m_uv_max_y{1.0f};
+        UInt32 m_atlas_index{0};
         Bool m_visible{true};
     };
 
-} // dodoe
+} // namespace dodoe

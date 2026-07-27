@@ -26,6 +26,7 @@ namespace dodoe {
         [[nodiscard]] bool isCompiled() const { return m_compiled; }
         [[nodiscard]] Size_t nodeCount() const { return m_nodes.size(); }
         [[nodiscard]] Size_t levelCount() const { return m_levels.size(); }
+        [[nodiscard]] const DynamicArray<DynamicArray<Size_t>>& getEdges() const { return m_edges; }
         [[nodiscard]] const DynamicArray<DynamicArray<Size_t>>& getLevels() const { return m_levels; }
         [[nodiscard]] const String& nodeName(NodeId id) const { return m_nodes[id].name; }
 

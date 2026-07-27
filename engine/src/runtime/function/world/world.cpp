@@ -90,7 +90,7 @@ namespace dodoe {
 
                 for (const auto type_hash : access.reads) {
                     auto prod_it = producer.find(type_hash);
-                    if (prod_it != producer.end() && prod_it->second >= 0) {
+                    if (prod_it != producer.end() && prod_it->second >= 0 && static_cast<Size_t>(prod_it->second) != i) {
                         graph.addEdge(
                             static_cast<TaskGraph::NodeId>(prod_it->second),
                             static_cast<TaskGraph::NodeId>(i));
@@ -99,7 +99,35 @@ namespace dodoe {
                 }
             }
 
+            for (Size_t ei = 0; ei < count; ei++) {
+                for (const auto to : graph.getEdges()[ei]) {
+                    DO_INFO("  edge {} -> {}", ei, to);
+                }
+            }
+            DO_INFO("BuildGraphForSystems: {} nodes", count);
             graph.compile();
+        }
+
+        void warmupComponentPools(Registry& reg) {
+            reg.ensurePoolExists<Animation2dComponent>();
+            reg.ensurePoolExists<Camera2dComponent>();
+            reg.ensurePoolExists<CircleRendererComponent>();
+            reg.ensurePoolExists<BoxCollider2dComponent>();
+            reg.ensurePoolExists<FoliageRendererComponent>();
+            reg.ensurePoolExists<IDComponent>();
+            reg.ensurePoolExists<MeshRendererComponent>();
+            reg.ensurePoolExists<RectRendererComponent>();
+            reg.ensurePoolExists<Rigidbody2dComponent>();
+            reg.ensurePoolExists<PointLightComponent>();
+            reg.ensurePoolExists<SpotLightComponent>();
+            reg.ensurePoolExists<LineRendererComponent>();
+            reg.ensurePoolExists<SkyLightComponent>();
+            reg.ensurePoolExists<SpriteRendererComponent>();
+            reg.ensurePoolExists<TagComponent>();
+            reg.ensurePoolExists<TransformComponent>();
+            reg.ensurePoolExists<HierarchyComponent>();
+            reg.ensurePoolExists<TilemapComponent>();
+            reg.ensurePoolExists<TileLayerComponent>();
         }
 
         void ExecuteSystemsParallel(
@@ -109,6 +137,8 @@ namespace dodoe {
             float dt,
             WorldCommands& cmd_buf)
         {
+            warmupComponentPools(reg);
+
             if (World::IsForceSequential()) {
                 for (auto& sys : systems) {
                     if (sys) {

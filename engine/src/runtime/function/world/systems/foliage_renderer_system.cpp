@@ -11,6 +11,12 @@ namespace dodoe {
 
     FoliageRendererSystem::~FoliageRendererSystem() = default;
 
+    SystemAccess FoliageRendererSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, TransformComponent, FoliageRendererComponent, HierarchyComponent>()
+            .build();
+    }
+
     void FoliageRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
 

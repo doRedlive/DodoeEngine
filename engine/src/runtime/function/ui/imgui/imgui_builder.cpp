@@ -11,8 +11,6 @@
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
-
 namespace dodoe {
 
     void ImGuiBuilder::SetupImGui(GLFWwindow* window) {
@@ -54,9 +52,6 @@ namespace dodoe {
 
         if (s_glfwBackendInit) {
             ImGui_ImplGlfw_NewFrame();
-            if (RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
-                ImGui_ImplOpenGL3_NewFrame();
-            }
         } else {
             auto& io = ImGui::GetIO();
             auto* window = Application::Self().context().getWindowManager()->getWindow();

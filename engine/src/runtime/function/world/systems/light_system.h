@@ -15,6 +15,7 @@ namespace dodoe {
     public:
         ~LightSystem() override;
 
+        [[nodiscard]] SystemAccess getAccess() const override;
         void update(Registry& reg, float dt) override;
 
     private:

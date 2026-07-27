@@ -8,6 +8,10 @@
 
 namespace dodoe {
 
+    String UIButton::getLabel() const {
+        return m_label ? m_label->getText() : String();
+    }
+
     void UIButton::setLabel(const String& text) {
         if (m_label) {
             m_label->setText(text);
@@ -38,7 +42,7 @@ namespace dodoe {
     }
 
     void UIButton::onCollectRenderData(UIRenderBatch& batch) {
-        if (!m_visible) return;
+        if (!isVisible()) return;
         UIElement::onCollectRenderData(batch);
     }
 

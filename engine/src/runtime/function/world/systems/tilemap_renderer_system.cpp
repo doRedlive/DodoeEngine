@@ -11,6 +11,12 @@ namespace dodoe {
 
     TilemapRendererSystem::~TilemapRendererSystem() = default;
 
+    SystemAccess TilemapRendererSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, TilemapComponent, TransformComponent, HierarchyComponent, TileLayerComponent>()
+            .build();
+    }
+
     void TilemapRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
 
@@ -72,17 +78,24 @@ namespace dodoe {
                     Float tile_w = static_cast<Float>(tm.tile_width);
                     Float tile_h = static_cast<Float>(tm.tile_height);
 
-                    auto sprite = create_scope<SpriteRenderObject>();
-                    sprite->setUUID(tile_uuid);
-                    sprite->setUVRect(u0, v0, u1, v1);
-                    sprite->setColor(0xFFFFFFFF);
-                    sprite->setVisible(true);
-                    sprite->setWorldTransform(BuildTileWorldMatrix(pos_x, pos_y, tile_w, tile_h));
+                    auto sprite_obj = create_scope<SpriteRenderObject>();
+                    sprite_obj->setUUID(tile_uuid);
+                    sprite_obj->setColor(0xFFFFFFFF);
+                    sprite_obj->setVisible(true);
+                    sprite_obj->setWorldTransform(BuildTileWorldMatrix(pos_x, pos_y, tile_w, tile_h));
+                    sprite_obj->setUVRect(u0, v0, u1, v1);
 
                     FileID file_id(tileset->image_path);
-                    sprite->setTexture(PPtr<Texture>(file_id, Uuid()));
+                    auto tex_pptr = PPtr<Texture2D>(file_id, Uuid());
+                    UInt32 atlas_index = 0;
+                    if (auto* tex = tex_pptr.get()) {
+                        atlas_index = tex->getDescriptorIndex() >= 0
+                            ? static_cast<UInt32>(tex->getDescriptorIndex())
+                            : tex->getSlot();
+                    }
+                    sprite_obj->setAtlasIndex(atlas_index);
 
-                    RenderCommandQueue::AddSprite(std::move(sprite));
+                    RenderCommandQueue::AddSprite(std::move(sprite_obj));
                     m_submitted_tiles[key] = tile_uuid;
                 }
                 layer_index++;

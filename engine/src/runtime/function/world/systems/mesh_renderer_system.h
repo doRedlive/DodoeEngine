@@ -16,6 +16,7 @@ namespace dodoe {
     public:
         ~MeshRendererSystem() override;
 
+        [[nodiscard]] SystemAccess getAccess() const override;
         void update(Registry& reg, float dt) override;
 
     private:

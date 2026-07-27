@@ -42,7 +42,7 @@ namespace dodoe {
 
         FsPath FindCoreAssemblyPath() {
             const std::array candidates = {
-                FileSystem::GetEngineRootPath() / "bin" / "GreenCake.dll",
+                FileSystem::GetEngineRootPath() / "GreenCake.dll",
                 FileSystem::GetEngineRootPath() / "engine" / "src" / "scriptcore" / "bin" / "Debug" / "net10.0" / "GreenCake.dll",
             };
 
@@ -225,6 +225,7 @@ namespace dodoe {
         const String& assembly_name) {
         std::vector<FsPath> source_files;
         if (!CollectCSharpFiles(asset_directory, source_files)) {
+            DO_ERROR("BuildCSharpAssembly: asset directory '{}' does not exist", asset_directory.string());
             return false;
         }
 
@@ -237,11 +238,13 @@ namespace dodoe {
 
         const FsPath core_assembly_path = FindCoreAssemblyPath();
         if (core_assembly_path.empty()) {
+            DO_ERROR("BuildCSharpAssembly: GreenCake.dll not found (engine root: {})", FileSystem::GetEngineRootPathString());
             return false;
         }
 
         const FsPath generated_project_path = fs::absolute(output_directory / (assembly_name + ".generated.csproj"));
         if (!WriteGeneratedProjectFile(generated_project_path, source_files, core_assembly_path, assembly_name)) {
+            DO_ERROR("BuildCSharpAssembly: failed to write project file '{}'", generated_project_path.string());
             return false;
         }
 

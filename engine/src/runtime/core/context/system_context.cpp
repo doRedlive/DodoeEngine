@@ -11,6 +11,7 @@
 #include "runtime/core/debug/debugger.h"
 #ifdef DODOE_DEBUG_ENABLED
 #include "runtime/service/debug/debug_imgui.h"
+#include "runtime/function/ui/imgui/imgui_builder.h"
 #endif
 #include "runtime/core/layer/layer.h"
 #include "runtime/core/layer/layer_stack.h"
@@ -67,6 +68,10 @@ namespace dodoe {
         window_manager_create_info.prop.height = m_init_info.spec.height;
         window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;
         m_window_manager = WindowManager::Create(window_manager_create_info);
+
+#ifdef DODOE_DEBUG_ENABLED
+        ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
+#endif
 
         RenderSettingsInitInfo render_settings_init_info;
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
@@ -161,6 +166,7 @@ namespace dodoe {
         RenderSystem::Destroy(m_render_system);
         UIManager::Destroy(m_ui_manager);
 #ifdef DODOE_DEBUG_ENABLED
+        ImGuiBuilder::CleanupImGui();
         DebugImGui::UnregisterDebugPanel();
 #endif
         Debugger::Destroy(m_debugger);
@@ -191,6 +197,9 @@ namespace dodoe {
     }
 
     void SystemContext::renderTick() {
+#ifdef DODOE_DEBUG_ENABLED
+        ImGuiBuilder::PrepareImGui();
+#endif
         if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
 

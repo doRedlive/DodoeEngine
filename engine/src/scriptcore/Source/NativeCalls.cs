@@ -126,8 +126,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, float, float, float, void> native_LineRendererComponent_color_set;
         public delegate* unmanaged<ulong, float> native_SkyLightComponent_intensity_get;
         public delegate* unmanaged<ulong, float, void> native_SkyLightComponent_intensity_set;
-        public delegate* unmanaged<ulong, int> native_SpriteRendererComponent_texture_get;
-        public delegate* unmanaged<ulong, int, void> native_SpriteRendererComponent_texture_set;
+        public delegate* unmanaged<ulong, int> native_SpriteRendererComponent_sprite_get;
+        public delegate* unmanaged<ulong, int, void> native_SpriteRendererComponent_sprite_set;
         public delegate* unmanaged<ulong, bool> native_SpriteRendererComponent_flip_get;
         public delegate* unmanaged<ulong, bool, void> native_SpriteRendererComponent_flip_set;
         public delegate* unmanaged<ulong, float*, float*, void> native_SpriteRendererComponent_pivot_get;

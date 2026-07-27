@@ -11,7 +11,8 @@
 namespace dodoe {
 
 	class SpriteFeature final : public IRenderFeature {
-	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingLayoutHandle m_bindless_binding_layout{};
+	    GfxBindingLayoutHandle m_array_binding_layout{};
 	    GfxInputLayoutHandle m_input_layout{};
 
 	public:
@@ -20,7 +21,8 @@ namespace dodoe {
 
 	    void collectPasses(PassCollector& collector) override;
 
-	    [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
+	    [[nodiscard]] GfxBindingLayoutHandle getBindlessBindingLayout() const { return m_bindless_binding_layout; }
+	    [[nodiscard]] GfxBindingLayoutHandle getArrayBindingLayout() const { return m_array_binding_layout; }
 	    [[nodiscard]] GfxInputLayoutHandle getInputLayout() const { return m_input_layout; }
 	};
 

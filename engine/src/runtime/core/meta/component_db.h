@@ -12,6 +12,7 @@
 namespace dodoe {
 
     class Entity;
+    class Registry;
 
     class DODOE_API ComponentDB {
     public:
@@ -20,6 +21,7 @@ namespace dodoe {
         using EditFunc = void (*)(Entity&);
         using WriteJsonFunc = Json (*)(void*);
         using ReadJsonFunc = bool (*)(void*, const Json&);
+        using WarmupPoolFunc = void (*)(Registry&);
 
         struct Entry {
             entt::id_type type{};
@@ -33,6 +35,7 @@ namespace dodoe {
             EditFunc markDirty{ nullptr };
             WriteJsonFunc writeJson{ nullptr };
             ReadJsonFunc readJson{ nullptr };
+            WarmupPoolFunc warmupPool{ nullptr };
 
             bool contains(Entity& entity) const;
             void* get(Entity& entity) const;

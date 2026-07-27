@@ -16,6 +16,7 @@ namespace dodoe {
     public: 
         ~MonoSystem() override;
 
+        [[nodiscard]] SystemAccess getAccess() const override;
         void start(Registry& reg) override;
         void update(Registry& reg, float dt) override;
         void finalize(Registry& reg) override;

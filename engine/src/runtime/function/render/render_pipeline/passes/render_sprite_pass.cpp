@@ -17,6 +17,9 @@
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/shader/descriptor_table_manager.h"
 #include "runtime/function/render/shader/global_samplers.h"
+#include "runtime/function/render/render_settings.h"
+#include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/pipeline/pipeline_state_cache.h"
 
 #include <algorithm>
 
@@ -73,6 +76,7 @@ namespace dodoe {
                 parameters.instance_buffer = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(instance_desc, "VisibleSpriteInstances"),
                     RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.instance_buffer, RenderGraphPipelineStage::VertexShader);
 
                 RenderGraphBufferDesc vp_desc{};
                 vp_desc.desc = GfxBufferDesc()
@@ -83,6 +87,7 @@ namespace dodoe {
                 parameters.vp_buffer = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(vp_desc, "SpriteVpBuffer"),
                     RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.vp_buffer, RenderGraphPipelineStage::VertexShader);
 
                 const auto* gpu_scene = context.scene ? context.scene->getGpuScene() : nullptr;
                 if (!gpu_scene) {
@@ -96,18 +101,27 @@ namespace dodoe {
             },
             [this](const SpritePassParameters& parameters, const RenderGraphPassContext& ctx,
                    DrawCommandList& command_list) {
+                const auto color_target = ctx.resolveTexture(parameters.color_target);
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
+                command_list.commitBarriers();
+                if (parameters.clear_target) {
+                    command_list.clearTextureFloat(color_target, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
+                }
+
                 if (parameters.instances.empty() || !parameters.quad_vertex_buffer.isValid() ||
-                    !parameters.quad_index_buffer.isValid() || !m_binding_layout) {
+                    !parameters.quad_index_buffer.isValid() || !m_input_layout) {
+                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
                     return;
                 }
 
                 auto* shared_service = ctx.getSharedRenderService();
-                const auto* shader_library = ctx.getShaderLibrary();
-                const auto* pipeline_cache = ctx.getPipelineStateCache();
-                const auto* descriptor_manager = shared_service ? shared_service->getDescriptorTable() : nullptr;
-                if (!shader_library || !pipeline_cache || !descriptor_manager ||
-                    !descriptor_manager->getDescriptorTable() || !m_input_layout) {
-                    DO_ERROR("SpritePass: bindless sprite resources are unavailable");
+                const auto* shader_library = shared_service ? shared_service->getShaderLibrary() : nullptr;
+                const auto* pipeline_cache = shared_service ? shared_service->getPipelineStateCache() : nullptr;
+                if (!shader_library || !pipeline_cache) {
+                    DO_ERROR("SpritePass: shader library or pipeline cache unavailable");
+                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
                     return;
                 }
 
@@ -116,6 +130,7 @@ namespace dodoe {
                 const auto quad_vertex_buffer = ctx.resolveBuffer(parameters.quad_vertex_buffer);
                 const auto quad_index_buffer = ctx.resolveBuffer(parameters.quad_index_buffer);
 
+                // Upload instance data and VP
                 command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
                 command_list.setBufferState(vp_buffer, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
@@ -123,66 +138,187 @@ namespace dodoe {
                                          parameters.instances.size() * sizeof(SpriteInstance));
                 const Matrix4f view_projection = ctx.getView()->getViewProjectionMatrix();
                 command_list.writeBuffer(vp_buffer, &view_projection, sizeof(view_projection));
+
                 command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
                 command_list.setBufferState(vp_buffer, GfxResourceStates::ConstantBuffer);
                 command_list.setBufferState(quad_vertex_buffer, GfxResourceStates::VertexBuffer);
                 command_list.setBufferState(quad_index_buffer, GfxResourceStates::IndexBuffer);
                 command_list.commitBarriers();
 
-                const auto binding_set = command_list.createBindingSet(
-                    GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
-                        .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
-                    m_binding_layout);
-                if (!binding_set) {
-                    DO_ERROR("SpritePass: failed to create binding set");
-                    return;
+                const Bool use_bindless = RenderSettings::IsBindlessActive();
+
+                if (use_bindless) {
+                    // --- Bindless path ---
+                    const auto* descriptor_manager = shared_service ? shared_service->getDescriptorTable() : nullptr;
+                    if (!descriptor_manager || !descriptor_manager->getDescriptorTable() || !m_bindless_binding_layout) {
+                        DO_ERROR("SpritePass: bindless sprite resources are unavailable");
+                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                        command_list.commitBarriers();
+                        return;
+                    }
+
+                    const auto binding_set = command_list.createBindingSet(
+                        GfxBindingSetDesc()
+                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
+                            .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                        m_bindless_binding_layout);
+                    if (!binding_set) {
+                        DO_ERROR("SpritePass: failed to create bindless binding set");
+                        return;
+                    }
+
+                    const auto descriptor_binding_set = create_ref<GfxBindingSet>(
+                        cutie::BindingSetHandle(descriptor_manager->getDescriptorTable()));
+                    GfxGraphicsPipelineDesc pipeline_desc = GfxGraphicsPipelineDesc()
+                        .setVertexShader(shader_library->getSpriteVertexShader())
+                        .setPixelShader(shader_library->getSpritePixelShader())
+                        .setInputLayout(m_input_layout)
+                        .addBindingLayout(m_bindless_binding_layout)
+                        .addBindingLayout(descriptor_manager->getDescriptorTable()->getLayout())
+                        .setPrimType(GfxPrimitiveType::TriangleList);
+                    GfxDepthStencilState depth_stencil;
+                    depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
+                    GfxRasterState raster;
+                    raster.setCullNone();
+                    GfxBlendState blend;
+                    GfxBlendState::RenderTarget blend_target;
+                    blend_target.enableBlend()
+                        .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                        .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                        .setSrcBlendAlpha(GfxBlendFactor::One)
+                        .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
+                    blend.setRenderTarget(0, blend_target);
+                    GfxRenderState render_state;
+                    render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
+                    pipeline_desc.setRenderState(render_state);
+
+                    const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
+                        pipeline_desc, ctx.getRenderTargetSignature(), command_list);
+                    if (!pipeline) {
+                        DO_ERROR("SpritePass: failed to create bindless pipeline");
+                        return;
+                    }
+
+                    DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set, descriptor_binding_set};
+                    DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
+                        GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
+                        GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+                    command_list.setGraphicsState(
+                        ctx.getFramebuffer(), pipeline, binding_sets,
+                        rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
+                        vertex_buffers,
+                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                    command_list.drawIndexed(GfxDrawArguments()
+                        .setVertexCount(6)
+                        .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
+
+                } else {
+                    // --- Non-bindless (slot) fallback ---
+                    if (!m_array_binding_layout || !shared_service) {
+                        DO_ERROR("SpritePass: array binding layout unavailable");
+                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                        command_list.commitBarriers();
+                        return;
+                    }
+
+                    auto sorted_instances = parameters.instances;
+                    std::sort(sorted_instances.begin(), sorted_instances.end(),
+                        [](const SpriteInstance& a, const SpriteInstance& b) {
+                            return a.atlas_index < b.atlas_index;
+                        });
+
+                    // Re-upload sorted instance data
+                    command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
+                    command_list.commitBarriers();
+                    command_list.writeBuffer(instance_buffer, sorted_instances.data(),
+                                             sorted_instances.size() * sizeof(SpriteInstance));
+                    command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
+                    command_list.commitBarriers();
+
+                    GfxDepthStencilState depth_stencil;
+                    depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
+                    GfxRasterState raster;
+                    raster.setCullNone();
+                    GfxBlendState blend;
+                    GfxBlendState::RenderTarget blend_target;
+                    blend_target.enableBlend()
+                        .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                        .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                        .setSrcBlendAlpha(GfxBlendFactor::One)
+                        .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
+                    blend.setRenderTarget(0, blend_target);
+                    GfxRenderState render_state;
+                    render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
+
+                    auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
+                    auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
+                    GfxFramebufferInfo framebuffer_info(framebuffer_desc);
+
+                    const Size_t total = sorted_instances.size();
+                    Size_t start = 0;
+                    while (start < total) {
+                        Size_t end = start + 1;
+                        while (end < total && sorted_instances[end].atlas_index == sorted_instances[start].atlas_index) {
+                            ++end;
+                        }
+
+                        const UInt32 slot = sorted_instances[start].atlas_index;
+                        const auto tex_handle = shared_service->resolveTextureBySlot(slot);
+                        if (!tex_handle) {
+                            start = end;
+                            continue;
+                        }
+
+                        auto binding_set = command_list.createBindingSet(
+                            GfxBindingSetDesc()
+                                .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
+                                .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get()))
+                                .addItem(GfxBindingSetItem::Texture_SRV(0, tex_handle->getRHIHandle().Get())),
+                            m_array_binding_layout);
+
+                        if (!binding_set) {
+                            start = end;
+                            continue;
+                        }
+
+                        GfxGraphicsPipelineDesc pipeline_desc;
+                        pipeline_desc
+                            .setVertexShader(shader_library->getSpriteVertexShader())
+                            .setPixelShader(shader_library->getSpritePixelShaderTraditional())
+                            .setInputLayout(m_input_layout)
+                            .addBindingLayout(m_array_binding_layout)
+                            .setPrimType(GfxPrimitiveType::TriangleList)
+                            .setRenderState(render_state);
+
+                        const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
+                            pipeline_desc, framebuffer_info, command_list);
+                        if (!pipeline) {
+                            start = end;
+                            continue;
+                        }
+
+                        DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
+                        DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
+                            GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
+                            GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+
+                        const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
+                            *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                        command_list.setGraphicsState(
+                            framebuffer, pipeline, binding_sets,
+                            viewport_state, vertex_buffers,
+                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                        command_list.drawIndexed(GfxDrawArguments()
+                            .setVertexCount(6)
+                            .setInstanceCount(static_cast<UInt32>(end - start))
+                            .setStartInstanceLocation(static_cast<UInt32>(start)));
+
+                        start = end;
+                    }
                 }
 
-                const auto descriptor_binding_set = create_ref<GfxBindingSet>(
-                    cutie::BindingSetHandle(descriptor_manager->getDescriptorTable()));
-                GfxGraphicsPipelineDesc pipeline_desc = GfxGraphicsPipelineDesc()
-                    .setVertexShader(shader_library->getSpriteVertexShader())
-                    .setPixelShader(shader_library->getSpritePixelShader())
-                    .setInputLayout(m_input_layout)
-                    .addBindingLayout(m_binding_layout)
-                    .addBindingLayout(descriptor_manager->getDescriptorTable()->getLayout())
-                    .setPrimType(GfxPrimitiveType::TriangleList);
-                GfxDepthStencilState depth_stencil;
-                depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
-                GfxRasterState raster;
-                raster.setCullNone();
-                GfxBlendState blend;
-                GfxBlendState::RenderTarget blend_target;
-                blend_target.enableBlend()
-                    .setSrcBlend(GfxBlendFactor::SrcAlpha)
-                    .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
-                    .setSrcBlendAlpha(GfxBlendFactor::One)
-                    .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
-                blend.setRenderTarget(0, blend_target);
-                GfxRenderState render_state;
-                render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
-                pipeline_desc.setRenderState(render_state);
-
-                const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
-                    pipeline_desc, ctx.getRenderTargetSignature(), command_list);
-                if (!pipeline) {
-                    DO_ERROR("SpritePass: failed to create pipeline");
-                    return;
-                }
-
-                DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set, descriptor_binding_set};
-                DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
-                    GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
-                    GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
-                command_list.setGraphicsState(
-                    ctx.getFramebuffer(), pipeline, binding_sets,
-                    rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
-                    vertex_buffers,
-                    GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
-                command_list.drawIndexed(GfxDrawArguments()
-                    .setVertexCount(6)
-                    .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
+                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                command_list.commitBarriers();
             });
     }
 

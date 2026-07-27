@@ -36,6 +36,7 @@ set(POST_BUILD_COMMANDS
         COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${TARGET_NAME}>" "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:DodoeRuntime>" "${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res" "${BINARY_ROOT_DIR}/engine/res"
 )
 
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

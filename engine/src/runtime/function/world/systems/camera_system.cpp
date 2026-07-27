@@ -10,6 +10,12 @@ namespace dodoe {
 
     CameraSystem::~CameraSystem() = default;
 
+    SystemAccess CameraSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<Camera2dComponent, TransformComponent, TagComponent>()
+            .build();
+    }
+
     void CameraSystem::update(Registry& reg, float dt) {
         (void)dt;
 

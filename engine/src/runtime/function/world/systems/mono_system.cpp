@@ -6,6 +6,10 @@ namespace dodoe {
 
     MonoSystem::~MonoSystem() = default;
 
+    SystemAccess MonoSystem::getAccess() const {
+        return {};
+    }
+
     void MonoSystem::start(Registry& reg) {
         (void)reg;
         getScriptRuntime()->onRuntimeStart();

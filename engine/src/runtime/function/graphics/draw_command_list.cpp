@@ -9,7 +9,7 @@ namespace dodoe {
 
     void DrawCommandList::setDevice(GfxContext& gfx) {
         m_device = gfx.getDevice();
-        m_resource_mode = true;
+        m_immediate = true;
     }
 
     void DrawCommandList::beginFrame() { reset(); }
@@ -20,47 +20,62 @@ namespace dodoe {
         CommandList::execute(*command_list);
     }
 
-    void DrawCommandList::open() {
-        DO_ASSERT(!m_resource_mode, "open() not allowed in resource mode");
-        enqueue<OpenCommand>();
-    }
-    void DrawCommandList::close() {
-        DO_ASSERT(!m_resource_mode, "close() not allowed in resource mode");
-        enqueue<CloseCommand>();
-    }
-    void DrawCommandList::clearState() {
-        DO_ASSERT(!m_resource_mode, "clearState() not allowed in resource mode");
-        enqueue<ClearStateCommand>();
-    }
+    void DrawCommandList::open()  { enqueue<OpenCommand>(); }
+    void DrawCommandList::close() { enqueue<CloseCommand>(); }
+    void DrawCommandList::clearState() { enqueue<ClearStateCommand>(); }
 
     void DrawCommandList::beginMarker(const char* name) {
-        DO_ASSERT(!m_resource_mode, "beginMarker() not allowed in resource mode");
         BeginMarkerCommand::Create(*this, name);
     }
-    void DrawCommandList::endMarker() {
-        DO_ASSERT(!m_resource_mode, "endMarker() not allowed in resource mode");
-        enqueue<EndMarkerCommand>();
-    }
+    void DrawCommandList::endMarker() { enqueue<EndMarkerCommand>(); }
 
     void DrawCommandList::clearTextureFloat(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, const GfxColor& clear_color) {
-        DO_ASSERT(!m_resource_mode, "clearTextureFloat() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->clearTextureFloat(texture->getRHIHandle(), subresources, clear_color);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<ClearTextureFloatCommand>(texture, subresources, clear_color);
     }
     void DrawCommandList::clearTextureUInt(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, UInt32 clear_color) {
-        DO_ASSERT(!m_resource_mode, "clearTextureUInt() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->clearTextureUInt(texture->getRHIHandle(), subresources, clear_color);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<ClearTextureUIntCommand>(texture, subresources, clear_color);
     }
     void DrawCommandList::clearDepthStencilTexture(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, Bool clear_depth, Float depth, Bool clear_stencil, UInt8 stencil) {
-        DO_ASSERT(!m_resource_mode, "clearDepthStencilTexture() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->clearDepthStencilTexture(texture->getRHIHandle(), subresources, clear_depth, depth, clear_stencil, stencil);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<ClearDepthStencilTextureCommand>(texture, subresources, clear_depth, depth, clear_stencil, stencil);
     }
     void DrawCommandList::copyBuffer(const GfxBufferHandle& destination, UInt64 destination_offset_bytes, const GfxBufferHandle& source, UInt64 source_offset_bytes, UInt64 data_size_bytes) {
-        DO_ASSERT(!m_resource_mode, "copyBuffer() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->copyBuffer(destination->getRHIHandle(), destination_offset_bytes, source->getRHIHandle(), source_offset_bytes, data_size_bytes);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<CopyBufferCommand>(destination, destination_offset_bytes, source, source_offset_bytes, data_size_bytes);
     }
 
     void DrawCommandList::writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes) {
-        if (m_resource_mode) {
+        if (m_immediate) {
             auto cmd = m_device->createCommandList();
             cmd->open();
             cmd->writeBuffer(buffer->getRHIHandle(), data, data_size, destination_offset_bytes);
@@ -72,7 +87,7 @@ namespace dodoe {
     }
     void DrawCommandList::writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch) {
         DO_ASSERT(texture != nullptr, "writeTexture: texture is null");
-        if (m_resource_mode) {
+        if (m_immediate) {
             const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
             auto cmd = m_device->createCommandList();
             cmd->open();
@@ -84,92 +99,195 @@ namespace dodoe {
         const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
         WriteTextureCommand::Create(*this, texture, mip_level, array_slice, data, row_pitch, data_size);
     }
+
     void DrawCommandList::setPushConstants(const void* data, Size_t byte_size) {
-        DO_ASSERT(!m_resource_mode, "setPushConstants() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->setPushConstants(data, byte_size);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         PushConstantsCommand::Create(*this, data, byte_size);
     }
 
     void DrawCommandList::setTextureState(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, GfxResourceStates state_bits) {
-        DO_ASSERT(!m_resource_mode, "setTextureState() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->setTextureState(texture->getRHIHandle(), subresources, state_bits);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<SetTextureStateCommand>(texture, subresources, state_bits);
     }
     void DrawCommandList::setBufferState(const GfxBufferHandle& buffer, GfxResourceStates state_bits) {
-        DO_ASSERT(!m_resource_mode, "setBufferState() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->setBufferState(buffer->getRHIHandle(), state_bits);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<SetBufferStateCommand>(buffer, state_bits);
     }
     void DrawCommandList::commitBarriers() {
-        DO_ASSERT(!m_resource_mode, "commitBarriers() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->commitBarriers();
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<CommitBarriersCommand>();
     }
 
     void DrawCommandList::setGraphicsState(const GfxFramebufferHandle& framebuffer, const GfxGraphicsPipelineHandle& pipeline, const DynamicArray<GfxBindingSetHandle>& binding_sets, const GfxViewportState& viewport, const DynamicArray<GfxVertexBufferBinding>& vertex_buffers, const GfxIndexBufferBinding& index_buffer) {
-        DO_ASSERT(!m_resource_mode, "setGraphicsState() not allowed in resource mode");
+        if (m_immediate) {
+            GfxGraphicsState s;
+            s.setViewport(viewport);
+            if (pipeline && pipeline->isRHIReady()) s.setPipeline(pipeline->getRHIHandle());
+            if (framebuffer && framebuffer->isRHIReady()) s.setFramebuffer(framebuffer->getRHIHandle());
+            for (auto& bs : binding_sets) { if (bs && bs->isRHIReady()) s.addBindingSet(bs->getRHIHandle()); }
+            for (auto& vb : vertex_buffers) s.addVertexBuffer(vb);
+            s.setIndexBuffer(index_buffer);
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->setGraphicsState(s);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer);
     }
     void DrawCommandList::setGraphicsState(const GfxGraphicsState& state) {
-        DO_ASSERT(!m_resource_mode, "setGraphicsState() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->setGraphicsState(state);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<SetGraphicsStateByValueCommand>(state);
     }
     void DrawCommandList::setComputeState(const GfxComputeState& state) {
-        DO_ASSERT(!m_resource_mode, "setComputeState() not allowed in resource mode");
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->setComputeState(state);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
         enqueue<SetComputeStateCommand>(state);
     }
 
-    void DrawCommandList::draw(const GfxDrawArguments& args) { DO_ASSERT(!m_resource_mode, "draw() not allowed in resource mode"); enqueue<DrawPrimitiveCommand>(args); }
-    void DrawCommandList::drawIndexed(const GfxDrawArguments& args) { DO_ASSERT(!m_resource_mode, "drawIndexed() not allowed in resource mode"); enqueue<DrawIndexedPrimitiveCommand>(args); }
-    void DrawCommandList::drawIndirect(UInt32 offset_bytes, UInt32 draw_count) { DO_ASSERT(!m_resource_mode, "drawIndirect() not allowed in resource mode"); enqueue<DrawIndirectCommand>(offset_bytes, draw_count); }
-    void DrawCommandList::drawIndexedIndirect(UInt32 offset_bytes, UInt32 draw_count) { DO_ASSERT(!m_resource_mode, "drawIndexedIndirect() not allowed in resource mode"); enqueue<DrawIndexedIndirectCommand>(offset_bytes, draw_count); }
-    void DrawCommandList::dispatch(UInt32 x, UInt32 y, UInt32 z) { DO_ASSERT(!m_resource_mode, "dispatch() not allowed in resource mode"); enqueue<DispatchCommand>(x, y, z); }
-    void DrawCommandList::dispatchIndirect(UInt32 offset_bytes) { DO_ASSERT(!m_resource_mode, "dispatchIndirect() not allowed in resource mode"); enqueue<DispatchIndirectCommand>(offset_bytes); }
+    void DrawCommandList::draw(const GfxDrawArguments& args) {
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->draw(args);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
+        enqueue<DrawPrimitiveCommand>(args);
+    }
+    void DrawCommandList::drawIndexed(const GfxDrawArguments& args) {
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->drawIndexed(args);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
+        enqueue<DrawIndexedPrimitiveCommand>(args);
+    }
+    void DrawCommandList::drawIndirect(UInt32 offset_bytes, UInt32 draw_count) {
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->drawIndirect(offset_bytes, draw_count);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
+        enqueue<DrawIndirectCommand>(offset_bytes, draw_count);
+    }
+    void DrawCommandList::drawIndexedIndirect(UInt32 offset_bytes, UInt32 draw_count) {
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->drawIndexedIndirect(offset_bytes, draw_count);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
+        enqueue<DrawIndexedIndirectCommand>(offset_bytes, draw_count);
+    }
+    void DrawCommandList::dispatch(UInt32 x, UInt32 y, UInt32 z) {
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->dispatch(x, y, z);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
+        enqueue<DispatchCommand>(x, y, z);
+    }
+    void DrawCommandList::dispatchIndirect(UInt32 offset_bytes) {
+        if (m_immediate) {
+            auto cmd = m_device->createCommandList();
+            cmd->open();
+            cmd->dispatchIndirect(offset_bytes);
+            cmd->close();
+            m_device->executeCommandList(cmd);
+            return;
+        }
+        enqueue<DispatchIndirectCommand>(offset_bytes);
+    }
 
     GfxTextureHandle DrawCommandList::createTexture(const GfxTextureDesc& desc, const void* data, Size_t data_size) {
-        DO_ASSERT(m_resource_mode, "createTexture() only allowed in resource mode");
         auto texture = create_ref<GfxTexture>(desc);
         texture->initializeRHI(m_device);
         if (data && data_size > 0) {
             const UInt32 bpp = desc.format == GfxFormat::RGBA32_FLOAT ? 16u : 4u;
             const Size_t row_pitch = static_cast<Size_t>(desc.width) * bpp;
-            auto cmd = m_device->createCommandList();
-            cmd->open();
-            cmd->writeTexture(texture->getRHIHandle(), 0, 0, data, row_pitch);
-            cmd->close();
-            m_device->executeCommandList(cmd);
+            writeTexture(texture, 0, 0, data, row_pitch);
         }
         return texture;
     }
     GfxBufferHandle DrawCommandList::createBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
-        DO_ASSERT(m_resource_mode, "createBuffer() only allowed in resource mode");
         auto buffer = create_ref<GfxBuffer>(desc);
         buffer->initializeRHI(m_device);
         if (data && data_size > 0) {
-            auto cmd = m_device->createCommandList();
-            cmd->open();
-            cmd->writeBuffer(buffer->getRHIHandle(), data, data_size, 0);
-            cmd->close();
-            m_device->executeCommandList(cmd);
+            writeBuffer(buffer, data, data_size, 0);
         }
         return buffer;
     }
     GfxFramebufferHandle DrawCommandList::createFramebuffer(const GfxFramebufferDesc& desc) {
-        DO_ASSERT(m_resource_mode, "createFramebuffer() only allowed in resource mode");
         auto fb = create_ref<GfxFramebuffer>(desc);
         fb->initializeRHI(m_device);
         return fb;
     }
     GfxBindingSetHandle DrawCommandList::createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
-        DO_ASSERT(m_resource_mode, "createBindingSet() only allowed in resource mode");
         auto bs = create_ref<GfxBindingSet>();
         bs->initializeRHI(m_device, desc, layout);
         return bs;
     }
     GfxGraphicsPipelineHandle DrawCommandList::createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
-        DO_ASSERT(m_resource_mode, "createGraphicsPipeline() only allowed in resource mode");
         auto pso = create_ref<GfxGraphicsPipeline>();
         pso->initializeRHI(m_device, desc, info);
         return pso;
     }
     DescriptorIndex DrawCommandList::createDescriptor(GfxDescriptorTableHandle table, GfxTextureHandle texture, UInt32 slot) {
-        DO_ASSERT(m_resource_mode, "createDescriptor() only allowed in resource mode");
         if (texture && texture->isRHIReady()) {
             auto item = GfxBindingSetItem::Texture_SRV(0, texture->getRHIHandle());
             item.slot = slot;
@@ -181,7 +299,6 @@ namespace dodoe {
     GfxBindingLayoutHandle DrawCommandList::createBindingLayout(const GfxBindingLayoutDesc& desc) { return m_device->createBindingLayout(desc); }
     GfxInputLayoutHandle DrawCommandList::createInputLayout(const GfxVertexAttributeDesc* a, UInt32 c, GfxShaderHandle sh) { return m_device->createInputLayout(a, c, sh); }
     GfxShaderHandle DrawCommandList::createShader(const GfxShaderDesc& desc, const void* data, Size_t data_size) {
-        DO_ASSERT(m_resource_mode, "createShader() only allowed in resource mode");
         return m_device->createShader(desc, data, data_size);
     }
 

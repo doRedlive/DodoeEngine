@@ -7,10 +7,9 @@
 #include "runtime/core/math/math.h"
 #include "runtime/core/object/pptr.h"
 #include "runtime/function/render/texture/texture.h"
+#include "runtime/function/ui/ui_types.h"
 
 namespace dodoe {
-
-    struct Rect;
 
     class UISceneInfo {
     public:

@@ -16,7 +16,26 @@ namespace dodoe {
         const auto api = RenderSettings::GetRenderBackendApiType();
         const char* backend_ext = (api == RenderBackendApiType::DX12) ? ".dxil" : ".spv";
 
+        const char* platform_str = nullptr;
+        switch (api) {
+            case RenderBackendApiType::DX12:   platform_str = "dx12";   break;
+            case RenderBackendApiType::Vulkan: platform_str = "vulkan"; break;
+            case RenderBackendApiType::OpenGL: platform_str = "opengl"; break;
+            default: platform_str = ""; break;
+        }
+
         for (const auto& entry : m_manifest.getEntries()) {
+            if (!entry.platforms.empty()) {
+                Bool supported = false;
+                for (const auto& p : entry.platforms) {
+                    if (p == platform_str) {
+                        supported = true;
+                        break;
+                    }
+                }
+                if (!supported) continue;
+            }
+
             String file_name = entry.source + ShaderManifest::StageToExtension(entry.stage) + backend_ext;
             String path = "shaders/bin/" + file_name;
 

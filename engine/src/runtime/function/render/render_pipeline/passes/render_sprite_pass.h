@@ -10,7 +10,8 @@
 namespace dodoe {
 
 	class SpritePass : public IRenderPass {
-	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingLayoutHandle m_bindless_binding_layout{};
+	    GfxBindingLayoutHandle m_array_binding_layout{};
 	    GfxInputLayoutHandle m_input_layout{};
 
 	public:
@@ -18,8 +19,11 @@ namespace dodoe {
 	    using Consumes = TypeList<>;
 
 	    SpritePass() = default;
-	    SpritePass(GfxBindingLayoutHandle binding_layout, GfxInputLayoutHandle input_layout)
-	        : m_binding_layout(std::move(binding_layout))
+	    SpritePass(GfxBindingLayoutHandle bindless_binding_layout,
+	               GfxBindingLayoutHandle array_binding_layout,
+	               GfxInputLayoutHandle input_layout)
+	        : m_bindless_binding_layout(std::move(bindless_binding_layout))
+	        , m_array_binding_layout(std::move(array_binding_layout))
 	        , m_input_layout(std::move(input_layout)) {}
 
 	    RenderPhase getPhase() const override { return RenderPhase::Sprite; }

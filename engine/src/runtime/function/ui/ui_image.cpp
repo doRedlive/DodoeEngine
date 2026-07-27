@@ -16,25 +16,26 @@ namespace dodoe {
         if (uv_w <= 0 || uv_h <= 0) return;
 
         Float aspect = uv_w / uv_h;
-        Float current_aspect = m_size.x / m_size.y;
+        Vector2f size = getSize();
+        Float current_aspect = size.x / size.y;
 
-        Vector2f adjusted = m_size;
+        Vector2f adjusted = size;
         if (current_aspect > aspect) {
-            adjusted.x = m_size.y * aspect;
+            adjusted.x = size.y * aspect;
         } else {
-            adjusted.y = m_size.x / aspect;
+            adjusted.y = size.x / aspect;
         }
 
-        if (m_parent) {
-            Vector2f parent_size = m_parent->getLayoutSize();
+        if (auto* parent = getParent()) {
+            Vector2f parent_size = parent->getLayoutSize();
             Vector2f anchor_min = getAnchorMin();
             Vector2f anchor_max = getAnchorMax();
 
             if (!(anchor_min.x == anchor_max.x)) adjusted.x = parent_size.x * (anchor_max.x - anchor_min.x) * aspect;
         }
 
-        if (adjusted.x != m_size.x || adjusted.y != m_size.y) {
-            m_size = adjusted;
+        if (adjusted.x != size.x || adjusted.y != size.y) {
+            setSize(adjusted);
         }
     }
 
@@ -67,7 +68,7 @@ namespace dodoe {
         }
 
         info.setUV({u0, v0}, {u1, v1});
-        info.setColor(m_color.to_rgba32());
+        info.setColor(getColor().to_rgba32());
         if (m_texture) info.setTexture(PPtr<Texture2D>(m_texture));
         info.setDepth(getDepth());
         info.setFlags(0);

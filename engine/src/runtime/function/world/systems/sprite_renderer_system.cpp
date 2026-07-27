@@ -6,13 +6,18 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
-#include "runtime/function/render/texture/texture_manager.h"
 
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
 
     SpriteRendererSystem::~SpriteRendererSystem() = default;
+
+    SystemAccess SpriteRendererSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, TransformComponent, SpriteRendererComponent>()
+            .build();
+    }
 
     void SpriteRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
@@ -45,18 +50,6 @@ namespace dodoe {
             return false;
         }
 
-        auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
-
-        Texture2D* texture = nullptr;
-        const String& tex_path = sr.texture.getFileID().getPath();
-        if (!tex_path.empty()) {
-            texture = Texture2D::Load(tex_path);
-        }
-
-        if (!texture) {
-            return false;
-        }
-
         UInt32 flags = 0;
         if (sr.flip) {
             flags |= kSpriteFlagFlipX;
@@ -64,10 +57,20 @@ namespace dodoe {
 
         auto sprite_object = create_scope<SpriteRenderObject>();
         sprite_object->setUUID(id.id);
-        sprite_object->setTexture(sr.texture);
+        sprite_object->setSprite(sr.sprite);
+        if (!sr.sprite.get()) {
+            const String& tex_path = sr.sprite.getFileID().getPath();
+            if (!tex_path.empty()) {
+                if (Texture2D* texture = Texture2D::Load(tex_path)) {
+                    sprite_object->setAtlasIndex(
+                        texture->getDescriptorIndex() >= 0
+                            ? static_cast<UInt32>(texture->getDescriptorIndex())
+                            : texture->getSlot());
+                }
+            }
+        }
         sprite_object->setColor(sr.color.to_rgba32());
         sprite_object->setFlags(flags);
-        sprite_object->setUVRect(0.0f, 0.0f, 1.0f, 1.0f);
         sprite_object->setVisible(true);
         sprite_object->setWorldTransform(buildWorldMatrix(transform));
 

@@ -13,6 +13,12 @@ namespace dodoe {
 
     RectRendererSystem::~RectRendererSystem() = default;
 
+    SystemAccess RectRendererSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<IDComponent, TransformComponent, RectRendererComponent>()
+            .build();
+    }
+
     void RectRendererSystem::update(Registry& reg, Float dt) {
         (void)dt;
 

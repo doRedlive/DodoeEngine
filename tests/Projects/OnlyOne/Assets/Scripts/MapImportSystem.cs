@@ -17,7 +17,7 @@ public class MapImportSystem : CakeSystem
     {
         if (_imported) return;
         _imported = true;
-        var tilemap = TiledImporter.ImportFromFile("Maps/level1.tmj");
+        // var tilemap = TiledImporter.ImportFromFile("Maps/level1.tmj");
         // tilemap.InstantiateToScene();
     }
 }

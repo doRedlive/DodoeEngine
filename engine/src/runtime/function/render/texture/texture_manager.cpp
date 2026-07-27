@@ -19,6 +19,7 @@ namespace dodoe {
     Texture2D* Texture2D::Load(const String& path) {
         auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
         if (!texture_manager) {
+            DO_ERROR("Texture2D::Load: texture manager not initialized");
             return nullptr;
         }
         return texture_manager->loadTexture(path);
@@ -37,7 +38,7 @@ namespace dodoe {
         m_descriptor_table = info.descriptor_table;
         m_device = m_gfx->getDevice();
         createFallbackTexture();
-        return m_gfx && m_descriptor_table;
+        return m_gfx != nullptr;
     }
 
     void TextureManager::shutdown() {
@@ -101,9 +102,10 @@ namespace dodoe {
     }
 
     Texture2D* TextureManager::createTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
-        TextureBlob data(path);
+        const auto absolute_path = FileSystem::RelativeToAbsolute(path, FileSystem::GetEngineRootPath());
+        TextureBlob data(absolute_path);
         if (!data.isValid()) {
-            DO_ERROR("TextureManager: Create texture {} failed!", path);
+            DO_ERROR("TextureManager: Create texture {0} failed!", path);
             return nullptr;
         }
 
@@ -254,9 +256,12 @@ namespace dodoe {
         m_cubemap_cache.emplace(texture->getInstanceID(), ObjHandle<TextureCubemap>(texture));
         return texture;
     }
-    Texture2D* TextureManager::resolveDescriptorIndex(const UInt32 index) const {
-        if (index >= m_descriptor_lut.size()) return nullptr;
-        return m_descriptor_lut[index];
+
+    Texture2D* TextureManager::resolveSlot(const UInt32 slot) const {
+        if (slot < m_slot_lut.size()) {
+            return m_slot_lut[slot];
+        }
+        return m_fallback.get();
     }
 
 } // dodoe

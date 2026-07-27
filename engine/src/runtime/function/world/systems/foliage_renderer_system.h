@@ -14,6 +14,7 @@ namespace dodoe {
     public:
         ~FoliageRendererSystem() override;
 
+        [[nodiscard]] SystemAccess getAccess() const override;
         void update(Registry& reg, float dt) override;
 
     private:

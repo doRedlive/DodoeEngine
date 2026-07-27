@@ -62,6 +62,7 @@ namespace dodoe {
                 parameters.vertex_buffer = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(vb_desc, "ImGuiVertexBuffer"),
                     RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.vertex_buffer, RenderGraphPipelineStage::VertexShader);
 
                 RenderGraphBufferDesc ib_desc{};
                 ib_desc.desc = GfxBufferDesc()
@@ -72,6 +73,7 @@ namespace dodoe {
                 parameters.index_buffer = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(ib_desc, "ImGuiIndexBuffer"),
                     RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.index_buffer, RenderGraphPipelineStage::VertexShader);
             },
             [this](const ImGuiPassParameters& parameters, const RenderGraphPassContext& ctx,
                DrawCommandList& command_list) {

@@ -4,6 +4,8 @@
 
 #include "runtime/core/memory/std_allocator.h"
 
+#include <spdlog/fmt/bundled/format.h>
+
 namespace dodoe {
 
 	using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
@@ -33,3 +35,16 @@ namespace dodoe {
 	using Pair = std::pair<T1, T2>;
 
 } // namespace dodoe
+
+template <>
+struct fmt::formatter<dodoe::String> {
+    constexpr auto parse(fmt::format_parse_context& ctx) {
+        auto it = ctx.begin();
+        while (it != ctx.end() && *it != '}') ++it;
+        return it;
+    }
+    template <typename FormatContext>
+    auto format(const dodoe::String& s, FormatContext& ctx) {
+        return std::copy(s.begin(), s.end(), ctx.out());
+    }
+};

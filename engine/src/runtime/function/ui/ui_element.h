@@ -11,7 +11,7 @@ namespace dodoe {
 
     class UIElement {
     private:
-        identifier m_id{entt::null};
+        identifier m_id{0};
         UIElement* m_parent{nullptr};
         DynamicArray<Scope<UIElement>> m_children;
 
@@ -74,7 +74,7 @@ namespace dodoe {
         virtual void onCollectRenderData(class UIRenderBatch& batch);
         [[nodiscard]] virtual Bool hitTest(Vector2f localPos) const;
 
-    protected:
+    public:
         void invalidateLayout(Bool propagate = true);
         void ensureLayout() const;
     };

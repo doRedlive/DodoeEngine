@@ -31,18 +31,18 @@ namespace dodoe {
 
     private:
         GfxDeviceHandle m_device{};
-        Bool m_resource_mode{false};
+        Bool m_immediate{false};
 
     public:
-        void setResourceMode(GfxDeviceHandle device) {
+        void setImmediate(GfxDeviceHandle device) {
             m_device = device;
-            m_resource_mode = true;
+            m_immediate = true;
         }
-        void setRenderMode(GfxDeviceHandle device) {
+        void setDeferred(GfxDeviceHandle device) {
             m_device = device;
-            m_resource_mode = false;
+            m_immediate = false;
         }
-        [[nodiscard]] Bool isImmediate() const { return m_resource_mode; }
+        [[nodiscard]] Bool isImmediate() const { return m_immediate; }
         void setDevice(GfxDeviceHandle device) { m_device = device; }
         void setDevice(class GfxContext& gfx);
         [[nodiscard]] GfxDeviceHandle getDevice() const { return m_device; }

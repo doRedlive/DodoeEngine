@@ -49,7 +49,7 @@ namespace dodoe {
 
 	struct ThreadAllocator;
 
-	class Memory {
+	class DODOE_API Memory {
 		static MallocAllocator s_fallback;
 
 		static TierStats s_tier_stats[static_cast<int>(AllocTier::Count)][static_cast<int>(AllocTag::Count)];

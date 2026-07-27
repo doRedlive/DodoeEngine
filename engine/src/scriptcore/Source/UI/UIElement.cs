@@ -1,6 +1,6 @@
 // do@Redlive
 
-namespace Dodoe.UI;
+namespace GreenCake.UI;
 
 using System;
 
@@ -19,13 +19,21 @@ public class UIElement
 
     public bool Visible
     {
-        get => NativeCalls.Native_UIGetProperty(_handle, "visible");
+        get
+        {
+            var raw = NativeCalls.Native_UIGetProperty(_handle, "visible");
+            return raw == "true";
+        }
         set => NativeCalls.Native_UISetProperty(_handle, "visible", value ? "true" : "false");
     }
 
     public float Depth
     {
-        get => NativeCalls.Native_UIGetProperty(_handle, "depth");
+        get
+        {
+            var raw = NativeCalls.Native_UIGetProperty(_handle, "depth");
+            return float.TryParse(raw, out var v) ? v : 0.0f;
+        }
         set => NativeCalls.Native_UISetProperty(_handle, "depth", value.ToString());
     }
 
@@ -39,6 +47,11 @@ public class UIElement
     {
         get => ParseVector2(NativeCalls.Native_UIGetProperty(_handle, "size"));
         set => NativeCalls.Native_UISetProperty(_handle, "size", $"{value.x},{value.y}");
+    }
+
+    protected static bool ToBool(string raw)
+    {
+        return !string.IsNullOrEmpty(raw) && raw == "true";
     }
 
     protected static Vector2f ParseVector2(string raw)

@@ -24,6 +24,7 @@
 #include <type_traits>
 #include <bit>
 
+#include "runtime/core/core.h"
 #include "runtime/core/base.h"
 #include "runtime/core/container/containers.h"
 #include "runtime/core/asserts.h"

@@ -14,10 +14,17 @@ namespace dodoe {
 
 	void SpriteFeature::initialize(SharedRenderService& resources) {
 	    auto* cache = resources.getBindingLayoutCache();
-	    m_binding_layout = cache->getOrCreate(
+
+	    m_bindless_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
 	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
 	            .addItem(GfxBindingLayoutItem::Sampler(0)));
+
+	    m_array_binding_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
+	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+	            .addItem(GfxBindingLayoutItem::Sampler(0))
+	            .addItem(GfxBindingLayoutItem::Texture_SRV(0)));
 
 	    if (auto* input_layout_cache = resources.getInputLayoutCache()) {
 	        const DynamicArray<GfxVertexAttributeDesc> attributes = {
@@ -37,11 +44,12 @@ namespace dodoe {
 
 	void SpriteFeature::shutdown() {
 	    m_input_layout = nullptr;
-	    m_binding_layout = nullptr;
+	    m_array_binding_layout = nullptr;
+	    m_bindless_binding_layout = nullptr;
 	}
 
 	void SpriteFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<SpritePass>(m_binding_layout, m_input_layout);
+	    collector.addPass<SpritePass>(m_bindless_binding_layout, m_array_binding_layout, m_input_layout);
 	}
 
 } // namespace dodoe

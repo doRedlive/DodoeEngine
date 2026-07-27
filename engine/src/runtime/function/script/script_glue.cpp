@@ -354,20 +354,20 @@ namespace dodoe {
             String sv(value);
 
             if (pn == "visible")         elem->setVisible(sv == "true" || sv == "1");
-            else if (pn == "depth")      elem->setDepth(static_cast<Float>(std::stod(sv)));
+            else if (pn == "depth")      elem->setDepth(static_cast<Float>(std::strtod(sv.c_str(), nullptr)));
             else if (pn == "position") {
                 auto comma = sv.find(',');
                 if (comma != String::npos) {
-                    Float x = static_cast<Float>(std::stod(sv.substr(0, comma)));
-                    Float y = static_cast<Float>(std::stod(sv.substr(comma + 1)));
+                    Float x = static_cast<Float>(std::strtod(sv.substr(0, comma).c_str(), nullptr));
+                    Float y = static_cast<Float>(std::strtod(sv.substr(comma + 1).c_str(), nullptr));
                     elem->setPosition({x, y});
                 }
             }
             else if (pn == "size") {
                 auto comma = sv.find(',');
                 if (comma != String::npos) {
-                    Float x = static_cast<Float>(std::stod(sv.substr(0, comma)));
-                    Float y = static_cast<Float>(std::stod(sv.substr(comma + 1)));
+                    Float x = static_cast<Float>(std::strtod(sv.substr(0, comma).c_str(), nullptr));
+                    Float y = static_cast<Float>(std::strtod(sv.substr(comma + 1).c_str(), nullptr));
                     elem->setSize({x, y});
                 }
             }
@@ -377,17 +377,17 @@ namespace dodoe {
                     auto c1 = sv.find(','), c2 = (c1 != String::npos) ? sv.find(',', c1 + 1) : String::npos;
                     auto c3 = (c2 != String::npos) ? sv.find(',', c2 + 1) : String::npos;
                     if (c1 != String::npos && c2 != String::npos && c3 != String::npos) {
-                        r = static_cast<Float>(std::stod(sv.substr(0, c1)));
-                        g = static_cast<Float>(std::stod(sv.substr(c1 + 1, c2 - c1 - 1)));
-                        b = static_cast<Float>(std::stod(sv.substr(c2 + 1, c3 - c2 - 1)));
-                        a = static_cast<Float>(std::stod(sv.substr(c3 + 1)));
+                        r = static_cast<Float>(std::strtod(sv.substr(0, c1).c_str(), nullptr));
+                        g = static_cast<Float>(std::strtod(sv.substr(c1 + 1, c2 - c1 - 1).c_str(), nullptr));
+                        b = static_cast<Float>(std::strtod(sv.substr(c2 + 1, c3 - c2 - 1).c_str(), nullptr));
+                        a = static_cast<Float>(std::strtod(sv.substr(c3 + 1).c_str(), nullptr));
                     }
                     widget->setColor(Color(r, g, b, a));
                 }
             }
             else if (pn == "alpha") {
                 if (auto* widget = dynamic_cast<UIWidget*>(elem))
-                    widget->setAlpha(static_cast<Float>(std::stod(sv)));
+                    widget->setAlpha(static_cast<Float>(std::strtod(sv.c_str(), nullptr)));
             }
             else if (pn == "text") {
                 if (auto* label = dynamic_cast<UILabel*>(elem))
@@ -395,7 +395,7 @@ namespace dodoe {
             }
             else if (pn == "font_size") {
                 if (auto* label = dynamic_cast<UILabel*>(elem))
-                    label->setFontSize(std::stoi(sv));
+                    label->setFontSize(static_cast<int>(std::strtol(sv.c_str(), nullptr, 10)));
             }
             else if (pn == "preserve_aspect") {
                 if (auto* image = dynamic_cast<UIImage*>(elem))
@@ -436,10 +436,10 @@ namespace dodoe {
                     auto c1 = sv.find(','), c2 = (c1 != String::npos) ? sv.find(',', c1 + 1) : String::npos;
                     auto c3 = (c2 != String::npos) ? sv.find(',', c2 + 1) : String::npos;
                     if (c1 != String::npos && c2 != String::npos && c3 != String::npos) {
-                        r = static_cast<Float>(std::stod(sv.substr(0, c1)));
-                        g = static_cast<Float>(std::stod(sv.substr(c1 + 1, c2 - c1 - 1)));
-                        b = static_cast<Float>(std::stod(sv.substr(c2 + 1, c3 - c2 - 1)));
-                        a = static_cast<Float>(std::stod(sv.substr(c3 + 1)));
+                        r = static_cast<Float>(std::strtod(sv.substr(0, c1).c_str(), nullptr));
+                        g = static_cast<Float>(std::strtod(sv.substr(c1 + 1, c2 - c1 - 1).c_str(), nullptr));
+                        b = static_cast<Float>(std::strtod(sv.substr(c2 + 1, c3 - c2 - 1).c_str(), nullptr));
+                        a = static_cast<Float>(std::strtod(sv.substr(c3 + 1).c_str(), nullptr));
                     }
                     panel->setBackgroundColor(Color(r, g, b, a));
                 }
@@ -687,8 +687,8 @@ X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
     X(native_LineRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
     X(native_SkyLightComponent_intensity_get, float, (uint64_t e), e) \
     X(native_SkyLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
-    X(native_SpriteRendererComponent_texture_get, int, (uint64_t e), e) \
-    X(native_SpriteRendererComponent_texture_set, void, (uint64_t e, int v), e, v) \
+    X(native_SpriteRendererComponent_sprite_get, int, (uint64_t e), e) \
+    X(native_SpriteRendererComponent_sprite_set, void, (uint64_t e, int v), e, v) \
     X(native_SpriteRendererComponent_flip_get, bool, (uint64_t e), e) \
     X(native_SpriteRendererComponent_flip_set, void, (uint64_t e, bool v), e, v) \
     X(native_SpriteRendererComponent_pivot_get, void, (uint64_t e, float* x, float* y), e, x, y) \

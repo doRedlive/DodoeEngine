@@ -4,6 +4,13 @@ namespace dodoe {
 
     Animation2dSystem::~Animation2dSystem() = default;
 
+    SystemAccess Animation2dSystem::getAccess() const {
+        return SystemAccessBuilder{}
+            .readsComponents<Animation2dComponent, SpriteRendererComponent>()
+            .writesComponents<Animation2dComponent, SpriteRendererComponent>()
+            .build();
+    }
+
     void Animation2dSystem::update(Registry& reg, float dt) {
         auto view = reg.view<Animation2dComponent, SpriteRendererComponent>();
         for (auto entity : view) {
@@ -43,7 +50,7 @@ namespace dodoe {
 
             auto* tex = static_cast<Texture2D*>(Object::FindObjectFromInstanceID(current_frame.texture_id));
             if (tex) {
-                sprite_renderer.texture = PPtr<Texture>(tex->getFileID(), tex->getUUID(), current_frame.texture_id);
+                sprite_renderer.sprite = PPtr<Sprite>(tex->getFileID(), tex->getUUID());
             }
         }
     }

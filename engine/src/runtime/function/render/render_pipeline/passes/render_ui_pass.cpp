@@ -40,7 +40,7 @@ namespace dodoe {
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, UIPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
-                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey, RenderGraphTextureHandle>();
+                const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.writeColor(*scene_color);
                 } else {
@@ -70,6 +70,7 @@ namespace dodoe {
                 parameters.instance_buffer = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(instance_desc, "VisibleUIInstances"),
                     RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.instance_buffer, RenderGraphPipelineStage::VertexShader);
 
                 // VP constant buffer (orthographic projection)
                 RenderGraphBufferDesc vp_desc{};
@@ -81,6 +82,7 @@ namespace dodoe {
                 parameters.vp_buffer = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(vp_desc, "UIVpBuffer"),
                     RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.vp_buffer, RenderGraphPipelineStage::VertexShader);
 
                 // Quad mesh (reused from GpuScene)
                 const auto* gpu_scene = context.scene ? context.scene->getGpuScene() : nullptr;
@@ -162,7 +164,7 @@ namespace dodoe {
 
                     auto binding_set = command_list.createBindingSet(
                         GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer_VS(0, vp_buffer->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
                             .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
                         m_bindless_binding_layout);
                     if (!binding_set) {
@@ -239,7 +241,7 @@ namespace dodoe {
 
                         auto binding_set = command_list.createBindingSet(
                             GfxBindingSetDesc()
-                                .addItem(GfxBindingSetItem::ConstantBuffer_VS(0, vp_buffer->getRHIHandle().Get()))
+                                .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
                                 .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get()))
                                 .addItem(GfxBindingSetItem::Texture_SRV(0, tex_handle->getRHIHandle().Get())),
                             m_array_binding_layout);
@@ -269,13 +271,13 @@ namespace dodoe {
                         DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                             GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
                             GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
-                        command_list.setIndexBuffer(GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
 
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                             *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                         command_list.setGraphicsState(
                             framebuffer, pipeline, binding_sets,
-                            viewport_state, vertex_buffers);
+                            viewport_state, vertex_buffers,
+                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(6)
                             .setInstanceCount(static_cast<UInt32>(end - start))

@@ -12,7 +12,8 @@ namespace dodoe {
     void UILabel::onLayout() {
         if (m_text.empty()) return;
 
-        const Bool has_set_size = !(m_size.x == 0 && m_size.y == 0);
+        const Vector2f size = getSize();
+        const Bool has_set_size = !(size.x == 0 && size.y == 0);
         if (has_set_size) return;
 
         const Float char_width = static_cast<Float>(m_font_size) * 0.6f;
@@ -31,8 +32,7 @@ namespace dodoe {
 
         if (line_count == 0) line_count = 1;
 
-        m_size.x = max_line_width;
-        m_size.y = static_cast<Float>(line_count) * line_height;
+        setSize({max_line_width, static_cast<Float>(line_count) * line_height});
     }
 
     void UILabel::onCollectRenderData(UIRenderBatch& batch) {
@@ -44,7 +44,7 @@ namespace dodoe {
         info.setPosition(screen_rect.pos);
         info.setSize(screen_rect.size);
         info.setUV({0, 0}, {1, 1});
-        info.setColor(m_color.to_rgba32());
+        info.setColor(getColor().to_rgba32());
         if (m_font_atlas) info.setTexture(PPtr<Texture2D>(m_font_atlas));
         info.setDepth(getDepth());
         info.setFlags(0);

@@ -8,7 +8,7 @@
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
 #include "runtime/core/object/pptr.h"
-#include "runtime/function/render/texture/texture.h"
+#include "runtime/function/render/texture/sprite.h"
 
 REFLECTION_TYPE(SpriteRendererComponent)
 
@@ -18,7 +18,7 @@ namespace dodoe {
         REFLECTION_BODY(SpriteRendererComponent)
 
         META(Enable)
-        PPtr<Texture> texture{};
+        PPtr<Sprite> sprite{};
         META(Enable)
         bool flip{ false };
         META(Enable)

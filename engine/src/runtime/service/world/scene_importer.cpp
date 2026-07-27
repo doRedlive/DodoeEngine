@@ -301,7 +301,7 @@ namespace dodoe {
 
         auto& sr = entity.addComponent<SpriteRendererComponent>();
         FileID file_id(path);
-        sr.texture = PPtr<Texture>(file_id, UUID());
+        sr.sprite = PPtr<Sprite>(file_id, UUID());
         sr.dirty = true;
 
         LOG_INFO("SceneImporter::ImportSprite: {}", path);
