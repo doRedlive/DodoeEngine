@@ -9,14 +9,16 @@
 
 namespace dodoe {
 
-    class PipelineStateCache {
+    struct PipelineStateCacheCreateInfo {
+        GfxDeviceHandle device{};
+    };
+
+    class PipelineStateCache : public Managed<PipelineStateCache, PipelineStateCacheCreateInfo> {
+        friend class Managed<PipelineStateCache, PipelineStateCacheCreateInfo>;
         GfxDeviceHandle m_device{};
         mutable UnorderedMap<GraphicsPipelineCacheKey, GfxGraphicsPipelineHandle, GraphicsPipelineCacheKeyHash> m_graphics_pipelines{};
 
     public:
-        explicit PipelineStateCache(const GfxDeviceHandle& device) : m_device(device) { }
-        ~PipelineStateCache() = default;
-
         [[nodiscard]] GfxGraphicsPipelineHandle resolveGraphicsPipeline(
             const MeshPassType pass_type,
             const GfxGraphicsPipelineDesc& pipeline_desc,
@@ -29,6 +31,9 @@ namespace dodoe {
         void clear();
 
     private:
+        Bool initialize(const PipelineStateCacheCreateInfo& info) { m_device = info.device; return m_device != nullptr; }
+        void shutdown() { clear(); m_device = nullptr; }
+
         [[nodiscard]] static GraphicsPipelineCacheKey BuildGraphicsPipelineCacheKey(
             const MeshPassType pass_type,
             const GfxGraphicsPipelineDesc& pipeline_desc,

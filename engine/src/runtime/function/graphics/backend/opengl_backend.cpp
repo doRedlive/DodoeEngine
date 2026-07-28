@@ -13,6 +13,7 @@ namespace dodoe {
         }
 
         glfwMakeContextCurrent(m_window_handle);
+        m_context_owner = std::this_thread::get_id();
 
         if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
             DO_ERROR("OpenGLBackend: gladLoadGL failed");
@@ -25,7 +26,26 @@ namespace dodoe {
     }
 
     void OpenGLBackend::shutdown() {
+        releaseContext();
         m_window_handle = nullptr;
+    }
+
+    Bool OpenGLBackend::acquireContext() {
+        std::lock_guard<std::mutex> lock(m_context_mutex);
+        if (!m_window_handle) return false;
+        const auto current_thread = std::this_thread::get_id();
+        if (m_context_owner != std::thread::id{} && m_context_owner != current_thread) return false;
+        glfwMakeContextCurrent(m_window_handle);
+        if (glfwGetCurrentContext() != m_window_handle) return false;
+        m_context_owner = current_thread;
+        return true;
+    }
+
+    void OpenGLBackend::releaseContext() {
+        std::lock_guard<std::mutex> lock(m_context_mutex);
+        if (!m_window_handle || m_context_owner != std::this_thread::get_id()) return;
+        glfwMakeContextCurrent(nullptr);
+        m_context_owner = {};
     }
 
     void OpenGLBackend::updateFramebufferSize() {

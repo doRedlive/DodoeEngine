@@ -36,7 +36,7 @@ namespace dodoe {
 
     void RenderPipeline::shutdown() {
         if (m_active_renderer) {
-            m_active_renderer->clearFeatures();
+            m_active_renderer->shutdown();
             m_active_renderer.reset();
         }
     }

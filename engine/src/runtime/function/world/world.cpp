@@ -203,22 +203,6 @@ namespace dodoe {
         }
     }
 
-    Bool World::setupScenes() {
-        const auto scene_assets = ResourceManager::Self().getAssets<SceneAsset>();
-        for (const auto& scene_handle : scene_assets) {
-            const auto& file_id = scene_handle.getFileID();
-            SceneAsset* scene_asset = scene_handle.get();
-            if (!scene_asset) continue;
-            const auto& scene_res = scene_asset->getSceneRes();
-            const String scene_name = scene_res.m_name.empty()
-                ? "Untitled"
-                : scene_res.m_name;
-            Scene* scene = createScene(scene_name);
-            scene->deserialize(scene_res);
-        }
-        return true;
-    }
-
     void World::cleanupScenes() {
         m_active_scenes.clear();
     }
@@ -376,13 +360,6 @@ namespace dodoe {
     }
 
     Scene* World::loadScene(const String& name, LoadSceneMode mode) {
-        if (mode == LoadSceneMode::Single) {
-            auto scene_to_unload = m_active_scenes;
-            for (auto* scene : scene_to_unload) {
-                deactivateScene(scene->getName());
-            }
-        }
-
         auto* asset_manager = ResourceManager::Self().getAssetManager();
         if (!asset_manager) {
             DO_ERROR("loadScene: AssetManager not available");
@@ -403,11 +380,27 @@ namespace dodoe {
         }
 
         const auto& scene_res = scene_asset->getSceneRes();
-        Scene* scene = createScene(scene_res.m_name.empty() ? name : scene_res.m_name);
-        scene->deserialize(scene_res);
-        activateScene(scene->getName());
+        const String scene_name = scene_res.m_name.empty() ? name : scene_res.m_name;
+        Scene* scene = getScene(scene_name);
+        if (!scene) {
+            scene = createScene(scene_name);
+            scene->deserialize(scene_res);
+        }
 
-        if (mode == LoadSceneMode::Single || m_current_scene == nullptr) {
+        const Bool is_single = mode == LoadSceneMode::Single;
+        if (is_single) {
+            const DynamicArray<Scene*> scenes_to_deactivate = m_active_scenes;
+            for (Scene* active_scene : scenes_to_deactivate) {
+                deactivateScene(active_scene->getName());
+            }
+        }
+
+        const auto active_it = std::find(m_active_scenes.begin(), m_active_scenes.end(), scene);
+        if (active_it == m_active_scenes.end()) {
+            activateScene(scene->getName());
+        }
+
+        if (is_single || m_current_scene == nullptr) {
             setActiveScene(scene);
         }
 
@@ -454,30 +447,6 @@ namespace dodoe {
             return;
         }
         m_active_scenes.erase(it);
-    }
-
-    bool World::activateStartScene() {
-        setupScenes();
-        const auto active_project = Project::ActiveProject();
-        if (active_project->config().start_scene_name.empty()) {
-            DO_ASSERT(false, "StartSceneName is empty!");
-            return false;
-        }
-
-        Scene* start_scene = getScene(active_project->config().start_scene_name);
-        if (!start_scene) {
-            DO_ERROR("World::activateStartScene: start scene '{}' not found. scene_count={}",
-                active_project->config().start_scene_name,
-                m_scenes.size());
-            for (const auto& scene : m_scenes) {
-                DO_ERROR("World::activateStartScene: available scene='{}'", scene ? scene->getName() : "<null>");
-            }
-            return false;
-        }
-
-        activateScene(start_scene->getName());
-        setActiveScene(start_scene);
-        return true;
     }
 
     void World::registerRuntimeSystem(Ref<System> system) {

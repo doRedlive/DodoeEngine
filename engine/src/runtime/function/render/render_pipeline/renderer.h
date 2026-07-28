@@ -48,6 +48,13 @@ namespace dodoe {
 	public:
 	    virtual ~BaseRenderer() = default;
 
+	    virtual void shutdown() {
+	        clearFeatures();
+	        m_shared_render_service = nullptr;
+	        m_gfx_context = nullptr;
+	        m_thread_pool.reset();
+	    }
+
 	    virtual void render(RenderViewFamily& view_family, RenderScene& scene,
 	                        UInt32 swapchain_image_index, DrawCommandList& out_commands,
 	                        FrameStagingAllocator* frame_staging_allocator,
@@ -74,6 +81,9 @@ namespace dodoe {
 	    }
 
 	    void clearFeatures() {
+	        for (auto it = m_features.rbegin(); it != m_features.rend(); ++it) {
+	            (*it)->shutdown();
+	        }
 	        m_features.clear();
 	        m_ordered_passes.clear();
 	        m_pass_storage.clear();

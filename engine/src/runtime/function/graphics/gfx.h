@@ -168,6 +168,8 @@ namespace dodoe {
     class GfxFramebuffer {
     public:
         GfxFramebuffer() = default;
+        GfxFramebuffer(const cutie::FramebufferHandle& handle, const GfxFramebufferInfo& info)
+            : m_rhi(handle), m_info(info), m_rhi_ready(true) {}
         explicit GfxFramebuffer(const GfxFramebufferDesc& desc, const GfxFramebufferInfo& info)
             : m_desc(desc), m_info(info) {}
         explicit GfxFramebuffer(const GfxFramebufferDesc& desc)

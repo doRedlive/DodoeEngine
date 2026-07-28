@@ -209,12 +209,8 @@ namespace dodoe {
     }
 
     void Scene::deserialize(const SceneRes& scene_res) {
-        ScriptRuntime* runtime = GetScriptRuntime();
-        const std::vector<Entity> entities = getEntities();
+        const DynamicArray<Entity> entities = getEntities();
         for (Entity entity : entities) {
-            if (runtime) {
-                runtime->removeEntityFromManagedWorld(static_cast<uint64_t>(entity.uuid()));
-            }
             destroyEntity(entity);
         }
 
@@ -244,19 +240,18 @@ namespace dodoe {
     }
 
     void Scene::addEntity(Entity entity) {
-        if (entity.hasComponent<IDComponent>()) {
-            auto id = entity.getComponent<IDComponent>();
-            if (m_entity_umap.find(id.id) != m_entity_umap.end()) {
-                m_entity_umap[id.id] = entity;
-            }
-            else {
-                DO_ERROR("The scene already has the entity!");
-            }
+        if (!entity.hasComponent<IDComponent>()) {
+            auto& id = entity.addComponent<IDComponent>();
+            id.name = "Entity";
         }
-        auto id = entity.addComponent<IDComponent>();
-        id.name = "Entity";
 
-        m_entity_umap[id.id] = entity.handle();
+        const auto& id = entity.getComponent<IDComponent>();
+        if (m_entity_umap.find(id.id) != m_entity_umap.end()) {
+            DO_ERROR("The scene already has the entity!");
+            return;
+        }
+
+        m_entity_umap[id.id] = entity;
     }
 
     void Scene::destroyEntity(Entity entity) {
@@ -312,8 +307,8 @@ namespace dodoe {
         return entity;
     }
 
-    std::vector<Entity> Scene::getEntities() {
-        std::vector<Entity> entities;
+    DynamicArray<Entity> Scene::getEntities() {
+        DynamicArray<Entity> entities;
         entities.reserve(m_entity_umap.size());
         for (const auto& [_, entity] : m_entity_umap) {
             entities.push_back(entity);

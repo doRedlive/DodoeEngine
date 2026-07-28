@@ -164,10 +164,6 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, int, void> native_TileLayerComponent_offset_y_set;
 // === GENERATED BINDINGS END ===
 // === NATIVE_BINDINGS_GENERATED_END ===
-        public delegate* unmanaged<byte*, int, int>                                     native_world_load_scene;
-        public delegate* unmanaged<byte*, void>                                           native_world_unload_scene;
-        public delegate* unmanaged<byte*, int, int>                                     native_world_load_scene_async;
-        public delegate* unmanaged<int, int>                                              native_world_is_load_complete;
         public delegate* unmanaged<byte*, ulong>                                           native_create_entity;
         public delegate* unmanaged<ulong, void>                                            native_destroy_entity;
         public delegate* unmanaged<ulong, int, int, int, int, void>                         native_tilemap_set_data;
@@ -177,6 +173,11 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<byte*>                                                  native_get_asset_directory;
         public delegate* unmanaged<int, byte*>                                            native_object_get_type_name;
         public delegate* unmanaged<byte*, int>                                            native_texture_load;
+        public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene;
+        public delegate* unmanaged<byte*>                                                 native_world_get_active_scene_name;
+        public delegate* unmanaged<byte*, void>                                          native_world_unload_scene;
+        public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene_async;
+        public delegate* unmanaged<int, int>                                             native_world_is_load_complete;
         // === UI Bindings ===
         public delegate* unmanaged<byte*, int>                                            native_ui_load_layout;
         public delegate* unmanaged<void>                                                  native_ui_clear_all;
@@ -305,6 +306,8 @@ internal static unsafe partial class NativeCalls
         var ptr = StrToPtr(name);
         try { return b->native_world_load_scene(ptr, mode); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
+
+    internal static string Native_WorldGetActiveSceneName() => PtrToStr(b->native_world_get_active_scene_name());
 
     internal static int Native_WorldLoadSceneAsync(string name, int mode)
     {

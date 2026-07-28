@@ -35,8 +35,9 @@ namespace dodoe {
                         break;
                     case RenderGraphResourceSource::ImportedBackBuffer: {
                         const auto& swapchain_textures = gfx_context.getSwapchainTextures();
-                        DO_ASSERT(swapchain_image_index < swapchain_textures.size(), "RenderGraphResourceResolver swapchain image index out of range");
-                        m_texture_handles[resource_index] = swapchain_textures[swapchain_image_index];
+                        if (swapchain_image_index < swapchain_textures.size()) {
+                            m_texture_handles[resource_index] = swapchain_textures[swapchain_image_index];
+                        }
                         break;
                     }
                     case RenderGraphResourceSource::ImportedBuffer:

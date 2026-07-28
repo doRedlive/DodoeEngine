@@ -26,15 +26,16 @@ namespace dodoe {
         return h;
     }
 
-    void MaterialSystem::initialize(ShaderLibrary* shader_library,
-                                    BindingLayoutCache* binding_layout_cache,
-                                    BindingSetCache* binding_set_cache,
-                                    TextureManager* texture_manager) {
-        m_shader_library = shader_library;
-        m_binding_layout_cache = binding_layout_cache;
-        m_binding_set_cache = binding_set_cache;
-        m_texture_manager = texture_manager;
+    Bool MaterialSystem::initialize(const MaterialSystemCreateInfo& info) {
+        m_shader_library = info.shader_library;
+        m_binding_layout_cache = info.binding_layout_cache;
+        m_binding_set_cache = info.binding_set_cache;
+        m_texture_manager = info.texture_manager;
+        if (!m_shader_library || !m_binding_layout_cache || !m_binding_set_cache || !m_texture_manager) {
+            return false;
+        }
         registerBuiltinTemplates();
+        return true;
     }
 
     void MaterialSystem::registerBuiltinTemplates() {

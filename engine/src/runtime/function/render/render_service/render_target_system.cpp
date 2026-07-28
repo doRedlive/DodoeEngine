@@ -6,10 +6,10 @@
 
 namespace dodoe {
 
-    void RenderTargetSystem::initialize(GfxContext& gfx,
-                                         DeferredDeletionQueue* deletion_queue) {
-        m_gfx_context = &gfx;
-        m_deletion_queue = deletion_queue;
+    Bool RenderTargetSystem::initialize(const RenderTargetSystemCreateInfo& info) {
+        m_gfx_context = info.gfx_context;
+        m_deletion_queue = info.deletion_queue;
+        return m_gfx_context != nullptr && m_deletion_queue != nullptr;
     }
 
     void RenderTargetSystem::shutdown() {

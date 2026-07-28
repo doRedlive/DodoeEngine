@@ -14,6 +14,13 @@ namespace dodoe {
     class Texture2D;
     class DrawCommandList;
 
+    struct MaterialSystemCreateInfo {
+        ShaderLibrary* shader_library{nullptr};
+        BindingLayoutCache* binding_layout_cache{nullptr};
+        BindingSetCache* binding_set_cache{nullptr};
+        TextureManager* texture_manager{nullptr};
+    };
+
     enum class MaterialParamType : UInt8 {
         Float,
         Float2,
@@ -117,17 +124,10 @@ namespace dodoe {
         }
     };
 
-    class MaterialSystem {
+    class MaterialSystem : public Managed<MaterialSystem, MaterialSystemCreateInfo> {
+        friend class Managed<MaterialSystem, MaterialSystemCreateInfo>;
     public:
-        MaterialSystem() = default;
-
-        void initialize(ShaderLibrary* shader_library,
-                        BindingLayoutCache* binding_layout_cache,
-                        BindingSetCache* binding_set_cache,
-                        TextureManager* texture_manager);
-
         void registerBuiltinTemplates();
-        void shutdown();
 
         Bool registerTemplate(const MaterialTemplateDesc& desc);
         const MaterialTemplate* findTemplate(const String& name) const;
@@ -165,6 +165,9 @@ namespace dodoe {
         [[nodiscard]] UInt64 getGlobalRevision() const { return m_global_revision; }
 
     private:
+        Bool initialize(const MaterialSystemCreateInfo& info);
+        void shutdown();
+
         void getResolvedParams(const String& instance_name,
                                UnorderedMap<String, MaterialParamValue>& out_params) const;
 

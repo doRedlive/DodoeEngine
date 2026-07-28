@@ -149,8 +149,6 @@ namespace dodoe {
 
                 const Bool use_bindless = RenderSettings::IsBindlessActive();
 
-                GfxBindingLayoutHandle active_binding_layout;
-                DynamicArray<GfxBindingSetHandle> binding_sets;
                 GfxGraphicsPipelineDesc pipeline_desc;
 
                 if (use_bindless) {
@@ -174,8 +172,7 @@ namespace dodoe {
 
                     const auto descriptor_binding_set = create_ref<GfxBindingSet>(
                         cutie::BindingSetHandle(descriptor_manager->getDescriptorTable()));
-                    binding_sets = {binding_set, descriptor_binding_set};
-                    active_binding_layout = m_bindless_binding_layout;
+                    DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set, descriptor_binding_set};
 
                     pipeline_desc = GfxGraphicsPipelineDesc()
                         .setVertexShader(shader_library->getUIVertexShader())
@@ -184,6 +181,49 @@ namespace dodoe {
                         .addBindingLayout(m_bindless_binding_layout)
                         .addBindingLayout(descriptor_manager->getDescriptorTable()->getLayout())
                         .setPrimType(GfxPrimitiveType::TriangleList);
+
+                    GfxDepthStencilState depth_stencil;
+                    depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
+                    GfxRasterState raster;
+                    raster.setCullNone();
+                    GfxBlendState blend;
+                    GfxBlendState::RenderTarget blend_target;
+                    blend_target.enableBlend()
+                        .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                        .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                        .setSrcBlendAlpha(GfxBlendFactor::One)
+                        .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
+                    blend.setRenderTarget(0, blend_target);
+                    GfxRenderState render_state;
+                    render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
+                    pipeline_desc.setRenderState(render_state);
+
+                    auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
+                    auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
+                    GfxFramebufferInfo framebuffer_info(framebuffer_desc);
+                    const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
+                        pipeline_desc, framebuffer_info, command_list);
+                    if (!pipeline) {
+                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                        command_list.commitBarriers();
+                        return;
+                    }
+
+                    DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
+                        GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
+                        GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+                    const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
+                        *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                    command_list.setGraphicsState(
+                        framebuffer, pipeline, binding_sets,
+                        viewport_state, vertex_buffers,
+                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                    command_list.drawIndexed(GfxDrawArguments()
+                        .setVertexCount(6)
+                        .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
+                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                    return;
                 } else {
                     if (!m_array_binding_layout || !shared_service) {
                         DO_ERROR("UIPass: array binding layout unavailable");

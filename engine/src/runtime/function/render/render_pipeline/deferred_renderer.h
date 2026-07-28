@@ -22,7 +22,7 @@ namespace dodoe {
 	    ~DeferredRenderer() override = default;
 
 	    Bool initialize(const RendererCreateInfo& info);
-	    void shutdown();
+	    void shutdown() override;
 
 	    void render(RenderViewFamily& view_family, RenderScene& scene,
 	                UInt32 swapchain_image_index, DrawCommandList& out_commands,

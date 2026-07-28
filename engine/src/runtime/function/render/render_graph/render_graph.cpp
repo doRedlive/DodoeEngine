@@ -402,10 +402,23 @@ namespace dodoe {
             m_resources, *context.gfx_context, context.swapchain_image_index,
             out_commands, context.transient_resource_pool);
 
-        const bool direct_mode = out_commands.isImmediate();
+        const bool direct_mode = out_commands.isImmediate() || context.gfx_context->getOpenGLBackend() != nullptr;
 
         auto setupPassAttachments = [&](const Ref<RenderGraphPass>& pass, RenderGraphPassContext& pass_context, DrawCommandList& cmd) {
             if (!pass->hasRenderTargetSlots()) return;
+
+            for (const auto& slot : pass->getColorSlots()) {
+                if (m_resources[slot.texture.index].source != RenderGraphResourceSource::ImportedBackBuffer) continue;
+                DO_ASSERT(pass->getColorSlots().size() == 1 && !pass->getDepthSlot().has_value(),
+                    "Swapchain framebuffer cannot be combined with other attachments.");
+                DO_ASSERT(slot.load_op != LoadOp::Clear,
+                    "Swapchain framebuffer clear must be issued explicitly by the pass.");
+                const auto framebuffer = context.gfx_context->getSwapchainFramebuffer(context.swapchain_image_index);
+                DO_ASSERT(framebuffer != nullptr, "RenderGraph swapchain framebuffer is unavailable.");
+                pass_context.setFramebuffer(framebuffer);
+                pass_context.setFramebufferInfo(framebuffer->getFramebufferInfo());
+                return;
+            }
 
             GfxFramebufferDesc fb_desc{};
             Bool has_attachments = false;
@@ -460,7 +473,7 @@ namespace dodoe {
                     for (const auto& barrier : pass->getPreBarriers()) {
                         if (barrier.resource_type == RenderGraphResourceType::Texture) {
                             const auto texture = resource_resolver.getTexture({barrier.resource_index});
-                            out_commands.setTextureState(texture, {}, barrier.to_state);
+                            if (texture) out_commands.setTextureState(texture, {}, barrier.to_state);
                         } else {
                             const auto buffer = resource_resolver.getBuffer({barrier.resource_index});
                             out_commands.setBufferState(buffer, barrier.to_state);
@@ -491,7 +504,7 @@ namespace dodoe {
                         for (const auto& barrier : pass->getPreBarriers()) {
                             if (barrier.resource_type == RenderGraphResourceType::Texture) {
                                 const auto texture = resource_resolver.getTexture({barrier.resource_index});
-                                cmd_list->setTextureState(texture, {}, barrier.to_state);
+                                if (texture) cmd_list->setTextureState(texture, {}, barrier.to_state);
                             } else {
                                 const auto buffer = resource_resolver.getBuffer({barrier.resource_index});
                                 cmd_list->setBufferState(buffer, barrier.to_state);

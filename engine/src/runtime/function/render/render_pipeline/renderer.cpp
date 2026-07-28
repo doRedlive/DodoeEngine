@@ -17,18 +17,6 @@ namespace dodoe {
 
 	void BaseRenderer::validateBlackboard(const DynamicArray<IRenderPass*>& sorted_passes) {
 	    UnorderedMap<Size_t, Size_t> producers{};
-
-	    for (Size_t i = 0; i < sorted_passes.size(); i++) {
-	        const auto* pass = sorted_passes[i];
-	        if (!pass) continue;
-
-	        for (const auto& key_hash : pass->getProducedKeys()) {
-	            DO_ASSERT(producers.find(key_hash) == producers.end(),
-	                      "Blackboard key produced by multiple passes");
-	            producers[key_hash] = i;
-	        }
-	    }
-
 	    for (Size_t i = 0; i < sorted_passes.size(); i++) {
 	        const auto* pass = sorted_passes[i];
 	        if (!pass) continue;
@@ -36,8 +24,12 @@ namespace dodoe {
 	        for (const auto& key_hash : pass->getConsumedKeys()) {
 	            DO_ASSERT(producers.find(key_hash) != producers.end(),
 	                      "Blackboard key consumed but never produced");
-	            DO_ASSERT(producers[key_hash] <= i,
+	            DO_ASSERT(producers[key_hash] < i,
 	                      "Blackboard key consumed before it is produced");
+	        }
+
+	        for (const auto& key_hash : pass->getProducedKeys()) {
+	            producers[key_hash] = i;
 	        }
 	    }
 	}

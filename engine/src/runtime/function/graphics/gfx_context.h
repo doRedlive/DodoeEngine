@@ -29,11 +29,11 @@ namespace dodoe {
         GfxDeviceHandle device_{};
         GfxCommandListHandle cmd_{};
         DynamicArray<GfxTextureHandle> swapchain_textures_{};
+        DynamicArray<GfxFramebufferHandle> swapchain_framebuffers_{};
 
         Scope<VulkanBackend> vulkan_backend_{nullptr};
         Scope<OpenGLBackend> opengl_backend_{nullptr};
         Scope<Dx12Backend> dx12_backend_{nullptr};
-
         GLFWwindow* window_handle_{nullptr};
         Bool m_gpu_driven_supported{false};
 
@@ -49,10 +49,15 @@ namespace dodoe {
 
         [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
         [[nodiscard]] const DynamicArray<GfxTextureHandle>& getSwapchainTextures() const { return swapchain_textures_; }
+        [[nodiscard]] GfxFramebufferHandle getSwapchainFramebuffer(UInt32 image_index) const {
+            return image_index < swapchain_framebuffers_.size() ? swapchain_framebuffers_[image_index] : nullptr;
+        }
         [[nodiscard]] Vector2i getSwapchainExtent2d() const;
         [[nodiscard]] Bool acquireNextSwapchainImage(UInt32& image_index);
         [[nodiscard]] Bool presentSwapchainImage(UInt32 image_index);
         [[nodiscard]] Bool recreateSwapchain();
+        [[nodiscard]] Bool acquireOpenGLContext();
+        void releaseOpenGLContext();
         [[nodiscard]] const GfxCommandListHandle& getCommandList() { return cmd_; }
 
         [[nodiscard]] Bool isGpuDrivenSupported() const { return m_gpu_driven_supported; }

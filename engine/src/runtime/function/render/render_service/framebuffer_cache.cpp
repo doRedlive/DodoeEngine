@@ -24,8 +24,9 @@ namespace dodoe {
         return h;
     }
 
-    void FramebufferCache::initialize(GfxContext& gfx) {
-        m_gfx_context = &gfx;
+    Bool FramebufferCache::initialize(const FramebufferCacheCreateInfo& info) {
+        m_gfx_context = info.gfx_context;
+        return m_gfx_context != nullptr;
     }
 
     GfxFramebufferHandle FramebufferCache::getOrCreate(const FramebufferCacheKey& key,
@@ -69,6 +70,11 @@ namespace dodoe {
 
     void FramebufferCache::reset() {
         m_entries.clear();
+    }
+
+    void FramebufferCache::shutdown() {
+        reset();
+        m_gfx_context = nullptr;
     }
 
 } // namespace dodoe

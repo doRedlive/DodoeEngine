@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "../render_pass.h"
+#include "render_pass_blackboard_keys.h"
 #include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
@@ -15,7 +16,7 @@ namespace dodoe {
 	    GfxInputLayoutHandle m_input_layout{};
 
 	public:
-	    using Produces = TypeList<>;
+	    using Produces = TypeList<SceneColorKey>;
 	    using Consumes = TypeList<>;
 
 	    SpritePass() = default;
@@ -27,6 +28,8 @@ namespace dodoe {
 	        , m_input_layout(std::move(input_layout)) {}
 
 	    RenderPhase getPhase() const override { return RenderPhase::Sprite; }
+
+	    DynamicArray<Size_t> getProducedKeys() const override { return MakeKeyHashes(Produces{}); }
 
 	    void build(RenderGraphBuilder& graph,
 	               const RenderPassBuildContext& context) override;

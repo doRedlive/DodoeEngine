@@ -161,6 +161,7 @@ namespace dodoe {
     void GfxContext::shutdown() {
         cmd_ = nullptr;
         swapchain_textures_.clear();
+        swapchain_framebuffers_.clear();
         if (device_) {
             device_->waitForIdle();
             device_->runGarbageCollection();
@@ -187,6 +188,14 @@ namespace dodoe {
         if (device_) device_->runGarbageCollection();
     }
 
+    Bool GfxContext::acquireOpenGLContext() {
+        return !opengl_backend_ || opengl_backend_->acquireContext();
+    }
+
+    void GfxContext::releaseOpenGLContext() {
+        if (opengl_backend_) opengl_backend_->releaseContext();
+    }
+
     Vector2i GfxContext::getSwapchainExtent2d() const {
         if (vulkan_backend_) {
             return vulkan_backend_->getSwapchainExtent2d();
@@ -206,6 +215,7 @@ namespace dodoe {
         }
 
         swapchain_textures_.clear();
+        swapchain_framebuffers_.clear();
         const auto swapchain_format = ToRHIFormatVK(vulkan_backend_->getSwapchainImageFormat());
 
         for (const auto& image : vulkan_backend_->getSwapchainImages()) {
@@ -220,6 +230,11 @@ namespace dodoe {
 
             auto tex = create_ref<GfxTexture>(device_->createHandleForNativeTexture(GfxObjectTypes::VK_Image, image, texture_desc), texture_desc, "Swapchain Image");
             swapchain_textures_.push_back(tex);
+            GfxFramebufferDesc framebuffer_desc{};
+            framebuffer_desc.addColorAttachment(tex);
+            auto framebuffer = create_ref<GfxFramebuffer>(framebuffer_desc);
+            framebuffer->initializeRHI(device_);
+            swapchain_framebuffers_.push_back(framebuffer);
         }
     }
 
@@ -229,19 +244,17 @@ namespace dodoe {
         }
 
         swapchain_textures_.clear();
+        swapchain_framebuffers_.clear();
         const auto extent = opengl_backend_->getSwapchainExtent2d();
+        if (extent.x <= 0 || extent.y <= 0) {
+            return;
+        }
 
-        auto texture_desc = GfxTextureDesc()
-            .setDimension(GfxTextureDimension::Texture2D)
-            .setFormat(GfxFormat::RGBA8_UNORM)
-            .setWidth(extent.x)
-            .setHeight(extent.y)
-            .setIsRenderTarget(true)
-            .enableAutomaticStateTracking(GfxResourceStates::Present)
-            .setDebugName("GL Backbuffer");
-
-        auto backbuffer = create_ref<GfxTexture>(device_->createTexture(texture_desc), texture_desc, "GL Backbuffer");
-        swapchain_textures_.push_back(backbuffer);
+        GfxFramebufferInfo framebuffer_info{};
+        framebuffer_info.addColorFormat(GfxFormat::RGBA8_UNORM);
+        const auto framebuffer = opengl::createDefaultFramebuffer(device_);
+        DO_ASSERT(framebuffer != nullptr, "GfxContext::createSwapchainTexturesOpenGL: failed to create default framebuffer.");
+        swapchain_framebuffers_.push_back(create_ref<GfxFramebuffer>(framebuffer, framebuffer_info));
     }
 
     namespace {
@@ -262,6 +275,7 @@ namespace dodoe {
         }
 
         swapchain_textures_.clear();
+        swapchain_framebuffers_.clear();
         const auto swapchain_format = RHIFormatDX12(dx12_backend_->getBackbufferFormat());
         const auto extent = dx12_backend_->getSwapchainExtent2d();
 
@@ -277,6 +291,11 @@ namespace dodoe {
 
             auto tex = create_ref<GfxTexture>(device_->createHandleForNativeTexture(GfxObjectTypes::D3D12_Resource, static_cast<cutie::Object>(backbuffer), texture_desc), texture_desc, "Swapchain Image");
             swapchain_textures_.push_back(tex);
+            GfxFramebufferDesc framebuffer_desc{};
+            framebuffer_desc.addColorAttachment(tex);
+            auto framebuffer = create_ref<GfxFramebuffer>(framebuffer_desc);
+            framebuffer->initializeRHI(device_);
+            swapchain_framebuffers_.push_back(framebuffer);
         }
     }
 
@@ -284,7 +303,8 @@ namespace dodoe {
         if (opengl_backend_) {
             image_index = 0;
             opengl_backend_->updateFramebufferSize();
-            return true;
+            const auto extent = opengl_backend_->getSwapchainExtent2d();
+            return extent.x > 0 && extent.y > 0 && !swapchain_framebuffers_.empty();
         }
 
         if (dx12_backend_) {
@@ -340,9 +360,10 @@ namespace dodoe {
 
     Bool GfxContext::presentSwapchainImage(UInt32 image_index) {
         if (opengl_backend_) {
-            if (opengl_backend_->getWindow()) {
-                glfwSwapBuffers(opengl_backend_->getWindow());
-            }
+            if (!opengl_backend_->getWindow() || image_index >= swapchain_framebuffers_.size()) return false;
+            const auto extent = opengl_backend_->getSwapchainExtent2d();
+            if (extent.x <= 0 || extent.y <= 0) return true;
+            glfwSwapBuffers(opengl_backend_->getWindow());
             return true;
         }
 
@@ -383,8 +404,9 @@ namespace dodoe {
         if (opengl_backend_) {
             opengl_backend_->updateFramebufferSize();
             swapchain_textures_.clear();
+            swapchain_framebuffers_.clear();
             createSwapchainTexturesOpenGL();
-            return !swapchain_textures_.empty();
+            return !swapchain_framebuffers_.empty();
         }
 
         if (dx12_backend_) {
@@ -393,6 +415,7 @@ namespace dodoe {
             }
 
             swapchain_textures_.clear();
+            swapchain_framebuffers_.clear();
 
             if (device_) {
                 device_->runGarbageCollection();
@@ -407,7 +430,7 @@ namespace dodoe {
             if (device_) {
                 device_->runGarbageCollection();
             }
-            return !swapchain_textures_.empty();
+            return !swapchain_framebuffers_.empty();
         }
 
         if (device_) {
@@ -415,6 +438,7 @@ namespace dodoe {
         }
 
         swapchain_textures_.clear();
+        swapchain_framebuffers_.clear();
         destroySwapchainSemaphores();
         if (device_) {
             device_->runGarbageCollection();
@@ -430,7 +454,7 @@ namespace dodoe {
         if (device_) {
             device_->runGarbageCollection();
         }
-        return !swapchain_textures_.empty();
+        return !swapchain_framebuffers_.empty();
     }
 
     void GfxContext::createSwapchainSemaphores() {

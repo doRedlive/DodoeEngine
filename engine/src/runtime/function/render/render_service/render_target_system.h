@@ -10,13 +10,17 @@ namespace dodoe {
 
     class GfxContext;
 
-    class RenderTargetSystem {
+    struct RenderTargetSystemCreateInfo {
+        GfxContext* gfx_context{nullptr};
+        DeferredDeletionQueue* deletion_queue{nullptr};
+    };
+
+    class RenderTargetSystem : public Managed<RenderTargetSystem, RenderTargetSystemCreateInfo> {
+        friend class Managed<RenderTargetSystem, RenderTargetSystemCreateInfo>;
+        UnorderedMap<String, Scope<RenderTargetHandle>> m_handles{};
+        DeferredDeletionQueue* m_deletion_queue{nullptr};
+        GfxContext* m_gfx_context{nullptr};
     public:
-        RenderTargetSystem() = default;
-
-        void initialize(GfxContext& gfx, DeferredDeletionQueue* deletion_queue);
-        void shutdown();
-
         RenderTargetHandle* create(const String& name, const RenderTargetDesc& desc);
 
         [[nodiscard]] RenderTargetHandle* find(const String& name);
@@ -28,9 +32,9 @@ namespace dodoe {
         [[nodiscard]] GfxContext* getGfxContext() const { return m_gfx_context; }
 
     private:
-        UnorderedMap<String, Scope<RenderTargetHandle>> m_handles{};
-        DeferredDeletionQueue* m_deletion_queue{nullptr};
-        GfxContext* m_gfx_context{nullptr};
+        Bool initialize(const RenderTargetSystemCreateInfo& info);
+        void shutdown();
+
     };
 
 } // namespace dodoe

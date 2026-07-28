@@ -253,8 +253,14 @@ namespace dodoe {
             if (!name) return 0;
             auto* world = GetWorld();
             if (!world) return 0;
-            world->loadScene(name, static_cast<LoadSceneMode>(mode));
-            return 1;
+            return world->loadScene(name, static_cast<LoadSceneMode>(mode)) ? 1 : 0;
+        }
+
+        static const char* native_world_get_active_scene_name() {
+            auto* world = GetWorld();
+            if (!world) return "";
+            auto* scene = world->getActiveScene();
+            return scene ? scene->getName().c_str() : "";
         }
 
         static void native_world_unload_scene(const char* name) {
@@ -734,6 +740,7 @@ X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
     X(native_object_get_type_name, const char*, (int instanceID), instanceID) \
     X(native_texture_load, int, (const char* path), path) \
     X(native_world_load_scene, int, (const char* name, int mode), name, mode) \
+    X(native_world_get_active_scene_name, const char*, (), ) \
     X(native_world_unload_scene, void, (const char* name), name) \
     X(native_world_load_scene_async, int, (const char* name, int mode), name, mode) \
     X(native_world_is_load_complete, int, (int token), token) \

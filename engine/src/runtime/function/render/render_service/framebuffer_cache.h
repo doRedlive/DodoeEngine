@@ -11,6 +11,10 @@ namespace dodoe {
 	class GfxContext;
     class DrawCommandList;
 
+    struct FramebufferCacheCreateInfo {
+        GfxContext* gfx_context{nullptr};
+    };
+
     struct FramebufferCacheKey {
         struct AttachmentRef {
             const void* texture_ptr{nullptr};
@@ -29,12 +33,9 @@ namespace dodoe {
         [[nodiscard]] Bool operator==(const FramebufferCacheKey&) const = default;
     };
 
-    class FramebufferCache {
+    class FramebufferCache : public Managed<FramebufferCache, FramebufferCacheCreateInfo> {
+        friend class Managed<FramebufferCache, FramebufferCacheCreateInfo>;
     public:
-        FramebufferCache() = default;
-
-        void initialize(GfxContext& gfx);
-
         GfxFramebufferHandle getOrCreate(const FramebufferCacheKey& key,
                                           const GfxFramebufferDesc& desc);
         void invalidateTexture(const void* texture_ptr);
@@ -42,6 +43,9 @@ namespace dodoe {
         void reset();
 
     private:
+        Bool initialize(const FramebufferCacheCreateInfo& info);
+        void shutdown();
+
         struct Entry {
             FramebufferCacheKey key;
             GfxFramebufferHandle framebuffer;

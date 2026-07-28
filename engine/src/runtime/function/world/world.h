@@ -88,7 +88,6 @@ namespace dodoe {
 
         void activateScene(const String& name);
         void deactivateScene(const String& name);
-        bool activateStartScene();
 
         [[nodiscard]] Scene* getScene(const String& name) const;
 
@@ -105,7 +104,6 @@ namespace dodoe {
         bool initialize(const WorldCreateInfo& create_info);
         void shutdown();
 
-        bool setupScenes();
         void cleanupScenes();
 
         bool setupSystems();

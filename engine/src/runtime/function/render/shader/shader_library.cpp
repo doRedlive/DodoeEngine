@@ -5,12 +5,14 @@
 
 namespace dodoe {
 
-    void ShaderLibrary::initialize(GfxContext& gfx_context) {
-        (void)gfx_context;
+    Bool ShaderLibrary::initialize(const ShaderLibraryCreateInfo& info) {
+        if (!info.gfx_context) {
+            return false;
+        }
 
         if (!m_manifest.loadFromFile("shaders/shader_manifest.json")) {
             DO_ERROR("ShaderLibrary::initialize failed to load shader manifest");
-            return;
+            return false;
         }
 
         const auto api = RenderSettings::GetRenderBackendApiType();
@@ -36,8 +38,14 @@ namespace dodoe {
                 if (!supported) continue;
             }
 
-            String file_name = entry.source + ShaderManifest::StageToExtension(entry.stage) + backend_ext;
-            String path = "shaders/bin/" + file_name;
+            if (api == RenderBackendApiType::OpenGL &&
+                (entry.name == "GBufferPS" || entry.name == "SpritePS" || entry.name == "UIPS")) {
+                continue;
+            }
+
+            const Bool use_glsl_source = api == RenderBackendApiType::OpenGL;
+            String file_name = entry.source + ShaderManifest::StageToExtension(entry.stage);
+            String path = use_glsl_source ? "shaders/" + file_name : "shaders/bin/" + file_name + backend_ext;
 
             auto source = ReadShaderFile(path);
             if (source.empty()) {
@@ -58,15 +66,33 @@ namespace dodoe {
 
             m_shaders[entry.name] = shader;
 
-            auto refl = ShaderReflector::Reflect(shader, entry.name);
-            if (refl.valid()) {
-                m_reflections[entry.name] = std::move(refl);
+            if (use_glsl_source) {
+                const String reflection_path = "shaders/bin/" + file_name + ".spv";
+                const auto reflection_bytecode = ReadShaderFile(reflection_path);
+                if (reflection_bytecode.empty()) {
+                    DO_ERROR("ShaderLibrary::initialize failed to read OpenGL reflection bytecode: {}", reflection_path);
+                } else {
+                    const DynamicArray<UInt8> reflection_bytes(
+                        reflection_bytecode.begin(), reflection_bytecode.end());
+                    auto refl = ShaderReflector::ReflectBytecode(reflection_bytes, entry.stage, entry.name);
+                    if (refl.valid()) {
+                        m_reflections[entry.name] = std::move(refl);
+                    }
+                }
+            } else {
+                auto refl = ShaderReflector::Reflect(shader, entry.name);
+                if (refl.valid()) {
+                    m_reflections[entry.name] = std::move(refl);
+                }
             }
         }
 
         DO_INFO("ShaderLibrary::initialize loaded {} shaders, {} reflections",
                 m_shaders.size(), m_reflections.size());
+        return !m_shaders.empty();
     }
+
+    void ShaderLibrary::shutdown() { reset(); }
 
     void ShaderLibrary::reset() {
         m_shaders.clear();

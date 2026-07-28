@@ -11,13 +11,17 @@
 
 namespace dodoe {
 
-    class ShaderLibrary {
+    struct ShaderLibraryCreateInfo {
+        GfxContext* gfx_context{nullptr};
+    };
+
+    class ShaderLibrary : public Managed<ShaderLibrary, ShaderLibraryCreateInfo> {
+        friend class Managed<ShaderLibrary, ShaderLibraryCreateInfo>;
         UnorderedMap<String, GfxShaderHandle> m_shaders{};
         UnorderedMap<String, ShaderReflectionData> m_reflections{};
         ShaderManifest m_manifest{};
 
     public:
-        void initialize(GfxContext& gfx_context);
         void reset();
 
         const GfxShaderHandle* findShader(const String& name) const;
@@ -63,6 +67,9 @@ namespace dodoe {
         GfxShaderHandle getUIPixelShaderArray() const { return findShaderValue("UIPSArray"); }
 
     private:
+        Bool initialize(const ShaderLibraryCreateInfo& info);
+        void shutdown();
+
         GfxShaderHandle findShaderValue(const String& name) const {
             const auto* shader = findShader(name);
             return shader ? *shader : GfxShaderHandle{};

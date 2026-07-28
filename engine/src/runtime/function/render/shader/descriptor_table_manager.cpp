@@ -12,7 +12,7 @@ namespace dodoe {
         gfx_ = info.gfx;
 
         if (!RenderSettings::IsBindlessActive()) {
-            return false;
+            return gfx_ != nullptr;
         }
 
         GfxBindlessLayoutDesc bindless_layout_desc;
