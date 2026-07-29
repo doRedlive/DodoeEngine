@@ -76,7 +76,7 @@ namespace dodoe {
 
     std::vector<DebugImGui::EntityNode> DebugImGui::BuildEntityTree(Scene& scene) {
         std::vector<EntityNode> roots;
-        std::vector<Entity> all_entities = scene.getEntities();
+        auto all_entities = scene.getEntities();
 
         for (Entity entity : all_entities) {
             EntityNode node;

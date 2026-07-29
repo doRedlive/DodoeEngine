@@ -6,6 +6,7 @@
 #include "allocator.h"
 
 #include <atomic>
+#include <new>
 #include <vector>
 
 namespace dodoe {
@@ -100,7 +101,17 @@ namespace dodoe {
 } // namespace dodoe
 
 #define DODOE_NEW(T, cat, ...) \
-	(new (dodoe::Memory::Allocate(sizeof(T), alignof(T), cat, #T)) T(__VA_ARGS__))
+    ([&]() -> T* { \
+        void* memory = dodoe::Memory::Allocate(sizeof(T), alignof(T), cat, #T); \
+        if (!memory) throw std::bad_alloc{}; \
+        return new (memory) T(__VA_ARGS__); \
+    }())
 
 #define DODOE_DELETE(p, T, cat) \
-	do { if (p) { (p)->~T(); dodoe::Memory::Deallocate(p, sizeof(T), cat); } } while(0)
+    do { \
+        auto* object = (p); \
+        if (object) { \
+            object->~T(); \
+            dodoe::Memory::Deallocate(object, sizeof(T), cat); \
+        } \
+    } while(0)

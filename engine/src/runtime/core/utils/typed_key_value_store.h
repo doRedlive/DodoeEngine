@@ -15,6 +15,7 @@ namespace dodoe {
                 std::atomic<Size_t> refs{1};
                 virtual ~Base() = default;
                 virtual void* ptr() = 0;
+                virtual void destroy() noexcept = 0;
             };
 
             template <typename T>
@@ -22,6 +23,10 @@ namespace dodoe {
                 T value;
                 explicit Impl(const T& v) : value(v) {}
                 void* ptr() override { return &value; }
+                void destroy() noexcept override {
+                    this->~Impl();
+                    Memory::DeallocatePersistent(this, sizeof(Impl), AllocTag::Object);
+                }
             };
 
             Base* ctrl{nullptr};
@@ -53,8 +58,9 @@ namespace dodoe {
 
         private:
             void release() {
-                if (ctrl && ctrl->refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    delete ctrl;
+                Base* released = std::exchange(ctrl, nullptr);
+                if (released && released->refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                    released->destroy();
                 }
             }
         };
