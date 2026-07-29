@@ -69,15 +69,15 @@ namespace dodoe {
         window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;
         m_window_manager = WindowManager::Create(window_manager_create_info);
 
-#ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
-#endif
-
         RenderSettingsInitInfo render_settings_init_info;
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
         render_settings_init_info.pipeline = m_init_info.spec.render_settings.pipeline;
         render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
+
+#ifdef DODOE_DEBUG_ENABLED
+        ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
+#endif
 
         m_ui_manager = UIManager::Create({m_window_manager.get()});
 
@@ -100,7 +100,7 @@ namespace dodoe {
         m_world = World::Create({"Main"});
         DO_ASSERT(m_world, "World init failed");
 
-        auto threading_mode = m_init_info.spec.render_settings.threading_mode;
+        const auto threading_mode = RenderSettings::GetThreadingMode();
         auto* gfx = m_render_system->getGfx();
         auto device = gfx->getDevice();
 
@@ -117,8 +117,11 @@ namespace dodoe {
             break;
 
         case ThreadingMode::DualThread:
+            m_render_system->releaseApplicationGraphicsContext();
             m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
-                m_render_system->renderFrame(ThreadingMode::DualThread, nullptr);
+                m_render_system->renderFrameOnRenderThread(ThreadingMode::DualThread, nullptr);
+            }), RenderFrameTask([this] {
+                m_render_system->releaseApplicationGraphicsContext();
             }));
             m_render_thread->start(threading_mode);
             m_render_system->setRenderThread(m_render_thread.get());
@@ -136,10 +139,22 @@ namespace dodoe {
     }
 
     void SystemContext::startRuntime() {
+        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
+            DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
+                "SystemContext failed to acquire graphics context for startup.");
+        }
+
         auto future = ResourceManager::Self().loadAssetsAsync();
         future.wait();
 
-        DO_ASSERT(m_world->activateStartScene(), "World activate start scene failed");
+        const auto active_project = Project::ActiveProject();
+        DO_ASSERT(active_project, "No active project when starting runtime");
+        const auto& start_scene_name = active_project->config().start_scene_name;
+        DO_ASSERT(!start_scene_name.empty(), "StartSceneName is empty!");
+
+        Scene* start_scene = m_world->loadScene(start_scene_name, LoadSceneMode::Single);
+        DO_ASSERT(start_scene, "World failed to load start scene '{}'", start_scene_name);
+
         m_world->start();
     }
 
@@ -147,6 +162,11 @@ namespace dodoe {
     }
 
     void SystemContext::finalizeModules() {
+        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
+            DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
+                "SystemContext failed to acquire graphics context for shutdown.");
+        }
+
         m_world->finalize();
 
         World::Destroy(m_world);
@@ -156,6 +176,7 @@ namespace dodoe {
         m_layer_stack.clearLayers();
 
         m_render_thread->stop();
+        m_render_system->acquireApplicationGraphicsContext();
         m_render_thread.reset();
 
         m_draw_thread.reset();
@@ -186,6 +207,11 @@ namespace dodoe {
     }
 
     void SystemContext::updateTick(const float delta_time) {
+        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
+            DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
+                "SystemContext failed to acquire graphics context for update.");
+        }
+
         for (auto& layer : m_layer_stack) {
             layer->updateTick(delta_time);
         }
@@ -202,6 +228,10 @@ namespace dodoe {
 #endif
         if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
+
+        if (m_render_thread->getMode() == ThreadingMode::DualThread) {
+            m_render_system->releaseApplicationGraphicsContext();
+        }
 
         switch (m_render_thread->getMode()) {
         case ThreadingMode::SingleThread:

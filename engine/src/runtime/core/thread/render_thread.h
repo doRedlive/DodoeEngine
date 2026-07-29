@@ -17,6 +17,7 @@ namespace dodoe {
 
     class RenderThread {
         RenderFrameTask m_frame_task;
+        RenderFrameTask m_shutdown_task;
         DrawThread* m_draw_thread{};
         ThreadingMode m_mode{ThreadingMode::TripleThread};
         std::thread m_thread{};
@@ -27,7 +28,7 @@ namespace dodoe {
         std::condition_variable m_cv{};
 
     public:
-        explicit RenderThread(RenderFrameTask task);
+        explicit RenderThread(RenderFrameTask task, RenderFrameTask shutdown_task = {});
         ~RenderThread();
 
         RenderThread(const RenderThread&) = delete;

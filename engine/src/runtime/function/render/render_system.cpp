@@ -30,7 +30,6 @@ namespace dodoe {
         GDrawCommandList.setDevice(*m_gfx);
 
         m_frame_scheduler = RenderFrameScheduler::Create({m_gfx->getDevice()});
-
         m_shared_render_service = SharedRenderService::Create({m_gfx.get()});
         m_render_scene = RenderScene::Create({m_shared_render_service.get()});
         m_render_pipeline = RenderPipeline::Create({
@@ -38,28 +37,43 @@ namespace dodoe {
             m_gfx.get(),
             m_shared_render_service.get()
         });
-
         return m_render_scene && m_shared_render_service && m_render_pipeline && m_frame_scheduler;
     }
 
     void RenderSystem::shutdown() {
         m_game_command_queue.close();
         m_gfx->waitForIdle();
-
         RenderPipeline::Destroy(m_render_pipeline);
         RenderFrameScheduler::Destroy(m_frame_scheduler);
         RenderScene::Destroy(m_render_scene);
         SharedRenderService::Destroy(m_shared_render_service);
-
-        RenderViewManager::Destroy(m_view_manager);
-
         m_gfx->waitForIdle();
         m_gfx->clearGarbage();
         GfxContext::Destroy(m_gfx);
+        RenderViewManager::Destroy(m_view_manager);
     }
 
     void RenderSystem::enqueueRenderCommand(RenderCommand&& cmd) {
         m_game_command_queue.push(std::move(cmd));
+    }
+
+    Bool RenderSystem::acquireApplicationGraphicsContext() {
+        return m_gfx->acquireOpenGLContext();
+    }
+
+    void RenderSystem::releaseApplicationGraphicsContext() {
+        m_gfx->releaseOpenGLContext();
+    }
+
+    void RenderSystem::renderFrameOnRenderThread(const ThreadingMode mode, DrawThread* draw_thread) {
+        if (mode == ThreadingMode::DualThread && !acquireApplicationGraphicsContext()) {
+            DO_ERROR("RenderSystem failed to acquire graphics context for render thread.");
+            return;
+        }
+        renderFrame(mode, draw_thread);
+        if (mode == ThreadingMode::DualThread) {
+            releaseApplicationGraphicsContext();
+        }
     }
 
     void RenderSystem::renderFrame(const ThreadingMode mode, DrawThread* draw_thread) {
@@ -72,6 +86,10 @@ namespace dodoe {
         auto window = m_window_manager->getWindow();
         Vector2i cur_window(window->getWidth(), window->getHeight());
         Vector2i cur_pixel  = window->getPixelSize();
+
+        if (cur_pixel.x <= 0 || cur_pixel.y <= 0) {
+            return;
+        }
 
         Bool any_window_dirty = false;
         for (auto& target : view_mgr->getTargets()) {

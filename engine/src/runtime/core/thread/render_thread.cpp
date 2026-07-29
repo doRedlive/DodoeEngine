@@ -7,15 +7,15 @@
 
 namespace dodoe {
 
-    RenderThread::RenderThread(RenderFrameTask task)
-        : m_frame_task(std::move(task)) {
+    RenderThread::RenderThread(RenderFrameTask task, RenderFrameTask shutdown_task)
+        : m_frame_task(std::move(task)), m_shutdown_task(std::move(shutdown_task)) {
     }
 
     RenderThread::~RenderThread() {
         stop();
     }
 
-    void RenderThread::start(ThreadingMode mode) {
+    void RenderThread::start(const ThreadingMode mode) {
         if (m_running) return;
         m_mode = mode;
         if (m_mode == ThreadingMode::SingleThread) {
@@ -80,6 +80,9 @@ namespace dodoe {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cv.wait(lock, [this] { return m_has_pending_frame || !m_running; });
                 if (!m_running && !m_has_pending_frame) {
+                    if (m_shutdown_task) {
+                        m_shutdown_task();
+                    }
                     Memory::ShutdownThread();
                     break;
                 }

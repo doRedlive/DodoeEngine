@@ -51,6 +51,9 @@ namespace dodoe {
         void setRenderThread(RenderThread* rt) { m_render_thread = rt; }
 
         void enqueueRenderCommand(RenderCommand&& cmd);
+        [[nodiscard]] Bool acquireApplicationGraphicsContext();
+        void releaseApplicationGraphicsContext();
+        void renderFrameOnRenderThread(ThreadingMode mode, DrawThread* draw_thread);
         void renderFrame(ThreadingMode mode, DrawThread* draw_thread);
 
     private:
