@@ -10,7 +10,7 @@
 
 namespace cakery {
 
-RenameEntityCommand::RenameEntityCommand(dodoe::Uuid entity, std::string oldName, std::string newName)
+RenameEntityCommand::RenameEntityCommand(dodoe::UUID entity, std::string oldName, std::string newName)
     : m_entity(entity)
     , m_oldName(std::move(oldName))
     , m_newName(std::move(newName))

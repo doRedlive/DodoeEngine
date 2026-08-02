@@ -5,11 +5,16 @@
 #include <cstdint>
 #include <functional>
 
+#include "runtime/core/container/containers.h"
+
 namespace dodoe {
     class DODOE_API UUID {
     public:
         UUID();
         explicit UUID(uint64_t value);
+
+        static UUID Generate();
+        static UUID FromString(const String& str);
 
         [[nodiscard]] bool isValid() const { return m_uuid != 0; }
 
@@ -22,13 +27,11 @@ namespace dodoe {
         uint64_t m_uuid;
     };
 
-    using Uuid = UUID;
-
 } // dodoe
 
 template<>
-struct std::hash<dodoe::Uuid> {
-    std::size_t operator()(const dodoe::Uuid& uuid) const noexcept {
+struct std::hash<dodoe::UUID> {
+    std::size_t operator()(const dodoe::UUID& uuid) const noexcept {
         return static_cast<uint64_t>(uuid);
     }
 };

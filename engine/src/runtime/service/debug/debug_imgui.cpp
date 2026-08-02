@@ -99,7 +99,7 @@ namespace dodoe {
             HierarchyComponent& hierarchy = entity.getComponent<HierarchyComponent>();
             if (!hierarchy.parent.valid()) continue;
 
-            Uuid parent_uuid = hierarchy.parent.uuid();
+            UUID parent_uuid = hierarchy.parent.uuid();
 
             auto find_parent = [&](EntityNode& node) -> EntityNode* {
                 EntityNode* found = nullptr;

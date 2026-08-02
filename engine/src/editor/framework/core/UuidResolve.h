@@ -11,6 +11,6 @@ namespace dodoe {
 
 namespace cakery {
 
-dodoe::Entity ResolveEntity(dodoe::Scene* scene, dodoe::Uuid uuid);
+dodoe::Entity ResolveEntity(dodoe::Scene* scene, dodoe::UUID uuid);
 
 } // namespace cakery

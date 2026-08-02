@@ -224,10 +224,10 @@ namespace dodoe {
     }
 
     Entity Scene::createEntity(const String& name) {
-        return createEntity(Uuid(), name);
+        return createEntity(UUID(), name);
     }
 
-    Entity Scene::createEntity(Uuid uuid, const String& name) {
+    Entity Scene::createEntity(UUID uuid, const String& name) {
         auto entity = m_reg.create();
         auto id = entity.addComponent<IDComponent>(uuid, name);
         id.name = name.empty() ? "Entity" : name;
@@ -292,14 +292,14 @@ namespace dodoe {
         return Entity::NullEntity();
     }
 
-    Entity Scene::tryGetEntityByUUID(const Uuid uuid) const {
+    Entity Scene::tryGetEntityByUUID(const UUID uuid) const {
         if (auto it = m_entity_umap.find(uuid); it != m_entity_umap.end()) {
             return it->second;
         }
         return Entity();
     }
 
-    Entity Scene::getEntityByUUID(const Uuid uuid) {
+    Entity Scene::getEntityByUUID(const UUID uuid) {
         Entity entity = tryGetEntityByUUID(uuid);
         if (!entity.valid()) {
             DO_ERROR("Not found entity with UUID {}.", static_cast<uint64_t>(uuid));

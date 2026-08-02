@@ -27,12 +27,12 @@ private slots:
 
 private:
     void populateTree();
-    void addEntityItem(QTreeWidgetItem* parent, dodoe::Uuid uuid, dodoe::Scene* scene);
-    void createEmptyEntity(dodoe::Uuid parentUuid = dodoe::Uuid());
-    void duplicateEntity(dodoe::Uuid uuid);
-    void deleteEntity(dodoe::Uuid uuid);
-    void renameEntity(QTreeWidgetItem* item, dodoe::Uuid uuid);
-    void reparentEntity(dodoe::Uuid entity, dodoe::Uuid newParent);
+    void addEntityItem(QTreeWidgetItem* parent, dodoe::UUID uuid, dodoe::Scene* scene);
+    void createEmptyEntity(dodoe::UUID parentUuid = dodoe::UUID());
+    void duplicateEntity(dodoe::UUID uuid);
+    void deleteEntity(dodoe::UUID uuid);
+    void renameEntity(QTreeWidgetItem* item, dodoe::UUID uuid);
+    void reparentEntity(dodoe::UUID entity, dodoe::UUID newParent);
 
     bool eventFilter(QObject* obj, QEvent* event) override;
 

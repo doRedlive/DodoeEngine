@@ -12,30 +12,30 @@ namespace cakery {
 
 class SelectionManager {
 public:
-    const std::vector<dodoe::Uuid>& selected() const { return m_selected; }
+    const std::vector<dodoe::UUID>& selected() const { return m_selected; }
 
-    bool isSelected(dodoe::Uuid id) const {
+    bool isSelected(dodoe::UUID id) const {
         return std::find(m_selected.begin(), m_selected.end(), id) != m_selected.end();
     }
 
     bool empty() const { return m_selected.empty(); }
 
-    dodoe::Uuid primary() const {
-        return m_selected.empty() ? dodoe::Uuid{} : m_selected.front();
+    dodoe::UUID primary() const {
+        return m_selected.empty() ? dodoe::UUID{} : m_selected.front();
     }
 
-    void select(dodoe::Uuid id) {
+    void select(dodoe::UUID id) {
         m_selected.clear();
         if (id.isValid()) m_selected.push_back(id);
         notify();
     }
 
-    void selectMany(std::vector<dodoe::Uuid> ids) {
+    void selectMany(std::vector<dodoe::UUID> ids) {
         m_selected = std::move(ids);
         notify();
     }
 
-    void add(dodoe::Uuid id) {
+    void add(dodoe::UUID id) {
         if (!id.isValid()) return;
         if (!isSelected(id)) {
             m_selected.push_back(id);
@@ -43,7 +43,7 @@ public:
         }
     }
 
-    void toggle(dodoe::Uuid id) {
+    void toggle(dodoe::UUID id) {
         if (!id.isValid()) return;
         auto it = std::find(m_selected.begin(), m_selected.end(), id);
         if (it != m_selected.end()) {
@@ -54,7 +54,7 @@ public:
         notify();
     }
 
-    void remove(dodoe::Uuid id) {
+    void remove(dodoe::UUID id) {
         auto it = std::find(m_selected.begin(), m_selected.end(), id);
         if (it != m_selected.end()) {
             m_selected.erase(it);
@@ -69,10 +69,10 @@ public:
         }
     }
 
-    Signal<const std::vector<dodoe::Uuid>&> changed;
+    Signal<const std::vector<dodoe::UUID>&> changed;
 
 private:
-    std::vector<dodoe::Uuid> m_selected;
+    std::vector<dodoe::UUID> m_selected;
 
     void notify() { changed.fire(m_selected); }
 };

@@ -11,9 +11,7 @@ bool TileCoord::worldToCell(const dodoe::TilemapComponent& tm,
                              const dodoe::Vector3f& worldPos,
                              int& outX, int& outY)
 {
-    (void)mapWorld;
-
-    dodoe::Vector3f localPos = worldPos;
+    dodoe::Vector3f localPos = dodoe::Vector3f(glm::inverse(mapWorld) * dodoe::Vector4f(worldPos, 1.0f));
 
     float cellX = localPos.x / static_cast<float>(tm.tile_width);
     float cellY = localPos.y / static_cast<float>(tm.tile_height);
@@ -34,13 +32,13 @@ dodoe::Vector3f TileCoord::cellToWorld(const dodoe::TilemapComponent& tm,
                                         const dodoe::Matrix4f& mapWorld,
                                         int x, int y)
 {
-    (void)mapWorld;
-
-    return {
+    dodoe::Vector3f localPos{
         (static_cast<float>(x) + 0.5f) * static_cast<float>(tm.tile_width),
         (static_cast<float>(y) + 0.5f) * static_cast<float>(tm.tile_height),
         0.0f
     };
+
+    return dodoe::Vector3f(mapWorld * dodoe::Vector4f(localPos, 1.0f));
 }
 
 } // namespace cakery

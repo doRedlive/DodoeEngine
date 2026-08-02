@@ -15,12 +15,12 @@ namespace dodoe {
         REFLECTION_BODY(IDComponent)
 
         META(Enable)
-        Uuid id{};
+        UUID id{};
         META(Enable)
         String name{};
 
         IDComponent() = default;
-        IDComponent(const Uuid& in_id, String in_name) : id(in_id), name(std::move(in_name)) {}
+        IDComponent(const UUID& in_id, String in_name) : id(in_id), name(std::move(in_name)) {}
         IDComponent(const IDComponent&) = default;
 
         bool dirty{false};

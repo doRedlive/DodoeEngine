@@ -13,7 +13,7 @@ class PaintTilesCommand : public ICommand {
 public:
     struct Cell { int x, y; dodoe::UInt32 before, after; };
 
-    PaintTilesCommand(dodoe::Uuid tilemapEntity, dodoe::Uuid layerEntity);
+    PaintTilesCommand(dodoe::UUID tilemapEntity, dodoe::UUID layerEntity);
 
     void addCell(int x, int y, dodoe::UInt32 before, dodoe::UInt32 after);
     bool empty() const { return m_cells.empty(); }
@@ -24,8 +24,8 @@ public:
     bool mergeWith(const ICommand& next) override;
 
 private:
-    dodoe::Uuid m_tilemap;
-    dodoe::Uuid m_layer;
+    dodoe::UUID m_tilemap;
+    dodoe::UUID m_layer;
     std::vector<Cell> m_cells;
 };
 

@@ -5,22 +5,23 @@
 
 namespace cakery {
 
-void CommandStack::execute(std::unique_ptr<ICommand> cmd)
+ICommand* CommandStack::execute(std::unique_ptr<ICommand> cmd)
 {
-    if (!cmd) return;
+    if (!cmd) return nullptr;
 
     if (!cmd->execute(m_ctx)) {
-        return;
+        return nullptr;
     }
 
     if (m_merging && m_lastMergeable && m_lastMergeable->mergeWith(*cmd)) {
-        return;
+        return nullptr;
     }
 
     m_lastMergeable = cmd.get();
     m_undo.push_back(std::move(cmd));
     m_redo.clear();
     changed.fire();
+    return m_undo.back().get();
 }
 
 void CommandStack::undo()

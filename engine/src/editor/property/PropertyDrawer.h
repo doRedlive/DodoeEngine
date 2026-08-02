@@ -2,13 +2,14 @@
 
 #pragma once
 
-#include <QWidget>
 #include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 
 #include "runtime/core/utils/uuid.h"
+
+class QWidget;
 
 namespace dodoe {
     class FieldAccessor;
@@ -20,7 +21,7 @@ class EditorContext;
 
 struct PropertyContext {
     EditorContext*           ctx         = nullptr;
-    dodoe::Uuid              entity;
+    dodoe::UUID              entity;
     std::string              componentName;
     void*                    componentPtr = nullptr;
     dodoe::FieldAccessor*    field        = nullptr;

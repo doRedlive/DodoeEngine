@@ -14,14 +14,14 @@ namespace cakery {
 
 class DeleteEntityCommand : public ICommand {
 public:
-    explicit DeleteEntityCommand(dodoe::Uuid uuid);
+    explicit DeleteEntityCommand(dodoe::UUID uuid);
 
     bool execute(EditorContext& ctx) override;
     void undo(EditorContext& ctx) override;
     std::string label() const override;
 
 private:
-    dodoe::Uuid m_uuid;
+    dodoe::UUID m_uuid;
     std::unique_ptr<dodoe::SceneRes> m_serializedSubtree;
 };
 

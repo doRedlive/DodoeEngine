@@ -224,9 +224,9 @@ namespace dodoe {
     String& Serializer::read(const Json& json_context, String& instance);
 
     template<>
-    Json Serializer::write(const Uuid& instance);
+    Json Serializer::write(const UUID& instance);
     template<>
-    Uuid& Serializer::read(const Json& json_context, Uuid& instance);
+    UUID& Serializer::read(const Json& json_context, UUID& instance);
 
     template<>
     Json Serializer::write(const Vector2f& instance);

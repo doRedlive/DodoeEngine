@@ -74,13 +74,13 @@ void ProjectPanel::populateFromAssetDatabase()
 {
     m_assetGrid->clear();
     auto& db = m_ctx.assets();
-    auto& entries = db.entries();
+    auto entries = db.list();
 
     for (auto& entry : entries) {
         auto* item = new QTreeWidgetItem();
         QFileInfo fi(QString::fromStdString(entry.path));
         item->setText(0, fi.fileName());
-        item->setText(1, QString::fromStdString(entry.typeName));
+        item->setText(1, QString::fromStdString(entry.type));
         item->setToolTip(0, QString::fromStdString(entry.path));
         m_assetGrid->addTopLevelItem(item);
     }

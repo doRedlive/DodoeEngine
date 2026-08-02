@@ -11,7 +11,7 @@ namespace cakery {
 
 class SetFieldValueCommand : public ICommand {
 public:
-    SetFieldValueCommand(dodoe::Uuid entity, std::string component,
+    SetFieldValueCommand(dodoe::UUID entity, std::string component,
                          std::string field, dodoe::Json oldVal, dodoe::Json newVal);
 
     bool execute(EditorContext& ctx) override;
@@ -20,7 +20,7 @@ public:
     bool mergeWith(const ICommand& next) override;
 
 private:
-    dodoe::Uuid m_entity;
+    dodoe::UUID m_entity;
     std::string m_component;
     std::string m_field;
     dodoe::Json m_old;

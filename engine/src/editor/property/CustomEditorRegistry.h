@@ -16,7 +16,7 @@ class EditorContext;
 
 struct InspectorContext {
     EditorContext* ctx         = nullptr;
-    dodoe::Uuid    entity;
+    dodoe::UUID    entity;
     std::string    componentName;
     void*          componentPtr = nullptr;
     QWidget*       parent       = nullptr;

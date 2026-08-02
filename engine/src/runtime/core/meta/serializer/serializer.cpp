@@ -118,14 +118,14 @@ namespace dodoe {
     }
 
     template <>
-    Json Serializer::write(const Uuid& instance) {
+    Json Serializer::write(const UUID& instance) {
         return Json(static_cast<uint64_t>(instance));
     }
     template <>
-    Uuid& Serializer::read(const Json& json_context, Uuid& instance) {
+    UUID& Serializer::read(const Json& json_context, UUID& instance) {
         DO_ASSERT(json_context.is_number_integer() || json_context.is_number_unsigned(),
-                 "Serializer::read<Uuid> expects integer");
-        instance = Uuid(static_cast<uint64_t>(json_context.get<uint64_t>()));
+                 "Serializer::read<UUID> expects integer");
+        instance = UUID(static_cast<uint64_t>(json_context.get<uint64_t>()));
         return instance;
     }
 

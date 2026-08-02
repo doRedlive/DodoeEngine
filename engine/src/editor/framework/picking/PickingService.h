@@ -15,8 +15,8 @@ class PickingService {
 public:
     explicit PickingService(EditorContext& ctx) : m_ctx(ctx) {}
 
-    std::optional<dodoe::Uuid> pick(float screenX, float screenY);
-    std::vector<dodoe::Uuid> pickRect(float x0, float y0, float x1, float y1);
+    std::optional<dodoe::UUID> pick(float screenX, float screenY);
+    std::vector<dodoe::UUID> pickRect(float x0, float y0, float x1, float y1);
 
 private:
     EditorContext& m_ctx;

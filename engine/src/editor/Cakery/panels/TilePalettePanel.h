@@ -7,7 +7,12 @@
 #include <QAction>
 #include <QLabel>
 
+class QActionGroup;
+class QListWidget;
+
 namespace cakery {
+
+class TilesetPreview;
 
 class TilePalettePanel : public Panel {
     Q_OBJECT
@@ -16,13 +21,20 @@ public:
 
 private:
     void buildToolbar();
+    void buildLayerList();
+    void refreshAll();
+    void updateLayerList();
     void updatePaletteView();
 
-    QToolBar* m_toolbar = nullptr;
-    QWidget* m_paletteView = nullptr;
-    QLabel* m_infoLabel = nullptr;
+    void onCreateTilemap();
+    void onCreateLayer();
 
-    TileTool m_currentTool = TileTool::Brush;
+    QToolBar* m_toolbar = nullptr;
+    QActionGroup* m_toolGroup = nullptr;
+    QWidget* m_paletteView = nullptr;
+    TilesetPreview* m_preview = nullptr;
+    QLabel* m_infoLabel = nullptr;
+    QListWidget* m_layerList = nullptr;
 };
 
 } // namespace cakery

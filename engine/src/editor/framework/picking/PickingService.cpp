@@ -9,7 +9,7 @@
 
 namespace cakery {
 
-std::optional<dodoe::Uuid> PickingService::pick(float screenX, float screenY)
+std::optional<dodoe::UUID> PickingService::pick(float screenX, float screenY)
 {
     auto* scene = m_ctx.activeScene();
     if (!scene) return std::nullopt;
@@ -23,7 +23,7 @@ std::optional<dodoe::Uuid> PickingService::pick(float screenX, float screenY)
     return entity.uuid();
 }
 
-std::vector<dodoe::Uuid> PickingService::pickRect(float x0, float y0, float x1, float y1)
+std::vector<dodoe::UUID> PickingService::pickRect(float x0, float y0, float x1, float y1)
 {
     (void)x0; (void)y0; (void)x1; (void)y1;
     return {};

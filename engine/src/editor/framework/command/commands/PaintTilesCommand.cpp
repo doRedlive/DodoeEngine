@@ -10,11 +10,12 @@
 #include "runtime/function/world/components/tilemap/tilemap_component.h"
 #include "runtime/function/log/log_system.h"
 
+#include <algorithm>
 #include <unordered_map>
 
 namespace cakery {
 
-PaintTilesCommand::PaintTilesCommand(dodoe::Uuid tilemapEntity, dodoe::Uuid layerEntity)
+PaintTilesCommand::PaintTilesCommand(dodoe::UUID tilemapEntity, dodoe::UUID layerEntity)
     : m_tilemap(tilemapEntity)
     , m_layer(layerEntity)
 {}
@@ -82,7 +83,16 @@ bool PaintTilesCommand::mergeWith(const ICommand& next)
         return false;
     }
 
-    m_cells.insert(m_cells.end(), n->m_cells.begin(), n->m_cells.end());
+    // 同格只保留首次 before 与最新 after，保证 undo 能恢复到初始值
+    for (const auto& cell : n->m_cells) {
+        auto it = std::find_if(m_cells.begin(), m_cells.end(),
+                               [&](const Cell& c) { return c.x == cell.x && c.y == cell.y; });
+        if (it != m_cells.end()) {
+            it->after = cell.after;
+        } else {
+            m_cells.push_back(cell);
+        }
+    }
     return true;
 }
 

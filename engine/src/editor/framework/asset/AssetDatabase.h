@@ -15,14 +15,14 @@ public:
     explicit AssetDatabase(EditorContext& ctx) : m_ctx(ctx) {}
 
     struct AssetInfo {
-        dodoe::Uuid guid;
+        dodoe::UUID guid;
         std::string path;
         std::string type;
     };
 
     void refresh();
     std::vector<AssetInfo> list(const std::string& filter = "") const;
-    std::optional<AssetInfo> findByGuid(dodoe::Uuid guid) const;
+    std::optional<AssetInfo> findByGuid(dodoe::UUID guid) const;
 
     Signal<> changed;
 

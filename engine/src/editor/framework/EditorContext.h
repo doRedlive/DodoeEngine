@@ -33,6 +33,7 @@ class TilePaintService;
 
 struct EditorBootConfig {
     std::string projectPath;
+    std::string configPath;
     void*       hostWindowHandle = nullptr;
     int         width  = 1280;
     int         height = 720;

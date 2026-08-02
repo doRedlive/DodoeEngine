@@ -11,8 +11,8 @@
 
 namespace cakery {
 
-CreateEntityCommand::CreateEntityCommand(dodoe::Uuid uuid, std::string name,
-                                         std::optional<dodoe::Uuid> parent)
+CreateEntityCommand::CreateEntityCommand(dodoe::UUID uuid, std::string name,
+                                         std::optional<dodoe::UUID> parent)
     : m_uuid(uuid)
     , m_name(std::move(name))
     , m_parent(std::move(parent))
@@ -38,9 +38,13 @@ bool CreateEntityCommand::execute(EditorContext& ctx)
 
             auto& childHC = entity.getComponent<dodoe::HierarchyComponent>();
             childHC.parent = parentEntity;
+            childHC.parent_uuid = parentEntity.uuid();
+            childHC.dirty = true;
 
             auto& parentHC = parentEntity.getComponent<dodoe::HierarchyComponent>();
             parentHC.children.push_back(entity);
+            parentHC.child_count = static_cast<int>(parentHC.children.size());
+            parentHC.dirty = true;
         }
     }
 

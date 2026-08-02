@@ -44,7 +44,7 @@ namespace dodoe {
         World& operator=(World&&) = default;
 
         String m_name;
-        Uuid m_uuid{};
+        UUID m_uuid{};
 
         WorldState m_state{WorldState::Runtime};
 
