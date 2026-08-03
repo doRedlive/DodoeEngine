@@ -12,6 +12,12 @@ public static class Resources
             return Object.FindObjectFromInstanceID<T>(id);
         }
 
+        if (typeof(T) == typeof(Sprite)) {
+            var fullPath = FilePath.Resolve(path);
+            int id = NativeCalls.Native_SpriteLoad(fullPath);
+            return Object.FindObjectFromInstanceID<T>(id);
+        }
+
         throw new NotSupportedException($"Resources.Load<{typeof(T).Name}> is not supported yet.");
     }
 }

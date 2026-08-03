@@ -5,6 +5,7 @@
 #include "py_bindings.h"
 
 #include "runtime/function/animation/animation.h"
+#include "runtime/function/render/texture/sprite.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 
@@ -14,7 +15,7 @@ namespace {
     struct TextureRes {
         InstanceID id{0};
         String path{};
-        Float ppu{10.0f};
+        Float ppu{kDefaultPixelsPerUnit};
 
         [[nodiscard]] Bool valid() const { return id != 0; }
     };

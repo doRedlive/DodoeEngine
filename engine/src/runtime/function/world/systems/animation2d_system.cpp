@@ -1,5 +1,7 @@
 #include "animation2d_system.h"
 
+#include "runtime/service/sprite/sprite_loader.h"
+
 namespace dodoe {
 
     Animation2dSystem::~Animation2dSystem() = default;
@@ -50,7 +52,7 @@ namespace dodoe {
 
             auto* tex = static_cast<Texture2D*>(Object::FindObjectFromInstanceID(current_frame.texture_id));
             if (tex) {
-                sprite_renderer.sprite = PPtr<Sprite>(tex->getFileID(), tex->getUUID());
+                sprite_renderer.sprite = PPtr<Sprite>(SpriteLoader::Load(tex->getPath()));
             }
         }
     }

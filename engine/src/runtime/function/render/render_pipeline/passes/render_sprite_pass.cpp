@@ -148,7 +148,6 @@ namespace dodoe {
                 const Bool use_bindless = RenderSettings::IsBindlessActive();
 
                 if (use_bindless) {
-                    // --- Bindless path ---
                     const auto* descriptor_manager = shared_service ? shared_service->getDescriptorTable() : nullptr;
                     if (!descriptor_manager || !descriptor_manager->getDescriptorTable() || !m_bindless_binding_layout) {
                         DO_ERROR("SpritePass: bindless sprite resources are unavailable");
@@ -207,13 +206,12 @@ namespace dodoe {
                         ctx.getFramebuffer(), pipeline, binding_sets,
                         rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
                         vertex_buffers,
-                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
                     command_list.drawIndexed(GfxDrawArguments()
                         .setVertexCount(6)
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
 
                 } else {
-                    // --- Non-bindless (slot) fallback ---
                     if (!m_array_binding_layout || !shared_service) {
                         DO_ERROR("SpritePass: array binding layout unavailable");
                         command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
@@ -249,10 +247,6 @@ namespace dodoe {
                     blend.setRenderTarget(0, blend_target);
                     GfxRenderState render_state;
                     render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
-
-                    auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                    auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-                    GfxFramebufferInfo framebuffer_info(framebuffer_desc);
 
                     const Size_t total = sorted_instances.size();
                     Size_t start = 0;
@@ -291,7 +285,7 @@ namespace dodoe {
                             .setRenderState(render_state);
 
                         const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
-                            pipeline_desc, framebuffer_info, command_list);
+                            pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                         if (!pipeline) {
                             start = end;
                             continue;
@@ -305,9 +299,9 @@ namespace dodoe {
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                             *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                         command_list.setGraphicsState(
-                            framebuffer, pipeline, binding_sets,
+                            ctx.getFramebuffer(), pipeline, binding_sets,
                             viewport_state, vertex_buffers,
-                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(6)
                             .setInstanceCount(static_cast<UInt32>(end - start))

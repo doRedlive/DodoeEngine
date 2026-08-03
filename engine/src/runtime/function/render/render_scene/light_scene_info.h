@@ -5,7 +5,6 @@
 #include "dopch.h"
 
 #include "runtime/function/render/texture/texture.h"
-#include "runtime/core/object/obj_handle.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -40,7 +39,7 @@ namespace dodoe {
     };
 
     struct SkyLightData {
-        ObjHandle<TextureCubemap> cubemap{};
+        TextureCubemap* cubemap{nullptr};
         Float intensity{1.0f};
     };
 

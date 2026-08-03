@@ -198,11 +198,8 @@ namespace dodoe {
                     render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
                     pipeline_desc.setRenderState(render_state);
 
-                    auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                    auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-                    GfxFramebufferInfo framebuffer_info(framebuffer_desc);
                     const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
-                        pipeline_desc, framebuffer_info, command_list);
+                        pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                     if (!pipeline) {
                         command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                         command_list.commitBarriers();
@@ -215,9 +212,9 @@ namespace dodoe {
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                         *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                     command_list.setGraphicsState(
-                        framebuffer, pipeline, binding_sets,
+                        ctx.getFramebuffer(), pipeline, binding_sets,
                         viewport_state, vertex_buffers,
-                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
                     command_list.drawIndexed(GfxDrawArguments()
                         .setVertexCount(6)
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
@@ -260,10 +257,6 @@ namespace dodoe {
                     GfxRenderState render_state;
                     render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
 
-                    auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                    auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-                    GfxFramebufferInfo framebuffer_info(framebuffer_desc);
-
                     const Size_t total = sorted_instances.size();
                     Size_t start = 0;
                     while (start < total) {
@@ -301,7 +294,7 @@ namespace dodoe {
                             .setRenderState(render_state);
 
                         const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
-                            pipeline_desc, framebuffer_info, command_list);
+                            pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                         if (!pipeline) {
                             start = end;
                             continue;
@@ -315,9 +308,9 @@ namespace dodoe {
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                             *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                         command_list.setGraphicsState(
-                            framebuffer, pipeline, binding_sets,
+                            ctx.getFramebuffer(), pipeline, binding_sets,
                             viewport_state, vertex_buffers,
-                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(6)
                             .setInstanceCount(static_cast<UInt32>(end - start))

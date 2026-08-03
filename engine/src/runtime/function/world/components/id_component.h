@@ -23,7 +23,7 @@ namespace dodoe {
         IDComponent(const Uuid& in_id, String in_name) : id(in_id), name(std::move(in_name)) {}
         IDComponent(const IDComponent&) = default;
 
-        bool dirty{false};
+        bool dirty{true};
 
         void setName(const String& in_name) { name = in_name; dirty = true; }
         [[nodiscard]] const String& getName() const { return name; }

@@ -10,19 +10,20 @@
 
 namespace dodoe {
 
+    inline constexpr Float kDefaultPixelsPerUnit = 10.0f;
+
     class Sprite : public Object {
         PPtr<Texture2D> m_texture{};
         Float m_uv_min_x{0.0f};
         Float m_uv_min_y{0.0f};
         Float m_uv_max_x{1.0f};
         Float m_uv_max_y{1.0f};
-
-    protected:
-        void onDestroy() override {}
-        void trace(TraceVisitor& v) const override {}
+        Float m_pixels_per_unit{kDefaultPixelsPerUnit};
 
     public:
-        using Object::Object;
+        Sprite() = default;
+        explicit Sprite(const FileID& file_id) : Object(file_id) {}
+        Sprite(const FileID& file_id, const UUID& uuid) : Object(file_id, uuid) {}
 
         [[nodiscard]] const char* getObjectTypeName() const override { return "Sprite"; }
 
@@ -31,12 +32,14 @@ namespace dodoe {
             m_uv_min_x = min_x; m_uv_min_y = min_y;
             m_uv_max_x = max_x; m_uv_max_y = max_y;
         }
+        void setPixelsPerUnit(Float pixels_per_unit) { m_pixels_per_unit = pixels_per_unit; }
 
         [[nodiscard]] const PPtr<Texture2D>& getTexture() const { return m_texture; }
         [[nodiscard]] Float getUVMinX() const { return m_uv_min_x; }
         [[nodiscard]] Float getUVMinY() const { return m_uv_min_y; }
         [[nodiscard]] Float getUVMaxX() const { return m_uv_max_x; }
         [[nodiscard]] Float getUVMaxY() const { return m_uv_max_y; }
+        [[nodiscard]] Float getPixelsPerUnit() const { return m_pixels_per_unit; }
         [[nodiscard]] UInt32 getAtlasIndex() const {
             if (auto* tex = m_texture.get()) {
                 if (tex->getDescriptorIndex() >= 0) {

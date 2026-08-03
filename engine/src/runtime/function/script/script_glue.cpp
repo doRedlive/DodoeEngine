@@ -12,6 +12,7 @@
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components/tilemap/tileset_asset.h"
 #include "runtime/core/project/project.h"
+#include "runtime/service/sprite/sprite_loader.h"
 #include "runtime/function/ui/ui_manager.h"
 #include "runtime/function/ui/ui_button.h"
 #include "runtime/function/ui/ui_label.h"
@@ -247,6 +248,12 @@ namespace dodoe {
             if (!path || path[0] == '\0') return 0;
             auto tex = Texture2D::Load(String(path));
             return tex ? (int)tex->getInstanceID() : 0;
+        }
+
+        static int native_sprite_load(const char* path) {
+            if (!path || path[0] == '\0') return 0;
+            auto sprite = SpriteLoader::Load(String(path));
+            return sprite ? (int)sprite->getInstanceID() : 0;
         }
 
         static int native_world_load_scene(const char* name, int mode) {
@@ -739,6 +746,7 @@ X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
     X(native_get_asset_directory, const char*, (), ) \
     X(native_object_get_type_name, const char*, (int instanceID), instanceID) \
     X(native_texture_load, int, (const char* path), path) \
+    X(native_sprite_load, int, (const char* path), path) \
     X(native_world_load_scene, int, (const char* name, int mode), name, mode) \
     X(native_world_get_active_scene_name, const char*, (), ) \
     X(native_world_unload_scene, void, (const char* name), name) \

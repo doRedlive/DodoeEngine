@@ -6,6 +6,7 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
+#include "runtime/service/sprite/sprite_loader.h"
 
 #include "runtime/core/math/math.h"
 
@@ -57,22 +58,27 @@ namespace dodoe {
 
         auto sprite_object = create_scope<SpriteRenderObject>();
         sprite_object->setUUID(id.id);
-        sprite_object->setSprite(sr.sprite);
-        if (!sr.sprite.get()) {
-            const String& tex_path = sr.sprite.getFileID().getPath();
-            if (!tex_path.empty()) {
-                if (Texture2D* texture = Texture2D::Load(tex_path)) {
-                    sprite_object->setAtlasIndex(
-                        texture->getDescriptorIndex() >= 0
-                            ? static_cast<UInt32>(texture->getDescriptorIndex())
-                            : texture->getSlot());
-                }
-            }
+
+        Sprite* resolved = nullptr;
+        const String& tex_path = sr.sprite.getFileID().getPath();
+        if (!tex_path.empty()) {
+            resolved = SpriteLoader::Load(tex_path);
         }
+
+        if (resolved) {
+            sr.sprite = PPtr<Sprite>(resolved);
+            sprite_object->setSprite(PPtr<Sprite>(resolved));
+            const Vector2f natural = computeSpriteNaturalSize(resolved);
+            Matrix4f world = Math::Scale(buildWorldMatrix(transform), Vector3f(natural.x, natural.y, 1.0f));
+            sprite_object->setWorldTransform(world);
+        } else {
+            sprite_object->setUVRect(0.0f, 0.0f, 1.0f, 1.0f);
+            sprite_object->setWorldTransform(buildWorldMatrix(transform));
+        }
+
         sprite_object->setColor(sr.color.to_rgba32());
         sprite_object->setFlags(flags);
         sprite_object->setVisible(true);
-        sprite_object->setWorldTransform(buildWorldMatrix(transform));
 
         RenderCommandQueue::AddSprite(std::move(sprite_object));
         m_submitted_sprites.insert(id.id);
@@ -107,6 +113,18 @@ namespace dodoe {
         world = Math::Rotate(world, Math::Radians(transform.rotation.z), Vector3f(0.0f, 0.0f, 1.0f));
         world = Math::Scale(world, Vector3f(transform.scale.x, transform.scale.y, 1.0f));
         return world;
+    }
+
+    Vector2f SpriteRendererSystem::computeSpriteNaturalSize(const Sprite* sprite) const {
+        const auto* texture = sprite->getTexture().get();
+        if (!texture || texture->getWidth() <= 0 || texture->getHeight() <= 0) {
+            return Vector2f(1.0f);
+        }
+        const Float ppu = sprite->getPixelsPerUnit() > 0.0f ? sprite->getPixelsPerUnit() : kDefaultPixelsPerUnit;
+        const Float uv_w = sprite->getUVMaxX() - sprite->getUVMinX();
+        const Float uv_h = sprite->getUVMaxY() - sprite->getUVMinY();
+        return Vector2f(uv_w * static_cast<Float>(texture->getWidth()) / ppu,
+                        uv_h * static_cast<Float>(texture->getHeight()) / ppu);
     }
 
 } // dodoe

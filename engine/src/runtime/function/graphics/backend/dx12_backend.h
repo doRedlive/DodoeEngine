@@ -45,7 +45,7 @@ namespace dodoe {
         DXGI_FORMAT m_backbuffer_format{DXGI_FORMAT_R8G8B8A8_UNORM};
         UINT m_swapchain_width{0};
         UINT m_swapchain_height{0};
-        static constexpr UINT kBackbufferCount = 2;
+        static constexpr UINT kBackbufferCount = 3;
 
         // Frame synchronization
         ComPtr<ID3D12Fence> m_fence{};

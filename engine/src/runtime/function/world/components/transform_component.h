@@ -21,7 +21,7 @@ namespace dodoe {
         META(Enable)
         Vector3f scale{ 1.0f, 1.0f, 1.0f };
 
-        bool dirty{false};
+        bool dirty{true};
 
         void setPosition(const Vector3f& in_position) { position = in_position; dirty = true; }
         void setRotation(const Vector3f& in_rotation) { rotation = in_rotation; dirty = true; }

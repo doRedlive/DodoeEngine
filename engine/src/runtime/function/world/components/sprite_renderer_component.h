@@ -28,7 +28,7 @@ namespace dodoe {
         META(Enable)
         Color color{ };
 
-        bool dirty{ false };
+        bool dirty{ true };
 
         SpriteRendererComponent() = default;
     };

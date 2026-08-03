@@ -66,21 +66,17 @@ namespace dodoe {
 
             m_shaders[entry.name] = shader;
 
-            if (use_glsl_source) {
-                const String reflection_path = "shaders/bin/" + file_name + ".spv";
-                const auto reflection_bytecode = ReadShaderFile(reflection_path);
-                if (reflection_bytecode.empty()) {
-                    DO_ERROR("ShaderLibrary::initialize failed to read OpenGL reflection bytecode: {}", reflection_path);
-                } else {
-                    const DynamicArray<UInt8> reflection_bytes(
-                        reflection_bytecode.begin(), reflection_bytecode.end());
-                    auto refl = ShaderReflector::ReflectBytecode(reflection_bytes, entry.stage, entry.name);
-                    if (refl.valid()) {
-                        m_reflections[entry.name] = std::move(refl);
-                    }
+            const String reflection_path = "shaders/bin/" + file_name + ".spv";
+            const auto reflection_bytecode = ReadShaderFile(reflection_path);
+            if (reflection_bytecode.empty()) {
+                auto refl = ShaderReflector::Reflect(shader, entry.name);
+                if (refl.valid()) {
+                    m_reflections[entry.name] = std::move(refl);
                 }
             } else {
-                auto refl = ShaderReflector::Reflect(shader, entry.name);
+                const DynamicArray<UInt8> reflection_bytes(
+                    reflection_bytecode.begin(), reflection_bytecode.end());
+                auto refl = ShaderReflector::ReflectBytecode(reflection_bytes, entry.stage, entry.name);
                 if (refl.valid()) {
                     m_reflections[entry.name] = std::move(refl);
                 }

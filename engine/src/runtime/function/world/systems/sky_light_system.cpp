@@ -50,7 +50,7 @@ namespace dodoe {
         info.setEnabled(sky.enabled);
 
         SkyLightData data{};
-        data.cubemap = ObjHandle<TextureCubemap>(cubemap);
+        data.cubemap = cubemap;
         data.intensity = sky.intensity;
         info.setSkyLightData(data);
 

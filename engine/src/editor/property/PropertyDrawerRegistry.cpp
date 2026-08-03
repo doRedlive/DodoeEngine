@@ -74,8 +74,7 @@ void PropertyDrawerRegistry::registerBuiltinDrawers()
     registerByType("dodoe::CameraType", []() { return std::make_unique<EnumDrawer>(); });
 
     auto pptrFactory = []() { return std::make_unique<PPtrDrawer>(); };
-    registerByType("PPtr<dodoe::Texture>", pptrFactory);
-    registerByType("PPtr<dodoe::Mesh>", pptrFactory);
+    registerByType("PPtr<Sprite>", pptrFactory);
 }
 
 } // namespace cakery

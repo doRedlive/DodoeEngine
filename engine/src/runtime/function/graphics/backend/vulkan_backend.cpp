@@ -2,6 +2,8 @@
 
 #include "vulkan_backend.h"
 
+#include "runtime/function/render/render_settings.h"
+
 #include <set>
 
 namespace dodoe {
@@ -303,17 +305,25 @@ namespace dodoe {
 				chosen_surface_format = swapchain_details.formats[0];
 			}
 		}
-		VkPresentModeKHR chosen_present_mode;
-		{
-			bool chosen{false};
-			for (const auto& present_mode : swapchain_details.present_modes) {
-				if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-					chosen_present_mode = present_mode;
-					chosen = true;
-				}
-			}
-			if (!chosen) {
-				chosen_present_mode = swapchain_details.present_modes[0];
+		VkPresentModeKHR preferred_present_mode;
+		switch (RenderSettings::GetPresentMode()) {
+		case PresentMode::VSync:
+			preferred_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+			break;
+		case PresentMode::Immediate:
+			preferred_present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+			break;
+		case PresentMode::Mailbox:
+		default:
+			preferred_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+			break;
+		}
+
+		VkPresentModeKHR chosen_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+		for (const auto& present_mode : swapchain_details.present_modes) {
+			if (present_mode == preferred_present_mode) {
+				chosen_present_mode = preferred_present_mode;
+				break;
 			}
 		}
 		VkExtent2D chosen_extent;

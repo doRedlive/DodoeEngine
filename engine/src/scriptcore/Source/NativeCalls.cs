@@ -173,6 +173,7 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<byte*>                                                  native_get_asset_directory;
         public delegate* unmanaged<int, byte*>                                            native_object_get_type_name;
         public delegate* unmanaged<byte*, int>                                            native_texture_load;
+        public delegate* unmanaged<byte*, int>                                            native_sprite_load;
         public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene;
         public delegate* unmanaged<byte*>                                                 native_world_get_active_scene_name;
         public delegate* unmanaged<byte*, void>                                          native_world_unload_scene;
@@ -365,6 +366,12 @@ internal static unsafe partial class NativeCalls
     {
         var ptr = StrToPtr(path);
         try { return b->native_texture_load(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static int Native_SpriteLoad(string path)
+    {
+        var ptr = StrToPtr(path);
+        try { return b->native_sprite_load(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
 
     // === UI Wrapper Methods ===

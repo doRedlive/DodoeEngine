@@ -21,7 +21,7 @@ namespace dodoe {
         META(Enable)
         Float thickness{0.0f};
 
-        Bool dirty{false};
+        Bool dirty{true};
 
         RectRendererComponent() = default;
     };

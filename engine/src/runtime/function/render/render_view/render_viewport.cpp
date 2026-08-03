@@ -119,22 +119,8 @@ namespace dodoe {
             return result;
         }
 
-        const float scale_x = pixel_size.x / logical_size.x;
-        const float scale_y = pixel_size.y / logical_size.y;
-        const float raw_scale = std::min(scale_x, scale_y);
-        result.scale = std::floor(raw_scale);
-
-        if (!std::isfinite(result.scale) || result.scale < 1.0f) {
-            result.scale = 1.0f;
-        }
-        Vector2f viewport_size = logical_size * result.scale;
-        viewport_size.x = std::floor(viewport_size.x);
-        viewport_size.y = std::floor(viewport_size.y);
-        viewport_size = Math::Clamp(viewport_size, Vector2f(1.0f, 1.0f), pixel_size);
-        result.viewport.size = viewport_size;
-        result.viewport.pos = (pixel_size - viewport_size) * 0.5f;
-        result.viewport.pos.x = std::floor(result.viewport.pos.x);
-        result.viewport.pos.y = std::floor(result.viewport.pos.y);
+        result.scale = std::min(pixel_size.x / logical_size.x, pixel_size.y / logical_size.y);
+        result.viewport = Rect(Vector2f(0.0f), pixel_size);
         return result;
     }
 

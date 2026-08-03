@@ -38,7 +38,7 @@ namespace dodoe {
         META(Enable)
         Color background{Color::white()};
 
-        bool dirty{false};
+        bool dirty{true};
 
         Matrix4f view_matrix{1.0f};
         Matrix4f projection_matrix{1.0f};

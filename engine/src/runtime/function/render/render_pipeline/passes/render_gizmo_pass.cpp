@@ -125,7 +125,7 @@ namespace dodoe {
                     vbs.push_back(GfxVertexBufferBinding()
                         .setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(vb_offset));
                     command_list.setIndexBuffer(GfxIndexBufferBinding()
-                        .setBuffer(ib->getRHIHandle()).setOffset(ib_offset));
+                        .setBuffer(ib->getRHIHandle()).setFormat(GfxFormat::R32_UINT).setOffset(ib_offset));
 
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                     command_list.setGraphicsState(framebuffer, pipeline, {}, viewport_state, vbs);

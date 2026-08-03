@@ -30,7 +30,6 @@ float4 main(PSInput input) : SV_Target
     {
         float2 safe_viewport_size = max(u_ViewportSize, float2(1.0, 1.0));
         float2 scene_uv = (frag_pos - u_ViewportPos) / safe_viewport_size;
-        scene_uv.y = 1.0 - scene_uv.y;
         float4 scene_color = u_SceneTexture.Sample(u_TextureSampler, clamp(scene_uv, float2(0.0, 0.0), float2(1.0, 1.0)));
         return lerp(scene_color, imgui_color, imgui_color.a);
     }

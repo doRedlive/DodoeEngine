@@ -53,7 +53,8 @@ public class Object
     {
         return nativeTypeName switch
         {
-            "Texture" => new Texture(instanceID),
+            "Texture2D" => new Texture(instanceID),
+            "Sprite" => new Sprite(instanceID),
             _ => new Object(instanceID)
         };
     }

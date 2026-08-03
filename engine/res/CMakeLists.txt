@@ -33,12 +33,14 @@ set(HLSL_VS_PAIRS
 	"directional_light_shadow_pass_vs.hlsl directional_light_shadow_pass.vert.dxil"
 	"imgui_pass_vs.hlsl imgui_pass.vert.dxil"
 	"test_pass_vs.hlsl test_pass.vert.dxil"
+	"ui_pass_vs.hlsl ui_pass.vert.dxil"
 )
 
 set(HLSL_PS_PAIRS
 	"sprite_pass_ps.hlsl sprite_pass.frag.dxil"
 	"sprite_pass_ps_traditional.hlsl sprite_pass_traditional.frag.dxil"
 	"main_camera_pass_ps.hlsl main_camera_pass.frag.dxil"
+	"main_camera_pass_nobindless_ps.hlsl main_camera_pass_nobindless.frag.dxil"
 	"directional_light_shadow_pass_ps.hlsl directional_light_shadow_pass.frag.dxil"
 	"deferred_light_pass_ps.hlsl deferred_light_pass.frag.dxil"
 	"skybox_pass_ps.hlsl skybox_pass.frag.dxil"
@@ -48,6 +50,14 @@ set(HLSL_PS_PAIRS
 	"combine_pass_ps.hlsl combine_pass.frag.dxil"
 	"imgui_pass_ps.hlsl imgui_pass.frag.dxil"
 	"test_pass_ps.hlsl test_pass.frag.dxil"
+	"ui_pass_ps.hlsl ui_pass.frag.dxil"
+	"ui_pass_ps_array.hlsl ui_pass_array.frag.dxil"
+)
+
+set(HLSL_CS_PAIRS
+	"gpu_culling_pass_cs.hlsl gpu_culling_pass.comp.dxil"
+	"bucket_count_pass_cs.hlsl bucket_count_pass.comp.dxil"
+	"bucket_fill_pass_cs.hlsl bucket_fill_pass.comp.dxil"
 )
 
 set(DXILS "")
@@ -76,6 +86,21 @@ if(DXC)
 		add_custom_command(
 			OUTPUT ${DXIL}
 			COMMAND ${DXC} -T ps_6_0 -E main "${SHADER_SOURCE_DIR}/${SRC}" -Fo "${DXIL}"
+			DEPENDS "${SHADER_SOURCE_DIR}/${SRC}"
+			COMMENT "Compiling HLSL: ${SRC}"
+			VERBATIM
+		)
+		list(APPEND DXILS ${DXIL})
+	endforeach()
+
+	foreach(PAIR ${HLSL_CS_PAIRS})
+		string(REPLACE " " ";" PAIR_LIST ${PAIR})
+		list(GET PAIR_LIST 0 SRC)
+		list(GET PAIR_LIST 1 OUT)
+		set(DXIL "${SHADER_OUTPUT_DIR}/${OUT}")
+		add_custom_command(
+			OUTPUT ${DXIL}
+			COMMAND ${DXC} -T cs_6_0 -E main "${SHADER_SOURCE_DIR}/${SRC}" -Fo "${DXIL}"
 			DEPENDS "${SHADER_SOURCE_DIR}/${SRC}"
 			COMMENT "Compiling HLSL: ${SRC}"
 			VERBATIM

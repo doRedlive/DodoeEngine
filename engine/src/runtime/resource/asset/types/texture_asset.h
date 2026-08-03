@@ -4,9 +4,9 @@
 
 #include "dopch.h"
 
-#include "runtime/core/object/obj_handle.h"
 #include "runtime/resource/asset/asset.h"
 #include "runtime/resource/parser/texture_blob.h"
+#include "runtime/function/render/texture/sprite.h"
 
 namespace dodoe {
 
@@ -14,8 +14,8 @@ namespace dodoe {
 
     class TextureAsset : public Asset {
         TextureBlob m_blob{};
-        ObjHandle<Texture2D> m_gpu_texture{};
-        Float m_ppu{100.0f};
+        Texture2D* m_gpu_texture{nullptr};
+        Float m_ppu{kDefaultPixelsPerUnit};
         Bool m_flip_vertical{true};
 
     public:
@@ -28,7 +28,7 @@ namespace dodoe {
         [[nodiscard]] Bool isReadOnly() const override { return true; }
 
         [[nodiscard]] const TextureBlob& getBlob() const { return m_blob; }
-        [[nodiscard]] Texture2D* getGPUTexture() const { return m_gpu_texture.get(); }
+        [[nodiscard]] Texture2D* getGPUTexture() const { return m_gpu_texture; }
         [[nodiscard]] Float getPPU() const { return m_ppu; }
         [[nodiscard]] Bool getFlipVertical() const { return m_flip_vertical; }
         [[nodiscard]] Int32 getWidth() const { return m_blob.width; }

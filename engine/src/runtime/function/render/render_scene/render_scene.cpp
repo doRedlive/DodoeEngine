@@ -385,6 +385,8 @@ namespace dodoe {
         info.setScale(Vector2f(scale.x, scale.y));
         info.setRotation(0.0f);
         info.setSprite(sprite->getSprite());
+        info.setAtlasIndex(sprite->getAtlasIndex());
+        info.setUVRect(sprite->getUVMinX(), sprite->getUVMinY(), sprite->getUVMaxX(), sprite->getUVMaxY());
         info.setColor(sprite->getColor());
         info.setSortingKey(0);
         info.setMaterialId(sprite->getMaterialId());

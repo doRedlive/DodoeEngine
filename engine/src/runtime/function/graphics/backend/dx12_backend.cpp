@@ -2,6 +2,8 @@
 
 #include "dx12_backend.h"
 
+#include "runtime/function/render/render_settings.h"
+
 #include "GLFW/glfw3.h"
 
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -227,7 +229,7 @@ namespace dodoe {
         swapchain_desc.Scaling = DXGI_SCALING_STRETCH;
         swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapchain_desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-        swapchain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        swapchain_desc.Flags = (RenderSettings::GetPresentMode() == PresentMode::Immediate) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
         ComPtr<IDXGISwapChain1> swapchain1;
         HRESULT hr = m_factory->CreateSwapChainForHwnd(
@@ -347,7 +349,18 @@ namespace dodoe {
             return false;
         }
 
-        hr = m_swapchain->Present(1, 0);
+        switch (RenderSettings::GetPresentMode()) {
+        case PresentMode::VSync:
+            hr = m_swapchain->Present(1, 0);
+            break;
+        case PresentMode::Immediate:
+            hr = m_swapchain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
+            break;
+        case PresentMode::Mailbox:
+        default:
+            hr = m_swapchain->Present(0, 0);
+            break;
+        }
         if (hr == DXGI_ERROR_DEVICE_REMOVED) {
             HRESULT device_removed = m_device->GetDeviceRemovedReason();
             DO_ERROR("Dx12Backend::presentImage: Device removed! HRESULT={:08X}", static_cast<UINT>(device_removed));

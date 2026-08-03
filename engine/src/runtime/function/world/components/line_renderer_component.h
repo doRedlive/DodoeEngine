@@ -23,7 +23,7 @@ namespace dodoe {
         META(Enable)
         Color color{};
 
-        Bool dirty{false};
+        Bool dirty{true};
 
         LineRendererComponent() = default;
     };

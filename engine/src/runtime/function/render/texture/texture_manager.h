@@ -5,7 +5,6 @@
 #include "dopch.h"
 
 #include "texture.h"
-#include "runtime/core/object/obj_handle.h"
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
@@ -26,11 +25,11 @@ namespace dodoe {
         GfxContext* m_gfx{nullptr};
         DescriptorTableManager* m_descriptor_table{nullptr};
         GfxDeviceHandle m_device{};
-        ObjHandle<Texture2D> m_fallback{};
-        UnorderedMap<InstanceID, ObjHandle<Texture2D>> m_texture2d_cache{};
-        UnorderedMap<InstanceID, ObjHandle<TextureCubemap>> m_cubemap_cache{};
+        Scope<Texture2D> m_fallback{};
+        UnorderedMap<InstanceID, Scope<Texture2D>> m_texture2d_cache{};
+        UnorderedMap<InstanceID, Scope<TextureCubemap>> m_cubemap_cache{};
         std::mutex m_mutex{};
-        DynamicArray<Texture2D*> m_slot_lut{};
+        DynamicArray<InstanceID> m_slot_lut{};
 
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
@@ -47,7 +46,7 @@ namespace dodoe {
         [[nodiscard]] Texture2D* findTexture2D(InstanceID id);
         [[nodiscard]] Texture2D* getFallback() const;
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
-        [[nodiscard]] const UnorderedMap<InstanceID, ObjHandle<Texture2D>>& getTexture2DCache() const { return m_texture2d_cache; }
+        [[nodiscard]] const UnorderedMap<InstanceID, Scope<Texture2D>>& getTexture2DCache() const { return m_texture2d_cache; }
         void removeTexture(InstanceID id);
         [[nodiscard]] Texture2D* resolveSlot(UInt32 slot) const;
     };

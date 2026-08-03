@@ -2,6 +2,8 @@
 
 #include "opengl_backend.h"
 
+#include "runtime/function/render/render_settings.h"
+
 #include <glad/gl.h>
 
 namespace dodoe {
@@ -14,6 +16,19 @@ namespace dodoe {
 
         glfwMakeContextCurrent(m_window_handle);
         m_context_owner = std::this_thread::get_id();
+
+        switch (RenderSettings::GetPresentMode()) {
+        case PresentMode::VSync:
+            glfwSwapInterval(1);
+            break;
+        case PresentMode::Immediate:
+            glfwSwapInterval(0);
+            break;
+        case PresentMode::Mailbox:
+        default:
+            glfwSwapInterval(-1);
+            break;
+        }
 
         if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
             DO_ERROR("OpenGLBackend: gladLoadGL failed");
