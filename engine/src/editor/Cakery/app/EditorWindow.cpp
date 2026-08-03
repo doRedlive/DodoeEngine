@@ -23,6 +23,8 @@
 #include "Cakery/panels/TerminalPanel.h"
 #include "Cakery/panels/TilePalettePanel.h"
 
+#include <QFileInfo>
+
 #include "runtime/core/project/project.h"
 #include "runtime/core/utils/json.h"
 #include "runtime/function/world/world.h"
@@ -318,6 +320,7 @@ void EditorWindow::enterWorkspace(const QString& projectPath)
 
     EditorBootConfig cfg;
     cfg.projectPath       = projectPath.toStdString();
+    cfg.configPath        = (QFileInfo(projectPath).absolutePath() + "/app_config.json").toStdString();
     cfg.hostWindowHandle  = hwnd;
     cfg.width             = pixelW;
     cfg.height            = pixelH;

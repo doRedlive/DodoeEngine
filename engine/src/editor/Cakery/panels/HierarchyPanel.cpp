@@ -61,7 +61,7 @@ HierarchyPanel::HierarchyPanel(EditorContext& ctx, QWidget* parent)
 
     auto h1 = m_ctx.selection().changed.connect([this](const auto&) {
         if (auto* item = m_tree->currentItem()) {
-            auto uuid = dodoe::Uuid(item->data(0, kEntityUuidRole).toULongLong());
+            auto uuid = dodoe::UUID(item->data(0, kEntityUuidRole).toULongLong());
             if (uuid == m_ctx.selection().primary()) {
                 return;
             }
@@ -72,7 +72,7 @@ HierarchyPanel::HierarchyPanel(EditorContext& ctx, QWidget* parent)
                 auto* item = m_tree->topLevelItem(i);
                 auto iter = QTreeWidgetItemIterator(item);
                 while (*iter) {
-                    auto id = dodoe::Uuid((*iter)->data(0, kEntityUuidRole).toULongLong());
+                    auto id = dodoe::UUID((*iter)->data(0, kEntityUuidRole).toULongLong());
                     (*iter)->setSelected(id == sel);
                     if (id == sel) {
                         m_tree->scrollToItem(*iter);
@@ -84,17 +84,17 @@ HierarchyPanel::HierarchyPanel(EditorContext& ctx, QWidget* parent)
     });
     m_connections.emplace_back(m_ctx.selection().changed, h1);
 
-    auto h2 = m_ctx.events().hierarchyChanged.connect([this](dodoe::Uuid) {
+    auto h2 = m_ctx.events().hierarchyChanged.connect([this](dodoe::UUID) {
         refresh();
     });
     m_connections.emplace_back(m_ctx.events().hierarchyChanged, h2);
 
-    auto h3 = m_ctx.events().entityCreated.connect([this](dodoe::Uuid) {
+    auto h3 = m_ctx.events().entityCreated.connect([this](dodoe::UUID) {
         refresh();
     });
     m_connections.emplace_back(m_ctx.events().entityCreated, h3);
 
-    auto h4 = m_ctx.events().entityDestroyed.connect([this](dodoe::Uuid) {
+    auto h4 = m_ctx.events().entityDestroyed.connect([this](dodoe::UUID) {
         refresh();
     });
     m_connections.emplace_back(m_ctx.events().entityDestroyed, h4);
@@ -116,8 +116,8 @@ void HierarchyPanel::populateTree()
     auto entities = scene->getEntities();
     if (entities.empty()) return;
 
-    std::unordered_map<dodoe::Uuid, QTreeWidgetItem*> itemMap;
-    std::vector<std::pair<dodoe::Uuid, QTreeWidgetItem*>> pendingChildren;
+    std::unordered_map<dodoe::UUID, QTreeWidgetItem*> itemMap;
+    std::vector<std::pair<dodoe::UUID, QTreeWidgetItem*>> pendingChildren;
 
     for (auto& entity : entities) {
         if (!entity.valid()) continue;
@@ -126,7 +126,7 @@ void HierarchyPanel::populateTree()
         if (m_filterText.isEmpty() ||
             QString::fromStdString(entity.name()).contains(m_filterText, Qt::CaseInsensitive)) {
 
-            dodoe::Uuid parentUuid;
+            dodoe::UUID parentUuid;
             if (entity.hasComponent<dodoe::HierarchyComponent>()) {
                 auto& hc = entity.getComponent<dodoe::HierarchyComponent>();
                 parentUuid = hc.parent_uuid;
@@ -156,7 +156,7 @@ void HierarchyPanel::populateTree()
     m_tree->expandAll();
 }
 
-void HierarchyPanel::addEntityItem(QTreeWidgetItem* parent, dodoe::Uuid uuid, dodoe::Scene* scene)
+void HierarchyPanel::addEntityItem(QTreeWidgetItem* parent, dodoe::UUID uuid, dodoe::Scene* scene)
 {
     auto entity = scene->getEntityByUUID(uuid);
     if (!entity.valid()) return;
@@ -182,7 +182,7 @@ void HierarchyPanel::onItemSelected()
         return;
     }
 
-    auto uuid = dodoe::Uuid(item->data(0, kEntityUuidRole).toULongLong());
+    auto uuid = dodoe::UUID(item->data(0, kEntityUuidRole).toULongLong());
     if (uuid.valid()) {
         m_ctx.selection().select(uuid);
     }
@@ -199,7 +199,7 @@ void HierarchyPanel::onItemChanged(QTreeWidgetItem* item, int)
 {
     if (!item) return;
 
-    auto uuid = dodoe::Uuid(item->data(0, kEntityUuidRole).toULongLong());
+    auto uuid = dodoe::UUID(item->data(0, kEntityUuidRole).toULongLong());
     if (!uuid.valid()) return;
 
     QString newText = item->text(0);
@@ -222,9 +222,9 @@ void HierarchyPanel::onItemChanged(QTreeWidgetItem* item, int)
 void HierarchyPanel::onCustomContextMenu(const QPoint& pos)
 {
     auto* item = m_tree->itemAt(pos);
-    dodoe::Uuid uuid;
+    dodoe::UUID uuid;
     if (item) {
-        uuid = dodoe::Uuid(item->data(0, kEntityUuidRole).toULongLong());
+        uuid = dodoe::UUID(item->data(0, kEntityUuidRole).toULongLong());
     }
 
     QMenu menu(m_tree);
@@ -267,19 +267,19 @@ void HierarchyPanel::onSearchTextChanged(const QString& text)
     refresh();
 }
 
-void HierarchyPanel::createEmptyEntity(dodoe::Uuid parentUuid)
+void HierarchyPanel::createEmptyEntity(dodoe::UUID parentUuid)
 {
-    dodoe::Uuid newUuid = dodoe::Uuid::Generate();
+    dodoe::UUID newUuid = dodoe::UUID::Generate();
     auto cmd = std::make_unique<CreateEntityCommand>(newUuid, "GameObject",
-        parentUuid.valid() ? std::optional<dodoe::Uuid>(parentUuid) : std::nullopt);
+        parentUuid.valid() ? std::optional<dodoe::UUID>(parentUuid) : std::nullopt);
     m_ctx.commands().execute(std::move(cmd));
-    m_ctx.events().entityCreated.emit(newUuid);
+    m_ctx.events().entityCreated.fire(newUuid);
     m_ctx.selection().select(newUuid);
 }
 
-void HierarchyPanel::duplicateEntity(dodoe::Uuid uuid)
+void HierarchyPanel::duplicateEntity(dodoe::UUID uuid)
 {
-    dodoe::Uuid newUuid = dodoe::Uuid::Generate();
+    dodoe::UUID newUuid = dodoe::UUID::Generate();
     auto* scene = m_ctx.activeScene();
     if (!scene) return;
 
@@ -287,28 +287,28 @@ void HierarchyPanel::duplicateEntity(dodoe::Uuid uuid)
     if (!entity.valid()) return;
 
     auto cmd = std::make_unique<CreateEntityCommand>(newUuid, entity.name() + " (Copy)",
-        std::optional<dodoe::Uuid>());
+        std::optional<dodoe::UUID>());
     m_ctx.commands().execute(std::move(cmd));
-    m_ctx.events().entityCreated.emit(newUuid);
+    m_ctx.events().entityCreated.fire(newUuid);
     m_ctx.selection().select(newUuid);
 }
 
-void HierarchyPanel::deleteEntity(dodoe::Uuid uuid)
+void HierarchyPanel::deleteEntity(dodoe::UUID uuid)
 {
     auto cmd = std::make_unique<DeleteEntityCommand>(uuid);
     m_ctx.commands().execute(std::move(cmd));
-    m_ctx.events().entityDestroyed.emit(uuid);
+    m_ctx.events().entityDestroyed.fire(uuid);
     m_ctx.selection().clear();
 }
 
-void HierarchyPanel::renameEntity(QTreeWidgetItem* item, dodoe::Uuid)
+void HierarchyPanel::renameEntity(QTreeWidgetItem* item, dodoe::UUID)
 {
     if (!item) return;
     item->setFlags(item->flags() | Qt::ItemIsEditable);
     m_tree->editItem(item);
 }
 
-void HierarchyPanel::reparentEntity(dodoe::Uuid entity, dodoe::Uuid newParent)
+void HierarchyPanel::reparentEntity(dodoe::UUID entity, dodoe::UUID newParent)
 {
     auto* scene = m_ctx.activeScene();
     if (!scene) return;
@@ -316,17 +316,17 @@ void HierarchyPanel::reparentEntity(dodoe::Uuid entity, dodoe::Uuid newParent)
     auto ent = scene->getEntityByUUID(entity);
     if (!ent.valid()) return;
 
-    dodoe::Uuid oldParent;
+    dodoe::UUID oldParent;
     if (ent.hasComponent<dodoe::HierarchyComponent>()) {
         oldParent = ent.getComponent<dodoe::HierarchyComponent>().parent_uuid;
     }
 
     auto cmd = std::make_unique<ReparentEntityCommand>(entity, oldParent, newParent);
     m_ctx.commands().execute(std::move(cmd));
-    m_ctx.events().hierarchyChanged.emit(entity);
+    m_ctx.events().hierarchyChanged.fire(entity);
 }
 
-bool HierarchyPanel::eventFilter(QObject* obj, QObject* subject, QEvent* event)
+bool HierarchyPanel::eventFilter(QObject* obj, QEvent* event)
 {
     if (obj == m_tree && event->type() == QEvent::Drop) {
         auto* de = static_cast<QDropEvent*>(event);
@@ -334,8 +334,8 @@ bool HierarchyPanel::eventFilter(QObject* obj, QObject* subject, QEvent* event)
         auto* targetItem = m_tree->itemAt(m_tree->mapFromGlobal(QCursor::pos()));
 
         if (sourceItem && targetItem && sourceItem != targetItem) {
-            auto srcUuid = dodoe::Uuid(sourceItem->data(0, kEntityUuidRole).toULongLong());
-            auto dstUuid = dodoe::Uuid(targetItem->data(0, kEntityUuidRole).toULongLong());
+            auto srcUuid = dodoe::UUID(sourceItem->data(0, kEntityUuidRole).toULongLong());
+            auto dstUuid = dodoe::UUID(targetItem->data(0, kEntityUuidRole).toULongLong());
             reparentEntity(srcUuid, dstUuid);
         }
     }

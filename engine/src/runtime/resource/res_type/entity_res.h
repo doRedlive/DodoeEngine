@@ -18,7 +18,7 @@ namespace dodoe {
 
     public:
         META(Enable)
-        Uuid m_uuid{};
+        UUID m_uuid{};
         META(Enable)
         String m_name;
         META(Enable)

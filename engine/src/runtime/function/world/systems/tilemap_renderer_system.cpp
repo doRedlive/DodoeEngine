@@ -21,7 +21,7 @@ namespace dodoe {
         (void)dt;
 
         auto tilemap_view = reg.view<IDComponent, TilemapComponent, TransformComponent, HierarchyComponent>();
-        UnorderedSet<Uuid> active_tiles{};
+        UnorderedSet<UUID> active_tiles{};
 
         for (auto entity : tilemap_view) {
             auto& tm = entity.getComponent<TilemapComponent>();
@@ -53,7 +53,7 @@ namespace dodoe {
                     Int32 ty = static_cast<Int32>(i / layer.layer_width);
 
                     TileKey key{id.id, layer_index, tx, ty};
-                    Uuid tile_uuid = MakeTileUuid(id.id, layer_index, tx, ty);
+                    UUID tile_uuid = MakeTileUuid(id.id, layer_index, tx, ty);
                     active_tiles.insert(tile_uuid);
 
                     if (m_submitted_tiles.find(key) != m_submitted_tiles.end()) {
@@ -86,7 +86,7 @@ namespace dodoe {
                     sprite_obj->setUVRect(u0, v0, u1, v1);
 
                     FileID file_id(tileset->image_path);
-                    auto tex_pptr = PPtr<Texture2D>(file_id, Uuid());
+                    auto tex_pptr = PPtr<Texture2D>(file_id, UUID());
                     UInt32 atlas_index = 0;
                     if (auto* tex = tex_pptr.get()) {
                         atlas_index = tex->getDescriptorIndex() >= 0
@@ -121,7 +121,7 @@ namespace dodoe {
         tm.dirty = false;
     }
 
-    void TilemapRendererSystem::pruneRemovedTiles(const UnorderedSet<Uuid>& active_tiles) {
+    void TilemapRendererSystem::pruneRemovedTiles(const UnorderedSet<UUID>& active_tiles) {
         for (auto it = m_submitted_tiles.begin(); it != m_submitted_tiles.end();) {
             if (active_tiles.find(it->second) == active_tiles.end()) {
                 RenderCommandQueue::RemoveSprite(it->second);
@@ -132,7 +132,7 @@ namespace dodoe {
         }
     }
 
-    Uuid TilemapRendererSystem::MakeTileUuid(Uuid tilemap_uuid, Size_t layer_index, Int32 tx, Int32 ty) {
+    UUID TilemapRendererSystem::MakeTileUuid(UUID tilemap_uuid, Size_t layer_index, Int32 tx, Int32 ty) {
         uint64_t base = static_cast<uint64_t>(tilemap_uuid);
         uint64_t h = base ^ 0x9E3779B97F4A7C15ULL;
         h ^= static_cast<uint64_t>(layer_index) * 0x9E3779B97F4A7C15ULL;
@@ -141,7 +141,7 @@ namespace dodoe {
         h = h ^ (h >> 33);
         h = h * 0xFF51AFD7ED558CCDULL;
         h = h ^ (h >> 33);
-        return Uuid(h);
+        return UUID(h);
     }
 
     Matrix4f TilemapRendererSystem::BuildTileWorldMatrix(Float pos_x, Float pos_y, Float width, Float height) {

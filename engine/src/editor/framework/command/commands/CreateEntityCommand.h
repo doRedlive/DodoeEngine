@@ -11,8 +11,8 @@ namespace cakery {
 
 class CreateEntityCommand : public ICommand {
 public:
-    CreateEntityCommand(dodoe::Uuid uuid, std::string name,
-                        std::optional<dodoe::Uuid> parent = std::nullopt);
+    CreateEntityCommand(dodoe::UUID uuid, std::string name,
+                        std::optional<dodoe::UUID> parent = std::nullopt);
 
     bool execute(EditorContext& ctx) override;
     void undo(EditorContext& ctx) override;
@@ -20,9 +20,9 @@ public:
     std::string label() const override;
 
 private:
-    dodoe::Uuid m_uuid;
+    dodoe::UUID m_uuid;
     std::string m_name;
-    std::optional<dodoe::Uuid> m_parent;
+    std::optional<dodoe::UUID> m_parent;
 };
 
 } // namespace cakery

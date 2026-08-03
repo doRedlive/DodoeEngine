@@ -15,10 +15,10 @@ public:
     explicit EventBridge(EditorContext& ctx);
     ~EventBridge();
 
-    Signal<dodoe::Uuid>              entityCreated;
-    Signal<dodoe::Uuid>              entityDestroyed;
-    Signal<dodoe::Uuid>              hierarchyChanged;
-    Signal<dodoe::Uuid, std::string> componentChanged;
+    Signal<dodoe::UUID>              entityCreated;
+    Signal<dodoe::UUID>              entityDestroyed;
+    Signal<dodoe::UUID>              hierarchyChanged;
+    Signal<dodoe::UUID, std::string> componentChanged;
 
 private:
     EditorContext& m_ctx;

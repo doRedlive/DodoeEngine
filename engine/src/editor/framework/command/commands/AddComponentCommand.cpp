@@ -11,7 +11,7 @@
 
 namespace cakery {
 
-AddComponentCommand::AddComponentCommand(dodoe::Uuid entity, std::string componentName)
+AddComponentCommand::AddComponentCommand(dodoe::UUID entity, std::string componentName)
     : m_entity(entity)
     , m_componentName(std::move(componentName))
 {}
@@ -25,7 +25,12 @@ bool AddComponentCommand::execute(EditorContext& ctx)
     if (!entity.valid()) return false;
 
     auto& db = dodoe::ComponentDB::self();
-    db.addComponent(entity, m_componentName);
+    if (db.hasComponent(entity, m_componentName)) {
+        return false;
+    }
+    if (!db.addComponent(entity, m_componentName)) {
+        return false;
+    }
 
     LOG_INFO("[AddComponent] {} to entity {}", m_componentName, static_cast<uint64_t>(m_entity));
     return true;

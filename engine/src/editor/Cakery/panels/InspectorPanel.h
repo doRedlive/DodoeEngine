@@ -26,7 +26,7 @@ public:
 
 private:
     void clearEditors();
-    void rebuildForEntity(dodoe::Uuid uuid);
+    void rebuildForEntity(dodoe::UUID uuid);
     void applyFieldAttributes(dodoe::FieldAccessor* fields, int count, const std::string& typeName);
 
     QLineEdit* m_nameEdit = nullptr;
@@ -44,7 +44,7 @@ private:
     };
     std::vector<DrawerEntry> m_entries;
 
-    dodoe::Uuid m_currentEntity;
+    dodoe::UUID m_currentEntity;
 };
 
 } // namespace cakery

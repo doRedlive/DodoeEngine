@@ -84,7 +84,7 @@ void InspectorPanel::clearEditors()
         }
     }
     m_entries.clear();
-    m_currentEntity = dodoe::Uuid();
+    m_currentEntity = dodoe::UUID();
 }
 
 void InspectorPanel::applyFieldAttributes(dodoe::FieldAccessor* fields, int count, const std::string& typeName)
@@ -115,7 +115,7 @@ void InspectorPanel::applyFieldAttributes(dodoe::FieldAccessor* fields, int coun
     }
 }
 
-void InspectorPanel::rebuildForEntity(dodoe::Uuid uuid)
+void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
 {
     bool sameEntity = (uuid == m_currentEntity);
     m_currentEntity = uuid;
@@ -132,6 +132,8 @@ void InspectorPanel::rebuildForEntity(dodoe::Uuid uuid)
     if (entity.hasComponent<dodoe::IDComponent>()) {
         m_nameEdit->setText(QString::fromStdString(entity.name()));
     }
+
+    auto& db = dodoe::ComponentDB::self();
 
     if (sameEntity) {
         for (auto& entry : m_entries) {
@@ -158,7 +160,6 @@ void InspectorPanel::rebuildForEntity(dodoe::Uuid uuid)
     clearEditors();
 
     auto& reg = PropertyDrawerRegistry::self();
-    auto& db = dodoe::ComponentDB::self();
 
     for (auto& entry : db.entries()) {
         if (entry.name == "IDComponent" || entry.name == "TagComponent") continue;

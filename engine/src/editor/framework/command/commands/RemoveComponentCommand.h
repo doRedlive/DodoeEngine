@@ -11,14 +11,14 @@ namespace cakery {
 
 class RemoveComponentCommand : public ICommand {
 public:
-    RemoveComponentCommand(dodoe::Uuid entity, std::string componentName);
+    RemoveComponentCommand(dodoe::UUID entity, std::string componentName);
 
     bool execute(EditorContext& ctx) override;
     void undo(EditorContext& ctx) override;
     std::string label() const override;
 
 private:
-    dodoe::Uuid m_entity;
+    dodoe::UUID m_entity;
     std::string m_componentName;
     dodoe::Json m_serializedComponent;
 };

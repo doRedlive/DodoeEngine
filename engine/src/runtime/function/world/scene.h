@@ -27,7 +27,7 @@ namespace dodoe {
         World& m_world;
         Registry m_reg;
         String m_name;
-        std::unordered_map<Uuid, Entity> m_entity_umap{};
+        std::unordered_map<UUID, Entity> m_entity_umap{};
     public: 
 
         Scene(const SceneCreateInfo& info);
@@ -59,15 +59,15 @@ namespace dodoe {
         [[nodiscard]] const Registry& registry() const { return m_reg; }
 
         Entity createEntity(const String& name);
-        Entity createEntity(Uuid uuid, const String& name = String());
+        Entity createEntity(UUID uuid, const String& name = String());
         void destroyEntity(Entity entity);
         void addEntity(Entity entity);
         [[nodiscard]] Entity getEntity(ui32 entity_id);
         [[nodiscard]] Entity getEntityByTag(const String& tag);
         [[nodiscard]] DynamicArray<Entity> getEntitiesByTag(const String& tag);
         [[nodiscard]] DynamicArray<Entity> getEntities();
-        [[nodiscard]] Entity tryGetEntityByUUID(Uuid uuid) const;
-        [[nodiscard]] Entity getEntityByUUID(Uuid uuid);
+        [[nodiscard]] Entity tryGetEntityByUUID(UUID uuid) const;
+        [[nodiscard]] Entity getEntityByUUID(UUID uuid);
 
     private:
         template<typename T>

@@ -90,6 +90,14 @@ bool EditorContext::boot(const EditorBootConfig& cfg)
     m_spec.width  = cfg.width;
     m_spec.height = cfg.height;
 
+    if (!cfg.configPath.empty() && std::filesystem::exists(cfg.configPath)) {
+        if (m_spec.loadFromFile(cfg.configPath)) {
+            LOG_INFO("[EditorContext] Loaded application config from: {}", cfg.configPath);
+        } else {
+            LOG_ERROR("[EditorContext] Failed to load application config from: {}", cfg.configPath);
+        }
+    }
+
     m_app     = std::make_unique<Application>(m_spec);
     m_ctx     = &m_app->context();
 

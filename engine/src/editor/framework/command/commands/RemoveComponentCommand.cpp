@@ -11,7 +11,7 @@
 
 namespace cakery {
 
-RemoveComponentCommand::RemoveComponentCommand(dodoe::Uuid entity, std::string componentName)
+RemoveComponentCommand::RemoveComponentCommand(dodoe::UUID entity, std::string componentName)
     : m_entity(entity)
     , m_componentName(std::move(componentName))
 {}

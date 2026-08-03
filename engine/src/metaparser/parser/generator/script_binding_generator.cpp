@@ -76,7 +76,7 @@ namespace Generator
             if (t == "Color") return "Color";
             if (t == "std::string" || t == "String") return "string";
             if (t == "Float")  return "float";
-            if (t == "Uuid" || t == "UUID") return "ulong";
+            if (t == "UUID" || t == "UUID") return "ulong";
             return "";
         }
 
@@ -240,7 +240,7 @@ namespace Generator
                     "    c->" + fieldName + " = {};\n" +
                     dirtyAssign +
                     "}";
-            } else if (info.field_type_cpp == "Uuid" || info.field_type_cpp == "UUID") {
+            } else if (info.field_type_cpp == "UUID" || info.field_type_cpp == "UUID") {
                 info.cpp_ret_type = "uint64_t";
                 info.cpp_get_params = "";
                 info.cpp_set_params = "uint64_t v";
@@ -249,9 +249,9 @@ namespace Generator
                 else
                     info.cpp_getter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) return (uint64_t)c->" + fieldName + "; return 0;";
                 if (hasSetter)
-                    info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) c->set" + fieldNameCs + "(Uuid(v));";
+                    info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) c->set" + fieldNameCs + "(UUID(v));";
                 else
-                    info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) c->" + fieldName + " = Uuid(v);";
+                    info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) c->" + fieldName + " = UUID(v);";
             } else if (isValueCsType(csType)) {
                 info.cpp_ret_type = csType;
                 info.cpp_get_params = "";
@@ -380,7 +380,7 @@ namespace Generator
             info.cpp_bind_get_name = nativeGet;
             info.cpp_bind_set_name = nativeSet;
 
-            bool isUuid = (info.field_type_cpp == "Uuid" || info.field_type_cpp == "UUID");
+            bool isUuid = (info.field_type_cpp == "UUID" || info.field_type_cpp == "UUID");
             std::string bindCsType = isObjectType(info.field_type_cpp) ? "int" : (isUuid ? "uint64_t" : csType);
 
             // C# delegate type mapper

@@ -17,7 +17,8 @@ class CommandStack {
 public:
     explicit CommandStack(EditorContext& ctx) : m_ctx(ctx) {}
 
-    void execute(std::unique_ptr<ICommand> cmd);
+    // 命令执行并入栈成功后返回其指针（调用方可读取命令产物）；失败或被合并返回 nullptr
+    ICommand* execute(std::unique_ptr<ICommand> cmd);
 
     bool canUndo() const { return !m_undo.empty(); }
     bool canRedo() const { return !m_redo.empty(); }

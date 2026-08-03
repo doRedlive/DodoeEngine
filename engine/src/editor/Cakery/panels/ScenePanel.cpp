@@ -108,8 +108,17 @@ void ScenePanel::resizeEvent(QResizeEvent* event)
 
 static bool tryTilemapInput(EditorContext& ctx, float x, float y, bool isDown, bool isDrag, bool isUp)
 {
-    auto tilemapUuid = ctx.selection().primary();
-    if (!tilemapUuid.isValid()) return false;
+    auto& paint = ctx.tilePaint();
+
+    // 前置激活：选中实体为 tilemap/层时同步到绘制服务
+    auto selected = ctx.selection().primary();
+    if (selected.isValid()) {
+        paint.setActiveEntity(selected);
+    }
+
+    if (!paint.hasTarget()) return false;
+
+    auto tilemapUuid = paint.activeTilemap();
 
     auto* scene = ctx.activeScene();
     if (!scene) return false;
@@ -117,10 +126,14 @@ static bool tryTilemapInput(EditorContext& ctx, float x, float y, bool isDown, b
     auto tilemapEntity = ResolveEntity(scene, tilemapUuid);
     if (!tilemapEntity.valid()) return false;
 
-    auto* tm = tilemapEntity.tryGetComponent<dodoe::TilemapComponent>();
+    auto* tm = tilemapEntity.hasComponent<dodoe::TilemapComponent>()
+                   ? &tilemapEntity.getComponent<dodoe::TilemapComponent>()
+                   : nullptr;
     if (!tm) return false;
 
-    auto* tf = tilemapEntity.tryGetComponent<dodoe::TransformComponent>();
+    auto* tf = tilemapEntity.hasComponent<dodoe::TransformComponent>()
+                   ? &tilemapEntity.getComponent<dodoe::TransformComponent>()
+                   : nullptr;
     dodoe::Matrix4f mapWorld(1.0f);
     if (tf) {
         mapWorld = glm::translate(dodoe::Matrix4f(1.0f), tf->position);
@@ -141,11 +154,11 @@ static bool tryTilemapInput(EditorContext& ctx, float x, float y, bool isDown, b
     }
 
     if (isDown) {
-        ctx.tilePaint().onCellDown(cx, cy);
+        paint.onCellDown(cx, cy);
     } else if (isDrag) {
-        ctx.tilePaint().onCellDrag(cx, cy);
+        paint.onCellDrag(cx, cy);
     } else if (isUp) {
-        ctx.tilePaint().onCellUp();
+        paint.onCellUp();
     }
     return true;
 }

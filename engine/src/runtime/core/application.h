@@ -5,6 +5,7 @@
 #include "runtime/dopch.h"
 
 #include "runtime/function/render/render_settings.h"
+#include "runtime/core/utils/json.h"
 
 namespace dodoe {
 
@@ -28,6 +29,12 @@ namespace dodoe {
         RenderSettingsInitInfo render_settings{};
 
         ApplicationCommandLineArgs cli_args{};
+
+        [[nodiscard]] Json toJson() const;
+        static Bool FromJson(const Json& json, ApplicationSpecification& out_spec);
+
+        [[nodiscard]] Bool loadFromFile(const FsPath& file_path);
+        [[nodiscard]] Bool saveToFile(const FsPath& file_path) const;
     };
 
     class DODOE_API Application {

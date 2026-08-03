@@ -10,7 +10,7 @@
 namespace dodoe {
 
     struct TileKey {
-        Uuid tilemap_uuid{};
+        UUID tilemap_uuid{};
         Size_t layer_index{0};
         Int32 tile_x{0};
         Int32 tile_y{0};
@@ -34,7 +34,7 @@ namespace dodoe {
     };
 
     class TilemapRendererSystem : public System {
-        UnorderedMap<TileKey, Uuid, TileKeyHash> m_submitted_tiles{};
+        UnorderedMap<TileKey, UUID, TileKeyHash> m_submitted_tiles{};
 
     public:
         ~TilemapRendererSystem() override;
@@ -44,8 +44,8 @@ namespace dodoe {
 
     private:
         void syncTilemap(Entity entity);
-        void pruneRemovedTiles(const UnorderedSet<Uuid>& active_tiles);
-        static Uuid MakeTileUuid(Uuid tilemap_uuid, Size_t layer_index, Int32 tx, Int32 ty);
+        void pruneRemovedTiles(const UnorderedSet<UUID>& active_tiles);
+        static UUID MakeTileUuid(UUID tilemap_uuid, Size_t layer_index, Int32 tx, Int32 ty);
         static Matrix4f BuildTileWorldMatrix(Float pos_x, Float pos_y, Float width, Float height);
     };
 

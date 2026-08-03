@@ -15,7 +15,7 @@ namespace dodoe {
         REFLECTION_BODY(HierarchyComponent)
 
         META(Enable)
-        Uuid parent_uuid{};
+        UUID parent_uuid{};
         META(Enable)
         int child_count{0};
 
