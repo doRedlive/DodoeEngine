@@ -93,8 +93,6 @@ namespace dodoe {
 
         m_script_system = ScriptSystem::Create({});
         DO_ASSERT(m_script_system, "ScriptSystem init failed");
-        (void)m_script_system->reloadScripts();
-
         m_physics_system = PhysicsSystem::Create({});
         DO_ASSERT(m_physics_system, "PhysicsSystem init failed");
 
@@ -145,8 +143,7 @@ namespace dodoe {
                 "SystemContext failed to acquire graphics context for startup.");
         }
 
-        auto future = ResourceManager::Self().loadAssetsAsync();
-        future.wait();
+        DO_ASSERT(ResourceManager::Self().loadAssets(), "Failed to load asset database");
 
         const auto active_project = Project::ActiveProject();
         DO_ASSERT(active_project, "No active project when starting runtime");

@@ -79,6 +79,7 @@ namespace dodoe {
         void resetTo(Size_t byte_offset);
         void release();
         void reserve(Size_t byte_size);
+        void transferFrom(LinearAllocator&& other);
 
         [[nodiscard]] Size_t usedByteSize() const { return m_used_byte_size; }
         [[nodiscard]] Size_t blockCount() const { return m_blocks.size(); }

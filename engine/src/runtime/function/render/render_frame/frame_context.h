@@ -13,7 +13,7 @@ namespace dodoe {
     class RenderGraphTransientPool;
 
     struct FrameContext {
-        DrawCommandList command_list{};
+        DrawCommandList* command_list{nullptr};
         UInt32 swapchain_image_index{0};
         UInt64 frame_number{0};
         GfxEventQueryHandle completion_query{};

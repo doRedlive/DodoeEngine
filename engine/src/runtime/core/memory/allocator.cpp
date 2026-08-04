@@ -2,6 +2,7 @@
 
 #include "allocator.h"
 
+#include <iterator>
 #include <mimalloc.h>
 
 namespace dodoe {
@@ -110,6 +111,25 @@ namespace dodoe {
         if (m_blocks.empty() || m_blocks.back().offset + byte_size > m_blocks.back().size) {
             createBlock(byte_size);
         }
+    }
+
+    void LinearAllocator::transferFrom(LinearAllocator&& other) {
+        if (this == &other) {
+            return;
+        }
+        std::lock_guard<std::recursive_mutex> lock_this(m_mutex);
+        std::lock_guard<std::recursive_mutex> lock_other(other.m_mutex);
+
+        if (m_blocks.empty()) {
+            m_blocks = std::move(other.m_blocks);
+        } else {
+            m_blocks.insert(m_blocks.end(),
+                            std::make_move_iterator(other.m_blocks.begin()),
+                            std::make_move_iterator(other.m_blocks.end()));
+            other.m_blocks.clear();
+        }
+        m_used_byte_size += other.m_used_byte_size;
+        other.m_used_byte_size = 0;
     }
 
     void LinearAllocator::createBlock(Size_t minimum_size) {

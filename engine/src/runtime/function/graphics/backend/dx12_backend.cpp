@@ -203,6 +203,10 @@ namespace dodoe {
         if (m_enable_validation) m_copy_queue->SetName(L"Copy Queue");
     }
 
+    UINT Dx12Backend::GetSwapchainFlags() {
+        return (RenderSettings::GetPresentMode() == PresentMode::Immediate) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    }
+
     void Dx12Backend::createSwapchain(GLFWwindow* window_handle) {
         HWND hwnd = m_hwnd;
         if (hwnd == nullptr && window_handle != nullptr) {
@@ -229,7 +233,7 @@ namespace dodoe {
         swapchain_desc.Scaling = DXGI_SCALING_STRETCH;
         swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapchain_desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-        swapchain_desc.Flags = (RenderSettings::GetPresentMode() == PresentMode::Immediate) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+        swapchain_desc.Flags = GetSwapchainFlags();
 
         ComPtr<IDXGISwapChain1> swapchain1;
         HRESULT hr = m_factory->CreateSwapChainForHwnd(
@@ -396,7 +400,7 @@ namespace dodoe {
             m_swapchain_width,
             m_swapchain_height,
             m_backbuffer_format,
-            DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
+            GetSwapchainFlags());
         DO_ASSERT(SUCCEEDED(hr), "Dx12Backend::recreateSwapchain: ResizeBuffers failed with HRESULT={:08X}", static_cast<UINT>(hr));
 
         createBackbufferRTVs();

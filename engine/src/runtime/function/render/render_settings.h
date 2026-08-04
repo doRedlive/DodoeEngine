@@ -4,6 +4,10 @@
 
 #include "dopch.h"
 
+#include "runtime/core/meta/reflection/reflection.h"
+
+REFLECTION_TYPE(RenderSettingsInitInfo)
+
 namespace dodoe {
 
     enum class RenderBackendApiType {
@@ -36,10 +40,16 @@ namespace dodoe {
         Immediate,
     };
 
-    struct RenderSettingsInitInfo {
+    STRUCT(RenderSettingsInitInfo, WhiteListFields) {
+        REFLECTION_BODY(RenderSettingsInitInfo)
+
+        META(Enable)
         RenderBackendApiType api{ RenderBackendApiType::DX12 };
+        META(Enable)
         RenderingPipelineType pipeline{ RenderingPipelineType::Deferred };
+        META(Enable)
         ThreadingMode threading_mode{ ThreadingMode::TripleThread };
+        META(Enable)
         PresentMode present_mode{ PresentMode::Mailbox };
     };
 

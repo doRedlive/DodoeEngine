@@ -37,6 +37,7 @@ namespace dodoe {
             m_deletion_queue.processCompleted(slot.frame_number);
         }
 
+        slot.command_list.beginFrame();
         slot.transient_resource_pool.releaseAll();
         if (slot.staging) slot.staging->reset();
         slot.frame_number = m_frame_counter++;
@@ -46,6 +47,7 @@ namespace dodoe {
         m_current_index = (m_current_index + 1) % kMaxFramesInFlight;
 
         FrameContext ctx;
+        ctx.command_list = &slot.command_list;
         ctx.frame_number = slot.frame_number;
         ctx.swapchain_image_index = slot.swapchain_image_index;
         ctx.completion_query = slot.completion_query;

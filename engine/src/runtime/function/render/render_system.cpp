@@ -130,9 +130,8 @@ namespace dodoe {
         const Float frame_time = time_sys->current_time();
         const Float frame_delta = time_sys->getDeltaTime();
 
-        frame_ctx.command_list.beginFrame();
-        frame_ctx.command_list.setDevice(m_gfx->getDevice());
-        scene->flushUpdates(frame_ctx.command_list);
+        frame_ctx.command_list->setDevice(m_gfx->getDevice());
+        scene->flushUpdates(*frame_ctx.command_list);
 
         switch (mode) {
         case ThreadingMode::TripleThread: {
@@ -146,7 +145,7 @@ namespace dodoe {
 #endif
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
                 pipeline->render(
-                    family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list,
+                    family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
                     frame_ctx.staging, frame_ctx.transient_resource_pool);
             }
             m_frame_scheduler->endFrame(frame_ctx);
@@ -165,21 +164,20 @@ namespace dodoe {
 #endif
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
                 pipeline->render(
-                    family, *scene, frame_ctx.swapchain_image_index, frame_ctx.command_list,
+                    family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
                     frame_ctx.staging, frame_ctx.transient_resource_pool);
             }
 
             {
                 auto gfx_cmd = m_gfx->getDevice()->createCommandList();
                 gfx_cmd->open();
-                frame_ctx.command_list.execute(gfx_cmd);
+                frame_ctx.command_list->execute(gfx_cmd);
                 gfx_cmd->close();
                 m_gfx->getDevice()->executeCommandList(gfx_cmd);
             }
             gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
             m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
             m_gfx->clearGarbage();
-            frame_ctx.command_list.reset();
             break;
         }
         }

@@ -86,15 +86,10 @@ namespace dodoe {
                                           String& out_error);
 
     private:
-        static ShaderReflectionData ReflectDXIL(const DynamicArray<UInt8>& bytecode,
-                                                GfxShaderType stage,
-                                                const String& name);
-
         static ShaderReflectionData ReflectSPIRV(const DynamicArray<UInt8>& bytecode,
                                                  GfxShaderType stage,
                                                  const String& name);
 
-        static Bool IsDXIL(const DynamicArray<UInt8>& bytecode);
         static Bool IsSPIRV(const DynamicArray<UInt8>& bytecode);
     };
 

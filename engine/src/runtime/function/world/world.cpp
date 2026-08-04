@@ -368,18 +368,18 @@ namespace dodoe {
 
         const String asset_url((FsPath("Scenes") / (name + ".doscn")).generic_string().c_str());
         auto handle = asset_manager->getHandleByPath<SceneAsset>(asset_url);
-        if (!handle.isValid() || !handle.isLoaded()) {
+        SceneRes scene_res;
+        if (handle.isValid()) {
+            SceneAsset* scene_asset = asset_manager->loadAssetSync<SceneAsset>(handle.getFileID());
+            if (!scene_asset) {
+                DO_ERROR("loadScene: failed to load '{}'", asset_url);
+                return nullptr;
+            }
+            scene_res = scene_asset->getSceneRes();
+        } else if (!asset_manager->loadAssetFile(asset_url, scene_res)) {
             DO_ERROR("loadScene: failed to load '{}'", asset_url);
             return nullptr;
         }
-
-        SceneAsset* scene_asset = handle.get();
-        if (!scene_asset) {
-            DO_ERROR("loadScene: scene asset is null for '{}'", name);
-            return nullptr;
-        }
-
-        const auto& scene_res = scene_asset->getSceneRes();
         const String scene_name = scene_res.m_name.empty() ? name : scene_res.m_name;
         Scene* scene = getScene(scene_name);
         if (!scene) {

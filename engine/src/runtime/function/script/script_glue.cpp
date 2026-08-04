@@ -594,12 +594,76 @@ namespace dodoe {
     X(native_id_component_get_name, const char*, (uint64_t e), e) \
     X(native_id_component_set_name, void, (uint64_t e, const char* v), e, v) \
     /* === NATIVE_BINDINGS_GENERATED_START === */ \
-X(native_RectRendererComponent_size_get, void, (uint64_t e, float* x, float* y), e, x, y) \
-    X(native_RectRendererComponent_size_set, void, (uint64_t e, float x, float y), e, x, y) \
-    X(native_RectRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_RectRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
-    X(native_RectRendererComponent_thickness_get, float, (uint64_t e), e) \
-    X(native_RectRendererComponent_thickness_set, void, (uint64_t e, float v), e, v) \
+X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_map_width_set, void, (uint64_t e, uint v), e, v) \
+    X(native_TilemapComponent_map_height_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_map_height_set, void, (uint64_t e, uint v), e, v) \
+    X(native_TilemapComponent_tile_width_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_tile_width_set, void, (uint64_t e, uint v), e, v) \
+    X(native_TilemapComponent_tile_height_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_tile_height_set, void, (uint64_t e, uint v), e, v) \
+    X(native_FoliageRendererInstance_position_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_FoliageRendererInstance_position_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_FoliageRendererInstance_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_FoliageRendererInstance_rotation_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_FoliageRendererInstance_scale_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_FoliageRendererInstance_scale_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_FoliageRendererInstance_color_tint_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_FoliageRendererInstance_color_tint_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_FoliageRendererInstance_wind_phase_get, float, (uint64_t e), e) \
+    X(native_FoliageRendererInstance_wind_phase_set, void, (uint64_t e, float v), e, v) \
+    X(native_FoliageRendererInstance_variation_get, float, (uint64_t e), e) \
+    X(native_FoliageRendererInstance_variation_set, void, (uint64_t e, float v), e, v) \
+    X(native_FoliageRendererComponent_visible_get, bool, (uint64_t e), e) \
+    X(native_FoliageRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
+    X(native_FoliageRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
+    X(native_FoliageRendererComponent_cast_shadow_set, void, (uint64_t e, bool v), e, v) \
+    X(native_FoliageRendererComponent_instance_bounds_extent_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_FoliageRendererComponent_instance_bounds_extent_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_Animation2dComponent_cur_time_duration_get, float, (uint64_t e), e) \
+    X(native_Animation2dComponent_cur_time_duration_set, void, (uint64_t e, float v), e, v) \
+    X(native_Animation2dComponent_speed_get, float, (uint64_t e), e) \
+    X(native_Animation2dComponent_speed_set, void, (uint64_t e, float v), e, v) \
+    X(native_Camera2dComponent_zoom_get, float, (uint64_t e), e) \
+    X(native_Camera2dComponent_zoom_set, void, (uint64_t e, float v), e, v) \
+    X(native_Camera2dComponent_fov_get, float, (uint64_t e), e) \
+    X(native_Camera2dComponent_fov_set, void, (uint64_t e, float v), e, v) \
+    X(native_Camera2dComponent_near_plane_get, float, (uint64_t e), e) \
+    X(native_Camera2dComponent_near_plane_set, void, (uint64_t e, float v), e, v) \
+    X(native_Camera2dComponent_far_plane_get, float, (uint64_t e), e) \
+    X(native_Camera2dComponent_far_plane_set, void, (uint64_t e, float v), e, v) \
+    X(native_Camera2dComponent_aspect_ratio_get, float, (uint64_t e), e) \
+    X(native_Camera2dComponent_aspect_ratio_set, void, (uint64_t e, float v), e, v) \
+    X(native_Camera2dComponent_background_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_Camera2dComponent_background_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_BoxCollider2dComponent_offset_get, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_BoxCollider2dComponent_offset_set, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_BoxCollider2dComponent_size_get, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_BoxCollider2dComponent_size_set, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_BoxCollider2dComponent_density_get, float, (uint64_t e), e) \
+    X(native_BoxCollider2dComponent_density_set, void, (uint64_t e, float v), e, v) \
+    X(native_BoxCollider2dComponent_friction_get, float, (uint64_t e), e) \
+    X(native_BoxCollider2dComponent_friction_set, void, (uint64_t e, float v), e, v) \
+    X(native_BoxCollider2dComponent_restitution_get, float, (uint64_t e), e) \
+    X(native_BoxCollider2dComponent_restitution_set, void, (uint64_t e, float v), e, v) \
+    X(native_BoxCollider2dComponent_restitution_threshold_get, float, (uint64_t e), e) \
+    X(native_BoxCollider2dComponent_restitution_threshold_set, void, (uint64_t e, float v), e, v) \
+    X(native_CircleRendererComponent_radius_get, float, (uint64_t e), e) \
+    X(native_CircleRendererComponent_radius_set, void, (uint64_t e, float v), e, v) \
+    X(native_CircleRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_CircleRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_CircleRendererComponent_segments_get, uint, (uint64_t e), e) \
+    X(native_CircleRendererComponent_segments_set, void, (uint64_t e, uint v), e, v) \
+    X(native_CircleRendererComponent_thickness_get, float, (uint64_t e), e) \
+    X(native_CircleRendererComponent_thickness_set, void, (uint64_t e, float v), e, v) \
+    X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
+    X(native_Rigidbody2dComponent_gravity_scale_set, void, (uint64_t e, float v), e, v) \
+    X(native_Rigidbody2dComponent_fixed_rotation_get, bool, (uint64_t e), e) \
+    X(native_Rigidbody2dComponent_fixed_rotation_set, void, (uint64_t e, bool v), e, v) \
+    X(native_MeshRendererComponent_visible_get, bool, (uint64_t e), e) \
+    X(native_MeshRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
+    X(native_MeshRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
+    X(native_MeshRendererComponent_cast_shadow_set, void, (uint64_t e, bool v), e, v) \
     X(native_PointLightComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
     X(native_PointLightComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
     X(native_PointLightComponent_intensity_get, float, (uint64_t e), e) \
@@ -620,70 +684,12 @@ X(native_RectRendererComponent_size_get, void, (uint64_t e, float* x, float* y),
     X(native_SpotLightComponent_inner_angle_set, void, (uint64_t e, float v), e, v) \
     X(native_SpotLightComponent_outer_angle_get, float, (uint64_t e), e) \
     X(native_SpotLightComponent_outer_angle_set, void, (uint64_t e, float v), e, v) \
-    X(native_Animation2dComponent_cur_time_duration_get, float, (uint64_t e), e) \
-    X(native_Animation2dComponent_cur_time_duration_set, void, (uint64_t e, float v), e, v) \
-    X(native_Animation2dComponent_speed_get, float, (uint64_t e), e) \
-    X(native_Animation2dComponent_speed_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_zoom_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_zoom_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_fov_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_fov_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_near_plane_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_near_plane_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_far_plane_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_far_plane_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_aspect_ratio_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_aspect_ratio_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_background_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_Camera2dComponent_background_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
-    X(native_CircleRendererComponent_radius_get, float, (uint64_t e), e) \
-    X(native_CircleRendererComponent_radius_set, void, (uint64_t e, float v), e, v) \
-    X(native_CircleRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_CircleRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
-    X(native_CircleRendererComponent_segments_get, uint, (uint64_t e), e) \
-    X(native_CircleRendererComponent_segments_set, void, (uint64_t e, uint v), e, v) \
-    X(native_CircleRendererComponent_thickness_get, float, (uint64_t e), e) \
-    X(native_CircleRendererComponent_thickness_set, void, (uint64_t e, float v), e, v) \
-    X(native_BoxCollider2dComponent_offset_get, void, (uint64_t e, float* x, float* y), e, x, y) \
-    X(native_BoxCollider2dComponent_offset_set, void, (uint64_t e, float x, float y), e, x, y) \
-    X(native_BoxCollider2dComponent_size_get, void, (uint64_t e, float* x, float* y), e, x, y) \
-    X(native_BoxCollider2dComponent_size_set, void, (uint64_t e, float x, float y), e, x, y) \
-    X(native_BoxCollider2dComponent_density_get, float, (uint64_t e), e) \
-    X(native_BoxCollider2dComponent_density_set, void, (uint64_t e, float v), e, v) \
-    X(native_BoxCollider2dComponent_friction_get, float, (uint64_t e), e) \
-    X(native_BoxCollider2dComponent_friction_set, void, (uint64_t e, float v), e, v) \
-    X(native_BoxCollider2dComponent_restitution_get, float, (uint64_t e), e) \
-    X(native_BoxCollider2dComponent_restitution_set, void, (uint64_t e, float v), e, v) \
-    X(native_BoxCollider2dComponent_restitution_threshold_get, float, (uint64_t e), e) \
-    X(native_BoxCollider2dComponent_restitution_threshold_set, void, (uint64_t e, float v), e, v) \
-    X(native_MeshRendererComponent_visible_get, bool, (uint64_t e), e) \
-    X(native_MeshRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
-    X(native_MeshRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
-    X(native_MeshRendererComponent_cast_shadow_set, void, (uint64_t e, bool v), e, v) \
-    X(native_FoliageRendererInstance_position_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
-    X(native_FoliageRendererInstance_position_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
-    X(native_FoliageRendererInstance_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
-    X(native_FoliageRendererInstance_rotation_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
-    X(native_FoliageRendererInstance_scale_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
-    X(native_FoliageRendererInstance_scale_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
-    X(native_FoliageRendererInstance_color_tint_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_FoliageRendererInstance_color_tint_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
-    X(native_FoliageRendererInstance_wind_phase_get, float, (uint64_t e), e) \
-    X(native_FoliageRendererInstance_wind_phase_set, void, (uint64_t e, float v), e, v) \
-    X(native_FoliageRendererInstance_variation_get, float, (uint64_t e), e) \
-    X(native_FoliageRendererInstance_variation_set, void, (uint64_t e, float v), e, v) \
-    X(native_FoliageRendererComponent_visible_get, bool, (uint64_t e), e) \
-    X(native_FoliageRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
-    X(native_FoliageRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
-    X(native_FoliageRendererComponent_cast_shadow_set, void, (uint64_t e, bool v), e, v) \
-    X(native_FoliageRendererComponent_instance_bounds_extent_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
-    X(native_FoliageRendererComponent_instance_bounds_extent_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
-    X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
-    X(native_Rigidbody2dComponent_gravity_scale_set, void, (uint64_t e, float v), e, v) \
-    X(native_Rigidbody2dComponent_fixed_rotation_get, bool, (uint64_t e), e) \
-    X(native_Rigidbody2dComponent_fixed_rotation_set, void, (uint64_t e, bool v), e, v) \
-    X(native_TagComponent_tag_get, const char*, (uint64_t e), e) \
-    X(native_TagComponent_tag_set, void, (uint64_t e, const char* v), e, v) \
+    X(native_RectRendererComponent_size_get, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_RectRendererComponent_size_set, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_RectRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_RectRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_RectRendererComponent_thickness_get, float, (uint64_t e), e) \
+    X(native_RectRendererComponent_thickness_set, void, (uint64_t e, float v), e, v) \
     X(native_LineRendererComponent_direction_get, void, (uint64_t e, float* x, float* y), e, x, y) \
     X(native_LineRendererComponent_direction_set, void, (uint64_t e, float x, float y), e, x, y) \
     X(native_LineRendererComponent_length_get, float, (uint64_t e), e) \
@@ -704,6 +710,8 @@ X(native_RectRendererComponent_size_get, void, (uint64_t e, float* x, float* y),
     X(native_SpriteRendererComponent_depth_set, void, (uint64_t e, float v), e, v) \
     X(native_SpriteRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
     X(native_SpriteRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_TagComponent_tag_get, const char*, (uint64_t e), e) \
+    X(native_TagComponent_tag_set, void, (uint64_t e, const char* v), e, v) \
     X(native_TransformComponent_position_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_TransformComponent_position_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_TransformComponent_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
@@ -714,14 +722,6 @@ X(native_RectRendererComponent_size_get, void, (uint64_t e, float* x, float* y),
     X(native_HierarchyComponent_parent_uuid_set, void, (uint64_t e, uint64_t v), e, v) \
     X(native_HierarchyComponent_child_count_get, int, (uint64_t e), e) \
     X(native_HierarchyComponent_child_count_set, void, (uint64_t e, int v), e, v) \
-    X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_map_width_set, void, (uint64_t e, uint v), e, v) \
-    X(native_TilemapComponent_map_height_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_map_height_set, void, (uint64_t e, uint v), e, v) \
-    X(native_TilemapComponent_tile_width_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_tile_width_set, void, (uint64_t e, uint v), e, v) \
-    X(native_TilemapComponent_tile_height_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_tile_height_set, void, (uint64_t e, uint v), e, v) \
     X(native_TileLayerComponent_layer_name_get, const char*, (uint64_t e), e) \
     X(native_TileLayerComponent_layer_name_set, void, (uint64_t e, const char* v), e, v) \
     X(native_TileLayerComponent_layer_width_get, uint, (uint64_t e), e) \

@@ -85,6 +85,7 @@ namespace dodoe {
         void createDevice();
         void createCommandQueues();
         void createSwapchain(GLFWwindow* window_handle);
+        static UINT GetSwapchainFlags();
         void releaseBackbufferResources();
         void createRTVHeap();
         void createBackbufferRTVs();

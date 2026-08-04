@@ -35,6 +35,8 @@ target_sources(${TARGET_NAME} PRIVATE
 )
 target_compile_definitions(${TARGET_NAME} PRIVATE DODOE_BUILD_DLL)
 
+include(${ENGINE_ROOT_DIR}/scripts/cmake/DodoeBigObj.cmake)
+
 source_group(TREE ${ENGINE_ROOT_DIR}/src FILES ${DODOE_ALL_SOURCES})
 
 target_include_directories(${TARGET_NAME}
