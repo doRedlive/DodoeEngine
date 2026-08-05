@@ -11,7 +11,7 @@ layout(location = 2) in vec3 v_WorldPosition;
 layout(location = 3) flat in uint v_TexIndex;
 layout(location = 4) in vec4 v_ColorTint;
 
-layout(set = 0, binding = 256) uniform MainCameraPassUBO {
+layout(set = 0, binding = 0) uniform MainCameraPassUBO {
     mat4 u_ViewProjection;
     ivec4 u_DrawData;
     vec4 u_MaterialData;
@@ -19,8 +19,8 @@ layout(set = 0, binding = 256) uniform MainCameraPassUBO {
 };
 
 const uint kMaxTextures = 1024u;
-layout(set = 0, binding = 128) uniform sampler u_TextureSampler;
-layout(set = 1, binding = 0) uniform texture2D u_Textures[kMaxTextures];
+layout(set = 1, binding = 0) uniform sampler u_TextureSampler;
+layout(set = 3, binding = 0) uniform texture2D u_Textures[kMaxTextures];
 
 void main()
 {

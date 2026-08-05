@@ -4,9 +4,9 @@ cbuffer CombinePushConstants : register(b0)
     float2 u_ViewportSize;
 };
 
-Texture2D    u_SceneTexture   : register(t0);
-Texture2D    u_ImGuiTexture   : register(t1);
-SamplerState u_TextureSampler : register(s0);
+Texture2D    u_SceneTexture   : register(t0, space2);
+Texture2D    u_ImGuiTexture   : register(t1, space2);
+SamplerState u_TextureSampler : register(s0, space1);
 
 struct PSInput
 {

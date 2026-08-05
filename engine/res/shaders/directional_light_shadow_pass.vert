@@ -10,7 +10,7 @@ layout(location = 6) in vec4 a_Model3;
 layout(location = 7) in vec4 a_InstanceColorTint;
 layout(location = 8) in vec4 a_InstanceParams;
 
-layout(set = 0, binding = 256) uniform DirectionalLightShadowPassUBO {
+layout(set = 0, binding = 0) uniform DirectionalLightShadowPassUBO {
     mat4 u_LightViewProjection;
     vec4 u_TimeData;
 };

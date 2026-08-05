@@ -1,9 +1,9 @@
 // do@Redlive
 // Bindless variant — D3D12 / Vulkan
 
-SamplerState u_TextureSampler : register(s0);
+SamplerState u_TextureSampler : register(s0, space1);
 
-Texture2D u_Textures[] : register(t0);
+Texture2D u_Textures[] : register(t0, space3);
 
 struct PSInput
 {

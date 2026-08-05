@@ -13,16 +13,16 @@ layout(location = 2) in vec3 v_WorldPosition;
 layout(location = 3) flat in uint v_TexIndex;
 layout(location = 4) in vec4 v_ColorTint;
 
-layout(set = 0, binding = 256) uniform MainCameraPassUBO {
+layout(set = 0, binding = 0) uniform MainCameraPassUBO {
     mat4 u_ViewProjection;
     ivec4 u_DrawData;
     vec4 u_MaterialData;
     vec4 u_TimeData;
 };
 
-layout(set = 0, binding = 128) uniform sampler u_TextureSampler;
-layout(set = 1, binding = 0) uniform texture2D u_BaseColorTexture;
-layout(set = 1, binding = 1) uniform texture2D u_MetallicRoughnessTexture;
+layout(set = 1, binding = 0) uniform sampler u_TextureSampler;
+layout(set = 2, binding = 0) uniform texture2D u_BaseColorTexture;
+layout(set = 2, binding = 1) uniform texture2D u_MetallicRoughnessTexture;
 
 void main()
 {

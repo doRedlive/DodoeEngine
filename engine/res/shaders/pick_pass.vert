@@ -11,7 +11,7 @@ layout(location = 7) in uint a_NodeId;
 
 layout(location = 0) flat out uint v_NodeId;
 
-layout(set = 0, binding = 256) uniform PickPassUBO {
+layout(set = 0, binding = 0) uniform PickPassUBO {
     mat4 u_ViewProjection;
 };
 

@@ -40,6 +40,8 @@ namespace dodoe {
 
         ApplicationCommandLineArgs cli_args{};
 
+        FsPath config_file{};
+
         DODOE_API Bool loadFromFile(const FsPath& file_path);
         DODOE_API Bool saveToFile(const FsPath& file_path) const;
     };
@@ -48,6 +50,8 @@ namespace dodoe {
         static Application* m_instance;
         Bool m_running {false};
         ApplicationSpecification m_app_spec{};
+
+        void loadConfigFile();
     protected:
         Scope<SystemContext> m_context{nullptr};
     public:

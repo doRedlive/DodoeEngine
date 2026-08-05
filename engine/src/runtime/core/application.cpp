@@ -8,10 +8,30 @@
 #include "runtime/core/event/event_system.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/async/task_scheduler.h"
+#include "runtime/resource/file/file_system.h"
 
+#include <filesystem>
 #include <fstream>
 
 namespace dodoe {
+
+    namespace {
+
+        FsPath FindConfigFilePath(const ApplicationCommandLineArgs& cli_args) {
+            if (!cli_args.args) return {};
+            for (int i = 0; i < cli_args.argc; ++i) {
+                const StringView arg = cli_args.args[i];
+                if (arg == "--config" && i + 1 < cli_args.argc) {
+                    return FsPath(String(cli_args.args[i + 1]));
+                }
+                if (arg.size() > 9 && arg.substr(0, 9) == "--config=") {
+                    return FsPath(String(arg.substr(9)));
+                }
+            }
+            return {};
+        }
+
+    } // namespace
 
     Application* Application::m_instance = nullptr;
 
@@ -42,7 +62,50 @@ namespace dodoe {
         return true;
     }
 
-    Application::Application(const ApplicationSpecification& spec) : m_app_spec(spec) {
+    void Application::loadConfigFile() {
+        const FsPath cli_path = FindConfigFilePath(m_app_spec.cli_args);
+        if (!cli_path.empty()) {
+            if (std::filesystem::exists(cli_path)) {
+                if (m_app_spec.loadFromFile(cli_path)) {
+                    DO_INFO("Loaded application config from: {}", cli_path.string());
+                } else {
+                    DO_ERROR("Failed to load application config from: {}", cli_path.string());
+                }
+            } else {
+                DO_ERROR("Application config not found: {}", cli_path.string());
+            }
+            return;
+        }
+
+        FsPath config_path = m_app_spec.config_file;
+        if (config_path.empty()) {
+            config_path = FileSystem::GetEngineResPath() / "configs" / "app_config.json";
+        }
+
+        if (std::filesystem::exists(config_path)) {
+            if (m_app_spec.loadFromFile(config_path)) {
+                DO_INFO("Loaded application config from: {}", config_path.string());
+            } else {
+                DO_ERROR("Failed to load application config from: {}", config_path.string());
+            }
+            return;
+        }
+
+        if (!m_app_spec.config_file.empty()) {
+            const FsPath default_path = FileSystem::GetEngineResPath() / "configs" / "app_config.json";
+            if (std::filesystem::exists(default_path)) {
+                if (m_app_spec.loadFromFile(default_path)) {
+                    DO_INFO("Loaded application config from: {}", default_path.string());
+                } else {
+                    DO_ERROR("Failed to load application config from: {}", default_path.string());
+                }
+            }
+        }
+    }
+
+    Application::Application(const ApplicationSpecification& spec) {
+        m_app_spec = spec;
+        loadConfigFile();
         m_context = SystemContext::Create({m_app_spec});
         m_instance = this;
         m_running = true;

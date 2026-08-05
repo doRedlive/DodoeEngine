@@ -15,7 +15,7 @@ layout(location = 0) out vec2 v_UV;
 layout(location = 1) out vec4 v_Color;
 layout(location = 2) flat out uint v_TexIndex;
 
-layout(set = 0, binding = 256) uniform UIVP
+layout(set = 0, binding = 0) uniform UIVP
 {
     mat4 u_ViewProjection;
 };

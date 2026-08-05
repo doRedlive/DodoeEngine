@@ -1,5 +1,5 @@
-Texture2D    uTexture : register(t0);
-SamplerState uSampler : register(s0);
+Texture2D    uTexture : register(t0, space2);
+SamplerState uSampler : register(s0, space1);
 
 struct PSInput
 {

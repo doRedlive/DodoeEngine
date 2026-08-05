@@ -3,8 +3,8 @@ cbuffer ColorGradingPushConstants : register(b0)
     float4 u_Params; // x=exposure, y=saturation, z=contrast, w=gamma
 };
 
-Texture2D    u_InputTexture : register(t0);
-SamplerState u_Sampler      : register(s0);
+Texture2D    u_InputTexture : register(t0, space2);
+SamplerState u_Sampler      : register(s0, space1);
 
 struct PSInput
 {

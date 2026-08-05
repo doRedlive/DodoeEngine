@@ -3,9 +3,9 @@ cbuffer SkyboxPushConstants : register(b0)
     float4x4 u_InvViewProjection;
 };
 
-TextureCube  u_SkyboxTexture : register(t0);
-Texture2D    u_SceneDepth    : register(t1);
-SamplerState u_Sampler       : register(s0);
+TextureCube  u_SkyboxTexture : register(t0, space2);
+Texture2D    u_SceneDepth    : register(t1, space2);
+SamplerState u_Sampler       : register(s0, space1);
 
 struct PSInput
 {

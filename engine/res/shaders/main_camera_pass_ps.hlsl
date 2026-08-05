@@ -6,8 +6,8 @@ cbuffer MainCameraPassUBO : register(b0)
     float4   u_TimeData;
 };
 
-SamplerState u_TextureSampler : register(s0);
-Texture2D u_Textures[] : register(t0);
+SamplerState u_TextureSampler : register(s0, space1);
+Texture2D u_Textures[] : register(t0, space3);
 
 struct PSInput
 {
