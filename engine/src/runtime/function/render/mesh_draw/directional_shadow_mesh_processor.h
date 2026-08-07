@@ -17,18 +17,24 @@ namespace dodoe {
     struct MeshPassRelevance;
 
     class DirectionalShadowMeshProcessor final : public IMeshPassProcessor {
-        GfxBindingLayoutHandle m_binding_layout{};
-        GfxBindingSetHandle m_binding_set{};
-        GfxBufferHandle m_constant_buffer{};
+        GfxBindingLayoutHandle m_global_binding_layout{};
+        GfxBindingLayoutHandle m_view_binding_layout{};
+        GfxBindingSetHandle m_global_binding_set{};
+        GfxBindingSetHandle m_view_binding_set{};
+        GfxBufferHandle m_global_constant_buffer{};
+        GfxBufferHandle m_view_constant_buffer{};
 
     public:
         DirectionalShadowMeshProcessor(BindingLayoutCache& binding_layout_cache,
                                        BindingSetCache& binding_set_cache);
         void reset() override;
 
-        [[nodiscard]] const GfxBindingLayoutHandle& getBindingLayout() const override { return m_binding_layout; }
-        [[nodiscard]] const GfxBindingSetHandle& getBindingSet() const { return m_binding_set; }
-        [[nodiscard]] const GfxBufferHandle& getConstantBuffer() const override { return m_constant_buffer; }
+        [[nodiscard]] const GfxBindingLayoutHandle& getGlobalBindingLayout() const { return m_global_binding_layout; }
+        [[nodiscard]] const GfxBindingLayoutHandle& getViewBindingLayout() const { return m_view_binding_layout; }
+        [[nodiscard]] const GfxBindingSetHandle& getGlobalBindingSet() const { return m_global_binding_set; }
+        [[nodiscard]] const GfxBindingSetHandle& getViewBindingSet() const { return m_view_binding_set; }
+        [[nodiscard]] const GfxBufferHandle& getGlobalConstantBuffer() const { return m_global_constant_buffer; }
+        [[nodiscard]] const GfxBufferHandle& getViewConstantBuffer() const { return m_view_constant_buffer; }
 
         void buildCachedCommands(
             const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,

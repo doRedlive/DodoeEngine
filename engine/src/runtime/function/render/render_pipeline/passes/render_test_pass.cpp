@@ -9,6 +9,7 @@
 
 #include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
@@ -113,8 +114,10 @@ namespace dodoe {
                 const auto binding_layout = binding_layout_cache->getOrCreate(
                     GfxBindingLayoutDesc()
                         .setVisibility(GfxShaderType::Pixel)
-                        .addItem(GfxBindingLayoutItem::Texture_SRV(0))
-                        .addItem(GfxBindingLayoutItem::Sampler(0)));
+                        .setRegisterSpaceIsDescriptorSet(true)
+                        .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                        .addItem(GfxBindingLayoutItem::Texture_SRV(1))
+                        .addItem(GfxBindingLayoutItem::Sampler(9)));
 
                 const auto* shader_library = ctx.getShaderLibrary();
                 if (!shader_library) {
@@ -138,8 +141,8 @@ namespace dodoe {
                 const auto input_layout = input_layout_cache->getOrCreate(attribs, test_vs);
                 const auto binding_set = binding_set_cache->getOrCreate(
                     GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::Texture_SRV(0, test_tex->getRHIHandle()))
-                        .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                        .addItem(GfxBindingSetItem::Texture_SRV(1, test_tex->getRHIHandle()))
+                        .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
                     binding_layout,
                     binding_layout_cache->getLayoutGeneration(binding_layout));
 

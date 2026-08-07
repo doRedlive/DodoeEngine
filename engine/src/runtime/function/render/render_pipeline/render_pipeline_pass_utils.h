@@ -101,4 +101,45 @@ namespace dodoe::rendering_pipeline_utils {
         return pipeline_desc;
     }
 
+    [[nodiscard]] inline GfxGraphicsPipelineDesc BuildFullscreenPipelineDesc(
+        const GfxShaderHandle& vertex_shader,
+        const GfxShaderHandle& pixel_shader,
+        const DynamicArray<GfxBindingLayoutHandle>& binding_layouts,
+        const Bool additive_blend = false)
+    {
+        if (!vertex_shader) {
+            DO_ERROR("BuildFullscreenPipelineDesc: vertex_shader is null!");
+        }
+        if (!pixel_shader) {
+            DO_ERROR("BuildFullscreenPipelineDesc: pixel_shader is null!");
+        }
+        auto pipeline_desc = GfxGraphicsPipelineDesc()
+            .setVertexShader(vertex_shader)
+            .setPixelShader(pixel_shader)
+            .setPrimType(GfxPrimitiveType::TriangleList);
+        for (const auto& layout : binding_layouts) {
+            if (layout) {
+                pipeline_desc.addBindingLayout(layout);
+            }
+        }
+        GfxDepthStencilState depth_stencil_state;
+        depth_stencil_state.disableDepthTest().disableDepthWrite().disableStencil();
+        GfxRasterState raster_state;
+        raster_state.setCullNone();
+        GfxRenderState render_state;
+        render_state.setDepthStencilState(depth_stencil_state);
+        render_state.setRasterState(raster_state);
+        if (additive_blend) {
+            GfxBlendState blend_state;
+            GfxBlendState::RenderTarget blend_target;
+            blend_target.enableBlend()
+                .setSrcBlend(GfxBlendFactor::One)
+                .setDestBlend(GfxBlendFactor::One);
+            blend_state.setRenderTarget(0, blend_target);
+            render_state.setBlendState(blend_state);
+        }
+        pipeline_desc.setRenderState(render_state);
+        return pipeline_desc;
+    }
+
 } // namespace dodoe::rendering_pipeline_utils

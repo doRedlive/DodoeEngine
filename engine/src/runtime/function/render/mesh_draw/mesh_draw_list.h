@@ -13,8 +13,8 @@ namespace dodoe {
         DynamicArray<MeshDrawInstance> cached_instances;
         DynamicArray<MeshDrawInstance> dynamic_instances;
         DynamicArray<MeshDrawCommand> frame_commands;
-        DynamicArray<GBufferMeshDrawShaderData> cached_shader_data;
-        DynamicArray<GBufferMeshDrawShaderData> dynamic_shader_data;
+        DynamicArray<PrimitiveMeshDrawShaderData> cached_shader_data;
+        DynamicArray<PrimitiveMeshDrawShaderData> dynamic_shader_data;
         const DynamicArray<MeshDrawCommand>* cached_commands{nullptr};
 
         void reset() {

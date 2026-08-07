@@ -22,6 +22,7 @@
 #include "runtime/function/render/render_scene/light_scene_info.h"
 #include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/texture/texture.h"
@@ -96,7 +97,9 @@ namespace dodoe {
 
     static GfxGraphicsPipelineDesc MakeGBufferPipelineDesc(const ShaderLibrary& shader_library,
                                                             GfxInputLayoutHandle gbuffer_input_layout,
-                                                            const GfxBindingLayoutHandle& binding_layout,
+                                                            const GfxBindingLayoutHandle& global_binding_layout,
+                                                            const GfxBindingLayoutHandle& view_binding_layout,
+                                                            const GfxBindingLayoutHandle& primitive_binding_layout,
                                                             const GfxBindingLayoutHandle& sampler_binding_layout,
                                                             DescriptorTableManager* descriptor_table,
                                                             BindingLayoutCache* binding_layout_cache) {
@@ -104,22 +107,25 @@ namespace dodoe {
             .setVertexShader(shader_library.getGBufferVertexShader())
             .setPixelShader(shader_library.getGBufferPixelShader())
             .setInputLayout(gbuffer_input_layout)
-            .addBindingLayout(binding_layout)
-            .addBindingLayout(sampler_binding_layout)
+            .addBindingLayout(global_binding_layout)
+            .addBindingLayout(view_binding_layout)
             .setPrimType(GfxPrimitiveType::TriangleList);
         if (RenderSettings::IsBindlessActive()) {
-            if (descriptor_table && descriptor_table->getDescriptorTable()) {
-                pipeline_desc.addBindingLayout(descriptor_table->getDescriptorTable()->getLayout());
-            }
+            pipeline_desc.addBindingLayout(sampler_binding_layout);
         } else if (binding_layout_cache) {
-            auto texture_layout = binding_layout_cache->getOrCreate(
+            auto material_layout = binding_layout_cache->getOrCreate(
                 GfxBindingLayoutDesc()
                     .setVisibility(GfxShaderType::Pixel)
                     .setRegisterSpaceIsDescriptorSet(true)
-                    .setRegisterSpace(2)
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(0))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(1)));
-            pipeline_desc.addBindingLayout(texture_layout);
+                    .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+                    .addItem(GfxBindingLayoutItem::Sampler(1))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
+            pipeline_desc.addBindingLayout(material_layout);
+        }
+        pipeline_desc.addBindingLayout(primitive_binding_layout);
+        if (RenderSettings::IsBindlessActive() && descriptor_table && descriptor_table->getDescriptorTable()) {
+            pipeline_desc.addBindingLayout(descriptor_table->getDescriptorTable()->getLayout());
         }
         GfxDepthStencilState depth_stencil_state;
         depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
@@ -131,12 +137,14 @@ namespace dodoe {
 
     static GfxGraphicsPipelineDesc MakeShadowPipelineDesc(const ShaderLibrary& shader_library,
                                                            GfxInputLayoutHandle shadow_input_layout,
-                                                           const GfxBindingLayoutHandle& binding_layout) {
+                                                           const GfxBindingLayoutHandle& global_binding_layout,
+                                                           const GfxBindingLayoutHandle& view_binding_layout) {
         auto pipeline_desc = GfxGraphicsPipelineDesc()
             .setVertexShader(shader_library.getShadowVertexShader())
             .setPixelShader(shader_library.getShadowPixelShader())
             .setInputLayout(shadow_input_layout)
-            .addBindingLayout(binding_layout)
+            .addBindingLayout(global_binding_layout)
+            .addBindingLayout(view_binding_layout)
             .setPrimType(GfxPrimitiveType::TriangleList);
         GfxDepthStencilState depth_stencil_state;
         depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
@@ -335,7 +343,9 @@ namespace dodoe {
         pso_cache->resolveGraphicsPipeline(
             MeshPassType::GBuffer,
             MakeGBufferPipelineDesc(shader_library, gbuffer_input_layout,
-                m_gbuffer_processor->getBindingLayout(),
+                m_gbuffer_processor->getGlobalBindingLayout(),
+                m_gbuffer_processor->getViewBindingLayout(),
+                m_gbuffer_processor->getPrimitiveBindingLayout(),
                 m_gbuffer_processor->getSamplerBindingLayout(),
                 m_shared_render_service->getDescriptorTable(),
                 m_shared_render_service->getBindingLayoutCache()),
@@ -345,7 +355,8 @@ namespace dodoe {
         pso_cache->resolveGraphicsPipeline(
             MeshPassType::DirectionalShadow,
             MakeShadowPipelineDesc(shader_library, shadow_input_layout,
-                m_shadow_processor->getBindingLayout()),
+                m_shadow_processor->getGlobalBindingLayout(),
+                m_shadow_processor->getViewBindingLayout()),
             shadow_fb_info,
             cmd_list);
 

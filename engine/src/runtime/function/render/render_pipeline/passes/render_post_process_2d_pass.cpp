@@ -18,9 +18,9 @@
 
 namespace dodoe {
 
-    BEGIN_SHADER_PARAMETER_STRUCT(PostProcess2DPassShaderParams)
-        SHADER_PARAMETER(TextureSRV, 0, input)
-        SHADER_PARAMETER(Sampler,    0, sampler)
+    BEGIN_SHADER_PARAMETER_STRUCT(PostProcess2DPassShaderParams, Pass)
+        SHADER_PARAMETER(TextureSRV, 1, input)
+        SHADER_PARAMETER(Sampler, 9, sampler)
     END_SHADER_PARAMETER_STRUCT(func(input); func(sampler);)
 
     struct PostProcess2DPassParameters {
@@ -54,15 +54,15 @@ namespace dodoe {
                 shader_params.input.value = parameters.input;
                 shader_params.sampler.value = GlobalSamplers::screen();
 
-                const auto binding_layout = ShaderBindingReflector<PostProcess2DPassShaderParams>::getOrCreateLayout();
+                const auto binding_layouts = ShaderBindingReflector<PostProcess2DPassShaderParams>::getOrCreateLayouts();
 
-                auto bs = ShaderBindingReflector<PostProcess2DPassShaderParams>::createBindingSetDeferred(
-                    command_list, binding_layout, shader_params,
+                auto binding_sets = ShaderBindingReflector<PostProcess2DPassShaderParams>::createBindingSets(
+                    command_list, binding_layouts, shader_params,
                     [&](auto h) { return ctx.resolveTexture(h); },
                     [&](auto h) { return ctx.resolveBuffer(h); }
                 );
 
-                if (!bs) {
+                if (binding_sets.empty()) {
                     DO_ERROR("PostProcess2DPass: Failed to create binding set");
                     return;
                 }
@@ -71,7 +71,7 @@ namespace dodoe {
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library->getFullscreenVertexShader(),
                         shader_library->getFxaaPixelShader(),
-                        binding_layout
+                        binding_layouts
                     ),
                     ctx.getRenderTargetSignature(),
                     command_list
@@ -84,8 +84,7 @@ namespace dodoe {
 
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
 
-                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, viewport_state);
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }
         );

@@ -1,5 +1,7 @@
 #version 450 core
 
+#include "shader_parameter_sets.glsl"
+
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec4 a_Normal;
 layout(location = 2) in vec2 a_UV;
@@ -10,9 +12,11 @@ layout(location = 6) in vec4 a_Model3;
 layout(location = 7) in vec4 a_InstanceColorTint;
 layout(location = 8) in vec4 a_InstanceParams;
 
-layout(set = 0, binding = 0) uniform DirectionalLightShadowPassUBO {
-    mat4 u_LightViewProjection;
+layout(set = DOE_SET_GLOBAL, binding = DOE_GLOBAL_BINDING_CONSTANTS) uniform GlobalConstants {
     vec4 u_TimeData;
+};
+layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform ViewConstants {
+    mat4 u_LightViewProjection;
 };
 
 vec3 applyFoliageWind(vec3 local_position, vec4 instance_params)

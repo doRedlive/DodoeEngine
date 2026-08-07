@@ -26,7 +26,7 @@ namespace dodoe {
         ResolvedRenderFeatures resolved{};
         const auto& caps = m_device_caps;
 
-        resolved.bindless_active = m_api != RenderBackendApiType::OpenGL && settings.enable_bindless && caps.bindless_supported;
+        resolved.bindless_active = settings.enable_bindless && caps.bindless_supported;
 
         if (settings.enable_gpu_driven) {
             if (!caps.bindless_supported) {

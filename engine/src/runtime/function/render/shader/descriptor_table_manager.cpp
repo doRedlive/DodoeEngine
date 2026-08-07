@@ -5,6 +5,7 @@
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_settings.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 
 namespace dodoe {
 
@@ -20,7 +21,7 @@ namespace dodoe {
         bindless_layout_desc.firstSlot = 0;
         bindless_layout_desc.maxCapacity = 1024;
         bindless_layout_desc.registerSpaces = {
-            GfxBindingLayoutItem::Texture_SRV(3)
+            GfxBindingLayoutItem::Texture_SRV(static_cast<UInt32>(ShaderParameterSet::Bindless))
         };
         auto bindless_layout = GDrawCommandList.getDevice()->createBindlessLayout(bindless_layout_desc);
         descriptor_table_ = GDrawCommandList.getDevice()->createDescriptorTable(bindless_layout);

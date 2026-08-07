@@ -25,11 +25,11 @@ namespace dodoe {
         Matrix4f inv_view_projection{1.0f};
     };
 
-    BEGIN_SHADER_PARAMETER_STRUCT(SkyboxPassShaderParams)
-        ShaderParameter<ShaderParamType::ConstantBuffer, 0, GfxBufferHandle> skybox_cb{};
-        SHADER_PARAMETER_RAWTEX(0, skybox_texture)
-        SHADER_PARAMETER(TextureSRV, 1, depth)
-        SHADER_PARAMETER(Sampler,    0, sampler)
+    BEGIN_SHADER_PARAMETER_STRUCT(SkyboxPassShaderParams, Pass)
+        SHADER_PARAMETER_RAWCB(0, skybox_cb)
+        SHADER_PARAMETER_RAWTEX(1, skybox_texture)
+        SHADER_PARAMETER(TextureSRV, 2, depth)
+        SHADER_PARAMETER(Sampler, 9, sampler)
     END_SHADER_PARAMETER_STRUCT(func(skybox_cb); func(skybox_texture); func(depth); func(sampler);)
 
     struct SkyboxPassParameters {
@@ -104,15 +104,15 @@ namespace dodoe {
                 shader_params.depth.value = parameters.depth;
                 shader_params.sampler.value = GlobalSamplers::screen();
 
-                const auto binding_layout = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayout();
+                const auto binding_layouts = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayouts();
 
-                auto bs = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSetDeferred(
-                    command_list, binding_layout, shader_params,
+                auto binding_sets = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSets(
+                    command_list, binding_layouts, shader_params,
                     [&](auto h) { return ctx.resolveTexture(h); },
                     [&](auto h) { return ctx.resolveBuffer(h); }
                 );
 
-                if (!bs) {
+                if (binding_sets.empty()) {
                     DO_ERROR("SkyboxPass: Failed to create binding set");
                     return;
                 }
@@ -121,7 +121,7 @@ namespace dodoe {
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         ctx.getShaderLibrary()->getFullscreenVertexShader(),
                         ctx.getShaderLibrary()->getSkyboxPixelShader(),
-                        binding_layout
+                        binding_layouts
                     ),
                     ctx.getRenderTargetSignature(),
                     command_list
@@ -132,8 +132,7 @@ namespace dodoe {
                     return;
                 }
 
-                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()));
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()));
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }
         );

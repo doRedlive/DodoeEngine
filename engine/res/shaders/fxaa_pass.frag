@@ -1,10 +1,12 @@
 #version 450
 
+#include "shader_parameter_sets.glsl"
+
 layout(location = 0) in vec2 v_UV;
 layout(location = 0) out vec4 o_Color;
 
-layout(set = 2, binding = 0) uniform texture2D u_InputTexture;
-layout(set = 1, binding = 0) uniform sampler u_Sampler;
+layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) uniform texture2D u_InputTexture;
+layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_SAMPLER) uniform sampler u_Sampler;
 
 vec3 SampleColor(vec2 uv)
 {

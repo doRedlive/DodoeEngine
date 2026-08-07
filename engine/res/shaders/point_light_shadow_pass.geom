@@ -1,5 +1,7 @@
 #version 450 core
 
+#include "shader_parameter_sets.glsl"
+
 const int kMaxPointLightCount = 16;
 const int kMaxPointLightGeomVertices = kMaxPointLightCount * 6;
 
@@ -9,7 +11,7 @@ layout(location = 0) out float out_inv_length;
 layout(location = 1) out vec3 out_inv_length_position_view_space;
 layout(location = 2) out float out_point_light_radius;
 
-layout(set = 0, binding = 0) uniform PointLightShadowPassUBO {
+layout(set = DOE_SET_PRIMITIVE, binding = DOE_PRIMITIVE_BINDING_CONSTANTS) uniform PointLightShadowPassUBO {
     uint point_light_count;
     uint _padding_point_light_count_0;
     uint _padding_point_light_count_1;

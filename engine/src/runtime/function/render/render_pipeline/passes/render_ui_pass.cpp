@@ -160,24 +160,28 @@ namespace dodoe {
                         return;
                     }
 
-                    auto binding_set = command_list.createBindingSet(
+                    auto view_binding_set = command_list.createBindingSet(
                         GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
-                            .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
+                        m_view_binding_layout);
+                    auto material_binding_set = command_list.createBindingSet(
+                        GfxBindingSetDesc()
+                            .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::screen().Get())),
                         m_bindless_binding_layout);
-                    if (!binding_set) {
+                    if (!view_binding_set || !material_binding_set) {
                         DO_ERROR("UIPass: failed to create bindless binding set");
                         return;
                     }
 
                     const auto descriptor_binding_set = create_ref<GfxBindingSet>(
                         cutie::BindingSetHandle(descriptor_manager->getDescriptorTable()));
-                    DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set, descriptor_binding_set};
+                    DynamicArray<GfxBindingSetHandle> binding_sets = {view_binding_set, material_binding_set, descriptor_binding_set};
 
                     pipeline_desc = GfxGraphicsPipelineDesc()
                         .setVertexShader(shader_library->getUIVertexShader())
                         .setPixelShader(shader_library->getUIPixelShaderBindless())
                         .setInputLayout(m_input_layout)
+                        .addBindingLayout(m_view_binding_layout)
                         .addBindingLayout(m_bindless_binding_layout)
                         .addBindingLayout(descriptor_manager->getDescriptorTable()->getLayout())
                         .setPrimType(GfxPrimitiveType::TriangleList);
@@ -222,7 +226,7 @@ namespace dodoe {
                     command_list.commitBarriers();
                     return;
                 } else {
-                    if (!m_array_binding_layout || !shared_service) {
+                    if (!m_view_binding_layout || !m_material_binding_layout || !shared_service) {
                         DO_ERROR("UIPass: array binding layout unavailable");
                         command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                         command_list.commitBarriers();
@@ -272,14 +276,17 @@ namespace dodoe {
                             continue;
                         }
 
-                        auto binding_set = command_list.createBindingSet(
+                        auto view_binding_set = command_list.createBindingSet(
                             GfxBindingSetDesc()
-                                .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
-                                .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get()))
-                                .addItem(GfxBindingSetItem::Texture_SRV(0, tex_handle->getRHIHandle().Get())),
-                            m_array_binding_layout);
+                                .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
+                            m_view_binding_layout);
+                        auto material_binding_set = command_list.createBindingSet(
+                            GfxBindingSetDesc()
+                                .addItem(GfxBindingSetItem::Texture_SRV(2, tex_handle->getRHIHandle().Get()))
+                                .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::screen().Get())),
+                            m_material_binding_layout);
 
-                        if (!binding_set) {
+                        if (!view_binding_set || !material_binding_set) {
                             start = end;
                             continue;
                         }
@@ -289,7 +296,8 @@ namespace dodoe {
                             .setVertexShader(shader_library->getUIVertexShader())
                             .setPixelShader(shader_library->getUIPixelShaderArray())
                             .setInputLayout(m_input_layout)
-                            .addBindingLayout(m_array_binding_layout)
+                            .addBindingLayout(m_view_binding_layout)
+                            .addBindingLayout(m_material_binding_layout)
                             .setPrimType(GfxPrimitiveType::TriangleList)
                             .setRenderState(render_state);
 
@@ -300,7 +308,7 @@ namespace dodoe {
                             continue;
                         }
 
-                        DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
+                        DynamicArray<GfxBindingSetHandle> binding_sets = {view_binding_set, material_binding_set};
                         DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                             GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
                             GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};

@@ -58,60 +58,58 @@ namespace dodoe {
 
     MeshDrawCommand IMeshPassProcessor::BuildDrawCommand(const MeshBatchElement& element,
                                                          const MeshPassType pass_type,
-                                                         const GfxBindingSetHandle& base_binding_set) {
+                                                         const GfxBindingSetHandle& primitive_binding_set) {
         MeshDrawCommand cmd{};
-        cmd.pass_type = pass_type;
-        cmd.binding_sets.push_back(base_binding_set);
-        cmd.vertex_bindings.push_back(
+        cmd.setPassType(pass_type);
+        cmd.setBindingSet(ShaderParameterSet::Primitive, primitive_binding_set);
+        cmd.addVertexBinding(
             GfxVertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
-        cmd.index_binding = GfxIndexBufferBinding()
+        cmd.setIndexBinding(GfxIndexBufferBinding()
             .setBuffer(element.index_buffer->getRHI())
             .setFormat(GfxFormat::R32_UINT)
-            .setOffset(0);
-        cmd.draw_args = GfxDrawArguments()
+            .setOffset(0));
+        cmd.setDrawArguments(GfxDrawArguments()
             .setVertexCount(element.index_count)
             .setInstanceCount(element.instance_count)
             .setStartIndexLocation(element.index_offset)
-            .setStartVertexLocation(element.vertex_offset);
+            .setStartVertexLocation(element.vertex_offset));
         return cmd;
     }
 
     void SubmitMeshDrawCommands(
         const DynamicArray<MeshDrawInstance>& instances,
         const DynamicArray<MeshDrawCommand>& commands,
+        const DynamicArray<PrimitiveMeshDrawShaderData>& shader_data,
+        const GfxBufferHandle& primitive_cb,
         const GfxFramebufferHandle& framebuffer,
         const GfxViewportState& viewport_state,
         const GfxBufferHandle& primitive_scene_buffer,
-        const DynamicArray<GfxBindingSetHandle>& extra_binding_sets,
         DrawCommandList& command_list)
     {
         if (instances.empty()) return;
 
+        ShaderParameterBinder binder;
         for (const auto& instance : instances) {
             DO_ASSERT(instance.cmd_index < commands.size(),
                 "SubmitMeshDrawCommands cmd_index out of range");
             const auto& cmd = commands[instance.cmd_index];
 
-            if (!cmd.pipeline) continue;
+            if (!cmd.getPipeline()) continue;
+
+            if (primitive_cb && instance.hasShaderData() &&
+                instance.shader_data_index < shader_data.size()) {
+                const auto& data = shader_data[instance.shader_data_index];
+                command_list.writeBuffer(primitive_cb, &data, sizeof(data));
+            }
 
             auto graphics_state = GfxGraphicsState()
                 .setFramebuffer(framebuffer->getRHI())
                 .setViewport(viewport_state)
-                .setPipeline(cmd.pipeline->getRHIHandle());
+                .setPipeline(cmd.getPipeline()->getRHIHandle());
 
-            for (const auto& binding_set : cmd.binding_sets) {
-                if (binding_set && binding_set->isRHIReady()) {
-                    graphics_state.addBindingSet(binding_set->getRHIHandle());
-                }
-            }
+            binder.bind(graphics_state, cmd.getBindingSets());
 
-            for (const auto& extra_binding : extra_binding_sets) {
-                if (extra_binding && extra_binding->isRHIReady()) {
-                    graphics_state.addBindingSet(extra_binding->getRHIHandle());
-                }
-            }
-
-            for (const auto& vertex_binding : cmd.vertex_bindings) {
+            for (const auto& vertex_binding : cmd.getVertexBindings()) {
                 graphics_state.addVertexBuffer(vertex_binding);
             }
             if (primitive_scene_buffer) {
@@ -123,9 +121,9 @@ namespace dodoe {
                 );
             }
 
-            graphics_state.setIndexBuffer(cmd.index_binding);
+            graphics_state.setIndexBuffer(cmd.getIndexBinding());
             command_list.setGraphicsState(graphics_state);
-            command_list.drawIndexed(cmd.draw_args);
+            command_list.drawIndexed(cmd.getDrawArguments());
         }
     }
 

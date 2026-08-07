@@ -11,8 +11,9 @@
 namespace dodoe {
 
     class UIPass : public IRenderPass {
+        GfxBindingLayoutHandle m_view_binding_layout{};
         GfxBindingLayoutHandle m_bindless_binding_layout{};
-        GfxBindingLayoutHandle m_array_binding_layout{};
+        GfxBindingLayoutHandle m_material_binding_layout{};
         GfxInputLayoutHandle m_input_layout{};
 
     public:
@@ -20,11 +21,13 @@ namespace dodoe {
         using Consumes = TypeList<SceneColorKey>;
 
         UIPass() = default;
-        UIPass(GfxBindingLayoutHandle bindless_binding_layout,
-               GfxBindingLayoutHandle array_binding_layout,
+        UIPass(GfxBindingLayoutHandle view_binding_layout,
+               GfxBindingLayoutHandle bindless_binding_layout,
+               GfxBindingLayoutHandle material_binding_layout,
                GfxInputLayoutHandle input_layout)
-            : m_bindless_binding_layout(std::move(bindless_binding_layout))
-            , m_array_binding_layout(std::move(array_binding_layout))
+            : m_view_binding_layout(std::move(view_binding_layout))
+            , m_bindless_binding_layout(std::move(bindless_binding_layout))
+            , m_material_binding_layout(std::move(material_binding_layout))
             , m_input_layout(std::move(input_layout)) {}
 
         RenderPhase getPhase() const override { return RenderPhase::UI; }

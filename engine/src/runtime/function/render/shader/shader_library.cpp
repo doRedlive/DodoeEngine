@@ -5,6 +5,28 @@
 
 namespace dodoe {
 
+    static DynamicArray<Char> InlineShaderIncludes(const DynamicArray<Char>& source) {
+        const String marker = "#include \"shader_parameter_sets.glsl\"";
+        const String text(source.begin(), source.end());
+        const Size_t marker_pos = text.find(marker);
+        if (marker_pos == String::npos) {
+            return source;
+        }
+
+        String result;
+        result.reserve(text.size() + 2048);
+        result.append(text, 0, marker_pos);
+
+        const auto include_path = FileSystem::GetEngineResPath() / "shaders" / "shader_parameter_sets.glsl";
+        std::ifstream include_file(include_path);
+        if (include_file.is_open()) {
+            result.append((std::istreambuf_iterator<char>(include_file)), std::istreambuf_iterator<char>());
+        }
+
+        result.append(text, marker_pos + marker.size(), String::npos);
+        return DynamicArray<Char>(result.begin(), result.end());
+    }
+
     Bool ShaderLibrary::initialize(const ShaderLibraryCreateInfo& info) {
         if (!info.gfx_context) {
             return false;
@@ -51,6 +73,9 @@ namespace dodoe {
             if (source.empty()) {
                 DO_ERROR("ShaderLibrary::initialize failed to read shader file: {}", path);
                 continue;
+            }
+            if (use_glsl_source) {
+                source = InlineShaderIncludes(source);
             }
 
             String debug_name = "ShaderLibrary " + entry.name;

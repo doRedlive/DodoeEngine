@@ -1,5 +1,7 @@
 #version 450 core
 
+#include "shader_parameter_sets.glsl"
+
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec4 a_Normal;
 layout(location = 2) in vec2 a_UV;
@@ -11,7 +13,7 @@ layout(location = 7) in uint a_NodeId;
 
 layout(location = 0) flat out uint v_NodeId;
 
-layout(set = 0, binding = 0) uniform PickPassUBO {
+layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform PickPassUBO {
     mat4 u_ViewProjection;
 };
 

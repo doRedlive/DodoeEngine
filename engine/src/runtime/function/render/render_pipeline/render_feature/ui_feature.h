@@ -10,8 +10,9 @@
 namespace dodoe {
 
     class UIFeature final : public IRenderFeature {
+        GfxBindingLayoutHandle m_view_binding_layout{};
         GfxBindingLayoutHandle m_bindless_binding_layout{};
-        GfxBindingLayoutHandle m_array_binding_layout{};
+        GfxBindingLayoutHandle m_material_binding_layout{};
         GfxInputLayoutHandle m_input_layout{};
 
     public:
@@ -20,8 +21,9 @@ namespace dodoe {
 
         void collectPasses(PassCollector& collector) override;
 
+        [[nodiscard]] GfxBindingLayoutHandle getViewBindingLayout() const { return m_view_binding_layout; }
         [[nodiscard]] GfxBindingLayoutHandle getBindlessBindingLayout() const { return m_bindless_binding_layout; }
-        [[nodiscard]] GfxBindingLayoutHandle getArrayBindingLayout() const { return m_array_binding_layout; }
+        [[nodiscard]] GfxBindingLayoutHandle getMaterialBindingLayout() const { return m_material_binding_layout; }
         [[nodiscard]] GfxInputLayoutHandle getInputLayout() const { return m_input_layout; }
     };
 

@@ -24,11 +24,11 @@ namespace dodoe {
         float viewport_size[2]{};
     };
 
-    BEGIN_SHADER_PARAMETER_STRUCT(PresentPassShaderParams)
-        ShaderParameter<ShaderParamType::PushConstants, 0, PresentViewportCB> viewport{};
-        SHADER_PARAMETER(TextureSRV, 0, scene_color)
-        SHADER_PARAMETER(TextureSRV, 1, imgui_color)
-        SHADER_PARAMETER(Sampler,    0, sampler)
+    BEGIN_SHADER_PARAMETER_STRUCT(PresentPassShaderParams, Pass)
+        SHADER_PARAMETER_PUSH_CONSTANTS(0, PresentViewportCB, viewport)
+        SHADER_PARAMETER(TextureSRV, 1, scene_color)
+        SHADER_PARAMETER(TextureSRV, 2, imgui_color)
+        SHADER_PARAMETER(Sampler, 9, sampler)
     END_SHADER_PARAMETER_STRUCT(func(viewport); func(scene_color); func(imgui_color); func(sampler);)
 
     struct PresentPassParameters {
@@ -65,15 +65,15 @@ namespace dodoe {
                 shader_params.imgui_color.value = parameters.imgui_color;
                 shader_params.sampler.value = GlobalSamplers::screen();
 
-                const auto binding_layout = ShaderBindingReflector<PresentPassShaderParams>::getOrCreateLayout();
+                const auto binding_layouts = ShaderBindingReflector<PresentPassShaderParams>::getOrCreateLayouts();
 
-                auto bs = ShaderBindingReflector<PresentPassShaderParams>::createBindingSetDeferred(
-                    command_list, binding_layout, shader_params,
+                auto binding_sets = ShaderBindingReflector<PresentPassShaderParams>::createBindingSets(
+                    command_list, binding_layouts, shader_params,
                     [&](auto h) { return ctx.resolveTexture(h); },
                     [&](auto h) { return ctx.resolveBuffer(h); }
                 );
 
-                if (!bs) {
+                if (binding_sets.empty()) {
                     DO_ERROR("PresentPass: Failed to create binding set");
                     return;
                 }
@@ -82,15 +82,14 @@ namespace dodoe {
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         ctx.getShaderLibrary()->getFullscreenVertexShader(),
                         ctx.getShaderLibrary()->getPresentPixelShader(),
-                        binding_layout
+                        binding_layouts
                     ),
                     ctx.getRenderTargetSignature(),
                     command_list
                 );
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), swapchain_extent);
 
-                DynamicArray<GfxBindingSetHandle> bs_arr = {bs};
-                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, viewport_state);
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
                 command_list.setPushConstants(viewport_data);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }

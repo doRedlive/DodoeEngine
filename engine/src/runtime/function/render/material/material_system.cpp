@@ -2,6 +2,7 @@
 
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/texture/texture_manager.h"
@@ -271,12 +272,16 @@ namespace dodoe {
             auto texture_layout = m_binding_layout_cache->getOrCreate(
                 GfxBindingLayoutDesc()
                     .setVisibility(GfxShaderType::Pixel)
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(0))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(1)));
+                    .setRegisterSpaceIsDescriptorSet(true)
+                    .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+                    .addItem(GfxBindingLayoutItem::Sampler(1))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
 
             GfxBindingSetDesc set_desc;
-            set_desc.addItem(GfxBindingSetItem::Texture_SRV(0, inst.textures[0]->getRHIHandle()));
-            set_desc.addItem(GfxBindingSetItem::Texture_SRV(1,
+            set_desc.addItem(GfxBindingSetItem::Sampler(1, inst.sampler));
+            set_desc.addItem(GfxBindingSetItem::Texture_SRV(2, inst.textures[0]->getRHIHandle()));
+            set_desc.addItem(GfxBindingSetItem::Texture_SRV(3,
                 (inst.textures.size() > 1 ? inst.textures[1] : inst.textures[0])->getRHIHandle()));
             inst.texture_binding_set = m_binding_set_cache->getOrCreate(
                 set_desc,

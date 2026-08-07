@@ -64,7 +64,7 @@ namespace dodoe {
                     .setDebugName("RDG GizmoIB");
                 parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer"));
             },
-            [](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [this](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
                 const auto ib = ctx.resolveBuffer(parameters.index_buffer);
 
@@ -75,7 +75,7 @@ namespace dodoe {
 
                 const auto* shader_library = ctx.getShaderLibrary();
                 const auto* pso_cache = ctx.getPipelineStateCache();
-                if (!shader_library || !pso_cache) {
+                if (!shader_library || !pso_cache || !m_binding_layout) {
                     return;
                 }
 
@@ -110,6 +110,7 @@ namespace dodoe {
                     auto pipeline_desc = GfxGraphicsPipelineDesc()
                         .setVertexShader(vs)
                         .setPixelShader(ps)
+                        .addBindingLayout(m_binding_layout)
                         .setPrimType(cmd.topology);
                     auto pipeline = pso_cache->resolveGraphicsPipeline(
                         pipeline_desc, ctx.getRenderTargetSignature(), command_list);

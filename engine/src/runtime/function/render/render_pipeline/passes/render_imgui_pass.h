@@ -11,6 +11,7 @@ namespace dodoe {
 
 	class ImGuiPass : public IRenderPass {
 	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingLayoutHandle m_push_layout{};
 	    GfxBindingSetHandle m_font_binding_set{};
 	    GfxInputLayoutHandle m_input_layout{};
 
@@ -26,9 +27,11 @@ namespace dodoe {
 
 	    ImGuiPass() = default;
 	    ImGuiPass(GfxBindingLayoutHandle binding_layout,
+	              GfxBindingLayoutHandle push_layout,
 	              GfxBindingSetHandle font_binding_set,
 	              GfxInputLayoutHandle input_layout)
 	        : m_binding_layout(std::move(binding_layout))
+	        , m_push_layout(std::move(push_layout))
 	        , m_font_binding_set(std::move(font_binding_set))
 	        , m_input_layout(std::move(input_layout)) {}
 

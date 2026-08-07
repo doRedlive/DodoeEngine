@@ -17,6 +17,7 @@
 #include "runtime/function/render/pipeline/pipeline_state_cache.h"
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/core/math/math.h"
 
 #include <cstring>
@@ -58,14 +59,16 @@ namespace dodoe {
         const auto binding_layout = binding_layout_cache->getOrCreate(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::Pixel)
+                .setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
                 .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
-                .addItem(GfxBindingLayoutItem::Sampler(0))
-                .addItem(GfxBindingLayoutItem::Texture_SRV(0))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(1))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(2))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(3))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(4))
-                .addItem(GfxBindingLayoutItem::Texture_SRV(5)));
+                .addItem(GfxBindingLayoutItem::Texture_SRV(5))
+                .addItem(GfxBindingLayoutItem::Texture_SRV(6))
+                .addItem(GfxBindingLayoutItem::Sampler(9)));
 
         graph.addPass<DeferredLightPassParameters>(
             "DeferredLightPass",
@@ -201,15 +204,15 @@ namespace dodoe {
                             .addItem(GfxBindingSetItem::ConstantBuffer(
                                 0, allocation.buffer->getRHIHandle().Get(),
                                 GfxBufferRange(allocation.offset, allocation.size)))
-                            .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(0, albedo_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(1, normal_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(2, position_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(3, shadow_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(4, material_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(1, albedo_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(2, normal_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(3, position_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(4, shadow_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(5, material_handle->getRHIHandle().Get()))
                             .addItem(GfxBindingSetItem::Texture_SRV(
-                                5, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
-                                GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube)),
+                                6, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
+                                GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
+                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
                         binding_layout);
                     if (!binding_set) {
                         DO_ERROR("DeferredLightPass: failed to create binding set");

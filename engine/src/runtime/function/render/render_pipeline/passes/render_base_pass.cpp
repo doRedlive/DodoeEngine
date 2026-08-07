@@ -30,7 +30,6 @@ namespace dodoe {
         RenderGraphTextureHandle material{};
         RenderGraphTextureHandle depth{};
         RenderGraphBufferHandle primitive_scene_buffer{};
-        RenderGraphBufferHandle constant_buffer{};
         RenderTargetHandle* gbuffer_rt{nullptr};
     };
 
@@ -41,7 +40,7 @@ namespace dodoe {
         graph.addPass<GBufferPassParameters>(
             "GBufferPass",
             RenderGraphPassFlags::Raster,
-            [view = &context.view, imports = context.graph_imports, processor = m_mesh_processor]
+            [view = &context.view, imports = context.graph_imports]
             (RenderGraphPassBuilder& b, GBufferPassParameters& p) {
                 const auto* mesh_ext = view->getExtension<MeshViewExtension>();
                 const Size_t visible_instance_count = mesh_ext ? mesh_ext->instance_scene_data.size() : 0;
@@ -76,8 +75,6 @@ namespace dodoe {
                     .setDebugName("RDG BasePass PrimitiveSceneBuffer");
                 p.primitive_scene_buffer = b.write(b.createTransientBuffer(primitive_scene_buffer_desc, "BasePrimitiveSceneBuffer"));
 
-                p.constant_buffer = b.importBuffer(processor->getConstantBuffer(), "GBufferConstantBuffer");
-
                 SceneTextures gbuffer;
                 gbuffer.albedo   = p.albedo;
                 gbuffer.normal   = p.normal;
@@ -100,20 +97,22 @@ namespace dodoe {
                 command_list.writeBuffer(resolved_psb, instance_data.data(), instance_data.size() * sizeof(InstanceSceneData));
                 command_list.setBufferState(resolved_psb, GfxResourceStates::VertexBuffer);
 
+                const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
+                command_list.writeBuffer(processor->getGlobalConstantBuffer(), &global_data, sizeof(global_data));
+                const ViewMeshShaderData view_data{ctx.getView()->getViewProjectionMatrix()};
+                command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
+
                 auto* feature = static_cast<BaseSceneFeature*>(m_owning_feature);
                 DO_ASSERT(feature != nullptr, "GBufferPass owning feature is null");
                 const auto& draw_list = feature->getGBufferDrawLists()[ctx.getViewIndex()];
 
-                DynamicArray<GfxBindingSetHandle> extra_bindings;
-                if (RenderSettings::IsBindlessActive() && processor->getDescriptorBindingSet()) {
-                    extra_bindings.push_back(processor->getDescriptorBindingSet());
-                }
-
                 const auto fb = ctx.getFramebuffer();
                 SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    fb, viewport_state, resolved_psb, extra_bindings, command_list);
+                    draw_list.cached_shader_data, processor->getPrimitiveConstantBuffer(),
+                    fb, viewport_state, resolved_psb, command_list);
                 SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    fb, viewport_state, resolved_psb, extra_bindings, command_list);
+                    draw_list.dynamic_shader_data, processor->getPrimitiveConstantBuffer(),
+                    fb, viewport_state, resolved_psb, command_list);
             }
         );
     }
@@ -121,7 +120,6 @@ namespace dodoe {
     struct ShadowPassParameters {
         RenderGraphTextureHandle shadow_map{};
         RenderGraphBufferHandle primitive_scene_buffer{};
-        RenderGraphBufferHandle constant_buffer{};
         RenderTargetHandle* shadow_rt{nullptr};
     };
 
@@ -132,7 +130,7 @@ namespace dodoe {
         graph.addPass<ShadowPassParameters>(
             "DirectionalShadowPass",
             RenderGraphPassFlags::Raster,
-            [view = &context.view, imports = context.graph_imports, processor = m_mesh_processor]
+            [view = &context.view, imports = context.graph_imports]
             (RenderGraphPassBuilder& pass_builder, ShadowPassParameters& parameters) {
                 const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
                 DO_ASSERT(scene_textures, "DirectionalShadowPass scene textures are missing");
@@ -147,7 +145,6 @@ namespace dodoe {
                     parameters.shadow_rt->getDepthTexture(), "ShadowMap"), depth_attach);
                 parameters.primitive_scene_buffer = pass_builder.read(scene_textures->instance_scene_data);
 
-                parameters.constant_buffer = pass_builder.importBuffer(processor->getConstantBuffer(), "DirectionalShadowConstantBuffer");
                 pass_builder.blackboard().set<ShadowMapKey>(parameters.shadow_map);
             },
             [this, processor = m_mesh_processor](const ShadowPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
@@ -160,14 +157,19 @@ namespace dodoe {
 
                 const auto resolved_psb = ctx.resolveBuffer(parameters.primitive_scene_buffer);
 
+                const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
+                command_list.writeBuffer(processor->getGlobalConstantBuffer(), &global_data, sizeof(global_data));
+                const ViewMeshShaderData view_data{mesh_ext->directional_shadow_view_projection};
+                command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
+
                 auto* feature = static_cast<BaseSceneFeature*>(m_owning_feature);
                 const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];
 
                 const auto fb = ctx.getFramebuffer();
                 SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    fb, viewport_state, resolved_psb, {}, command_list);
+                    {}, {}, fb, viewport_state, resolved_psb, command_list);
                 SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    fb, viewport_state, resolved_psb, {}, command_list);
+                    {}, {}, fb, viewport_state, resolved_psb, command_list);
             }
         );
     }

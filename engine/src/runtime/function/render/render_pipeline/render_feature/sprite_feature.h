@@ -13,7 +13,7 @@ namespace dodoe {
 	class SpriteFeature final : public IRenderFeature {
 	    GfxBindingLayoutHandle m_cb_binding_layout{};
 	    GfxBindingLayoutHandle m_sampler_binding_layout{};
-	    GfxBindingLayoutHandle m_texture_binding_layout{};
+	    GfxBindingLayoutHandle m_material_binding_layout{};
 	    GfxInputLayoutHandle m_input_layout{};
 
 	public:
@@ -24,7 +24,7 @@ namespace dodoe {
 
 	    [[nodiscard]] GfxBindingLayoutHandle getCbBindingLayout() const { return m_cb_binding_layout; }
 	    [[nodiscard]] GfxBindingLayoutHandle getSamplerBindingLayout() const { return m_sampler_binding_layout; }
-	    [[nodiscard]] GfxBindingLayoutHandle getTextureBindingLayout() const { return m_texture_binding_layout; }
+	    [[nodiscard]] GfxBindingLayoutHandle getMaterialBindingLayout() const { return m_material_binding_layout; }
 	    [[nodiscard]] GfxInputLayoutHandle getInputLayout() const { return m_input_layout; }
 	};
 

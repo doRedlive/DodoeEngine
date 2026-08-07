@@ -2,6 +2,8 @@
 
 // UI vertex shader — instance-drawn quads with position/size/uv/color
 
+#include "shader_parameter_sets.glsl"
+
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec2 a_UV;
 layout(location = 2) in vec4 a_Color;
@@ -15,7 +17,7 @@ layout(location = 0) out vec2 v_UV;
 layout(location = 1) out vec4 v_Color;
 layout(location = 2) flat out uint v_TexIndex;
 
-layout(set = 0, binding = 0) uniform UIVP
+layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform UIVP
 {
     mat4 u_ViewProjection;
 };

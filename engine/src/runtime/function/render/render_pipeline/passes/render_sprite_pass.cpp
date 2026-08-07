@@ -177,7 +177,7 @@ namespace dodoe {
                         m_cb_binding_layout);
                     const auto sampler_binding_set = command_list.createBindingSet(
                         GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                            .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::screen().Get())),
                         m_sampler_binding_layout);
                     if (!cb_binding_set || !sampler_binding_set) {
                         DO_ERROR("SpritePass: failed to create bindless binding sets");
@@ -236,7 +236,7 @@ namespace dodoe {
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
 
                 } else {
-                    if (!m_cb_binding_layout || !m_sampler_binding_layout || !m_texture_binding_layout || !shared_service) {
+                    if (!m_cb_binding_layout || !m_material_binding_layout || !shared_service) {
                         DO_ERROR("SpritePass: array binding layout unavailable");
                         command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                         command_list.commitBarriers();
@@ -296,16 +296,13 @@ namespace dodoe {
                             GfxBindingSetDesc()
                                 .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
                             m_cb_binding_layout);
-                        auto sampler_binding_set = command_list.createBindingSet(
+                        auto material_binding_set = command_list.createBindingSet(
                             GfxBindingSetDesc()
-                                .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
-                            m_sampler_binding_layout);
-                        auto tex_binding_set = command_list.createBindingSet(
-                            GfxBindingSetDesc()
-                                .addItem(GfxBindingSetItem::Texture_SRV(0, tex_handle->getRHIHandle().Get())),
-                            m_texture_binding_layout);
+                                .addItem(GfxBindingSetItem::Texture_SRV(2, tex_handle->getRHIHandle().Get()))
+                                .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::screen().Get())),
+                            m_material_binding_layout);
 
-                        if (!cb_binding_set || !sampler_binding_set || !tex_binding_set) {
+                        if (!cb_binding_set || !material_binding_set) {
                             start = end;
                             continue;
                         }
@@ -316,8 +313,7 @@ namespace dodoe {
                             .setPixelShader(shader_library->getSpritePixelShaderTraditional())
                             .setInputLayout(m_input_layout)
                             .addBindingLayout(m_cb_binding_layout)
-                            .addBindingLayout(m_sampler_binding_layout)
-                            .addBindingLayout(m_texture_binding_layout)
+                            .addBindingLayout(m_material_binding_layout)
                             .setPrimType(GfxPrimitiveType::TriangleList)
                             .setRenderState(render_state);
 
@@ -328,7 +324,7 @@ namespace dodoe {
                             continue;
                         }
 
-                        DynamicArray<GfxBindingSetHandle> binding_sets = {cb_binding_set, sampler_binding_set, tex_binding_set};
+                        DynamicArray<GfxBindingSetHandle> binding_sets = {cb_binding_set, material_binding_set};
                         DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                             GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
                             GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};

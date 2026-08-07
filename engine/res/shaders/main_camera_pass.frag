@@ -1,5 +1,7 @@
 #version 450 core
 
+#include "shader_parameter_sets.glsl"
+
 layout(location = 0) out vec4 o_Albedo;
 layout(location = 1) out vec4 o_Normal;
 layout(location = 2) out vec4 o_Position;
@@ -11,16 +13,20 @@ layout(location = 2) in vec3 v_WorldPosition;
 layout(location = 3) flat in uint v_TexIndex;
 layout(location = 4) in vec4 v_ColorTint;
 
-layout(set = 0, binding = 0) uniform MainCameraPassUBO {
+layout(set = DOE_SET_GLOBAL, binding = DOE_GLOBAL_BINDING_CONSTANTS) uniform GlobalConstants {
+    vec4 u_TimeData;
+};
+layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform ViewConstants {
     mat4 u_ViewProjection;
+};
+layout(set = DOE_SET_PRIMITIVE, binding = DOE_PRIMITIVE_BINDING_CONSTANTS) uniform PrimitiveConstants {
     ivec4 u_DrawData;
     vec4 u_MaterialData;
-    vec4 u_TimeData;
 };
 
 const uint kMaxTextures = 1024u;
-layout(set = 1, binding = 0) uniform sampler u_TextureSampler;
-layout(set = 3, binding = 0) uniform texture2D u_Textures[kMaxTextures];
+layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_SAMPLER) uniform sampler u_TextureSampler;
+layout(set = DOE_SET_BINDLESS, binding = DOE_BINDLESS_BINDING_TEXTURES) uniform texture2D u_Textures[kMaxTextures];
 
 void main()
 {

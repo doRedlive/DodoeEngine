@@ -11,6 +11,12 @@ namespace dodoe {
         Size_t HashBindingLayoutDesc(const GfxBindingLayoutDesc& desc) {
             Size_t h = 0;
             hash_combine(h, static_cast<Size_t>(desc.visibility));
+            hash_combine(h, static_cast<Size_t>(desc.registerSpace));
+            hash_combine(h, static_cast<Bool>(desc.registerSpaceIsDescriptorSet));
+            hash_combine(h, desc.bindingOffsets.shaderResource);
+            hash_combine(h, desc.bindingOffsets.sampler);
+            hash_combine(h, desc.bindingOffsets.constantBuffer);
+            hash_combine(h, desc.bindingOffsets.unorderedAccess);
             hash_combine(h, desc.bindings.size());
             for (Size_t i = 0; i < desc.bindings.size(); ++i) {
                 hash_combine(h, static_cast<Size_t>(desc.bindings[i].type));

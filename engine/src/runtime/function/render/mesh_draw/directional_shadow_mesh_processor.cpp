@@ -8,6 +8,7 @@
 #include "mesh_draw_list.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 
 namespace dodoe {
     namespace {
@@ -16,30 +17,53 @@ namespace dodoe {
 
     DirectionalShadowMeshProcessor::DirectionalShadowMeshProcessor(BindingLayoutCache& binding_layout_cache,
                                                                      BindingSetCache& binding_set_cache) {
-        m_binding_layout = binding_layout_cache.getOrCreate(
+        m_global_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
                 .setRegisterSpaceIsDescriptorSet(true)
-                .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Global))
+                .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(shader_bindings::kGlobalBindingConstants))
         );
-        m_constant_buffer = GDrawCommandList.createBuffer(
+        m_view_binding_layout = binding_layout_cache.getOrCreate(
+            GfxBindingLayoutDesc()
+                .setVisibility(GfxShaderType::All)
+                .setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::View))
+                .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(shader_bindings::kViewBindingConstants))
+        );
+        m_global_constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
-                .setByteSize(static_cast<UInt32>(sizeof(Matrix4f) + sizeof(Vector4f)))
+                .setByteSize(static_cast<UInt32>(sizeof(GlobalMeshShaderData)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("DirectionalShadowMeshProcessor ConstantBuffer"));
-        m_binding_set = binding_set_cache.getOrCreate(
-            GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(0, m_constant_buffer->getRHIHandle())),
-            m_binding_layout,
-            binding_layout_cache.getLayoutGeneration(m_binding_layout)
+                .setDebugName("DirectionalShadowMeshProcessor Global ConstantBuffer"));
+        m_view_constant_buffer = GDrawCommandList.createBuffer(
+            GfxBufferDesc()
+                .setByteSize(static_cast<UInt32>(sizeof(ViewMeshShaderData)))
+                .setIsConstantBuffer(true)
+                .setIsVolatile(true)
+                .setMaxVersions(kVolatileConstantBufferVersions)
+                .setDebugName("DirectionalShadowMeshProcessor View ConstantBuffer"));
+        m_global_binding_set = binding_set_cache.getOrCreate(
+            GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kGlobalBindingConstants, m_global_constant_buffer->getRHIHandle())),
+            m_global_binding_layout,
+            binding_layout_cache.getLayoutGeneration(m_global_binding_layout)
+        );
+        m_view_binding_set = binding_set_cache.getOrCreate(
+            GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle())),
+            m_view_binding_layout,
+            binding_layout_cache.getLayoutGeneration(m_view_binding_layout)
         );
     }
 
     void DirectionalShadowMeshProcessor::reset() {
-        m_constant_buffer = nullptr;
-        m_binding_set = nullptr;
-        m_binding_layout = nullptr;
+        m_global_constant_buffer = nullptr;
+        m_view_constant_buffer = nullptr;
+        m_global_binding_set = nullptr;
+        m_view_binding_set = nullptr;
+        m_global_binding_layout = nullptr;
+        m_view_binding_layout = nullptr;
     }
 
     void DirectionalShadowMeshProcessor::buildCachedCommands(
@@ -82,8 +106,10 @@ namespace dodoe {
                 const auto cache_key = CacheHashUtils::MakeCacheKey(
                     element, batch.material_instance, MeshPassType::DirectionalShadow);
 
-                const UInt32 cmd_index = cache.findOrCreate(cache_key,
-                    BuildDrawCommand(element, MeshPassType::DirectionalShadow, m_binding_set));
+                auto cmd = BuildDrawCommand(element, MeshPassType::DirectionalShadow, GfxBindingSetHandle{});
+                cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
+                cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
+                const UInt32 cmd_index = cache.findOrCreate(cache_key, std::move(cmd));
 
                 MeshDrawInstance instance{};
                 instance.cmd_index = cmd_index;
@@ -136,9 +162,11 @@ namespace dodoe {
                     continue;
                 }
 
+                auto cmd = BuildDrawCommand(element, MeshPassType::DirectionalShadow, GfxBindingSetHandle{});
+                cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
+                cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
                 const UInt32 cmd_index = static_cast<UInt32>(local_commands.size());
-                local_commands.push_back(
-                    BuildDrawCommand(element, MeshPassType::DirectionalShadow, m_binding_set));
+                local_commands.push_back(std::move(cmd));
 
                 MeshDrawInstance instance{};
                 instance.cmd_index = cmd_index;

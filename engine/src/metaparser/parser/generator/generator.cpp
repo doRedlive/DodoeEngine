@@ -120,7 +120,7 @@ namespace Generator
             filed_define.set("class_field_type_token", mapFieldTypeToken(field->m_type));
 
             Mustache::data attr_defines(Mustache::data::type::list);
-            for (const auto& [key, value] : field->m_meta_data.getProperties())
+            for (const auto& [key, value] : field->getMetaData().getProperties())
             {
                 Mustache::data attr_def;
                 attr_def.set("attr_key", key);

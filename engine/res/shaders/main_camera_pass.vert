@@ -1,5 +1,7 @@
 #version 450 core
 
+#include "shader_parameter_sets.glsl"
+
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec4 a_Normal;
 layout(location = 2) in vec2 a_UV;
@@ -16,11 +18,15 @@ layout(location = 2) out vec3 v_WorldPosition;
 layout(location = 3) flat out uint v_TexIndex;
 layout(location = 4) out vec4 v_ColorTint;
 
-layout(set = 0, binding = 0) uniform MainCameraPassUBO {
+layout(set = DOE_SET_GLOBAL, binding = DOE_GLOBAL_BINDING_CONSTANTS) uniform GlobalConstants {
+    vec4 u_TimeData;
+};
+layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform ViewConstants {
     mat4 u_ViewProjection;
+};
+layout(set = DOE_SET_PRIMITIVE, binding = DOE_PRIMITIVE_BINDING_CONSTANTS) uniform PrimitiveConstants {
     ivec4 u_DrawData;
     vec4 u_MaterialData;
-    vec4 u_TimeData;
 };
 
 vec3 applyFoliageWind(vec3 local_position, vec4 instance_params)

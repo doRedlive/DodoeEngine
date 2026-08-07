@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "mesh_draw_command.h"
+#include "mesh_draw_types.h"
 #include "mesh_pass_type.h"
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -21,8 +22,6 @@ namespace dodoe {
     public:
         virtual ~IMeshPassProcessor() = default;
         virtual void reset() = 0;
-        [[nodiscard]] virtual const GfxBindingLayoutHandle& getBindingLayout() const = 0;
-        [[nodiscard]] virtual const GfxBufferHandle& getConstantBuffer() const = 0;
 
     protected:
         [[nodiscard]] static StaticArray<Vector4f, 6> ExtractFrustumPlanes(const Matrix4f& view_projection);
@@ -34,16 +33,17 @@ namespace dodoe {
 
         [[nodiscard]] static MeshDrawCommand BuildDrawCommand(const MeshBatchElement& element,
                                                               MeshPassType pass_type,
-                                                              const GfxBindingSetHandle& base_binding_set);
+                                                              const GfxBindingSetHandle& primitive_binding_set);
     };
 
     void SubmitMeshDrawCommands(
         const DynamicArray<MeshDrawInstance>& instances,
         const DynamicArray<MeshDrawCommand>& commands,
+        const DynamicArray<PrimitiveMeshDrawShaderData>& shader_data,
+        const GfxBufferHandle& primitive_cb,
         const GfxFramebufferHandle& framebuffer,
         const GfxViewportState& viewport_state,
         const GfxBufferHandle& primitive_scene_buffer,
-        const DynamicArray<GfxBindingSetHandle>& extra_binding_sets,
         DrawCommandList& command_list);
 
 } // namespace dodoe

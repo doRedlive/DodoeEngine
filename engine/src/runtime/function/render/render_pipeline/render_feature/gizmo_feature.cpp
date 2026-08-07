@@ -15,8 +15,8 @@ namespace dodoe {
 	    auto* cache = resources.getBindingLayoutCache();
 	    m_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::All)
-	            .addItem(GfxBindingLayoutItem::PushConstants(0, sizeof(float) * 16))
-	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .addItem(GfxBindingLayoutItem::PushConstants(0, sizeof(float) * 16 + sizeof(float) * 4)));
 	}
 
 	void GizmoFeature::shutdown() {
@@ -24,7 +24,7 @@ namespace dodoe {
 	}
 
 	void GizmoFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<GizmoPass>();
+	    collector.addPass<GizmoPass>(m_binding_layout);
 	}
 
 } // namespace dodoe

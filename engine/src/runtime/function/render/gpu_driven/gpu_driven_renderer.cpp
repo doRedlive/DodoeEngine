@@ -2,6 +2,7 @@
 
 #include "gpu_driven_renderer.h"
 #include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 
 namespace dodoe {
 
@@ -89,12 +90,14 @@ namespace dodoe {
 
         if (!m_culling_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
-            layout_desc.addItem(GfxBindingLayoutItem::ConstantBuffer(0));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(0));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(0));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(1));
+            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5));
             m_culling_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
 
@@ -162,11 +165,11 @@ namespace dodoe {
 
         GfxBindingSetDesc binding_desc;
         binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(0, scene_resources.object_meta->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, scene_resources.transforms->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.bounds->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(0, m_visible_objects_buffer->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(1, m_visible_count_buffer->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, scene_resources.object_meta->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.transforms->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, scene_resources.bounds->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_visible_objects_buffer->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_visible_count_buffer->getRHIHandle()));
 
         auto binding_set = cmd_list.createBindingSet(binding_desc, m_culling_binding_layout);
 
@@ -205,10 +208,12 @@ namespace dodoe {
 
         if (!m_bucket_count_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(0));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1));
-            layout_desc.addItem(GfxBindingLayoutItem::ConstantBuffer(1));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(0));
+            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
+                .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4));
             m_bucket_count_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
 
@@ -221,12 +226,14 @@ namespace dodoe {
 
         if (!m_bucket_fill_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(0));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(0));
-            layout_desc.addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(1));
+            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(6));
             m_bucket_fill_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
 
@@ -250,10 +257,10 @@ namespace dodoe {
             cmd_list.writeBuffer(m_culling_params_buffer, count_params, sizeof(count_params), 0);
 
             GfxBindingSetDesc count_binding_desc;
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(0, m_visible_objects_buffer->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, scene_resources.object_meta->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(1, m_culling_params_buffer->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(0, m_bucket_counts_buffer->getRHIHandle()));
+            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_objects_buffer->getRHIHandle()));
+            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.object_meta->getRHIHandle()));
+            count_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
+            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_bucket_counts_buffer->getRHIHandle()));
 
             auto count_binding_set = cmd_list.createBindingSet(count_binding_desc, m_bucket_count_binding_layout);
 
@@ -274,12 +281,12 @@ namespace dodoe {
             cmd_list.commitBarriers();
 
             GfxBindingSetDesc fill_binding_desc;
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(0, m_visible_objects_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, scene_resources.object_meta->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.transforms->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, m_bucket_counts_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(0, m_indirect_args_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(1, m_bucket_offsets_buffer->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_objects_buffer->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.object_meta->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, scene_resources.transforms->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_bucket_counts_buffer->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_indirect_args_buffer->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(6, m_bucket_offsets_buffer->getRHIHandle()));
 
             auto fill_binding_set = cmd_list.createBindingSet(fill_binding_desc, m_bucket_fill_binding_layout);
 

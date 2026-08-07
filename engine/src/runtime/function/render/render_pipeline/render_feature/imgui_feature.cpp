@@ -10,6 +10,7 @@
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
 #ifdef DODOE_DEBUG_ENABLED
@@ -42,17 +43,23 @@ namespace dodoe {
 	    auto* cache = resources.getBindingLayoutCache();
 	    m_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc()
-	            .setVisibility(GfxShaderType::All)
-	            .addItem(GfxBindingLayoutItem::PushConstants(0, 16))
-	            .addItem(GfxBindingLayoutItem::Texture_SRV(0))
-	            .addItem(GfxBindingLayoutItem::Sampler(0)));
+	            .setVisibility(GfxShaderType::Pixel)
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+	            .addItem(GfxBindingLayoutItem::Texture_SRV(1))
+	            .addItem(GfxBindingLayoutItem::Sampler(9)));
+	    m_push_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc()
+	            .setVisibility(GfxShaderType::Vertex)
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .addItem(GfxBindingLayoutItem::PushConstants(0, 16)));
 
 	    if (m_font_texture && resources.getBindingSetCache()) {
 	        const auto layout_generation = cache->getLayoutGeneration(m_binding_layout);
 	        m_font_binding_set = resources.getBindingSetCache()->getOrCreate(
 	            GfxBindingSetDesc()
-	                .addItem(GfxBindingSetItem::Texture_SRV(0, m_font_texture->getRHIHandle().Get()))
-	                .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+	                .addItem(GfxBindingSetItem::Texture_SRV(1, m_font_texture->getRHIHandle().Get()))
+	                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
 	            m_binding_layout,
 	            layout_generation);
 	    }
@@ -80,6 +87,7 @@ namespace dodoe {
 	    m_font_binding_set = nullptr;
 	    m_input_layout = nullptr;
 	    m_binding_layout = nullptr;
+	    m_push_layout = nullptr;
 	}
 
 	void ImGuiFeature::registerGraphImports(RenderGraphImportRegistry& imports,
@@ -90,7 +98,7 @@ namespace dodoe {
 	}
 
 	void ImGuiFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_input_layout);
+	    collector.addPass<ImGuiPass>(m_binding_layout, m_push_layout, m_font_binding_set, m_input_layout);
 	}
 
 } // namespace dodoe

@@ -156,15 +156,12 @@ namespace dodoe {
 
 	            auto graphics_state = GfxGraphicsState()
 	                .setViewport(viewport)
-	                .setPipeline(cached_cmd.pipeline->getRHIHandle());
+	                .setPipeline(cached_cmd.getPipeline()->getRHIHandle());
 
-	            for (const auto& binding_set : cached_cmd.binding_sets) {
-	                if (binding_set && binding_set->isRHIReady()) {
-	                    graphics_state.addBindingSet(binding_set->getRHIHandle());
-	                }
-	            }
+	            ShaderParameterBinder binder;
+	            binder.bind(graphics_state, cached_cmd.getBindingSets());
 
-	            for (const auto& vertex_binding : cached_cmd.vertex_bindings) {
+	            for (const auto& vertex_binding : cached_cmd.getVertexBindings()) {
 	                graphics_state.addVertexBuffer(vertex_binding);
 	            }
 
@@ -178,7 +175,7 @@ namespace dodoe {
 	                );
 	            }
 
-	            graphics_state.setIndexBuffer(cached_cmd.index_binding);
+	            graphics_state.setIndexBuffer(cached_cmd.getIndexBinding());
 	            cmd_list.setGraphicsState(graphics_state);
 
 	            cmd_list.setBufferState(indirect_args, GfxResourceStates::IndirectArgument);

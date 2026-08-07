@@ -1,0 +1,82 @@
+#version 450 core
+
+#include "shader_parameter_sets.glsl"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct GpuObjectMeta
+{
+    uint type;
+    uint flags;
+    uint material_id;
+    uint texture_id;
+    uint bounds_id;
+    uint data_offset;
+    uint reserved0;
+    uint reserved1;
+};
+
+struct GpuBounds
+{
+    vec3  center;
+    float sphere_radius;
+    vec3  extent;
+    float pad;
+};
+
+struct GpuTransform
+{
+    mat4 local_to_world;
+    mat4 world_to_local;
+};
+
+layout(std140, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform CullingParams
+{
+    vec4 frustum_planes[6];
+    uint object_count;
+    uint padding0;
+    uint padding1;
+    uint padding2;
+};
+
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) readonly buffer ObjectMetaBuffer { GpuObjectMeta object_meta[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) readonly buffer TransformBuffer  { GpuTransform transform[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT2) readonly buffer BoundsBuffer     { GpuBounds bounds[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT3) buffer VisibleObjects { uint visible_objects[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT4) buffer VisibleCount   { uint visible_count[]; };
+
+bool testPlane(vec4 plane, vec3 center, vec3 extent)
+{
+    float r = abs(extent.x * plane.x) + abs(extent.y * plane.y) + abs(extent.z * plane.z);
+    float s = dot(plane.xyz, center) + plane.w;
+    return s > -r;
+}
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= object_count)
+        return;
+
+    GpuObjectMeta meta = object_meta[idx];
+    if ((meta.flags & 1u) == 0u)
+        return;
+
+    GpuBounds b = bounds[idx];
+
+    bool visible = true;
+    for (int i = 0; i < 6; i++)
+    {
+        if (!testPlane(frustum_planes[i], b.center, b.extent))
+        {
+            visible = false;
+            break;
+        }
+    }
+
+    if (visible)
+    {
+        uint out_idx = atomicAdd(visible_count[0], 1u);
+        visible_objects[out_idx] = idx;
+    }
+}

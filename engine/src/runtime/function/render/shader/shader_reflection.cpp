@@ -86,6 +86,7 @@ namespace dodoe {
         for (const auto& ub : resources.uniform_buffers) {
             ShaderCBReflection cb;
             cb.name = String(ub.name.c_str());
+            cb.set = compiler.get_decoration(ub.id, spv::DecorationDescriptorSet);
             cb.slot = compiler.get_decoration(ub.id, spv::DecorationBinding);
 
             const auto& type = compiler.get_type(ub.type_id);
@@ -106,6 +107,7 @@ namespace dodoe {
         for (const auto& sb : resources.storage_buffers) {
             ShaderTextureReflection tex;
             tex.name = String(sb.name.c_str());
+            tex.set = compiler.get_decoration(sb.id, spv::DecorationDescriptorSet);
             tex.slot = compiler.get_decoration(sb.id, spv::DecorationBinding);
             tex.dimension = GfxTextureDimension::Unknown;
             tex.kind = ShaderResourceKind::StructuredBufferSRV;
@@ -121,6 +123,7 @@ namespace dodoe {
         for (const auto& si : resources.sampled_images) {
             ShaderTextureReflection tex;
             tex.name = String(si.name.c_str());
+            tex.set = compiler.get_decoration(si.id, spv::DecorationDescriptorSet);
             tex.slot = compiler.get_decoration(si.id, spv::DecorationBinding);
 
             const auto& type = compiler.get_type(si.type_id);
@@ -139,6 +142,7 @@ namespace dodoe {
         for (const auto& img : resources.storage_images) {
             ShaderTextureReflection tex;
             tex.name = String(img.name.c_str());
+            tex.set = compiler.get_decoration(img.id, spv::DecorationDescriptorSet);
             tex.slot = compiler.get_decoration(img.id, spv::DecorationBinding);
             const auto& type = compiler.get_type(img.type_id);
             switch (type.image.dim) {
@@ -153,6 +157,7 @@ namespace dodoe {
         for (const auto& smp : resources.separate_samplers) {
             ShaderSamplerReflection s;
             s.name = String(smp.name.c_str());
+            s.set = compiler.get_decoration(smp.id, spv::DecorationDescriptorSet);
             s.slot = compiler.get_decoration(smp.id, spv::DecorationBinding);
             result.samplers.push_back(s);
         }
@@ -195,6 +200,7 @@ namespace dodoe {
             Bool found = false;
             for (const auto& item : layout.bindings) {
                 if (item.slot == cb.slot &&
+                    cb.set == layout.registerSpace &&
                     item.size >= 1 &&
                     (item.type == cutie::ResourceType::ConstantBuffer ||
                      item.type == cutie::ResourceType::VolatileConstantBuffer)) {
@@ -203,7 +209,7 @@ namespace dodoe {
                 }
             }
             if (!found) {
-                out_error = String(("CBV at slot " + std::to_string(cb.slot) + " (" + cb.name.c_str() + ") not found in layout").c_str());
+                out_error = String(("CBV at set " + std::to_string(cb.set) + " slot " + std::to_string(cb.slot) + " (" + cb.name.c_str() + ") not found in layout").c_str());
                 return false;
             }
         }
@@ -211,13 +217,14 @@ namespace dodoe {
         for (const auto& tex : reflection.textures) {
             Bool found = false;
             for (const auto& item : layout.bindings) {
-                if (item.slot == tex.slot) {
+                if (item.slot == tex.slot &&
+                    tex.set == layout.registerSpace) {
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                out_error = String(("Texture at slot " + std::to_string(tex.slot) + " (" + tex.name.c_str() + ") not found in layout").c_str());
+                out_error = String(("Texture at set " + std::to_string(tex.set) + " slot " + std::to_string(tex.slot) + " (" + tex.name.c_str() + ") not found in layout").c_str());
                 return false;
             }
         }
@@ -226,13 +233,14 @@ namespace dodoe {
             Bool found = false;
             for (const auto& item : layout.bindings) {
                 if (item.slot == smp.slot &&
+                    smp.set == layout.registerSpace &&
                     item.type == cutie::ResourceType::Sampler) {
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                out_error = String(("Sampler at slot " + std::to_string(smp.slot) + " (" + smp.name.c_str() + ") not found in layout").c_str());
+                out_error = String(("Sampler at set " + std::to_string(smp.set) + " slot " + std::to_string(smp.slot) + " (" + smp.name.c_str() + ") not found in layout").c_str());
                 return false;
             }
         }

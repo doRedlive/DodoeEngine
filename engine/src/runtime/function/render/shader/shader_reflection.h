@@ -33,6 +33,7 @@ namespace dodoe {
 
     struct ShaderCBReflection {
         String name;
+        UInt32 set;
         UInt32 slot;
         UInt32 size;
         DynamicArray<ShaderCBVariable> variables;
@@ -40,6 +41,7 @@ namespace dodoe {
 
     struct ShaderTextureReflection {
         String name;
+        UInt32 set;
         UInt32 slot;
         ShaderResourceKind kind;
         GfxTextureDimension dimension;
@@ -48,6 +50,7 @@ namespace dodoe {
 
     struct ShaderSamplerReflection {
         String name;
+        UInt32 set;
         UInt32 slot;
     };
 

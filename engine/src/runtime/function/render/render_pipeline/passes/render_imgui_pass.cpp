@@ -131,7 +131,7 @@ namespace dodoe {
 
                 const auto* shader_library = ctx.getShaderLibrary();
                 const auto* pipeline_cache = ctx.getPipelineStateCache();
-                if (!shader_library || !pipeline_cache || !m_binding_layout || !m_input_layout) {
+                if (!shader_library || !pipeline_cache || !m_binding_layout || !m_push_layout || !m_input_layout) {
                     DO_ERROR("ImGuiPass: shader or pipeline resources are unavailable");
                     return;
                 }
@@ -141,6 +141,7 @@ namespace dodoe {
                     .setPixelShader(shader_library->getImGuiPixelShader())
                     .setInputLayout(m_input_layout)
                     .addBindingLayout(m_binding_layout)
+                    .addBindingLayout(m_push_layout)
                     .setPrimType(GfxPrimitiveType::TriangleList);
                 GfxDepthStencilState depth_stencil;
                 depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
@@ -200,8 +201,8 @@ namespace dodoe {
                             ? m_font_binding_set
                             : command_list.createBindingSet(
                                 GfxBindingSetDesc()
-                                    .addItem(GfxBindingSetItem::Texture_SRV(0, texture->getRHI()))
-                                    .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                                    .addItem(GfxBindingSetItem::Texture_SRV(1, texture->getRHI()))
+                                    .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
                                 m_binding_layout);
                         if (!binding_set) {
                             continue;

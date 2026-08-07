@@ -8,6 +8,7 @@
 #include "runtime/function/render/render_scene/sprite_scene_info.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
@@ -18,19 +19,21 @@ namespace dodoe {
 	    m_cb_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
 	            .setRegisterSpaceIsDescriptorSet(true)
+	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::View))
 	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
 
 	    m_sampler_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
 	            .setRegisterSpaceIsDescriptorSet(true)
-	            .setRegisterSpace(1)
-	            .addItem(GfxBindingLayoutItem::Sampler(0)));
+	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+	            .addItem(GfxBindingLayoutItem::Sampler(1)));
 
-	    m_texture_binding_layout = cache->getOrCreate(
+	    m_material_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
 	            .setRegisterSpaceIsDescriptorSet(true)
-	            .setRegisterSpace(2)
-	            .addItem(GfxBindingLayoutItem::Texture_SRV(0)));
+	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+	            .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+	            .addItem(GfxBindingLayoutItem::Sampler(1)));
 
 	    if (auto* input_layout_cache = resources.getInputLayoutCache()) {
 	        const DynamicArray<GfxVertexAttributeDesc> attributes = {
@@ -50,13 +53,13 @@ namespace dodoe {
 
 	void SpriteFeature::shutdown() {
 	    m_input_layout = nullptr;
-	    m_texture_binding_layout = nullptr;
+	    m_material_binding_layout = nullptr;
 	    m_sampler_binding_layout = nullptr;
 	    m_cb_binding_layout = nullptr;
 	}
 
 	void SpriteFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<SpritePass>(m_cb_binding_layout, m_sampler_binding_layout, m_texture_binding_layout, m_input_layout);
+	    collector.addPass<SpritePass>(m_cb_binding_layout, m_sampler_binding_layout, m_material_binding_layout, m_input_layout);
 	}
 
 } // namespace dodoe

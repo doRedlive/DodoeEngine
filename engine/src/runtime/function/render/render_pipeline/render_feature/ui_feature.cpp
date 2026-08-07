@@ -8,6 +8,7 @@
 #include "runtime/function/ui/ui_types.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
@@ -15,16 +16,24 @@ namespace dodoe {
 	void UIFeature::initialize(SharedRenderService& resources) {
 	    auto* cache = resources.getBindingLayoutCache();
 
+	    m_view_binding_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::View))
+	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
+
 	    m_bindless_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
-	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
-	            .addItem(GfxBindingLayoutItem::Sampler(0)));
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+	            .addItem(GfxBindingLayoutItem::Sampler(1)));
 
-	    m_array_binding_layout = cache->getOrCreate(
+	    m_material_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
-	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
-	            .addItem(GfxBindingLayoutItem::Sampler(0))
-	            .addItem(GfxBindingLayoutItem::Texture_SRV(0)));
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+	            .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+	            .addItem(GfxBindingLayoutItem::Sampler(1)));
 
 	    if (auto* input_layout_cache = resources.getInputLayoutCache()) {
 	        const DynamicArray<GfxVertexAttributeDesc> attributes = {
@@ -44,12 +53,13 @@ namespace dodoe {
 
 	void UIFeature::shutdown() {
 	    m_input_layout = nullptr;
-	    m_array_binding_layout = nullptr;
+	    m_material_binding_layout = nullptr;
 	    m_bindless_binding_layout = nullptr;
+	    m_view_binding_layout = nullptr;
 	}
 
 	void UIFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<UIPass>(m_bindless_binding_layout, m_array_binding_layout, m_input_layout);
+	    collector.addPass<UIPass>(m_view_binding_layout, m_bindless_binding_layout, m_material_binding_layout, m_input_layout);
 	}
 
 } // namespace dodoe

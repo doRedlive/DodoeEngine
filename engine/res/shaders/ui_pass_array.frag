@@ -2,8 +2,10 @@
 
 // Non-bindless UI pixel shader — single texture slot fallback
 
-layout(set = 2, binding = 0) uniform texture2D u_Texture;
-layout(set = 1, binding = 0) uniform sampler u_TextureSampler;
+#include "shader_parameter_sets.glsl"
+
+layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_BASE_COLOR) uniform texture2D u_Texture;
+layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_SAMPLER) uniform sampler u_TextureSampler;
 
 layout(location = 0) in vec2 v_UV;
 layout(location = 1) in vec4 v_Color;

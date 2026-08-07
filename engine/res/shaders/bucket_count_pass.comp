@@ -1,0 +1,59 @@
+#version 450 core
+
+#include "shader_parameter_sets.glsl"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct GpuObjectMeta
+{
+    uint type;
+    uint flags;
+    uint material_id;
+    uint texture_id;
+    uint bounds_id;
+    uint data_offset;
+    uint reserved0;
+    uint reserved1;
+};
+
+struct BucketCount
+{
+    uint instance_count;
+    uint current_offset;
+    uint pad0;
+    uint pad1;
+};
+
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) readonly buffer VisibleObjects  { uint visible_objects[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) readonly buffer ObjectMetaBuffer { GpuObjectMeta object_meta[]; };
+
+layout(std140, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform BucketParams
+{
+    uint object_count;
+    uint max_buckets;
+    uint pad0;
+    uint pad1;
+};
+
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT3) buffer BucketCounts { BucketCount bucket_counts[]; };
+
+uint getBucketKey(GpuObjectMeta meta)
+{
+    return meta.type & 0xFFu;
+}
+
+void main()
+{
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= object_count)
+        return;
+
+    uint object_idx = visible_objects[idx];
+    GpuObjectMeta meta = object_meta[object_idx];
+
+    uint bucket = getBucketKey(meta);
+    if (bucket >= max_buckets)
+        return;
+
+    atomicAdd(bucket_counts[bucket].instance_count, 1u);
+}

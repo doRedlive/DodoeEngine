@@ -21,11 +21,17 @@ namespace dodoe {
         [[nodiscard]] Bool isRelevant(MeshPassType pass_type) const;
     };
 
-    struct GBufferMeshDrawShaderData {
+    struct GlobalMeshShaderData {
+        Vector4f time_data{0.0f};
+    };
+
+    struct ViewMeshShaderData {
         Matrix4f view_projection{1.0f};
+    };
+
+    struct PrimitiveMeshDrawShaderData {
         Vector4i draw_data{0};
         Vector4f material_data{0.0f, 1.0f, 1.0f, 0.0f};
-        Vector4f time_data{0.0f};
     };
 
 } // dodoe
