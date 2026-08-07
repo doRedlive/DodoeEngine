@@ -3,6 +3,7 @@
 #include "generator/reflection_generator.h"
 
 #include "language_types/class.h"
+#include "language_types/enum_def.h"
 #include "template_manager/template_manager.h"
 
 #include <map>
@@ -44,6 +45,7 @@ namespace Generator
             Mustache::data("headfile_name", Utils::makeRelativePath(m_root_path, path).string()));
 
         std::map<std::string, bool> class_names;
+        std::set<std::string> enum_names;
         // class defs
         for (auto class_temp : schema.classes)
         {
@@ -78,6 +80,10 @@ namespace Generator
 
                     vector_map[field->m_type] = std::make_pair(array_useful_name, item_type);
                 }
+                if (g_enum_table.find(field->m_type) != g_enum_table.end())
+                {
+                    enum_names.insert(field->m_type);
+                }
             }
 
             if (vector_map.size() > 0)
@@ -100,6 +106,28 @@ namespace Generator
             class_def.set("vector_defines", vector_defines);
             class_defines.push_back(class_def);
         }
+
+        Mustache::data enum_registration_defines(Mustache::data::type::list);
+        for (const auto& enum_name : enum_names)
+        {
+            auto it = g_enum_table.find(enum_name);
+            if (it == g_enum_table.end())
+                continue;
+
+            std::string code = "        dodoe::TypeMetaRegisterInterface::register2enummap(\n";
+            code += "            \"" + enum_name + "\",\n";
+            code += "            dodoe::EnumValueList{\n";
+            for (const auto& [value_name, value_int] : it->second->m_values)
+            {
+                code += "                { \"" + value_name + "\", " + std::to_string(value_int) + " },\n";
+            }
+            code += "            });";
+
+            Mustache::data enum_def;
+            enum_def.set("enum_registration_code", code);
+            enum_registration_defines.push_back(enum_def);
+        }
+        mustache_data.set("enum_registration_defines", enum_registration_defines);
 
         mustache_data.set("class_defines", class_defines);
         mustache_data.set("include_headfiles", include_headfiles);

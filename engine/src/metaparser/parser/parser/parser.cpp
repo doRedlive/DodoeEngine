@@ -1,6 +1,7 @@
 #include "common/precompiled.h"
 
 #include "language_types/class.h"
+#include "language_types/enum_def.h"
 
 #include "generator/reflection_generator.h"
 #include "generator/script_binding_generator.h"
@@ -222,7 +223,17 @@ void MetaParser::buildClassAST(const Cursor& cursor, Namespace& current_namespac
         {
             auto class_ptr = std::make_shared<Class>(child, current_namespace);
 
+            for (const auto& nested_enum : class_ptr->m_enums)
+            {
+                g_enum_table[nested_enum->m_name] = nested_enum;
+            }
+
             TRY_ADD_LANGUAGE_TYPE(class_ptr, classes);
+        }
+        else if (child.isDefinition() && kind == CXCursor_EnumDecl)
+        {
+            auto enum_ptr = std::make_shared<EnumDef>(child);
+            g_enum_table[enum_ptr->m_name] = enum_ptr;
         }
         else
         {

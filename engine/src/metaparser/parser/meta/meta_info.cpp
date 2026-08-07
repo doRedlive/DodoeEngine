@@ -1,4 +1,4 @@
-﻿#include "common/precompiled.h"
+#include "common/precompiled.h"
 
 #include "parser/parser.h"
 
@@ -33,20 +33,65 @@ std::vector<MetaInfo::Property> MetaInfo::extractProperties(const Cursor& cursor
 
     auto propertyList = cursor.getDisplayName();
 
-    auto&& properties = Utils::split(propertyList, ",");
-
     static const std::string white_space_string = " \t\r\n";
 
-    for (auto& property_item : properties)
+    auto splitTopLevel = [](const std::string& input) -> std::vector<std::string> {
+        std::vector<std::string> out;
+        int                      depth  = 0;
+        size_t                   start  = 0;
+        for (size_t i = 0; i < input.size(); ++i)
+        {
+            char c = input[i];
+            if (c == '(' || c == '[' || c == '{')
+                ++depth;
+            else if (c == ')' || c == ']' || c == '}')
+                --depth;
+            else if (c == ',' && depth == 0)
+            {
+                out.push_back(input.substr(start, i - start));
+                start = i + 1;
+            }
+        }
+        out.push_back(input.substr(start));
+        return out;
+    };
+
+    for (auto& property_item : splitTopLevel(propertyList))
     {
-        auto&& item_details = Utils::split(property_item, ":");
-        auto&& temp_string  = Utils::trim(item_details[0], white_space_string);
-        if (temp_string.empty())
+        std::string item = Utils::trim(property_item, white_space_string);
+        if (item.empty())
         {
             continue;
         }
-        ret_list.emplace_back(temp_string,
-                              item_details.size() > 1 ? Utils::trim(item_details[1], white_space_string) : "");
+
+        std::string key, value;
+        size_t      open_paren = item.find('(');
+        size_t      colon      = item.find(':');
+
+        if (open_paren != std::string::npos && item.back() == ')')
+        {
+            key   = Utils::trim(item.substr(0, open_paren), white_space_string);
+            value = Utils::trim(item.substr(open_paren + 1, item.size() - open_paren - 2), white_space_string);
+        }
+        else if (colon != std::string::npos)
+        {
+            key   = Utils::trim(item.substr(0, colon), white_space_string);
+            value = Utils::trim(item.substr(colon + 1), white_space_string);
+        }
+        else
+        {
+            key   = item;
+            value = "";
+        }
+
+        if (key.empty())
+        {
+            continue;
+        }
+
+        Utils::replaceAll(value, "\"", "");
+
+        ret_list.emplace_back(key, value);
     }
     return ret_list;
 }

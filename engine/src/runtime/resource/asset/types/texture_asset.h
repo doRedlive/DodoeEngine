@@ -34,6 +34,9 @@ namespace dodoe {
         [[nodiscard]] Int32 getWidth() const { return m_blob.width; }
         [[nodiscard]] Int32 getHeight() const { return m_blob.height; }
         [[nodiscard]] Int32 getChannels() const { return m_blob.channels; }
+
+        void setPPU(Float ppu) { m_ppu = ppu; }
+        void setFlipVertical(Bool flip) { m_flip_vertical = flip; }
     };
 
 } // dodoe

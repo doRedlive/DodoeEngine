@@ -31,6 +31,12 @@ Class::Class(const Cursor& cursor, const Namespace& current_namespace) :
                 m_methods.emplace_back(new Method(child, current_namespace, this));
             default:
                 break;
+            case CXCursor_EnumDecl:
+                if (child.isDefinition())
+                {
+                    m_enums.emplace_back(new EnumDef(child));
+                }
+                break;
         }
     }
 }

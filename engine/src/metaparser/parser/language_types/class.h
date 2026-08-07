@@ -4,6 +4,7 @@
 
 #include "field.h"
 #include "method.h"
+#include "enum_def.h"
 
 struct BaseClass
 {
@@ -42,6 +43,7 @@ public:
 
     SharedPtrVector<Field> m_fields;
     SharedPtrVector<Method> m_methods;
+    SharedPtrVector<EnumDef> m_enums;
 
     std::string m_display_name;
 

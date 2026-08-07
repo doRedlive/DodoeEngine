@@ -8,6 +8,7 @@
 #include "asset_handle.h"
 #include "asset_database.h"
 #include "types/texture_asset.h"
+#include "types/sprite_asset.h"
 #include "types/mesh_asset.h"
 #include "types/material_asset.h"
 #include "types/animation_clip_asset.h"
@@ -37,6 +38,9 @@ namespace dodoe {
         void shutdown();
 
         [[nodiscard]] FsPath getFullPath(const String& asset_url) const;
+
+        void importSourceFile(const FsPath& absolute_path, const String& source_path, const String& ext);
+        static void EnsureBuiltinImporters();
 
     public:
         [[nodiscard]] AssetDatabase* getDatabase() const { return m_database.get(); }
@@ -108,6 +112,10 @@ namespace dodoe {
         Bool loadAssets();
         [[nodiscard]] auto loadAssetsAsync() const -> std::future<void>;
         void discoverAssets();
+
+        [[nodiscard]] Bool isAssetDirty(const FileID& file_id) const;
+        Bool reimportAsset(const FileID& file_id);
+        Bool refreshAssets();
 
         template<typename T>
         [[nodiscard]] DynamicArray<AssetHandle<T>> getAssets() const {

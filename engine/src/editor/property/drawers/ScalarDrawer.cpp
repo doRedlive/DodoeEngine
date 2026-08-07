@@ -10,6 +10,7 @@
 
 #include <QDoubleSpinBox>
 #include <QCheckBox>
+#include <QSignalBlocker>
 #include <cmath>
 #include <string>
 
@@ -17,11 +18,11 @@ namespace cakery {
 
 QWidget* ScalarDrawer::build(const PropertyContext& pc)
 {
-    const std::string typeName = pc.field->getFieldTypeName();
+    const dodoe::FieldType ft = pc.field->getFieldType();
     void* instance = pc.componentPtr;
     auto field = *pc.field;
 
-    if (typeName == "bool") {
+    if (ft == dodoe::FieldType::Bool) {
         auto* cb = new QCheckBox();
         bool* val = static_cast<bool*>(field.get(instance));
         cb->setChecked(*val);
@@ -36,6 +37,7 @@ QWidget* ScalarDrawer::build(const PropertyContext& pc)
             pc.ctx->commands().execute(std::move(cmd));
         });
 
+        m_widget = cb;
         return cb;
     }
 
@@ -44,28 +46,45 @@ QWidget* ScalarDrawer::build(const PropertyContext& pc)
     sb->setDecimals(3);
     sb->setSingleStep(0.1);
 
+    float rangeMin = -99999.0f, rangeMax = 99999.0f;
+    if (field.attributeRange(rangeMin, rangeMax)) {
+        sb->setRange(rangeMin, rangeMax);
+        sb->setSingleStep((rangeMax - rangeMin) / 100.0);
+    }
+    if (field.isReadOnly()) {
+        sb->setEnabled(false);
+    }
+
     auto setValue = [&](QDoubleSpinBox* spin) {
-        if (typeName == "float") {
+        switch (ft) {
+        case dodoe::FieldType::F32:
             spin->setValue(static_cast<double>(*static_cast<float*>(field.get(instance))));
-        } else if (typeName == "double") {
+            break;
+        case dodoe::FieldType::F64:
             spin->setValue(*static_cast<double*>(field.get(instance)));
-        } else if (typeName == "int" || typeName == "int32_t") {
+            break;
+        case dodoe::FieldType::I32:
             spin->setDecimals(0);
             spin->setSingleStep(1.0);
             spin->setValue(static_cast<double>(*static_cast<int*>(field.get(instance))));
-        } else if (typeName == "uint32_t") {
+            break;
+        case dodoe::FieldType::U32:
             spin->setDecimals(0);
             spin->setSingleStep(1.0);
             spin->setRange(0.0, 99999.0);
             spin->setValue(static_cast<double>(*static_cast<unsigned int*>(field.get(instance))));
+            break;
+        default:
+            break;
         }
     };
 
     setValue(sb);
 
     QObject::connect(sb, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-        [pc, field, typeName](double v) mutable {
-            if (typeName == "float") {
+        [pc, field, ft](double v) mutable {
+            switch (ft) {
+            case dodoe::FieldType::F32: {
                 float fv = static_cast<float>(v);
                 float oldFv = *static_cast<float*>(field.get(pc.componentPtr));
                 dodoe::Json oldVal = std::to_string(oldFv);
@@ -74,7 +93,9 @@ QWidget* ScalarDrawer::build(const PropertyContext& pc)
                 auto cmd = std::make_unique<SetFieldValueCommand>(
                     pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
                 pc.ctx->commands().execute(std::move(cmd));
-            } else if (typeName == "double") {
+                break;
+            }
+            case dodoe::FieldType::F64: {
                 double oldV = *static_cast<double*>(field.get(pc.componentPtr));
                 dodoe::Json oldVal = std::to_string(oldV);
                 dodoe::Json newVal = std::to_string(v);
@@ -82,18 +103,72 @@ QWidget* ScalarDrawer::build(const PropertyContext& pc)
                 auto cmd = std::make_unique<SetFieldValueCommand>(
                     pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
                 pc.ctx->commands().execute(std::move(cmd));
-            } else {
+                break;
+            }
+            case dodoe::FieldType::I32: {
                 int iv = static_cast<int>(std::round(v));
+                int oldIv = *static_cast<int*>(field.get(pc.componentPtr));
+                dodoe::Json oldVal = std::to_string(oldIv);
+                dodoe::Json newVal = std::to_string(iv);
                 field.set(pc.componentPtr, &iv);
+                auto cmd = std::make_unique<SetFieldValueCommand>(
+                    pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
+                pc.ctx->commands().execute(std::move(cmd));
+                break;
+            }
+            case dodoe::FieldType::U32: {
+                unsigned int uv = static_cast<unsigned int>(std::round(v));
+                unsigned int oldUv = *static_cast<unsigned int*>(field.get(pc.componentPtr));
+                dodoe::Json oldVal = std::to_string(oldUv);
+                dodoe::Json newVal = std::to_string(uv);
+                field.set(pc.componentPtr, &uv);
+                auto cmd = std::make_unique<SetFieldValueCommand>(
+                    pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
+                pc.ctx->commands().execute(std::move(cmd));
+                break;
+            }
+            default:
+                break;
             }
         });
 
+    m_widget = sb;
     return sb;
 }
 
 void ScalarDrawer::updateValue(const PropertyContext& pc)
 {
-    (void)pc;
+    if (!m_widget || !pc.field) return;
+
+    const dodoe::FieldType ft = pc.field->getFieldType();
+    if (ft == dodoe::FieldType::Bool) {
+        auto* cb = static_cast<QCheckBox*>(m_widget);
+        bool* v = static_cast<bool*>(pc.field->get(pc.componentPtr));
+        if (v) {
+            QSignalBlocker blocker(cb);
+            cb->setChecked(*v);
+        }
+        return;
+    }
+
+    auto* sb = static_cast<QDoubleSpinBox*>(m_widget);
+    QSignalBlocker blocker(sb);
+    switch (ft) {
+    case dodoe::FieldType::F32:
+        sb->setValue(static_cast<double>(*static_cast<float*>(pc.field->get(pc.componentPtr))));
+        break;
+    case dodoe::FieldType::F64:
+        sb->setValue(*static_cast<double*>(pc.field->get(pc.componentPtr)));
+        break;
+    case dodoe::FieldType::I32:
+        sb->setValue(static_cast<double>(*static_cast<int*>(pc.field->get(pc.componentPtr))));
+        break;
+    case dodoe::FieldType::U32:
+        sb->setValue(static_cast<double>(*static_cast<unsigned int*>(pc.field->get(pc.componentPtr))));
+        break;
+    default:
+        break;
+    }
 }
 
 } // namespace cakery

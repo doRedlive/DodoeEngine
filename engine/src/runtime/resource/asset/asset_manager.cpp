@@ -5,6 +5,11 @@
 #include "runtime/core/project/project.h"
 #include "runtime/core/utils/common.h"
 #include "runtime/resource/file/file_system.h"
+#include "runtime/resource/asset/importer/asset_importer.h"
+#include "runtime/resource/asset/importer/import_settings_io.h"
+#include "runtime/resource/asset/importer/texture_importer.h"
+#include "runtime/resource/asset/importer/sprite_importer.h"
+#include "runtime/resource/asset/importer/model_importer.h"
 
 namespace dodoe {
 
@@ -47,6 +52,7 @@ namespace dodoe {
     Scope<Asset> AssetManager::createAssetInstance(AssetType type) {
         switch (type) {
             case AssetType::Texture:        return create_scope<TextureAsset>();
+            case AssetType::Sprite:          return create_scope<SpriteAsset>();
             case AssetType::Mesh:           return create_scope<MeshAsset>();
             case AssetType::Material:        return create_scope<MaterialAsset>();
             case AssetType::AnimationClip:   return create_scope<AnimationClipAsset>();
@@ -71,8 +77,6 @@ namespace dodoe {
         meta.type = type;
         meta.source_path = source_path;
         meta.name = FileSystem::PathToNameNoExt(source_path);
-
-        meta.asset_path = source_path;
 
         m_path_to_file_id[source_path] = file_id;
 
@@ -160,15 +164,20 @@ namespace dodoe {
             }
         }
 
+        EnsureBuiltinImporters();
+
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
                 if (!entry.is_regular_file()) {
                     continue;
                 }
 
-                const String path = String(entry.path().generic_string().c_str());
                 String ext = String(entry.path().extension().string().c_str());
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+                if (ext == ".meta") {
+                    continue;
+                }
 
                 FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
                 String source_path = String(rel_path.generic_string().c_str());
@@ -203,18 +212,9 @@ namespace dodoe {
                         anim->setLoadState(AssetLoadState::Loaded);
                     }
                     m_assets[file_id] = std::move(anim);
-                } else if (std::ranges::find(kImageExts, ext) != kImageExts.end()) {
-                    FileID file_id = registerAsset(source_path, AssetType::Texture);
-                    auto tex = create_scope<TextureAsset>();
-                    tex->setFileID(file_id);
-                    tex->setName(FileSystem::PathToNameNoExt(source_path));
-                    m_assets[file_id] = std::move(tex);
-                } else if (std::ranges::find(kModelExts, ext) != kModelExts.end()) {
-                    FileID file_id = registerAsset(source_path, AssetType::Mesh);
-                    auto mesh = create_scope<MeshAsset>();
-                    mesh->setFileID(file_id);
-                    mesh->setName(FileSystem::PathToNameNoExt(source_path));
-                    m_assets[file_id] = std::move(mesh);
+                } else if (std::ranges::find(kImageExts, ext) != kImageExts.end()
+                           || std::ranges::find(kModelExts, ext) != kModelExts.end()) {
+                    importSourceFile(entry.path(), source_path, ext);
                 }
             }
         }
@@ -230,6 +230,202 @@ namespace dodoe {
         return TaskScheduler::Self().async([this]() {
             const_cast<AssetManager*>(this)->loadAssets();
         });
+    }
+
+    void AssetManager::EnsureBuiltinImporters() {
+        static Bool s_initialized = false;
+        if (s_initialized) {
+            return;
+        }
+
+        auto& registry = ImporterRegistry::Self();
+        for (const auto& ext : kImageExts) {
+            registry.registerImporter(ext, create_scope<TextureImporter>());
+        }
+        registry.registerImporter("", create_scope<SpriteImporter>());
+        for (const auto& ext : kModelExts) {
+            registry.registerImporter(ext, create_scope<ModelImporter>());
+        }
+        s_initialized = true;
+    }
+
+    void AssetManager::importSourceFile(const FsPath& absolute_path,
+                                        const String& source_path,
+                                        const String& ext) {
+        std::unique_lock lock(m_mutex);
+
+        AssetImporter* default_importer = ImporterRegistry::Self().find(ext);
+        if (!default_importer) {
+            return;
+        }
+
+        ImportSettings settings = ImportSettingsIO::LoadOrCreate(
+            absolute_path, source_path,
+            String(default_importer->getName()), default_importer->getDefaultSettings());
+
+        FileID file_id(source_path, settings.guid);
+        if (!file_id.isValid()) {
+            return;
+        }
+
+        const UInt64 mtime = ImportSettingsIO::LastWriteTimeSeconds(absolute_path);
+        const UInt64 signature = ComputeImportSignature(settings.settings);
+
+        AssetMetaData cached = m_database ? m_database->getMetaData(file_id) : AssetMetaData{};
+        const Bool up_to_date = cached.file_id.isValid()
+            && cached.source_file_mtime == mtime
+            && cached.import_signature == signature;
+
+        const auto existing_it = m_path_to_file_id.find(source_path);
+        if (existing_it != m_path_to_file_id.end()) {
+            if (up_to_date) {
+                if (m_assets.find(file_id) == m_assets.end()) {
+                    Scope<Asset> asset = createAssetInstance(cached.type);
+                    if (asset) {
+                        asset->setFileID(file_id);
+                        asset->setName(FileSystem::PathToNameNoExt(source_path));
+                        asset->setMetaData(cached);
+                        m_assets[file_id] = std::move(asset);
+                    }
+                }
+                return;
+            }
+            if (existing_it->second != file_id) {
+                m_assets.erase(existing_it->second);
+                if (m_database) {
+                    m_database->removeAsset(existing_it->second);
+                }
+            }
+        }
+
+        AssetImporter* importer = nullptr;
+        if (!settings.importer.empty()) {
+            importer = ImporterRegistry::Self().findByName(settings.importer);
+        }
+        if (!importer) {
+            importer = default_importer;
+        }
+
+        ImportContext ctx{file_id, source_path, String(absolute_path.generic_string().c_str()),
+                          settings.settings, up_to_date ? &cached : nullptr};
+        Scope<Asset> asset = importer->import(ctx);
+        if (!asset) {
+            return;
+        }
+
+        asset->setFileID(file_id);
+        asset->setName(FileSystem::PathToNameNoExt(source_path));
+
+        AssetMetaData meta = asset->getMetaData();
+        meta.file_id = file_id;
+        meta.type = asset->getType();
+        meta.source_path = source_path;
+        meta.source_file_mtime = mtime;
+        meta.import_signature = signature;
+        asset->setMetaData(meta);
+
+        m_path_to_file_id[source_path] = file_id;
+
+        const Size_t type_idx = static_cast<Size_t>(meta.type);
+        if (type_idx < static_cast<Size_t>(AssetType::Count)) {
+            auto& by_type = m_assets_by_type[type_idx];
+            if (std::ranges::find(by_type, file_id) == by_type.end()) {
+                by_type.push_back(file_id);
+            }
+        }
+
+        m_assets[file_id] = std::move(asset);
+
+        if (m_database) {
+            m_database->setMetaData(file_id, meta);
+        }
+    }
+
+    Bool AssetManager::isAssetDirty(const FileID& file_id) const {
+        const Asset* asset = findAsset(file_id);
+        if (!asset) {
+            return false;
+        }
+        const AssetMetaData& meta = asset->getMetaData();
+        if (meta.source_path.empty()) {
+            return false;
+        }
+
+        const FsPath absolute_path = m_asset_dir / FsPath(meta.source_path.c_str());
+        if (ImportSettingsIO::LastWriteTimeSeconds(absolute_path) != meta.source_file_mtime) {
+            return true;
+        }
+
+        ImportSettings settings;
+        if (ImportSettingsIO::Load(absolute_path, settings)) {
+            return ComputeImportSignature(settings.settings) != meta.import_signature;
+        }
+        return false;
+    }
+
+    Bool AssetManager::reimportAsset(const FileID& file_id) {
+        const Asset* asset = findAsset(file_id);
+        if (!asset) {
+            return false;
+        }
+        const String& source_path = asset->getSourcePath();
+        if (source_path.empty()) {
+            return false;
+        }
+
+        const FsPath absolute_path = m_asset_dir / FsPath(source_path);
+        String ext = String(absolute_path.extension().string().c_str());
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+        const bool is_importer_asset = std::ranges::find(kImageExts, ext) != kImageExts.end()
+            || std::ranges::find(kModelExts, ext) != kModelExts.end();
+        if (!is_importer_asset) {
+            return false;
+        }
+
+        importSourceFile(absolute_path, source_path, ext);
+        return true;
+    }
+
+    Bool AssetManager::refreshAssets() {
+        if (m_asset_dir.empty()) {
+            return false;
+        }
+
+        EnsureBuiltinImporters();
+
+        try {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
+                if (!entry.is_regular_file()) {
+                    continue;
+                }
+
+                String ext = String(entry.path().extension().string().c_str());
+                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+                if (ext == ".meta") {
+                    continue;
+                }
+
+                if (std::ranges::find(kImageExts, ext) == kImageExts.end()
+                    && std::ranges::find(kModelExts, ext) == kModelExts.end()) {
+                    continue;
+                }
+
+                FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
+                String source_path = String(rel_path.generic_string().c_str());
+                importSourceFile(entry.path(), source_path, ext);
+            }
+        }
+        catch (const std::filesystem::filesystem_error& err) {
+            DO_ERROR("Refresh {} error: {}", m_asset_dir.string(), err.what());
+            return false;
+        }
+
+        if (m_database) {
+            m_database->save();
+        }
+        return true;
     }
 
     void AssetManager::discoverAssets() {
@@ -275,9 +471,6 @@ namespace dodoe {
             }
             if (json.contains("source_path")) {
                 meta.source_path = json["source_path"].get<String>();
-            }
-            if (json.contains("asset_path")) {
-                meta.asset_path = json["asset_path"].get<String>();
             }
 
             FileID file_id = meta.file_id;

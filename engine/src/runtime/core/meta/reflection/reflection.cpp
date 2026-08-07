@@ -16,6 +16,7 @@ namespace dodoe {
         static std::multimap<String, FieldFuncTuple*> field_map;
         static std::multimap<String, MethodFuncTuple*> method_map;
         static std::map<String, ArrayFuncTuple*> array_map;
+        static std::map<String, EnumValueList> enum_map;
 
         void TypeMetaRegisterInterface::register2classmap(const char* name, ClassFuncTuple* value) {
             if (class_map.find(name) == class_map.end()) {
@@ -43,6 +44,10 @@ namespace dodoe {
             }
         }
 
+        void TypeMetaRegisterInterface::register2enummap(const char* name, const EnumValueList& values) {
+            enum_map[name] = values;
+        }
+
         void TypeMetaRegisterInterface::unregister_all() {
             for (auto it : class_map) {
                 delete it.second;
@@ -63,6 +68,8 @@ namespace dodoe {
                 delete it.second;
             }
             array_map.clear();
+
+            enum_map.clear();
         }
 
 
@@ -109,6 +116,13 @@ namespace dodoe {
             }
 
             return false;
+        }
+
+        bool TypeMeta::get_enum_values(const String& name, EnumValueList& out) {
+            auto it = enum_map.find(name);
+            if (it == enum_map.end()) return false;
+            out = it->second;
+            return true;
         }
 
         ReflectionInstance TypeMeta::new_from_name_and_json(const String& type_name, const Json& json_context) {
@@ -221,6 +235,22 @@ namespace dodoe {
 
             field_name_      = (std::get<3>(*functions))();
             field_type_name_ = (std::get<4>(*functions))();
+            field_type_      = (std::get<6>(*functions))();
+
+            std::vector<std::pair<const char*, const char*>> attrs;
+            (std::get<7>(*functions))(attrs);
+            if (!attrs.empty()) {
+                m_attributes = std::make_unique<UnorderedMap<String, String>>();
+                for (const auto& kv : attrs) {
+                    (*m_attributes)[kv.first] = kv.second;
+                }
+            }
+        }
+
+        FieldAccessor::FieldAccessor(const FieldAccessor& other) : functions_(other.functions_), field_name_(other.field_name_), field_type_name_(other.field_type_name_), field_type_(other.field_type_) {
+            if (other.m_attributes) {
+                m_attributes = std::make_unique<UnorderedMap<String, String>>(*other.m_attributes);
+            }
         }
 
         void* FieldAccessor::get(void* instance) {
@@ -250,6 +280,13 @@ namespace dodoe {
             return field_type_name_;
         }
 
+        bool FieldAccessor::enumValues(EnumValueList& out) const {
+            auto it = enum_map.find(field_type_name_);
+            if (it == enum_map.end()) return false;
+            out = it->second;
+            return true;
+        }
+
         bool FieldAccessor::is_array_type() {
             return (std::get<5>(*functions_)());
         }
@@ -262,30 +299,27 @@ namespace dodoe {
             functions_       = dest.functions_;
             field_name_      = dest.field_name_;
             field_type_name_ = dest.field_type_name_;
-            m_attributes     = nullptr;
+            field_type_      = dest.field_type_;
+            m_attributes     = dest.m_attributes ? std::make_unique<UnorderedMap<String, String>>(*dest.m_attributes) : nullptr;
 
             return *this;
         }
 
         void FieldAccessor::setAttribute(const char* key, const char* value) {
-            auto* m = static_cast<std::unordered_map<String, String>*>(m_attributes);
-            if (!m) {
-                m = new std::unordered_map<String, String>();
-                m_attributes = m;
+            if (!m_attributes) {
+                m_attributes = std::make_unique<UnorderedMap<String, String>>();
             }
-            (*m)[key] = value;
+            (*m_attributes)[key] = value;
         }
 
         bool FieldAccessor::hasAttribute(const char* key) const {
-            auto* m = static_cast<std::unordered_map<String, String>*>(m_attributes);
-            return m && m->find(key) != m->end();
+            return m_attributes && m_attributes->find(key) != m_attributes->end();
         }
 
         const char* FieldAccessor::attribute(const char* key) const {
-            auto* m = static_cast<std::unordered_map<String, String>*>(m_attributes);
-            if (!m) return "";
-            auto it = m->find(key);
-            return it != m->end() ? it->second.c_str() : "";
+            if (!m_attributes) return "";
+            auto it = m_attributes->find(key);
+            return it != m_attributes->end() ? it->second.c_str() : "";
         }
 
         bool FieldAccessor::attributeRange(float& min, float& max) const {
@@ -294,10 +328,8 @@ namespace dodoe {
             String s(val);
             auto comma = s.find(',');
             if (comma == String::npos) return false;
-            std::string s0(s.substr(0, comma));
-            std::string s1(s.substr(comma + 1));
-            min = std::stof(s0);
-            max = std::stof(s1);
+            min = std::stof(s.substr(0, comma).c_str());
+            max = std::stof(s.substr(comma + 1).c_str());
             return true;
         }
 

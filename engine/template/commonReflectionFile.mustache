@@ -20,7 +20,7 @@ public:
         out_list = new dodoe::ReflectionInstance[{{class_base_class_size}}];
         {{#class_base_class_defines}}
         out_list[{{class_base_class_index}}] = dodoe::ReflectionInstance(
-            dodoe::TypeMeta::new_meta_from_name("{{class_base_class_name}}"),
+            dodoe::TypeMeta::newMetaFromName("{{class_base_class_name}}"),
             static_cast<{{class_base_class_name}}*>(static_cast<{{class_name}}*>(instance))
         );
         {{/class_base_class_defines}}
@@ -77,7 +77,13 @@ public:
                 []() -> const char* { return "{{class_name}}"; },
                 []() -> const char* { return "{{class_field_name}}"; },
                 []() -> const char* { return "{{{class_field_type}}}"; },
-                []() -> bool { return {{#class_field_is_vector}}true{{/class_field_is_vector}}{{^class_field_is_vector}}false{{/class_field_is_vector}}; }
+                []() -> bool { return {{#class_field_is_vector}}true{{/class_field_is_vector}}{{^class_field_is_vector}}false{{/class_field_is_vector}}; },
+                []() -> dodoe::FieldType { return dodoe::FieldType::{{class_field_type_token}}; },
+                [](std::vector<std::pair<const char*, const char*>>& out) {
+                    {{#class_field_attr_defines}}
+                    out.emplace_back("{{attr_key}}", "{{{attr_value}}}");
+                    {{/class_field_attr_defines}}
+                }
             )
         );
         {{/class_field_defines}}
@@ -121,6 +127,9 @@ inline void RegisterAll{{sourefile_name_upper_camel_case}}Reflection() {
 {{#class_defines}}
     Type{{class_name}}Operator::Register();
 {{/class_defines}}
+{{#enum_registration_defines}}
+{{{enum_registration_code}}}
+{{/enum_registration_defines}}
 }
 
 } // namespace dodoe::TypeFieldReflectionOperator

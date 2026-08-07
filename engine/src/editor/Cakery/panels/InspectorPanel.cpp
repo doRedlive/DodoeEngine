@@ -198,6 +198,13 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
             for (int i = 0; i < count; ++i) {
                 if (fields[i].isHidden()) continue;
 
+                const char* headerText = fields[i].attribute("Header");
+                if (headerText && headerText[0]) {
+                    auto* headerLabel = new QLabel(QString::fromUtf8(headerText));
+                    headerLabel->setStyleSheet("color:#4EC9B0; font-size:11px; font-weight:bold;");
+                    groupLayout->addWidget(headerLabel);
+                }
+
                 PropertyContext pc;
                 pc.ctx           = &m_ctx;
                 pc.entity        = uuid;

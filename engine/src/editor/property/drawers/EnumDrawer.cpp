@@ -9,51 +9,57 @@
 #include "runtime/core/utils/json.h"
 
 #include <QComboBox>
-#include <QLabel>
-#include <QHBoxLayout>
+#include <QSignalBlocker>
 
 namespace cakery {
 
 QWidget* EnumDrawer::build(const PropertyContext& pc)
 {
-    const std::string typeName = pc.field->getFieldTypeName();
     auto* combo = new QComboBox();
-
-    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(typeName);
-    if (meta.isValid()) {
-        dodoe::FieldAccessor* fields = nullptr;
-        int count = meta.get_field_list(fields);
-        for (int i = 0; i < count; ++i) {
-            if (std::strcmp(fields[i].getFieldName(), "value") == 0) {
-                combo->addItem(QString::fromUtf8(fields[i].getFieldName()));
-            }
-        }
-        delete[] fields;
-    }
-
-    if (combo->count() == 0) {
-        combo->addItem(QString::fromStdString(typeName));
-    }
-
     auto field = *pc.field;
+
+    dodoe::EnumValueList values;
+    if (!field.enumValues(values) || values.empty()) {
+        combo->addItem(QString::fromStdString(pc.field->getFieldTypeName()));
+    }
+    else {
+        for (const auto& [name, value] : values) {
+            combo->addItem(QString::fromUtf8(name), value);
+        }
+    }
+
     int* val = static_cast<int*>(field.get(pc.componentPtr));
     if (val) {
-        combo->setCurrentIndex(std::clamp(*val, 0, combo->count() - 1));
+        int idx = combo->findData(*val);
+        combo->setCurrentIndex(idx >= 0 ? idx : 0);
     }
 
     QObject::connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-        [pc, field](int idx) mutable {
+        [pc, field, combo](int idx) mutable {
             int oldVal = *static_cast<int*>(field.get(pc.componentPtr));
-            field.set(pc.componentPtr, &idx);
+            int newVal = combo->itemData(idx).toInt();
+            field.set(pc.componentPtr, &newVal);
             auto cmd = std::make_unique<SetFieldValueCommand>(
                 pc.entity, pc.componentName, field.getFieldName(),
-                dodoe::Json(std::to_string(oldVal)), dodoe::Json(std::to_string(idx)));
+                dodoe::Json(std::to_string(oldVal)), dodoe::Json(std::to_string(newVal)));
             pc.ctx->commands().execute(std::move(cmd));
         });
 
+    m_widget = combo;
     return combo;
 }
 
-void EnumDrawer::updateValue(const PropertyContext&) {}
+void EnumDrawer::updateValue(const PropertyContext& pc)
+{
+    if (!m_widget || !pc.field) return;
+
+    auto* combo = static_cast<QComboBox*>(m_widget);
+    int* val = static_cast<int*>(pc.field->get(pc.componentPtr));
+    if (!val) return;
+
+    QSignalBlocker blocker(combo);
+    int idx = combo->findData(*val);
+    combo->setCurrentIndex(idx >= 0 ? idx : 0);
+}
 
 } // namespace cakery

@@ -12,6 +12,7 @@ namespace dodoe {
     enum class AssetType : UInt16 {
         Unknown = 0,
         Texture,
+        Sprite,
         Mesh,
         Material,
         AnimationClip,
@@ -37,10 +38,9 @@ namespace dodoe {
         AssetType type{AssetType::Unknown};
         String name{};
         String source_path{};
-        String asset_path{};
         UInt64 source_file_mtime{0};
         UInt64 asset_file_mtime{0};
-        UnorderedMap<String, String> import_settings{};
+        UInt64 import_signature{0};
         DynamicArray<String> tags{};
         DynamicArray<FileID> dependencies{};
         Bool is_builtin{false};

@@ -52,6 +52,28 @@ namespace dodoe {
     class ArrayAccessor;
     class ReflectionInstance;
 
+    enum class FieldType : uint8_t {
+        Unknown = 0,
+        Bool,
+        I32,
+        U32,
+        F32,
+        F64,
+        String,
+        Enum,
+        Vec2,
+        Vec3,
+        Vec4,
+        Vec2i,
+        Vec3i,
+        Vec4i,
+        Color,
+        Struct,
+        Ptr,
+        Array,
+        Count
+    };
+
         using SetFunc = std::function<void(void*, void*)>;
         using GetFunc = std::function<void*(void*)>;
         using GetNameFunc = std::function<const char*()>;
@@ -59,13 +81,19 @@ namespace dodoe {
         using GetArrayFunc = std::function<void*(int, void*)>;
         using GetSizeFunc = std::function<int(void*)>;
         using GetBoolFunc = std::function<bool()>;
+        using GetFieldTypeFunc = std::function<FieldType()>;
+        using GetAttrsFunc = std::function<void(std::vector<std::pair<const char*, const char*>>&)>;
         using InvokeFunc = std::function<void(void*)>;
 
         using ConstructorWithJson = std::function<void*(const Json&)>;
         using WriteJsonByName = std::function<Json(void*)>;
         using GetBaseClassReflectionInstanceListFunc = std::function<int(ReflectionInstance*&, void*)>;
 
-        using FieldFuncTuple = std::tuple<SetFunc, GetFunc, GetNameFunc, GetNameFunc, GetNameFunc, GetBoolFunc>;
+        using EnumValue = std::pair<const char*, int>;
+        using EnumValueList = std::vector<EnumValue>;
+
+        using FieldFuncTuple =
+            std::tuple<SetFunc, GetFunc, GetNameFunc, GetNameFunc, GetNameFunc, GetBoolFunc, GetFieldTypeFunc, GetAttrsFunc>;
         using ClassFuncTuple = std::tuple<GetBaseClassReflectionInstanceListFunc, ConstructorWithJson, WriteJsonByName>;
         using ArrayFuncTuple = std::tuple<SetArrayFunc, GetArrayFunc, GetSizeFunc, GetNameFunc, GetNameFunc>;
         using MethodFuncTuple = std::tuple<GetNameFunc, InvokeFunc>;
@@ -78,6 +106,7 @@ namespace dodoe {
             static void register2fieldmap(const char* name, FieldFuncTuple* value);
             static void register2arraymap(const char* name, ArrayFuncTuple* value);
             static void register2methodmap(const char* name, MethodFuncTuple* value);
+            static void register2enummap(const char* name, const EnumValueList& values);
         };
 
         class DODOE_API TypeMeta {
@@ -92,6 +121,7 @@ namespace dodoe {
             static bool new_array_accessor_from_name(const String& array_type_name, ArrayAccessor& accessor);
             static ReflectionInstance new_from_name_and_json(const String& type_name, const Json& json_context);
             static Json write_by_name(const String& name, void* instance);
+            static bool get_enum_values(const String& name, EnumValueList& out);
 
             static ReflectionInstance newFromNameAndJson(const String& type_name, const Json& json_context);
             static Json writeByName(const String& name, void* instance);
@@ -119,6 +149,7 @@ namespace dodoe {
 
         public:
             FieldAccessor();
+            FieldAccessor(const FieldAccessor& other);
 
             void* get(void* instance);
             void set(void* instance, void* value);
@@ -126,6 +157,8 @@ namespace dodoe {
             bool get_type_meta(TypeMeta& field_type);
             const char* getFieldName() const;
             const char* getFieldTypeName();
+            FieldType getFieldType() const { return field_type_; }
+            bool enumValues(EnumValueList& out) const;
             bool is_array_type();
             FieldAccessor& operator=(const FieldAccessor& dest);
 
@@ -140,7 +173,8 @@ namespace dodoe {
             FieldFuncTuple* functions_;
             const char* field_name_;
             const char* field_type_name_;
-            void* m_attributes = nullptr;
+            FieldType field_type_{ FieldType::Unknown };
+            std::unique_ptr<UnorderedMap<String, String>> m_attributes;
 
             explicit FieldAccessor(FieldFuncTuple* functions);
         };

@@ -66,22 +66,17 @@ namespace dodoe {
             if (asset_json.contains("source_path")) {
                 meta.source_path = asset_json["source_path"].get<String>();
             }
-            if (asset_json.contains("asset_path")) {
-                meta.asset_path = asset_json["asset_path"].get<String>();
-            }
             if (asset_json.contains("source_file_mtime")) {
                 meta.source_file_mtime = asset_json["source_file_mtime"].get<UInt64>();
             }
             if (asset_json.contains("asset_file_mtime")) {
                 meta.asset_file_mtime = asset_json["asset_file_mtime"].get<UInt64>();
             }
+            if (asset_json.contains("import_signature")) {
+                meta.import_signature = asset_json["import_signature"].get<UInt64>();
+            }
             if (asset_json.contains("is_builtin")) {
                 meta.is_builtin = asset_json["is_builtin"].get<Bool>();
-            }
-            if (asset_json.contains("import_settings")) {
-                for (const auto& [k, v] : asset_json["import_settings"].items()) {
-                    meta.import_settings[String(k.c_str())] = v.get<String>();
-                }
             }
             if (asset_json.contains("tags")) {
                 for (const auto& tag : asset_json["tags"]) {
@@ -122,16 +117,10 @@ namespace dodoe {
             asset_json["type"] = Asset::assetTypeToString(meta.type);
             asset_json["name"] = meta.name;
             asset_json["source_path"] = meta.source_path;
-            asset_json["asset_path"] = meta.asset_path;
             asset_json["source_file_mtime"] = meta.source_file_mtime;
             asset_json["asset_file_mtime"] = meta.asset_file_mtime;
+            asset_json["import_signature"] = meta.import_signature;
             asset_json["is_builtin"] = meta.is_builtin;
-
-            Json import_settings = Json::object();
-            for (const auto& [k, v] : meta.import_settings) {
-                import_settings[k.c_str()] = v;
-            }
-            asset_json["import_settings"] = import_settings;
 
             Json tags = Json::array();
             for (const auto& tag : meta.tags) {

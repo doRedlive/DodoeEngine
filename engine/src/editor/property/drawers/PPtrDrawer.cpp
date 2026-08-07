@@ -1,55 +1,20 @@
 // do@Redlive
 
 #include "PPtrDrawer.h"
+#include "framework/EditorContext.h"
+#include "framework/command/commands/SetFieldValueCommand.h"
+#include "framework/command/CommandStack.h"
+#include "framework/asset/AssetDatabase.h"
+
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/object/pptr.h"
 #include "runtime/resource/file/file_id.h"
 
-#include <QLineEdit>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QDragEnterEvent>
-#include <QDropEvent>
-#include <QMimeData>
-#include <QUrl>
 
 namespace cakery {
-
-namespace {
-
-class PPtrDropLineEdit : public QLineEdit {
-public:
-    explicit PPtrDropLineEdit(QWidget* parent = nullptr)
-        : QLineEdit(parent)
-    {
-        setAcceptDrops(true);
-        setReadOnly(true);
-        setStyleSheet(
-            "QLineEdit{border:1px solid #3C3C3C;border-radius:2px;padding:2px 6px;"
-            "background:#2D2D2D;color:#C8C8C8;font-size:12px;}"
-            "QLineEdit:focus{border-color:#0078D4;}");
-        setPlaceholderText("None");
-    }
-
-protected:
-    void dragEnterEvent(QDragEnterEvent* event) override
-    {
-        if (event->mimeData()->hasUrls()) {
-            event->acceptProposedAction();
-        }
-    }
-
-    void dropEvent(QDropEvent* event) override
-    {
-        const auto& urls = event->mimeData()->urls();
-        if (!urls.isEmpty()) {
-            setText(urls.first().toLocalFile());
-            event->acceptProposedAction();
-        }
-    }
-};
-
-} // namespace
 
 QWidget* PPtrDrawer::build(const PropertyContext& pc)
 {
@@ -61,18 +26,49 @@ QWidget* PPtrDrawer::build(const PropertyContext& pc)
     auto* label = new QLabel(QString::fromUtf8(pc.field->getFieldName()));
     label->setStyleSheet("color:#8C8C8C;font-size:11px;min-width:30px;");
 
-    auto* edit = new PPtrDropLineEdit(container);
+    auto* combo = new QComboBox();
+    combo->addItem("None");
 
-    void* ptr = pc.field->get(pc.componentPtr);
+    const char* assetType = pc.field->attribute("AssetType");
+    auto assets = pc.ctx->assets().list(assetType && assetType[0] ? assetType : "");
+    for (const auto& a : assets) {
+        combo->addItem(QString::fromStdString(a.path));
+    }
+
+    auto field = *pc.field;
+    void* ptr = field.get(pc.componentPtr);
     if (ptr) {
         auto* fileId = static_cast<dodoe::FileID*>(ptr);
         if (fileId->isValid()) {
-            edit->setText(QString::fromStdString(fileId->getPath()));
+            QString cur = QString::fromUtf8(fileId->getPath().c_str());
+            int idx = combo->findText(cur);
+            if (idx < 0) {
+                combo->addItem(cur);
+                idx = combo->count() - 1;
+            }
+            combo->setCurrentIndex(idx);
         }
     }
 
+    QObject::connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        [pc, field, combo](int idx) mutable {
+            auto* fileId = static_cast<dodoe::FileID*>(field.get(pc.componentPtr));
+            std::string oldPath = (fileId && fileId->isValid()) ? std::string(fileId->getPath().c_str()) : std::string();
+            std::string newPath = (idx <= 0) ? "" : combo->itemText(idx).toStdString();
+            if (newPath.empty()) {
+                *fileId = dodoe::FileID();
+            }
+            else {
+                *fileId = dodoe::FileID(dodoe::String(newPath.c_str(), newPath.size()));
+            }
+            auto cmd = std::make_unique<SetFieldValueCommand>(
+                pc.entity, pc.componentName, field.getFieldName(),
+                dodoe::Json(oldPath), dodoe::Json(newPath));
+            pc.ctx->commands().execute(std::move(cmd));
+        });
+
     layout->addWidget(label);
-    layout->addWidget(edit, 1);
+    layout->addWidget(combo, 1);
     return container;
 }
 

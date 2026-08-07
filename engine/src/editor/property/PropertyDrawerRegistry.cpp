@@ -8,6 +8,8 @@
 #include "drawers/EnumDrawer.h"
 #include "drawers/PPtrDrawer.h"
 #include "drawers/CompositeDrawer.h"
+#include "drawers/ArrayDrawer.h"
+#include "drawers/ReadOnlyDrawer.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
 
@@ -31,26 +33,59 @@ void PropertyDrawerRegistry::registerByAttribute(const std::string& attrKey, Fac
 
 std::unique_ptr<PropertyDrawer> PropertyDrawerRegistry::create(dodoe::FieldAccessor& field)
 {
-    const char* typeName = field.getFieldTypeName();
-    if (!typeName) return nullptr;
-
     for (auto& [attr, factory] : m_byAttr) {
         if (field.hasAttribute(attr.c_str())) {
             return factory();
         }
     }
 
-    auto it = m_byType.find(typeName);
-    if (it != m_byType.end()) {
-        return it->second();
+    switch (field.getFieldType()) {
+    case dodoe::FieldType::Bool:
+    case dodoe::FieldType::I32:
+    case dodoe::FieldType::U32:
+    case dodoe::FieldType::F32:
+    case dodoe::FieldType::F64:
+        return std::make_unique<ScalarDrawer>();
+    case dodoe::FieldType::String:
+        return std::make_unique<StringDrawer>();
+    case dodoe::FieldType::Enum:
+        return std::make_unique<EnumDrawer>();
+    case dodoe::FieldType::Vec2:
+    case dodoe::FieldType::Vec2i:
+        return std::make_unique<VectorDrawer<2>>();
+    case dodoe::FieldType::Vec3:
+    case dodoe::FieldType::Vec3i:
+        return std::make_unique<VectorDrawer<3>>();
+    case dodoe::FieldType::Vec4:
+    case dodoe::FieldType::Vec4i:
+        return std::make_unique<VectorDrawer<4>>();
+    case dodoe::FieldType::Color:
+        return std::make_unique<ColorDrawer>();
+    case dodoe::FieldType::Ptr:
+        return std::make_unique<PPtrDrawer>();
+    case dodoe::FieldType::Array:
+        return std::make_unique<ArrayDrawer>();
+    case dodoe::FieldType::Struct: {
+        const char* typeName = field.getFieldTypeName();
+        if (typeName && dodoe::TypeMeta::newMetaFromName(typeName).isValid()) {
+            return std::make_unique<CompositeDrawer>();
+        }
+        return std::make_unique<ReadOnlyDrawer>();
+    }
+    case dodoe::FieldType::Unknown:
+    default:
+        break;
     }
 
-    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(typeName);
-    if (meta.isValid()) {
-        return std::make_unique<CompositeDrawer>();
+    const char* typeName = field.getFieldTypeName();
+    if (typeName) {
+        auto it = m_byType.find(typeName);
+        if (it != m_byType.end()) {
+            return it->second();
+        }
     }
 
-    return std::make_unique<ScalarDrawer>();
+    return std::make_unique<ReadOnlyDrawer>();
 }
 
 void PropertyDrawerRegistry::registerBuiltinDrawers()
@@ -69,13 +104,6 @@ void PropertyDrawerRegistry::registerBuiltinDrawers()
     registerByType("Vector4f",  []() { return std::make_unique<VectorDrawer<4>>(); });
     registerByType("Vector4i",  []() { return std::make_unique<VectorDrawer<4>>(); });
     registerByType("Color",     []() { return std::make_unique<ColorDrawer>(); });
-
-    registerByType("CameraType", []() { return std::make_unique<EnumDrawer>(); });
-    registerByType("dodoe::CameraType", []() { return std::make_unique<EnumDrawer>(); });
-
-    auto pptrFactory = []() { return std::make_unique<PPtrDrawer>(); };
-    registerByType("PPtr<dodoe::Texture>", pptrFactory);
-    registerByType("PPtr<dodoe::Mesh>", pptrFactory);
 }
 
 } // namespace cakery

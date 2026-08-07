@@ -2,6 +2,7 @@
 
 #include "generator/generator.h"
 #include "language_types/class.h"
+#include "language_types/enum_def.h"
 
 namespace Generator
 {
@@ -41,6 +42,66 @@ namespace Generator
         genClassMethodRenderData(class_temp, class_method_defines);
         class_def.set("class_method_defines", class_method_defines);
     }
+    static std::string mapFieldTypeToken(const std::string& type_name)
+    {
+        static const std::map<std::string, std::string> scalar_map = {
+            {"bool", "Bool"},
+            {"Bool", "Bool"},
+            {"int", "I32"},
+            {"int32_t", "I32"},
+            {"Int32", "I32"},
+            {"uint32_t", "U32"},
+            {"UInt32", "U32"},
+            {"float", "F32"},
+            {"Float", "F32"},
+            {"double", "F64"},
+            {"Double", "F64"},
+            {"String", "String"},
+            {"std::string", "String"},
+            {"Vector2f", "Vec2"},
+            {"Vector2i", "Vec2i"},
+            {"Vector3f", "Vec3"},
+            {"Vector3i", "Vec3i"},
+            {"Vector4f", "Vec4"},
+            {"Vector4i", "Vec4i"},
+            {"Color", "Color"},
+        };
+
+        if (type_name.rfind("std::vector<", 0) == 0)
+        {
+            return "Array";
+        }
+        if (type_name.rfind("PPtr<", 0) == 0)
+        {
+            return "Ptr";
+        }
+        if (g_enum_table.find(type_name) != g_enum_table.end())
+        {
+            return "Enum";
+        }
+        auto it = scalar_map.find(type_name);
+        if (it != scalar_map.end())
+        {
+            return it->second;
+        }
+        return "Struct";
+    }
+
+    static std::string escapeStringLiteral(const std::string& input)
+    {
+        std::string out;
+        out.reserve(input.size());
+        for (char c : input)
+        {
+            if (c == '\\' || c == '"')
+            {
+                out.push_back('\\');
+            }
+            out.push_back(c);
+        }
+        return out;
+    }
+
     void GeneratorInterface::genClassFieldRenderData(std::shared_ptr<Class> class_temp, Mustache::data& feild_defs)
     {
         static const std::string vector_prefix = "std::vector<";
@@ -56,6 +117,18 @@ namespace Generator
             filed_define.set("class_field_display_name", field->m_display_name);
             bool is_vector = field->m_type.find(vector_prefix) == 0;
             filed_define.set("class_field_is_vector", is_vector);
+            filed_define.set("class_field_type_token", mapFieldTypeToken(field->m_type));
+
+            Mustache::data attr_defines(Mustache::data::type::list);
+            for (const auto& [key, value] : field->m_meta_data.getProperties())
+            {
+                Mustache::data attr_def;
+                attr_def.set("attr_key", key);
+                attr_def.set("attr_value", escapeStringLiteral(value));
+                attr_defines.push_back(attr_def);
+            }
+            filed_define.set("class_field_attr_defines", attr_defines);
+
             feild_defs.push_back(filed_define);
         }
     }

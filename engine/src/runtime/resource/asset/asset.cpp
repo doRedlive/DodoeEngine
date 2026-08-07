@@ -15,15 +15,9 @@ namespace dodoe {
         json["type"] = assetTypeToString(m_meta.type);
         json["name"] = m_meta.name;
         json["source_path"] = m_meta.source_path;
-        json["asset_path"] = m_meta.asset_path;
         json["source_file_mtime"] = m_meta.source_file_mtime;
         json["asset_file_mtime"] = m_meta.asset_file_mtime;
-
-        Json import_settings = Json::object();
-        for (const auto& [key, value] : m_meta.import_settings) {
-            import_settings[key.c_str()] = value;
-        }
-        json["import_settings"] = import_settings;
+        json["import_signature"] = m_meta.import_signature;
 
         Json tags = Json::array();
         for (const auto& tag : m_meta.tags) {
@@ -61,19 +55,14 @@ namespace dodoe {
         if (json.contains("source_path")) {
             m_meta.source_path = json["source_path"].get<String>();
         }
-        if (json.contains("asset_path")) {
-            m_meta.asset_path = json["asset_path"].get<String>();
-        }
         if (json.contains("source_file_mtime")) {
             m_meta.source_file_mtime = json["source_file_mtime"].get<UInt64>();
         }
         if (json.contains("asset_file_mtime")) {
             m_meta.asset_file_mtime = json["asset_file_mtime"].get<UInt64>();
         }
-        if (json.contains("import_settings")) {
-            for (const auto& [key, value] : json["import_settings"].items()) {
-                m_meta.import_settings[String(key.c_str())] = value.get<String>();
-            }
+        if (json.contains("import_signature")) {
+            m_meta.import_signature = json["import_signature"].get<UInt64>();
         }
         if (json.contains("tags")) {
             for (const auto& tag : json["tags"]) {
@@ -97,6 +86,7 @@ namespace dodoe {
     const char* Asset::assetTypeToString(AssetType type) {
         switch (type) {
             case AssetType::Texture:        return "Texture";
+            case AssetType::Sprite:          return "Sprite";
             case AssetType::Mesh:           return "Mesh";
             case AssetType::Material:        return "Material";
             case AssetType::AnimationClip:   return "AnimationClip";
@@ -113,6 +103,7 @@ namespace dodoe {
 
     AssetType Asset::assetTypeFromString(const String& str) {
         if (str == "Texture")        return AssetType::Texture;
+        if (str == "Sprite")          return AssetType::Sprite;
         if (str == "Mesh")           return AssetType::Mesh;
         if (str == "Material")        return AssetType::Material;
         if (str == "AnimationClip")   return AssetType::AnimationClip;
@@ -127,7 +118,8 @@ namespace dodoe {
 
     const char* Asset::assetTypeToExtension(AssetType type) {
         switch (type) {
-            case AssetType::Texture:        return ".png";
+            case AssetType::Texture:
+            case AssetType::Sprite:          return ".png";
             case AssetType::Mesh:           return ".obj";
             case AssetType::Material:        return ".domat";
             case AssetType::AnimationClip:   return ".doaniclip";
@@ -145,6 +137,7 @@ namespace dodoe {
     Bool Asset::assetTypeIsReadOnly(AssetType type) {
         switch (type) {
             case AssetType::Texture:
+            case AssetType::Sprite:
             case AssetType::Mesh:
             case AssetType::Shader:
             case AssetType::Script:
