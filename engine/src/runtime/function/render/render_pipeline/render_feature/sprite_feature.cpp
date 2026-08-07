@@ -15,15 +15,21 @@ namespace dodoe {
 	void SpriteFeature::initialize(SharedRenderService& resources) {
 	    auto* cache = resources.getBindingLayoutCache();
 
-	    m_bindless_binding_layout = cache->getOrCreate(
+	    m_cb_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
-	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0)));
+
+	    m_sampler_binding_layout = cache->getOrCreate(
+	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .setRegisterSpace(1)
 	            .addItem(GfxBindingLayoutItem::Sampler(0)));
 
-	    m_array_binding_layout = cache->getOrCreate(
+	    m_texture_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc().setVisibility(GfxShaderType::Vertex | GfxShaderType::Pixel)
-	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
-	            .addItem(GfxBindingLayoutItem::Sampler(0))
+	            .setRegisterSpaceIsDescriptorSet(true)
+	            .setRegisterSpace(2)
 	            .addItem(GfxBindingLayoutItem::Texture_SRV(0)));
 
 	    if (auto* input_layout_cache = resources.getInputLayoutCache()) {
@@ -44,12 +50,13 @@ namespace dodoe {
 
 	void SpriteFeature::shutdown() {
 	    m_input_layout = nullptr;
-	    m_array_binding_layout = nullptr;
-	    m_bindless_binding_layout = nullptr;
+	    m_texture_binding_layout = nullptr;
+	    m_sampler_binding_layout = nullptr;
+	    m_cb_binding_layout = nullptr;
 	}
 
 	void SpriteFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<SpritePass>(m_bindless_binding_layout, m_array_binding_layout, m_input_layout);
+	    collector.addPass<SpritePass>(m_cb_binding_layout, m_sampler_binding_layout, m_texture_binding_layout, m_input_layout);
 	}
 
 } // namespace dodoe

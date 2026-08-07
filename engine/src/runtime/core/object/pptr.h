@@ -4,7 +4,6 @@
 
 #include "dopch.h"
 #include "object.h"
-#include "obj_handle.h"
 #include "runtime/resource/file/file_id.h"
 
 namespace dodoe {
@@ -25,13 +24,6 @@ namespace dodoe {
             : m_file_id(file_id), m_uuid(uuid), m_instance_id(instance_id) {}
         explicit PPtr(T* obj)
             : m_file_id(obj->getFileID()), m_uuid(obj->getUUID()), m_instance_id(obj->getInstanceID()) {}
-        explicit PPtr(const ObjHandle<T>& handle)
-            : m_instance_id(handle.getInstanceID()) {
-            if (auto* obj = handle.get()) {
-                m_file_id = obj->getFileID();
-                m_uuid = obj->getUUID();
-            }
-        }
 
         [[nodiscard]] T* get() const {
             if (m_instance_id != 0) {

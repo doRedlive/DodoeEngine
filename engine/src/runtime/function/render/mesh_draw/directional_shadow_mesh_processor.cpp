@@ -19,6 +19,7 @@ namespace dodoe {
         m_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
+                .setRegisterSpaceIsDescriptorSet(true)
                 .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
         );
         m_constant_buffer = GDrawCommandList.createBuffer(

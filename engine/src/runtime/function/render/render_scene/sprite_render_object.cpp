@@ -32,7 +32,8 @@ namespace dodoe {
         if (m_uv_min_x != prev.m_uv_min_x ||
             m_uv_min_y != prev.m_uv_min_y ||
             m_uv_max_x != prev.m_uv_max_x ||
-            m_uv_max_y != prev.m_uv_max_y) {
+            m_uv_max_y != prev.m_uv_max_y ||
+            m_atlas_index != prev.m_atlas_index) {
             flags |= RenderObjectDirtyFlags::Mesh;
         }
         if (m_material_id != prev.m_material_id) {

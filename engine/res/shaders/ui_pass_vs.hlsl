@@ -12,10 +12,10 @@ struct VSInput
     float4 a_Color    : COLOR;
     uint   a_TexIndex : TEXINDEX;
 
-    float4 i_Data1 : TEXCOORD1;  // position.xy, size.xy
-    float4 i_Data2 : TEXCOORD2;  // uv_min.xy, uv_max.xy
-    float4 i_Data3 : TEXCOORD3;  // color, atlas_index, depth, flags
-    float4 i_Data4 : TEXCOORD4;  // clip_rect (not used in VS)
+    float4 i_Transform  : TEXCOORD1;  // position.xy, size.xy
+    float4 i_UVRect     : TEXCOORD2;  // uv_min.xy, uv_max.xy
+    float4 i_ColorDepth : TEXCOORD3;  // color, atlas_index, depth, flags
+    float4 i_ClipRect   : TEXCOORD4;  // clip_rect (not used in VS)
 };
 
 struct VSOutput
@@ -38,13 +38,13 @@ float4 unpackRGBA8(uint packed)
 
 VSOutput main(VSInput input)
 {
-    float2 position   = input.i_Data1.xy;
-    float2 size       = input.i_Data1.zw;
-    float2 uv_min     = input.i_Data2.xy;
-    float2 uv_max     = input.i_Data2.zw;
-    uint   packedColor = asuint(input.i_Data3.x);
-    uint   texIndex    = asuint(input.i_Data3.y);
-    float  depth       = input.i_Data3.z;
+    float2 position   = input.i_Transform.xy;
+    float2 size       = input.i_Transform.zw;
+    float2 uv_min     = input.i_UVRect.xy;
+    float2 uv_max     = input.i_UVRect.zw;
+    uint   packedColor = asuint(input.i_ColorDepth.x);
+    uint   texIndex    = asuint(input.i_ColorDepth.y);
+    float  depth       = input.i_ColorDepth.z;
 
     // Scale quad from [-0.5, 0.5] to pixel-size, position in screen space
     float2 worldPos = input.a_Position.xy * size + position;

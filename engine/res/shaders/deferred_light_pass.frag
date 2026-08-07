@@ -3,7 +3,7 @@
 layout(location = 0) in vec2 v_UV;
 layout(location = 0) out vec4 o_Color;
 
-layout(set = 0, binding = 256) uniform DeferredLightPassUBO {
+layout(set = 0, binding = 0) uniform DeferredLightPassUBO {
     vec4 u_LightColorIntensity;
     vec4 u_LightPositionRadius;
     vec4 u_LightDirectionType;
@@ -12,13 +12,13 @@ layout(set = 0, binding = 256) uniform DeferredLightPassUBO {
     vec4 u_CameraPosition;
 };
 
-layout(set = 0, binding = 0) uniform texture2D u_Albedo;
-layout(set = 0, binding = 1) uniform texture2D u_Normal;
-layout(set = 0, binding = 2) uniform texture2D u_Position;
-layout(set = 0, binding = 3) uniform texture2D u_ShadowMap;
-layout(set = 0, binding = 4) uniform texture2D u_Material;
-layout(set = 0, binding = 5) uniform textureCube u_SkyboxTexture;
-layout(set = 0, binding = 128) uniform sampler u_Sampler;
+layout(set = 2, binding = 0) uniform texture2D u_Albedo;
+layout(set = 2, binding = 1) uniform texture2D u_Normal;
+layout(set = 2, binding = 2) uniform texture2D u_Position;
+layout(set = 2, binding = 3) uniform texture2D u_ShadowMap;
+layout(set = 2, binding = 4) uniform texture2D u_Material;
+layout(set = 2, binding = 5) uniform textureCube u_SkyboxTexture;
+layout(set = 1, binding = 0) uniform sampler u_Sampler;
 
 const vec2 poissonDisk[16] = vec2[](
     vec2( -0.94201624, -0.39906216 ),

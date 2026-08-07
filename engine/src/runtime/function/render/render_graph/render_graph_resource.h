@@ -176,7 +176,7 @@ namespace dodoe {
         RenderGraphBufferDesc buffer_desc{};
         GfxTextureHandle imported_texture{};
         GfxBufferHandle imported_buffer{};
-        Int32 producer_pass_index{-1};
+        DynamicArray<UInt32> writer_passes{};
         Int32 first_pass_index{-1};
         Int32 last_pass_index{-1};
         DynamicArray<UInt32> reader_passes{};

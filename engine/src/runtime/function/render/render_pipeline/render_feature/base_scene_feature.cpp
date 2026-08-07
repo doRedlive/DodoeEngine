@@ -97,6 +97,7 @@ namespace dodoe {
     static GfxGraphicsPipelineDesc MakeGBufferPipelineDesc(const ShaderLibrary& shader_library,
                                                             GfxInputLayoutHandle gbuffer_input_layout,
                                                             const GfxBindingLayoutHandle& binding_layout,
+                                                            const GfxBindingLayoutHandle& sampler_binding_layout,
                                                             DescriptorTableManager* descriptor_table,
                                                             BindingLayoutCache* binding_layout_cache) {
         auto pipeline_desc = GfxGraphicsPipelineDesc()
@@ -104,6 +105,7 @@ namespace dodoe {
             .setPixelShader(shader_library.getGBufferPixelShader())
             .setInputLayout(gbuffer_input_layout)
             .addBindingLayout(binding_layout)
+            .addBindingLayout(sampler_binding_layout)
             .setPrimType(GfxPrimitiveType::TriangleList);
         if (RenderSettings::IsBindlessActive()) {
             if (descriptor_table && descriptor_table->getDescriptorTable()) {
@@ -113,6 +115,8 @@ namespace dodoe {
             auto texture_layout = binding_layout_cache->getOrCreate(
                 GfxBindingLayoutDesc()
                     .setVisibility(GfxShaderType::Pixel)
+                    .setRegisterSpaceIsDescriptorSet(true)
+                    .setRegisterSpace(2)
                     .addItem(GfxBindingLayoutItem::Texture_SRV(0))
                     .addItem(GfxBindingLayoutItem::Texture_SRV(1)));
             pipeline_desc.addBindingLayout(texture_layout);
@@ -332,6 +336,7 @@ namespace dodoe {
             MeshPassType::GBuffer,
             MakeGBufferPipelineDesc(shader_library, gbuffer_input_layout,
                 m_gbuffer_processor->getBindingLayout(),
+                m_gbuffer_processor->getSamplerBindingLayout(),
                 m_shared_render_service->getDescriptorTable(),
                 m_shared_render_service->getBindingLayoutCache()),
             gbuffer_fb_info,

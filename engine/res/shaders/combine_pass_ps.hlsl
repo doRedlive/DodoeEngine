@@ -4,9 +4,9 @@ cbuffer CombinePushConstants : register(b0)
     float2 u_ViewportSize;
 };
 
-Texture2D    u_SceneTexture   : register(t0);
-Texture2D    u_ImGuiTexture   : register(t1);
-SamplerState u_TextureSampler : register(s0);
+Texture2D    u_SceneTexture   : register(t0, space2);
+Texture2D    u_ImGuiTexture   : register(t1, space2);
+SamplerState u_TextureSampler : register(s0, space1);
 
 struct PSInput
 {
@@ -30,7 +30,6 @@ float4 main(PSInput input) : SV_Target
     {
         float2 safe_viewport_size = max(u_ViewportSize, float2(1.0, 1.0));
         float2 scene_uv = (frag_pos - u_ViewportPos) / safe_viewport_size;
-        scene_uv.y = 1.0 - scene_uv.y;
         float4 scene_color = u_SceneTexture.Sample(u_TextureSampler, clamp(scene_uv, float2(0.0, 0.0), float2(1.0, 1.0)));
         return lerp(scene_color, imgui_color, imgui_color.a);
     }

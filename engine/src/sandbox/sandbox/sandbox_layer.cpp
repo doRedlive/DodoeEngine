@@ -11,6 +11,7 @@
 #include "runtime/function/world/components.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/service/world/scene_importer.h"
+#include "runtime/service/sprite/sprite_loader.h"
 #include "runtime/core/utils/common.h"
 
 
@@ -39,22 +40,24 @@ namespace sandbox {
         //     auto& sr = entity.addComponent<dodoe::SpriteRendererComponent>();
         //     sr.pivot = {0.5f, 0.5f};
         //     sr.depth = 0.0f;
-        //     sr.sprite = dodoe::PPtr<dodoe::Sprite>(tex->getFileID(), tex->getUUID());
+        //     sr.sprite = dodoe::PPtr<dodoe::Sprite>(dodoe::SpriteLoader::Load(tex->getPath()));
         //     sr.dirty = true;
         // }
 
-        {
-            auto entity = cur_scene->createEntity("test_go");
-            auto& transform = entity.getComponent<dodoe::TransformComponent>();
-            transform.setPosition({1.0f, 0.0f, 0.0f});
-            transform.setScale({5.0f, 5.0f, 1.0f});
+        // {
+        //     auto entity = cur_scene->createEntity("test_go");
+        //     auto& transform = entity.getComponent<dodoe::TransformComponent>();
+        //     transform.setPosition({1.0f, 0.0f, 0.0f});
+        //     transform.setScale({5.0f, 5.0f, 1.0f});
 
-            auto& sr = entity.addComponent<dodoe::SpriteRendererComponent>();
-            sr.pivot = {0.5f, 0.5f};
-            sr.depth = 0.0f;
-            sr.sprite = dodoe::PPtr<dodoe::Sprite>(tex->getFileID(), tex->getUUID());
-            sr.dirty = true;
-        }
+        //     // auto& sr = entity.addComponent<dodoe::SpriteRendererComponent>();
+        //     // sr.pivot = {0.5f, 0.5f};
+        //     // sr.depth = 0.0f;
+        //     // sr.sprite = dodoe::PPtr<dodoe::Sprite>(dodoe::SpriteLoader::Load(tex->getPath()));
+        //     // sr.dirty = true;
+        // }
+
+        dodoe::SceneImporter::ImportModel("engine/res/models/backpack/backpack.obj");
     }
     
     void SandboxLayer::detach() {

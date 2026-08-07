@@ -32,8 +32,6 @@ namespace dodoe {
         void setGpuHandle(GfxTextureHandle handle) { m_gpu_handle = std::move(handle); }
 
     protected:
-        void onDestroy() override {}
-        void trace(TraceVisitor& v) const override {}
     };
 
     class DODOE_API Texture2D : public Texture {

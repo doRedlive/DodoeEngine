@@ -13,6 +13,7 @@
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 #include "runtime/core/object/pptr.h"
+#include "runtime/service/sprite/sprite_loader.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "assimp/Importer.hpp"
@@ -300,8 +301,7 @@ namespace dodoe {
         auto entity = cur_scene->createEntity(entity_name);
 
         auto& sr = entity.addComponent<SpriteRendererComponent>();
-        FileID file_id(path);
-        sr.sprite = PPtr<Sprite>(file_id, UUID());
+        sr.sprite = PPtr<Sprite>(SpriteLoader::Load(path));
         sr.dirty = true;
 
         LOG_INFO("SceneImporter::ImportSprite: {}", path);

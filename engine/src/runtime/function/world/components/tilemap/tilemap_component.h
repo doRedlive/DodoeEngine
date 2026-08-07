@@ -26,7 +26,7 @@ namespace dodoe {
         UInt32 tile_height{16};
 
         DynamicArray<Ref<TilesetAsset>> tilesets;
-        Bool dirty{false};
+        Bool dirty{true};
 
         [[nodiscard]] const TilesetAsset* findTilesetByGid(UInt32 gid) const {
             for (auto it = tilesets.rbegin(); it != tilesets.rend(); ++it) {

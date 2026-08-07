@@ -10,10 +10,10 @@ struct VSInput
     float4 a_Color    : COLOR;
     uint   a_TexIndex : TEXINDEX;
 
-    float4 i_Data1 : TEXCOORD1;
-    float4 i_Data2 : TEXCOORD2;
-    float4 i_Data3 : TEXCOORD3;
-    float4 i_Data4 : TEXCOORD4;
+    float4 i_Transform        : TEXCOORD1;
+    float4 i_RotationTexIndex : TEXCOORD2;
+    float4 i_UVRect           : TEXCOORD3;
+    float4 i_ColorData        : TEXCOORD4;
 };
 
 struct VSOutput
@@ -36,13 +36,13 @@ float4 unpackRGBA8(uint packed)
 
 VSOutput main(VSInput input)
 {
-    float2 position = input.i_Data1.xy;
-    float2 scale    = input.i_Data1.zw;
-    float  rotation = input.i_Data2.x;
-    uint   texIndex = asuint(input.i_Data2.z);
-    float2 uv_min   = input.i_Data3.xy;
-    float2 uv_max   = input.i_Data3.zw;
-    uint   packedColor = asuint(input.i_Data4.x);
+    float2 position = input.i_Transform.xy;
+    float2 scale    = input.i_Transform.zw;
+    float  rotation = input.i_RotationTexIndex.x;
+    uint   texIndex = asuint(input.i_RotationTexIndex.z);
+    float2 uv_min   = input.i_UVRect.xy;
+    float2 uv_max   = input.i_UVRect.zw;
+    uint   packedColor = asuint(input.i_ColorData.x);
 
     float c = cos(rotation);
     float s = sin(rotation);

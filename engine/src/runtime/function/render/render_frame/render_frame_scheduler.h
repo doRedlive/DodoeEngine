@@ -29,6 +29,7 @@ namespace dodoe {
             UInt32 swapchain_image_index{0};
             Bool in_flight{false};
             GfxEventQueryHandle completion_query{};
+            DrawCommandList command_list{};
         };
 
         GfxDeviceHandle m_device{};

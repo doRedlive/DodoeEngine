@@ -30,6 +30,7 @@ namespace dodoe {
         [[nodiscard]] DynamicArray<FileID> getAssetsByTag(const String& tag) const;
 
         void markDirty() { m_dirty = true; }
+        [[nodiscard]] Bool isDirty() const { return m_dirty; }
         [[nodiscard]] static UUID generateUUID();
     };
 

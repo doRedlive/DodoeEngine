@@ -20,7 +20,7 @@ namespace dodoe {
         bindless_layout_desc.firstSlot = 0;
         bindless_layout_desc.maxCapacity = 1024;
         bindless_layout_desc.registerSpaces = {
-            GfxBindingLayoutItem::Texture_SRV(0)
+            GfxBindingLayoutItem::Texture_SRV(3)
         };
         auto bindless_layout = GDrawCommandList.getDevice()->createBindlessLayout(bindless_layout_desc);
         descriptor_table_ = GDrawCommandList.getDevice()->createDescriptorTable(bindless_layout);

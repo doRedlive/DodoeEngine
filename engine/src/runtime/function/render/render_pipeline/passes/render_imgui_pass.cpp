@@ -37,7 +37,7 @@ namespace dodoe {
                 color_desc.desc = GfxTextureDesc()
                     .setWidth(swapchain_extent.x).setHeight(swapchain_extent.y).setDepth(1)
                     .setFormat(GfxFormat::RGBA8_UNORM)
-                    .setIsRenderTarget(true).setInitialState(GfxResourceStates::RenderTarget)
+                    .setIsRenderTarget(true).enableAutomaticStateTracking(GfxResourceStates::RenderTarget)
                     .setDebugName("RDG ImGuiColor");
                 RenderGraphAttachmentInfo color_attachment{};
                 color_attachment.load_op = LoadOp::Clear;
@@ -82,16 +82,25 @@ namespace dodoe {
                     font_texture = ctx.resolveTexture(parameters.font_texture);
                 }
 
-                ImGui::Render();
-                const auto* draw_data = ImGui::GetDrawData();
-                if (!draw_data || draw_data->TotalVtxCount == 0 || draw_data->TotalIdxCount == 0) {
+                const auto& packet = ImGuiBuilder::GetRenderPacket();
+                if (packet.lists.empty()) {
+                    return;
+                }
+
+                UInt32 total_vertex_count = 0;
+                UInt32 total_index_count = 0;
+                for (const auto& list : packet.lists) {
+                    total_vertex_count += static_cast<UInt32>(list.vertices.size());
+                    total_index_count += static_cast<UInt32>(list.indices.size());
+                }
+                if (total_vertex_count == 0 || total_index_count == 0) {
                     return;
                 }
 
                 const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
                 const auto ib = ctx.resolveBuffer(parameters.index_buffer);
-                const UInt64 vertex_bytes = static_cast<UInt64>(draw_data->TotalVtxCount) * sizeof(ImDrawVert);
-                const UInt64 index_bytes = static_cast<UInt64>(draw_data->TotalIdxCount) * sizeof(ImDrawIdx);
+                const UInt64 vertex_bytes = static_cast<UInt64>(total_vertex_count) * sizeof(ImDrawVert);
+                const UInt64 index_bytes = static_cast<UInt64>(total_index_count) * sizeof(ImDrawIdx);
                 if (vertex_bytes > vb->getByteSize() || index_bytes > ib->getByteSize()) {
                     DO_ERROR("ImGuiPass: transient UI buffers are too small");
                     return;
@@ -103,14 +112,17 @@ namespace dodoe {
 
                 UInt32 vertex_offset = 0;
                 UInt32 index_offset = 0;
-                for (int n = 0; n < draw_data->CmdListsCount; n++) {
-                    const auto* draw_list = draw_data->CmdLists[n];
-                    command_list.writeBuffer(vb, draw_list->VtxBuffer.Data,
-                                             draw_list->VtxBuffer.Size * sizeof(ImDrawVert), vertex_offset);
-                    command_list.writeBuffer(ib, draw_list->IdxBuffer.Data,
-                                             draw_list->IdxBuffer.Size * sizeof(ImDrawIdx), index_offset);
-                    vertex_offset += draw_list->VtxBuffer.Size * sizeof(ImDrawVert);
-                    index_offset += draw_list->IdxBuffer.Size * sizeof(ImDrawIdx);
+                for (const auto& list : packet.lists) {
+                    if (!list.vertices.empty()) {
+                        command_list.writeBuffer(vb, list.vertices.data(),
+                                                 list.vertices.size() * sizeof(ImDrawVert), vertex_offset);
+                    }
+                    if (!list.indices.empty()) {
+                        command_list.writeBuffer(ib, list.indices.data(),
+                                                 list.indices.size() * sizeof(ImDrawIdx), index_offset);
+                    }
+                    vertex_offset += static_cast<UInt32>(list.vertices.size() * sizeof(ImDrawVert));
+                    index_offset += static_cast<UInt32>(list.indices.size() * sizeof(ImDrawIdx));
                 }
 
                 command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
@@ -153,37 +165,34 @@ namespace dodoe {
                     return;
                 }
 
-                const Float left = draw_data->DisplayPos.x;
-                const Float right = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-                const Float top = draw_data->DisplayPos.y;
-                const Float bottom = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+                const Float left = packet.display_pos.x;
+                const Float right = packet.display_pos.x + packet.display_size.x;
+                const Float top = packet.display_pos.y;
+                const Float bottom = packet.display_pos.y + packet.display_size.y;
                 if (right <= left || bottom <= top) {
                     return;
                 }
 
                 struct ImGuiPushConstants {
-                    Float scale[2];
-                    Float translate[2];
+                    Float inv_display_size[2];
+                    Float display_origin[2];
                 } push_data{
-                    {2.0f / (right - left), 2.0f / (top - bottom)},
-                    {-(right + left) / (right - left), -(top + bottom) / (top - bottom)}};
+                    {1.0f / (right - left), 1.0f / (bottom - top)},
+                    {left, top}};
 
                 const auto framebuffer = ctx.getFramebuffer();
                 UInt32 global_vertex_offset = 0;
                 UInt32 global_index_offset = 0;
-                for (int n = 0; n < draw_data->CmdListsCount; n++) {
-                    const auto* draw_list = draw_data->CmdLists[n];
-                    for (int i = 0; i < draw_list->CmdBuffer.Size; i++) {
-                        const auto& draw = draw_list->CmdBuffer[i];
-                        if (draw.UserCallback) {
-                            draw.UserCallback(draw_list, &draw);
+                for (const auto& list : packet.lists) {
+                    for (const auto& draw : list.commands) {
+                        if (draw.user_callback) {
                             continue;
                         }
-                        if (!draw.GetTexID()) {
+                        if (!draw.texture_id) {
                             continue;
                         }
 
-                        auto* texture = reinterpret_cast<GfxTexture*>(draw.GetTexID());
+                        auto* texture = reinterpret_cast<GfxTexture*>(draw.texture_id);
                         if (!texture || !texture->isRHIReady()) {
                             continue;
                         }
@@ -198,10 +207,10 @@ namespace dodoe {
                             continue;
                         }
 
-                        const Float clip_x = std::max(draw.ClipRect.x - draw_data->DisplayPos.x, 0.0f);
-                        const Float clip_y = std::max(draw.ClipRect.y - draw_data->DisplayPos.y, 0.0f);
-                        const Float clip_z = std::min(draw.ClipRect.z - draw_data->DisplayPos.x, draw_data->DisplaySize.x);
-                        const Float clip_w = std::min(draw.ClipRect.w - draw_data->DisplayPos.y, draw_data->DisplaySize.y);
+                        const Float clip_x = std::max(draw.clip_rect.x - packet.display_pos.x, 0.0f);
+                        const Float clip_y = std::max(draw.clip_rect.y - packet.display_pos.y, 0.0f);
+                        const Float clip_z = std::min(draw.clip_rect.z - packet.display_pos.x, packet.display_size.x);
+                        const Float clip_w = std::min(draw.clip_rect.w - packet.display_pos.y, packet.display_size.y);
                         if (clip_z <= clip_x || clip_w <= clip_y) {
                             continue;
                         }
@@ -216,15 +225,15 @@ namespace dodoe {
                         DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                             GfxVertexBufferBinding().setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(global_vertex_offset)};
                         command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport, vertex_buffers,
-                            GfxIndexBufferBinding().setBuffer(ib->getRHIHandle()).setOffset(global_index_offset));
+                            GfxIndexBufferBinding().setBuffer(ib->getRHIHandle()).setFormat(GfxFormat::R16_UINT).setOffset(global_index_offset));
                         command_list.setPushConstants(&push_data, sizeof(push_data));
                         command_list.drawIndexed(GfxDrawArguments()
-                            .setVertexCount(draw.ElemCount)
-                            .setStartIndexLocation(draw.IdxOffset)
-                            .setStartVertexLocation(draw.VtxOffset));
+                            .setVertexCount(draw.elem_count)
+                            .setStartIndexLocation(draw.idx_offset)
+                            .setStartVertexLocation(draw.vtx_offset));
                     }
-                    global_vertex_offset += draw_list->VtxBuffer.Size * sizeof(ImDrawVert);
-                    global_index_offset += draw_list->IdxBuffer.Size * sizeof(ImDrawIdx);
+                    global_vertex_offset += static_cast<UInt32>(list.vertices.size() * sizeof(ImDrawVert));
+                    global_index_offset += static_cast<UInt32>(list.indices.size() * sizeof(ImDrawIdx));
                 }
             });
     }

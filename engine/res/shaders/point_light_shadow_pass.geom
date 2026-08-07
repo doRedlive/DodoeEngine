@@ -9,7 +9,7 @@ layout(location = 0) out float out_inv_length;
 layout(location = 1) out vec3 out_inv_length_position_view_space;
 layout(location = 2) out float out_point_light_radius;
 
-layout(set = 0, binding = 256) uniform PointLightShadowPassUBO {
+layout(set = 0, binding = 0) uniform PointLightShadowPassUBO {
     uint point_light_count;
     uint _padding_point_light_count_0;
     uint _padding_point_light_count_1;

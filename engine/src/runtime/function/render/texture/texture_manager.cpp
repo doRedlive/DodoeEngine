@@ -11,8 +11,6 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/context/system_context.h"
-#include "runtime/core/object/obj_handle.h"
-#include "runtime/core/gc/object_heap.h"
 
 namespace dodoe {
 
@@ -123,7 +121,8 @@ namespace dodoe {
             .setDebugName(path.c_str());
 
         const FileID file_id(path);
-        auto* texture = ObjectHeap::Construct<Texture2D>(AllocCategory::Texture, file_id);
+        auto texture = create_scope<Texture2D>(file_id);
+        Texture2D* texture_raw = texture.get();
         texture->setDimensions(data.width, data.height);
         texture->setPath(path);
 
@@ -147,7 +146,7 @@ namespace dodoe {
 
         if (RenderSettings::IsBindlessActive()) {
             UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
-            m_slot_lut.push_back(texture);
+            m_slot_lut.push_back(texture_raw->getInstanceID());
             texture->setSlot(slot);
 
             DescriptorIndex desc_idx = static_cast<DescriptorIndex>(m_descriptor_table->allocateSlot());
@@ -161,12 +160,13 @@ namespace dodoe {
             texture->setDescriptorIndex(desc_idx);
         } else {
             UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
-            m_slot_lut.push_back(texture);
+            m_slot_lut.push_back(texture_raw->getInstanceID());
             texture->setSlot(slot);
         }
 
-        m_texture2d_cache.emplace(texture->getInstanceID(), ObjHandle<Texture2D>(texture));
-        return texture;
+        const InstanceID id = texture->getInstanceID();
+        m_texture2d_cache.emplace(id, std::move(texture));
+        return texture_raw;
     }
 
     void TextureManager::createFallbackTexture() {
@@ -190,17 +190,23 @@ namespace dodoe {
 
         auto handle = create_ref<GfxTexture>(handle_rhi, texture_desc, "Render TextureManager Fallback");
 
-        auto* fb = ObjectHeap::Construct<Texture2D>(AllocCategory::Texture, FileID("<fallback>"), UUID(0));
+        auto fb_scope = create_scope<Texture2D>(FileID("<fallback>"), UUID(0));
+        Texture2D* fb = fb_scope.get();
         fb->setName("<fallback>");
         fb->setDimensions(1, 1);
         fb->setGpuHandle(handle);
+
+        const UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
+        m_slot_lut.push_back(fb->getInstanceID());
+        fb->setSlot(slot);
+
         if (RenderSettings::IsBindlessActive()) {
             auto fallback_item = GfxBindingSetItem::Texture_SRV(0, handle_rhi);
             DescriptorIndex fallback_descriptor_index = m_descriptor_table->createDescriptor(fallback_item);
             fb->setDescriptorIndex(fallback_descriptor_index);
         }
 
-        m_fallback = ObjHandle<Texture2D>(fb);
+        m_fallback = std::move(fb_scope);
     }
 
     TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths) {
@@ -249,17 +255,20 @@ namespace dodoe {
             cmd_list.writeTexture(cubemap, i, 0, px, rp);
         }
 
-        auto* texture = ObjectHeap::Construct<TextureCubemap>(AllocCategory::Texture, file_id);
+        auto texture = create_scope<TextureCubemap>(file_id);
         texture->setFaceSize(faces[0].width);
         texture->setGpuHandle(cubemap);
+        TextureCubemap* texture_raw = texture.get();
 
-        m_cubemap_cache.emplace(texture->getInstanceID(), ObjHandle<TextureCubemap>(texture));
-        return texture;
+        m_cubemap_cache.emplace(texture->getInstanceID(), std::move(texture));
+        return texture_raw;
     }
 
     Texture2D* TextureManager::resolveSlot(const UInt32 slot) const {
         if (slot < m_slot_lut.size()) {
-            return m_slot_lut[slot];
+            if (auto* obj = Object::FindObjectFromInstanceID(m_slot_lut[slot])) {
+                return static_cast<Texture2D*>(obj);
+            }
         }
         return m_fallback.get();
     }

@@ -135,7 +135,7 @@ namespace dodoe {
     }
 
     void ScriptEngine::shutdown() {
-        unloadAppAssembly();
+        unloadAppAssembly(false);
 
         if (m_native_host) {
             NativeHost::Destroy(m_native_host);
@@ -166,7 +166,7 @@ namespace dodoe {
         return true;
     }
 
-    void ScriptEngine::unloadAppAssembly() {
+    void ScriptEngine::unloadAppAssembly(Bool collect_garbage) {
         if (!m_alc_gchandle) {
             return;
         }
@@ -174,7 +174,9 @@ namespace dodoe {
         if (m_call) {
             void* alc_arg = m_alc_gchandle;
             m_call("unload_app", &alc_arg, nullptr);
-            m_call("gc_collect", nullptr, nullptr);
+            if (collect_garbage) {
+                m_call("gc_collect", nullptr, nullptr);
+            }
         }
 
         m_alc_gchandle = nullptr;

@@ -19,7 +19,7 @@ namespace dodoe {
         String tag{"default"};
 
         identifier id{string2hash("default")};
-        bool dirty{false};
+        bool dirty{true};
 
         void setTag(const String& v) { tag = v; id = string2hash(v); dirty = true; }
         [[nodiscard]] const String& getTag() const { return tag; }

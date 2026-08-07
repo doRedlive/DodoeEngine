@@ -25,6 +25,7 @@ namespace dodoe {
         void pruneRemovedSprites(const UnorderedSet<UUID>& active_sprites);
         bool needsSync(Entity entity) const;
         Matrix4f buildWorldMatrix(const TransformComponent& transform);
+        Vector2f computeSpriteNaturalSize(const Sprite* sprite) const;
     };
 
 } // dodoe

@@ -5,7 +5,10 @@
 #include "runtime/dopch.h"
 
 #include "runtime/function/render/render_settings.h"
+#include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/json.h"
+
+REFLECTION_TYPE(ApplicationSpecification)
 
 namespace dodoe {
 
@@ -16,31 +19,39 @@ namespace dodoe {
         char** args{ nullptr };
     };
 
-    struct DODOE_API ApplicationSpecification {
+    STRUCT(ApplicationSpecification, WhiteListFields) {
+        REFLECTION_BODY(ApplicationSpecification)
+
+        META(Enable)
         String name{ "Dodoe Engine" };
 
+        META(Enable)
         UInt32 width{ 1920 };
+        META(Enable)
         UInt32 height{ 1080 };
 
+        META(Enable)
         Bool window_resizeable{ true };
 
         void* host_handle{ nullptr };
 
+        META(Enable)
         RenderSettingsInitInfo render_settings{};
 
         ApplicationCommandLineArgs cli_args{};
 
-        [[nodiscard]] Json toJson() const;
-        static Bool FromJson(const Json& json, ApplicationSpecification& out_spec);
+        FsPath config_file{};
 
-        [[nodiscard]] Bool loadFromFile(const FsPath& file_path);
-        [[nodiscard]] Bool saveToFile(const FsPath& file_path) const;
+        DODOE_API Bool loadFromFile(const FsPath& file_path);
+        DODOE_API Bool saveToFile(const FsPath& file_path) const;
     };
 
     class DODOE_API Application {
         static Application* m_instance;
         Bool m_running {false};
         ApplicationSpecification m_app_spec{};
+
+        void loadConfigFile();
     protected:
         Scope<SystemContext> m_context{nullptr};
     public:

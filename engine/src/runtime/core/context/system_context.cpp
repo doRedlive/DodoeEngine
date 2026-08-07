@@ -32,8 +32,6 @@
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/physics/physics_system.h"
 
-#include "runtime/core/gc/cycle_detector.h"
-
 namespace dodoe {
 
     SystemContext::~SystemContext() = default;
@@ -57,6 +55,8 @@ namespace dodoe {
     }
 
     Bool SystemContext::initializeModules() {
+        m_service_manager = ServiceManager::Create({});
+
         m_time_system = TimeSystem::Create({});
 
         ResourceManager::Self().initialize({});
@@ -73,6 +73,7 @@ namespace dodoe {
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
         render_settings_init_info.pipeline = m_init_info.spec.render_settings.pipeline;
         render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
+        render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
 
 #ifdef DODOE_DEBUG_ENABLED
@@ -92,8 +93,6 @@ namespace dodoe {
 
         m_script_system = ScriptSystem::Create({});
         DO_ASSERT(m_script_system, "ScriptSystem init failed");
-        (void)m_script_system->reloadScripts();
-
         m_physics_system = PhysicsSystem::Create({});
         DO_ASSERT(m_physics_system, "PhysicsSystem init failed");
 
@@ -144,8 +143,7 @@ namespace dodoe {
                 "SystemContext failed to acquire graphics context for startup.");
         }
 
-        auto future = ResourceManager::Self().loadAssetsAsync();
-        future.wait();
+        DO_ASSERT(ResourceManager::Self().loadAssets(), "Failed to load asset database");
 
         const auto active_project = Project::ActiveProject();
         DO_ASSERT(active_project, "No active project when starting runtime");
@@ -185,6 +183,7 @@ namespace dodoe {
 
         ResourceManager::Self().shutdown();
         RenderSystem::Destroy(m_render_system);
+        ServiceManager::Destroy(m_service_manager);
         UIManager::Destroy(m_ui_manager);
 #ifdef DODOE_DEBUG_ENABLED
         ImGuiBuilder::CleanupImGui();
@@ -228,6 +227,9 @@ namespace dodoe {
 #endif
         if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
+#ifdef DODOE_DEBUG_ENABLED
+        ImGuiBuilder::RenderImGui();
+#endif
 
         if (m_render_thread->getMode() == ThreadingMode::DualThread) {
             m_render_system->releaseApplicationGraphicsContext();
@@ -244,8 +246,6 @@ namespace dodoe {
             m_render_thread->submit();
             break;
         }
-
-        CycleDetector::instance().tick();
     }
 
 } // dodoe

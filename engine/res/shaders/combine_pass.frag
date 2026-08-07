@@ -8,9 +8,9 @@ layout(push_constant) uniform CombinePushConstants {
     vec2 u_ViewportSize;
 };
 
-layout(set = 0, binding = 0) uniform texture2D u_SceneTexture;
-layout(set = 0, binding = 1) uniform texture2D u_ImGuiTexture;
-layout(set = 0, binding = 128) uniform sampler u_TextureSampler;
+layout(set = 2, binding = 0) uniform texture2D u_SceneTexture;
+layout(set = 2, binding = 1) uniform texture2D u_ImGuiTexture;
+layout(set = 1, binding = 0) uniform sampler u_TextureSampler;
 
 void main()
 {

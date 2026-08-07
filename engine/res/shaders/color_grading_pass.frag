@@ -7,8 +7,8 @@ layout(push_constant) uniform ColorGradingPushConstants {
     vec4 u_Params;
 };
 
-layout(set = 0, binding = 0) uniform texture2D u_InputTexture;
-layout(set = 0, binding = 128) uniform sampler u_Sampler;
+layout(set = 2, binding = 0) uniform texture2D u_InputTexture;
+layout(set = 1, binding = 0) uniform sampler u_Sampler;
 
 void main()
 {

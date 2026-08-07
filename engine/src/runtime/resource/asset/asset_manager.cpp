@@ -34,10 +34,10 @@ namespace dodoe {
 
     void AssetManager::shutdown() {
         unloadAll();
-        if (m_database) {
+        if (m_database && m_database->isDirty()) {
             m_database->save();
-            m_database.reset();
         }
+        m_database.reset();
         m_assets.clear();
         m_path_to_file_id.clear();
         for (auto& arr : m_assets_by_type) {
@@ -142,6 +142,10 @@ namespace dodoe {
     }
 
     Bool AssetManager::loadAssets() {
+        if (m_database) {
+            return true;
+        }
+
         const auto active_project = Project::ActiveProject();
         if (!active_project) {
             DO_WARN("AssetManager::loadAssets called but no project is active");
@@ -155,13 +159,23 @@ namespace dodoe {
             return false;
         }
 
-        for (const auto& file_id : m_database->getAllAssetFileIDs()) {
+        const auto asset_file_ids = m_database->getAllAssetFileIDs();
+        for (const auto& file_id : asset_file_ids) {
             AssetMetaData meta = m_database->getMetaData(file_id);
             m_path_to_file_id[meta.source_path] = file_id;
             Size_t type_idx = static_cast<Size_t>(meta.type);
             if (type_idx < static_cast<Size_t>(AssetType::Count)) {
                 m_assets_by_type[type_idx].push_back(file_id);
             }
+            auto asset = createAssetInstance(meta.type);
+            if (asset) {
+                asset->setMetaData(meta);
+                m_assets[file_id] = std::move(asset);
+            }
+        }
+
+        if (!asset_file_ids.empty()) {
+            return true;
         }
 
         EnsureBuiltinImporters();

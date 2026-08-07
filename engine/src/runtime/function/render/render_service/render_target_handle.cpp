@@ -121,7 +121,9 @@ namespace dodoe {
             tex_desc.mipLevels = 1;
             tex_desc.arraySize = 1;
             tex_desc.sampleCount = m_desc.sample_count;
-            tex_desc.setInitialState(GfxResourceStates::ShaderResource);
+            tex_desc.enableAutomaticStateTracking(GfxResourceStates::ShaderResource);
+            tex_desc.setIsRenderTarget(true);
+            tex_desc.setClearValue(ca.clear_color);
 
             auto tex = create_ref<GfxTexture>(tex_desc, ca.debug_name);
             tex->initializeRHI(device);
@@ -137,7 +139,9 @@ namespace dodoe {
             depth_desc.mipLevels = 1;
             depth_desc.arraySize = 1;
             depth_desc.sampleCount = m_desc.sample_count;
-            depth_desc.setInitialState(GfxResourceStates::DepthWrite);
+            depth_desc.enableAutomaticStateTracking(GfxResourceStates::DepthWrite);
+            depth_desc.setIsRenderTarget(true);
+            depth_desc.setClearValue(GfxColor(m_desc.clear_depth, 0.0f, 0.0f, 0.0f));
 
             m_depth_texture = create_ref<GfxTexture>(depth_desc, m_desc.depth_debug_name);
             m_depth_texture->initializeRHI(device);

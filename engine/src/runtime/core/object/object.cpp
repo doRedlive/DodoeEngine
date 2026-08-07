@@ -1,8 +1,8 @@
 // do@Redlive
 
 #include "object.h"
+#include "runtime/core/asserts.h"
 #include "runtime/core/utils/uuid.h"
-#include "runtime/core/object/native_bridge.h"
 
 namespace dodoe {
 
@@ -45,6 +45,7 @@ namespace dodoe {
         const UInt64 key = makeKey(obj->m_file_id);
         const auto it = s_id_to_instance.find(key);
         if (it != s_id_to_instance.end()) {
+            DO_ASSERT(false, "AllocateInstanceID: duplicate FileID constructed as a new object");
             obj->m_instance_id = it->second;
             return it->second;
         }
@@ -64,29 +65,11 @@ namespace dodoe {
         s_instance_map.erase(id);
     }
 
-    void Object::releaseRef() {
-        if (m_strong_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            m_alive.store(0, std::memory_order_release);
-            onDestroy();
-            native_bridge::NotifyDestroyed(m_instance_id);
-            ReleaseInstanceID(m_instance_id);
-            m_instance_id = 0;
-            m_strong_refs.store(0, std::memory_order_relaxed);
-        }
-    }
-
-    void Object::releaseWeakRef() {
-        if (m_weak_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            m_weak_refs.store(0, std::memory_order_relaxed);
-        }
-    }
-
     Object::~Object() {
         if (m_instance_id) {
-            onDestroy();
-            native_bridge::NotifyDestroyed(m_instance_id);
             ReleaseInstanceID(m_instance_id);
+            m_instance_id = 0;
         }
     }
 
-} // dodoe
+} // namespace dodoe

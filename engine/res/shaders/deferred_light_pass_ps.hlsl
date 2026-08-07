@@ -8,13 +8,13 @@ cbuffer DeferredLightPassUBO : register(b0)
     float4   u_CameraPosition;
 };
 
-Texture2D   u_Albedo      : register(t0);
-Texture2D   u_Normal      : register(t1);
-Texture2D   u_Position    : register(t2);
-Texture2D   u_ShadowMap   : register(t3);
-Texture2D   u_Material    : register(t4);
-TextureCube u_SkyboxTexture : register(t5);
-SamplerState u_Sampler    : register(s0);
+Texture2D   u_Albedo      : register(t0, space2);
+Texture2D   u_Normal      : register(t1, space2);
+Texture2D   u_Position    : register(t2, space2);
+Texture2D   u_ShadowMap   : register(t3, space2);
+Texture2D   u_Material    : register(t4, space2);
+TextureCube u_SkyboxTexture : register(t5, space2);
+SamplerState u_Sampler    : register(s0, space1);
 
 struct PSInput
 {

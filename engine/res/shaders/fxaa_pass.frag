@@ -3,8 +3,8 @@
 layout(location = 0) in vec2 v_UV;
 layout(location = 0) out vec4 o_Color;
 
-layout(set = 0, binding = 0) uniform texture2D u_InputTexture;
-layout(set = 0, binding = 128) uniform sampler u_Sampler;
+layout(set = 2, binding = 0) uniform texture2D u_InputTexture;
+layout(set = 1, binding = 0) uniform sampler u_Sampler;
 
 vec3 SampleColor(vec2 uv)
 {

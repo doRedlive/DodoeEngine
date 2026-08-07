@@ -28,6 +28,7 @@ namespace dodoe {
     struct SpritePassParameters {
         RenderGraphTextureHandle color_target{};
         Bool clear_target{false};
+        Bool depth_occlusion{false};
         RenderGraphBufferHandle instance_buffer{};
         RenderGraphBufferHandle quad_vertex_buffer{};
         RenderGraphBufferHandle quad_index_buffer{};
@@ -42,9 +43,13 @@ namespace dodoe {
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                const auto* hdr = pass_builder.blackboard().get<SceneHdrKey>();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 RenderGraphAttachmentInfo color_attachment{};
-                if (scene_color) {
+                if (hdr) {
+                    color_attachment.load_op = LoadOp::Load;
+                    parameters.color_target = pass_builder.writeColor(*hdr, color_attachment);
+                } else if (scene_color) {
                     color_attachment.load_op = LoadOp::Load;
                     parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
@@ -56,6 +61,15 @@ namespace dodoe {
                             swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
                         "SpriteColor"), color_attachment);
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
+                }
+
+                if (const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>()) {
+                    if (scene_textures->depth.isValid()) {
+                        RenderGraphAttachmentInfo depth_attachment{};
+                        depth_attachment.load_op = LoadOp::Load;
+                        pass_builder.writeDepth(scene_textures->depth, depth_attachment);
+                        parameters.depth_occlusion = true;
+                    }
                 }
 
                 if (const auto* sprite_extension = context.view.getExtension<SpriteViewExtension>()) {
@@ -148,22 +162,25 @@ namespace dodoe {
                 const Bool use_bindless = RenderSettings::IsBindlessActive();
 
                 if (use_bindless) {
-                    // --- Bindless path ---
                     const auto* descriptor_manager = shared_service ? shared_service->getDescriptorTable() : nullptr;
-                    if (!descriptor_manager || !descriptor_manager->getDescriptorTable() || !m_bindless_binding_layout) {
+                    if (!descriptor_manager || !descriptor_manager->getDescriptorTable() ||
+                        !m_cb_binding_layout || !m_sampler_binding_layout) {
                         DO_ERROR("SpritePass: bindless sprite resources are unavailable");
                         command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                         command_list.commitBarriers();
                         return;
                     }
 
-                    const auto binding_set = command_list.createBindingSet(
+                    const auto cb_binding_set = command_list.createBindingSet(
                         GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
+                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
+                        m_cb_binding_layout);
+                    const auto sampler_binding_set = command_list.createBindingSet(
+                        GfxBindingSetDesc()
                             .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
-                        m_bindless_binding_layout);
-                    if (!binding_set) {
-                        DO_ERROR("SpritePass: failed to create bindless binding set");
+                        m_sampler_binding_layout);
+                    if (!cb_binding_set || !sampler_binding_set) {
+                        DO_ERROR("SpritePass: failed to create bindless binding sets");
                         return;
                     }
 
@@ -173,11 +190,17 @@ namespace dodoe {
                         .setVertexShader(shader_library->getSpriteVertexShader())
                         .setPixelShader(shader_library->getSpritePixelShader())
                         .setInputLayout(m_input_layout)
-                        .addBindingLayout(m_bindless_binding_layout)
+                        .addBindingLayout(m_cb_binding_layout)
+                        .addBindingLayout(m_sampler_binding_layout)
                         .addBindingLayout(descriptor_manager->getDescriptorTable()->getLayout())
                         .setPrimType(GfxPrimitiveType::TriangleList);
                     GfxDepthStencilState depth_stencil;
-                    depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
+                    if (parameters.depth_occlusion) {
+                        depth_stencil.enableDepthTest().setDepthFunc(GfxComparisonFunc::LessOrEqual).disableDepthWrite();
+                    } else {
+                        depth_stencil.disableDepthTest().disableDepthWrite();
+                    }
+                    depth_stencil.disableStencil();
                     GfxRasterState raster;
                     raster.setCullNone();
                     GfxBlendState blend;
@@ -199,7 +222,7 @@ namespace dodoe {
                         return;
                     }
 
-                    DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set, descriptor_binding_set};
+                    DynamicArray<GfxBindingSetHandle> binding_sets = {cb_binding_set, sampler_binding_set, descriptor_binding_set};
                     DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                         GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
                         GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
@@ -207,14 +230,13 @@ namespace dodoe {
                         ctx.getFramebuffer(), pipeline, binding_sets,
                         rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
                         vertex_buffers,
-                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
                     command_list.drawIndexed(GfxDrawArguments()
                         .setVertexCount(6)
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
 
                 } else {
-                    // --- Non-bindless (slot) fallback ---
-                    if (!m_array_binding_layout || !shared_service) {
+                    if (!m_cb_binding_layout || !m_sampler_binding_layout || !m_texture_binding_layout || !shared_service) {
                         DO_ERROR("SpritePass: array binding layout unavailable");
                         command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                         command_list.commitBarriers();
@@ -236,7 +258,12 @@ namespace dodoe {
                     command_list.commitBarriers();
 
                     GfxDepthStencilState depth_stencil;
-                    depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
+                    if (parameters.depth_occlusion) {
+                        depth_stencil.enableDepthTest().setDepthFunc(GfxComparisonFunc::LessOrEqual).disableDepthWrite();
+                    } else {
+                        depth_stencil.disableDepthTest().disableDepthWrite();
+                    }
+                    depth_stencil.disableStencil();
                     GfxRasterState raster;
                     raster.setCullNone();
                     GfxBlendState blend;
@@ -249,10 +276,6 @@ namespace dodoe {
                     blend.setRenderTarget(0, blend_target);
                     GfxRenderState render_state;
                     render_state.setDepthStencilState(depth_stencil).setRasterState(raster).setBlendState(blend);
-
-                    auto framebuffer_desc = GfxFramebufferDesc().addColorAttachment(color_target);
-                    auto framebuffer = command_list.createFramebuffer(framebuffer_desc);
-                    GfxFramebufferInfo framebuffer_info(framebuffer_desc);
 
                     const Size_t total = sorted_instances.size();
                     Size_t start = 0;
@@ -269,14 +292,20 @@ namespace dodoe {
                             continue;
                         }
 
-                        auto binding_set = command_list.createBindingSet(
+                        auto cb_binding_set = command_list.createBindingSet(
                             GfxBindingSetDesc()
-                                .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()))
-                                .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get()))
+                                .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
+                            m_cb_binding_layout);
+                        auto sampler_binding_set = command_list.createBindingSet(
+                            GfxBindingSetDesc()
+                                .addItem(GfxBindingSetItem::Sampler(0, GlobalSamplers::screen().Get())),
+                            m_sampler_binding_layout);
+                        auto tex_binding_set = command_list.createBindingSet(
+                            GfxBindingSetDesc()
                                 .addItem(GfxBindingSetItem::Texture_SRV(0, tex_handle->getRHIHandle().Get())),
-                            m_array_binding_layout);
+                            m_texture_binding_layout);
 
-                        if (!binding_set) {
+                        if (!cb_binding_set || !sampler_binding_set || !tex_binding_set) {
                             start = end;
                             continue;
                         }
@@ -286,18 +315,20 @@ namespace dodoe {
                             .setVertexShader(shader_library->getSpriteVertexShader())
                             .setPixelShader(shader_library->getSpritePixelShaderTraditional())
                             .setInputLayout(m_input_layout)
-                            .addBindingLayout(m_array_binding_layout)
+                            .addBindingLayout(m_cb_binding_layout)
+                            .addBindingLayout(m_sampler_binding_layout)
+                            .addBindingLayout(m_texture_binding_layout)
                             .setPrimType(GfxPrimitiveType::TriangleList)
                             .setRenderState(render_state);
 
                         const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
-                            pipeline_desc, framebuffer_info, command_list);
+                            pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                         if (!pipeline) {
                             start = end;
                             continue;
                         }
 
-                        DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
+                        DynamicArray<GfxBindingSetHandle> binding_sets = {cb_binding_set, sampler_binding_set, tex_binding_set};
                         DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                             GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
                             GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
@@ -305,9 +336,9 @@ namespace dodoe {
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                             *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
                         command_list.setGraphicsState(
-                            framebuffer, pipeline, binding_sets,
+                            ctx.getFramebuffer(), pipeline, binding_sets,
                             viewport_state, vertex_buffers,
-                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()));
+                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(6)
                             .setInstanceCount(static_cast<UInt32>(end - start))

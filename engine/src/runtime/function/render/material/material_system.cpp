@@ -183,20 +183,35 @@ namespace dodoe {
             const auto* vs_refl = m_shader_library->getReflection(vs_name);
             const auto* ps_refl = m_shader_library->getReflection(ps_name);
 
+            auto hasBinding = [&](UInt32 slot, cutie::ResourceType type) -> Bool {
+                for (const auto& item : layout_desc.bindings) {
+                    if (item.slot == slot && item.type == type) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
             auto addReflection = [&](const ShaderReflectionData* refl) {
                 if (!refl) return;
                 for (const auto& cb : refl->constant_buffers) {
-                    layout_desc.addItem(GfxBindingLayoutItem::VolatileConstantBuffer(cb.slot));
-                    cb_slot = std::max(cb_slot, cb.slot + 1);
+                    if (!hasBinding(cb.slot, GfxBindingLayoutItem::VolatileConstantBuffer(0).type)) {
+                        layout_desc.addItem(GfxBindingLayoutItem::VolatileConstantBuffer(cb.slot));
+                        cb_slot = std::max(cb_slot, cb.slot + 1);
+                    }
                 }
                 for (const auto& tex : refl->textures) {
-                    layout_desc.addItem(
-                        ShaderResourceKindToBindingItem(tex.kind, tex.slot, tex.array_size));
-                    tex_slot = std::max(tex_slot, tex.slot + 1);
+                    const auto item = ShaderResourceKindToBindingItem(tex.kind, tex.slot, tex.array_size);
+                    if (!hasBinding(tex.slot, item.type)) {
+                        layout_desc.addItem(item);
+                        tex_slot = std::max(tex_slot, tex.slot + 1);
+                    }
                 }
                 for (const auto& samp : refl->samplers) {
-                    layout_desc.addItem(GfxBindingLayoutItem::Sampler(samp.slot));
-                    sampler_slot = std::max(sampler_slot, samp.slot + 1);
+                    if (!hasBinding(samp.slot, GfxBindingLayoutItem::Sampler(0).type)) {
+                        layout_desc.addItem(GfxBindingLayoutItem::Sampler(samp.slot));
+                        sampler_slot = std::max(sampler_slot, samp.slot + 1);
+                    }
                 }
             };
 

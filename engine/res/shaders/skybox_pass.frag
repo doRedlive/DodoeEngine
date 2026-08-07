@@ -7,9 +7,9 @@ layout(push_constant) uniform SkyboxPushConstants {
     mat4 u_InvViewProjection;
 };
 
-layout(set = 0, binding = 0) uniform textureCube u_SkyboxTexture;
-layout(set = 0, binding = 1) uniform texture2D u_SceneDepth;
-layout(set = 0, binding = 128) uniform sampler u_Sampler;
+layout(set = 2, binding = 0) uniform textureCube u_SkyboxTexture;
+layout(set = 2, binding = 1) uniform texture2D u_SceneDepth;
+layout(set = 1, binding = 0) uniform sampler u_Sampler;
 
 void main()
 {

@@ -36,7 +36,7 @@ struct DrawIndexedIndirectArgs
 StructuredBuffer<uint>               VisibleObjects  : register(t0);
 StructuredBuffer<GpuObjectMeta>      ObjectMetaBuffer : register(t1);
 StructuredBuffer<GpuTransform>       TransformBuffer  : register(t2);
-StructuredBuffer<BucketCount>        BucketCounts     : register(t3);
+RWStructuredBuffer<BucketCount>      BucketCounts     : register(u2);
 
 RWStructuredBuffer<DrawIndexedIndirectArgs> IndirectArgs : register(u0);
 RWStructuredBuffer<BucketCount>             BucketOffsets : register(u1);

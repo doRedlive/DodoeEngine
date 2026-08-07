@@ -115,7 +115,7 @@ namespace dodoe {
             if (resource.isImported()) {
                 continue;
             }
-            const Bool has_writer = resource.producer_pass_index >= 0;
+            const Bool has_writer = !resource.writer_passes.empty();
             const Bool has_readers = !resource.reader_passes.empty();
             if (!has_writer && has_readers) {
                 DO_ASSERT(false, "RenderGraph validation: uninitialized read - resource read before any write");
@@ -209,12 +209,12 @@ namespace dodoe {
             resource_queue.pop_back();
             const auto& resource = m_resources[res_idx];
 
-            if (resource.producer_pass_index >= 0) {
-                const Size_t producer_idx = static_cast<Size_t>(resource.producer_pass_index);
-                if (!reachable_passes[producer_idx]) {
-                    reachable_passes[producer_idx] = true;
-                    const auto& producer_pass = m_passes[producer_idx];
-                    for (const auto& access : producer_pass->getAccesses()) {
+            for (const auto writer_idx : resource.writer_passes) {
+                const Size_t writer = static_cast<Size_t>(writer_idx);
+                if (!reachable_passes[writer]) {
+                    reachable_passes[writer] = true;
+                    const auto& writer_pass = m_passes[writer];
+                    for (const auto& access : writer_pass->getAccesses()) {
                         if (access.access_type != RenderGraphAccessType::Write &&
                             access.access_type != RenderGraphAccessType::ReadWrite) {
                             if (!reachable_resources[access.resource_index]) {
@@ -252,12 +252,12 @@ namespace dodoe {
         while (!pass_queue.empty()) {
             const Size_t pass_idx = pass_queue.back();
             pass_queue.pop_back();
-            for (const auto pred : edges[pass_idx]) {
-                if (!reachable_passes[pred] && !m_culled_passes[pred]) {
-                    reachable_passes[pred] = true;
-                    pass_queue.push_back(pred);
-                    const auto& pred_pass = m_passes[pred];
-                    for (const auto& access : pred_pass->getAccesses()) {
+            for (const auto next : edges[pass_idx]) {
+                if (!reachable_passes[next] && !m_culled_passes[next]) {
+                    reachable_passes[next] = true;
+                    pass_queue.push_back(next);
+                    const auto& next_pass = m_passes[next];
+                    for (const auto& access : next_pass->getAccesses()) {
                         if (access.access_type != RenderGraphAccessType::Write &&
                             access.access_type != RenderGraphAccessType::ReadWrite) {
                             if (!reachable_resources[access.resource_index]) {
@@ -281,7 +281,7 @@ namespace dodoe {
 
     void RenderGraph::resetResourceTracking() {
         for (auto& resource : m_resources) {
-            resource.producer_pass_index = -1;
+            resource.writer_passes.clear();
             resource.first_pass_index = -1;
             resource.last_pass_index = -1;
             resource.reader_passes.clear();
@@ -310,15 +310,15 @@ namespace dodoe {
                 resource.last_pass_index = static_cast<Int32>(pass_index);
 
                 if (access.access_type == RenderGraphAccessType::Read) {
-                    if (resource.producer_pass_index >= 0) {
-                        AddEdge(edges, indegree, static_cast<Size_t>(resource.producer_pass_index), pass_index);
+                    if (!resource.writer_passes.empty()) {
+                        AddEdge(edges, indegree, static_cast<Size_t>(resource.writer_passes.back()), pass_index);
                     }
                     resource.reader_passes.push_back(static_cast<UInt32>(pass_index));
                     continue;
                 }
 
-                if (resource.producer_pass_index >= 0) {
-                    AddEdge(edges, indegree, static_cast<Size_t>(resource.producer_pass_index), pass_index);
+                if (!resource.writer_passes.empty()) {
+                    AddEdge(edges, indegree, static_cast<Size_t>(resource.writer_passes.back()), pass_index);
                 }
 
                 for (const auto reader_index : resource.reader_passes) {
@@ -326,7 +326,7 @@ namespace dodoe {
                 }
 
                 resource.reader_passes.clear();
-                resource.producer_pass_index = static_cast<Int32>(pass_index);
+                resource.writer_passes.push_back(static_cast<UInt32>(pass_index));
             }
         }
     }
@@ -581,8 +581,8 @@ namespace dodoe {
             for (const auto& access : accesses) {
                 if (access.access_type != RenderGraphAccessType::Read) {
                     const auto& resource = m_resources[access.resource_index];
-                    if (resource.producer_pass_index >= 0) {
-                        oss << "  p" << resource.producer_pass_index << " -> p" << i
+                    for (const auto writer_idx : resource.writer_passes) {
+                        oss << "  p" << writer_idx << " -> p" << i
                             << " [label=\"" << resource.name.c_str() << "\"];\n";
                     }
                 }

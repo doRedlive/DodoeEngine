@@ -11,7 +11,7 @@ namespace dodoe {
     template <typename TExecutor>
     class CommandList {
     public:
-        inline static constexpr Size_t kDefaultBlockSize = 4096;
+        inline static constexpr Size_t kDefaultBlockSize = 64 * 1024;
 
         struct Command {
             Command* m_next{nullptr};
@@ -79,6 +79,7 @@ namespace dodoe {
             other.m_head = nullptr;
             other.m_tail = nullptr;
             other.m_command_count = 0;
+            m_allocator.transferFrom(std::move(other.m_allocator));
         }
 
         void execute(TExecutor& executor) const {
@@ -101,6 +102,7 @@ namespace dodoe {
             m_head = nullptr;
             m_tail = nullptr;
             m_command_count = 0;
+            m_allocator.reset();
         }
 
         [[nodiscard]] bool isEmpty() const { return m_head == nullptr; }
@@ -122,7 +124,7 @@ namespace dodoe {
         }
 
         [[nodiscard]] void* allocate(Size_t size, Size_t alignment) {
-            return Memory::AllocateFrame(size, alignment, AllocTag::RenderCmd);
+            return m_allocator.allocate(size, alignment);
         }
 
         void moveFrom(CommandList&& other) {
@@ -133,9 +135,11 @@ namespace dodoe {
             other.m_head = nullptr;
             other.m_tail = nullptr;
             other.m_command_count = 0;
+            m_allocator = std::move(other.m_allocator);
         }
 
     private:
+        LinearAllocator m_allocator{kDefaultBlockSize};
         Command* m_head{nullptr};
         Command* m_tail{nullptr};
         Size_t m_command_count{0};

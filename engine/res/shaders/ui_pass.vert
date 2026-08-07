@@ -6,16 +6,16 @@ layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec2 a_UV;
 layout(location = 2) in vec4 a_Color;
 layout(location = 3) in uint a_TexIndex;
-layout(location = 4) in vec4 i_Data1;  // position.xy, size.xy
-layout(location = 5) in vec4 i_Data2;  // uv_min.xy, uv_max.xy
-layout(location = 6) in vec4 i_Data3;  // color, atlas_index, depth, flags
-layout(location = 7) in vec4 i_Data4;  // clip_rect (unused in VS)
+layout(location = 4) in vec4 i_Transform;  // position.xy, size.xy
+layout(location = 5) in vec4 i_UVRect;     // uv_min.xy, uv_max.xy
+layout(location = 6) in vec4 i_ColorDepth; // color, atlas_index, depth, flags
+layout(location = 7) in vec4 i_ClipRect;   // clip_rect (unused in VS)
 
 layout(location = 0) out vec2 v_UV;
 layout(location = 1) out vec4 v_Color;
 layout(location = 2) flat out uint v_TexIndex;
 
-layout(set = 0, binding = 256) uniform UIVP
+layout(set = 0, binding = 0) uniform UIVP
 {
     mat4 u_ViewProjection;
 };
@@ -32,13 +32,13 @@ vec4 unpackRGBA8(uint packed)
 
 void main()
 {
-    vec2 position    = i_Data1.xy;
-    vec2 size        = i_Data1.zw;
-    vec2 uv_min      = i_Data2.xy;
-    vec2 uv_max      = i_Data2.zw;
-    uint packedColor = floatBitsToUint(i_Data3.x);
-    uint texIndex    = floatBitsToUint(i_Data3.y);
-    float depth      = i_Data3.z;
+    vec2 position    = i_Transform.xy;
+    vec2 size        = i_Transform.zw;
+    vec2 uv_min      = i_UVRect.xy;
+    vec2 uv_max      = i_UVRect.zw;
+    uint packedColor = floatBitsToUint(i_ColorDepth.x);
+    uint texIndex    = floatBitsToUint(i_ColorDepth.y);
+    float depth      = i_ColorDepth.z;
 
     vec2 worldPos = a_Position.xy * size + position;
 
