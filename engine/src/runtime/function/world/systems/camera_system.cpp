@@ -6,6 +6,7 @@
 #include "runtime/core/math/math.h"
 #include "runtime/core/channel/camera_channel.h"
 #include "runtime/core/utils/tags.h"
+#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
 
@@ -53,6 +54,9 @@ namespace dodoe {
                 const Vector3f up(0.0f, 1.0f, 0.0f);
                 cam.view_matrix = Math::LookAt(eye, center, up);
                 cam.projection_matrix = Math::Perspective(Math::Radians(cam.fov), cam.aspect_ratio, cam.near_plane, cam.far_plane);
+                if (RenderSettings::IsClipSpaceYDown()) {
+                    cam.projection_matrix = Math::FlipClipSpaceY(cam.projection_matrix);
+                }
             } else {
                 const Vector3f eye(pos.x, pos.y, 10.0f);
                 const Vector3f center(pos.x, pos.y, 0.0f);
@@ -60,6 +64,9 @@ namespace dodoe {
                 const float half_h = (360.0f * 0.5f) / cam.zoom;
                 const float half_w = half_h * screen_aspect;
                 cam.projection_matrix = Math::Ortho(-half_w, half_w, -half_h, half_h, cam.near_plane, cam.far_plane);
+                if (RenderSettings::IsClipSpaceYDown()) {
+                    cam.projection_matrix = Math::FlipClipSpaceY(cam.projection_matrix);
+                }
             }
 
             registry.cameras[camera_index].view = cam.view_matrix;

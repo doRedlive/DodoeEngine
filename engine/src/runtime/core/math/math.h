@@ -85,6 +85,12 @@ namespace dodoe {
         template <typename... Args>
         [[nodiscard]] static auto Perspective(Args&&... args) { return glm::perspective(std::forward<Args>(args)...); }
 
+        [[nodiscard]] static auto FlipClipSpaceY(const glm::mat4& m) {
+            glm::mat4 flip(1.0f);
+            flip[1][1] = -1.0f;
+            return flip * m;
+        }
+
         template <typename... Args>
         [[nodiscard]] static auto LookAt(Args&&... args) { return glm::lookAt(std::forward<Args>(args)...); }
 

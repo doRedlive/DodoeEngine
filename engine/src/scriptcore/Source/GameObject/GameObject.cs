@@ -30,7 +30,16 @@ public class GameObject
 
     public Scene Scene => _scene;
 
-    public Transform Transform { get; internal set; }
+    public TransformComponent Transform
+    {
+        get
+        {
+            if (Entity == null) return null;
+            return _transform ??= Entity.GetComponent<TransformComponent>();
+        }
+    }
+
+    private TransformComponent _transform;
 
     public bool ActiveSelf
     {
@@ -58,8 +67,7 @@ public class GameObject
         get
         {
             if (_scene == null) return null;
-            var parentTf = _scene.GetParentTransform(Entity.ID);
-            return parentTf != null ? parentTf.GameObject : null;
+            return _scene.GetParentGameObject(Entity.ID);
         }
         set
         {
@@ -73,26 +81,31 @@ public class GameObject
         }
     }
 
+    public int ChildCount
+    {
+        get
+        {
+            if (_scene == null) return 0;
+            return _scene.GetChildCount(Entity.ID);
+        }
+    }
+
+    public GameObject GetChild(int index)
+    {
+        if (_scene == null) return null;
+        return _scene.GetChild(Entity.ID, index);
+    }
+
     internal GameObject() { }
 
     public T AddComponent<T>() where T : CakeComponent, new()
     {
-        if (typeof(T) == typeof(Transform))
-        {
-            if (Transform != null)
-                return (T)(object)Transform;
-        }
-
         var component = ComponentManager.Add<T>(Entity);
 
         if (component is CakeBehaviour mb)
         {
             mb.GameObject = this;
             _userComponents.Add(mb);
-        }
-        else if (component is Transform tf)
-        {
-            tf.GameObject = this;
         }
 
         return component;
@@ -116,9 +129,6 @@ public class GameObject
 
     public void RemoveComponent<T>() where T : CakeComponent
     {
-        if (typeof(T) == typeof(Transform))
-            return;
-
         if (ComponentManager.TryGetUserComponent<T>(Entity, out var component) && component is CakeBehaviour mb)
             _userComponents.Remove(mb);
 

@@ -11,7 +11,7 @@ public class CakeBehaviour : CakeComponent
 
     public bool Enabled { get; set; } = true;
     public GameObject GameObject { get; internal set; }
-    public Transform Transform { get { return GameObject != null ? GameObject.Transform : null; } }
+    public TransformComponent Transform { get { return GameObject != null ? GameObject.Transform : null; } }
 
     public T GetComponent<T>() where T : CakeComponent
     {

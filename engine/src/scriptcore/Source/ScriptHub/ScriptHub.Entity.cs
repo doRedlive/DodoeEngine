@@ -68,7 +68,6 @@ public static partial class ScriptHub
         var components = new Dictionary<string, Dictionary<string, object>>();
         foreach (var type in World.Current.GetManagedComponentTypes(entityId))
         {
-            if (type == typeof(Transform)) continue;
             if (NativeCalls.Native_ComponentExists(entityId, type)) continue;
             if (!World.Current.TryGetComponent(entityId, type, out var component)) continue;
 

@@ -2,6 +2,7 @@
 
 #include "EditorCamera.h"
 #include "runtime/core/channel/render_channel.h"
+#include "runtime/function/render/render_settings.h"
 
 #include <algorithm>
 #include <cmath>
@@ -208,10 +209,12 @@ dodoe::Matrix4f EditorCamera::projection() const
     if (m_mode == Mode::Ortho2D) {
         float halfH = m_orthoZoom * 0.5f;
         float halfW = halfH * aspect;
-        return glm::ortho(-halfW, halfW, -halfH, halfH, -100.0f, 100.0f);
+        auto proj = glm::ortho(-halfW, halfW, -halfH, halfH, -100.0f, 100.0f);
+        return dodoe::RenderSettings::IsClipSpaceYDown() ? dodoe::Math::FlipClipSpaceY(proj) : proj;
     }
 
-    return glm::perspective(glm::radians(m_fov), aspect, 0.1f, 10000.0f);
+    auto proj = glm::perspective(glm::radians(m_fov), aspect, 0.1f, 10000.0f);
+    return dodoe::RenderSettings::IsClipSpaceYDown() ? dodoe::Math::FlipClipSpaceY(proj) : proj;
 }
 
 void EditorCamera::screenToRay(float sx, float sy,
@@ -221,7 +224,9 @@ void EditorCamera::screenToRay(float sx, float sy,
     dodoe::Matrix4f invVP = glm::inverse(vp);
 
     float ndcX = (2.0f * sx) / m_vpW - 1.0f;
-    float ndcY = 1.0f - (2.0f * sy) / m_vpH;
+    float ndcY = dodoe::RenderSettings::IsClipSpaceYDown()
+        ? (2.0f * sy) / m_vpH - 1.0f
+        : 1.0f - (2.0f * sy) / m_vpH;
 
     dodoe::Vector4f nearPoint = invVP * dodoe::Vector4f{ndcX, ndcY, 0.0f, 1.0f};
     dodoe::Vector4f farPoint  = invVP * dodoe::Vector4f{ndcX, ndcY, 1.0f, 1.0f};

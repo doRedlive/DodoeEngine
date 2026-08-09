@@ -42,10 +42,6 @@ public class Scene
         var entity = World.Current.CreateEntity(name);
         var go = new GameObject { Entity = entity, _scene = this };
 
-        var tf = new Transform { Entity = entity, GameObject = go };
-        World.Current.AddOrReplaceComponent(entity.ID, tf);
-        go.Transform = tf;
-
         _gameObjects[go.ID] = go;
         return go;
     }
@@ -57,10 +53,6 @@ public class Scene
 
         var entity = new Entity(id);
         var go = new GameObject { Entity = entity, _scene = this };
-
-        var tf = new Transform { Entity = entity, GameObject = go };
-        World.Current.AddOrReplaceComponent(entity.ID, tf);
-        go.Transform = tf;
 
         _gameObjects[go.ID] = go;
         return go;
@@ -198,12 +190,12 @@ public class Scene
         }
     }
 
-    internal Transform GetParentTransform(ulong entityId)
+    internal GameObject GetParentGameObject(ulong entityId)
     {
         if (_parentMap.TryGetValue(entityId, out ulong parentId))
         {
             if (_gameObjects.TryGetValue(parentId, out var parentGo))
-                return parentGo.Transform;
+                return parentGo;
         }
         return null;
     }
@@ -215,14 +207,14 @@ public class Scene
         return 0;
     }
 
-    internal Transform GetChild(ulong entityId, int index)
+    internal GameObject GetChild(ulong entityId, int index)
     {
         if (_childrenMap.TryGetValue(entityId, out var children))
         {
             if (index >= 0 && index < children.Count)
             {
                 if (_gameObjects.TryGetValue(children[index], out var childGo))
-                    return childGo.Transform;
+                    return childGo;
             }
         }
         return null;

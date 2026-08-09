@@ -18,7 +18,12 @@
                     "m_component": "{\"type\":2,\"fov\":60.0,\"near_plane\":0.01,\"far_plane\":100.0,\"background\":[1.0,1.0,1.0,1.0]}"
                 }
             ],
-            "m_managed_components": []
+            "m_managed_components": [
+                {
+                    "m_type_name": "OnlyOne.CameraFollow",
+                    "m_component": "{\"zoom\":4.0,\"lerpSpeed\":6.0}"
+                }
+            ]
         },
         {
             "m_uuid": 1002,
@@ -40,7 +45,11 @@
             "m_managed_components": [
                 {
                     "m_type_name": "OnlyOne.PlayerController",
-                    "m_component": "{\"speed\":5.0}"
+                    "m_component": "{\"speed\":8.0}"
+                },
+                {
+                    "m_type_name": "OnlyOne.AutoShooter",
+                    "m_component": "{\"fireInterval\":0.5,\"damage\":1.0}"
                 }
             ]
         },
@@ -62,6 +71,26 @@
                 }
             ],
             "m_managed_components": []
+        },
+        {
+            "m_uuid": 1004,
+            "m_name": "GameManager",
+            "m_native_components": [
+                {
+                    "m_type_name": "TagComponent",
+                    "m_component": "{\"tag\":\"GameManager\"}"
+                },
+                {
+                    "m_type_name": "TransformComponent",
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}"
+                }
+            ],
+            "m_managed_components": [
+                {
+                    "m_type_name": "OnlyOne.EnemySpawner",
+                    "m_component": "{\"spawnInterval\":1.0,\"arenaX\":60.0,\"arenaY\":35.0}"
+                }
+            ]
         }
     ]
 }

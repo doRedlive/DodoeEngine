@@ -85,6 +85,9 @@ namespace dodoe {
         [[nodiscard]] static Bool Initialize(const RenderSettingsInitInfo& info);
 
         [[nodiscard]] static RenderBackendApiType GetRenderBackendApiType() { return m_api; }
+        [[nodiscard]] static Bool IsClipSpaceYDown() {
+            return m_api == RenderBackendApiType::D3D12 || m_api == RenderBackendApiType::Vulkan;
+        }
         [[nodiscard]] static RenderingPipelineType GetRenderingPipelineType() { return m_pipeline; }
         [[nodiscard]] static ThreadingMode GetThreadingMode() { return m_threading_mode; }
         [[nodiscard]] static PresentMode GetPresentMode() { return m_present_mode; }

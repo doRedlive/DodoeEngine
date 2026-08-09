@@ -3,6 +3,7 @@
 #include "render_viewport.h"
 
 #include "runtime/core/math/math.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 
@@ -157,9 +158,12 @@ namespace dodoe {
         const float normalized_x = (pixel_pos.x - m_viewport.pos.x) / m_viewport.size.x;
         const float normalized_y = (pixel_pos.y - m_viewport.pos.y) / m_viewport.size.y;
 
+        const float logical_y = RenderSettings::IsClipSpaceYDown()
+            ? normalized_y * m_logical_size.y
+            : (1.0f - normalized_y) * m_logical_size.y;
         const Vector3f logical_pos{
             normalized_x * m_logical_size.x,
-            (1.0f - normalized_y) * m_logical_size.y,
+            logical_y,
             0.0f
         };
 

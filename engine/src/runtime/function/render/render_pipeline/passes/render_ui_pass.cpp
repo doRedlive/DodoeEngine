@@ -135,10 +135,13 @@ namespace dodoe {
 
                 // Build orthographic projection for screen-space rendering
                 const auto extent = ctx.getGfxContext()->getSwapchainExtent2d();
-                const Matrix4f ui_view_projection = Math::OrthoRH_ZO(
+                Matrix4f ui_view_projection = Math::OrthoRH_ZO(
                     0.0f, static_cast<Float>(extent.x),
                     static_cast<Float>(extent.y), 0.0f,   // top-down Y
                     0.0f, 1.0f);
+                if (RenderSettings::IsClipSpaceYDown()) {
+                    ui_view_projection = Math::FlipClipSpaceY(ui_view_projection);
+                }
                 command_list.writeBuffer(vp_buffer, &ui_view_projection, sizeof(ui_view_projection));
 
                 command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
