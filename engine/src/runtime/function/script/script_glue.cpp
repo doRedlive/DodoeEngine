@@ -13,6 +13,7 @@
 #include "runtime/function/world/components/tilemap/tileset_asset.h"
 #include "runtime/core/project/project.h"
 #include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/core/utils/json.h"
 #include "runtime/function/ui/ui_manager.h"
 #include "runtime/function/ui/ui_button.h"
 #include "runtime/function/ui/ui_label.h"
@@ -268,6 +269,26 @@ namespace dodoe {
             if (!world) return "";
             auto* scene = world->getActiveScene();
             return scene ? scene->getName().c_str() : "";
+        }
+
+        static const char* native_world_get_active_scene_entities() {
+            DEF_STR_RET(world_entities);
+            _s_world_entities = "[]";
+            auto* world = GetWorld();
+            if (!world) return _s_world_entities.c_str();
+            auto* scene = world->getActiveScene();
+            if (!scene) return _s_world_entities.c_str();
+
+            Json arr = Json::array();
+            for (Entity e : scene->getEntities()) {
+                if (!e.valid()) continue;
+                Json item = Json::object();
+                item["id"] = static_cast<uint64_t>(e.uuid());
+                item["name"] = e.name();
+                arr.push_back(std::move(item));
+            }
+            _s_world_entities = arr.dump();
+            return _s_world_entities.c_str();
         }
 
         static void native_world_unload_scene(const char* name) {
@@ -749,6 +770,7 @@ X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
     X(native_sprite_load, int, (const char* path), path) \
     X(native_world_load_scene, int, (const char* name, int mode), name, mode) \
     X(native_world_get_active_scene_name, const char*, (), ) \
+    X(native_world_get_active_scene_entities, const char*, (), ) \
     X(native_world_unload_scene, void, (const char* name), name) \
     X(native_world_load_scene_async, int, (const char* name, int mode), name, mode) \
     X(native_world_is_load_complete, int, (int token), token) \

@@ -2,6 +2,7 @@ namespace GreenCake;
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 
 public class Scene
 {
@@ -47,6 +48,40 @@ public class Scene
 
         _gameObjects[go.ID] = go;
         return go;
+    }
+
+    internal GameObject RegisterEntity(ulong id)
+    {
+        if (_gameObjects.TryGetValue(id, out var existing))
+            return existing;
+
+        var entity = new Entity(id);
+        var go = new GameObject { Entity = entity, _scene = this };
+
+        var tf = new Transform { Entity = entity, GameObject = go };
+        World.Current.AddOrReplaceComponent(entity.ID, tf);
+        go.Transform = tf;
+
+        _gameObjects[go.ID] = go;
+        return go;
+    }
+
+    internal void SyncFromNative()
+    {
+        var json = NativeCalls.Native_WorldGetActiveSceneEntities();
+        if (string.IsNullOrEmpty(json))
+            return;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                if (!item.TryGetProperty("id", out var idProp) || idProp.ValueKind != JsonValueKind.Number)
+                    continue;
+                RegisterEntity(idProp.GetUInt64());
+            }
+        }
+        catch (JsonException) { }
     }
 
     public void DestroyGameObject(GameObject obj)

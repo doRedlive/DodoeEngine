@@ -181,8 +181,11 @@ namespace dodoe {
 
             for (auto& [type_name, fields] : components) {
                 ImGui::PushID(type_name.c_str());
-                String title = "Managed: ";
-                title += type_name;
+                String title = type_name;
+                const auto dot = title.find_last_of('.');
+                if (dot != String::npos) {
+                    title = title.substr(dot + 1);
+                }
                 if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (DrawJsonValue(fields, false)) {
                         runtime->setEntityManagedComponentFields(

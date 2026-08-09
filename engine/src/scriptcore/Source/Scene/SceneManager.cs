@@ -28,6 +28,7 @@ public static class SceneManager
                 scene = new Scene(sceneName);
                 scene._isLoaded = true;
                 _scenes[sceneName] = scene;
+                scene.SyncFromNative();
                 scene.NotifyLoad();
                 OnSceneLoaded?.Invoke(scene);
             }

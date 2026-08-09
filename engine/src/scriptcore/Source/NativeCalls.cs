@@ -176,6 +176,7 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<byte*, int>                                            native_sprite_load;
         public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene;
         public delegate* unmanaged<byte*>                                                 native_world_get_active_scene_name;
+        public delegate* unmanaged<byte*>                                                 native_world_get_active_scene_entities;
         public delegate* unmanaged<byte*, void>                                          native_world_unload_scene;
         public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene_async;
         public delegate* unmanaged<int, int>                                             native_world_is_load_complete;
@@ -309,6 +310,8 @@ internal static unsafe partial class NativeCalls
     }
 
     internal static string Native_WorldGetActiveSceneName() => PtrToStr(b->native_world_get_active_scene_name());
+
+    internal static string Native_WorldGetActiveSceneEntities() => PtrToStr(b->native_world_get_active_scene_entities());
 
     internal static int Native_WorldLoadSceneAsync(string name, int mode)
     {
