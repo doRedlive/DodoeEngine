@@ -92,13 +92,17 @@ bool EditorContext::boot(const EditorBootConfig& cfg)
 
     m_spec.config_file = cfg.configPath;
 
+    Project::Load(cfg.projectPath);
+    if (!Project::ActiveProject()) {
+        LOG_ERROR("[EditorContext] Failed to load project: {}", cfg.projectPath);
+        return false;
+    }
+    LOG_INFO("[EditorContext] Project loaded");
+
     m_app     = std::make_unique<Application>(m_spec);
     m_ctx     = &m_app->context();
 
     EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(m_app.get());
-
-    Project::Load(cfg.projectPath);
-    LOG_INFO("[EditorContext] Project loaded");
 
     m_ctx->initializeModules();
     LOG_INFO("[EditorContext] Modules initialized");

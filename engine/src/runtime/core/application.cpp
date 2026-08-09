@@ -32,6 +32,14 @@ namespace dodoe {
             return {};
         }
 
+        FsPath ProjectConfigPath() {
+            const Ref<Project> active = Project::ActiveProject();
+            if (!active) {
+                return {};
+            }
+            return std::filesystem::absolute(Project::ProjectDirectory() / "app_config.json");
+        }
+
     } // namespace
 
     Application* Application::m_instance = nullptr;
@@ -78,29 +86,27 @@ namespace dodoe {
             return;
         }
 
-        FsPath config_path = m_app_spec.config_file;
-        if (config_path.empty()) {
-            config_path = FileSystem::GetEngineResPath() / "configs" / "app_config.json";
+        DynamicArray<FsPath> candidates;
+        const FsPath project_config = ProjectConfigPath();
+        if (!project_config.empty()) {
+            candidates.push_back(project_config);
         }
+        if (!m_app_spec.config_file.empty()) {
+            candidates.push_back(m_app_spec.config_file);
+        }
+        candidates.push_back(FileSystem::GetEngineResPath() / "configs" / "app_config.json");
 
-        if (std::filesystem::exists(config_path)) {
+        for (const FsPath& config_path : candidates) {
+            if (!std::filesystem::exists(config_path)) {
+                DO_ERROR("Application config not found: {}", config_path.string());
+                continue;
+            }
             if (m_app_spec.loadFromFile(config_path)) {
                 DO_INFO("Loaded application config from: {}", config_path.string());
             } else {
                 DO_ERROR("Failed to load application config from: {}", config_path.string());
             }
             return;
-        }
-
-        if (!m_app_spec.config_file.empty()) {
-            const FsPath default_path = FileSystem::GetEngineResPath() / "configs" / "app_config.json";
-            if (std::filesystem::exists(default_path)) {
-                if (m_app_spec.loadFromFile(default_path)) {
-                    DO_INFO("Loaded application config from: {}", default_path.string());
-                } else {
-                    DO_ERROR("Failed to load application config from: {}", default_path.string());
-                }
-            }
         }
     }
 
