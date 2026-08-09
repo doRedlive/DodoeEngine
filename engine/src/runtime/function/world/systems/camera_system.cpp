@@ -13,14 +13,14 @@ namespace dodoe {
 
     SystemAccess CameraSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<Camera2dComponent, TransformComponent, TagComponent>()
+            .readsComponents<CameraComponent, TransformComponent, TagComponent>()
             .build();
     }
 
     void CameraSystem::update(Registry& reg, float dt) {
         (void)dt;
 
-        auto view = reg.view<Camera2dComponent, TransformComponent, TagComponent>();
+        auto view = reg.view<CameraComponent, TransformComponent, TagComponent>();
 
         auto& registry = GetCameraRegistry();
         Size_t camera_index = 0;
@@ -39,7 +39,7 @@ namespace dodoe {
                 break;
             }
 
-            auto& cam = reg.get<Camera2dComponent>(entity);
+            auto& cam = reg.get<CameraComponent>(entity);
             auto& tf  = reg.get<TransformComponent>(entity);
 
             const auto pos = tf.position;

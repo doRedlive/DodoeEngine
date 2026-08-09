@@ -101,7 +101,7 @@ public class World
             yield return new Entity(entityId);
     }
 
-    internal IEnumerable<Type> GetMonoComponentTypes(ulong entity)
+    internal IEnumerable<Type> GetManagedComponentTypes(ulong entity)
     {
         return ManagedComponentStore.GetComponentTypes(entity);
     }

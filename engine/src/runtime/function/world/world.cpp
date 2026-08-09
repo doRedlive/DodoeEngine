@@ -4,6 +4,7 @@
 
 #include "scene.h"
 
+#include "runtime/core/application.h"
 #include "runtime/core/project/project.h"
 #include "runtime/resource/res_type/scene_res.h"
 #include "runtime/resource/resource_manager.h"
@@ -108,9 +109,9 @@ namespace dodoe {
             graph.compile();
         }
 
-        void warmupComponentPools(Registry& reg) {
+        void WarmupComponentsPools(Registry& reg) {
             reg.ensurePoolExists<Animation2dComponent>();
-            reg.ensurePoolExists<Camera2dComponent>();
+            reg.ensurePoolExists<CameraComponent>();
             reg.ensurePoolExists<CircleRendererComponent>();
             reg.ensurePoolExists<BoxCollider2dComponent>();
             reg.ensurePoolExists<FoliageRendererComponent>();
@@ -137,7 +138,7 @@ namespace dodoe {
             float dt,
             WorldCommands& cmd_buf)
         {
-            warmupComponentPools(reg);
+            WarmupComponentsPools(reg);
 
             if (World::IsForceSequential()) {
                 for (auto& sys : systems) {
@@ -186,11 +187,11 @@ namespace dodoe {
 
     } // anonymous namespace
 
-    bool World::initialize(const WorldCreateInfo& create_info) {
+    Bool World::initialize(const WorldCreateInfo& create_info) {
         m_name = create_info.name;
-#ifdef DODOE_EDITOR_ENABLED
-        m_state = WorldState::Simulation;
-#endif
+        if (Application::Self().getAppMode() != AppMode::Game) {
+            m_state = WorldState::Simulation;
+        }
         if (!setupSystems()) return false;
         return true;
     }

@@ -2,15 +2,15 @@
 // Created by Redlive on 2026/3/24.
 //
 
-#ifndef DODOE_CAMERA2D_COMPONENT
-#define DODOE_CAMERA2D_COMPONENT
+#ifndef DODOE_CAMERA_COMPONENT
+#define DODOE_CAMERA_COMPONENT
 
 #include "dopch.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/util.h"
 
-REFLECTION_TYPE(Camera2dComponent)
+REFLECTION_TYPE(CameraComponent)
 
 namespace dodoe {
 
@@ -20,8 +20,8 @@ namespace dodoe {
         Orthographic,
     };
 
-    STRUCT(Camera2dComponent, WhiteListFields, ScriptBind) {
-        REFLECTION_BODY(Camera2dComponent)
+    STRUCT(CameraComponent, WhiteListFields, ScriptBind) {
+        REFLECTION_BODY(CameraComponent)
 
         META(Enable)
         CameraType type{CameraType::Orthographic};
@@ -50,4 +50,4 @@ namespace dodoe {
 
 } // dodoe
 
-#endif//DODOE_CAMERA2D_COMPONENT
+#endif//DODOE_CAMERA_COMPONENT

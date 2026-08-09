@@ -264,11 +264,11 @@ void ProjectManagerWindow::onNewProject()
     transComp["m_component"] = "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}";
     camComponents.append(transComp);
     QJsonObject cam2dComp;
-    cam2dComp["m_type_name"] = "Camera2dComponent";
+    cam2dComp["m_type_name"] = "CameraComponent";
     cam2dComp["m_component"] = "{\"type\":0,\"zoom\":1.0,\"background\":[1.0,1.0,1.0,1.0]}";
     camComponents.append(cam2dComp);
     cameraEntity["m_native_components"] = camComponents;
-    cameraEntity["m_mono_components"] = QJsonArray();
+    cameraEntity["m_managed_components"] = QJsonArray();
     entities.append(cameraEntity);
     sceneRoot["m_entities"] = entities;
 

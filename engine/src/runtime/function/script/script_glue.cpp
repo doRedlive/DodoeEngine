@@ -35,7 +35,7 @@ namespace dodoe {
 
         using NativeComponents = ComponentGroup<
             IDComponent, TagComponent, TransformComponent,
-            Animation2dComponent, Camera2dComponent, BoxCollider2dComponent,
+            Animation2dComponent, CameraComponent, BoxCollider2dComponent,
             MeshRendererComponent, Rigidbody2dComponent, SpriteRendererComponent,
             TilemapComponent, TileLayerComponent
         >;
@@ -624,18 +624,18 @@ X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
     X(native_Animation2dComponent_cur_time_duration_set, void, (uint64_t e, float v), e, v) \
     X(native_Animation2dComponent_speed_get, float, (uint64_t e), e) \
     X(native_Animation2dComponent_speed_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_zoom_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_zoom_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_fov_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_fov_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_near_plane_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_near_plane_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_far_plane_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_far_plane_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_aspect_ratio_get, float, (uint64_t e), e) \
-    X(native_Camera2dComponent_aspect_ratio_set, void, (uint64_t e, float v), e, v) \
-    X(native_Camera2dComponent_background_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_Camera2dComponent_background_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_CameraComponent_zoom_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_zoom_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_fov_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_fov_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_near_plane_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_near_plane_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_far_plane_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_far_plane_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_aspect_ratio_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_aspect_ratio_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_background_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_CameraComponent_background_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
     X(native_BoxCollider2dComponent_offset_get, void, (uint64_t e, float* x, float* y), e, x, y) \
     X(native_BoxCollider2dComponent_offset_set, void, (uint64_t e, float x, float y), e, x, y) \
     X(native_BoxCollider2dComponent_size_get, void, (uint64_t e, float* x, float* y), e, x, y) \

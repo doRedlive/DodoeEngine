@@ -24,7 +24,7 @@ namespace dodoe {
         META(Enable)
         std::vector<ComponentRes> m_native_components;
         META(Enable)
-        std::vector<ComponentRes> m_mono_components;
+        std::vector<ComponentRes> m_managed_components;
     };
 
     template<>

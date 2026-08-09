@@ -89,17 +89,17 @@ namespace {
         }
     }
 
-    void DeserializeMonoComponents(const std::vector<dodoe::ComponentRes>& components, dodoe::Entity entity) {
+    void DeserializeManagedComponents(const std::vector<dodoe::ComponentRes>& components, dodoe::Entity entity) {
         dodoe::ScriptRuntime* runtime = GetScriptRuntime();
         if (!runtime) {
             return;
         }
 
         for (const auto& component_res : components) {
-            runtime->addEntityMonoComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
+            runtime->addEntityManagedComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
         }
 
-        runtime->loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
+        runtime->loadEntityManagedComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
         runtime->restoreFields();
     }
 
@@ -164,7 +164,7 @@ void DeleteEntityCommand::undo(EditorContext& ctx)
         if (!entity.valid()) continue;
 
         DeserializeNativeComponents(entity_res.m_native_components, entity);
-        DeserializeMonoComponents(entity_res.m_mono_components, entity);
+        DeserializeManagedComponents(entity_res.m_managed_components, entity);
         rebuilt[entity_res.m_uuid] = entity;
     }
 

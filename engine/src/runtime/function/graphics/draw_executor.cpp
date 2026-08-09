@@ -19,7 +19,7 @@ namespace dodoe {
 
         device->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
 
-        gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
+        (void)gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
         gfx->clearGarbage();
     }
 

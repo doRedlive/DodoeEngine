@@ -104,8 +104,10 @@ namespace dodoe {
 
         if (any_window_dirty) {
             m_gfx->waitForIdle();
-            m_gfx->recreateSwapchain(static_cast<UInt32>(cur_pixel.x),
-                                     static_cast<UInt32>(cur_pixel.y));
+            if (!m_gfx->recreateSwapchain(static_cast<UInt32>(cur_pixel.x),
+                                          static_cast<UInt32>(cur_pixel.y))) {
+                DO_ERROR("RenderSystem failed to recreate swapchain on window resize.");
+            }
             pipeline->onResize(static_cast<UInt32>(cur_pixel.x),
                                static_cast<UInt32>(cur_pixel.y));
             m_gfx->clearGarbage();
@@ -179,7 +181,7 @@ namespace dodoe {
                 m_gfx->getDevice()->executeCommandList(gfx_cmd);
             }
             gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
-            m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
+            (void)m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
             m_gfx->clearGarbage();
             break;
         }

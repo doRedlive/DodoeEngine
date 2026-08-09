@@ -59,14 +59,14 @@ namespace dodoe {
             return components;
         }
 
-        std::vector<ComponentRes> SerializeMonoComponents(Entity entity) {
+        std::vector<ComponentRes> SerializeManagedComponents(Entity entity) {
             std::vector<ComponentRes> components;
             ScriptRuntime* runtime = GetScriptRuntime();
             if (!runtime) {
                 return components;
             }
 
-            runtime->loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
+            runtime->loadEntityManagedComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
 
             const auto& snapshot = runtime->getFieldSnapshot();
             const auto it = snapshot.find(static_cast<ui64>(entity.uuid()));
@@ -110,17 +110,17 @@ namespace dodoe {
             }
         }
 
-        void DeserializeMonoComponents(const std::vector<ComponentRes>& components, Entity entity) {
+        void DeserializeManagedComponents(const std::vector<ComponentRes>& components, Entity entity) {
             ScriptRuntime* runtime = GetScriptRuntime();
             if (!runtime) {
                 return;
             }
 
             for (const auto& component_res : components) {
-                runtime->addEntityMonoComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
+                runtime->addEntityManagedComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
             }
 
-            runtime->loadEntityMonoComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
+            runtime->loadEntityManagedComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
             runtime->restoreFields();
         }
 
@@ -158,7 +158,7 @@ namespace dodoe {
     bool Scene::initialize(const SceneCreateInfo& info) {
         (void)info;
         auto entity = createEntity("Primary Camera"); 
-        auto& camera = entity.addComponent<Camera2dComponent>();
+        auto& camera = entity.addComponent<CameraComponent>();
         entity.getComponent<TagComponent>().setTag("PrimaryCamera");
 
         return true;
@@ -201,7 +201,7 @@ namespace dodoe {
             entity_res.m_uuid = entity.uuid();
             entity_res.m_name = entity.name();
             entity_res.m_native_components = SerializeNativeComponents(entity);
-            entity_res.m_mono_components = SerializeMonoComponents(entity);
+            entity_res.m_managed_components = SerializeManagedComponents(entity);
             scene_res.m_entities.push_back(std::move(entity_res));
         }
 
@@ -219,7 +219,7 @@ namespace dodoe {
         for (const auto& entity_res : scene_res.m_entities) {
             Entity entity = createEntity(entity_res.m_uuid, entity_res.m_name);
             DeserializeNativeComponents(entity_res.m_native_components, entity);
-            DeserializeMonoComponents(entity_res.m_mono_components, entity);
+            DeserializeManagedComponents(entity_res.m_managed_components, entity);
         }
     }
 

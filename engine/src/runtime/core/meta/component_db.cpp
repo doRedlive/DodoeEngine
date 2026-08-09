@@ -177,10 +177,12 @@ namespace dodoe {
         registerComponent<HierarchyComponent>("HierarchyComponent", false);
 
         registerComponent<Animation2dComponent>("Animation2dComponent");
-        registerComponent<Camera2dComponent>("Camera2dComponent");
+        registerComponent<CameraComponent>("CameraComponent");
         registerComponent<BoxCollider2dComponent>("BoxCollider2dComponent");
+        registerComponent<FoliageRendererComponent>("FoliageRendererComponent");
         registerComponent<PointLightComponent>("PointLightComponent");
         registerComponent<SpotLightComponent>("SpotLightComponent");
+        registerComponent<SkyLightComponent>("SkyLightComponent");
         registerComponent<CircleRendererComponent>("CircleRendererComponent");
         registerComponent<LineRendererComponent>("LineRendererComponent");
         registerComponent<MeshRendererComponent>("MeshRendererComponent");

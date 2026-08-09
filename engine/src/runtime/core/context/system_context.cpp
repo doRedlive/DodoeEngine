@@ -174,7 +174,9 @@ namespace dodoe {
         m_layer_stack.clearLayers();
 
         m_render_thread->stop();
-        m_render_system->acquireApplicationGraphicsContext();
+        if (!m_render_system->acquireApplicationGraphicsContext()) {
+            DO_ERROR("SystemContext failed to acquire graphics context during shutdown.");
+        }
         m_render_thread.reset();
 
         m_draw_thread.reset();

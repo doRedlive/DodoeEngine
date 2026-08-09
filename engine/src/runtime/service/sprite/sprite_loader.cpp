@@ -43,7 +43,7 @@ namespace dodoe {
     }
 
     void SpriteLoader::Initialize() {
-        GetFallback();
+        (void)GetFallback();
     }
 
     Sprite* SpriteLoader::Load(const String& path) {
