@@ -66,18 +66,15 @@ namespace dodoe {
                 return components;
             }
 
-            runtime->loadEntityManagedComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
-
-            const auto& snapshot = runtime->getFieldSnapshot();
-            const auto it = snapshot.find(static_cast<ui64>(entity.uuid()));
-            if (it == snapshot.end()) {
+            DynamicArray<Pair<String, Json>> managed_components;
+            if (!runtime->getEntityManagedComponentFields(static_cast<uint64_t>(entity.uuid()), managed_components)) {
                 return components;
             }
 
-            for (const auto& [type_name, json_str] : it->second) {
+            for (const auto& [type_name, fields] : managed_components) {
                 ComponentRes component_res;
                 component_res.m_type_name = type_name;
-                component_res.m_component = json_str;
+                component_res.m_component = fields.dump();
                 components.push_back(std::move(component_res));
             }
 
@@ -116,12 +113,19 @@ namespace dodoe {
                 return;
             }
 
+            const uint64_t uuid = static_cast<uint64_t>(entity.uuid());
             for (const auto& component_res : components) {
-                runtime->addEntityManagedComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
-            }
+                runtime->addEntityManagedComponentFromManaged(uuid, component_res.m_type_name);
 
-            runtime->loadEntityManagedComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
-            runtime->restoreFields();
+                if (component_res.m_component.empty()) {
+                    continue;
+                }
+                Json fields;
+                if (!ParseJsonText(component_res.m_component, fields)) {
+                    continue;
+                }
+                runtime->setEntityManagedComponentFields(uuid, component_res.m_type_name, fields);
+            }
         }
 
     } // namespace

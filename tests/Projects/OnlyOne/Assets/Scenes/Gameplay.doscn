@@ -37,7 +37,12 @@
                     "m_component": "{\"sprite\":{\"file_id\":{\"path\":\"engine/res/pictures/grm.jpg\",\"file_uuid\":0},\"uuid\":0},\"flip\":false,\"pivot\":[0.5,0.5],\"depth\":0.0,\"color\":[1.0,1.0,1.0,1.0]}"
                 }
             ],
-            "m_managed_components": []
+            "m_managed_components": [
+                {
+                    "m_type_name": "OnlyOne.PlayerController",
+                    "m_component": "{\"speed\":5.0}"
+                }
+            ]
         },
         {
             "m_uuid": 1003,

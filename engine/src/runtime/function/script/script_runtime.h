@@ -3,6 +3,7 @@
 #pragma once
 
 #include "dopch.h"
+#include "runtime/core/utils/json.h"
 
 namespace dodoe {
 
@@ -39,8 +40,12 @@ namespace dodoe {
         void snapshotFields();
         void restoreFields();
 
-        void loadEntityMonoComponentsFromManaged(uint64_t entity_uuid);
-        bool addEntityMonoComponentFromManaged(uint64_t entity_uuid, const String& full_name);
+        void loadEntityManagedComponentsFromManaged(uint64_t entity_uuid);
+        bool getEntityManagedComponentFields(uint64_t entity_uuid,
+                                              DynamicArray<Pair<String, Json>>& out_components);
+        bool setEntityManagedComponentFields(uint64_t entity_uuid, const String& full_name,
+                                              const Json& fields);
+        bool addEntityManagedComponentFromManaged(uint64_t entity_uuid, const String& full_name);
         void removeEntityFromManagedWorld(uint64_t entity_uuid);
         [[nodiscard]] const UnorderedMap<String, ComponentTypeInfo>& getComponentClassUmap() const { return m_component_class_umap; }
         [[nodiscard]] const UnorderedMap<ui64, DynamicArray<Pair<String, String>>>& getFieldSnapshot() const { return m_field_snapshot; }

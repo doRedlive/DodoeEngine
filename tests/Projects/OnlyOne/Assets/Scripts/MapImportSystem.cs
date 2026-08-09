@@ -4,19 +4,11 @@ using GreenCake;
 using GreenCake.TiledImporter;
 using GreenCake.Tilemap;
 
-public class MapImportSystem : CakeSystem
+public class MapImporter : CakeBehaviour
 {
-    private bool _imported = false;
 
-    public override void OnCreate()
+    public void OnAwake()
     {
-
-    }
-
-    public override void OnUpdate()
-    {
-        if (_imported) return;
-        _imported = true;
         // var tilemap = TiledImporter.ImportFromFile("Maps/level1.tmj");
         // tilemap.InstantiateToScene();
     }

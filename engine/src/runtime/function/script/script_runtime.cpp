@@ -155,7 +155,7 @@ namespace dodoe {
         createSystemInstances();
     }
 
-    void ScriptRuntime::loadEntityMonoComponentsFromManaged(uint64_t entity_uuid) {
+    void ScriptRuntime::loadEntityManagedComponentsFromManaged(uint64_t entity_uuid) {
         if (!m_call) return;
 
         void* args[1] = { &entity_uuid };
@@ -163,7 +163,41 @@ namespace dodoe {
         m_call("get_entity_components", args, &result);
     }
 
-    bool ScriptRuntime::addEntityMonoComponentFromManaged(uint64_t entity_uuid, const String& full_name) {
+    bool ScriptRuntime::getEntityManagedComponentFields(
+        uint64_t entity_uuid, DynamicArray<Pair<String, Json>>& out_components) {
+        out_components.clear();
+        if (!m_call) return false;
+
+        void* args[1] = { &entity_uuid };
+        void* result = nullptr;
+        const int rc = m_call("get_entity_component_data", args, &result);
+        if (rc <= 0 || !result) return false;
+
+        try {
+            const Json data = Json::parse(static_cast<const char*>(result));
+            if (!data.is_object()) return false;
+            for (const auto& [type_name, fields] : data.items()) {
+                out_components.emplace_back(String(type_name.c_str()), fields);
+            }
+        }
+        catch (const Json::exception& e) {
+            DO_ERROR("ScriptRuntime: failed to parse managed component data: {}", e.what());
+            out_components.clear();
+            return false;
+        }
+        return true;
+    }
+
+    bool ScriptRuntime::setEntityManagedComponentFields(
+        uint64_t entity_uuid, const String& full_name, const Json& fields) {
+        if (!m_call || !fields.is_object()) return false;
+
+        const String json_str = fields.dump().c_str();
+        void* args[3] = { &entity_uuid, (void*)full_name.c_str(), (void*)json_str.c_str() };
+        return m_call("set_entity_component_data", args, nullptr) == 1;
+    }
+
+    bool ScriptRuntime::addEntityManagedComponentFromManaged(uint64_t entity_uuid, const String& full_name) {
         if (!m_call) return false;
 
         void* args[2] = { &entity_uuid, (void*)full_name.c_str() };

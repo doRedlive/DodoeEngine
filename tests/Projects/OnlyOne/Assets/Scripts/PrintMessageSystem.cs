@@ -2,7 +2,7 @@ namespace OnlyOne;
 
 using GreenCake;
 
-public class PrintMessageSystem
+public class PrintMessageSystem : CakeSystem
 {
     public void Start()
     {

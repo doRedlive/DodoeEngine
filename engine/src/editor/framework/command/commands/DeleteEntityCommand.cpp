@@ -95,12 +95,19 @@ namespace {
             return;
         }
 
+        const uint64_t uuid = static_cast<uint64_t>(entity.uuid());
         for (const auto& component_res : components) {
-            runtime->addEntityManagedComponentFromManaged(static_cast<uint64_t>(entity.uuid()), component_res.m_type_name);
-        }
+            runtime->addEntityManagedComponentFromManaged(uuid, component_res.m_type_name);
 
-        runtime->loadEntityManagedComponentsFromManaged(static_cast<uint64_t>(entity.uuid()));
-        runtime->restoreFields();
+            if (component_res.m_component.empty()) {
+                continue;
+            }
+            dodoe::Json fields;
+            if (!ParseJsonText(component_res.m_component, fields)) {
+                continue;
+            }
+            runtime->setEntityManagedComponentFields(uuid, component_res.m_type_name, fields);
+        }
     }
 
 } // namespace

@@ -4,10 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 public static partial class ScriptHub
 {
     internal static readonly Dictionary<long, object> ObjectRegistry = new();
+    internal static readonly JsonSerializerOptions FieldSerializerOptions = new() { IncludeFields = true };
     private static long NextHandle = 1;
 
     private static readonly Dictionary<string, Type> SystemTypeCache = new();
@@ -35,6 +37,8 @@ public static partial class ScriptHub
             "reset_state"           => ResetState(args),
             "gc_collect"            => CollectAndWait(args),
             "get_entity_components" => GetEntityComponents(args, result),
+            "get_entity_component_data" => GetEntityComponentData(args, result),
+            "set_entity_component_data" => SetEntityComponentData(args),
             "add_entity_component"  => AddEntityComponent(args),
             "remove_entity"         => RemoveEntity(args),
             "register_natives"      => RegisterNatives(args),

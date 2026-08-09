@@ -24,19 +24,11 @@ namespace dodoe {
 
         struct EntityNode {
             Entity entity;
-            std::vector<EntityNode> children;
+            DynamicArray<EntityNode> children;
         };
-        static std::vector<EntityNode> BuildEntityTree(Scene& scene);
+        static DynamicArray<EntityNode> BuildEntityTree(Scene& scene);
         static void RenderEntityTreeNode(const EntityNode& node);
 
-
-        static void InspectIDComponent(Entity entity);
-        static void InspectTagComponent(Entity entity);
-        static void InspectTransformComponent(Entity entity);
-        static void InspectHierarchyComponent(Entity entity);
-        static void InspectCamera2dComponent(Entity entity);
-        static void InspectSpriteRendererComponent(Entity entity);
-        static void InspectRigidbody2dComponent(Entity entity);
 
         static inline bool  s_registered = false;
         static inline Entity s_selectedEntity{};

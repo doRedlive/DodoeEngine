@@ -1,5 +1,3 @@
-// do@Redlive
-
 #include "debug_imgui.h"
 
 #ifdef DODOE_DEBUG_ENABLED
@@ -7,18 +5,194 @@
 #include "imgui/imgui.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/core/meta/component_db.h"
 #include "runtime/function/script/script_system.h"
+#include "runtime/function/world/components/hierarchy_component.h"
 #include "runtime/function/world/world.h"
 
-#include "runtime/function/world/components/camera2d_component.h"
-#include "runtime/function/world/components/hierarchy_component.h"
-#include "runtime/function/world/components/id_component.h"
-#include "runtime/function/world/components/rigidbody2d_component.h"
-#include "runtime/function/world/components/sprite_renderer_component.h"
-#include "runtime/function/world/components/tag_component.h"
-#include "runtime/function/world/components/transform_component.h"
+#include <cstdint>
+#include <array>
+#include <cstdio>
+#include <functional>
 
 namespace dodoe {
+
+    namespace {
+        using UUIDSet = UnorderedSet<UUID>;
+
+        bool DrawJsonValue(Json& value, bool read_only);
+
+        bool DrawJsonMember(const String& name, Json& value, bool read_only) {
+            ImGui::PushID(name.c_str());
+            const bool immutable_id = read_only && name == "id";
+            bool changed = false;
+
+            if (value.is_object() || value.is_array()) {
+                const bool open = ImGui::TreeNodeEx("##value", ImGuiTreeNodeFlags_SpanAvailWidth,
+                                                    "%s", name.c_str());
+                if (open) {
+                    changed = DrawJsonValue(value, read_only);
+                    ImGui::TreePop();
+                }
+            }
+            else {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(name.c_str());
+                ImGui::SameLine();
+                if (immutable_id) {
+                    ImGui::TextDisabled("%s", value.dump().c_str());
+                }
+                else {
+                    changed = DrawJsonValue(value, false);
+                }
+            }
+
+            ImGui::PopID();
+            return changed;
+        }
+
+        bool DrawJsonValue(Json& value, bool read_only) {
+            if (value.is_boolean()) {
+                bool v = value.get<bool>();
+                if (read_only) {
+                    ImGui::TextDisabled("%s", v ? "true" : "false");
+                    return false;
+                }
+                if (ImGui::Checkbox("##value", &v)) {
+                    value = v;
+                    return true;
+                }
+                return false;
+            }
+            if (value.is_number_integer()) {
+                ImS64 v = value.get<ImS64>();
+                if (read_only) {
+                    ImGui::TextDisabled("%lld", static_cast<long long>(v));
+                    return false;
+                }
+                if (ImGui::InputScalar("##value", ImGuiDataType_S64, &v)) {
+                    value = static_cast<int64_t>(v);
+                    return true;
+                }
+                return false;
+            }
+            if (value.is_number_unsigned()) {
+                ImU64 v = value.get<ImU64>();
+                if (read_only) {
+                    ImGui::TextDisabled("%llu", static_cast<unsigned long long>(v));
+                    return false;
+                }
+                if (ImGui::InputScalar("##value", ImGuiDataType_U64, &v)) {
+                    value = static_cast<uint64_t>(v);
+                    return true;
+                }
+                return false;
+            }
+            if (value.is_number_float()) {
+                double v = value.get<double>();
+                if (read_only) {
+                    ImGui::TextDisabled("%.6g", v);
+                    return false;
+                }
+                if (ImGui::InputDouble("##value", &v, 0.1, 1.0, "%.6g")) {
+                    value = v;
+                    return true;
+                }
+                return false;
+            }
+            if (value.is_string()) {
+                std::array<char, 1024> buffer{};
+                const std::string current = value.get<std::string>();
+                std::snprintf(buffer.data(), buffer.size(), "%s", current.c_str());
+                if (read_only) {
+                    ImGui::TextDisabled("%s", current.c_str());
+                    return false;
+                }
+                if (ImGui::InputText("##value", buffer.data(), buffer.size())) {
+                    value = std::string(buffer.data());
+                    return true;
+                }
+                return false;
+            }
+            if (value.is_object()) {
+                bool changed = false;
+                for (auto& [name, child] : value.items()) {
+                    changed |= DrawJsonMember(String(name.c_str()), child, read_only);
+                }
+                return changed;
+            }
+            if (value.is_array()) {
+                bool changed = false;
+                for (std::size_t i = 0; i < value.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i));
+                    if (value[i].is_object() || value[i].is_array()) {
+                        const bool open = ImGui::TreeNodeEx("##array", ImGuiTreeNodeFlags_SpanAvailWidth,
+                                                            "[%zu]", i);
+                        if (open) {
+                            changed |= DrawJsonValue(value[i], read_only);
+                            ImGui::TreePop();
+                        }
+                    }
+                    else {
+                        ImGui::Text("[%zu]", i);
+                        ImGui::SameLine();
+                        changed |= DrawJsonValue(value[i], read_only);
+                    }
+                    ImGui::PopID();
+                }
+                return changed;
+            }
+
+            ImGui::TextDisabled("null");
+            return false;
+        }
+
+        void DrawNativeComponent(Entity& entity, const ComponentDB::Entry& entry) {
+            ImGui::PushID(static_cast<int>(entry.type));
+            if (!ImGui::CollapsingHeader(entry.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::PopID();
+                return;
+            }
+
+            void* component = entry.get(entity);
+            if (!component || !entry.writeJson) {
+                ImGui::TextDisabled("No editable fields");
+                ImGui::PopID();
+                return;
+            }
+
+            Json fields = entry.writeJson(component);
+            const bool changed = DrawJsonValue(fields, entry.name == "IDComponent");
+            if (changed && entry.readJson && entry.readJson(component, fields) && entry.markDirty) {
+                entry.markDirty(entity);
+            }
+            ImGui::PopID();
+        }
+
+        void DrawManagedComponents(Entity entity) {
+            auto* script_system = GetScriptSystem();
+            auto* runtime = script_system ? script_system->getScriptRuntime() : nullptr;
+            if (!runtime) return;
+
+            DynamicArray<Pair<String, Json>> components;
+            if (!runtime->getEntityManagedComponentFields(static_cast<uint64_t>(entity.uuid()), components)) {
+                return;
+            }
+
+            for (auto& [type_name, fields] : components) {
+                ImGui::PushID(type_name.c_str());
+                String title = "Managed: ";
+                title += type_name;
+                if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                    if (DrawJsonValue(fields, false)) {
+                        runtime->setEntityManagedComponentFields(
+                            static_cast<uint64_t>(entity.uuid()), type_name, fields);
+                    }
+                }
+                ImGui::PopID();
+            }
+        }
+    }
 
     void DebugImGui::RegisterDebugPanel() {
         if (s_registered) return;
@@ -56,88 +230,64 @@ namespace dodoe {
                 DO_DEBUG("MonoScriptSystem count is {}", GetScriptSystem()->getScriptRuntime()->logSystemClassCount());
             }
         }
-
         ImGui::End();
     }
 
     void DebugImGui::RenderHierarchyPanel() {
         ImGui::Begin("Hierarchy");
-
         Scene* scene = GetWorld()->getActiveScene();
         if (!scene) {
             ImGui::TextUnformatted("No active scene.");
             ImGui::End();
             return;
         }
-
-        std::vector<EntityNode> roots = BuildEntityTree(*scene);
-
-        for (const EntityNode& root : roots) {
-            RenderEntityTreeNode(root);
-        }
-
+        for (const EntityNode& root : BuildEntityTree(*scene)) RenderEntityTreeNode(root);
         ImGui::End();
     }
 
-    std::vector<DebugImGui::EntityNode> DebugImGui::BuildEntityTree(Scene& scene) {
-        std::vector<EntityNode> roots;
-        auto all_entities = scene.getEntities();
+    DynamicArray<DebugImGui::EntityNode> DebugImGui::BuildEntityTree(Scene& scene) {
+        const auto all_entities = scene.getEntities();
+        UnorderedMap<UUID, Entity> by_uuid;
+        UnorderedMap<UUID, DynamicArray<UUID>> children;
+        DynamicArray<UUID> root_ids;
+        by_uuid.reserve(all_entities.size());
 
+        for (Entity entity : all_entities) by_uuid.emplace(entity.uuid(), entity);
         for (Entity entity : all_entities) {
-            EntityNode node;
-            node.entity = entity;
-
-            if (!entity.hasComponent<HierarchyComponent>()) {
-                roots.push_back(std::move(node));
-                continue;
+            UUID parent_uuid{};
+            Entity parent{};
+            if (entity.hasComponent<HierarchyComponent>()) {
+                parent = entity.getComponent<HierarchyComponent>().parent;
             }
-
-            HierarchyComponent& hierarchy = entity.getComponent<HierarchyComponent>();
-            if (!hierarchy.parent.valid()) {
-                roots.push_back(std::move(node));
+            const bool has_parent = parent.valid() && scene.registry().valid(parent);
+            if (has_parent) parent_uuid = parent.uuid();
+            if (!has_parent || parent_uuid == entity.uuid() || !by_uuid.contains(parent_uuid)) {
+                root_ids.push_back(entity.uuid());
+            }
+            else {
+                children[parent_uuid].push_back(entity.uuid());
             }
         }
 
-        for (Entity entity : all_entities) {
-            if (!entity.hasComponent<HierarchyComponent>()) continue;
-
-            HierarchyComponent& hierarchy = entity.getComponent<HierarchyComponent>();
-            if (!hierarchy.parent.valid()) continue;
-
-            UUID parent_uuid = hierarchy.parent.uuid();
-
-            auto find_parent = [&](EntityNode& node) -> EntityNode* {
-                EntityNode* found = nullptr;
-                std::function<void(EntityNode&)> search = [&](EntityNode& n) {
-                    if (n.entity.uuid() == parent_uuid) {
-                        found = &n;
-                        return;
-                    }
-                    for (auto& child : n.children) {
-                        search(child);
-                    }
-                };
-                search(node);
-                return found;
-            };
-
-            EntityNode* parent_node = nullptr;
-            for (auto& root : roots) {
-                parent_node = find_parent(root);
-                if (parent_node) break;
+        DynamicArray<EntityNode> roots;
+        UUIDSet built;
+        std::function<EntityNode(const UUID&)> make_node = [&](const UUID& uuid) {
+            EntityNode node{by_uuid.at(uuid), {}};
+            built.insert(uuid);
+            auto it = children.find(uuid);
+            if (it != children.end()) {
+                for (const UUID& child_uuid : it->second) {
+                    if (!built.contains(child_uuid)) node.children.push_back(make_node(child_uuid));
+                }
             }
-
-            if (parent_node) {
-                EntityNode child_node;
-                child_node.entity = entity;
-                parent_node->children.push_back(std::move(child_node));
-            } else {
-                EntityNode orphan;
-                orphan.entity = entity;
-                roots.push_back(std::move(orphan));
-            }
+            return node;
+        };
+        for (const UUID& uuid : root_ids) {
+            if (!built.contains(uuid)) roots.push_back(make_node(uuid));
         }
-
+        for (const auto& [uuid, _] : by_uuid) {
+            if (!built.contains(uuid)) roots.push_back(make_node(uuid));
+        }
         return roots;
     }
 
@@ -145,30 +295,23 @@ namespace dodoe {
         Entity entity = node.entity;
         if (!entity.valid()) return;
 
+        ImGui::PushID(static_cast<int>(static_cast<ui32>(entity)));
         const String& name = entity.name();
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-        if (node.children.empty()) {
-            flags |= ImGuiTreeNodeFlags_Leaf;
-        }
-        if (s_selectedEntity.valid() && entity.uuid() == s_selectedEntity.uuid()) {
-            flags |= ImGuiTreeNodeFlags_Selected;
-        }
+        if (node.children.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+        if (s_selectedEntity.valid() && entity.uuid() == s_selectedEntity.uuid()) flags |= ImGuiTreeNodeFlags_Selected;
 
-        bool opened = ImGui::TreeNodeEx(name.c_str(), flags);
-        if (ImGui::IsItemClicked()) {
-            s_selectedEntity = entity;
-        }
+        const bool opened = ImGui::TreeNodeEx("Entity", flags, "%s", name.c_str());
+        if (ImGui::IsItemClicked()) s_selectedEntity = entity;
         if (opened) {
-            for (const EntityNode& child : node.children) {
-                RenderEntityTreeNode(child);
-            }
+            for (const EntityNode& child : node.children) RenderEntityTreeNode(child);
             ImGui::TreePop();
         }
+        ImGui::PopID();
     }
 
     void DebugImGui::RenderInspectorPanel() {
         ImGui::Begin("Inspector");
-
         if (!s_selectedEntity.valid()) {
             ImGui::TextUnformatted("No entity selected.");
             ImGui::End();
@@ -176,157 +319,14 @@ namespace dodoe {
         }
 
         Entity entity = s_selectedEntity;
-
-        if (entity.hasComponent<IDComponent>())        InspectIDComponent(entity);
-        if (entity.hasComponent<TagComponent>())       InspectTagComponent(entity);
-        if (entity.hasComponent<TransformComponent>()) InspectTransformComponent(entity);
-        if (entity.hasComponent<HierarchyComponent>()) InspectHierarchyComponent(entity);
-        if (entity.hasComponent<Camera2dComponent>())  InspectCamera2dComponent(entity);
-        if (entity.hasComponent<SpriteRendererComponent>()) InspectSpriteRendererComponent(entity);
-        if (entity.hasComponent<Rigidbody2dComponent>())   InspectRigidbody2dComponent(entity);
-
+        auto& db = ComponentDB::self();
+        for (const auto& entry : db.entries()) {
+            if (entry.contains(entity)) DrawNativeComponent(entity, entry);
+        }
+        DrawManagedComponents(entity);
         ImGui::End();
     }
 
-    void DebugImGui::InspectIDComponent(Entity entity) {
-        if (!ImGui::CollapsingHeader("ID", ImGuiTreeNodeFlags_DefaultOpen)) return;
+}
 
-        IDComponent& idc = entity.getComponent<IDComponent>();
-        char buffer[256];
-        std::snprintf(buffer, sizeof(buffer), "%s", idc.name.c_str());
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::InputText("Name", buffer, sizeof(buffer))) {
-            idc.setName(String(buffer));
-        }
-    }
-
-    void DebugImGui::InspectTagComponent(Entity entity) {
-        if (!ImGui::CollapsingHeader("Tag", ImGuiTreeNodeFlags_DefaultOpen)) return;
-
-        TagComponent& tag = entity.getComponent<TagComponent>();
-        char buffer[256];
-        std::snprintf(buffer, sizeof(buffer), "%s", tag.tag.c_str());
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::InputText("Tag", buffer, sizeof(buffer))) {
-            tag.setTag(String(buffer));
-        }
-    }
-
-    void DebugImGui::InspectTransformComponent(Entity entity) {
-        if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) return;
-
-        TransformComponent& xform = entity.getComponent<TransformComponent>();
-
-        float pos[3] = { xform.position.x, xform.position.y, xform.position.z };
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat3("Position", pos, 0.1f)) {
-            xform.setPosition(Vector3f(pos[0], pos[1], pos[2]));
-        }
-
-        float rot[3] = { xform.rotation.x, xform.rotation.y, xform.rotation.z };
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat3("Rotation", rot, 0.1f)) {
-            xform.setRotation(Vector3f(rot[0], rot[1], rot[2]));
-        }
-
-        float scl[3] = { xform.scale.x, xform.scale.y, xform.scale.z };
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat3("Scale", scl, 0.1f, 0.01f, 100.0f)) {
-            xform.setScale(Vector3f(scl[0], scl[1], scl[2]));
-        }
-    }
-
-    void DebugImGui::InspectHierarchyComponent(Entity entity) {
-        if (!ImGui::CollapsingHeader("Hierarchy", ImGuiTreeNodeFlags_DefaultOpen)) return;
-
-        HierarchyComponent& hier = entity.getComponent<HierarchyComponent>();
-        ImGui::Text("Child Count: %d", hier.child_count);
-        if (hier.parent.valid()) {
-            ImGui::Text("Parent: %s", hier.parent.name().c_str());
-        } else {
-            ImGui::TextUnformatted("Parent: None");
-        }
-    }
-
-    void DebugImGui::InspectCamera2dComponent(Entity entity) {
-        if (!ImGui::CollapsingHeader("Camera 2D", ImGuiTreeNodeFlags_DefaultOpen)) return;
-
-        Camera2dComponent& cam = entity.getComponent<Camera2dComponent>();
-
-        const char* type_names[] = { "None", "Perspective", "Orthographic" };
-        int current_type = static_cast<int>(cam.type);
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::Combo("Type", &current_type, type_names, IM_ARRAYSIZE(type_names))) {
-            cam.setCameraType(static_cast<CameraType>(current_type));
-        }
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("Zoom", &cam.zoom, 0.1f)) cam.dirty = true;
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("FOV", &cam.fov, 0.1f)) cam.dirty = true;
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("Near Plane", &cam.near_plane, 0.01f, 0.001f, cam.far_plane)) cam.dirty = true;
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("Far Plane", &cam.far_plane, 0.1f, cam.near_plane, 10000.0f)) cam.dirty = true;
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("Aspect Ratio", &cam.aspect_ratio, 0.01f)) cam.dirty = true;
-
-        float bg[4] = { cam.background.r, cam.background.g, cam.background.b, cam.background.a };
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::ColorEdit4("Background", bg)) {
-            cam.setBackgroundColor(Color(bg[0], bg[1], bg[2], bg[3]));
-        }
-    }
-
-    void DebugImGui::InspectSpriteRendererComponent(Entity entity) {
-        if (!ImGui::CollapsingHeader("Sprite Renderer", ImGuiTreeNodeFlags_DefaultOpen)) return;
-
-        SpriteRendererComponent& sprite = entity.getComponent<SpriteRendererComponent>();
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::Checkbox("Flip", &sprite.flip)) sprite.dirty = true;
-
-        float pivot[2] = { sprite.pivot.x, sprite.pivot.y };
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat2("Pivot", pivot, 0.01f)) {
-            sprite.pivot = Vector2f(pivot[0], pivot[1]);
-            sprite.dirty = true;
-        }
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("Depth", &sprite.depth, 0.01f)) sprite.dirty = true;
-
-        float color[4] = { sprite.color.r, sprite.color.g, sprite.color.b, sprite.color.a };
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::ColorEdit4("Color", color)) {
-            sprite.color = Color(color[0], color[1], color[2], color[3]);
-            sprite.dirty = true;
-        }
-    }
-
-    void DebugImGui::InspectRigidbody2dComponent(Entity entity) {
-        if (!ImGui::CollapsingHeader("Rigidbody 2D", ImGuiTreeNodeFlags_DefaultOpen)) return;
-
-        Rigidbody2dComponent& rb = entity.getComponent<Rigidbody2dComponent>();
-
-        const char* type_names[] = { "Static", "Dynamic", "Kinematic" };
-        int current_type = static_cast<int>(rb.type);
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::Combo("Body Type", &current_type, type_names, IM_ARRAYSIZE(type_names))) {
-            rb.type = static_cast<Rigidbody2dComponent::BodyType>(current_type);
-        }
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        ImGui::DragFloat("Gravity Scale", &rb.gravity_scale, 0.1f);
-
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        ImGui::Checkbox("Fixed Rotation", &rb.fixed_rotation);
-    }
-
-} // dodoe
-
-#endif // DODOE_DEBUG_ENABLED
+#endif
