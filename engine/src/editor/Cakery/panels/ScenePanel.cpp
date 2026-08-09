@@ -247,7 +247,7 @@ void ScenePanel::dropEvent(QDropEvent* event)
 {
     for (const auto& url : event->mimeData()->urls()) {
         if (url.isLocalFile()) {
-            dodoe::SceneImporter::ImportAsset(url.toLocalFile().toStdString());
+            dodoe::SceneImporter::ImportAsset(dodoe::String(url.toLocalFile().toStdString().c_str()));
         }
     }
     event->acceptProposedAction();

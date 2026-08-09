@@ -191,10 +191,10 @@ bool SetFieldValueCommand::execute(EditorContext& ctx)
     if (!entity.valid()) return false;
 
     auto& db = dodoe::ComponentDB::self();
-    void* compPtr = db.getComponentPtr(entity, m_component);
+    void* compPtr = db.getComponentPtr(entity, dodoe::String(m_component.c_str()));
     if (!compPtr) return false;
 
-    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(m_component);
+    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(dodoe::String(m_component.c_str()));
     if (!meta.isValid()) return false;
 
     dodoe::FieldAccessor field = meta.get_field_by_name(m_field.c_str());
@@ -207,7 +207,7 @@ bool SetFieldValueCommand::execute(EditorContext& ctx)
 
     if (!ApplyFieldValue(typeName, field, compPtr, m_new)) return false;
 
-    db.markComponentDirty(entity, m_component);
+    db.markComponentDirty(entity, dodoe::String(m_component.c_str()));
     return true;
 }
 
@@ -220,10 +220,10 @@ void SetFieldValueCommand::undo(EditorContext& ctx)
     if (!entity.valid()) return;
 
     auto& db = dodoe::ComponentDB::self();
-    void* compPtr = db.getComponentPtr(entity, m_component);
+    void* compPtr = db.getComponentPtr(entity, dodoe::String(m_component.c_str()));
     if (!compPtr) return;
 
-    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(m_component);
+    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(dodoe::String(m_component.c_str()));
     if (!meta.isValid()) return;
 
     dodoe::FieldAccessor field = meta.get_field_by_name(m_field.c_str());
@@ -232,7 +232,7 @@ void SetFieldValueCommand::undo(EditorContext& ctx)
 
     if (!ApplyFieldValue(typeName, field, compPtr, m_old)) return;
 
-    db.markComponentDirty(entity, m_component);
+    db.markComponentDirty(entity, dodoe::String(m_component.c_str()));
 }
 
 std::string SetFieldValueCommand::label() const

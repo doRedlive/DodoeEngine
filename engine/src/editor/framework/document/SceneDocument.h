@@ -5,6 +5,7 @@
 #include <string>
 #include <filesystem>
 
+#include "runtime/core/base.h"
 #include "framework/core/Signal.h"
 
 namespace dodoe {
@@ -21,9 +22,9 @@ public:
     explicit SceneDocument(EditorContext& ctx) : m_ctx(ctx) {}
 
     void newScene(const std::string& name = "Untitled");
-    bool openScene(const FsPath& file);
+    bool openScene(const dodoe::FsPath& file);
     bool save();
-    bool saveAs(const FsPath& file);
+    bool saveAs(const dodoe::FsPath& file);
 
     dodoe::Scene* scene() const;
 
@@ -31,7 +32,7 @@ public:
     void markDirty();
     void clearDirty();
 
-    const FsPath& path() const { return m_path; }
+    const dodoe::FsPath& path() const { return m_path; }
     std::string displayTitle() const;
 
     Signal<>              dirtyChanged;
@@ -39,7 +40,7 @@ public:
 
 private:
     EditorContext& m_ctx;
-    FsPath m_path;
+    dodoe::FsPath m_path;
     bool m_dirty = false;
 };
 

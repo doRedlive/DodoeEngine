@@ -85,8 +85,8 @@ void EditorApplication::onProjectSelected(const QString& projectPath)
     LOG_INFO("[EditorApplication] Opening project: {}", projectPath.toStdString());
 
     m_editorWindow = new EditorWindow(*m_ctx);
-    m_editorWindow->enterWorkspace(projectPath);
     m_editorWindow->show();
+    m_editorWindow->enterWorkspace(projectPath);
 }
 
 } // namespace cakery

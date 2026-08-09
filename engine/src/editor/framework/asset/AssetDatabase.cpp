@@ -10,10 +10,10 @@ namespace cakery {
 void AssetDatabase::refresh() {
     m_assets.clear();
 
-    auto* proj = dodoe::Project::ActiveProject();
+    auto proj = dodoe::Project::ActiveProject();
     if (!proj) return;
 
-    std::string assetPath = proj->config().project_path;
+    std::string assetPath = proj->config().project_path.string();
     if (assetPath.empty()) return;
 
     namespace fs = std::filesystem;

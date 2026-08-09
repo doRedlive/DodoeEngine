@@ -5,7 +5,7 @@
 layout(location = 0) in vec2 v_UV;
 layout(location = 0) out vec4 o_Color;
 
-layout(push_constant) uniform CombinePushConstants {
+layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform CombinePushConstants {
     vec2 u_ViewportPos;
     vec2 u_ViewportSize;
 };

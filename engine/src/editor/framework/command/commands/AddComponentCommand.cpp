@@ -25,10 +25,10 @@ bool AddComponentCommand::execute(EditorContext& ctx)
     if (!entity.valid()) return false;
 
     auto& db = dodoe::ComponentDB::self();
-    if (db.hasComponent(entity, m_componentName)) {
+    if (db.hasComponent(entity, dodoe::String(m_componentName.c_str()))) {
         return false;
     }
-    if (!db.addComponent(entity, m_componentName)) {
+    if (!db.addComponent(entity, dodoe::String(m_componentName.c_str()))) {
         return false;
     }
 
@@ -45,7 +45,7 @@ void AddComponentCommand::undo(EditorContext& ctx)
     if (!entity.valid()) return;
 
     auto& db = dodoe::ComponentDB::self();
-    db.removeComponent(entity, m_componentName);
+    db.removeComponent(entity, dodoe::String(m_componentName.c_str()));
 }
 
 std::string AddComponentCommand::label() const

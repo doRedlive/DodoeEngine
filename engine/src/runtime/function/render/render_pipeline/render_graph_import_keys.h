@@ -20,6 +20,10 @@ namespace dodoe {
         using Value = GfxTextureHandle;
     };
 
+    struct ImGuiConstantBufferKey {
+        using Value = GfxBufferHandle;
+    };
+
     struct SkyboxConstantBufferKey {
         using Value = GfxBufferHandle;
     };

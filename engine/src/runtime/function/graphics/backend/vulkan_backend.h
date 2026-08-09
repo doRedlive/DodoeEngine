@@ -15,6 +15,8 @@ namespace dodoe {
         GLFWwindow* window_handle{nullptr};
         void*       host_handle{nullptr};
 		bool        enable_validation{true};
+		uint32_t    width{0};
+		uint32_t    height{0};
 	};
 
 	class VulkanBackend : public Managed<VulkanBackend, VulkanBackendCreateInfo> {
@@ -75,7 +77,7 @@ namespace dodoe {
 		[[nodiscard]] Vector2i getSwapchainExtent2d() { return Vector2i(swapchain_extent_.width, swapchain_extent_.height); }
 		[[nodiscard]] bool acquireNextImage(uint32_t& image_index, VkSemaphore signal_semaphore);
 		[[nodiscard]] bool presentImage(uint32_t image_index, VkSemaphore wait_semaphore);
-		[[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle);
+		[[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle, uint32_t width, uint32_t height);
 
 	private:
 		bool initialize(const VulkanBackendCreateInfo& info);
@@ -86,7 +88,7 @@ namespace dodoe {
 		void pickPhysicalDevice();
 		void createLogicalDevice();
 		void createSurface(GLFWwindow* window_handle, void* host_handle);
-		void createSwapchain(GLFWwindow* window_handle);
+		void createSwapchain(GLFWwindow* window_handle, uint32_t width, uint32_t height);
 		void createSwapchainImageViews();
 		void createCommandPool();
 

@@ -6,6 +6,8 @@
 #include "framework/selection/SelectionManager.h"
 
 #include "runtime/core/channel/gizmo_channel.h"
+#include "runtime/core/math/math.h"
+#include "runtime/core/utils/util.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/components/transform_component.h"

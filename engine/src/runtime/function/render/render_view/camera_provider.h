@@ -24,7 +24,7 @@ namespace dodoe {
     };
 
 #ifdef DODOE_EDITOR_ENABLED
-    class EditorCameraProvider : public ICameraProvider {
+    class DODOE_API EditorCameraProvider : public ICameraProvider {
     public:
         Matrix4f getView() const override;
         Matrix4f getProj() const override;

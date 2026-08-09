@@ -9,7 +9,7 @@
 
 namespace dodoe {
 
-    class RenderViewport {
+    class DODOE_API RenderViewport {
         struct LetterboxMetrics {
             Rect viewport{};
             float scale{1.0f};

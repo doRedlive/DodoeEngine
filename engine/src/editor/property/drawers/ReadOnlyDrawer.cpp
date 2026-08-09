@@ -2,6 +2,8 @@
 
 #include "ReadOnlyDrawer.h"
 
+#include "runtime/core/meta/reflection/reflection.h"
+
 #include <QLabel>
 #include <QHBoxLayout>
 

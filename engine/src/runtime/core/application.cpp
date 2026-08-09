@@ -5,6 +5,7 @@
 #include "_generated/serializer/application.serializer.gen.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/core/project/project.h"
 #include "runtime/core/event/event_system.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/async/task_scheduler.h"

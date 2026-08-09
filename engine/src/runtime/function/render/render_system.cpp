@@ -26,7 +26,8 @@ namespace dodoe {
 #else
             false;
 #endif
-        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, RenderFeatureSettings{}, window->isHostMode() ? window->getNativeHandle() : nullptr});
+        Vector2i init_pixel = window->getPixelSize();
+        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, RenderFeatureSettings{}, window->isHostMode() ? window->getNativeHandle() : nullptr, static_cast<UInt32>(init_pixel.x), static_cast<UInt32>(init_pixel.y)});
         GDrawCommandList.setDevice(*m_gfx);
 
         m_frame_scheduler = RenderFrameScheduler::Create({m_gfx->getDevice()});
@@ -103,8 +104,10 @@ namespace dodoe {
 
         if (any_window_dirty) {
             m_gfx->waitForIdle();
-            m_gfx->recreateSwapchain();
-            pipeline->onResize(static_cast<UInt32>(cur_pixel.x), static_cast<UInt32>(cur_pixel.y));
+            m_gfx->recreateSwapchain(static_cast<UInt32>(cur_pixel.x),
+                                     static_cast<UInt32>(cur_pixel.y));
+            pipeline->onResize(static_cast<UInt32>(cur_pixel.x),
+                               static_cast<UInt32>(cur_pixel.y));
             m_gfx->clearGarbage();
         }
 

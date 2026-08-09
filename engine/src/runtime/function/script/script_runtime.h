@@ -19,7 +19,7 @@ namespace dodoe {
         ScriptEngine* script_engine;
     };
 
-    class ScriptRuntime : public Managed<ScriptRuntime, ScriptRuntimeCreateInfo> {
+    class DODOE_API ScriptRuntime : public Managed<ScriptRuntime, ScriptRuntimeCreateInfo> {
         friend class Managed<ScriptRuntime, ScriptRuntimeCreateInfo>;
         ScriptEngine* m_script_engine{nullptr};
         ScriptCallFn m_call{nullptr};

@@ -14,6 +14,7 @@ namespace dodoe {
 
 	class GizmoFeature final : public IRenderFeature {
 	    GfxBindingLayoutHandle m_binding_layout{};
+		GfxInputLayoutHandle m_input_layout{};
 
 	public:
 	    void initialize(SharedRenderService& resources) override;

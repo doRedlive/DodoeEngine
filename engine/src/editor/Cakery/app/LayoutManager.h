@@ -4,7 +4,6 @@
 
 #include <QString>
 #include <QStringList>
-#include <memory>
 #include <string>
 
 namespace ads {
@@ -37,9 +36,6 @@ private:
 
     ads::CDockManager* m_dm;
     EditorContext& m_ctx;
-
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
 };
 
 } // namespace cakery

@@ -31,7 +31,7 @@ namespace dodoe {
     template <typename T>
     struct is_asset_handle<AssetHandle<T>> : std::true_type {};
 
-    class Serializer {
+    class DODOE_API Serializer {
     public:
         template <typename T>
         static Json write_pointer(T* instance) {
@@ -174,98 +174,98 @@ namespace dodoe {
 
     // implementation of base types
     template<>
-    Json Serializer::write(const char& instance);
+    DODOE_API Json Serializer::write(const char& instance);
     template<>
-    char& Serializer::read(const Json& json_context, char& instance);
+    DODOE_API char& Serializer::read(const Json& json_context, char& instance);
 
     template<>
-    Json Serializer::write(const int& instance);
+    DODOE_API Json Serializer::write(const int& instance);
     template<>
-    int& Serializer::read(const Json& json_context, int& instance);
+    DODOE_API int& Serializer::read(const Json& json_context, int& instance);
 
     template<>
-    Json Serializer::write(const unsigned int& instance);
+    DODOE_API Json Serializer::write(const unsigned int& instance);
     template<>
-    unsigned int& Serializer::read(const Json& json_context, unsigned int& instance);
+    DODOE_API unsigned int& Serializer::read(const Json& json_context, unsigned int& instance);
 
     template<>
-    Json Serializer::write(const Int64& instance);
+    DODOE_API Json Serializer::write(const Int64& instance);
     template<>
-    Int64& Serializer::read(const Json& json_context, Int64& instance);
+    DODOE_API Int64& Serializer::read(const Json& json_context, Int64& instance);
 
     template<>
-    Json Serializer::write(const unsigned short& instance);
+    DODOE_API Json Serializer::write(const unsigned short& instance);
     template<>
-    unsigned short& Serializer::read(const Json& json_context, unsigned short& instance);
+    DODOE_API unsigned short& Serializer::read(const Json& json_context, unsigned short& instance);
 
     template<>
-    Json Serializer::write(const size_t& instance);
+    DODOE_API Json Serializer::write(const size_t& instance);
     template<>
-    size_t& Serializer::read(const Json& json_context, size_t& instance);
+    DODOE_API size_t& Serializer::read(const Json& json_context, size_t& instance);
 
     template<>
-    Json Serializer::write(const float& instance);
+    DODOE_API Json Serializer::write(const float& instance);
     template<>
-    float& Serializer::read(const Json& json_context, float& instance);
+    DODOE_API float& Serializer::read(const Json& json_context, float& instance);
 
     template<>
-    Json Serializer::write(const double& instance);
+    DODOE_API Json Serializer::write(const double& instance);
     template<>
-    double& Serializer::read(const Json& json_context, double& instance);
+    DODOE_API double& Serializer::read(const Json& json_context, double& instance);
 
     template<>
-    Json Serializer::write(const bool& instance);
+    DODOE_API Json Serializer::write(const bool& instance);
     template<>
-    bool& Serializer::read(const Json& json_context, bool& instance);
+    DODOE_API bool& Serializer::read(const Json& json_context, bool& instance);
 
     template<>
-    Json Serializer::write(const String& instance);
+    DODOE_API Json Serializer::write(const String& instance);
     template<>
-    String& Serializer::read(const Json& json_context, String& instance);
+    DODOE_API String& Serializer::read(const Json& json_context, String& instance);
 
     template<>
-    Json Serializer::write(const UUID& instance);
+    DODOE_API Json Serializer::write(const UUID& instance);
     template<>
-    UUID& Serializer::read(const Json& json_context, UUID& instance);
+    DODOE_API UUID& Serializer::read(const Json& json_context, UUID& instance);
 
     template<>
-    Json Serializer::write(const Vector2f& instance);
+    DODOE_API Json Serializer::write(const Vector2f& instance);
     template<>
-    Vector2f& Serializer::read(const Json& json_context, Vector2f& instance);
+    DODOE_API Vector2f& Serializer::read(const Json& json_context, Vector2f& instance);
 
     template<>
-    Json Serializer::write(const Vector2i& instance);
+    DODOE_API Json Serializer::write(const Vector2i& instance);
     template<>
-    Vector2i& Serializer::read(const Json& json_context, Vector2i& instance);
+    DODOE_API Vector2i& Serializer::read(const Json& json_context, Vector2i& instance);
 
     template<>
-    Json Serializer::write(const Vector3f& instance);
+    DODOE_API Json Serializer::write(const Vector3f& instance);
     template<>
-    Vector3f& Serializer::read(const Json& json_context, Vector3f& instance);
+    DODOE_API Vector3f& Serializer::read(const Json& json_context, Vector3f& instance);
 
     template<>
-    Json Serializer::write(const Vector3i& instance);
+    DODOE_API Json Serializer::write(const Vector3i& instance);
     template<>
-    Vector3i& Serializer::read(const Json& json_context, Vector3i& instance);
+    DODOE_API Vector3i& Serializer::read(const Json& json_context, Vector3i& instance);
 
     template<>
-    Json Serializer::write(const Vector4f& instance);
+    DODOE_API Json Serializer::write(const Vector4f& instance);
     template<>
-    Vector4f& Serializer::read(const Json& json_context, Vector4f& instance);
+    DODOE_API Vector4f& Serializer::read(const Json& json_context, Vector4f& instance);
 
     template<>
-    Json Serializer::write(const Vector4i& instance);
+    DODOE_API Json Serializer::write(const Vector4i& instance);
     template<>
-    Vector4i& Serializer::read(const Json& json_context, Vector4i& instance);
+    DODOE_API Vector4i& Serializer::read(const Json& json_context, Vector4i& instance);
 
     template<>
-    Json Serializer::write(const Color& instance);
+    DODOE_API Json Serializer::write(const Color& instance);
     template<>
-    Color& Serializer::read(const Json& json_context, Color& instance);
+    DODOE_API Color& Serializer::read(const Json& json_context, Color& instance);
 
     template<>
-    Json Serializer::write(const FileID& instance);
+    DODOE_API Json Serializer::write(const FileID& instance);
     template<>
-    FileID& Serializer::read(const Json& json_context, FileID& instance);
+    DODOE_API FileID& Serializer::read(const Json& json_context, FileID& instance);
 
 } // dodoe

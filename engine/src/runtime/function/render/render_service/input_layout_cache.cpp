@@ -39,9 +39,14 @@ namespace dodoe {
             return it->second;
         }
 
+        DynamicArray<GfxVertexAttributeDesc> remapped = attributes;
+        for (UInt32 index = 0; index < remapped.size(); ++index) {
+            remapped[index].setName("TEXCOORD" + std::to_string(index));
+        }
+
         auto input_layout = GDrawCommandList.createInputLayout(
-            attributes.data(),
-            static_cast<UInt32>(attributes.size()),
+            remapped.data(),
+            static_cast<UInt32>(remapped.size()),
             vertex_shader);
         m_cache[h] = input_layout;
         return input_layout;

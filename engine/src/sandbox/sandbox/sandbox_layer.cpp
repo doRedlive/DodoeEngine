@@ -57,7 +57,7 @@ namespace sandbox {
         //     // sr.dirty = true;
         // }
 
-        dodoe::SceneImporter::ImportModel("engine/res/models/backpack/backpack.obj");
+        // dodoe::SceneImporter::ImportModel("engine/res/models/backpack/backpack.obj");
     }
     
     void SandboxLayer::detach() {

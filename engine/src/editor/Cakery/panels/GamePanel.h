@@ -25,6 +25,7 @@ protected:
 private:
     void buildToolbar();
     void onAspectChanged(int index);
+    void registerViewportIfNeeded();
 
     EditorViewport* m_vp = nullptr;
     QComboBox* m_aspectCombo = nullptr;

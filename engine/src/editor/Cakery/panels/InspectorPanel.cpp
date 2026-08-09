@@ -130,7 +130,7 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
     m_addBtn->setEnabled(true);
 
     if (entity.hasComponent<dodoe::IDComponent>()) {
-        m_nameEdit->setText(QString::fromStdString(entity.name()));
+        m_nameEdit->setText(QString::fromStdString(entity.name().c_str()));
     }
 
     auto& db = dodoe::ComponentDB::self();
@@ -142,14 +142,14 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
                 pc.ctx           = &m_ctx;
                 pc.entity        = uuid;
                 pc.componentName = entry.componentName;
-                pc.componentPtr  = db.getComponentPtr(entity, entry.componentName);
+                pc.componentPtr  = db.getComponentPtr(entity, dodoe::String(entry.componentName.c_str()));
                 entry.drawer->updateValue(pc);
             } else if (entry.customEditor) {
                 InspectorContext ic;
                 ic.ctx           = &m_ctx;
                 ic.entity        = uuid;
                 ic.componentName = entry.componentName;
-                ic.componentPtr  = db.getComponentPtr(entity, entry.componentName);
+                ic.componentPtr  = db.getComponentPtr(entity, dodoe::String(entry.componentName.c_str()));
                 ic.parent        = entry.widget ? entry.widget->parentWidget() : nullptr;
                 entry.customEditor->refresh(ic);
             }
@@ -175,9 +175,9 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
         int count = meta.get_field_list(fields);
         if (count <= 0) { delete[] fields; continue; }
 
-        applyFieldAttributes(fields, count, entry.name);
+        applyFieldAttributes(fields, count, entry.name.c_str());
 
-        auto* group = new QGroupBox(QString::fromStdString(entry.name), m_editorContainer);
+        auto* group = new QGroupBox(QString::fromStdString(entry.name.c_str()), m_editorContainer);
         auto* groupLayout = new QVBoxLayout(group);
 
         InspectorContext ic;
@@ -187,12 +187,12 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
         ic.componentPtr  = compPtr;
         ic.parent        = group;
 
-        auto customEditor = CustomEditorRegistry::self().create(entry.name);
+        auto customEditor = CustomEditorRegistry::self().create(entry.name.c_str());
         if (customEditor) {
             QWidget* w = customEditor->build(ic);
             if (w) {
                 groupLayout->addWidget(w);
-                m_entries.push_back({entry.name, "", nullptr, customEditor.release(), w});
+                m_entries.push_back({entry.name.c_str(), "", nullptr, customEditor.release(), w});
             }
         } else {
             for (int i = 0; i < count; ++i) {
@@ -222,7 +222,7 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
                         }
 
                         groupLayout->addWidget(w);
-                        m_entries.push_back({entry.name, fields[i].getFieldName(), drawer.release(), nullptr, w});
+                        m_entries.push_back({entry.name.c_str(), fields[i].getFieldName(), drawer.release(), nullptr, w});
                     }
                 }
             }

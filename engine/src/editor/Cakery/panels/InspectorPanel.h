@@ -12,6 +12,10 @@
 #include <vector>
 #include <string>
 
+namespace dodoe {
+class FieldAccessor;
+}
+
 namespace cakery {
 
 class PropertyDrawer;

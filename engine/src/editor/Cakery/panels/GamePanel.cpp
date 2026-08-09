@@ -77,21 +77,28 @@ void GamePanel::showEvent(QShowEvent* event)
     Panel::showEvent(event);
     if (m_firstShow) {
         m_firstShow = false;
-        float dpr = devicePixelRatioF();
-        m_vp = m_ctx.viewports().registerViewport(
-            ViewportKind::Game,
-            reinterpret_cast<void*>(winId()),
-            width(), height(), dpr);
+        registerViewportIfNeeded();
     }
 }
 
 void GamePanel::resizeEvent(QResizeEvent* event)
 {
     Panel::resizeEvent(event);
+    registerViewportIfNeeded();
     if (m_vp) {
         float dpr = devicePixelRatioF();
         m_ctx.viewports().onResized(m_vp, event->size().width(), event->size().height(), dpr);
     }
+}
+
+void GamePanel::registerViewportIfNeeded()
+{
+    if (m_vp || !m_ctx.isBooted()) return;
+    float dpr = devicePixelRatioF();
+    m_vp = m_ctx.viewports().registerViewport(
+        ViewportKind::Game,
+        reinterpret_cast<void*>(winId()),
+        width(), height(), dpr);
 }
 
 void GamePanel::paintEvent(QPaintEvent* event)

@@ -84,7 +84,7 @@ namespace dodoe {
     namespace validation = cutie::validation;
     namespace vulkan = cutie::vulkan;
     namespace opengl = cutie::opengl;
-    namespace dx12 = cutie::d3d12;
+    namespace d3d12 = cutie::d3d12;
 
     class GfxTexture {
     public:

@@ -9,6 +9,7 @@
 #include <QHeaderView>
 #include <QDir>
 #include <QFileInfo>
+#include <QIcon>
 
 namespace cakery {
 
@@ -37,13 +38,11 @@ ProjectPanel::ProjectPanel(EditorContext& ctx, QWidget* parent)
     m_dirTree->header()->setStretchLastSection(true);
     m_splitter->addWidget(m_dirTree);
 
-    m_assetGrid = new QTreeWidget(this);
-    m_assetGrid->setHeaderLabels({"Name", "Type"});
-    m_assetGrid->header()->setStretchLastSection(true);
-    m_assetGrid->setViewMode(QTreeWidget::IconMode);
+    m_assetGrid = new QListWidget(this);
+    m_assetGrid->setViewMode(QListView::IconMode);
     m_assetGrid->setIconSize(QSize(64, 64));
     m_assetGrid->setGridSize(QSize(80, 80));
-    m_assetGrid->setResizeMode(QTreeWidget::Adjust);
+    m_assetGrid->setResizeMode(QListView::Adjust);
     m_assetGrid->setWordWrap(true);
     m_splitter->addWidget(m_assetGrid);
 
@@ -77,12 +76,14 @@ void ProjectPanel::populateFromAssetDatabase()
     auto entries = db.list();
 
     for (auto& entry : entries) {
-        auto* item = new QTreeWidgetItem();
         QFileInfo fi(QString::fromStdString(entry.path));
-        item->setText(0, fi.fileName());
-        item->setText(1, QString::fromStdString(entry.type));
-        item->setToolTip(0, QString::fromStdString(entry.path));
-        m_assetGrid->addTopLevelItem(item);
+        auto* item = new QListWidgetItem();
+        item->setText(fi.fileName());
+        if (entry.type == "texture") {
+            item->setIcon(QIcon(fi.filePath()));
+        }
+        item->setToolTip(QString("%1\n%2").arg(fi.fileName(), QString::fromStdString(entry.type)));
+        m_assetGrid->addItem(item);
     }
 }
 

@@ -15,7 +15,7 @@ namespace dodoe {
 
         OpenGL,
         Vulkan,
-        DX12,
+        D3D12,
     };
 
     enum class RenderingPipelineType {
@@ -44,7 +44,7 @@ namespace dodoe {
         REFLECTION_BODY(RenderSettingsInitInfo)
 
         META(Enable)
-        RenderBackendApiType api{ RenderBackendApiType::DX12 };
+        RenderBackendApiType api{ RenderBackendApiType::D3D12 };
         META(Enable)
         RenderingPipelineType pipeline{ RenderingPipelineType::Deferred };
         META(Enable)

@@ -44,7 +44,7 @@ namespace dodoe {
 	    addFeature<LightingFeature>();
 	    addFeature<PostProcessFeature>();
 	    addFeature<SpriteFeature>();
-	    addFeature<UIFeature>();  // do@Redlive
+	    addFeature<UIFeature>();
 #ifdef DODOE_EDITOR_ENABLED
 	    addFeature<GizmoFeature>();
 	#endif

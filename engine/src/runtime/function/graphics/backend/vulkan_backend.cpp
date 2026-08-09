@@ -41,7 +41,7 @@ namespace dodoe {
 		createLogicalDevice();
 		OutputDebugStringA("[VK] logicalDevice ok\n");
 		OutputDebugStringA("[VK] createSwapchain...\n");
-		createSwapchain(info.window_handle);
+		createSwapchain(info.window_handle, info.width, info.height);
 		OutputDebugStringA("[VK] swapchain ok\n");
 		createCommandPool();
 		OutputDebugStringA("[VK] commandPool ok\n");
@@ -289,7 +289,7 @@ namespace dodoe {
 		vkGetDeviceQueue(device_, queue_family_indices_.compute_family.value(), 0, &compute_queue_);
 	}
 
-	void VulkanBackend::createSwapchain(::GLFWwindow* window_handle) {
+	void VulkanBackend::createSwapchain(::GLFWwindow* window_handle, uint32_t width, uint32_t height) {
 		VulkanBackend::SwapchainSupportDetails swapchain_details = querySwapchainSupport(physical_device_);
 		VkSurfaceFormatKHR chosen_surface_format;
 		{
@@ -328,32 +328,29 @@ namespace dodoe {
 		}
 		VkExtent2D chosen_extent;
 		{
-			if (swapchain_details.capabilities.currentExtent.width != UINT32_MAX
+			int sel_w = 0, sel_h = 0;
+			if (width > 0 && height > 0) {
+				sel_w = static_cast<int>(width);
+				sel_h = static_cast<int>(height);
+			} else if (swapchain_details.capabilities.currentExtent.width != UINT32_MAX
 				&& swapchain_details.capabilities.currentExtent.width > 0
 				&& swapchain_details.capabilities.currentExtent.height > 0) {
-				chosen_extent = swapchain_details.capabilities.currentExtent;
-				chosen_extent.width = std::clamp(chosen_extent.width,
-					swapchain_details.capabilities.minImageExtent.width,
-					swapchain_details.capabilities.maxImageExtent.width);
-				chosen_extent.height = std::clamp(chosen_extent.height,
-					swapchain_details.capabilities.minImageExtent.height,
-					swapchain_details.capabilities.maxImageExtent.height);
+				sel_w = static_cast<int>(swapchain_details.capabilities.currentExtent.width);
+				sel_h = static_cast<int>(swapchain_details.capabilities.currentExtent.height);
+			} else if (host_handle_ != nullptr) {
+				RECT rect;
+				GetClientRect(static_cast<HWND>(host_handle_), &rect);
+				sel_w = rect.right - rect.left;
+				sel_h = rect.bottom - rect.top;
+			} else {
+				glfwGetFramebufferSize(window_handle, &sel_w, &sel_h);
 			}
-			else {
-				int width, height;
-				if (host_handle_ != nullptr) {
-					RECT rect;
-					GetClientRect(static_cast<HWND>(host_handle_), &rect);
-					width = rect.right - rect.left;
-					height = rect.bottom - rect.top;
-				} else {
-					glfwGetFramebufferSize(window_handle, &width, &height);
-				}
-				VkExtent2D actual_extent{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
-				actual_extent.width = std::clamp(actual_extent.width, swapchain_details.capabilities.minImageExtent.width, swapchain_details.capabilities.maxImageExtent.width); 
-				actual_extent.height = std::clamp(actual_extent.height, swapchain_details.capabilities.minImageExtent.height, swapchain_details.capabilities.maxImageExtent.height);
-				chosen_extent = actual_extent;
-			}
+			chosen_extent.width = std::clamp(static_cast<uint32_t>(sel_w),
+				swapchain_details.capabilities.minImageExtent.width,
+				swapchain_details.capabilities.maxImageExtent.width);
+			chosen_extent.height = std::clamp(static_cast<uint32_t>(sel_h),
+				swapchain_details.capabilities.minImageExtent.height,
+				swapchain_details.capabilities.maxImageExtent.height);
 		}
         uint32_t image_count = swapchain_details.capabilities.minImageCount + 1;
         if (swapchain_details.capabilities.maxImageCount > 0 &&
@@ -486,18 +483,8 @@ namespace dodoe {
 		return false;
 	}
 
-	bool VulkanBackend::recreateSwapchain(GLFWwindow* window_handle) {
-		// Skip swapchain recreation when window is minimized (framebuffer size is zero)
-		int fb_width = 0, fb_height = 0;
-		if (host_handle_ != nullptr) {
-			RECT rect;
-			GetClientRect(static_cast<HWND>(host_handle_), &rect);
-			fb_width = rect.right - rect.left;
-			fb_height = rect.bottom - rect.top;
-		} else {
-			glfwGetFramebufferSize(window_handle, &fb_width, &fb_height);
-		}
-		if (fb_width == 0 || fb_height == 0) {
+	bool VulkanBackend::recreateSwapchain(GLFWwindow* window_handle, uint32_t width, uint32_t height) {
+		if (width == 0 || height == 0) {
 			return false;
 		}
 
@@ -517,7 +504,7 @@ namespace dodoe {
 
 		swapchain_images_.clear();
 
-		createSwapchain(window_handle);
+		createSwapchain(window_handle, width, height);
 		createSwapchainImageViews();
 		return true;
 	}

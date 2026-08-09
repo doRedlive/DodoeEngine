@@ -23,7 +23,7 @@ namespace dodoe {
         using ReadJsonFunc = bool (*)(void*, const Json&);
         using WarmupPoolFunc = void (*)(Registry&);
 
-        struct Entry {
+        struct DODOE_API Entry {
             entt::id_type type{};
             String name{};
             bool addable{ true };

@@ -67,7 +67,7 @@ HierarchyPanel::HierarchyPanel(EditorContext& ctx, QWidget* parent)
             }
         }
         auto sel = m_ctx.selection().primary();
-        if (sel.valid()) {
+        if (sel.isValid()) {
             for (int i = 0; i < m_tree->topLevelItemCount(); ++i) {
                 auto* item = m_tree->topLevelItem(i);
                 auto iter = QTreeWidgetItemIterator(item);
@@ -124,7 +124,7 @@ void HierarchyPanel::populateTree()
 
         auto uuid = entity.uuid();
         if (m_filterText.isEmpty() ||
-            QString::fromStdString(entity.name()).contains(m_filterText, Qt::CaseInsensitive)) {
+            QString::fromStdString(entity.name().c_str()).contains(m_filterText, Qt::CaseInsensitive)) {
 
             dodoe::UUID parentUuid;
             if (entity.hasComponent<dodoe::HierarchyComponent>()) {
@@ -133,14 +133,14 @@ void HierarchyPanel::populateTree()
             }
 
             auto* item = new QTreeWidgetItem();
-            item->setText(0, QString::fromStdString(entity.name()));
+            item->setText(0, QString::fromStdString(entity.name().c_str()));
             item->setData(0, kEntityIdRole, QVariant::fromValue(static_cast<quint64>(entity.handle())));
             item->setData(0, kEntityUuidRole, QVariant::fromValue(static_cast<quint64>(uuid)));
             item->setFlags(item->flags() | Qt::ItemIsEditable);
 
             itemMap[uuid] = item;
 
-            if (!parentUuid.valid()) {
+            if (!parentUuid.isValid()) {
                 m_tree->addTopLevelItem(item);
             } else {
                 auto it = itemMap.find(parentUuid);
@@ -162,7 +162,7 @@ void HierarchyPanel::addEntityItem(QTreeWidgetItem* parent, dodoe::UUID uuid, do
     if (!entity.valid()) return;
 
     auto* item = new QTreeWidgetItem();
-    item->setText(0, QString::fromStdString(entity.name()));
+    item->setText(0, QString::fromStdString(entity.name().c_str()));
     item->setData(0, kEntityIdRole, QVariant::fromValue(static_cast<quint64>(entity.handle())));
     item->setData(0, kEntityUuidRole, QVariant::fromValue(static_cast<quint64>(uuid)));
     item->setFlags(item->flags() | Qt::ItemIsEditable);
@@ -183,7 +183,7 @@ void HierarchyPanel::onItemSelected()
     }
 
     auto uuid = dodoe::UUID(item->data(0, kEntityUuidRole).toULongLong());
-    if (uuid.valid()) {
+    if (uuid.isValid()) {
         m_ctx.selection().select(uuid);
     }
 }
@@ -200,7 +200,7 @@ void HierarchyPanel::onItemChanged(QTreeWidgetItem* item, int)
     if (!item) return;
 
     auto uuid = dodoe::UUID(item->data(0, kEntityUuidRole).toULongLong());
-    if (!uuid.valid()) return;
+    if (!uuid.isValid()) return;
 
     QString newText = item->text(0);
     if (newText.isEmpty()) return;
@@ -211,7 +211,7 @@ void HierarchyPanel::onItemChanged(QTreeWidgetItem* item, int)
     auto entity = scene->getEntityByUUID(uuid);
     if (!entity.valid()) return;
 
-    std::string oldName = entity.name();
+    std::string oldName(entity.name().c_str());
     std::string newName = newText.toStdString();
     if (oldName == newName) return;
 
@@ -237,7 +237,7 @@ void HierarchyPanel::onCustomContextMenu(const QPoint& pos)
     QAction* renameAction = nullptr;
     QAction* deleteAction = nullptr;
 
-    if (uuid.valid()) {
+    if (uuid.isValid()) {
         createChildAction = menu.addAction("Create Child");
         duplicateAction = menu.addAction("Duplicate");
         renameAction = menu.addAction("Rename");
@@ -271,7 +271,7 @@ void HierarchyPanel::createEmptyEntity(dodoe::UUID parentUuid)
 {
     dodoe::UUID newUuid = dodoe::UUID::Generate();
     auto cmd = std::make_unique<CreateEntityCommand>(newUuid, "GameObject",
-        parentUuid.valid() ? std::optional<dodoe::UUID>(parentUuid) : std::nullopt);
+        parentUuid.isValid() ? std::optional<dodoe::UUID>(parentUuid) : std::nullopt);
     m_ctx.commands().execute(std::move(cmd));
     m_ctx.events().entityCreated.fire(newUuid);
     m_ctx.selection().select(newUuid);
@@ -286,7 +286,7 @@ void HierarchyPanel::duplicateEntity(dodoe::UUID uuid)
     auto entity = scene->getEntityByUUID(uuid);
     if (!entity.valid()) return;
 
-    auto cmd = std::make_unique<CreateEntityCommand>(newUuid, entity.name() + " (Copy)",
+    auto cmd = std::make_unique<CreateEntityCommand>(newUuid, std::string(entity.name().c_str()) + " (Copy)",
         std::optional<dodoe::UUID>());
     m_ctx.commands().execute(std::move(cmd));
     m_ctx.events().entityCreated.fire(newUuid);

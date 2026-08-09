@@ -8,6 +8,7 @@
 
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/script/script_system.h"
+#include "runtime/function/world/world.h"
 
 #include "runtime/function/world/components/camera2d_component.h"
 #include "runtime/function/world/components/hierarchy_component.h"
@@ -32,9 +33,11 @@ namespace dodoe {
     }
 
     void DebugImGui::OnImGuiRender() {
+#ifndef DODOE_EDITOR_ENABLED
         RenderHierarchyPanel();
         RenderInspectorPanel();
         RenderDebuggerPanel();
+#endif//DODOE_EDITOR_ENABLED;
     }
 
     void DebugImGui::RenderDebuggerPanel() { 
@@ -42,14 +45,16 @@ namespace dodoe {
         ImGuiIO& io = ImGui::GetIO();
         ImGui::Text("FPS: %.1f (%.3f ms)", io.Framerate, 1000.0f / io.Framerate);
 
+        if (ImGui::Button("Switch World State")) {
+            GetWorld()->switchState();
+        }
+
         if (ImGui::Button("Reload Scripts")) {
             Bool success = GetScriptSystem()->reloadScripts();
             if (success) {
                 DO_DEBUG("Reload Scripts success!");
                 DO_DEBUG("MonoScriptSystem count is {}", GetScriptSystem()->getScriptRuntime()->logSystemClassCount());
             }
-
-
         }
 
         ImGui::End();

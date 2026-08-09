@@ -38,11 +38,11 @@ namespace dodoe {
         }
 
         const auto api = RenderSettings::GetRenderBackendApiType();
-        const char* backend_ext = (api == RenderBackendApiType::DX12) ? ".dxil" : ".spv";
+        const char* backend_ext = (api == RenderBackendApiType::D3D12) ? ".dxil" : ".spv";
 
         const char* platform_str = nullptr;
         switch (api) {
-            case RenderBackendApiType::DX12:   platform_str = "dx12";   break;
+            case RenderBackendApiType::D3D12:   platform_str = "d3d12";   break;
             case RenderBackendApiType::Vulkan: platform_str = "vulkan"; break;
             case RenderBackendApiType::OpenGL: platform_str = "opengl"; break;
             default: platform_str = ""; break;

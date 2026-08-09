@@ -36,6 +36,8 @@ namespace dodoe {
         }
 
         updateFramebufferSize();
+        if (m_fb_width <= 0 && info.width > 0) m_fb_width = static_cast<Int32>(info.width);
+        if (m_fb_height <= 0 && info.height > 0) m_fb_height = static_cast<Int32>(info.height);
 
         return true;
     }

@@ -12,6 +12,8 @@ namespace dodoe {
 
     struct OpenGLBackendCreateInfo {
         GLFWwindow* window_handle{nullptr};
+        UInt32      width{0};
+        UInt32      height{0};
     };
 
     class OpenGLBackend : public Managed<OpenGLBackend, OpenGLBackendCreateInfo> {

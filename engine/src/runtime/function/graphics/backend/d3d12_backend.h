@@ -17,14 +17,16 @@ namespace dodoe {
 
     using Microsoft::WRL::ComPtr;
 
-    struct Dx12BackendCreateInfo {
+    struct D3D12BackendCreateInfo {
         GLFWwindow* window_handle{nullptr};
         void*       host_handle{nullptr};
         bool        enable_validation{true};
+        UInt32      width{0};
+        UInt32      height{0};
     };
 
-    class Dx12Backend : public Managed<Dx12Backend, Dx12BackendCreateInfo> {
-        friend class Managed<Dx12Backend, Dx12BackendCreateInfo>;
+    class D3D12Backend : public Managed<D3D12Backend, D3D12BackendCreateInfo> {
+        friend class Managed<D3D12Backend, D3D12BackendCreateInfo>;
 
         // DXGI
         ComPtr<IDXGIFactory7> m_factory{};
@@ -59,6 +61,8 @@ namespace dodoe {
 
         // Validation
         ComPtr<ID3D12Debug6> m_debug_controller{};
+        ComPtr<ID3D12InfoQueue1> m_info_queue{};
+        DWORD m_message_callback_cookie{0};
         bool m_enable_validation{true};
 
     public:
@@ -75,16 +79,18 @@ namespace dodoe {
 
         [[nodiscard]] bool acquireNextImage(UINT& backbuffer_index);
         [[nodiscard]] bool presentImage(UINT backbuffer_index);
-        [[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle);
+        [[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle, UInt32 width, UInt32 height);
 
     private:
-        bool initialize(const Dx12BackendCreateInfo& info);
+        bool initialize(const D3D12BackendCreateInfo& info);
         void shutdown();
 
         void createFactory();
+        void enableDebugLayer();
+        void setupInfoQueue();
         void createDevice();
         void createCommandQueues();
-        void createSwapchain(GLFWwindow* window_handle);
+        void createSwapchain(GLFWwindow* window_handle, UInt32 width, UInt32 height);
         static UINT GetSwapchainFlags();
         void releaseBackbufferResources();
         void createRTVHeap();

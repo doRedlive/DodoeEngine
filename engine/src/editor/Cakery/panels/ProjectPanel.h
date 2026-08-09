@@ -5,6 +5,7 @@
 #include "Panel.h"
 #include <QWidget>
 #include <QTreeWidget>
+#include <QListWidget>
 #include <QLineEdit>
 #include <QComboBox>
 #include <QSplitter>
@@ -26,7 +27,7 @@ private:
     QComboBox* m_filterCombo = nullptr;
     QSplitter* m_splitter = nullptr;
     QTreeWidget* m_dirTree = nullptr;
-    QTreeWidget* m_assetGrid = nullptr;
+    QListWidget* m_assetGrid = nullptr;
 };
 
 } // namespace cakery

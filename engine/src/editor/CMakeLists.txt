@@ -126,7 +126,7 @@ set(POST_BUILD_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}/resources"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Cakery/resources/style.qss" "${BINARY_ROOT_DIR}/resources/style.qss"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res/editor" "${BINARY_ROOT_DIR}/resources/editor"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res/pictures" "${BINARY_ROOT_DIR}/resources/pictures"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res" "${BINARY_ROOT_DIR}/engine/res"
 )
 
 if(WINDEPLOYQT_EXE)

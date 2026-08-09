@@ -1,6 +1,8 @@
 #version 450
 
-layout(push_constant) uniform PushConstants {
+#include "shader_parameter_sets.glsl"
+
+layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform PushConstants {
     vec2 uInvDisplaySize;
     vec2 uDisplayPos;
 } pc;

@@ -26,6 +26,7 @@ namespace dodoe {
         DescriptorTableManager* m_descriptor_table{nullptr};
         GfxDeviceHandle m_device{};
         Scope<Texture2D> m_fallback{};
+        Scope<TextureCubemap> m_fallback_cubemap{};
         UnorderedMap<InstanceID, Scope<Texture2D>> m_texture2d_cache{};
         UnorderedMap<InstanceID, Scope<TextureCubemap>> m_cubemap_cache{};
         std::mutex m_mutex{};
@@ -45,6 +46,7 @@ namespace dodoe {
         [[nodiscard]] Texture* findTexture(InstanceID id);
         [[nodiscard]] Texture2D* findTexture2D(InstanceID id);
         [[nodiscard]] Texture2D* getFallback() const;
+        [[nodiscard]] TextureCubemap* getFallbackCubemap() const;
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table; }
         [[nodiscard]] const UnorderedMap<InstanceID, Scope<Texture2D>>& getTexture2DCache() const { return m_texture2d_cache; }
         void removeTexture(InstanceID id);

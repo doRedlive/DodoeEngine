@@ -23,7 +23,7 @@ bool CreateEntityCommand::execute(EditorContext& ctx)
     auto* scene = ctx.activeScene();
     if (!scene) return false;
 
-    auto entity = scene->createEntity(m_uuid, m_name);
+    auto entity = scene->createEntity(m_uuid, dodoe::String(m_name.c_str()));
     if (!entity.valid()) return false;
 
     if (m_parent.has_value()) {

@@ -1,12 +1,12 @@
 {
-    "name": "dodoe-sandbox",
-    "app_mode": 1,
+    "name": "OnlyOne",
+    "app_mode": 2,
     "width": 1600,
     "height": 900,
     "window_resizeable": true,
     "render_settings": {
         "api": 3,
-        "pipeline": 3,
+        "pipeline": 5,
         "threading_mode": 1,
         "present_mode": 1
     }

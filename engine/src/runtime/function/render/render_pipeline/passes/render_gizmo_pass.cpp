@@ -8,6 +8,7 @@
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/core/channel/gizmo_channel.h"
 
 #include "../render_pipeline_pass_utils.h"
 
@@ -75,13 +76,18 @@ namespace dodoe {
 
                 const auto* shader_library = ctx.getShaderLibrary();
                 const auto* pso_cache = ctx.getPipelineStateCache();
-                if (!shader_library || !pso_cache || !m_binding_layout) {
+                if (!shader_library || !pso_cache || !m_binding_layout || !m_input_layout) {
                     return;
                 }
 
                 const auto vs = shader_library->getGizmoVertexShader();
                 const auto ps = shader_library->getGizmoPixelShader();
                 if (!vs || !ps) {
+                    return;
+                }
+
+                const auto& gizmo_data = GetGizmoChannel().get<GizmoChannelData>();
+                if (gizmo_data.vertices.empty() || gizmo_data.commands.empty()) {
                     return;
                 }
 
@@ -92,50 +98,71 @@ namespace dodoe {
                 GfxRenderState render_state;
                 render_state.setDepthStencilState(ds).setRasterState(raster);
 
-                const auto mvp = ctx.getView()->getViewProjectionMatrix();
+                const UInt64 vb_byte_size = gizmo_data.vertices.size() * sizeof(GizmoVertex);
+                const UInt64 ib_byte_size = gizmo_data.indices.size() * sizeof(UInt32);
 
-                const auto& gizmo_data = GizmoChannel::getDrawData();
-                UInt32 vb_offset = 0, ib_offset = 0;
-                const auto framebuffer = ctx.getFramebuffer();
-                for (const auto& cmd : gizmo_data.commands) {
-                    command_list.setBufferState(vb, GfxResourceStates::CopyDest);
+                command_list.setBufferState(vb, GfxResourceStates::CopyDest);
+                if (ib_byte_size > 0) {
                     command_list.setBufferState(ib, GfxResourceStates::CopyDest);
-                    command_list.commitBarriers();
-                    command_list.writeBuffer(vb, cmd.vertices.data(), cmd.vertices.size() * sizeof(GizmoVertex), vb_offset);
-                    command_list.writeBuffer(ib, cmd.indices.data(), cmd.indices.size() * sizeof(UInt32), ib_offset);
-                    command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
+                }
+                command_list.commitBarriers();
+                command_list.writeBuffer(vb, gizmo_data.vertices.data(), vb_byte_size, 0);
+                if (ib_byte_size > 0) {
+                    command_list.writeBuffer(ib, gizmo_data.indices.data(), ib_byte_size, 0);
+                }
+                command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
+                if (ib_byte_size > 0) {
                     command_list.setBufferState(ib, GfxResourceStates::IndexBuffer);
-                    command_list.commitBarriers();
+                }
+                command_list.commitBarriers();
+
+                const auto view_projection = ctx.getView()->getViewProjectionMatrix();
+                const auto framebuffer = ctx.getFramebuffer();
+
+                GizmoPushConstants push{};
+                push.color = Vector4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+                for (const auto& cmd : gizmo_data.commands) {
+                    if (cmd.vertex_count == 0) {
+                        continue;
+                    }
 
                     auto pipeline_desc = GfxGraphicsPipelineDesc()
                         .setVertexShader(vs)
                         .setPixelShader(ps)
+                        .setInputLayout(m_input_layout)
                         .addBindingLayout(m_binding_layout)
-                        .setPrimType(cmd.topology);
+                        .setPrimType(cmd.topology)
+                        .setRenderState(render_state);
                     auto pipeline = pso_cache->resolveGraphicsPipeline(
                         pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                     if (!pipeline) {
                         continue;
                     }
 
-                    GizmoPushConstants push;
-                    push.mvp = mvp;
-                    push.color = cmd.color;
+                    push.mvp = view_projection * cmd.transform;
 
                     DynamicArray<GfxVertexBufferBinding> vbs;
                     vbs.push_back(GfxVertexBufferBinding()
-                        .setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(vb_offset));
-                    command_list.setIndexBuffer(GfxIndexBufferBinding()
-                        .setBuffer(ib->getRHIHandle()).setFormat(GfxFormat::R32_UINT).setOffset(ib_offset));
+                        .setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(cmd.vertex_offset * sizeof(GizmoVertex)));
+
+                    GfxIndexBufferBinding index_binding;
+                    if (cmd.index_count > 0) {
+                        index_binding = GfxIndexBufferBinding()
+                            .setBuffer(ib->getRHIHandle())
+                            .setFormat(GfxFormat::R32_UINT)
+                            .setOffset(cmd.index_offset * sizeof(UInt32));
+                    }
 
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
-                    command_list.setGraphicsState(framebuffer, pipeline, {}, viewport_state, vbs);
-                    command_list.setPushConstants(GfxShaderType::Vertex, &push, sizeof(push));
-                    command_list.drawIndexed(GfxDrawArguments()
-                        .setVertexCount(static_cast<UInt32>(cmd.indices.size())));
+                    command_list.setGraphicsState(framebuffer, pipeline, {}, viewport_state, vbs, index_binding);
+                    command_list.setPushConstants(&push, sizeof(push));
 
-                    vb_offset += cmd.vertices.size() * sizeof(GizmoVertex);
-                    ib_offset += cmd.indices.size() * sizeof(UInt32);
+                    if (cmd.index_count > 0) {
+                        command_list.drawIndexed(GfxDrawArguments().setVertexCount(cmd.index_count));
+                    } else {
+                        command_list.draw(GfxDrawArguments().setVertexCount(cmd.vertex_count));
+                    }
                 }
             }
         );

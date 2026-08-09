@@ -13,6 +13,7 @@ namespace dodoe {
 
 	class GizmoPass : public IRenderPass {
 	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxInputLayoutHandle m_input_layout{};
 
 	public:
 	    using Produces = TypeList<>;
@@ -21,8 +22,8 @@ namespace dodoe {
 	    RenderPhase getPhase() const override { return RenderPhase::EditorGizmo; }
 
 	    GizmoPass() = default;
-	    explicit GizmoPass(GfxBindingLayoutHandle binding_layout)
-	        : m_binding_layout(std::move(binding_layout)) {}
+	    explicit GizmoPass(GfxBindingLayoutHandle binding_layout, GfxInputLayoutHandle input_layout)
+	        : m_binding_layout(std::move(binding_layout)), m_input_layout(std::move(input_layout)) {}
 
 	    void build(RenderGraphBuilder& graph,
 	               const RenderPassBuildContext& context) override;

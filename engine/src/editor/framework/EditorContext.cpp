@@ -43,7 +43,7 @@ EditorContext::EditorContext()
 {
     m_spec.name               = "Cakery";
     m_spec.window_resizeable  = true;
-    m_spec.render_settings.api           = RenderBackendApiType::DX12;
+    m_spec.render_settings.api           = RenderBackendApiType::D3D12;
     m_spec.render_settings.pipeline      = RenderingPipelineType::Deferred;
     m_spec.render_settings.threading_mode = ThreadingMode::DualThread;
 
@@ -202,7 +202,7 @@ dodoe::World* EditorContext::world() const
 dodoe::Scene* EditorContext::activeScene() const
 {
     auto* w = world();
-    return w ? w->getCurrentScene() : nullptr;
+    return w ? w->getActiveScene() : nullptr;
 }
 
 dodoe::RenderViewport* EditorContext::renderViewport() const

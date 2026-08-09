@@ -69,7 +69,6 @@ EditorWindow::EditorWindow(EditorContext& ctx, QWidget* parent)
     ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasTabsMenuButton, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHideDisabledButtons, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaDynamicTabsMenuButtonVisibility, true);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::TabCloseButtonIsTabBarScrollButton, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::EqualSplitOnInsertion, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::FloatingContainerHasWidgetIcon, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::FloatingContainerHasWidgetTitle, false);

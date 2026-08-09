@@ -25,13 +25,14 @@ namespace dodoe {
     };
 
     BEGIN_SHADER_PARAMETER_STRUCT(PresentPassShaderParams, Pass)
-        SHADER_PARAMETER_PUSH_CONSTANTS(0, PresentViewportCB, viewport)
+        SHADER_PARAMETER_RAWCB(0, viewport_cb)
         SHADER_PARAMETER(TextureSRV, 1, scene_color)
         SHADER_PARAMETER(TextureSRV, 2, imgui_color)
         SHADER_PARAMETER(Sampler, 9, sampler)
-    END_SHADER_PARAMETER_STRUCT(func(viewport); func(scene_color); func(imgui_color); func(sampler);)
+    END_SHADER_PARAMETER_STRUCT(func(viewport_cb); func(scene_color); func(imgui_color); func(sampler);)
 
     struct PresentPassParameters {
+        RenderGraphBufferHandle viewport_cb{};
         RenderGraphTextureHandle scene_color{};
         RenderGraphTextureHandle imgui_color{};
         RenderGraphTextureHandle backbuffer{};
@@ -49,6 +50,9 @@ namespace dodoe {
                 const auto* imgui_color = pass_builder.blackboard().get<ImGuiColorKey>();
                 parameters.imgui_color = imgui_color ? pass_builder.read(*imgui_color) : parameters.scene_color;
                 parameters.backbuffer = pass_builder.writeColor(pass_builder.importBackBuffer("PresentBackBuffer"));
+                DO_ASSERT(context.graph_imports != nullptr, "PresentPass graph imports are null");
+                parameters.viewport_cb = pass_builder.write(pass_builder.importBuffer(
+                    context.graph_imports->require<PresentViewportConstantBufferKey>(), "PresentViewportCB"));
             },
             [this](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto viewport_rect = ctx.getView()->getViewportRect();
@@ -59,8 +63,15 @@ namespace dodoe {
                 viewport_data.viewport_pos[1] = static_cast<float>(viewport_rect.y);
                 viewport_data.viewport_size[0] = viewport_rect.z > 0 ? static_cast<float>(viewport_rect.z) : static_cast<float>(swapchain_extent.x);
                 viewport_data.viewport_size[1] = viewport_rect.w > 0 ? static_cast<float>(viewport_rect.w) : static_cast<float>(swapchain_extent.y);
+
+                const auto viewport_cb = ctx.resolveBuffer(parameters.viewport_cb);
+                command_list.setBufferState(viewport_cb, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(viewport_cb, &viewport_data, sizeof(viewport_data));
+                command_list.setBufferState(viewport_cb, GfxResourceStates::ConstantBuffer);
+
                 PresentPassShaderParams shader_params;
-                shader_params.viewport.value = viewport_data;
+                shader_params.viewport_cb.value = viewport_cb;
                 shader_params.scene_color.value = parameters.scene_color;
                 shader_params.imgui_color.value = parameters.imgui_color;
                 shader_params.sampler.value = GlobalSamplers::screen();
@@ -87,10 +98,13 @@ namespace dodoe {
                     ctx.getRenderTargetSignature(),
                     command_list
                 );
+                if (!pipeline) {
+                    DO_ERROR("PresentPass: Failed to create pipeline");
+                    return;
+                }
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), swapchain_extent);
 
                 command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
-                command_list.setPushConstants(viewport_data);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }
         );

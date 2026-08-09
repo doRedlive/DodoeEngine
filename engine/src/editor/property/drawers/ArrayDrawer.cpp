@@ -3,6 +3,7 @@
 #include "ArrayDrawer.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/utils/util.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -46,7 +47,7 @@ QWidget* ArrayDrawer::build(const PropertyContext& pc)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(2);
 
-    auto* field = *pc.field;
+    auto& field = *pc.field;
 
     dodoe::ArrayAccessor accessor;
     if (!dodoe::TypeMeta::new_array_accessor_from_name(field.getFieldTypeName(), accessor)) {

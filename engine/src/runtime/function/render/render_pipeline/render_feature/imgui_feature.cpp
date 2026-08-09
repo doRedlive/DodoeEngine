@@ -40,24 +40,30 @@ namespace dodoe {
 	    }
 #endif
 
+	    auto* gfx = resources.getGfxContext();
+	    m_imgui_cb = create_ref<GfxBuffer>(
+	        GfxBufferDesc()
+	            .setByteSize(16)
+	            .setIsConstantBuffer(true)
+	            .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
+	            .setDebugName("ImGuiViewportCB"));
+	    m_imgui_cb->initializeRHI(gfx->getDevice());
+
 	    auto* cache = resources.getBindingLayoutCache();
 	    m_binding_layout = cache->getOrCreate(
 	        GfxBindingLayoutDesc()
-	            .setVisibility(GfxShaderType::Pixel)
+	            .setVisibility(GfxShaderType::All)
 	            .setRegisterSpaceIsDescriptorSet(true)
 	            .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+	            .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
 	            .addItem(GfxBindingLayoutItem::Texture_SRV(1))
 	            .addItem(GfxBindingLayoutItem::Sampler(9)));
-	    m_push_layout = cache->getOrCreate(
-	        GfxBindingLayoutDesc()
-	            .setVisibility(GfxShaderType::Vertex)
-	            .setRegisterSpaceIsDescriptorSet(true)
-	            .addItem(GfxBindingLayoutItem::PushConstants(0, 16)));
 
 	    if (m_font_texture && resources.getBindingSetCache()) {
 	        const auto layout_generation = cache->getLayoutGeneration(m_binding_layout);
 	        m_font_binding_set = resources.getBindingSetCache()->getOrCreate(
 	            GfxBindingSetDesc()
+	                .addItem(GfxBindingSetItem::ConstantBuffer(0, m_imgui_cb->getRHIHandle().Get()))
 	                .addItem(GfxBindingSetItem::Texture_SRV(1, m_font_texture->getRHIHandle().Get()))
 	                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
 	            m_binding_layout,
@@ -87,7 +93,7 @@ namespace dodoe {
 	    m_font_binding_set = nullptr;
 	    m_input_layout = nullptr;
 	    m_binding_layout = nullptr;
-	    m_push_layout = nullptr;
+	    m_imgui_cb.reset();
 	}
 
 	void ImGuiFeature::registerGraphImports(RenderGraphImportRegistry& imports,
@@ -95,10 +101,13 @@ namespace dodoe {
 	    if (m_font_texture) {
 	        imports.publish<ImGuiFontTextureKey>(m_font_texture);
 	    }
+	    if (m_imgui_cb) {
+	        imports.publish<ImGuiConstantBufferKey>(m_imgui_cb);
+	    }
 	}
 
 	void ImGuiFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<ImGuiPass>(m_binding_layout, m_push_layout, m_font_binding_set, m_input_layout);
+	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_input_layout);
 	}
 
 } // namespace dodoe

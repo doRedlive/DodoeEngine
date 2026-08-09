@@ -22,6 +22,7 @@ namespace dodoe {
     struct ImGuiPassParameters {
         RenderGraphTextureHandle output{};
         RenderGraphTextureHandle font_texture{};
+        RenderGraphBufferHandle imgui_cb{};
         RenderGraphBufferHandle vertex_buffer{};
         RenderGraphBufferHandle index_buffer{};
     };
@@ -52,6 +53,8 @@ namespace dodoe {
                     parameters.font_texture = pass_builder.read(
                         pass_builder.importTexture(*font_texture, "ImGuiFontTexture"));
                 }
+                parameters.imgui_cb = pass_builder.write(pass_builder.importBuffer(
+                    context.graph_imports->require<ImGuiConstantBufferKey>(), "ImGuiViewportCB"));
 
                 RenderGraphBufferDesc vb_desc{};
                 vb_desc.desc = GfxBufferDesc()
@@ -131,7 +134,7 @@ namespace dodoe {
 
                 const auto* shader_library = ctx.getShaderLibrary();
                 const auto* pipeline_cache = ctx.getPipelineStateCache();
-                if (!shader_library || !pipeline_cache || !m_binding_layout || !m_push_layout || !m_input_layout) {
+                if (!shader_library || !pipeline_cache || !m_binding_layout || !m_input_layout) {
                     DO_ERROR("ImGuiPass: shader or pipeline resources are unavailable");
                     return;
                 }
@@ -141,7 +144,6 @@ namespace dodoe {
                     .setPixelShader(shader_library->getImGuiPixelShader())
                     .setInputLayout(m_input_layout)
                     .addBindingLayout(m_binding_layout)
-                    .addBindingLayout(m_push_layout)
                     .setPrimType(GfxPrimitiveType::TriangleList);
                 GfxDepthStencilState depth_stencil;
                 depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();
@@ -181,6 +183,12 @@ namespace dodoe {
                     {1.0f / (right - left), 1.0f / (bottom - top)},
                     {left, top}};
 
+                const auto imgui_cb = ctx.resolveBuffer(parameters.imgui_cb);
+                command_list.setBufferState(imgui_cb, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(imgui_cb, &push_data, sizeof(push_data));
+                command_list.setBufferState(imgui_cb, GfxResourceStates::ConstantBuffer);
+
                 const auto framebuffer = ctx.getFramebuffer();
                 UInt32 global_vertex_offset = 0;
                 UInt32 global_index_offset = 0;
@@ -201,6 +209,7 @@ namespace dodoe {
                             ? m_font_binding_set
                             : command_list.createBindingSet(
                                 GfxBindingSetDesc()
+                                    .addItem(GfxBindingSetItem::ConstantBuffer(0, imgui_cb->getRHIHandle().Get()))
                                     .addItem(GfxBindingSetItem::Texture_SRV(1, texture->getRHI()))
                                     .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
                                 m_binding_layout);
@@ -227,7 +236,6 @@ namespace dodoe {
                             GfxVertexBufferBinding().setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(global_vertex_offset)};
                         command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport, vertex_buffers,
                             GfxIndexBufferBinding().setBuffer(ib->getRHIHandle()).setFormat(GfxFormat::R16_UINT).setOffset(global_index_offset));
-                        command_list.setPushConstants(&push_data, sizeof(push_data));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(draw.elem_count)
                             .setStartIndexLocation(draw.idx_offset)

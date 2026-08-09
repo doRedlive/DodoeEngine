@@ -4,6 +4,7 @@
 #include "framework/EditorContext.h"
 #include "framework/camera/EditorCamera.h"
 
+#include "runtime/core/context/system_context.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/render_view/render_view_target.h"
 #include "runtime/function/render/render_view/render_view_manager.h"
@@ -17,7 +18,9 @@ namespace cakery {
 EditorViewport* ViewportService::registerViewport(ViewportKind kind, void* hostHandle,
                                                    int w, int h, float dpr)
 {
-    auto* renderSys = m_ctx.systemContext()->getRenderSystem();
+    auto* sysCtx = m_ctx.systemContext();
+    if (!sysCtx) return nullptr;
+    auto* renderSys = sysCtx->getRenderSystem();
     if (!renderSys) return nullptr;
 
     auto* viewMgr = renderSys->getViewManager();

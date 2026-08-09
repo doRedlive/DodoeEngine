@@ -51,7 +51,7 @@ namespace dodoe {
             initializeVulkan(create_info);
         } else if (create_info.api_type == RenderBackendApiType::OpenGL) {
             initializeOpenGL(create_info);
-        } else if (create_info.api_type == RenderBackendApiType::DX12) {
+        } else if (create_info.api_type == RenderBackendApiType::D3D12) {
             initializeD3D12(create_info);
         }
 
@@ -68,7 +68,7 @@ namespace dodoe {
     void GfxContext::initializeVulkan(const GfxBackendCreateInfo& create_info) {
         OutputDebugStringA("[GFX] Vulkan initialize begin\n");
 
-        vulkan_backend_ = VulkanBackend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation});
+        vulkan_backend_ = VulkanBackend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation, create_info.width, create_info.height});
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(vulkan_backend_->getInstance()));
@@ -111,7 +111,7 @@ namespace dodoe {
     void GfxContext::initializeOpenGL(const GfxBackendCreateInfo& create_info) {
         OutputDebugStringA("[GFX] OpenGL initialize begin\n");
 
-        opengl_backend_ = OpenGLBackend::Create({create_info.window_handle});
+        opengl_backend_ = OpenGLBackend::Create({create_info.window_handle, create_info.width, create_info.height});
         DO_ASSERT(opengl_backend_ != nullptr, "GfxBackend::initializeOpenGL: failed to create OpenGL backend.");
 
         auto* error_callback = new RhiMessageCallback();
@@ -130,21 +130,21 @@ namespace dodoe {
     }
 
     void GfxContext::initializeD3D12(const GfxBackendCreateInfo& create_info) {
-        OutputDebugStringA("[GFX] DX12 initialize begin\n");
+        OutputDebugStringA("[GFX] D3D12 initialize begin\n");
 
-        dx12_backend_ = Dx12Backend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation});
-        DO_ASSERT(dx12_backend_ != nullptr, "GfxBackend::initializeD3D12: failed to create DX12 backend.");
+        d3d12_backend_ = D3D12Backend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation, create_info.width, create_info.height});
+        DO_ASSERT(d3d12_backend_ != nullptr, "GfxBackend::initializeD3D12: failed to create D3D12 backend.");
 
         auto* error_callback = new RhiMessageCallback();
 
-        dx12::DeviceDesc device_desc{};
+        d3d12::DeviceDesc device_desc{};
         device_desc.errorCB = error_callback;
-        device_desc.pDevice = dx12_backend_->getDevice();
-        device_desc.pGraphicsCommandQueue = dx12_backend_->getGraphicsQueue();
-        device_desc.pComputeCommandQueue = dx12_backend_->getComputeQueue();
-        device_desc.pCopyCommandQueue = dx12_backend_->getCopyQueue();
+        device_desc.pDevice = d3d12_backend_->getDevice();
+        device_desc.pGraphicsCommandQueue = d3d12_backend_->getGraphicsQueue();
+        device_desc.pComputeCommandQueue = d3d12_backend_->getComputeQueue();
+        device_desc.pCopyCommandQueue = d3d12_backend_->getCopyQueue();
 
-        device_ = dx12::createDevice(device_desc);
+        device_ = d3d12::createDevice(device_desc);
         DO_ASSERT(device_ != nullptr, "GfxBackend::initializeD3D12: failed to create cutie d3d12 device.");
 
         if (create_info.enable_validation) {
@@ -152,10 +152,10 @@ namespace dodoe {
             DO_ASSERT(device_ != nullptr, "GfxBackend::initializeD3D12: failed to create validation layer.");
         }
 
-        createSwapchainTexturesDx12();
+        createSwapchainTexturesD3D12();
         cmd_ = device_->createCommandList();
 
-        OutputDebugStringA("[GFX] DX12 initialize done\n");
+        OutputDebugStringA("[GFX] D3D12 initialize done\n");
     }
 
     void GfxContext::shutdown() {
@@ -175,8 +175,8 @@ namespace dodoe {
         if (opengl_backend_) {
             OpenGLBackend::Destroy(opengl_backend_);
         }
-        if (dx12_backend_) {
-            Dx12Backend::Destroy(dx12_backend_);
+        if (d3d12_backend_) {
+            D3D12Backend::Destroy(d3d12_backend_);
         }
     }
 
@@ -203,8 +203,8 @@ namespace dodoe {
         if (opengl_backend_) {
             return opengl_backend_->getSwapchainExtent2d();
         }
-        if (dx12_backend_) {
-            return dx12_backend_->getSwapchainExtent2d();
+        if (d3d12_backend_) {
+            return d3d12_backend_->getSwapchainExtent2d();
         }
         return Vector2i(0, 0);
     }
@@ -258,7 +258,7 @@ namespace dodoe {
     }
 
     namespace {
-        GfxFormat RHIFormatDX12(DXGI_FORMAT format) {
+        GfxFormat RHIFormatD3D12(DXGI_FORMAT format) {
             switch (format) {
                 case DXGI_FORMAT_R8G8B8A8_UNORM:     return GfxFormat::RGBA8_UNORM;
                 case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return GfxFormat::SRGBA8_UNORM;
@@ -269,17 +269,17 @@ namespace dodoe {
         }
     }
 
-    void GfxContext::createSwapchainTexturesDx12() {
-        if (!device_ || !dx12_backend_) {
+    void GfxContext::createSwapchainTexturesD3D12() {
+        if (!device_ || !d3d12_backend_) {
             return;
         }
 
         swapchain_textures_.clear();
         swapchain_framebuffers_.clear();
-        const auto swapchain_format = RHIFormatDX12(dx12_backend_->getBackbufferFormat());
-        const auto extent = dx12_backend_->getSwapchainExtent2d();
+        const auto swapchain_format = RHIFormatD3D12(d3d12_backend_->getBackbufferFormat());
+        const auto extent = d3d12_backend_->getSwapchainExtent2d();
 
-        for (auto* backbuffer : dx12_backend_->getBackbuffers()) {
+        for (auto* backbuffer : d3d12_backend_->getBackbuffers()) {
             auto texture_desc = GfxTextureDesc()
                 .setDimension(GfxTextureDimension::Texture2D)
                 .setFormat(swapchain_format)
@@ -307,9 +307,9 @@ namespace dodoe {
             return extent.x > 0 && extent.y > 0 && !swapchain_framebuffers_.empty();
         }
 
-        if (dx12_backend_) {
+        if (d3d12_backend_) {
             UINT backbuffer_index = 0;
-            if (!dx12_backend_->acquireNextImage(backbuffer_index)) {
+            if (!d3d12_backend_->acquireNextImage(backbuffer_index)) {
                 return false;
             }
             image_index = static_cast<UInt32>(backbuffer_index);
@@ -367,8 +367,8 @@ namespace dodoe {
             return true;
         }
 
-        if (dx12_backend_) {
-            return dx12_backend_->presentImage(static_cast<UINT>(image_index));
+        if (d3d12_backend_) {
+            return d3d12_backend_->presentImage(static_cast<UINT>(image_index));
         }
 
         if (!vulkan_backend_ || !device_) {
@@ -400,7 +400,7 @@ namespace dodoe {
         return present_result;
     }
 
-    Bool GfxContext::recreateSwapchain() {
+    Bool GfxContext::recreateSwapchain(UInt32 width, UInt32 height) {
         if (opengl_backend_) {
             opengl_backend_->updateFramebufferSize();
             swapchain_textures_.clear();
@@ -409,7 +409,7 @@ namespace dodoe {
             return !swapchain_framebuffers_.empty();
         }
 
-        if (dx12_backend_) {
+        if (d3d12_backend_) {
             if (device_) {
                 device_->waitForIdle();
             }
@@ -422,11 +422,11 @@ namespace dodoe {
                 device_->waitForIdle();
             }
 
-            if (!dx12_backend_->recreateSwapchain(window_handle_)) {
+            if (!d3d12_backend_->recreateSwapchain(window_handle_, width, height)) {
                 return false;
             }
 
-            createSwapchainTexturesDx12();
+            createSwapchainTexturesD3D12();
             if (device_) {
                 device_->runGarbageCollection();
             }
@@ -445,7 +445,7 @@ namespace dodoe {
             device_->waitForIdle();
         }
 
-        if (!vulkan_backend_->recreateSwapchain(window_handle_)) {
+        if (!vulkan_backend_->recreateSwapchain(window_handle_, width, height)) {
             return false;
         }
 

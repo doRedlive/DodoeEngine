@@ -94,7 +94,7 @@ dodoe::Json ParseFieldValue(const char* typeName, const std::string& value)
     if (std::strcmp(typeName, "Vector4i") == 0) return ParseNumberArray(value, 4, true);
     if (std::strcmp(typeName, "Color") == 0) return ParseNumberArray(value, 4, false);
     if (std::strcmp(typeName, "UUID") == 0) {
-        return dodoe::Json(static_cast<uint64_t>(dodoe::UUID::FromString(value)));
+        return dodoe::Json(static_cast<uint64_t>(dodoe::UUID::FromString(dodoe::String(value.c_str()))));
     }
     if (std::strcmp(typeName, "String") == 0 || std::strcmp(typeName, "dodoe::String") == 0
         || std::strcmp(typeName, "std::string") == 0) {
@@ -125,7 +125,7 @@ void RegisterBuiltinCommands() {
                  std::string name = args.named.value("name", args.named.value("preset", "Entity"));
                  dodoe::UUID parentUuid;
                  if (args.named.contains("parent")) {
-                     parentUuid = dodoe::UUID::FromString(args.named["parent"].get<std::string>());
+                     parentUuid = dodoe::UUID::FromString(dodoe::String(args.named["parent"].get<std::string>().c_str()));
                  }
                  auto cmd = std::make_unique<CreateEntityCommand>(
                      dodoe::UUID::Generate(), name,
@@ -142,7 +142,7 @@ void RegisterBuiltinCommands() {
              [](EditorContext& ctx, const CommandArgs& args) -> CommandResult {
                  dodoe::UUID uuid;
                  if (!args.positional.empty()) {
-                     uuid = dodoe::UUID::FromString(args.positional[0]);
+                     uuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
                  } else {
                      uuid = primarySelection(ctx);
                  }
@@ -161,7 +161,7 @@ void RegisterBuiltinCommands() {
                  dodoe::UUID uuid;
                  std::string newName;
                  if (args.positional.size() >= 2) {
-                     uuid = dodoe::UUID::FromString(args.positional[0]);
+                     uuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
                      newName = args.positional[1];
                  } else if (args.positional.size() == 1) {
                      uuid = primarySelection(ctx);
@@ -174,7 +174,7 @@ void RegisterBuiltinCommands() {
                  if (!scene) return CommandResult::Err("No active scene");
                  auto entity = ResolveEntity(scene, uuid);
                  if (!entity.valid()) return CommandResult::Err("Entity not found");
-                 std::string oldName = entity.name();
+                 std::string oldName(entity.name().c_str());
                  auto cmd = std::make_unique<RenameEntityCommand>(uuid, oldName, newName);
                  ctx.commands().execute(std::move(cmd));
                  return CommandResult::Ok("Renamed to: " + newName);
@@ -190,7 +190,7 @@ void RegisterBuiltinCommands() {
                  }
                  std::vector<dodoe::UUID> uuids;
                  for (auto& p : args.positional) {
-                     uuids.push_back(dodoe::UUID::FromString(p));
+                     uuids.push_back(dodoe::UUID::FromString(dodoe::String(p.c_str())));
                  }
                  ctx.selection().selectMany(uuids);
                  return CommandResult::Ok("Selected " + std::to_string(uuids.size()) + " entities");
@@ -205,8 +205,8 @@ void RegisterBuiltinCommands() {
                  if (args.positional.size() < 2) {
                      return CommandResult::Err("Usage: entity.reparent <uuid> <parent_uuid>");
                  }
-                 dodoe::UUID childUuid = dodoe::UUID::FromString(args.positional[0]);
-                 dodoe::UUID newParentUuid = dodoe::UUID::FromString(args.positional[1]);
+                 dodoe::UUID childUuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
+                 dodoe::UUID newParentUuid = dodoe::UUID::FromString(dodoe::String(args.positional[1].c_str()));
                  auto* scene = ctx.activeScene();
                  if (!scene) return CommandResult::Err("No active scene");
                  auto child = ResolveEntity(scene, childUuid);
@@ -229,7 +229,7 @@ void RegisterBuiltinCommands() {
                  dodoe::UUID uuid;
                  std::string compType;
                  if (args.positional.size() >= 2) {
-                     uuid = dodoe::UUID::FromString(args.positional[0]);
+                     uuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
                      compType = args.positional[1];
                  } else if (args.positional.size() == 1) {
                      uuid = primarySelection(ctx);
@@ -252,7 +252,7 @@ void RegisterBuiltinCommands() {
                  dodoe::UUID uuid;
                  std::string compType;
                  if (args.positional.size() >= 2) {
-                     uuid = dodoe::UUID::FromString(args.positional[0]);
+                     uuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
                      compType = args.positional[1];
                  } else if (args.positional.size() == 1) {
                      uuid = primarySelection(ctx);
@@ -276,7 +276,7 @@ void RegisterBuiltinCommands() {
                  if (args.positional.size() < 3) {
                      return CommandResult::Err("Usage: component.set <uuid> <Type>.<field> <value>");
                  }
-                 dodoe::UUID uuid = dodoe::UUID::FromString(args.positional[0]);
+                 dodoe::UUID uuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
                  std::string compField = args.positional[1];
                  std::string value = args.positional[2];
 
@@ -287,7 +287,7 @@ void RegisterBuiltinCommands() {
                  std::string comp = compField.substr(0, dot);
                  std::string field = compField.substr(dot + 1);
 
-                 dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(comp);
+                 dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(dodoe::String(comp.c_str()));
                  if (!meta.isValid()) {
                      return CommandResult::Err("Unknown component type: " + comp);
                  }
@@ -330,7 +330,7 @@ void RegisterBuiltinCommands() {
                      return CommandResult::Err("width/height must be positive integers");
                  }
                  auto cmd = std::make_unique<CreateTilemapCommand>(
-                     name, static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
+                     dodoe::String(name.c_str()), static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
                  auto* executed = ctx.commands().execute(std::move(cmd));
                  if (!executed) return CommandResult::Err("Failed to create tilemap");
                  auto* created = static_cast<CreateTilemapCommand*>(executed);
@@ -350,9 +350,9 @@ void RegisterBuiltinCommands() {
                  if (!scene) return CommandResult::Err("No active scene");
                  dodoe::UUID tilemapUuid;
                  if (!args.positional.empty()) {
-                     tilemapUuid = dodoe::UUID::FromString(args.positional[0]);
+                     tilemapUuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
                  } else if (args.named.contains("tilemap")) {
-                     tilemapUuid = dodoe::UUID::FromString(args.named["tilemap"].get<std::string>());
+                     tilemapUuid = dodoe::UUID::FromString(dodoe::String(args.named["tilemap"].get<std::string>().c_str()));
                  }
                  if (!tilemapUuid.isValid()) return CommandResult::Err("No tilemap UUID specified");
                  auto tilemapEntity = ResolveEntity(scene, tilemapUuid);
@@ -374,7 +374,7 @@ void RegisterBuiltinCommands() {
                      return CommandResult::Err("width/height must be positive integers");
                  }
                  auto cmd = std::make_unique<CreateTileLayerCommand>(
-                     tilemapUuid, name, static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
+                     tilemapUuid, dodoe::String(name.c_str()), static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
                  auto* executed = ctx.commands().execute(std::move(cmd));
                  if (!executed) return CommandResult::Err("Failed to create layer");
                  auto* created = static_cast<CreateTileLayerCommand*>(executed);
@@ -411,12 +411,13 @@ void RegisterBuiltinCommands() {
                  auto* scene = ctx.activeScene();
                  if (!scene) return CommandResult::Err("No active scene");
                  dodoe::Json result = dodoe::Json::array();
-                 scene->each([&](dodoe::Entity entity) {
+                 auto entities = scene->getEntities();
+                 for (auto& entity : entities) {
                      dodoe::Json e;
-                     e["name"] = entity.name();
+                     e["name"] = entity.name().c_str();
                      e["uuid"] = std::to_string(static_cast<uint64_t>(entity.uuid()));
                      result.push_back(e);
-                 });
+                 }
                  return CommandResult::Ok(std::to_string(result.size()) + " entities", result);
              }});
 
@@ -427,7 +428,7 @@ void RegisterBuiltinCommands() {
              [](EditorContext& ctx, const CommandArgs& args) -> CommandResult {
                  dodoe::UUID uuid;
                  if (!args.positional.empty()) {
-                     uuid = dodoe::UUID::FromString(args.positional[0]);
+                     uuid = dodoe::UUID::FromString(dodoe::String(args.positional[0].c_str()));
                  } else {
                      uuid = primarySelection(ctx);
                  }
@@ -440,7 +441,7 @@ void RegisterBuiltinCommands() {
                  auto& db = dodoe::ComponentDB::self();
                  for (auto& entry : db.entries()) {
                      if (db.hasComponent(entity, entry.name)) {
-                         result.push_back(entry.name);
+                         result.push_back(entry.name.c_str());
                      }
                  }
                  return CommandResult::Ok("", result);

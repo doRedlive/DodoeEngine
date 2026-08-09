@@ -72,7 +72,7 @@ void LogService::syncEngineLogs()
     auto forward = [this, &mapLevel](const dodoe::LogMessage& msg) {
         if (!m_entries.isEmpty()) {
             auto& last = m_entries.last();
-            if (last.level == mapLevel(msg.level) && last.message == QString::fromStdString(msg.payload)) {
+            if (last.level == mapLevel(msg.level) && last.message == QString::fromStdString(msg.payload.c_str())) {
                 last.repeatCount++;
                 return;
             }
@@ -81,7 +81,7 @@ void LogService::syncEngineLogs()
         LogEntry entry;
         entry.timestamp = QDateTime::currentDateTime();
         entry.level = mapLevel(msg.level);
-        entry.message = QString::fromStdString(msg.payload);
+        entry.message = QString::fromStdString(msg.payload.c_str());
         entry.repeatCount = 1;
         m_entries.append(entry);
 

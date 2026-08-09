@@ -5,7 +5,7 @@
 
 #include "backend/vulkan_backend.h"
 #include "backend/opengl_backend.h"
-#include "backend/dx12_backend.h"
+#include "backend/d3d12_backend.h"
 
 #include "gfx.h"
 #include "draw_command_list.h"
@@ -23,6 +23,8 @@ namespace dodoe {
         Bool enable_validation{true};
         RenderFeatureSettings feature_settings{};
         void* host_handle{nullptr};
+        UInt32 width{0};
+        UInt32 height{0};
     };
 
     class GfxContext {
@@ -33,7 +35,7 @@ namespace dodoe {
 
         Scope<VulkanBackend> vulkan_backend_{nullptr};
         Scope<OpenGLBackend> opengl_backend_{nullptr};
-        Scope<Dx12Backend> dx12_backend_{nullptr};
+        Scope<D3D12Backend> d3d12_backend_{nullptr};
         GLFWwindow* window_handle_{nullptr};
         Bool m_gpu_driven_supported{false};
 
@@ -55,7 +57,7 @@ namespace dodoe {
         [[nodiscard]] Vector2i getSwapchainExtent2d() const;
         [[nodiscard]] Bool acquireNextSwapchainImage(UInt32& image_index);
         [[nodiscard]] Bool presentSwapchainImage(UInt32 image_index);
-        [[nodiscard]] Bool recreateSwapchain();
+        [[nodiscard]] Bool recreateSwapchain(UInt32 width, UInt32 height);
         [[nodiscard]] Bool acquireOpenGLContext();
         void releaseOpenGLContext();
         [[nodiscard]] const GfxCommandListHandle& getCommandList() { return cmd_; }
@@ -63,7 +65,7 @@ namespace dodoe {
         [[nodiscard]] Bool isGpuDrivenSupported() const { return m_gpu_driven_supported; }
         [[nodiscard]] VulkanBackend* getVulkanBackend() const { return vulkan_backend_.get(); }
         [[nodiscard]] OpenGLBackend* getOpenGLBackend() const { return opengl_backend_.get(); }
-        [[nodiscard]] Dx12Backend* getDx12Backend() const { return dx12_backend_.get(); }
+        [[nodiscard]] D3D12Backend* getD3D12Backend() const { return d3d12_backend_.get(); }
 
         void waitForIdle();
         void clearGarbage();
@@ -80,7 +82,7 @@ namespace dodoe {
 
         void createSwapchainTexturesVulkan();
         void createSwapchainTexturesOpenGL();
-        void createSwapchainTexturesDx12();
+        void createSwapchainTexturesD3D12();
         void createSwapchainSemaphores();
         void destroySwapchainSemaphores();
     };

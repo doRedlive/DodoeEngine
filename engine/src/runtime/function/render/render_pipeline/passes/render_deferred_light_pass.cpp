@@ -134,6 +134,8 @@ namespace dodoe {
                 GfxTextureHandle skybox_texture{};
                 if (parameters.skybox_texture.isValid()) {
                     skybox_texture = ctx.resolveTexture(parameters.skybox_texture);
+                } else if (const auto* fallback_cubemap = ctx.getTextureManager()->getFallbackCubemap()) {
+                    skybox_texture = fallback_cubemap->getGpuHandle();
                 }
 
                 const auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(

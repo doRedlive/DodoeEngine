@@ -15,7 +15,7 @@ namespace dodoe {
         WindowManager* window_manager{nullptr};
     };
 
-    class RenderViewManager : public Managed<RenderViewManager, RenderViewManagerCreateInfo> {
+    class DODOE_API RenderViewManager : public Managed<RenderViewManager, RenderViewManagerCreateInfo> {
         friend class Managed<RenderViewManager, RenderViewManagerCreateInfo>;
         DynamicArray<Scope<RenderViewTarget>> m_targets;
         RenderViewTarget* m_active_input_target{nullptr};

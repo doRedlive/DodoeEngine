@@ -211,21 +211,14 @@ namespace dodoe {
                 ShaderParamStruct dummy{};
 
                 StaticArray<GfxBindingLayoutDesc, 8> set_descs{};
-                GfxBindingLayoutDesc push_desc;
-                push_desc.setVisibility(visibility);
-                push_desc.setRegisterSpaceIsDescriptorSet(true);
 
                 dummy.forEachMember([&](auto& member) {
                     using MemberT = std::decay_t<decltype(member)>;
-                    if constexpr (MemberT::kType == ShaderParamType::PushConstants) {
-                        push_desc.addItem(MemberT::makeLayoutItem());
-                    } else {
-                        GfxBindingLayoutDesc& desc = set_descs[MemberT::kSet];
-                        desc.setVisibility(visibility);
-                        desc.setRegisterSpaceIsDescriptorSet(true);
-                        desc.setRegisterSpace(MemberT::kSet);
-                        desc.addItem(MemberT::makeLayoutItem());
-                    }
+                    GfxBindingLayoutDesc& desc = set_descs[MemberT::kSet];
+                    desc.setVisibility(visibility);
+                    desc.setRegisterSpaceIsDescriptorSet(true);
+                    desc.setRegisterSpace(MemberT::kSet);
+                    desc.addItem(MemberT::makeLayoutItem());
                 });
 
                 for (UInt32 set = 0; set < set_descs.size(); ++set) {
@@ -236,13 +229,6 @@ namespace dodoe {
                         }
                         layouts.push_back(layout);
                     }
-                }
-                if (!push_desc.bindings.empty()) {
-                    auto layout = GDrawCommandList.createBindingLayout(push_desc);
-                    if (!layout) {
-                        DO_ERROR("ShaderBindingReflector::getOrCreateLayouts createBindingLayout failed for push constants");
-                    }
-                    layouts.push_back(layout);
                 }
                 return layouts;
             }();
@@ -260,11 +246,10 @@ namespace dodoe {
             DynamicArray<GfxBindingSetHandle> result;
 
             StaticArray<GfxBindingSetDesc, 8> set_descs{};
-            Bool has_push{false};
             params.forEachMember([&](auto& member) {
                 using MemberT = std::decay_t<decltype(member)>;
                 if constexpr (MemberT::kType == ShaderParamType::PushConstants) {
-                    has_push = true;
+                    (void)member;
                 } else if constexpr (MemberT::kType == ShaderParamType::TextureSRV) {
                     if constexpr (std::is_same_v<typename MemberT::ValueType, RenderGraphTextureHandle>) {
                         MemberT::addToBindingSet(set_descs[MemberT::kSet], resolveTex(member.value));
@@ -292,9 +277,6 @@ namespace dodoe {
                     DO_ERROR("ShaderBindingReflector::createBindingSets createBindingSet failed for set {}", set);
                 }
                 result.push_back(bs);
-                ++layout_index;
-            }
-            if (has_push && layout_index < layouts.size()) {
                 ++layout_index;
             }
             return result;

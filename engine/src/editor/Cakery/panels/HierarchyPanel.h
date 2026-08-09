@@ -9,6 +9,10 @@
 #include <QLineEdit>
 #include <QMenu>
 
+namespace dodoe {
+class Scene;
+}
+
 namespace cakery {
 
 class HierarchyPanel : public Panel {

@@ -44,6 +44,7 @@ namespace dodoe {
         m_texture2d_cache.clear();
         m_cubemap_cache.clear();
         m_fallback = {};
+        m_fallback_cubemap = {};
         m_device = nullptr;
         m_descriptor_table = nullptr;
         m_gfx = nullptr;
@@ -92,6 +93,10 @@ namespace dodoe {
 
     Texture2D* TextureManager::getFallback() const {
         return m_fallback.get();
+    }
+
+    TextureCubemap* TextureManager::getFallbackCubemap() const {
+        return m_fallback_cubemap.get();
     }
 
     void TextureManager::removeTexture(const InstanceID id) {
@@ -207,6 +212,33 @@ namespace dodoe {
         }
 
         m_fallback = std::move(fb_scope);
+
+        const auto cube_desc = GfxTextureDesc()
+            .setDimension(GfxTextureDimension::TextureCube)
+            .setWidth(1)
+            .setHeight(1)
+            .setArraySize(6)
+            .setMipLevels(1)
+            .setFormat(GfxFormat::RGBA8_UNORM)
+            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+            .setDebugName("Render TextureManager Fallback Cubemap");
+
+        const UByte black[4] = {0, 0, 0, 0};
+
+        auto cube_upload = m_device->createCommandList();
+        cube_upload->open();
+        auto cube_rhi = m_device->createTexture(cube_desc);
+        for (UInt32 face = 0; face < 6; ++face) {
+            cube_upload->writeTexture(cube_rhi, face, 0, black, 4);
+        }
+        cube_upload->close();
+        m_device->executeCommandList(cube_upload);
+
+        auto cube_handle = create_ref<GfxTexture>(cube_rhi, cube_desc, "Render TextureManager Fallback Cubemap");
+        auto cb_scope = create_scope<TextureCubemap>(FileID("<fallback-cubemap>"));
+        cb_scope->setFaceSize(1);
+        cb_scope->setGpuHandle(cube_handle);
+        m_fallback_cubemap = std::move(cb_scope);
     }
 
     TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths) {

@@ -18,7 +18,7 @@ void SceneDocument::newScene(const std::string& name)
         return;
     }
 
-    auto* scn = world->getCurrentScene();
+    auto* scn = world->getActiveScene();
     if (scn) {
         dodoe::SceneRes emptyRes;
         scn->deserialize(emptyRes);
@@ -31,12 +31,12 @@ void SceneDocument::newScene(const std::string& name)
     LOG_INFO("[SceneDocument] New scene created: {}", name);
 }
 
-bool SceneDocument::openScene(const FsPath& file)
+bool SceneDocument::openScene(const dodoe::FsPath& file)
 {
     auto* world = m_ctx.world();
     if (!world) return false;
 
-    auto* scn = world->getCurrentScene();
+    auto* scn = world->getActiveScene();
     if (!scn) return false;
 
     dodoe::SceneRes res;
@@ -64,7 +64,7 @@ bool SceneDocument::save()
     return true;
 }
 
-bool SceneDocument::saveAs(const FsPath& file)
+bool SceneDocument::saveAs(const dodoe::FsPath& file)
 {
     m_path = file;
     return save();
