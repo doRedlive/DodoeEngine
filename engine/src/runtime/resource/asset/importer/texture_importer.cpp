@@ -8,7 +8,6 @@ namespace dodoe {
 
     Scope<Asset> TextureImporter::import(const ImportContext& ctx) {
         auto texture = create_scope<TextureAsset>();
-        texture->setFileID(ctx.source_file);
         texture->setName(FileSystem::PathToNameNoExt(ctx.source_path));
 
         if (ctx.settings.contains("flipVertical") && ctx.settings["flipVertical"].is_boolean()) {

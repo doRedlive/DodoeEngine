@@ -29,13 +29,15 @@ namespace dodoe {
         Scope<TextureCubemap> m_fallback_cubemap{};
         UnorderedMap<InstanceID, Scope<Texture2D>> m_texture2d_cache{};
         UnorderedMap<InstanceID, Scope<TextureCubemap>> m_cubemap_cache{};
+        UnorderedMap<String, InstanceID> m_texture_by_path{};
+        UnorderedMap<String, InstanceID> m_cubemap_by_path{};
         std::mutex m_mutex{};
         DynamicArray<InstanceID> m_slot_lut{};
 
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        Texture2D* createTexture(const String& path, const FileID& file_id, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
+        Texture2D* createTexture(const String& path, const ObjectID& ref, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
         void createFallbackTexture();
 
     public:

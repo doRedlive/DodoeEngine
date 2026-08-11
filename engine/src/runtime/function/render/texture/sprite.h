@@ -22,8 +22,8 @@ namespace dodoe {
 
     public:
         Sprite() = default;
-        explicit Sprite(const FileID& file_id) : Object(file_id) {}
-        Sprite(const FileID& file_id, const UUID& uuid) : Object(file_id, uuid) {}
+        explicit Sprite(const ObjectID& id)
+            : Object(id) {}
 
         [[nodiscard]] const char* getObjectTypeName() const override { return "Sprite"; }
 

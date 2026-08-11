@@ -3,42 +3,44 @@
 #pragma once
 
 #include <cstdint>
-#include <shared_mutex>
 
-#include "runtime/resource/file/file_id.h"
+#include "runtime/core/utils/uuid.h"
+#include "object_id.h"
 
 namespace dodoe {
 
     class Object {
-        FileID m_file_id{};
-        UUID m_uuid{};
+        ObjectID m_id{};
         InstanceID m_instance_id{0};
+        UInt32 m_generation{0};
+        Bool m_registered{false};
         String m_name{};
 
         static UnorderedMap<InstanceID, Object*> s_instance_map;
-        static UnorderedMap<UUID, InstanceID> s_uuid_to_instance;
+        static UnorderedMap<UInt64, InstanceID> s_ref_to_instance;
+        static UnorderedMap<InstanceID, UInt32> s_generations;
         static InstanceID s_next_instance_id;
-        static DynamicArray<InstanceID> s_free_instance_ids;
-        static std::shared_mutex s_instance_mutex;
 
     protected:
         Object() = default;
-        explicit Object(const FileID& file_id);
-        Object(const FileID& file_id, const UUID& uuid);
+        explicit Object(const ObjectID& id);
+
+        static UInt64 makeKey(const ObjectID& id);
 
     public:
         virtual ~Object();
 
         [[nodiscard]] InstanceID getInstanceID() const { return m_instance_id; }
-        [[nodiscard]] const FileID& getFileID() const { return m_file_id; }
-        [[nodiscard]] const UUID& getUUID() const { return m_uuid; }
+        [[nodiscard]] UInt32 getGeneration() const { return m_generation; }
+        [[nodiscard]] const ObjectID& getID() const { return m_id; }
         [[nodiscard]] const String& getName() const { return m_name; }
+        [[nodiscard]] ObjectHandle getHandle() const { return ObjectHandle{m_instance_id, m_generation}; }
 
         void setName(const String& n) { m_name = n; }
-        void setFileIdentity(const FileID& file_id, const UUID& uuid);
 
         [[nodiscard]] static Object* FindObjectFromInstanceID(InstanceID id);
-        [[nodiscard]] static InstanceID FindInstanceID(const UUID& uuid);
+        [[nodiscard]] static InstanceID FindInstanceID(const ObjectID& id);
+        [[nodiscard]] static Bool isAlive(InstanceID id, UInt32 generation);
 
         static InstanceID AllocateInstanceID(Object* obj);
         static void ReleaseInstanceID(InstanceID id);

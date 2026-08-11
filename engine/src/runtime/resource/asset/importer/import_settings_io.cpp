@@ -31,14 +31,45 @@ namespace dodoe {
             return false;
         }
 
-        if (json.contains("uuid") && json["uuid"].is_number_unsigned()) {
-            out.uuid = UUID(json["uuid"].get<UInt64>());
+        if (json.contains("guid") && json["guid"].is_number_unsigned()) {
+            out.guid = UUID(json["guid"].get<UInt64>());
         }
         if (json.contains("importer") && json["importer"].is_string()) {
             out.importer = json["importer"].get<String>();
         }
         if (json.contains("settings") && json["settings"].is_object()) {
             out.settings = json["settings"];
+        }
+        if (json.contains("sprites") && json["sprites"].is_array()) {
+            out.sprites.clear();
+            for (const auto& sprite_json : json["sprites"]) {
+                if (!sprite_json.is_object()) {
+                    continue;
+                }
+                SpriteMeta sprite;
+                if (sprite_json.contains("name") && sprite_json["name"].is_string()) {
+                    sprite.name = sprite_json["name"].get<String>();
+                }
+                if (sprite_json.contains("local_id") && sprite_json["local_id"].is_number_unsigned()) {
+                    sprite.local_id = sprite_json["local_id"].get<UInt32>();
+                }
+                if (sprite_json.contains("ppu") && sprite_json["ppu"].is_number()) {
+                    sprite.ppu = sprite_json["ppu"].get<Float>();
+                }
+                if (sprite_json.contains("pivot") && sprite_json["pivot"].is_array()
+                    && sprite_json["pivot"].size() >= 2) {
+                    sprite.pivot_x = sprite_json["pivot"][0].get<Float>();
+                    sprite.pivot_y = sprite_json["pivot"][1].get<Float>();
+                }
+                if (sprite_json.contains("slice") && sprite_json["slice"].is_array()
+                    && sprite_json["slice"].size() >= 4) {
+                    sprite.slice_left = sprite_json["slice"][0].get<Float>();
+                    sprite.slice_bottom = sprite_json["slice"][1].get<Float>();
+                    sprite.slice_right = sprite_json["slice"][2].get<Float>();
+                    sprite.slice_top = sprite_json["slice"][3].get<Float>();
+                }
+                out.sprites.push_back(sprite);
+            }
         }
 
         return true;
@@ -48,9 +79,23 @@ namespace dodoe {
         const FsPath meta_path(absolute_source_path.string() + kMetaSuffix);
 
         Json json;
-        json["uuid"] = static_cast<UInt64>(settings.uuid);
+        json["guid"] = static_cast<UInt64>(settings.guid);
         json["importer"] = string_to_std(settings.importer);
         json["settings"] = settings.settings;
+        if (!settings.sprites.empty()) {
+            Json sprites = Json::array();
+            for (const auto& sprite : settings.sprites) {
+                Json sprite_json;
+                sprite_json["name"] = sprite.name;
+                sprite_json["local_id"] = sprite.local_id;
+                sprite_json["ppu"] = sprite.ppu;
+                sprite_json["pivot"] = Json::array({sprite.pivot_x, sprite.pivot_y});
+                sprite_json["slice"] = Json::array({sprite.slice_left, sprite.slice_bottom,
+                                                    sprite.slice_right, sprite.slice_top});
+                sprites.push_back(sprite_json);
+            }
+            json["sprites"] = sprites;
+        }
 
         std::ofstream file(meta_path);
         if (!file.is_open()) {
@@ -67,13 +112,12 @@ namespace dodoe {
                                                   const String& default_importer,
                                                   const Json& default_settings) {
         ImportSettings result;
-        result.uuid = GenerateGuid();
         result.importer = default_importer;
         result.settings = default_settings;
 
         if (Load(absolute_source_path, result)) {
-            if (!result.uuid.isValid()) {
-                result.uuid = GenerateGuid();
+            if (!result.guid.isValid()) {
+                result.guid = UUID::Generate();
             }
             if (result.importer.empty()) {
                 result.importer = default_importer;
@@ -84,12 +128,9 @@ namespace dodoe {
             return result;
         }
 
+        result.guid = UUID::Generate();
         Save(absolute_source_path, result);
         return result;
-    }
-
-    UUID ImportSettingsIO::GenerateGuid() {
-        return UUID::Generate();
     }
 
     UInt64 ImportSettingsIO::LastWriteTimeSeconds(const FsPath& path) {

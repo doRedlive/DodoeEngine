@@ -60,9 +60,16 @@ namespace dodoe {
         sprite_object->setUUID(id.id);
 
         Sprite* resolved = sr.sprite.get();
+        if (!resolved && !sr.sprite.getLegacyPath().empty()) {
+            resolved = SpriteLoader::Load(sr.sprite.getLegacyPath());
+        }
 
         if (resolved) {
+            const String legacy_path = sr.sprite.getLegacyPath();
             sr.sprite = PPtr<Sprite>(resolved);
+            if (!legacy_path.empty()) {
+                sr.sprite.setLegacyPath(legacy_path);
+            }
             sprite_object->setSprite(PPtr<Sprite>(resolved));
             const Vector2f natural = computeSpriteNaturalSize(resolved);
             Matrix4f world = Math::Scale(buildWorldMatrix(transform), Vector3f(natural.x, natural.y, 1.0f));

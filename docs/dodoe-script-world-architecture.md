@@ -14,7 +14,7 @@ Dodoe 里同时存在两套并行的"实体"体系:
 | | 原生世界(C++) | C# 托管世界(GreenCake) |
 |---|---|---|
 | 实体本体 | entt ECS registry(`Scene::m_reg`) | 无 —— `Entity` 只是 `ulong ID` 句柄 |
-| 实体视图 | `Entity`(entt 封装) | `GameObject`(id + Transform 镜像 + `_scene` + 行为列表) |
+| 实体视图 | `Entity`(entt 封装) | `GameObject`(id + `_scene` + 行为列表) |
 | 组件存储 | ECS 组件池(`ComponentDB` 反射) | `ManagedComponentStore`(`Dictionary<Type, ICakeComponentSet>`) |
 | 组件访问 | 直接读 ECS | 原生组件走 FFI 代理 / 托管组件读 store |
 
@@ -23,7 +23,7 @@ Dodoe 里同时存在两套并行的"实体"体系:
 ```
 Player(uuid=1002)
 ├── 原生组件:  IDComponent / TagComponent / TransformComponent / SpriteRendererComponent
-└── 托管组件:  OnlyOne.PlayerController (CakeBehaviour) + Transform 镜像(见 §4)
+└── 托管组件:  OnlyOne.PlayerController (CakeBehaviour)
 ```
 
 组件归属由 `ComponentManager.IsNative(type)` 判定:`typeof(NativeComponent).IsAssignableFrom(type)`。
@@ -66,15 +66,12 @@ GameObject 是**纯 C# 概念**,是原生实体的视图。唯一手写创建路
 public GameObject CreateGameObject(string name = "GameObject") {
     var entity = World.Current.CreateEntity(name);  // ① 原生真的创建一个实体
     var go = new GameObject { Entity = entity, _scene = this };  // ② C# 视图
-    var tf = new Transform { Entity = entity, GameObject = go };
-    World.Current.AddOrReplaceComponent(entity.ID, tf);  // ③ 往托管 store 塞 Transform 镜像
-    go.Transform = tf;
-    _gameObjects[go.ID] = go;  // ④ 登记进 C# 场景
+    _gameObjects[go.ID] = go;  // ③ 登记进 C# 场景
     return go;
 }
 ```
 
-注意 **③**:C# 的 `Transform` 也是托管 store 里的一个"组件",用来镜像原生 TransformComponent(见 §7 问题 3)。
+`GameObject.Transform` 不再是托管组件,而是懒加载的 `TransformComponent` FFI 代理(数据住在原生 ECS,见 §7 问题 3 已修复)。
 
 ## 4. 场景创建与加载
 
@@ -127,8 +124,10 @@ createEntity(uuid, name)        ← 原生实体(带 ID/Tag/Transform)
 ### 问题 2:镜像是一次性的,不是持续的
 `SyncFromNative` 只在 C# Scene 首次创建时跑一次。之后原生再创建/销毁/改名实体,C# 视图不会跟随。当初期望的"C++ 创建 entity 时 C# 同步创建 gameobject"并没有真正实现,只是激活时批量补了一次。
 
-### 问题 3:Transform 镜像污染托管 store + special-case 跳过
-`RegisterEntity` / `CreateGameObject` 都会往托管 store 塞一个 `Transform`,于是 `GetEntityComponentData` 里不得不 `if (type == typeof(Transform)) continue;` 来防止存场景时把 `GreenCake.Transform` 写进 doscn。这是一个 hack:store 里有个"不算序列化组件"的组件。深层问题是 **Transform 不该进托管 store**,它应该像其他原生组件一样走 FFI 代理。
+### 问题 3:~~Transform 镜像污染托管 store + special-case 跳过~~(已修复)
+~~`RegisterEntity` / `CreateGameObject` 都会往托管 store 塞一个 `Transform`,于是 `GetEntityComponentData` 里不得不 `if (type == typeof(Transform)) continue;` 来防止存场景时把 `GreenCake.Transform` 写进 doscn。这是一个 hack:store 里有个"不算序列化组件"的组件。深层问题是 **Transform 不该进托管 store**,它应该像其他原生组件一样走 FFI 代理。~~
+
+**修复**:删除整个 `Transform` C# 类(`Transform.cs`)。`GameObject.Transform` 现在是 `TransformComponent` FFI 代理(懒加载缓存),数据仍在原生 ECS;`GetEntityComponentData` 的 skip 一并删除。`Parent` / `ChildCount` / `GetChild` 移到 `GameObject` 上,不再有 `Transform.Parent` 这类包装。
 
 ### 问题 4:`SceneManager.ActiveScene` 是带副作用的 getter
 读这个属性会建场景、同步实体、触发 `NotifyLoad/NotifyStart` 事件。任何地方读它都可能触发隐式初始化,场景生命周期由 getter + `SetActiveScene` + 原生三方驱动,难以推理。
@@ -144,7 +143,7 @@ createEntity(uuid, name)        ← 原生实体(带 ID/Tag/Transform)
 
 ## 7. 可能的演进方向(未定)
 
-1. **Transform 走原生代理**:GameObject.Transform 改为 FFI 代理原生 `TransformComponent`,不占托管 store,消除问题 3 的 special-case。
+1. **~~Transform 走原生代理~~(已完成)**:GameObject.Transform 已改为 FFI 代理原生 `TransformComponent`,不占托管 store,消除问题 3 的 special-case。
 2. **持续同步**:原生在创建/销毁实体时向 C# push 事件(或 C# 按需拉取),让视图真实跟随原生,替代一次性镜像。
 3. **显式场景生命周期**:用显式 `LoadScene/ActivateScene` 流程替代 `ActiveScene` getter 的副作用,消除问题 4。
 4. **托管组件与原生组件统一注册**:让组件归属由注册表决定,而非运行时 `IsNative` 类型判断。

@@ -8,7 +8,6 @@ namespace dodoe {
 
     Scope<Asset> ModelImporter::import(const ImportContext& ctx) {
         auto mesh = create_scope<MeshAsset>();
-        mesh->setFileID(ctx.source_file);
         mesh->setName(FileSystem::PathToNameNoExt(ctx.source_path));
         return mesh;
     }

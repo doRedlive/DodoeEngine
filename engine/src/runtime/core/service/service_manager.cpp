@@ -2,6 +2,8 @@
 
 #include "service_manager.h"
 
+#include "runtime/function/render/material/material.h"
+#include "runtime/function/animation/animation.h"
 #include "runtime/service/sprite/sprite_loader.h"
 
 namespace dodoe {
@@ -10,6 +12,12 @@ namespace dodoe {
         registerService(
             [] { SpriteLoader::Initialize(); },
             [] { SpriteLoader::Shutdown(); });
+        registerService(
+            [] {},
+            [] { Material::Shutdown(); });
+        registerService(
+            [] {},
+            [] { AnimationClip::Shutdown(); });
         initializeAll();
         return true;
     }

@@ -2,26 +2,58 @@
 
 #include "file_id.h"
 #include "file_system.h"
-#include "runtime/core/utils/common.h"
+
+#include <mutex>
 
 namespace dodoe {
 
-    UInt64 FileID::computeID(const String& path, const UUID& uuid) {
-        const UInt64 uuid_val = static_cast<UInt64>(uuid);
-        if (uuid_val != 0) {
-            return uuid_val;
+    namespace {
+
+        class FileIDInternTable {
+        public:
+            UInt32 Make(const String& path) {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                const auto it = m_path_to_id.find(path);
+                if (it != m_path_to_id.end()) {
+                    return it->second;
+                }
+                const UInt32 id = m_next_id++;
+                m_path_to_id.emplace(path, id);
+                m_id_to_path.emplace(id, path);
+                return id;
+            }
+
+            [[nodiscard]] const String& PathOf(const UInt32 intern_id) const {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                const auto it = m_id_to_path.find(intern_id);
+                if (it != m_id_to_path.end()) {
+                    return it->second;
+                }
+                return m_empty;
+            }
+
+        private:
+            UnorderedMap<String, UInt32> m_path_to_id{};
+            OrderedMap<UInt32, String> m_id_to_path{};
+            String m_empty{};
+            UInt32 m_next_id{1};
+            mutable std::mutex m_mutex{};
+        };
+
+        FileIDInternTable& GetInternTable() {
+            static FileIDInternTable table{};
+            return table;
         }
-        return static_cast<UInt64>(string2hash(path));
     }
 
-    FileID::FileID(const String& path)
-        : m_path(FileSystem::NormalizePath(path))
-        , m_uuid(UUID(static_cast<UInt64>(string2hash(m_path))))
-        , m_id(computeID(m_path, m_uuid)) {}
+    FileID FileID::Make(const String& path) {
+        FileID result;
+        result.m_intern_id = GetInternTable().Make(FileSystem::NormalizePath(path));
+        return result;
+    }
 
-    FileID::FileID(const String& path, const UUID& uuid)
-        : m_path(FileSystem::NormalizePath(path))
-        , m_uuid(uuid)
-        , m_id(computeID(m_path, m_uuid)) {}
+    const String& FileID::getPath() const {
+        return GetInternTable().PathOf(m_intern_id);
+    }
 
 } // dodoe

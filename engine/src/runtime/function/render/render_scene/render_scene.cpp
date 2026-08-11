@@ -2,8 +2,13 @@
 
 #include "render_scene.h"
 #include "runtime/core/math/math.h"
+#include "runtime/core/object/object_id.h"
+#include "runtime/core/utils/common.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/texture/texture.h"
+#include "runtime/resource/asset/asset_manager.h"
+#include "runtime/resource/resource_manager.h"
 
 namespace dodoe {
 
@@ -297,9 +302,19 @@ namespace dodoe {
         const auto& materials = info.getMaterials();
         auto& batches = info.getMeshBatches();
 
-        auto resolveTexture = [&](const UUID& tex_uuid) -> GfxTextureHandle {
-            if (!tex_uuid.isValid() || !texture_manager) return {};
-            const InstanceID tex_id = Object::FindInstanceID(tex_uuid);
+        auto resolveTexture = [&](const FileID& file_id) -> GfxTextureHandle {
+            if (!file_id.isValid() || !texture_manager) return {};
+            const auto* asset_manager = ResourceManager::Self().getAssetManager();
+            ObjectID ref = asset_manager ? asset_manager->resolvePathToRef(file_id) : ObjectID{};
+            if (!ref.isValid()) {
+                ref = ObjectID{UUID(static_cast<UInt64>(string2hash(file_id.getPath()))), 0};
+            }
+            InstanceID tex_id = Object::FindInstanceID(ref);
+            if (tex_id == 0) {
+                if (auto* tex = Texture2D::Load(file_id.getPath())) {
+                    tex_id = tex->getInstanceID();
+                }
+            }
             if (auto* tex = texture_manager->findTexture2D(tex_id)) {
                 return tex->getGpuHandle();
             }
@@ -313,8 +328,8 @@ namespace dodoe {
             const auto& props = i < materials.size() ? materials[i] : MaterialProperties{};
 
             UnorderedMap<String, MaterialParamValue> overrides;
-            auto addTex = [&](const String& name, const UUID& tex_uuid) {
-                GfxTextureHandle handle = resolveTexture(tex_uuid);
+            auto addTex = [&](const String& name, const FileID& file_id) {
+                GfxTextureHandle handle = resolveTexture(file_id);
                 if (handle) {
                     MaterialParamValue val{};
                     val.texture = handle;

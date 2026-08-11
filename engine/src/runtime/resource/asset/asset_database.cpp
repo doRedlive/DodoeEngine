@@ -41,24 +41,30 @@ namespace dodoe {
         m_metadata_cache.clear();
 
         for (const auto& [key_str, asset_json] : json["assets"].items()) {
-            FileID file_id;
+            ObjectID id;
 
             if (asset_json.contains("file_id")) {
-                Serializer::read(asset_json["file_id"], file_id);
-            } else if (asset_json.contains("source_path")) {
-                String sp = asset_json["source_path"].get<String>();
-                file_id = FileID(sp);
+                const auto& fid = asset_json["file_id"];
+                if (fid.contains("file_uuid")) {
+                    id.asset_id = UUID(fid["file_uuid"].get<UInt64>());
+                }
+            } else if (asset_json.contains("asset_id")) {
+                id.asset_id = UUID(asset_json["asset_id"].get<UInt64>());
+            }
+            if (asset_json.contains("sub_object_id")) {
+                id.local_id = asset_json["sub_object_id"].get<UInt32>();
             }
 
-            if (!file_id.isValid()) {
+            if (!id.isValid()) {
                 continue;
             }
 
             AssetMetaData meta;
-            meta.file_id = file_id;
+            meta.ref = id;
+            meta.source_file = FileID(asset_json.value("source_path", String()));
 
             if (asset_json.contains("type")) {
-                meta.type = Asset::AssetTypeFromString(asset_json["type"].get<String>());
+                meta.type = Asset::assetTypeFromString(asset_json["type"].get<String>());
             }
             if (asset_json.contains("name")) {
                 meta.name = asset_json["name"].get<String>();
@@ -85,13 +91,20 @@ namespace dodoe {
             }
             if (asset_json.contains("dependencies")) {
                 for (const auto& dep : asset_json["dependencies"]) {
-                    UUID dep_uuid;
-                    Serializer::read(dep, dep_uuid);
-                    meta.dependencies.push_back(dep_uuid);
+                    ObjectID dep_id;
+                    if (dep.contains("file_uuid")) {
+                        dep_id.asset_id = UUID(dep["file_uuid"].get<UInt64>());
+                    } else if (dep.contains("asset_id")) {
+                        dep_id.asset_id = UUID(dep["asset_id"].get<UInt64>());
+                    }
+                    if (dep.contains("sub_object_id")) {
+                        dep_id.local_id = dep["sub_object_id"].get<UInt32>();
+                    }
+                    meta.dependencies.push_back(dep_id);
                 }
             }
 
-            m_metadata_cache[file_id] = std::move(meta);
+            m_metadata_cache[id] = std::move(meta);
         }
 
         m_dirty = false;
@@ -111,10 +124,11 @@ namespace dodoe {
         root["version"] = 1;
 
         Json assets = Json::object();
-        for (const auto& [file_id, meta] : m_metadata_cache) {
+        for (const auto& [id, meta] : m_metadata_cache) {
             Json asset_json;
-            asset_json["file_id"] = Serializer::write(file_id);
-            asset_json["type"] = Asset::AssetTypeToString(meta.type);
+            asset_json["asset_id"] = static_cast<UInt64>(id.asset_id);
+            asset_json["sub_object_id"] = id.local_id;
+            asset_json["type"] = Asset::assetTypeToString(meta.type);
             asset_json["name"] = meta.name;
             asset_json["source_path"] = meta.source_path;
             asset_json["source_file_mtime"] = meta.source_file_mtime;
@@ -130,11 +144,14 @@ namespace dodoe {
 
             Json deps = Json::array();
             for (const auto& dep : meta.dependencies) {
-                deps.push_back(Serializer::write(dep));
+                Json dep_json;
+                dep_json["asset_id"] = static_cast<UInt64>(dep.asset_id);
+                dep_json["sub_object_id"] = dep.local_id;
+                deps.push_back(dep_json);
             }
             asset_json["dependencies"] = deps;
 
-            String key_str(std::to_string(file_id.getID()).c_str());
+            String key_str(std::to_string(static_cast<UInt64>(id.asset_id)).c_str());
             assets[key_str.c_str()] = asset_json;
         }
 
@@ -146,53 +163,53 @@ namespace dodoe {
         return true;
     }
 
-    Bool AssetDatabase::hasAsset(const FileID& file_id) const {
-        return m_metadata_cache.find(file_id) != m_metadata_cache.end();
+    Bool AssetDatabase::hasAsset(const ObjectID& id) const {
+        return m_metadata_cache.find(id) != m_metadata_cache.end();
     }
 
-    AssetMetaData AssetDatabase::getMetaData(const FileID& file_id) const {
-        auto it = m_metadata_cache.find(file_id);
+    AssetMetaData AssetDatabase::getMetaData(const ObjectID& id) const {
+        auto it = m_metadata_cache.find(id);
         if (it != m_metadata_cache.end()) {
             return it->second;
         }
         return {};
     }
 
-    void AssetDatabase::setMetaData(const FileID& file_id, const AssetMetaData& meta) {
-        m_metadata_cache[file_id] = meta;
+    void AssetDatabase::setMetaData(const ObjectID& id, const AssetMetaData& meta) {
+        m_metadata_cache[id] = meta;
         m_dirty = true;
     }
 
-    void AssetDatabase::removeAsset(const FileID& file_id) {
-        m_metadata_cache.erase(file_id);
+    void AssetDatabase::removeAsset(const ObjectID& id) {
+        m_metadata_cache.erase(id);
         m_dirty = true;
     }
 
-    DynamicArray<FileID> AssetDatabase::getAllAssetFileIDs() const {
-        DynamicArray<FileID> result;
+    DynamicArray<ObjectID> AssetDatabase::getAllAssetIDs() const {
+        DynamicArray<ObjectID> result;
         result.reserve(m_metadata_cache.size());
-        for (const auto& [file_id, meta] : m_metadata_cache) {
-            result.push_back(file_id);
+        for (const auto& [id, meta] : m_metadata_cache) {
+            result.push_back(id);
         }
         return result;
     }
 
-    DynamicArray<FileID> AssetDatabase::getAssetsOfType(AssetType type) const {
-        DynamicArray<FileID> result;
-        for (const auto& [file_id, meta] : m_metadata_cache) {
+    DynamicArray<ObjectID> AssetDatabase::getAssetsOfType(AssetType type) const {
+        DynamicArray<ObjectID> result;
+        for (const auto& [id, meta] : m_metadata_cache) {
             if (meta.type == type) {
-                result.push_back(file_id);
+                result.push_back(id);
             }
         }
         return result;
     }
 
-    DynamicArray<FileID> AssetDatabase::getAssetsByTag(const String& tag) const {
-        DynamicArray<FileID> result;
-        for (const auto& [file_id, meta] : m_metadata_cache) {
+    DynamicArray<ObjectID> AssetDatabase::getAssetsByTag(const String& tag) const {
+        DynamicArray<ObjectID> result;
+        for (const auto& [id, meta] : m_metadata_cache) {
             for (const auto& t : meta.tags) {
                 if (t == tag) {
-                    result.push_back(file_id);
+                    result.push_back(id);
                     break;
                 }
             }
@@ -201,7 +218,7 @@ namespace dodoe {
     }
 
     UUID AssetDatabase::generateUUID() {
-        return UUID();
+        return UUID::Generate();
     }
 
 } // dodoe

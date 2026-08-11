@@ -4,6 +4,7 @@
 
 #include "runtime/core/memory/std_allocator.h"
 
+#include <map>
 #include <spdlog/fmt/bundled/format.h>
 
 namespace dodoe {
@@ -24,6 +25,9 @@ namespace dodoe {
 
 	template <typename TKey, typename TValue, typename THash = std::hash<TKey>, typename TEqual = std::equal_to<TKey>>
 	using UnorderedMap = std::unordered_map<TKey, TValue, THash, TEqual, StdAllocator<std::pair<const TKey, TValue>>>;
+
+	template <typename TKey, typename TValue, typename TCompare = std::less<TKey>>
+	using OrderedMap = std::map<TKey, TValue, TCompare, StdAllocator<std::pair<const TKey, TValue>>>;
 
 	template <typename T, typename THash = std::hash<T>, typename TEqual = std::equal_to<T>>
 	using UnorderedSet = std::unordered_set<T, THash, TEqual, StdAllocator<T>>;

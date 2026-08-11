@@ -10,10 +10,23 @@
 
 namespace dodoe {
 
+    struct SpriteMeta {
+        String name{};
+        UInt32 local_id{0};
+        Float ppu{10.0f};
+        Float pivot_x{0.5f};
+        Float pivot_y{0.5f};
+        Float slice_left{0.0f};
+        Float slice_bottom{0.0f};
+        Float slice_right{0.0f};
+        Float slice_top{0.0f};
+    };
+
     struct ImportSettings {
-        UUID uuid{};
+        UUID guid{};
         String importer{};
         Json settings{};
+        DynamicArray<SpriteMeta> sprites{};
     };
 
     class ImportSettingsIO {
@@ -28,8 +41,6 @@ namespace dodoe {
                                            const String& source_path,
                                            const String& default_importer,
                                            const Json& default_settings);
-
-        static UUID GenerateGuid();
 
         static UInt64 LastWriteTimeSeconds(const FsPath& path);
     };

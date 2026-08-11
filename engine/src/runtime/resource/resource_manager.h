@@ -46,14 +46,14 @@ namespace dodoe {
 
     template<typename T>
     T* AssetHandle<T>::get() const {
-        if (!m_uuid.isValid()) {
+        if (!m_id.isValid()) {
             return nullptr;
         }
         AssetManager* manager = ResourceManager::Self().getAssetManager();
         if (!manager) {
             return nullptr;
         }
-        Asset* asset = manager->findAssetByUUID(m_uuid);
+        Asset* asset = manager->findAsset(m_id.asset_id);
         if (asset) {
             return static_cast<T*>(asset);
         }

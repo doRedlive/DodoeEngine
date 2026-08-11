@@ -365,6 +365,10 @@ internal static unsafe partial class NativeCalls
 
     internal static string Native_ObjectGetTypeName(int instanceID) => PtrToStr(b->native_object_get_type_name(instanceID));
 
+    internal static bool Native_ObjectIsAlive(int instanceID, int generation) => b->native_object_is_alive(instanceID, generation) != 0;
+
+    internal static int Native_ObjectGeneration(int instanceID) => b->native_object_get_generation(instanceID);
+
     internal static int Native_TextureLoad(string path)
     {
         var ptr = StrToPtr(path);
@@ -375,6 +379,18 @@ internal static unsafe partial class NativeCalls
     {
         var ptr = StrToPtr(path);
         try { return b->native_sprite_load(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static int Native_LoadObject(string path, string typeName)
+    {
+        var pPtr = StrToPtr(path);
+        var tPtr = StrToPtr(typeName);
+        try { return b->native_load_object(pPtr, tPtr); }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)pPtr);
+            Marshal.FreeCoTaskMem((IntPtr)tPtr);
+        }
     }
 
     // === UI Wrapper Methods ===

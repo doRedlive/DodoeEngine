@@ -10,6 +10,7 @@
 #include "runtime/core/utils/util.h"
 #include "runtime/resource/file/file_id.h"
 #include "runtime/resource/asset/asset_handle.h"
+#include "runtime/core/object/object_id.h"
 
 namespace dodoe {
     template <typename...>
@@ -97,11 +98,18 @@ namespace dodoe {
             }
             else if constexpr (is_pptr<T>::value) {
                 Json j = Json::object();
-                j["uuid"] = Serializer::write(instance.getUUID());
+                j["asset_id"] = Serializer::write(instance.getObjectID().asset_id);
+                j["sub_object_id"] = Serializer::write(instance.getObjectID().local_id);
+                if (!instance.getLegacyPath().empty()) {
+                    j["legacy_path"] = Serializer::write(instance.getLegacyPath());
+                }
                 return j;
             }
             else if constexpr (is_asset_handle<T>::value) {
-                return Json{{"uuid", Serializer::write(instance.getUUID())}};
+                Json j = Json::object();
+                j["asset_id"] = Serializer::write(instance.getObjectID().asset_id);
+                j["sub_object_id"] = Serializer::write(instance.getObjectID().local_id);
+                return j;
             }
             else {
                 return Json();
@@ -134,19 +142,44 @@ namespace dodoe {
             }
             else if constexpr (is_pptr<T>::value) {
                 if (json_context.is_object()) {
-                    UUID uuid{};
-                    if (json_context.contains("uuid")) {
-                        read(json_context.at("uuid"), uuid);
+                    ObjectID id;
+                    String legacy_path{};
+                    if (json_context.contains("asset_id")) {
+                        read(json_context.at("asset_id"), id.asset_id);
+                    } else if (json_context.contains("file_id")) {
+                        const auto& fid = json_context.at("file_id");
+                        if (fid.contains("path")) {
+                            read(fid.at("path"), legacy_path);
+                        }
+                        if (fid.contains("file_uuid")) {
+                            read(fid.at("file_uuid"), id.asset_id);
+                        } else if (json_context.contains("uuid")) {
+                            read(json_context.at("uuid"), id.asset_id);
+                        }
                     }
-                    instance = T(uuid);
+                    if (json_context.contains("sub_object_id")) {
+                        read(json_context.at("sub_object_id"), id.local_id);
+                    }
+                    instance = T(id);
+                    instance.setLegacyPath(legacy_path);
                 }
                 return instance;
             }
             else if constexpr (is_asset_handle<T>::value) {
-                if (json_context.is_object() && json_context.contains("uuid")) {
-                    UUID uuid;
-                    read(json_context.at("uuid"), uuid);
-                    instance.setUUID(uuid);
+                if (json_context.is_object()) {
+                    ObjectID id;
+                    if (json_context.contains("asset_id")) {
+                        read(json_context.at("asset_id"), id.asset_id);
+                    } else if (json_context.contains("file_id")) {
+                        const auto& fid = json_context.at("file_id");
+                        if (fid.contains("file_uuid")) {
+                            read(fid.at("file_uuid"), id.asset_id);
+                        }
+                    }
+                    if (json_context.contains("sub_object_id")) {
+                        read(json_context.at("sub_object_id"), id.local_id);
+                    }
+                    instance.setObjectID(id);
                 }
                 return instance;
             }

@@ -8,7 +8,6 @@ namespace dodoe {
 
     Scope<Asset> SpriteImporter::import(const ImportContext& ctx) {
         auto sprite = create_scope<SpriteAsset>();
-        sprite->setFileID(ctx.source_file);
         sprite->setName(FileSystem::PathToNameNoExt(ctx.source_path));
         sprite->setTextureSource(ctx.source_file.getUUID());
 

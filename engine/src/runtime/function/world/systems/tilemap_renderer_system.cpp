@@ -6,6 +6,7 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
+#include "runtime/function/render/texture/texture.h"
 
 namespace dodoe {
 
@@ -85,10 +86,8 @@ namespace dodoe {
                     sprite_obj->setWorldTransform(BuildTileWorldMatrix(pos_x, pos_y, tile_w, tile_h));
                     sprite_obj->setUVRect(u0, v0, u1, v1);
 
-                    FileID file_id(tileset->image_path);
-                    auto tex_pptr = PPtr<Texture2D>(file_id.getUUID());
                     UInt32 atlas_index = 0;
-                    if (auto* tex = tex_pptr.get()) {
+                    if (auto* tex = Texture2D::Load(tileset->image_path)) {
                         atlas_index = tex->getDescriptorIndex() >= 0
                             ? static_cast<UInt32>(tex->getDescriptorIndex())
                             : tex->getSlot();

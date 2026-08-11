@@ -70,9 +70,9 @@ namespace dodoe {
             transform_component.dirty = true;
         }
 
-        UUID ImportTexture(const FsPath& model_directory, const aiString& texture_path) {
+        FileID ImportTexture(const FsPath& model_directory, const aiString& texture_path) {
             if (texture_path.length == 0 || texture_path.C_Str()[0] == '*') {
-                return UUID();
+                return FileID();
             }
 
             FsPath resolved_path = FsPath(texture_path.C_Str());
@@ -81,17 +81,16 @@ namespace dodoe {
             }
             resolved_path = resolved_path.lexically_normal();
 
-            const auto texture_res = ResourceManager::Self().getTexture(String(resolved_path.string().c_str()));
-            return texture_res.getUUID();
+            return FileID(String(resolved_path.string().c_str()));
         }
 
-        UUID LoadMaterialTexture(
+        FileID LoadMaterialTexture(
             const aiMaterial* material,
             const FsPath& model_directory,
             const aiTextureType primary_type,
             const aiTextureType fallback_type = aiTextureType_NONE) {
             if (!material) {
-                return UUID();
+                return FileID();
             }
 
             for (const aiTextureType type : {primary_type, fallback_type}) {
@@ -104,13 +103,13 @@ namespace dodoe {
                     continue;
                 }
 
-                const UUID texture_id = ImportTexture(model_directory, texture_path);
+                const FileID texture_id = ImportTexture(model_directory, texture_path);
                 if (texture_id.isValid()) {
                     return texture_id;
                 }
             }
 
-            return UUID();
+            return FileID();
         }
 
         MaterialProperties MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const FsPath& model_directory) {

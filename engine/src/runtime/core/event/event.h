@@ -61,5 +61,11 @@ namespace dodoe {
     struct BeforeOneTickEvent {};
     struct AfterOneTickEvent {};
 
+    struct AssetReimportedEvent {
+        AssetReimportedEvent(const UUID in_asset_id, const String& in_source_path)
+            : asset_id(in_asset_id), source_path(in_source_path) { }
+        UUID asset_id{0};
+        String source_path{};
+    };
 
 }; // dodoe

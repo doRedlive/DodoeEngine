@@ -13,6 +13,8 @@
 #include "runtime/function/world/components/tilemap/tileset_asset.h"
 #include "runtime/core/project/project.h"
 #include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/function/render/material/material.h"
+#include "runtime/function/animation/animation.h"
 #include "runtime/core/utils/json.h"
 #include "runtime/function/ui/ui_manager.h"
 #include "runtime/function/ui/ui_button.h"
@@ -245,6 +247,15 @@ namespace dodoe {
             return _s_object_type_name.c_str();
         }
 
+        static int native_object_is_alive(int instanceID, int generation) {
+            return Object::isAlive((InstanceID)instanceID, (UInt32)generation) ? 1 : 0;
+        }
+
+        static int native_object_get_generation(int instanceID) {
+            auto* obj = Object::FindObjectFromInstanceID((InstanceID)instanceID);
+            return obj ? (int)obj->getGeneration() : 0;
+        }
+
         static int native_texture_load(const char* path) {
             if (!path || path[0] == '\0') return 0;
             auto tex = Texture2D::Load(String(path));
@@ -255,6 +266,27 @@ namespace dodoe {
             if (!path || path[0] == '\0') return 0;
             auto sprite = SpriteLoader::Load(String(path));
             return sprite ? (int)sprite->getInstanceID() : 0;
+        }
+
+        static int native_load_object(const char* path, const char* type_name) {
+            if (!path || path[0] == '\0' || !type_name) return 0;
+            if (strcmp(type_name, "Texture2D") == 0) {
+                auto tex = Texture2D::Load(String(path));
+                return tex ? (int)tex->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "Sprite") == 0) {
+                auto sprite = SpriteLoader::Load(String(path));
+                return sprite ? (int)sprite->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "Material") == 0) {
+                auto mat = Material::Load(String(path));
+                return mat ? (int)mat->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "AnimationClip") == 0) {
+                auto clip = AnimationClip::Load(String(path));
+                return clip ? (int)clip->getInstanceID() : 0;
+            }
+            return 0;
         }
 
         static int native_world_load_scene(const char* name, int mode) {
@@ -766,8 +798,11 @@ X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
     X(native_entity_set_parent, void, (uint64_t child, uint64_t parent), child, parent) \
     X(native_get_asset_directory, const char*, (), ) \
     X(native_object_get_type_name, const char*, (int instanceID), instanceID) \
+    X(native_object_is_alive, int, (int instanceID, int generation), instanceID, generation) \
+    X(native_object_get_generation, int, (int instanceID), instanceID) \
     X(native_texture_load, int, (const char* path), path) \
     X(native_sprite_load, int, (const char* path), path) \
+    X(native_load_object, int, (const char* path, const char* type_name), path, type_name) \
     X(native_world_load_scene, int, (const char* name, int mode), name, mode) \
     X(native_world_get_active_scene_name, const char*, (), ) \
     X(native_world_get_active_scene_entities, const char*, (), ) \

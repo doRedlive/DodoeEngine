@@ -5,14 +5,30 @@
 #include "texture.h"
 
 #include "runtime/core/utils/common.h"
+#include "runtime/core/object/object_id.h"
 #include "runtime/resource/file/file_id.h"
 #include "runtime/resource/file/file_system.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/parser/texture_blob.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/context/system_context.h"
 
 namespace dodoe {
+
+    namespace {
+
+        ObjectID ResolveTextureRef(const String& path) {
+            if (auto* asset_manager = ResourceManager::Self().getAssetManager()) {
+                const ObjectID ref = asset_manager->resolvePathToRef(FileID(path));
+                if (ref.isValid()) {
+                    return ref;
+                }
+            }
+            return ObjectID{UUID(static_cast<UInt64>(string2hash(path))), 0};
+        }
+    }
 
     Texture2D* Texture2D::Load(const String& path) {
         auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
@@ -43,6 +59,8 @@ namespace dodoe {
         m_slot_lut.clear();
         m_texture2d_cache.clear();
         m_cubemap_cache.clear();
+        m_texture_by_path.clear();
+        m_cubemap_by_path.clear();
         m_fallback = {};
         m_fallback_cubemap = {};
         m_device = nullptr;
@@ -55,16 +73,16 @@ namespace dodoe {
     }
 
     Texture2D* TextureManager::loadTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
-        const FileID file_id(path);
-        const InstanceID existing = Object::FindInstanceID(file_id.getUUID());
-        if (existing != 0) {
+        const auto path_it = m_texture_by_path.find(path);
+        if (path_it != m_texture_by_path.end()) {
+            const InstanceID existing = path_it->second;
             const auto it = m_texture2d_cache.find(existing);
             if (it != m_texture2d_cache.end()) {
                 return it->second.get();
             }
         }
 
-        return createTexture(path, cmd_list, staging);
+        return createTexture(path, ResolveTextureRef(path), cmd_list, staging);
     }
 
     Texture* TextureManager::findTexture(const InstanceID id) {
@@ -104,7 +122,7 @@ namespace dodoe {
         m_cubemap_cache.erase(id);
     }
 
-    Texture2D* TextureManager::createTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
+    Texture2D* TextureManager::createTexture(const String& path, const ObjectID& ref, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
         const auto absolute_path = FileSystem::RelativeToAbsolute(path, FileSystem::GetEngineRootPath());
         TextureBlob data(absolute_path);
         if (!data.isValid()) {
@@ -125,8 +143,7 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName(path.c_str());
 
-        const FileID file_id(path);
-        auto texture = create_scope<Texture2D>(file_id);
+        auto texture = create_scope<Texture2D>(ref);
         Texture2D* texture_raw = texture.get();
         texture->setDimensions(data.width, data.height);
         texture->setPath(path);
@@ -171,6 +188,7 @@ namespace dodoe {
 
         const InstanceID id = texture->getInstanceID();
         m_texture2d_cache.emplace(id, std::move(texture));
+        m_texture_by_path[path] = id;
         return texture_raw;
     }
 
@@ -195,7 +213,7 @@ namespace dodoe {
 
         auto handle = create_ref<GfxTexture>(handle_rhi, texture_desc, "Render TextureManager Fallback");
 
-        auto fb_scope = create_scope<Texture2D>(FileID("<fallback>"), UUID(0));
+        auto fb_scope = create_scope<Texture2D>(ObjectID{UUID(0), 1});
         Texture2D* fb = fb_scope.get();
         fb->setName("<fallback>");
         fb->setDimensions(1, 1);
@@ -235,7 +253,7 @@ namespace dodoe {
         m_device->executeCommandList(cube_upload);
 
         auto cube_handle = create_ref<GfxTexture>(cube_rhi, cube_desc, "Render TextureManager Fallback Cubemap");
-        auto cb_scope = create_scope<TextureCubemap>(FileID("<fallback-cubemap>"));
+        auto cb_scope = create_scope<TextureCubemap>(ObjectID{UUID(0), 2});
         cb_scope->setFaceSize(1);
         cb_scope->setGpuHandle(cube_handle);
         m_fallback_cubemap = std::move(cb_scope);
@@ -248,9 +266,9 @@ namespace dodoe {
     TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
         if (face_paths.size() < 6) return nullptr;
 
-        const FileID file_id(face_paths[0]);
-        const InstanceID existing = Object::FindInstanceID(file_id.getUUID());
-        if (existing != 0) {
+        const auto path_it = m_cubemap_by_path.find(face_paths[0]);
+        if (path_it != m_cubemap_by_path.end()) {
+            const InstanceID existing = path_it->second;
             const auto it = m_cubemap_cache.find(existing);
             if (it != m_cubemap_cache.end()) {
                 return it->second.get();
@@ -287,12 +305,14 @@ namespace dodoe {
             cmd_list.writeTexture(cubemap, i, 0, px, rp);
         }
 
-        auto texture = create_scope<TextureCubemap>(file_id);
+        auto texture = create_scope<TextureCubemap>(ResolveTextureRef(face_paths[0]));
         texture->setFaceSize(faces[0].width);
         texture->setGpuHandle(cubemap);
         TextureCubemap* texture_raw = texture.get();
 
-        m_cubemap_cache.emplace(texture->getInstanceID(), std::move(texture));
+        const InstanceID id = texture->getInstanceID();
+        m_cubemap_cache.emplace(id, std::move(texture));
+        m_cubemap_by_path[face_paths[0]] = id;
         return texture_raw;
     }
 

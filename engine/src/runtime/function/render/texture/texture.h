@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 #include "runtime/core/object/object.h"
+#include "runtime/core/object/object_id.h"
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/shader/descriptor_table_manager.h"
@@ -17,10 +18,8 @@ namespace dodoe {
 
     public:
         Texture() = default;
-        explicit Texture(const FileID& file_id)
-            : Object(file_id) {}
-        Texture(const FileID& file_id, const UUID& uuid)
-            : Object(file_id, uuid) {}
+        explicit Texture(const ObjectID& id)
+            : Object(id) {}
 
         [[nodiscard]] virtual Int32 getWidth() const = 0;
         [[nodiscard]] virtual Int32 getHeight() const = 0;
@@ -42,10 +41,8 @@ namespace dodoe {
 
     public:
         Texture2D() = default;
-        explicit Texture2D(const FileID& file_id)
-            : Texture(file_id) {}
-        Texture2D(const FileID& file_id, const UUID& uuid)
-            : Texture(file_id, uuid) {}
+        explicit Texture2D(const ObjectID& id)
+            : Texture(id) {}
 
         [[nodiscard]] const char* getObjectTypeName() const override { return "Texture2D"; }
         [[nodiscard]] Int32 getWidth() const override { return m_width; }
@@ -65,8 +62,8 @@ namespace dodoe {
 
     public:
         TextureCubemap() = default;
-        explicit TextureCubemap(const FileID& file_id)
-            : Texture(file_id) {}
+        explicit TextureCubemap(const ObjectID& id)
+            : Texture(id) {}
 
         [[nodiscard]] const char* getObjectTypeName() const override { return "TextureCubemap"; }
         [[nodiscard]] Int32 getWidth() const override { return m_face_size; }
