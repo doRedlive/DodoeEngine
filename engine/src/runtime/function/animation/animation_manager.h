@@ -2,12 +2,11 @@
 // Created by Redlive on 2026/3/23.
 //
 
-#ifndef DODOE_ANIMATION_MANAGER
-#define DODOE_ANIMATION_MANAGER
+#pragma once
 
 #include "dopch.h"
 
-#include "animation.h"
+#include "anim_clip_2d.h"
 
 namespace dodoe {
 
@@ -29,5 +28,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif//DODOE_ANIMATION_MANAGER

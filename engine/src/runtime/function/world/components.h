@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "runtime/function/world/components/animation2d_component.h"
+#include "runtime/function/world/components/animator_component.h"
 #include "runtime/function/world/components/camera_component.h"
 #include "runtime/function/world/components/circle_renderer_component.h"
 #include "runtime/function/world/components/collider2d_component.h"

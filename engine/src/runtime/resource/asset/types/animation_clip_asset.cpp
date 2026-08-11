@@ -25,6 +25,9 @@ namespace dodoe {
         if (json.contains("frames")) {
             Serializer::read(json["frames"], m_frames);
         }
+        if (json.contains("events")) {
+            Serializer::read(json["events"], m_events);
+        }
         if (json.contains("loop")) {
             Serializer::read(json["loop"], m_loop);
         }
@@ -48,6 +51,7 @@ namespace dodoe {
 
         Json json;
         json["frames"] = Serializer::write(m_frames);
+        json["events"] = Serializer::write(m_events);
         json["loop"] = Serializer::write(m_loop);
         json["frame_ms"] = Serializer::write(m_frame_ms);
 

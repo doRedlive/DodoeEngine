@@ -36,7 +36,7 @@ namespace dodoe {
 
         using NativeComponents = ComponentGroup<
             IDComponent, TagComponent, TransformComponent,
-            Animation2dComponent, CameraComponent, BoxCollider2dComponent,
+            AnimatorComponent, CameraComponent, BoxCollider2dComponent,
             MeshRendererComponent, Rigidbody2dComponent, SpriteRendererComponent,
             TilemapComponent, TileLayerComponent
         >;

@@ -176,7 +176,7 @@ namespace dodoe {
         registerComponent<TransformComponent>("TransformComponent", false);
         registerComponent<HierarchyComponent>("HierarchyComponent", false);
 
-        registerComponent<Animation2dComponent>("Animation2dComponent");
+        registerComponent<AnimatorComponent>("AnimatorComponent");
         registerComponent<CameraComponent>("CameraComponent");
         registerComponent<BoxCollider2dComponent>("BoxCollider2dComponent");
         registerComponent<FoliageRendererComponent>("FoliageRendererComponent");

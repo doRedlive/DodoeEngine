@@ -1,5 +1,6 @@
-#ifndef DODOE_ANIMATION2D_SYSTEM_H
-#define DODOE_ANIMATION2D_SYSTEM_H
+// do@Redlive
+
+#pragma once
 
 #include "dopch.h"
 
@@ -9,9 +10,9 @@
 
 namespace dodoe {
 
-    class Animation2dSystem : public System {
+    class AnimatorSystem : public System {
     public:
-        ~Animation2dSystem() override;
+        ~AnimatorSystem() override;
 
         [[nodiscard]] SystemAccess getAccess() const override;
 
@@ -19,5 +20,3 @@ namespace dodoe {
     };
 
 } // dodoe
-
-#endif//DODOE_ANIMATION2D_SYSTEM_H

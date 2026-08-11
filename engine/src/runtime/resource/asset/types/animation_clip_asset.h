@@ -5,12 +5,13 @@
 #include "dopch.h"
 
 #include "runtime/resource/asset/asset.h"
-#include "runtime/function/animation/animation.h"
+#include "runtime/function/animation/anim_clip_2d.h"
 
 namespace dodoe {
 
     class AnimationClipAsset : public Asset {
         DynamicArray<AnimFrame2D> m_frames{};
+        DynamicArray<AnimClipEvent> m_events{};
         Bool m_loop{false};
         Float m_frame_ms{100.0f};
 
@@ -25,6 +26,7 @@ namespace dodoe {
         [[nodiscard]] Bool saveToSource(const String& absolute_path) const override;
 
         [[nodiscard]] const DynamicArray<AnimFrame2D>& getFrames() const { return m_frames; }
+        [[nodiscard]] const DynamicArray<AnimClipEvent>& getEvents() const { return m_events; }
         [[nodiscard]] Bool getLoop() const { return m_loop; }
         [[nodiscard]] Float getFrameMs() const { return m_frame_ms; }
     };

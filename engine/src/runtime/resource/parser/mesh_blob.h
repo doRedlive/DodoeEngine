@@ -5,6 +5,8 @@
 #include "dopch.h"
 
 #include "runtime/resource/file/file_id.h"
+#include "runtime/function/animation/skeleton.h"
+#include "runtime/function/animation/anim_clip.h"
 
 namespace dodoe {
 
@@ -14,12 +16,16 @@ namespace dodoe {
         Vector2f tex_coords;
         Vector3f tangent;
         Vector3f bitangent;
+        UInt32 bone_ids[4]{0, 0, 0, 0};
+        Float bone_weights[4]{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
     struct MeshData {
         DynamicArray<MeshVertex> vertices;
         DynamicArray<UInt32> indices;
         DynamicArray<FileID> textures;
+        Ref<Skeleton> skeleton{nullptr};
+        DynamicArray<Ref<AnimClip>> animations{};
     };
 
     struct MeshBlob {

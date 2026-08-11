@@ -69,8 +69,18 @@ namespace {
             .value("Kinematic", Rigidbody2dComponent::BodyType::Kinematic)
             .export_values();
 
-        py::class_<Animation2dComponent>(m, "Animation2dComponent")
-            .def("add_clip", &Animation2dComponent::addClip);
+        py::class_<AnimatorComponent>(m, "AnimatorComponent")
+            .def("play", [](AnimatorComponent& self, const String& state_name) { self.play_request = state_name; })
+            .def("stop", [](AnimatorComponent& self) { self.stop_requested = true; })
+            .def("resume", [](AnimatorComponent& self) { self.resume_requested = true; })
+            .def("set_float", [](AnimatorComponent& self, const String& name, const Float value) { self.parameters[name] = value; })
+            .def("set_int", [](AnimatorComponent& self, const String& name, const Int32 value) { self.parameters[name] = static_cast<Float>(value); })
+            .def("set_bool", [](AnimatorComponent& self, const String& name, const Bool value) { self.parameters[name] = value ? 1.0f : 0.0f; })
+            .def("set_trigger", [](AnimatorComponent& self, const String& name) { self.parameters[name] = 1.0f; })
+            .def("reset_trigger", [](AnimatorComponent& self, const String& name) { self.parameters[name] = 0.0f; })
+            .def("get_float", [](const AnimatorComponent& self, const String& name) { const auto it = self.parameters.find(name); return it != self.parameters.end() ? it->second : 0.0f; })
+            .def("get_int", [](const AnimatorComponent& self, const String& name) { const auto it = self.parameters.find(name); return it != self.parameters.end() ? static_cast<Int32>(it->second) : 0; })
+            .def("get_bool", [](const AnimatorComponent& self, const String& name) { const auto it = self.parameters.find(name); return it != self.parameters.end() && it->second != 0.0f; });
     }
 
     void BindEntity(py::module_& m) {
@@ -115,7 +125,7 @@ void RegisterEntity(py::module_& m) {
     DO_REG(Rigidbody2dComponent);
     DO_REG(BoxCollider2dComponent);
     DO_REG(SpriteRendererComponent);
-    DO_REG(Animation2dComponent);
+    DO_REG(AnimatorComponent);
 
 #undef DO_REG
 
