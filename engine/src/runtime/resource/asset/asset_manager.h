@@ -61,9 +61,14 @@ namespace dodoe {
 
         [[nodiscard]] Asset* findAssetByPath(const String& source_path) const;
 
+        [[nodiscard]] Asset* findAssetByUUID(const UUID& uuid) const;
+        [[nodiscard]] FileID findFileIDByUUID(const UUID& uuid) const;
+
+        [[nodiscard]] String findPathByUUID(const UUID& uuid) const;
+
         template<typename T>
-        [[nodiscard]] AssetHandle<T> getHandle(const FileID& file_id) const {
-            return AssetHandle<T>(file_id);
+        [[nodiscard]] AssetHandle<T> getHandle(const UUID& uuid) const {
+            return AssetHandle<T>(uuid);
         }
 
         template<typename T>
@@ -71,7 +76,7 @@ namespace dodoe {
             std::shared_lock lock(m_mutex);
             auto it = m_path_to_file_id.find(source_path);
             if (it != m_path_to_file_id.end()) {
-                return AssetHandle<T>(it->second);
+                return AssetHandle<T>(it->second.getUUID());
             }
             return AssetHandle<T>();
         }
@@ -96,6 +101,15 @@ namespace dodoe {
             }
             asset->setLoadState(AssetLoadState::Loaded);
             return asset;
+        }
+
+        template<typename T>
+        [[nodiscard]] T* loadAssetSync(const UUID& uuid) {
+            const FileID file_id = findFileIDByUUID(uuid);
+            if (!file_id.isValid()) {
+                return nullptr;
+            }
+            return loadAssetSync<T>(file_id);
         }
 
         template<typename T>
@@ -129,7 +143,7 @@ namespace dodoe {
             DynamicArray<AssetHandle<T>> result;
             result.reserve(m_assets_by_type[type_idx].size());
             for (const auto& fid : m_assets_by_type[type_idx]) {
-                result.emplace_back(fid);
+                result.emplace_back(fid.getUUID());
             }
             return result;
         }
@@ -138,7 +152,7 @@ namespace dodoe {
         [[nodiscard]] Size_t getAssetCountOfType(AssetType type) const;
 
         [[nodiscard]] DynamicArray<FileID> getDependents(const FileID& file_id) const;
-        [[nodiscard]] DynamicArray<FileID> getDependencies(const FileID& file_id) const;
+        [[nodiscard]] DynamicArray<UUID> getDependencies(const FileID& file_id) const;
 
         [[nodiscard]] String getAssetPath(const FileID& file_id) const;
 

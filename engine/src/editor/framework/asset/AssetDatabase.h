@@ -15,7 +15,7 @@ public:
     explicit AssetDatabase(EditorContext& ctx) : m_ctx(ctx) {}
 
     struct AssetInfo {
-        dodoe::UUID guid;
+        dodoe::UUID uuid;
         std::string path;
         std::string type;
     };

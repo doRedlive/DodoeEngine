@@ -59,11 +59,7 @@ namespace dodoe {
         auto sprite_object = create_scope<SpriteRenderObject>();
         sprite_object->setUUID(id.id);
 
-        Sprite* resolved = nullptr;
-        const String& tex_path = sr.sprite.getFileID().getPath();
-        if (!tex_path.empty()) {
-            resolved = SpriteLoader::Load(tex_path);
-        }
+        Sprite* resolved = sr.sprite.get();
 
         if (resolved) {
             sr.sprite = PPtr<Sprite>(resolved);

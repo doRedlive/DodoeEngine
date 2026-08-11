@@ -11,7 +11,7 @@
 namespace dodoe {
 
     struct ImportSettings {
-        UUID guid{};
+        UUID uuid{};
         String importer{};
         Json settings{};
     };
@@ -29,7 +29,7 @@ namespace dodoe {
                                            const String& default_importer,
                                            const Json& default_settings);
 
-        static UUID MakeDeterministicGuid(const String& source_path);
+        static UUID GenerateGuid();
 
         static UInt64 LastWriteTimeSeconds(const FsPath& path);
     };

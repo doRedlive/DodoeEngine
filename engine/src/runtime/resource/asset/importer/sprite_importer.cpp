@@ -10,7 +10,7 @@ namespace dodoe {
         auto sprite = create_scope<SpriteAsset>();
         sprite->setFileID(ctx.source_file);
         sprite->setName(FileSystem::PathToNameNoExt(ctx.source_path));
-        sprite->setTextureSource(ctx.source_file);
+        sprite->setTextureSource(ctx.source_file.getUUID());
 
         if (ctx.settings.contains("pixelsPerUnit") && ctx.settings["pixelsPerUnit"].is_number()) {
             sprite->setPixelsPerUnit(ctx.settings["pixelsPerUnit"].get<Float>());

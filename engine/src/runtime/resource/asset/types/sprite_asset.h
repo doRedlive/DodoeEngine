@@ -17,7 +17,7 @@ namespace dodoe {
     };
 
     class SpriteAsset : public Asset {
-        FileID m_texture_source{};
+        UUID m_texture_source{};
         Float m_pixels_per_unit{100.0f};
         Vector2f m_pivot{0.5f, 0.5f};
         Rect2f m_slice{};
@@ -31,12 +31,12 @@ namespace dodoe {
         void unloadRuntime() override;
         [[nodiscard]] Bool isReadOnly() const override { return true; }
 
-        void setTextureSource(const FileID& texture_source) { m_texture_source = texture_source; }
+        void setTextureSource(const UUID& texture_source) { m_texture_source = texture_source; }
         void setPixelsPerUnit(Float ppu) { m_pixels_per_unit = ppu; }
         void setPivot(const Vector2f& pivot) { m_pivot = pivot; }
         void setSlice(const Rect2f& slice) { m_slice = slice; }
 
-        [[nodiscard]] const FileID& getTextureSource() const { return m_texture_source; }
+        [[nodiscard]] const UUID& getTextureSource() const { return m_texture_source; }
         [[nodiscard]] Float getPixelsPerUnit() const { return m_pixels_per_unit; }
         [[nodiscard]] const Vector2f& getPivot() const { return m_pivot; }
         [[nodiscard]] const Rect2f& getSlice() const { return m_slice; }

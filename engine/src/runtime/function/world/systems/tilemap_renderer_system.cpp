@@ -86,7 +86,7 @@ namespace dodoe {
                     sprite_obj->setUVRect(u0, v0, u1, v1);
 
                     FileID file_id(tileset->image_path);
-                    auto tex_pptr = PPtr<Texture2D>(file_id, UUID());
+                    auto tex_pptr = PPtr<Texture2D>(file_id.getUUID());
                     UInt32 atlas_index = 0;
                     if (auto* tex = tex_pptr.get()) {
                         atlas_index = tex->getDescriptorIndex() >= 0

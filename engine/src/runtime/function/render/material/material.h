@@ -4,7 +4,7 @@
 
 #include "dopch.h"
 
-#include "runtime/resource/file/file_id.h"
+#include "runtime/core/utils/uuid.h"
 
 namespace dodoe {
 
@@ -13,10 +13,10 @@ namespace dodoe {
         Vector3f emissive{0.0f, 0.0f, 0.0f};
         Float metallic{0.0f};
         Float roughness{1.0f};
-        FileID base_color_texture{};
-        FileID normal_texture{};
-        FileID metallic_roughness_texture{};
-        FileID emissive_texture{};
+        UUID base_color_texture{};
+        UUID normal_texture{};
+        UUID metallic_roughness_texture{};
+        UUID emissive_texture{};
         Bool operator==(const MaterialProperties& other) const = default;
     };
 

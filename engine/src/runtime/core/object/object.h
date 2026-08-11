@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <shared_mutex>
 
 #include "runtime/resource/file/file_id.h"
 
@@ -15,15 +16,15 @@ namespace dodoe {
         String m_name{};
 
         static UnorderedMap<InstanceID, Object*> s_instance_map;
-        static UnorderedMap<UInt64, InstanceID> s_id_to_instance;
+        static UnorderedMap<UUID, InstanceID> s_uuid_to_instance;
         static InstanceID s_next_instance_id;
+        static DynamicArray<InstanceID> s_free_instance_ids;
+        static std::shared_mutex s_instance_mutex;
 
     protected:
         Object() = default;
         explicit Object(const FileID& file_id);
         Object(const FileID& file_id, const UUID& uuid);
-
-        static UInt64 makeKey(const FileID& file_id);
 
     public:
         virtual ~Object();
@@ -34,10 +35,10 @@ namespace dodoe {
         [[nodiscard]] const String& getName() const { return m_name; }
 
         void setName(const String& n) { m_name = n; }
-        void setFileIdentity(const FileID& file_id, const UUID& uuid) { m_file_id = file_id; m_uuid = uuid; }
+        void setFileIdentity(const FileID& file_id, const UUID& uuid);
 
         [[nodiscard]] static Object* FindObjectFromInstanceID(InstanceID id);
-        [[nodiscard]] static InstanceID FindInstanceID(const FileID& file_id);
+        [[nodiscard]] static InstanceID FindInstanceID(const UUID& uuid);
 
         static InstanceID AllocateInstanceID(Object* obj);
         static void ReleaseInstanceID(InstanceID id);

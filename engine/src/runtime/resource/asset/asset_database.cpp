@@ -58,7 +58,7 @@ namespace dodoe {
             meta.file_id = file_id;
 
             if (asset_json.contains("type")) {
-                meta.type = Asset::assetTypeFromString(asset_json["type"].get<String>());
+                meta.type = Asset::AssetTypeFromString(asset_json["type"].get<String>());
             }
             if (asset_json.contains("name")) {
                 meta.name = asset_json["name"].get<String>();
@@ -85,9 +85,9 @@ namespace dodoe {
             }
             if (asset_json.contains("dependencies")) {
                 for (const auto& dep : asset_json["dependencies"]) {
-                    FileID dep_fid;
-                    Serializer::read(dep, dep_fid);
-                    meta.dependencies.push_back(dep_fid);
+                    UUID dep_uuid;
+                    Serializer::read(dep, dep_uuid);
+                    meta.dependencies.push_back(dep_uuid);
                 }
             }
 
@@ -114,7 +114,7 @@ namespace dodoe {
         for (const auto& [file_id, meta] : m_metadata_cache) {
             Json asset_json;
             asset_json["file_id"] = Serializer::write(file_id);
-            asset_json["type"] = Asset::assetTypeToString(meta.type);
+            asset_json["type"] = Asset::AssetTypeToString(meta.type);
             asset_json["name"] = meta.name;
             asset_json["source_path"] = meta.source_path;
             asset_json["source_file_mtime"] = meta.source_file_mtime;

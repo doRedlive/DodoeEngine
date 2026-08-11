@@ -40,7 +40,7 @@ void RegisterResource(py::module_& m) {
         auto handle = ResourceManager::Self().getTexture(path);
         TextureRes res;
         if (handle.isValid()) {
-            res.id = static_cast<InstanceID>(handle.getFileID().getID());
+            res.id = static_cast<InstanceID>(static_cast<UInt64>(handle.getUUID()));
             res.path = path;
         }
         return res;

@@ -4,7 +4,7 @@
 
 #include "dopch.h"
 
-#include "runtime/resource/file/file_id.h"
+#include "runtime/core/utils/uuid.h"
 
 namespace dodoe {
 
@@ -16,11 +16,11 @@ namespace dodoe {
     class AssetHandle {
         static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset");
 
-        FileID m_file_id{};
+        UUID m_uuid{};
 
     public:
         AssetHandle() = default;
-        explicit AssetHandle(const FileID& file_id) : m_file_id(file_id) {}
+        explicit AssetHandle(const UUID& uuid) : m_uuid(uuid) {}
         AssetHandle(const AssetHandle&) = default;
         AssetHandle& operator=(const AssetHandle&) = default;
         AssetHandle(AssetHandle&&) noexcept = default;
@@ -30,25 +30,25 @@ namespace dodoe {
         T* operator->() const;
         T& operator*() const;
 
-        [[nodiscard]] const FileID& getFileID() const { return m_file_id; }
-        [[nodiscard]] Bool isValid() const { return m_file_id.isValid(); }
+        [[nodiscard]] const UUID& getUUID() const { return m_uuid; }
+        [[nodiscard]] Bool isValid() const { return m_uuid.isValid(); }
         [[nodiscard]] explicit operator Bool() const { return isValid(); }
 
         [[nodiscard]] Bool isLoaded() const;
 
         Bool operator==(const AssetHandle& other) const {
-            return m_file_id == other.m_file_id;
+            return m_uuid == other.m_uuid;
         }
         Bool operator!=(const AssetHandle& other) const {
-            return !(m_file_id == other.m_file_id);
+            return !(m_uuid == other.m_uuid);
         }
 
         template<typename U, typename = std::enable_if_t<std::is_base_of_v<T, U>>>
         operator AssetHandle<U>() const {
-            return AssetHandle<U>(m_file_id);
+            return AssetHandle<U>(m_uuid);
         }
 
-        void setFileID(const FileID& file_id) { m_file_id = file_id; }
+        void setUUID(const UUID& uuid) { m_uuid = uuid; }
     };
 
 } // dodoe
@@ -57,7 +57,7 @@ namespace std {
     template<typename T>
     struct hash<dodoe::AssetHandle<T>> {
         dodoe::Size_t operator()(const dodoe::AssetHandle<T>& handle) const noexcept {
-            return static_cast<dodoe::Size_t>(handle.getFileID().getID());
+            return static_cast<dodoe::Size_t>(static_cast<UInt64>(handle.getUUID()));
         }
     };
 } // namespace std

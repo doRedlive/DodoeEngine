@@ -56,7 +56,7 @@ namespace dodoe {
 
     Texture2D* TextureManager::loadTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
         const FileID file_id(path);
-        const InstanceID existing = Object::FindInstanceID(file_id);
+        const InstanceID existing = Object::FindInstanceID(file_id.getUUID());
         if (existing != 0) {
             const auto it = m_texture2d_cache.find(existing);
             if (it != m_texture2d_cache.end()) {
@@ -249,7 +249,7 @@ namespace dodoe {
         if (face_paths.size() < 6) return nullptr;
 
         const FileID file_id(face_paths[0]);
-        const InstanceID existing = Object::FindInstanceID(file_id);
+        const InstanceID existing = Object::FindInstanceID(file_id.getUUID());
         if (existing != 0) {
             const auto it = m_cubemap_cache.find(existing);
             if (it != m_cubemap_cache.end()) {

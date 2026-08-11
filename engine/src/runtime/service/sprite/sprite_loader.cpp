@@ -51,7 +51,7 @@ namespace dodoe {
             return GetFallback();
         }
         const FileID file_id = MakeSpriteFileID(path);
-        const InstanceID existing = Object::FindInstanceID(file_id);
+        const InstanceID existing = Object::FindInstanceID(file_id.getUUID());
         if (existing != 0) {
             return static_cast<Sprite*>(Object::FindObjectFromInstanceID(existing));
         }

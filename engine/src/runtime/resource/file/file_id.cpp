@@ -7,9 +7,11 @@
 namespace dodoe {
 
     UInt64 FileID::computeID(const String& path, const UUID& uuid) {
-        UInt32 path_hash = string2hash(path);
-        UInt64 uuid_val = static_cast<UInt64>(uuid);
-        return uuid_val ^ (static_cast<UInt64>(path_hash) << 32);
+        const UInt64 uuid_val = static_cast<UInt64>(uuid);
+        if (uuid_val != 0) {
+            return uuid_val;
+        }
+        return static_cast<UInt64>(string2hash(path));
     }
 
     FileID::FileID(const String& path)

@@ -97,15 +97,11 @@ namespace dodoe {
             }
             else if constexpr (is_pptr<T>::value) {
                 Json j = Json::object();
-                Json fid = Json::object();
-                fid["path"] = Serializer::write(instance.getFileID().getPath());
-                fid["file_uuid"] = Serializer::write(instance.getFileID().getUUID());
-                j["file_id"] = fid;
                 j["uuid"] = Serializer::write(instance.getUUID());
                 return j;
             }
             else if constexpr (is_asset_handle<T>::value) {
-                return Json{{"file_id", Serializer::write(instance.getFileID())}};
+                return Json{{"uuid", Serializer::write(instance.getUUID())}};
             }
             else {
                 return Json();
@@ -138,31 +134,19 @@ namespace dodoe {
             }
             else if constexpr (is_pptr<T>::value) {
                 if (json_context.is_object()) {
-                    String path{};
-                    UUID file_uuid{};
                     UUID uuid{};
-                    if (json_context.contains("file_id")) {
-                        const auto& fid = json_context.at("file_id");
-                        if (fid.contains("path")) {
-                            read(fid.at("path"), path);
-                        }
-                        if (fid.contains("file_uuid")) {
-                            read(fid.at("file_uuid"), file_uuid);
-                        }
-                    }
                     if (json_context.contains("uuid")) {
                         read(json_context.at("uuid"), uuid);
                     }
-                    FileID file_id(path, file_uuid);
-                    instance = T(file_id, uuid);
+                    instance = T(uuid);
                 }
                 return instance;
             }
             else if constexpr (is_asset_handle<T>::value) {
-                if (json_context.is_object() && json_context.contains("file_id")) {
-                    FileID file_id;
-                    read(json_context.at("file_id"), file_id);
-                    instance.setFileID(file_id);
+                if (json_context.is_object() && json_context.contains("uuid")) {
+                    UUID uuid;
+                    read(json_context.at("uuid"), uuid);
+                    instance.setUUID(uuid);
                 }
                 return instance;
             }

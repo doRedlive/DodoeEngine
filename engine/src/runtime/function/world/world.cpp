@@ -371,7 +371,7 @@ namespace dodoe {
         auto handle = asset_manager->getHandleByPath<SceneAsset>(asset_url);
         SceneRes scene_res;
         if (handle.isValid()) {
-            SceneAsset* scene_asset = asset_manager->loadAssetSync<SceneAsset>(handle.getFileID());
+            SceneAsset* scene_asset = asset_manager->loadAssetSync<SceneAsset>(handle.getUUID());
             if (!scene_asset) {
                 DO_ERROR("loadScene: failed to load '{}'", asset_url);
                 return nullptr;

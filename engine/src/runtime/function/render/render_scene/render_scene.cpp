@@ -297,9 +297,9 @@ namespace dodoe {
         const auto& materials = info.getMaterials();
         auto& batches = info.getMeshBatches();
 
-        auto resolveTexture = [&](const FileID& file_id) -> GfxTextureHandle {
-            if (!file_id.isValid() || !texture_manager) return {};
-            const InstanceID tex_id = Object::FindInstanceID(file_id);
+        auto resolveTexture = [&](const UUID& tex_uuid) -> GfxTextureHandle {
+            if (!tex_uuid.isValid() || !texture_manager) return {};
+            const InstanceID tex_id = Object::FindInstanceID(tex_uuid);
             if (auto* tex = texture_manager->findTexture2D(tex_id)) {
                 return tex->getGpuHandle();
             }
@@ -313,8 +313,8 @@ namespace dodoe {
             const auto& props = i < materials.size() ? materials[i] : MaterialProperties{};
 
             UnorderedMap<String, MaterialParamValue> overrides;
-            auto addTex = [&](const String& name, const FileID& file_id) {
-                GfxTextureHandle handle = resolveTexture(file_id);
+            auto addTex = [&](const String& name, const UUID& tex_uuid) {
+                GfxTextureHandle handle = resolveTexture(tex_uuid);
                 if (handle) {
                     MaterialParamValue val{};
                     val.texture = handle;

@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 
+#include "runtime/core/object/object.h"
 #include "runtime/core/utils/json.h"
 #include "runtime/resource/file/file_id.h"
 
@@ -42,11 +43,11 @@ namespace dodoe {
         UInt64 asset_file_mtime{0};
         UInt64 import_signature{0};
         DynamicArray<String> tags{};
-        DynamicArray<FileID> dependencies{};
+        DynamicArray<UUID> dependencies{};
         Bool is_builtin{false};
     };
 
-    class Asset {
+    class Asset : public Object {
     protected:
         AssetMetaData m_meta;
         AssetLoadState m_load_state{AssetLoadState::Unloaded};
@@ -62,16 +63,29 @@ namespace dodoe {
         [[nodiscard]] const String& getName() const { return m_meta.name; }
         [[nodiscard]] const String& getSourcePath() const { return m_meta.source_path; }
 
-        void setFileID(const FileID& file_id) { m_meta.file_id = file_id; }
+        void setFileID(const FileID& file_id) {
+            m_meta.file_id = file_id;
+            if (getInstanceID() == 0) {
+                AllocateInstanceID(this);
+            }
+            setFileIdentity(file_id, file_id.getUUID());
+        }
         void setName(const String& name) { m_meta.name = name; }
 
         [[nodiscard]] const AssetMetaData& getMetaData() const { return m_meta; }
         AssetMetaData& getMetaDataMutable() { return m_meta; }
-        void setMetaData(const AssetMetaData& meta) { m_meta = meta; }
+        void setMetaData(const AssetMetaData& meta) {
+            m_meta = meta;
+            if (m_meta.file_id.isValid()) {
+                setFileID(m_meta.file_id);
+            }
+        }
 
         [[nodiscard]] AssetLoadState getLoadState() const { return m_load_state; }
         [[nodiscard]] Bool isLoaded() const { return m_load_state == AssetLoadState::Loaded; }
         void setLoadState(AssetLoadState state) { m_load_state = state; }
+
+        [[nodiscard]] const char* getObjectTypeName() const override { return AssetTypeToString(m_meta.type); }
 
         [[nodiscard]] virtual Bool loadFromSource(const String& absolute_source_path) = 0;
         virtual void unloadRuntime() = 0;
@@ -82,10 +96,10 @@ namespace dodoe {
         [[nodiscard]] virtual Json serializeMeta() const;
         [[nodiscard]] virtual Bool deserializeMeta(const Json& json);
 
-        [[nodiscard]] static const char* assetTypeToString(AssetType type);
-        [[nodiscard]] static AssetType assetTypeFromString(const String& str);
-        [[nodiscard]] static const char* assetTypeToExtension(AssetType type);
-        [[nodiscard]] static Bool assetTypeIsReadOnly(AssetType type);
+        [[nodiscard]] static const char* AssetTypeToString(AssetType type);
+        [[nodiscard]] static AssetType AssetTypeFromString(const String& str);
+        [[nodiscard]] static const char* AssetTypeToExtension(AssetType type);
+        [[nodiscard]] static Bool AssetTypeIsReadOnly(AssetType type);
     };
 
 } // dodoe

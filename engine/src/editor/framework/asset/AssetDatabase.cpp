@@ -49,7 +49,7 @@ std::vector<AssetDatabase::AssetInfo> AssetDatabase::list(const std::string& fil
 
 std::optional<AssetDatabase::AssetInfo> AssetDatabase::findByGuid(dodoe::UUID guid) const {
     for (auto& a : m_assets) {
-        if (a.guid == guid) return a;
+        if (a.uuid == guid) return a;
     }
     return std::nullopt;
 }

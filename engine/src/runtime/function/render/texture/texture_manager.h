@@ -35,7 +35,7 @@ namespace dodoe {
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        Texture2D* createTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
+        Texture2D* createTexture(const String& path, const FileID& file_id, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
         void createFallbackTexture();
 
     public:

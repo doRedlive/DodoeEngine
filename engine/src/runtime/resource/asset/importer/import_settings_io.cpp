@@ -31,8 +31,8 @@ namespace dodoe {
             return false;
         }
 
-        if (json.contains("guid") && json["guid"].is_number_unsigned()) {
-            out.guid = UUID(json["guid"].get<UInt64>());
+        if (json.contains("uuid") && json["uuid"].is_number_unsigned()) {
+            out.uuid = UUID(json["uuid"].get<UInt64>());
         }
         if (json.contains("importer") && json["importer"].is_string()) {
             out.importer = json["importer"].get<String>();
@@ -48,7 +48,7 @@ namespace dodoe {
         const FsPath meta_path(absolute_source_path.string() + kMetaSuffix);
 
         Json json;
-        json["guid"] = static_cast<UInt64>(settings.guid);
+        json["uuid"] = static_cast<UInt64>(settings.uuid);
         json["importer"] = string_to_std(settings.importer);
         json["settings"] = settings.settings;
 
@@ -67,13 +67,13 @@ namespace dodoe {
                                                   const String& default_importer,
                                                   const Json& default_settings) {
         ImportSettings result;
-        result.guid = MakeDeterministicGuid(source_path);
+        result.uuid = GenerateGuid();
         result.importer = default_importer;
         result.settings = default_settings;
 
         if (Load(absolute_source_path, result)) {
-            if (!result.guid.isValid()) {
-                result.guid = MakeDeterministicGuid(source_path);
+            if (!result.uuid.isValid()) {
+                result.uuid = GenerateGuid();
             }
             if (result.importer.empty()) {
                 result.importer = default_importer;
@@ -88,8 +88,8 @@ namespace dodoe {
         return result;
     }
 
-    UUID ImportSettingsIO::MakeDeterministicGuid(const String& source_path) {
-        return FileID(source_path).getUUID();
+    UUID ImportSettingsIO::GenerateGuid() {
+        return UUID::Generate();
     }
 
     UInt64 ImportSettingsIO::LastWriteTimeSeconds(const FsPath& path) {

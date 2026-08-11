@@ -47,7 +47,7 @@ namespace dodoe {
         if (!handle.isValid()) {
             return AssetHandle<SceneAsset>();
         }
-        m_assetManager->loadAssetSync<SceneAsset>(handle.getFileID());
+        m_assetManager->loadAssetSync<SceneAsset>(handle.getUUID());
         return handle;
     }
 
