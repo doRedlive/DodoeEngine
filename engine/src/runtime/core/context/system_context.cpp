@@ -219,7 +219,6 @@ namespace dodoe {
 
         m_input_manager->update();
         m_world->update(delta_time);
-        m_physics_system->step(delta_time);
         m_ui_manager->update(delta_time);
     }
 

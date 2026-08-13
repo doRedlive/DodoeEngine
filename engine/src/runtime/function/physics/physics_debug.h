@@ -1,43 +1,51 @@
-//
-// Created by Redlive on 2026/3/26.
-//
+// do@Redlive
 
-#ifndef DODOE_PHSICS_DEBUG_H
-#define DODOE_PHSICS_DEBUG_H
+#pragma once
 
 #include "dopch.h"
 
-#include "box2d/box2d.h"
+#include "runtime/core/math/math.h"
+#include "runtime/core/utils/uuid.h"
 
 namespace dodoe {
+
+    class PrimitiveRenderObject;
 
     struct PhysicsDebuggerCreateInfo {
         float line_thickness{1.0f};
         float point_size{4.0f};
-        float axis_length{0.5f};
-    };
-
-    struct DebugDrawContext {
-        float line_thickness{2.0f};
-        float point_size{4.0f};
-        float axis_length{0.5f};
     };
 
     class PhysicsDebugger : public Managed<PhysicsDebugger, PhysicsDebuggerCreateInfo> {
         friend class Managed<PhysicsDebugger, PhysicsDebuggerCreateInfo>;
     public:
-
-        [[nodiscard]] b2DebugDraw* native_debug_draw() { return &debug_draw_; }
+        void drawLine(const Vector3f& start, const Vector3f& end, UInt32 color);
+        void drawPoint(const Vector3f& position, UInt32 color);
+        void flush();
 
     private:
-        b2DebugDraw debug_draw_{};
-        DebugDrawContext debug_draw_context_{};
+        struct DebugLine {
+            Vector3f start{};
+            Vector3f end{};
+            UInt32 color{0xFFFFFFFF};
+        };
+        struct DebugPoint {
+            Vector3f position{};
+            UInt32 color{0xFFFFFFFF};
+        };
+
+        float m_line_thickness{2.0f};
+        float m_point_size{4.0f};
+        DynamicArray<DebugLine> m_lines{};
+        DynamicArray<DebugPoint> m_points{};
+        DynamicArray<UUID> m_submitted{};
 
         bool initialize(const PhysicsDebuggerCreateInfo& create_info);
         void shutdown();
 
+        Scope<PrimitiveRenderObject> buildLineObject(const DebugLine& line) const;
+        Scope<PrimitiveRenderObject> buildPointObject(const DebugPoint& point) const;
+        Matrix4f buildLineMatrix(const DebugLine& line) const;
     };
 
 } // dodoe
-
-#endif//DODOE_PHSICS_DEBUG_H

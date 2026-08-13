@@ -8,6 +8,7 @@
 #include "runtime/function/world/components/collider2d_component.h"
 #include "runtime/function/world/components/foliage_renderer_component.h"
 #include "runtime/function/world/components/id_component.h"
+#include "runtime/function/world/components/joint2d_component.h"
 #include "runtime/function/world/components/mesh_renderer_component.h"
 #include "runtime/function/world/components/rect_renderer_component.h"
 #include "runtime/function/world/components/rigidbody2d_component.h"

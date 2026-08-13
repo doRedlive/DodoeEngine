@@ -114,6 +114,7 @@ namespace dodoe {
             reg.ensurePoolExists<CameraComponent>();
             reg.ensurePoolExists<CircleRendererComponent>();
             reg.ensurePoolExists<BoxCollider2dComponent>();
+            reg.ensurePoolExists<CircleCollider2dComponent>();
             reg.ensurePoolExists<FoliageRendererComponent>();
             reg.ensurePoolExists<IDComponent>();
             reg.ensurePoolExists<MeshRendererComponent>();

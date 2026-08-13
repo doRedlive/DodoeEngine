@@ -59,9 +59,17 @@ namespace {
 
         // Hand-written bindings for special components
         py::class_<Rigidbody2dComponent> rb(m, "Rigidbody2dComponent");
-        rb.def("set_linear_velocity", &Rigidbody2dComponent::setLinearVelocity);
-        rb.def("apply_force_to_center", &Rigidbody2dComponent::applyForceToCenter);
-        rb.def("apply_linear_impulse_to_center", &Rigidbody2dComponent::applyLinearImpulseToCenter);
+        rb.def("set_linear_velocity", [](Rigidbody2dComponent& self, const Vector2f& velocity) {
+            self.velocity_request = velocity;
+        });
+        rb.def("apply_force_to_center", [](Rigidbody2dComponent& self, const Vector2f& force, const Bool wake) {
+            (void)wake;
+            self.force_request = force;
+        });
+        rb.def("apply_linear_impulse_to_center", [](Rigidbody2dComponent& self, const Vector2f& impulse, const Bool wake) {
+            (void)wake;
+            self.impulse_request = impulse;
+        });
 
         py::enum_<Rigidbody2dComponent::BodyType>(m, "RigidbodyBodyType")
             .value("Static", Rigidbody2dComponent::BodyType::Static)
@@ -124,6 +132,7 @@ void RegisterEntity(py::module_& m) {
     DO_REG(TransformComponent);
     DO_REG(Rigidbody2dComponent);
     DO_REG(BoxCollider2dComponent);
+    DO_REG(CircleCollider2dComponent);
     DO_REG(SpriteRendererComponent);
     DO_REG(AnimatorComponent);
 

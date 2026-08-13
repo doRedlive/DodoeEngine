@@ -8,7 +8,6 @@
 #include "runtime/core/utils/uuid.h"
 #include "runtime/function/animation/animation.h"
 #include "runtime/function/animation/animator_controller.h"
-#include "runtime/function/animation/skeleton.h"
 
 REFLECTION_TYPE(AnimatorComponent)
 
@@ -19,8 +18,6 @@ namespace dodoe {
 
         META(Enable)
         Ref<AnimatorController> controller{};
-        META(Enable)
-        Ref<Skeleton> skeleton{};
         META(Enable)
         Float speed{1.0f};
         META(Enable)
@@ -38,7 +35,6 @@ namespace dodoe {
         Bool playing{false};
         UnorderedMap<String, Float> parameters{};
         DynamicArray<String> pending_events{};
-        DynamicArray<Matrix4f> skinning_matrices{};
     };
 
 } // dodoe

@@ -7,15 +7,9 @@
 
 #include "dopch.h"
 
-#include "physics_debug.h"
-
-#include "box2d/box2d.h"
-#include "box2d/types.h"
+#include "physics2d_world.h"
 
 namespace dodoe {
-
-	class Scene;
-	class Physics2dSystem;
 
 	struct PhysicsSystemCreateInfo {
 		float gravity{-9.8f};
@@ -24,20 +18,18 @@ namespace dodoe {
 
 	class PhysicsSystem : public Managed<PhysicsSystem, PhysicsSystemCreateInfo> {
         friend class Managed<PhysicsSystem, PhysicsSystemCreateInfo>;
-		friend class Physics2dSystem;
 	public:
 
 		void step(float dt);
 
-	private:
-		b2WorldId world_id_{};
-		int sub_step_count_{0};
+		[[nodiscard]] Physics2dWorld* getWorld2d() { return m_world_2d.get(); }
+		[[nodiscard]] const Physics2dWorld* getWorld2d() const { return m_world_2d.get(); }
 
-		Scope<PhysicsDebugger> debugger_{nullptr};
+	private:
+		Scope<Physics2dWorld> m_world_2d{nullptr};
 
 		bool initialize(const PhysicsSystemCreateInfo& create_info);
 		void shutdown();
-		
 	};
 }
 

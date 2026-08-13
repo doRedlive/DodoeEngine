@@ -113,7 +113,6 @@ namespace dodoe {
                     animator.prev_state_time = 0.0f;
                     animator.cur_frame_id = 0;
                     animator.applied_frame_id = static_cast<Size_t>(-1);
-                    animator.skinning_matrices.clear();
                     break;
                 }
             }
@@ -125,8 +124,8 @@ namespace dodoe {
 
     SystemAccess AnimatorSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<AnimatorComponent, SpriteRendererComponent>()
-            .writesComponents<AnimatorComponent, SpriteRendererComponent>()
+            .readsComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent>()
+            .writesComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent>()
             .build();
     }
 
@@ -226,7 +225,11 @@ namespace dodoe {
             }
             else if (clip_ref.type == AnimatorClipType::Clip3D) {
                 const AnimClip* clip = clip_ref.clip_3d.get();
-                if (!clip || !animator.skeleton) {
+                if (!clip || !entity.hasComponent<MeshRendererComponent>()) {
+                    continue;
+                }
+                auto& mesh_renderer = reg.get<MeshRendererComponent>(entity);
+                if (!mesh_renderer.skeleton) {
                     continue;
                 }
                 const Float total_ms = clip->duration * 1000.0f;
@@ -250,9 +253,9 @@ namespace dodoe {
 
                 DynamicArray<BoneBindPose> local_poses;
                 DynamicArray<Matrix4f> world_matrices;
-                clip->sample(*animator.skeleton, sample_time, local_poses);
-                animator.skeleton->computeWorldMatrices(local_poses, world_matrices);
-                animator.skeleton->computeSkinningMatrices(world_matrices, animator.skinning_matrices);
+                clip->sample(*mesh_renderer.skeleton, sample_time, local_poses);
+                mesh_renderer.skeleton->computeWorldMatrices(local_poses, world_matrices);
+                mesh_renderer.skeleton->computeSkinningMatrices(world_matrices, mesh_renderer.skinning_matrices);
             }
         }
     }

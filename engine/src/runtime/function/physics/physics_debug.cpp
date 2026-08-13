@@ -1,143 +1,159 @@
-//
-// Created by Redlive on 2026/3/26.
-//
+// do@Redlive
 
 #include "physics_debug.h"
 
-#include "runtime/function/render/render_pipeline/renderer.h"
+#include <cfloat>
+#include <glm/gtx/quaternion.hpp>
+
+#include "runtime/function/render/render_command_queue.h"
+#include "runtime/function/render/render_scene/primitive_render_object.h"
 
 namespace dodoe {
 
     namespace {
 
-        void draw_debug_line(const b2Vec2 p0, const b2Vec2 p1, const b2HexColor color, void* context) {
-            (void)context; (void)color; (void)p0; (void)p1;
-        }
+        constexpr Size_t kBoxVertexCount = 8;
+        constexpr Size_t kBoxIndexCount = 36;
 
-        void DrawPolygon(const b2Vec2* vertices, int vertex_count, b2HexColor color, void* context) {
-            if (!vertices || vertex_count < 2) {
-                return;
-            }
-
-            for (int i = 0; i < vertex_count; ++i) {
-                const b2Vec2 p0 = vertices[i];
-                const b2Vec2 p1 = vertices[(i + 1) % vertex_count];
-                draw_debug_line(p0, p1, color, context);
-            }
-
-        }
-
-        void DrawSolidPolygon(b2Transform transform, const b2Vec2* vertices, int vertex_count, float radius, b2HexColor color, void* context) {
-            (void)radius;
-            if (!vertices || vertex_count < 2) {
-                return;
-            }
-
-            std::vector<b2Vec2> transformed_vertices(static_cast<size_t>(vertex_count));
-            for (int i = 0; i < vertex_count; ++i) {
-                transformed_vertices[static_cast<size_t>(i)] = b2TransformPoint(transform, vertices[i]);
-            }
-
-            DrawPolygon(transformed_vertices.data(), vertex_count, color, context);
-        }
-
-        void DrawCircle(b2Vec2 center, float radius, b2HexColor color, void* context) {
-            if (radius <= 0.0f) {
-                return;
-            }
-
-            constexpr int segment_count = 24;
-            constexpr float two_pi = 6.28318530717958647692f;
-            for (int i = 0; i < segment_count; ++i) {
-                const float t0 = two_pi * static_cast<float>(i) / static_cast<float>(segment_count);
-                const float t1 = two_pi * static_cast<float>(i + 1) / static_cast<float>(segment_count);
-                const b2Vec2 p0{center.x + std::cos(t0) * radius, center.y + std::sin(t0) * radius};
-                const b2Vec2 p1{center.x + std::cos(t1) * radius, center.y + std::sin(t1) * radius};
-                draw_debug_line(p0, p1, color, context);
-            }
-        }
-
-        void DrawSolidCircle(b2Transform transform, float radius, b2HexColor color, void* context) {
-            DrawCircle(transform.p, radius, color, context);
-            auto* draw_context = static_cast<DebugDrawContext*>(context);
-            const float axis_len = std::max(draw_context ? draw_context->axis_length : 0.5f, radius);
-            const b2Vec2 axis_end = b2TransformPoint(transform, {axis_len, 0.0f});
-            draw_debug_line(transform.p, axis_end, color, context);
-        }
-
-        void DrawSolidCapsule(b2Vec2 p1, b2Vec2 p2, float radius, b2HexColor color, void* context) {
-            draw_debug_line(p1, p2, color, context);
-            DrawCircle(p1, radius, color, context);
-            DrawCircle(p2, radius, color, context);
-        }
-
-        void DrawSegment(b2Vec2 p1, b2Vec2 p2, b2HexColor color, void* context) {
-            draw_debug_line(p1, p2, color, context);
-        }
-
-        void DrawTransform(b2Transform transform, void* context) {
-            auto* draw_context = static_cast<DebugDrawContext*>(context);
-            const float len = draw_context ? draw_context->axis_length : 0.5f;
-            const b2Vec2 origin = transform.p;
-            const b2Vec2 x_axis = b2TransformPoint(transform, {len, 0.0f});
-            const b2Vec2 y_axis = b2TransformPoint(transform, {0.0f, len});
-            draw_debug_line(origin, x_axis, b2_colorRed, context);
-            draw_debug_line(origin, y_axis, b2_colorGreen, context);
-        }
-
-        void DrawPoint(b2Vec2 p, float size, b2HexColor color, void* context) {
-            auto* draw_context = static_cast<DebugDrawContext*>(context);
-            const float point_size = draw_context ? draw_context->point_size : 4.0f;
-            const float draw_size = std::max(size, point_size);
-            const float half = draw_size * 0.5f;
-            (void)p; (void)size; (void)color;
-        }
-
-        void DrawString(b2Vec2 p, const char* s, b2HexColor color, void* context) {
-            (void)p;
-            (void)s;
-            (void)color;
-            (void)context;
+        Vector4f ColorToVector4(const UInt32 rgba) {
+            return {
+                static_cast<float>((rgba >> 24) & 0xFF) / 255.0f,
+                static_cast<float>((rgba >> 16) & 0xFF) / 255.0f,
+                static_cast<float>((rgba >> 8) & 0xFF) / 255.0f,
+                static_cast<float>(rgba & 0xFF) / 255.0f,
+            };
         }
 
     }
 
     bool PhysicsDebugger::initialize(const PhysicsDebuggerCreateInfo& create_info) {
-        debug_draw_context_.line_thickness = std::max(create_info.line_thickness, 0.1f);
-        debug_draw_context_.point_size = std::max(create_info.point_size, 0.1f);
-        debug_draw_context_.axis_length = std::max(create_info.axis_length, 0.1f);
-
-        debug_draw_ = b2DefaultDebugDraw();
-        debug_draw_.DrawPolygonFcn = DrawPolygon;
-        debug_draw_.DrawSolidPolygonFcn = DrawSolidPolygon;
-        debug_draw_.DrawCircleFcn = DrawCircle;
-        debug_draw_.DrawSolidCircleFcn = DrawSolidCircle;
-        debug_draw_.DrawSolidCapsuleFcn = DrawSolidCapsule;
-        debug_draw_.DrawSegmentFcn = DrawSegment;
-        debug_draw_.DrawTransformFcn = DrawTransform;
-        debug_draw_.DrawPointFcn = DrawPoint;
-        debug_draw_.DrawStringFcn = DrawString;
-
-        debug_draw_.drawShapes = true;
-        debug_draw_.drawJoints = true;
-        debug_draw_.drawJointExtras = true;
-        debug_draw_.drawBounds = false;
-        debug_draw_.drawMass = false;
-        debug_draw_.drawBodyNames = false;
-        debug_draw_.drawContacts = false;
-        debug_draw_.drawGraphColors = false;
-        debug_draw_.drawContactNormals = false;
-        debug_draw_.drawContactImpulses = false;
-        debug_draw_.drawContactFeatures = false;
-        debug_draw_.drawFrictionImpulses = false;
-        debug_draw_.drawIslands = false;
-        debug_draw_.context = &debug_draw_context_;
+        m_line_thickness = std::max(create_info.line_thickness, 0.1f);
+        m_point_size = std::max(create_info.point_size, 0.1f);
         return true;
     }
 
     void PhysicsDebugger::shutdown() {
-        debug_draw_ = b2DefaultDebugDraw();
-        debug_draw_context_ = DebugDrawContext{};
+        for (const UUID& uuid : m_submitted) {
+            RenderCommandQueue::RemovePrimitive(uuid);
+        }
+        m_submitted.clear();
+        m_lines.clear();
+        m_points.clear();
+        m_line_thickness = 2.0f;
+        m_point_size = 4.0f;
+    }
+
+    void PhysicsDebugger::drawLine(const Vector3f& start, const Vector3f& end, const UInt32 color) {
+        DebugLine line;
+        line.start = start;
+        line.end = end;
+        line.color = color;
+        m_lines.push_back(line);
+    }
+
+    void PhysicsDebugger::drawPoint(const Vector3f& position, const UInt32 color) {
+        DebugPoint point;
+        point.position = position;
+        point.color = color;
+        m_points.push_back(point);
+    }
+
+    void PhysicsDebugger::flush() {
+        for (const UUID& uuid : m_submitted) {
+            RenderCommandQueue::RemovePrimitive(uuid);
+        }
+        m_submitted.clear();
+
+        for (const DebugLine& line : m_lines) {
+            const UUID uuid = UUID();
+            auto object = buildLineObject(line);
+            object->setUUID(uuid);
+            RenderCommandQueue::AddPrimitive(std::move(object));
+            m_submitted.push_back(uuid);
+        }
+
+        for (const DebugPoint& point : m_points) {
+            const UUID uuid = UUID();
+            auto object = buildPointObject(point);
+            object->setUUID(uuid);
+            RenderCommandQueue::AddPrimitive(std::move(object));
+            m_submitted.push_back(uuid);
+        }
+
+        m_lines.clear();
+        m_points.clear();
+    }
+
+    Scope<PrimitiveRenderObject> PhysicsDebugger::buildLineObject(const DebugLine& line) const {
+        auto object = create_scope<PrimitiveRenderObject>();
+        object->setMobility(PrimitiveMobility::Movable);
+        object->setVisible(true);
+        object->setCastShadow(false);
+        object->setWorldTransform(buildLineMatrix(line));
+
+        MeshUploadData upload_data;
+        upload_data.name = "physics_debug_line";
+        upload_data.position_data = {
+            { -0.5f, -0.5f, -0.5f }, { 0.5f, -0.5f, -0.5f }, { 0.5f, 0.5f, -0.5f }, { -0.5f, 0.5f, -0.5f },
+            { -0.5f, -0.5f, 0.5f }, { 0.5f, -0.5f, 0.5f }, { 0.5f, 0.5f, 0.5f }, { -0.5f, 0.5f, 0.5f },
+        };
+        upload_data.texcoord_data.assign(kBoxVertexCount, Vector2f(0.0f));
+        upload_data.normal_data.assign(kBoxVertexCount, 0u);
+        upload_data.index_data = {
+            0, 1, 2, 2, 3, 0,
+            1, 5, 6, 6, 2, 1,
+            5, 4, 7, 7, 6, 5,
+            4, 0, 3, 3, 7, 4,
+            3, 2, 6, 6, 7, 3,
+            4, 5, 1, 1, 0, 4,
+        };
+        object->setUploadData(upload_data);
+
+        SubMesh section;
+        section.material.color = ColorToVector4(line.color);
+        section.index_offset = 0;
+        section.vertex_offset = 0;
+        section.index_count = static_cast<UInt32>(kBoxIndexCount);
+        section.vertex_count = static_cast<UInt32>(kBoxVertexCount);
+        section.section_index = 0;
+        section.primitive_type = MeshGeometryPrimitiveType::Triangles;
+
+        MeshLODData lod;
+        lod.screen_size = 1.0f;
+        lod.sub_meshes.push_back(section);
+
+        DynamicArray<MeshLODData> lods;
+        lods.push_back(std::move(lod));
+        object->setLODData(lods);
+        return object;
+    }
+
+    Scope<PrimitiveRenderObject> PhysicsDebugger::buildPointObject(const DebugPoint& point) const {
+        auto object = buildLineObject(DebugLine{ point.position, point.position, point.color });
+
+        Matrix4f world(1.0f);
+        world = Math::Scale(world, Vector3f(m_point_size, m_point_size, m_point_size));
+        world = Math::Translate(world, point.position);
+        object->setWorldTransform(world);
+        return object;
+    }
+
+    Matrix4f PhysicsDebugger::buildLineMatrix(const DebugLine& line) const {
+        const Vector3f delta = line.end - line.start;
+        const float length = glm::length(delta);
+        if (length <= FLT_EPSILON) {
+            return Matrix4f(1.0f);
+        }
+
+        const Vector3f direction = delta / length;
+        const Vector3f mid = (line.start + line.end) * 0.5f;
+
+        const Quaternion orientation = glm::rotation(Vector3f(1.0f, 0.0f, 0.0f), direction);
+        Matrix4f world(1.0f);
+        world = Math::Scale(world, Vector3f(length, m_line_thickness, m_line_thickness));
+        world = glm::toMat4(orientation) * world;
+        world = Math::Translate(world, mid);
+        return world;
     }
 
 } // dodoe
