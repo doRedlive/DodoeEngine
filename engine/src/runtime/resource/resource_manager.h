@@ -13,7 +13,11 @@ namespace dodoe {
     class Texture2D;
     class Sprite;
     class Material;
-    class AnimationClip;
+    class Anim2DClip;
+    class Skeleton;
+    class AnimClip;
+    class AnimatorController;
+    class Tileset;
     class Mesh;
 
     namespace detail {
@@ -30,7 +34,15 @@ namespace dodoe {
         template<>
         struct ObjectTypeName<Material> { static constexpr const char* kValue = "Material"; };
         template<>
-        struct ObjectTypeName<AnimationClip> { static constexpr const char* kValue = "AnimationClip"; };
+        struct ObjectTypeName<Anim2DClip> { static constexpr const char* kValue = "Anim2DClip"; };
+        template<>
+        struct ObjectTypeName<Skeleton> { static constexpr const char* kValue = "Skeleton"; };
+        template<>
+        struct ObjectTypeName<AnimClip> { static constexpr const char* kValue = "AnimClip"; };
+        template<>
+        struct ObjectTypeName<AnimatorController> { static constexpr const char* kValue = "AnimatorController"; };
+        template<>
+        struct ObjectTypeName<Tileset> { static constexpr const char* kValue = "Tileset"; };
         template<>
         struct ObjectTypeName<Mesh> { static constexpr const char* kValue = "Mesh"; };
 
@@ -86,8 +98,16 @@ namespace dodoe {
                 return LoadSprite(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Material>) {
                 return LoadMaterial(asset_id, local_id);
-            } else if constexpr (std::is_same_v<T, AnimationClip>) {
-                return LoadAnimationClip(asset_id, local_id);
+            } else if constexpr (std::is_same_v<T, Anim2DClip>) {
+                return LoadAnim2DClip(asset_id, local_id);
+            } else if constexpr (std::is_same_v<T, Skeleton>) {
+                return LoadSkeleton(asset_id, local_id);
+            } else if constexpr (std::is_same_v<T, AnimClip>) {
+                return LoadAnimClip(asset_id, local_id);
+            } else if constexpr (std::is_same_v<T, AnimatorController>) {
+                return LoadAnimatorController(asset_id, local_id);
+            } else if constexpr (std::is_same_v<T, Tileset>) {
+                return LoadTileset(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Mesh>) {
                 return LoadMesh(asset_id, local_id);
             } else {
@@ -123,7 +143,11 @@ namespace dodoe {
         Texture2D* LoadTexture2D(const UUID& asset_id, UInt32 local_id);
         Sprite* LoadSprite(const UUID& asset_id, UInt32 local_id);
         Material* LoadMaterial(const UUID& asset_id, UInt32 local_id);
-        AnimationClip* LoadAnimationClip(const UUID& asset_id, UInt32 local_id);
+        Anim2DClip* LoadAnim2DClip(const UUID& asset_id, UInt32 local_id);
+        Skeleton* LoadSkeleton(const UUID& asset_id, UInt32 local_id);
+        AnimClip* LoadAnimClip(const UUID& asset_id, UInt32 local_id);
+        AnimatorController* LoadAnimatorController(const UUID& asset_id, UInt32 local_id);
+        Tileset* LoadTileset(const UUID& asset_id, UInt32 local_id);
         Mesh* LoadMesh(const UUID& asset_id, UInt32 local_id);
     };
 

@@ -30,11 +30,6 @@ void RegisterResource(py::module_& m) {
         .def_readwrite("ppu", &TextureRes::ppu)
         .def_property_readonly("valid", &TextureRes::valid);
 
-    py::class_<AnimClip2DRes>(m, "AnimClip2DRes")
-        .def(py::init<>())
-        .def_readwrite("id", &AnimClip2DRes::id)
-        .def_readwrite("name", &AnimClip2DRes::name);
-
     py::module_ rm = m.def_submodule("resource_manager");
     auto load_texture_fn = [](const String& path) -> TextureRes {
         auto handle = ResourceManager::Self().getTexture(path);

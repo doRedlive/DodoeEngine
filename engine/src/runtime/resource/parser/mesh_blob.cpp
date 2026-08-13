@@ -21,7 +21,7 @@ namespace dodoe {
             return result;
         }
 
-        MeshVertex makeMeshVertex(const aiMesh& mesh, unsigned int vertex_index) {
+        MeshVertex MakeMeshVertex(const aiMesh& mesh, unsigned int vertex_index) {
             MeshVertex vertex{};
             vertex.position = {
                 mesh.mVertices[vertex_index].x,
@@ -56,7 +56,7 @@ namespace dodoe {
             return vertex;
         }
 
-        void addBoneWeight(MeshVertex& vertex, const UInt32 bone_index, const Float weight) {
+        void AddBoneWeight(MeshVertex& vertex, const UInt32 bone_index, const Float weight) {
             for (UInt32 i = 0; i < 4; ++i) {
                 if (vertex.bone_weights[i] < weight) {
                     for (UInt32 j = 3; j > i; --j) {
@@ -70,7 +70,7 @@ namespace dodoe {
             }
         }
 
-        void loadBoneWeights(const aiMesh& source_mesh,
+        void LoadBoneWeights(const aiMesh& source_mesh,
                              const Skeleton& skeleton,
                              DynamicArray<MeshVertex>& vertices) {
             for (unsigned int b = 0; b < source_mesh.mNumBones; ++b) {
@@ -87,12 +87,12 @@ namespace dodoe {
                     if (weight.mVertexId >= vertices.size()) {
                         continue;
                     }
-                    addBoneWeight(vertices[weight.mVertexId], static_cast<UInt32>(bone_index), weight.mWeight);
+                    AddBoneWeight(vertices[weight.mVertexId], static_cast<UInt32>(bone_index), weight.mWeight);
                 }
             }
         }
 
-        void bakeNodeTransform(DynamicArray<MeshVertex>& vertices, const Matrix4f& node_world) {
+        void BakeNodeTransform(DynamicArray<MeshVertex>& vertices, const Matrix4f& node_world) {
             const glm::mat3 normal_matrix = glm::mat3(Math::Transpose(Math::Inverse(node_world)));
             for (auto& vertex : vertices) {
                 vertex.position = glm::vec3(node_world * glm::vec4(vertex.position, 1.0f));
@@ -102,7 +102,7 @@ namespace dodoe {
             }
         }
 
-        BoneBindPose makeBindPose(const aiMatrix4x4& matrix) {
+        BoneBindPose MakeBindPose(const aiMatrix4x4& matrix) {
             aiVector3D scaling;
             aiQuaternion rotation;
             aiVector3D position;
@@ -114,29 +114,34 @@ namespace dodoe {
             return pose;
         }
 
-        Int32 buildSkeletonNode(const aiNode& node,
+        Int32 BuildSkeletonNode(const aiNode& node,
                                 Skeleton& skeleton,
                                 const Int32 parent,
                                 UnorderedMap<String, Int32>& node_indices) {
-            const Int32 index = skeleton.addNode(node.mName.C_Str(), parent, makeBindPose(node.mTransformation));
+            const Int32 index = skeleton.addNode(node.mName.C_Str(), parent, MakeBindPose(node.mTransformation));
             node_indices[node.mName.C_Str()] = index;
             for (unsigned int i = 0; i < node.mNumChildren; ++i) {
                 if (node.mChildren[i]) {
-                    buildSkeletonNode(*node.mChildren[i], skeleton, index, node_indices);
+                    BuildSkeletonNode(*node.mChildren[i], skeleton, index, node_indices);
                 }
             }
             return index;
         }
 
-        Ref<Skeleton> buildSkeleton(const aiScene& scene) {
-            auto skeleton = create_ref<Skeleton>();
+        Skeleton* BuildSkeleton(const aiScene& scene, const UUID& asset_id) {
+            Skeleton* skeleton = Skeleton::Create(ObjectID{asset_id, Skeleton::kLocalId});
+            skeleton->clear();
             UnorderedMap<String, Int32> node_indices;
-            buildSkeletonNode(*scene.mRootNode, *skeleton, -1, node_indices);
+            BuildSkeletonNode(*scene.mRootNode, *skeleton, -1, node_indices);
             return skeleton;
         }
 
-        Ref<AnimClip> parseAnimation(const aiAnimation& animation, const Skeleton& skeleton) {
-            auto clip = create_ref<AnimClip>();
+        AnimClip* ParseAnimation(const aiAnimation& animation,
+                                 const Skeleton& skeleton,
+                                 const UUID& asset_id,
+                                 const UInt32 clip_index) {
+            AnimClip* clip = AnimClip::Create(ObjectID{asset_id, AnimClip::kLocalIdBase + clip_index});
+            clip->clear();
             clip->name = animation.mName.C_Str();
             const Float tick_scale =
                 animation.mTicksPerSecond > 0.0 ? static_cast<Float>(animation.mTicksPerSecond) : 1.0f;
@@ -176,7 +181,7 @@ namespace dodoe {
             return clip;
         }
 
-        void loadMaterialTextures(DynamicArray<FileID>& texture_ids,
+        void LoadMaterialTextures(DynamicArray<FileID>& texture_ids,
                                    const aiMaterial* material,
                                    const FsPath& model_directory) {
             if (!material) {
@@ -200,7 +205,7 @@ namespace dodoe {
             }
         }
 
-        Ref<MeshData> processMesh(const aiMesh& source_mesh,
+        Ref<MeshData> ProcessMesh(const aiMesh& source_mesh,
                                    const aiScene& scene,
                                    const FsPath& model_directory,
                                    const Skeleton* skeleton,
@@ -208,14 +213,14 @@ namespace dodoe {
             DynamicArray<MeshVertex> vertices;
             vertices.reserve(source_mesh.mNumVertices);
             for (unsigned int i = 0; i < source_mesh.mNumVertices; ++i) {
-                vertices.push_back(makeMeshVertex(source_mesh, i));
+                vertices.push_back(MakeMeshVertex(source_mesh, i));
             }
 
             if (skeleton) {
-                loadBoneWeights(source_mesh, *skeleton, vertices);
+                LoadBoneWeights(source_mesh, *skeleton, vertices);
             }
             else {
-                bakeNodeTransform(vertices, node_world);
+                BakeNodeTransform(vertices, node_world);
             }
 
             DynamicArray<UInt32> indices;
@@ -230,14 +235,14 @@ namespace dodoe {
             data->vertices = std::move(vertices);
             data->indices = std::move(indices);
             if (source_mesh.mMaterialIndex < scene.mNumMaterials) {
-                loadMaterialTextures(data->textures,
+                LoadMaterialTextures(data->textures,
                                      scene.mMaterials[source_mesh.mMaterialIndex],
                                      model_directory);
             }
             return data;
         }
 
-        void processAssimpNode(std::vector<Ref<MeshData>>& meshes,
+        void ProcessAssimpNode(std::vector<Ref<MeshData>>& meshes,
                                 aiNode& node,
                                 const aiScene& scene,
                                 const FsPath& model_directory,
@@ -249,22 +254,54 @@ namespace dodoe {
                 if (!source_mesh) {
                     continue;
                 }
-                meshes.push_back(processMesh(*source_mesh, scene, model_directory, skeleton, node_world));
+                meshes.push_back(ProcessMesh(*source_mesh, scene, model_directory, skeleton, node_world));
             }
             for (unsigned int i = 0; i < node.mNumChildren; ++i) {
                 aiNode* child = node.mChildren[i];
                 if (!child) {
                     continue;
                 }
-                processAssimpNode(meshes, *child, scene, model_directory, skeleton, node_world);
+                ProcessAssimpNode(meshes, *child, scene, model_directory, skeleton, node_world);
+            }
+        }
+
+        void BuildHierarchyNode(const aiNode& node, const Int32 parent_index, DynamicArray<MeshNode>& out) {
+            const String node_name = node.mName.C_Str();
+            MeshNode entry;
+            entry.name = node_name;
+            entry.parent_index = parent_index;
+
+            aiVector3D scaling{};
+            aiVector3D translation{};
+            aiQuaternion rotation{};
+            node.mTransformation.Decompose(scaling, rotation, translation);
+            entry.position = {translation.x, translation.y, translation.z};
+            const Quaternion quat(rotation.w, rotation.x, rotation.y, rotation.z);
+            entry.rotation = Math::Degrees(Math::EulerAngles(quat));
+            entry.scale = {scaling.x, scaling.y, scaling.z};
+            entry.mesh_section_index = (node.mNumMeshes == 1) ? static_cast<Int32>(node.mMeshes[0]) : -1;
+
+            const Int32 entry_index = static_cast<Int32>(out.size());
+            out.push_back(std::move(entry));
+
+            if (node.mNumMeshes > 1) {
+                for (unsigned int i = 0; i < node.mNumMeshes; ++i) {
+                    MeshNode sub;
+                    sub.name = fmt::format("{}_Mesh{}", node_name, i);
+                    sub.parent_index = entry_index;
+                    sub.mesh_section_index = static_cast<Int32>(node.mMeshes[i]);
+                    out.push_back(std::move(sub));
+                }
+            }
+
+            for (unsigned int i = 0; i < node.mNumChildren; ++i) {
+                if (node.mChildren[i]) {
+                    BuildHierarchyNode(*node.mChildren[i], entry_index, out);
+                }
             }
         }
 
     } // namespace
-
-    MeshBlob::MeshBlob(const String& path) {
-        load(path);
-    }
 
     MeshBlob::~MeshBlob() {
         if (isValid()) {
@@ -272,7 +309,7 @@ namespace dodoe {
         }
     }
 
-    void MeshBlob::load(const String& path) {
+    void MeshBlob::load(const String& path, const UUID& asset_id) {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
             path.c_str(),
@@ -286,6 +323,8 @@ namespace dodoe {
             return;
         }
 
+        BuildHierarchyNode(*scene->mRootNode, -1, hierarchy);
+
         Bool has_bones = false;
         for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
             if (scene->mMeshes[i] && scene->mMeshes[i]->mNumBones > 0) {
@@ -294,15 +333,15 @@ namespace dodoe {
             }
         }
 
-        Ref<Skeleton> skeleton;
+        Skeleton* skeleton = nullptr;
         if (has_bones) {
-            skeleton = buildSkeleton(*scene);
+            skeleton = BuildSkeleton(*scene, asset_id);
         }
 
         FsPath model_directory = FsPath(path).parent_path();
         std::vector<Ref<MeshData>> sub_meshes;
         const Matrix4f root_world(1.0f);
-        processAssimpNode(sub_meshes, *scene->mRootNode, *scene, model_directory, skeleton.get(), root_world);
+        ProcessAssimpNode(sub_meshes, *scene->mRootNode, *scene, model_directory, skeleton, root_world);
 
         if (sub_meshes.empty()) {
             return;
@@ -326,16 +365,16 @@ namespace dodoe {
             }
         }
 
-        data->skeleton = skeleton;
+        data->skeleton = PPtr<Skeleton>(skeleton);
         if (skeleton && scene->mNumAnimations > 0) {
             data->animations.reserve(scene->mNumAnimations);
             for (unsigned int a = 0; a < scene->mNumAnimations; ++a) {
                 if (!scene->mAnimations[a]) {
                     continue;
                 }
-                auto clip = parseAnimation(*scene->mAnimations[a], *skeleton);
+                AnimClip* clip = ParseAnimation(*scene->mAnimations[a], *skeleton, asset_id, a);
                 if (!clip->channels.empty()) {
-                    data->animations.push_back(std::move(clip));
+                    data->animations.push_back(PPtr<AnimClip>(clip));
                 }
             }
         }
@@ -343,6 +382,7 @@ namespace dodoe {
 
     void MeshBlob::free() {
         data.reset();
+        hierarchy.clear();
     }
 
 } // dodoe

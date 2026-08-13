@@ -103,7 +103,8 @@ namespace dodoe {
             case AssetType::Sprite:          return "Sprite";
             case AssetType::Mesh:           return "Mesh";
             case AssetType::Material:        return "Material";
-            case AssetType::AnimationClip:   return "AnimationClip";
+            case AssetType::Anim2DClip:      return "Anim2DClip";
+            case AssetType::AnimatorController: return "AnimatorController";
             case AssetType::Scene:           return "Scene";
             case AssetType::Shader:          return "Shader";
             case AssetType::Script:          return "Script";
@@ -120,7 +121,9 @@ namespace dodoe {
         if (str == "Sprite")          return AssetType::Sprite;
         if (str == "Mesh")           return AssetType::Mesh;
         if (str == "Material")        return AssetType::Material;
-        if (str == "AnimationClip")   return AssetType::AnimationClip;
+        if (str == "AnimationClip")   return AssetType::Anim2DClip;
+        if (str == "Anim2DClip")      return AssetType::Anim2DClip;
+        if (str == "AnimatorController") return AssetType::AnimatorController;
         if (str == "Scene")           return AssetType::Scene;
         if (str == "Shader")          return AssetType::Shader;
         if (str == "Script")          return AssetType::Script;
@@ -136,7 +139,8 @@ namespace dodoe {
             case AssetType::Sprite:          return ".png";
             case AssetType::Mesh:           return ".obj";
             case AssetType::Material:        return ".domat";
-            case AssetType::AnimationClip:   return ".doaniclip";
+            case AssetType::Anim2DClip:      return ".doaniclip";
+            case AssetType::AnimatorController: return ".doanim";
             case AssetType::Scene:           return ".doscn";
             case AssetType::Shader:          return ".shader";
             case AssetType::Script:          return ".cs";
@@ -158,7 +162,8 @@ namespace dodoe {
             case AssetType::Audio:
                 return true;
             case AssetType::Material:
-            case AssetType::AnimationClip:
+            case AssetType::Anim2DClip:
+            case AssetType::AnimatorController:
             case AssetType::Scene:
             case AssetType::Tileset:
             case AssetType::Prefab:

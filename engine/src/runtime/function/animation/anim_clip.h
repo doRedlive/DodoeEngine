@@ -5,7 +5,7 @@
 #include "dopch.h"
 
 #include "skeleton.h"
-#include "animation.h"
+#include "anim2d_clip.h"
 
 namespace dodoe {
 
@@ -62,12 +62,29 @@ namespace dodoe {
         }
     };
 
-    struct AnimClip {
+    class DODOE_API AnimClip : public Object {
+    public:
+        static constexpr UInt32 kLocalIdBase = 2;
+
         String name{};
         Float duration{0.0f};
         Bool loop{false};
         DynamicArray<AnimBoneChannel3D> channels{};
         DynamicArray<AnimClipEvent> events{};
+
+        AnimClip() = default;
+        explicit AnimClip(const ObjectID& id)
+            : Object(id) {}
+
+        [[nodiscard]] const char* getObjectTypeName() const override { return "AnimClip"; }
+
+        void clear() {
+            name.clear();
+            duration = 0.0f;
+            loop = false;
+            channels.clear();
+            events.clear();
+        }
 
         void sample(const Skeleton& skeleton,
                     const Float time,
@@ -83,12 +100,9 @@ namespace dodoe {
                 channel.sample(time, out_local_poses[static_cast<Size_t>(channel.bone)]);
             }
         }
-    };
 
-    struct AnimClipRes {
-        Ref<AnimClip> clip;
-        String name;
-        InstanceID id;
+        [[nodiscard]] static AnimClip* Create(const ObjectID& id);
+        static void Shutdown();
     };
 
 } // dodoe

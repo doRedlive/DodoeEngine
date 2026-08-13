@@ -4,9 +4,10 @@
 
 #include "dopch.h"
 
-#include "animation.h"
+#include "runtime/core/object/object.h"
+#include "runtime/core/object/pptr.h"
+#include "anim2d_clip.h"
 #include "anim_clip.h"
-#include "anim_clip_2d.h"
 
 namespace dodoe {
 
@@ -18,12 +19,12 @@ namespace dodoe {
 
     struct AnimatorClipRef {
         AnimatorClipType type{AnimatorClipType::None};
-        Ref<AnimClip2D> clip_2d{};
-        Ref<AnimClip> clip_3d{};
+        PPtr<Anim2DClip> clip_2d{};
+        PPtr<AnimClip> clip_3d{};
 
         AnimatorClipRef() = default;
-        AnimatorClipRef(Ref<AnimClip2D> clip) : type(AnimatorClipType::Clip2D), clip_2d(std::move(clip)) {}
-        AnimatorClipRef(Ref<AnimClip> clip) : type(AnimatorClipType::Clip3D), clip_3d(std::move(clip)) {}
+        AnimatorClipRef(const PPtr<Anim2DClip>& clip) : type(AnimatorClipType::Clip2D), clip_2d(clip) {}
+        AnimatorClipRef(const PPtr<AnimClip>& clip) : type(AnimatorClipType::Clip3D), clip_3d(clip) {}
         explicit AnimatorClipRef(const AnimatorClipType in_type) : type(in_type) {}
     };
 
@@ -74,14 +75,22 @@ namespace dodoe {
         Float speed{1.0f};
     };
 
-    class AnimatorController {
+    class DODOE_API AnimatorController : public Object {
         DynamicArray<AnimatorParameter> m_parameters{};
         DynamicArray<AnimatorState> m_states{};
         DynamicArray<AnimatorTransition> m_transitions{};
         Size_t m_default_state{0};
+        String m_path{};
 
     public:
         static constexpr Size_t kInvalidState = static_cast<Size_t>(-1);
+        static constexpr UInt32 kLocalId = 0;
+
+        AnimatorController() = default;
+        explicit AnimatorController(const ObjectID& id)
+            : Object(id) {}
+
+        [[nodiscard]] const char* getObjectTypeName() const override { return "AnimatorController"; }
 
         [[nodiscard]] Size_t getStateCount() const { return m_states.size(); }
         [[nodiscard]] Size_t getTransitionCount() const { return m_transitions.size(); }
@@ -93,6 +102,9 @@ namespace dodoe {
 
         [[nodiscard]] Size_t getDefaultState() const { return m_default_state; }
         void setDefaultState(Size_t index) { m_default_state = index; }
+
+        [[nodiscard]] const String& getPath() const { return m_path; }
+        void setPath(const String& path) { m_path = path; }
 
         [[nodiscard]] Size_t findState(const String& name) const {
             for (Size_t i = 0; i < m_states.size(); ++i) {
@@ -142,6 +154,12 @@ namespace dodoe {
             m_transitions.push_back(std::move(transition));
             return m_transitions.size() - 1;
         }
+
+        [[nodiscard]] Bool loadFromJson(const String& absolute_path);
+        [[nodiscard]] Bool saveToJson(const String& absolute_path) const;
+
+        [[nodiscard]] static AnimatorController* Create(const ObjectID& ref, const String& path);
+        static void Shutdown();
     };
 
 } // dodoe

@@ -63,7 +63,7 @@ namespace dodoe {
                         continue;
                     }
 
-                    const TilesetAsset* tileset = tm.findTilesetByGid(gid);
+                    const Tileset* tileset = tm.findTilesetByGid(gid);
                     if (!tileset || tileset->columns == 0) continue;
 
                     UInt32 local_gid = gid - tileset->first_gid;

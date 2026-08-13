@@ -10,4 +10,5 @@ public class Tileset
     public uint TileCount { get; set; }
     public string ImagePath { get; set; } = string.Empty;
     public uint TextureId { get; set; }
+    public string Source { get; set; } = string.Empty;
 }

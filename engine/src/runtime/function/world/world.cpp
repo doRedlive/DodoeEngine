@@ -12,7 +12,6 @@
 #include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/core/async/task_scheduler.h"
 
-#include "systems/animation2d_system.h"
 #include "systems/camera_system.h"
 #include "systems/foliage_renderer_system.h"
 #include "systems/light_system.h"
@@ -110,7 +109,6 @@ namespace dodoe {
         }
 
         void WarmupComponentsPools(Registry& reg) {
-            reg.ensurePoolExists<Animation2dComponent>();
             reg.ensurePoolExists<CameraComponent>();
             reg.ensurePoolExists<CircleRendererComponent>();
             reg.ensurePoolExists<BoxCollider2dComponent>();
@@ -215,7 +213,6 @@ namespace dodoe {
         auto light_system = create_ref<LightSystem>();
         auto sky_light = create_ref<SkyLightSystem>();
         auto physics2d = create_ref<Physics2dSystem>();
-        auto animation2d = create_ref<Animation2dSystem>();
         auto foliage_renderer = create_ref<FoliageRendererSystem>();
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
@@ -227,7 +224,6 @@ namespace dodoe {
         registerRuntimeSystem(light_system);
         registerRuntimeSystem(sky_light);
         registerRuntimeSystem(physics2d);
-        registerRuntimeSystem(animation2d);
         registerRuntimeSystem(foliage_renderer);
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
@@ -238,7 +234,6 @@ namespace dodoe {
         registerSimulationSystem(camera_system);
         registerSimulationSystem(light_system);
         registerSimulationSystem(physics2d);
-        registerSimulationSystem(animation2d);
         registerSimulationSystem(foliage_renderer);
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);

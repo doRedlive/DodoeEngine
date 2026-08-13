@@ -2,26 +2,9 @@
 
 #include "service_manager.h"
 
-#include "runtime/function/render/material/material.h"
-#include "runtime/function/render/mesh/mesh.h"
-#include "runtime/function/animation/animation.h"
-#include "runtime/function/render/texture/sprite_manager.h"
-
 namespace dodoe {
 
     Bool ServiceManager::initialize(const ServiceManagerCreateInfo&) {
-        registerService(
-            [] { SpriteManager::Initialize(); },
-            [] { SpriteManager::Shutdown(); });
-        registerService(
-            [] {},
-            [] { Material::Shutdown(); });
-        registerService(
-            [] {},
-            [] { AnimationClip::Shutdown(); });
-        registerService(
-            [] {},
-            [] { Mesh::Shutdown(); });
         initializeAll();
         return true;
     }

@@ -10,7 +10,7 @@
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
-#include "runtime/function/world/components/tilemap/tileset_asset.h"
+#include "runtime/function/world/components/tilemap/tileset.h"
 #include "runtime/core/project/project.h"
 #include "runtime/function/render/texture/sprite_manager.h"
 #include "runtime/function/render/material/material.h"
@@ -205,9 +205,22 @@ namespace dodoe {
         static void native_tilemap_add_tileset(uint64_t u, const char* json_str) {
             Entity e = TryGetEntityByUuid(u);
             if (!e.valid() || !e.hasComponent<TilemapComponent>() || !json_str) return;
-            auto& m = e.getComponent<TilemapComponent>(); auto ts = create_ref<TilesetAsset>();
+            auto& m = e.getComponent<TilemapComponent>();
+            Tileset* ts = nullptr;
             try {
                 Json j = Json::parse(json_str);
+                String source;
+                if (j.contains("Source")) source = j["Source"].get<String>();
+                ObjectID ref;
+                if (!source.empty()) {
+                    ref = ResourceManager::Self().getAssetManager()->resolvePathToRef(FileID(source));
+                }
+                if (ref.isValid()) {
+                    ts = Tileset::Create(ref, source);
+                    ts->clear();
+                } else {
+                    ts = Tileset::CreateTransient();
+                }
                 if (j.contains("Name")) ts->name = j["Name"].get<String>();
                 if (j.contains("FirstGid")) ts->first_gid = j["FirstGid"].get<UInt32>();
                 if (j.contains("TileWidth")) ts->tile_width = j["TileWidth"].get<UInt32>();
@@ -217,7 +230,7 @@ namespace dodoe {
                 if (j.contains("ImagePath")) ts->image_path = j["ImagePath"].get<String>();
                 if (j.contains("TextureId")) ts->texture_id = j["TextureId"].get<UInt32>();
             } catch (...) { DO_ERROR("tilemap_add_tileset parse error"); return; }
-            m.tilesets.push_back(std::move(ts)); m.dirty = true;
+            m.tilesets.push_back(PPtr<Tileset>(ts)); m.dirty = true;
         }
         static void native_tile_layer_set_data(uint64_t u, const uint32_t* tiles, int len,
                 int w, int h, const char* name, int vis, float opac, int ox, int oy) {
@@ -286,8 +299,8 @@ namespace dodoe {
                 auto* obj = ResourceManager::Self().loadObjectByPath<Material>(file_id);
                 return obj ? (int)obj->getInstanceID() : 0;
             }
-            if (strcmp(type_name, "AnimationClip") == 0) {
-                auto* obj = ResourceManager::Self().loadObjectByPath<AnimationClip>(file_id);
+            if (strcmp(type_name, "AnimationClip") == 0 || strcmp(type_name, "Anim2DClip") == 0) {
+                auto* obj = ResourceManager::Self().loadObjectByPath<Anim2DClip>(file_id);
                 return obj ? (int)obj->getInstanceID() : 0;
             }
             if (strcmp(type_name, "Mesh") == 0) {

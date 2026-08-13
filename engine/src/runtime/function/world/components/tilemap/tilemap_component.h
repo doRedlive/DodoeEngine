@@ -7,7 +7,7 @@
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/util.h"
 #include "runtime/core/object/pptr.h"
-#include "tileset_asset.h"
+#include "tileset.h"
 
 REFLECTION_TYPE(TilemapComponent)
 
@@ -25,13 +25,14 @@ namespace dodoe {
         META(Enable)
         UInt32 tile_height{16};
 
-        DynamicArray<Ref<TilesetAsset>> tilesets;
+        META(Enable)
+        DynamicArray<PPtr<Tileset>> tilesets;
         Bool dirty{true};
 
-        [[nodiscard]] const TilesetAsset* findTilesetByGid(UInt32 gid) const {
+        [[nodiscard]] const Tileset* findTilesetByGid(UInt32 gid) const {
             for (auto it = tilesets.rbegin(); it != tilesets.rend(); ++it) {
-                if (*it && gid >= (*it)->first_gid) {
-                    return (*it).get();
+                if (const Tileset* tileset = it->get(); tileset && gid >= tileset->first_gid) {
+                    return tileset;
                 }
             }
             return nullptr;

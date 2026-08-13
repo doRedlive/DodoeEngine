@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "runtime/core/math/math.h"
+#include "runtime/core/object/object.h"
 
 namespace dodoe {
 
@@ -28,12 +29,24 @@ namespace dodoe {
         BoneBindPose bind_pose{};
     };
 
-    class Skeleton {
+    class DODOE_API Skeleton : public Object {
         DynamicArray<SkeletonNode> m_nodes{};
         Int32 m_root{-1};
 
     public:
         static constexpr Int32 kInvalidNode = -1;
+        static constexpr UInt32 kLocalId = 1;
+
+        Skeleton() = default;
+        explicit Skeleton(const ObjectID& id)
+            : Object(id) {}
+
+        [[nodiscard]] const char* getObjectTypeName() const override { return "Skeleton"; }
+
+        void clear() {
+            m_nodes.clear();
+            m_root = -1;
+        }
 
         Int32 addNode(const String& name, const Int32 parent, const BoneBindPose& bind_pose) {
             if (m_nodes.empty()) {
@@ -97,6 +110,9 @@ namespace dodoe {
                 out_skinning[i] = Math::Inverse(bind_world[i]) * animated_world[i];
             }
         }
+
+        [[nodiscard]] static Skeleton* Create(const ObjectID& id);
+        static void Shutdown();
     };
 
 } // dodoe

@@ -11,6 +11,8 @@
 #include "runtime/resource/asset/importer/texture_importer.h"
 #include "runtime/resource/asset/importer/sprite_importer.h"
 #include "runtime/resource/asset/importer/model_importer.h"
+#include "runtime/resource/asset/types/animator_controller_asset.h"
+#include "runtime/resource/asset/types/tileset_asset.h"
 
 namespace dodoe {
 
@@ -20,12 +22,14 @@ namespace dodoe {
         };
 
         const DynamicArray<String> kModelExts = {
-            ".obj", ".fbx"
+            ".obj", ".fbx", ".gltf", ".glb"
         };
 
         const String kSceneExt = ".doscn";
         const String kMaterialExt = ".domat";
         const String kAnimClipExt = ".doaniclip";
+        const String kAnimatorControllerExt = ".doanim";
+        const String kTilesetExt = ".tsx";
     }
 
     Bool AssetManager::initialize(const AssetManagerCreateInfo& info) {
@@ -84,8 +88,10 @@ namespace dodoe {
             case AssetType::Sprite:          return create_scope<SpriteAsset>();
             case AssetType::Mesh:           return create_scope<MeshAsset>();
             case AssetType::Material:        return create_scope<MaterialAsset>();
-            case AssetType::AnimationClip:   return create_scope<AnimationClipAsset>();
+            case AssetType::Anim2DClip:      return create_scope<Anim2DClipAsset>();
+            case AssetType::AnimatorController: return create_scope<AnimatorControllerAsset>();
             case AssetType::Scene:           return create_scope<SceneAsset>();
+            case AssetType::Tileset:         return create_scope<TilesetAsset>();
             default:                         return nullptr;
         }
     }
@@ -205,6 +211,43 @@ namespace dodoe {
         return ObjectID{main_ref.asset_id, found->local_id};
     }
 
+    ObjectID AssetManager::ensureImported(const String& absolute_path) {
+        if (m_asset_dir.empty() || !m_database) {
+            DO_ERROR("AssetManager::ensureImported: asset manager not initialized");
+            return {};
+        }
+
+        const FsPath abs = FsPath(absolute_path.c_str()).lexically_normal();
+        if (!std::filesystem::exists(abs) || !std::filesystem::is_regular_file(abs)) {
+            DO_ERROR("AssetManager::ensureImported: '{}' is not a regular file", absolute_path);
+            return {};
+        }
+
+        std::error_code ec;
+        const FsPath rel = std::filesystem::relative(abs, m_asset_dir, ec);
+        const String rel_str = rel.generic_string();
+        if (ec || rel.empty() || rel_str.starts_with("..")) {
+            DO_WARN("AssetManager::ensureImported: '{}' is outside the project asset directory '{}'",
+                    absolute_path, m_asset_dir.string());
+            return {};
+        }
+        const String source_path = String(rel_str.c_str());
+
+        String ext = String(abs.extension().string().c_str());
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+        if (std::ranges::find(kImageExts, ext) == kImageExts.end()
+            && std::ranges::find(kModelExts, ext) == kModelExts.end()) {
+            DO_ERROR("AssetManager::ensureImported: unsupported format '{}'", ext);
+            return {};
+        }
+
+        EnsureBuiltinImporters();
+        importSourceFile(abs, source_path, ext);
+
+        return resolvePathToRef(FileID(source_path));
+    }
+
     void AssetManager::unloadAsset(const UUID& asset_id) {
         std::unique_lock lock(m_mutex);
         auto it = m_assets.find(asset_id);
@@ -312,8 +355,8 @@ namespace dodoe {
                     }
                     m_assets[asset_id] = std::move(mat);
                 } else if (ext == kAnimClipExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::AnimationClip);
-                    auto anim = create_scope<AnimationClipAsset>();
+                    UUID asset_id = registerAsset(source_path, AssetType::Anim2DClip);
+                    auto anim = create_scope<Anim2DClipAsset>();
                     anim->setObjectID(ObjectID{asset_id, 0});
                     anim->setName(FileSystem::PathToNameNoExt(source_path));
                     String abs_path(entry.path().generic_string().c_str());
@@ -321,6 +364,26 @@ namespace dodoe {
                         anim->setLoadState(AssetLoadState::Loaded);
                     }
                     m_assets[asset_id] = std::move(anim);
+                } else if (ext == kAnimatorControllerExt) {
+                    UUID asset_id = registerAsset(source_path, AssetType::AnimatorController);
+                    auto controller = create_scope<AnimatorControllerAsset>();
+                    controller->setObjectID(ObjectID{asset_id, 0});
+                    controller->setName(FileSystem::PathToNameNoExt(source_path));
+                    String abs_path(entry.path().generic_string().c_str());
+                    if (controller->loadFromSource(abs_path)) {
+                        controller->setLoadState(AssetLoadState::Loaded);
+                    }
+                    m_assets[asset_id] = std::move(controller);
+                } else if (ext == kTilesetExt) {
+                    UUID asset_id = registerAsset(source_path, AssetType::Tileset);
+                    auto tileset = create_scope<TilesetAsset>();
+                    tileset->setObjectID(ObjectID{asset_id, 0});
+                    tileset->setName(FileSystem::PathToNameNoExt(source_path));
+                    String abs_path(entry.path().generic_string().c_str());
+                    if (tileset->loadFromSource(abs_path)) {
+                        tileset->setLoadState(AssetLoadState::Loaded);
+                    }
+                    m_assets[asset_id] = std::move(tileset);
                 } else if (std::ranges::find(kImageExts, ext) != kImageExts.end()
                            || std::ranges::find(kModelExts, ext) != kModelExts.end()) {
                     importSourceFile(entry.path(), source_path, ext);

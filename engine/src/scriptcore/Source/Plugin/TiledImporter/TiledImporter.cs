@@ -93,6 +93,9 @@ public static class TiledImporter
 
         tsxEntry.FirstGid = entry.FirstGid;
         string tsxDir = Path.GetDirectoryName(tsxPath) ?? baseDir;
-        return BuildTilesetFromEntry(tsxEntry, tsxDir);
+        var tileset = BuildTilesetFromEntry(tsxEntry, tsxDir);
+        if (tileset != null)
+            tileset.Source = tsxPath;
+        return tileset;
     }
 }

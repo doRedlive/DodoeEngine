@@ -12,15 +12,11 @@
 #include "runtime/function/world/scene.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
+#include "runtime/resource/asset/asset_manager.h"
+#include "runtime/resource/asset/types/mesh_asset.h"
 #include "runtime/core/object/pptr.h"
 #include "runtime/function/render/mesh/mesh.h"
 #include "runtime/function/render/texture/sprite_manager.h"
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include "assimp/Importer.hpp"
-#include "assimp/postprocess.h"
-#include "assimp/scene.h"
-#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -49,103 +45,104 @@ namespace dodoe {
             parent_hierarchy.dirty = true;
         }
 
-        Vector3f ToVector3(const aiVector3D& value) {
-            return {value.x, value.y, value.z};
-        }
-
-        Vector3f ToEulerDegrees(const aiQuaternion& rotation) {
-            const Quaternion quaternion(rotation.w, rotation.x, rotation.y, rotation.z);
-            return Math::Degrees(Math::EulerAngles(quaternion));
-        }
-
-        void ApplyNodeTransform(Entity entity, const aiMatrix4x4& transform) {
-            aiVector3D scaling{};
-            aiVector3D translation{};
-            aiQuaternion rotation{};
-            transform.Decompose(scaling, rotation, translation);
-
-            auto& transform_component = entity.getComponent<TransformComponent>();
-            transform_component.position = ToVector3(translation);
-            transform_component.rotation = ToEulerDegrees(rotation);
-            transform_component.scale = ToVector3(scaling);
-            transform_component.dirty = true;
-        }
-
-        void AttachMeshComponent(Entity entity, const String& model_path, const uint mesh_index) {
-            auto& mesh_component = entity.addComponent<MeshRendererComponent>();
-            mesh_component.mesh = PPtr<Mesh>(ResourceManager::Self().loadObjectByPath<Mesh>(FileID(model_path)));
-            mesh_component.section_index = static_cast<Int32>(mesh_index);
-            mesh_component.mesh.setLegacyPath(model_path);
-            mesh_component.dirty = true;
-        }
-
-        void ProcessNode(
-            Scene* scene,
-            aiNode* node,
-            Entity parent_entity,
-            const String& model_path) {
-            if (!scene || !node || !parent_entity.valid()) {
-                return;
-            }
-
-            const String node_name = node->mName.C_Str();
-            auto node_entity = scene->createEntity(node_name);
-            ApplyNodeTransform(node_entity, node->mTransformation);
-            AttachChild(parent_entity, node_entity);
-
-            if (node->mNumMeshes == 1) {
-                AttachMeshComponent(node_entity, model_path, node->mMeshes[0]);
-            } else {
-                for (uint mesh_offset = 0; mesh_offset < node->mNumMeshes; ++mesh_offset) {
-                    const uint mesh_index = node->mMeshes[mesh_offset];
-                    const String mesh_entity_name(fmt::format("{}_Mesh{}", node_name, mesh_offset).c_str());
-
-                    auto mesh_entity = scene->createEntity(mesh_entity_name);
-                    AttachChild(node_entity, mesh_entity);
-                    AttachMeshComponent(mesh_entity, model_path, mesh_index);
-                }
-            }
-
-            for (uint child_index = 0; child_index < node->mNumChildren; ++child_index) {
-                ProcessNode(scene, node->mChildren[child_index], node_entity, model_path);
-            }
-        }
-
     }
 
     void SceneImporter::ImportModel(const String& path) {
         auto cur_scene = Application::Self().context().getWorld()->getActiveScene();
         DO_ASSERT(cur_scene);
 
-        Assimp::Importer importer;
-        const aiScene* imported_scene = importer.ReadFile(
-            path.c_str(),
-            aiProcess_Triangulate |
-            aiProcess_GenSmoothNormals |
-            aiProcess_CalcTangentSpace |
-            aiProcess_JoinIdenticalVertices
-        );
+        AssetManager* asset_manager = ResourceManager::Self().getAssetManager();
+        if (!asset_manager) {
+            DO_ERROR("SceneImporter::ImportModel: AssetManager unavailable");
+            return;
+        }
 
-        if (!imported_scene || (imported_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || !imported_scene->mRootNode) {
-            DO_ERROR("SceneImporter::Import Model error! Info: {}", importer.GetErrorString());
+        const ObjectID ref = asset_manager->ensureImported(path);
+        if (!ref.isValid()) {
+            DO_ERROR("SceneImporter::ImportModel: failed to ensure import for '{}'", path);
+            return;
+        }
+
+        MeshAsset* asset = asset_manager->loadAssetSync<MeshAsset>(ref.asset_id);
+        if (!asset) {
+            DO_ERROR("SceneImporter::ImportModel: failed to load MeshAsset for '{}'", path);
+            return;
+        }
+
+        Mesh* mesh = ResourceManager::Self().loadObject<Mesh>(ref.asset_id, 0);
+        if (!mesh) {
+            DO_ERROR("SceneImporter::ImportModel: failed to load Mesh for '{}'", path);
             return;
         }
 
         const String root_name(FsPath(path).stem().string().c_str());
         auto root_entity = cur_scene->createEntity(root_name);
 
-        ProcessNode(cur_scene, imported_scene->mRootNode, root_entity, path);
+        const DynamicArray<MeshNode>& hierarchy = asset->getHierarchy();
+        if (hierarchy.empty()) {
+            auto& mc = root_entity.addComponent<MeshRendererComponent>();
+            mc.mesh = PPtr<Mesh>(mesh);
+            mc.mesh.setLegacyPath(path);
+            mc.section_index = 0;
+            mc.dirty = true;
+            return;
+        }
+
+        DynamicArray<Entity> node_entities;
+        node_entities.reserve(hierarchy.size());
+        for (const auto& node : hierarchy) {
+            auto node_entity = cur_scene->createEntity(node.name);
+
+            auto& tc = node_entity.getComponent<TransformComponent>();
+            tc.position = node.position;
+            tc.rotation = node.rotation;
+            tc.scale = node.scale;
+            tc.dirty = true;
+
+            if (node.parent_index >= 0) {
+                AttachChild(node_entities[static_cast<Size_t>(node.parent_index)], node_entity);
+            } else {
+                AttachChild(root_entity, node_entity);
+            }
+
+            if (node.mesh_section_index >= 0) {
+                auto& mc = node_entity.addComponent<MeshRendererComponent>();
+                mc.mesh = PPtr<Mesh>(mesh);
+                mc.mesh.setLegacyPath(path);
+                mc.section_index = node.mesh_section_index;
+                mc.dirty = true;
+            }
+            node_entities.push_back(node_entity);
+        }
     }
 
     void SceneImporter::ImportSprite(const String& path) {
         auto cur_scene = Application::Self().context().getWorld()->getActiveScene();
         DO_ASSERT(cur_scene);
 
+        AssetManager* asset_manager = ResourceManager::Self().getAssetManager();
+        if (!asset_manager) {
+            DO_ERROR("SceneImporter::ImportSprite: AssetManager unavailable");
+            return;
+        }
+
+        const ObjectID ref = asset_manager->ensureImported(path);
+        if (!ref.isValid()) {
+            DO_ERROR("SceneImporter::ImportSprite: failed to ensure import for '{}'", path);
+            return;
+        }
+
+        Sprite* sprite = ResourceManager::Self().loadObjectByPath<Sprite>(FileID(path));
+        if (!sprite) {
+            DO_WARN("SceneImporter::ImportSprite: no sprite sub-asset for '{}'", path);
+            return;
+        }
+
         const String entity_name(FsPath(path).stem().string().c_str());
         auto entity = cur_scene->createEntity(entity_name);
 
         auto& sr = entity.addComponent<SpriteRendererComponent>();
-        sr.sprite = PPtr<Sprite>(ResourceManager::Self().loadObjectByPath<Sprite>(FileID(path)));
+        sr.sprite = PPtr<Sprite>(sprite);
         sr.dirty = true;
 
         LOG_INFO("SceneImporter::ImportSprite: {}", path);

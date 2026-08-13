@@ -4,11 +4,14 @@
 
 #include "runtime/function/animation/animator_controller.h"
 #include "runtime/function/animation/anim_clip.h"
+#include "runtime/function/animation/skeleton.h"
 #include "runtime/service/sprite/sprite_loader.h"
 
 namespace dodoe {
 
     namespace {
+
+        const DynamicArray<AnimFrame2D> k_empty_frames{};
 
         Float ParameterDefault(const AnimatorParameter& parameter) {
             switch (parameter.type) {
@@ -171,8 +174,9 @@ namespace dodoe {
             const AnimatorClipRef& clip_ref = state.clip;
 
             if (clip_ref.type == AnimatorClipType::Clip2D) {
-                const AnimClip2D* clip = clip_ref.clip_2d.get();
-                if (!clip || clip->frames.empty()) {
+                const Anim2DClip* clip = clip_ref.clip_2d.get();
+                const DynamicArray<AnimFrame2D>& frames = clip ? clip->getFrames() : k_empty_frames;
+                if (!clip || frames.empty()) {
                     continue;
                 }
                 const Float total_ms = clip->totalDurationMs();
@@ -184,22 +188,22 @@ namespace dodoe {
                 animator.state_time += dt * 1000.0f * animator.speed * state.speed;
 
                 Size_t frame_id = animator.cur_frame_id;
-                if (frame_id >= clip->frames.size()) {
+                if (frame_id >= frames.size()) {
                     frame_id = 0;
                 }
 
                 Float time_ms = animator.state_time;
-                while (time_ms >= clip->frames[frame_id].duration) {
-                    if (clip->frames[frame_id].duration > 0.0f) {
-                        time_ms -= clip->frames[frame_id].duration;
+                while (time_ms >= frames[frame_id].duration) {
+                    if (frames[frame_id].duration > 0.0f) {
+                        time_ms -= frames[frame_id].duration;
                     }
                     frame_id += 1;
-                    if (frame_id >= clip->frames.size()) {
-                        if (clip->loop) {
+                    if (frame_id >= frames.size()) {
+                        if (clip->getLoop()) {
                             frame_id = 0;
                         }
                         else {
-                            frame_id = clip->frames.size() - 1;
+                            frame_id = frames.size() - 1;
                             time_ms = 0.0f;
                             break;
                         }
@@ -208,14 +212,14 @@ namespace dodoe {
                 animator.cur_frame_id = frame_id;
                 animator.state_time = time_ms;
 
-                FireClipEvents(animator, clip->events, total_ms);
+                FireClipEvents(animator, clip->getEvents(), total_ms);
                 EvaluateTransitions(animator, *controller, total_ms);
 
-                const auto& frame = clip->frames[animator.cur_frame_id];
-                if (frame.texture_id != 0 &&
+                const auto& frame = frames[animator.cur_frame_id];
+                if (frame.texture.isValid() &&
                     animator.applied_frame_id != animator.cur_frame_id &&
                     entity.hasComponent<SpriteRendererComponent>()) {
-                    auto* tex = static_cast<Texture2D*>(Object::FindObjectFromInstanceID(frame.texture_id));
+                    auto* tex = frame.texture.get();
                     if (tex) {
                         auto& sprite_renderer = reg.get<SpriteRendererComponent>(entity);
                         sprite_renderer.sprite = PPtr<Sprite>(SpriteLoader::Load(tex->getPath()));

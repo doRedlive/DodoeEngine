@@ -23,6 +23,7 @@ namespace dodoe {
 
         [[nodiscard]] const MeshBlob& getBlob() const { return m_blob; }
         [[nodiscard]] Ref<MeshData> getData() const { return m_blob.data; }
+        [[nodiscard]] const DynamicArray<MeshNode>& getHierarchy() const { return m_blob.hierarchy; }
     };
 
 } // dodoe

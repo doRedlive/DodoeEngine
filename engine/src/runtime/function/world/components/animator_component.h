@@ -6,7 +6,7 @@
 
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/uuid.h"
-#include "runtime/function/animation/animation.h"
+#include "runtime/core/object/pptr.h"
 #include "runtime/function/animation/animator_controller.h"
 
 REFLECTION_TYPE(AnimatorComponent)
@@ -17,7 +17,7 @@ namespace dodoe {
         REFLECTION_BODY(AnimatorComponent)
 
         META(Enable)
-        Ref<AnimatorController> controller{};
+        PPtr<AnimatorController> controller{};
         META(Enable)
         Float speed{1.0f};
         META(Enable)

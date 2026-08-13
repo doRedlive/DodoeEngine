@@ -67,6 +67,8 @@ namespace dodoe {
         [[nodiscard]] ObjectID resolvePathToRef(const FileID& file_id) const;
         [[nodiscard]] ObjectID resolveSubObjectRef(const FileID& file_id, UInt32 local_id) const;
 
+        [[nodiscard]] ObjectID ensureImported(const String& absolute_path);
+
         template<typename T>
         [[nodiscard]] AssetHandle<T> getHandle(const UUID& asset_id) const {
             return AssetHandle<T>(ObjectID{asset_id, 0});

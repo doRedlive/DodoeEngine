@@ -5,20 +5,20 @@
 #include "dopch.h"
 
 #include "runtime/resource/asset/asset.h"
-#include "runtime/function/animation/anim_clip_2d.h"
+#include "runtime/function/animation/animation.h"
 
 namespace dodoe {
 
-    class AnimationClipAsset : public Asset {
+    class Anim2DClipAsset : public Asset {
         DynamicArray<AnimFrame2D> m_frames{};
         DynamicArray<AnimClipEvent> m_events{};
         Bool m_loop{false};
         Float m_frame_ms{100.0f};
 
     public:
-        static constexpr AssetType kStaticType = AssetType::AnimationClip;
+        static constexpr AssetType kStaticType = AssetType::Anim2DClip;
 
-        AnimationClipAsset() { m_meta.type = AssetType::AnimationClip; }
+        Anim2DClipAsset() { m_meta.type = AssetType::Anim2DClip; }
 
         [[nodiscard]] Bool loadFromSource(const String& absolute_source_path) override;
         void unloadRuntime() override;

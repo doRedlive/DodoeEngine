@@ -6,7 +6,7 @@
 
 #include "dopch.h"
 
-#include "anim_clip_2d.h"
+#include "animation.h"
 
 namespace dodoe {
 
@@ -17,9 +17,6 @@ namespace dodoe {
     class AnimationManager : public Managed<AnimationManager, AnimationManagerCreateInfo> {
         friend class Managed<AnimationManager, AnimationManagerCreateInfo>;
     public:
-
-        // MARK: TODO: using sprite instead of texture
-        AnimClip2D CreateAnimClip2D(const DynamicArray<InstanceID>& texture_ids);
 
     private:
         bool initialize(const AnimationManagerCreateInfo& create_info);

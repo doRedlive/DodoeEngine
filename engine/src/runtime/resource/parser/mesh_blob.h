@@ -20,22 +20,31 @@ namespace dodoe {
         Float bone_weights[4]{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
+    struct MeshNode {
+        String name{};
+        Vector3f position{0.0f};
+        Vector3f rotation{0.0f};
+        Vector3f scale{1.0f};
+        Int32 parent_index{-1};
+        Int32 mesh_section_index{-1};
+    };
+
     struct MeshData {
         DynamicArray<MeshVertex> vertices;
         DynamicArray<UInt32> indices;
         DynamicArray<FileID> textures;
-        Ref<Skeleton> skeleton{nullptr};
-        DynamicArray<Ref<AnimClip>> animations{};
+        PPtr<Skeleton> skeleton{};
+        DynamicArray<PPtr<AnimClip>> animations{};
     };
 
     struct MeshBlob {
         Ref<MeshData> data{nullptr};
+        DynamicArray<MeshNode> hierarchy{};
 
         MeshBlob() = default;
-        explicit MeshBlob(const String& path);
         ~MeshBlob();
 
-        void load(const String& path);
+        void load(const String& path, const UUID& asset_id);
         void free();
 
         [[nodiscard]] bool isValid() const { return data != nullptr; }
