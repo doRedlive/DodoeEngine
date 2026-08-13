@@ -1,31 +1,25 @@
 // do@Redlive
 
 #include "object.h"
-#include "runtime/core/asserts.h"
 #include "runtime/core/utils/uuid.h"
-
-#include <shared_mutex>
 
 namespace dodoe {
 
     UnorderedMap<InstanceID, Object*> Object::s_instance_map{};
-    UnorderedMap<UUID, InstanceID> Object::s_uuid_to_instance{};
+    UnorderedMap<UInt64, InstanceID> Object::s_ref_to_instance{};
+    UnorderedMap<InstanceID, UInt32> Object::s_generations{};
     InstanceID Object::s_next_instance_id{1};
-    DynamicArray<InstanceID> Object::s_free_instance_ids{};
-    std::shared_mutex Object::s_instance_mutex{};
 
-    Object::Object(const FileID& file_id)
-        : m_file_id(file_id), m_uuid() {
+    Object::Object(const ObjectID& id)
+        : m_id(id) {
         AllocateInstanceID(this);
     }
 
-    Object::Object(const FileID& file_id, const UUID& uuid)
-        : m_file_id(file_id), m_uuid(uuid) {
-        AllocateInstanceID(this);
+    UInt64 Object::makeKey(const ObjectID& id) {
+        return static_cast<UInt64>(id.asset_id) ^ (static_cast<UInt64>(id.local_id) << 32);
     }
 
     Object* Object::FindObjectFromInstanceID(const InstanceID id) {
-        std::shared_lock lock(s_instance_mutex);
         const auto it = s_instance_map.find(id);
         if (it != s_instance_map.end()) {
             return it->second;
@@ -33,77 +27,60 @@ namespace dodoe {
         return nullptr;
     }
 
-    InstanceID Object::FindInstanceID(const UUID& uuid) {
-        std::shared_lock lock(s_instance_mutex);
-        const auto it = s_uuid_to_instance.find(uuid);
-        if (it != s_uuid_to_instance.end()) {
+    InstanceID Object::FindInstanceID(const ObjectID& id) {
+        const UInt64 key = makeKey(id);
+        const auto it = s_ref_to_instance.find(key);
+        if (it != s_ref_to_instance.end()) {
             return it->second;
         }
         return 0;
     }
 
     InstanceID Object::AllocateInstanceID(Object* obj) {
-        std::unique_lock lock(s_instance_mutex);
-
-        if (obj->m_uuid.isValid()) {
-            const auto it = s_uuid_to_instance.find(obj->m_uuid);
-            if (it != s_uuid_to_instance.end()) {
-                DO_ASSERT(false, "AllocateInstanceID: duplicate uuid constructed as a new object");
-                obj->m_instance_id = it->second;
-                return it->second;
-            }
+        const UInt64 key = makeKey(obj->m_id);
+        const auto it = s_ref_to_instance.find(key);
+        if (it != s_ref_to_instance.end()) {
+            obj->m_instance_id = it->second;
+            const auto gen_it = s_generations.find(it->second);
+            obj->m_generation = gen_it != s_generations.end() ? gen_it->second : 1;
+            return it->second;
         }
 
-        InstanceID id = 0;
-        if (!s_free_instance_ids.empty()) {
-            id = s_free_instance_ids.back();
-            s_free_instance_ids.pop_back();
-        } else {
-            id = s_next_instance_id++;
-        }
-
+        const InstanceID id = s_next_instance_id++;
         obj->m_instance_id = id;
+        obj->m_generation = 1;
+        obj->m_registered = true;
         s_instance_map[id] = obj;
-        if (obj->m_uuid.isValid()) {
-            s_uuid_to_instance[obj->m_uuid] = id;
-        }
+        s_generations[id] = 1;
+        s_ref_to_instance[key] = id;
         return id;
     }
 
     void Object::ReleaseInstanceID(const InstanceID id) {
-        std::unique_lock lock(s_instance_mutex);
         const auto it = s_instance_map.find(id);
         if (it != s_instance_map.end()) {
-            Object* obj = it->second;
-            if (obj->m_uuid.isValid()) {
-                const auto uit = s_uuid_to_instance.find(obj->m_uuid);
-                if (uit != s_uuid_to_instance.end() && uit->second == id) {
-                    s_uuid_to_instance.erase(uit);
-                }
+            s_ref_to_instance.erase(makeKey(it->second->m_id));
+            auto gen_it = s_generations.find(id);
+            if (gen_it != s_generations.end()) {
+                gen_it->second += 1;
             }
-            s_instance_map.erase(it);
-            s_free_instance_ids.push_back(id);
+            s_instance_map.erase(id);
         }
     }
 
-    void Object::setFileIdentity(const FileID& file_id, const UUID& uuid) {
-        std::unique_lock lock(s_instance_mutex);
-        if (m_uuid.isValid()) {
-            const auto it = s_uuid_to_instance.find(m_uuid);
-            if (it != s_uuid_to_instance.end() && it->second == m_instance_id) {
-                s_uuid_to_instance.erase(it);
-            }
+    Bool Object::isAlive(const InstanceID id, const UInt32 generation) {
+        const auto it = s_instance_map.find(id);
+        if (it == s_instance_map.end()) {
+            return false;
         }
-        m_file_id = file_id;
-        m_uuid = uuid;
-        if (m_uuid.isValid() && m_instance_id != 0) {
-            s_uuid_to_instance[m_uuid] = m_instance_id;
-        }
+        const auto gen_it = s_generations.find(id);
+        return gen_it != s_generations.end() && gen_it->second == generation;
     }
 
     Object::~Object() {
-        if (m_instance_id) {
+        if (m_registered) {
             ReleaseInstanceID(m_instance_id);
+            m_registered = false;
             m_instance_id = 0;
         }
     }

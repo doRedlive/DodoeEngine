@@ -4,33 +4,36 @@
 
 #include "dopch.h"
 #include "object.h"
-#include "runtime/resource/file/file_id.h"
+#include "object_id.h"
+#include "runtime/core/utils/uuid.h"
 
 namespace dodoe {
 
     template<typename T>
     class PPtr {
-        UUID m_uuid{};
+        ObjectID m_id{};
         InstanceID m_instance_id{0};
+        String m_legacy_path{};
 
     public:
         PPtr() = default;
-        explicit PPtr(const UUID& uuid)
-            : m_uuid(uuid) {}
-        PPtr(const UUID& uuid, const InstanceID instance_id)
-            : m_uuid(uuid), m_instance_id(instance_id) {}
-        explicit PPtr(T* obj)
-            : m_uuid(obj->getUUID()), m_instance_id(obj->getInstanceID()) {}
+        explicit PPtr(const ObjectID& id)
+            : m_id(id) {}
+        PPtr(const ObjectID& id, const InstanceID instance_id)
+            : m_id(id), m_instance_id(instance_id) {}
+        explicit PPtr(T* obj) {
+            if (obj) {
+                m_id = obj->getID();
+                m_instance_id = obj->getInstanceID();
+            }
+        }
 
         [[nodiscard]] T* get() const {
             if (m_instance_id != 0) {
-                T* obj = static_cast<T*>(Object::FindObjectFromInstanceID(m_instance_id));
-                if (obj && (!m_uuid.isValid() || obj->getUUID() == m_uuid)) {
-                    return obj;
-                }
+                return static_cast<T*>(Object::FindObjectFromInstanceID(m_instance_id));
             }
-            if (m_uuid.isValid()) {
-                const InstanceID id = Object::FindInstanceID(m_uuid);
+            if (m_id.isValid()) {
+                const InstanceID id = Object::FindInstanceID(m_id);
                 if (id != 0) {
                     return static_cast<T*>(Object::FindObjectFromInstanceID(id));
                 }
@@ -38,11 +41,25 @@ namespace dodoe {
             return nullptr;
         }
         T* operator->() const { return get(); }
-        [[nodiscard]] explicit operator Bool() const { return m_instance_id != 0 || m_uuid.isValid(); }
-        [[nodiscard]] Bool isValid() const { return m_instance_id != 0 || m_uuid.isValid(); }
+        [[nodiscard]] explicit operator Bool() const { return m_instance_id != 0 || m_id.isValid(); }
+        [[nodiscard]] Bool isValid() const { return m_instance_id != 0 || m_id.isValid(); }
+        [[nodiscard]] Bool isAssigned() const { return m_id.isValid(); }
 
-        [[nodiscard]] const UUID& getUUID() const { return m_uuid; }
+        [[nodiscard]] const ObjectID& getObjectID() const { return m_id; }
         [[nodiscard]] InstanceID getInstanceID() const { return m_instance_id; }
+        [[nodiscard]] const String& getLegacyPath() const { return m_legacy_path; }
+        void setLegacyPath(const String& path) { m_legacy_path = path; }
+        void setIdentity(const ObjectID& id, const InstanceID instance_id = 0) {
+            m_id = id;
+            m_instance_id = instance_id;
+        }
+
+        Bool operator==(const PPtr& other) const {
+            return m_id == other.m_id && m_instance_id == other.m_instance_id && m_legacy_path == other.m_legacy_path;
+        }
+        Bool operator!=(const PPtr& other) const {
+            return !(*this == other);
+        }
     };
 
 } // dodoe

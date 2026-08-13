@@ -12,7 +12,12 @@
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components/tilemap/tileset_asset.h"
 #include "runtime/core/project/project.h"
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/function/render/texture/sprite_manager.h"
+#include "runtime/function/render/material/material.h"
+#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/function/animation/animation.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 #include "runtime/core/utils/json.h"
 #include "runtime/function/ui/ui_manager.h"
 #include "runtime/function/ui/ui_button.h"
@@ -245,16 +250,51 @@ namespace dodoe {
             return _s_object_type_name.c_str();
         }
 
+        static int native_object_is_alive(int instanceID, int generation) {
+            return Object::isAlive((InstanceID)instanceID, (UInt32)generation) ? 1 : 0;
+        }
+
+        static int native_object_get_generation(int instanceID) {
+            auto* obj = Object::FindObjectFromInstanceID((InstanceID)instanceID);
+            return obj ? (int)obj->getGeneration() : 0;
+        }
+
         static int native_texture_load(const char* path) {
             if (!path || path[0] == '\0') return 0;
-            auto tex = Texture2D::Load(String(path));
+            auto* tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(String(path)));
             return tex ? (int)tex->getInstanceID() : 0;
         }
 
         static int native_sprite_load(const char* path) {
             if (!path || path[0] == '\0') return 0;
-            auto sprite = SpriteLoader::Load(String(path));
+            auto* sprite = ResourceManager::Self().loadObjectByPath<Sprite>(FileID(String(path)));
             return sprite ? (int)sprite->getInstanceID() : 0;
+        }
+
+        static int native_load_object(const char* path, const char* type_name) {
+            if (!path || path[0] == '\0' || !type_name) return 0;
+            const FileID file_id{String(path)};
+            if (strcmp(type_name, "Texture2D") == 0) {
+                auto* obj = ResourceManager::Self().loadObjectByPath<Texture2D>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "Sprite") == 0) {
+                auto* obj = ResourceManager::Self().loadObjectByPath<Sprite>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "Material") == 0) {
+                auto* obj = ResourceManager::Self().loadObjectByPath<Material>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "AnimationClip") == 0) {
+                auto* obj = ResourceManager::Self().loadObjectByPath<AnimationClip>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "Mesh") == 0) {
+                auto* obj = ResourceManager::Self().loadObjectByPath<Mesh>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
+            }
+            return 0;
         }
 
         static int native_world_load_scene(const char* name, int mode) {
@@ -627,6 +667,8 @@ X(native_FoliageRendererInstance_position_get, void, (uint64_t e, float* x, floa
     X(native_FoliageRendererInstance_wind_phase_set, void, (uint64_t e, float v), e, v) \
     X(native_FoliageRendererInstance_variation_get, float, (uint64_t e), e) \
     X(native_FoliageRendererInstance_variation_set, void, (uint64_t e, float v), e, v) \
+    X(native_FoliageRendererComponent_mesh_get, int, (uint64_t e), e) \
+    X(native_FoliageRendererComponent_mesh_set, void, (uint64_t e, int v), e, v) \
     X(native_FoliageRendererComponent_visible_get, bool, (uint64_t e), e) \
     X(native_FoliageRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
     X(native_FoliageRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
@@ -685,6 +727,14 @@ X(native_FoliageRendererInstance_position_get, void, (uint64_t e, float* x, floa
     X(native_CircleCollider2dComponent_restitution_set, void, (uint64_t e, float v), e, v) \
     X(native_CircleCollider2dComponent_restitution_threshold_get, float, (uint64_t e), e) \
     X(native_CircleCollider2dComponent_restitution_threshold_set, void, (uint64_t e, float v), e, v) \
+    X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
+    X(native_Rigidbody2dComponent_gravity_scale_set, void, (uint64_t e, float v), e, v) \
+    X(native_Rigidbody2dComponent_fixed_rotation_get, bool, (uint64_t e), e) \
+    X(native_Rigidbody2dComponent_fixed_rotation_set, void, (uint64_t e, bool v), e, v) \
+    X(native_MeshRendererComponent_mesh_get, int, (uint64_t e), e) \
+    X(native_MeshRendererComponent_mesh_set, void, (uint64_t e, int v), e, v) \
+    X(native_MeshRendererComponent_section_index_get, int, (uint64_t e), e) \
+    X(native_MeshRendererComponent_section_index_set, void, (uint64_t e, int v), e, v) \
     X(native_MeshRendererComponent_visible_get, bool, (uint64_t e), e) \
     X(native_MeshRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
     X(native_MeshRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
@@ -778,8 +828,11 @@ X(native_FoliageRendererInstance_position_get, void, (uint64_t e, float* x, floa
     X(native_entity_set_parent, void, (uint64_t child, uint64_t parent), child, parent) \
     X(native_get_asset_directory, const char*, (), ) \
     X(native_object_get_type_name, const char*, (int instanceID), instanceID) \
+    X(native_object_is_alive, int, (int instanceID, int generation), instanceID, generation) \
+    X(native_object_get_generation, int, (int instanceID), instanceID) \
     X(native_texture_load, int, (const char* path), path) \
     X(native_sprite_load, int, (const char* path), path) \
+    X(native_load_object, int, (const char* path, const char* type_name), path, type_name) \
     X(native_world_load_scene, int, (const char* name, int mode), name, mode) \
     X(native_world_get_active_scene_name, const char*, (), ) \
     X(native_world_get_active_scene_entities, const char*, (), ) \

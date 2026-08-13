@@ -13,7 +13,8 @@
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 #include "runtime/core/object/pptr.h"
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/function/render/texture/sprite_manager.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "assimp/Importer.hpp"
@@ -70,176 +71,20 @@ namespace dodoe {
             transform_component.dirty = true;
         }
 
-        UUID ImportTexture(const FsPath& model_directory, const aiString& texture_path) {
-            if (texture_path.length == 0 || texture_path.C_Str()[0] == '*') {
-                return UUID();
-            }
-
-            FsPath resolved_path = FsPath(texture_path.C_Str());
-            if (resolved_path.is_relative()) {
-                resolved_path = model_directory / resolved_path;
-            }
-            resolved_path = resolved_path.lexically_normal();
-
-            const auto texture_res = ResourceManager::Self().getTexture(String(resolved_path.string().c_str()));
-            return texture_res.getUUID();
-        }
-
-        UUID LoadMaterialTexture(
-            const aiMaterial* material,
-            const FsPath& model_directory,
-            const aiTextureType primary_type,
-            const aiTextureType fallback_type = aiTextureType_NONE) {
-            if (!material) {
-                return UUID();
-            }
-
-            for (const aiTextureType type : {primary_type, fallback_type}) {
-                if (type == aiTextureType_NONE || material->GetTextureCount(type) == 0) {
-                    continue;
-                }
-
-                aiString texture_path{};
-                if (material->GetTexture(type, 0, &texture_path) != aiReturn_SUCCESS) {
-                    continue;
-                }
-
-                const UUID texture_id = ImportTexture(model_directory, texture_path);
-                if (texture_id.isValid()) {
-                    return texture_id;
-                }
-            }
-
-            return UUID();
-        }
-
-        MaterialProperties MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const FsPath& model_directory) {
-            MaterialProperties material{};
-
-            if (!imported_scene || source_mesh.mMaterialIndex >= imported_scene->mNumMaterials) {
-                return material;
-            }
-
-            const aiMaterial* source_material = imported_scene->mMaterials[source_mesh.mMaterialIndex];
-            if (!source_material) {
-                return material;
-            }
-
-            aiColor4D base_color{};
-            if (aiGetMaterialColor(source_material, AI_MATKEY_BASE_COLOR, &base_color) == aiReturn_SUCCESS ||
-                aiGetMaterialColor(source_material, AI_MATKEY_COLOR_DIFFUSE, &base_color) == aiReturn_SUCCESS) {
-                material.color = {base_color.r, base_color.g, base_color.b, base_color.a};
-            }
-
-            material.base_color_texture = LoadMaterialTexture(
-                source_material,
-                model_directory,
-                aiTextureType_BASE_COLOR,
-                aiTextureType_DIFFUSE);
-            material.normal_texture = LoadMaterialTexture(
-                source_material,
-                model_directory,
-                aiTextureType_NORMALS,
-                aiTextureType_NORMAL_CAMERA);
-            material.emissive_texture = LoadMaterialTexture(
-                source_material,
-                model_directory,
-                aiTextureType_EMISSIVE);
-
-            return material;
-        }
-
-        struct MeshImportResult {
-            MeshUploadData upload_data{};
-            DynamicArray<MeshLODData> lods{};
-        };
-
-        MeshImportResult MakeMesh(
-            const aiMesh& source_mesh,
-            const aiScene* imported_scene,
-            const FsPath& model_directory,
-            const uint mesh_index,
-            const String& fallback_name) {
-            MeshImportResult result{};
-            result.upload_data.name = source_mesh.mName.length > 0 ? source_mesh.mName.C_Str() : fallback_name;
-
-            const uint vertex_count = source_mesh.mNumVertices;
-            result.upload_data.position_data.reserve(vertex_count);
-            result.upload_data.normal_data.reserve(vertex_count);
-
-            uint index_count = 0;
-            for (uint face_index = 0; face_index < source_mesh.mNumFaces; ++face_index) {
-                index_count += source_mesh.mFaces[face_index].mNumIndices;
-            }
-
-            for (uint vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
-                const auto& position = source_mesh.mVertices[vertex_index];
-                result.upload_data.position_data.push_back({position.x, position.y, position.z});
-
-                if (source_mesh.HasNormals()) {
-                    const auto& normal = source_mesh.mNormals[vertex_index];
-                    const auto packed_normal = Math::PackSnorm4x8(Vector4f(normal.x, normal.y, normal.z, 0.0f));
-                    result.upload_data.normal_data.push_back(packed_normal);
-                } else {
-                    result.upload_data.normal_data.push_back(0);
-                }
-
-                if (source_mesh.HasTextureCoords(0)) {
-                    const auto& uv = source_mesh.mTextureCoords[0][vertex_index];
-                    result.upload_data.texcoord_data.push_back({uv.x, uv.y});
-                } else {
-                    result.upload_data.texcoord_data.push_back(Vector2f(0.0f));
-                }
-            }
-
-            result.upload_data.index_data.reserve(index_count);
-            for (uint face_index = 0; face_index < source_mesh.mNumFaces; ++face_index) {
-                const auto& face = source_mesh.mFaces[face_index];
-                for (uint index_offset = 0; index_offset < face.mNumIndices; ++index_offset) {
-                    result.upload_data.index_data.push_back(face.mIndices[index_offset]);
-                }
-            }
-
-            SubMesh section{};
-            section.section_index = 0;
-            section.vertex_count = vertex_count;
-            section.index_count = index_count;
-            section.primitive_type = MeshGeometryPrimitiveType::Triangles;
-            section.material = MakeMaterial(imported_scene, source_mesh, model_directory);
-
-            MeshLODData lod{};
-            lod.sub_meshes.push_back(std::move(section));
-            result.lods.push_back(std::move(lod));
-
-            return result;
-        }
-
-        void AttachMeshComponent(
-            Entity entity,
-            const aiScene* imported_scene,
-            const FsPath& model_directory,
-            const uint mesh_index,
-            const String& fallback_name) {
-            if (!imported_scene || mesh_index >= imported_scene->mNumMeshes) {
-                return;
-            }
-
-            const aiMesh* source_mesh = imported_scene->mMeshes[mesh_index];
-            if (!source_mesh) { return; }
-
-            auto result = MakeMesh(*source_mesh, imported_scene, model_directory, mesh_index, fallback_name);
+        void AttachMeshComponent(Entity entity, const String& model_path, const uint mesh_index) {
             auto& mesh_component = entity.addComponent<MeshRendererComponent>();
-            mesh_component.upload_data = std::move(result.upload_data);
-            mesh_component.lods = std::move(result.lods);
+            mesh_component.mesh = PPtr<Mesh>(ResourceManager::Self().loadObjectByPath<Mesh>(FileID(model_path)));
+            mesh_component.section_index = static_cast<Int32>(mesh_index);
+            mesh_component.mesh.setLegacyPath(model_path);
+            mesh_component.dirty = true;
         }
 
         void ProcessNode(
             Scene* scene,
-            const aiScene* imported_scene,
-            const FsPath& model_directory,
             aiNode* node,
-            Entity parent_entity) {
-            if (!scene || !imported_scene || !node || !parent_entity.valid()) {
+            Entity parent_entity,
+            const String& model_path) {
+            if (!scene || !node || !parent_entity.valid()) {
                 return;
             }
 
@@ -249,7 +94,7 @@ namespace dodoe {
             AttachChild(parent_entity, node_entity);
 
             if (node->mNumMeshes == 1) {
-                AttachMeshComponent(node_entity, imported_scene, model_directory, node->mMeshes[0], node_name);
+                AttachMeshComponent(node_entity, model_path, node->mMeshes[0]);
             } else {
                 for (uint mesh_offset = 0; mesh_offset < node->mNumMeshes; ++mesh_offset) {
                     const uint mesh_index = node->mMeshes[mesh_offset];
@@ -257,12 +102,12 @@ namespace dodoe {
 
                     auto mesh_entity = scene->createEntity(mesh_entity_name);
                     AttachChild(node_entity, mesh_entity);
-                    AttachMeshComponent(mesh_entity, imported_scene, model_directory, mesh_index, mesh_entity_name);
+                    AttachMeshComponent(mesh_entity, model_path, mesh_index);
                 }
             }
 
             for (uint child_index = 0; child_index < node->mNumChildren; ++child_index) {
-                ProcessNode(scene, imported_scene, model_directory, node->mChildren[child_index], node_entity);
+                ProcessNode(scene, node->mChildren[child_index], node_entity, model_path);
             }
         }
 
@@ -287,10 +132,9 @@ namespace dodoe {
         }
 
         const String root_name(FsPath(path).stem().string().c_str());
-        const FsPath model_directory = FsPath(path).parent_path();
         auto root_entity = cur_scene->createEntity(root_name);
 
-        ProcessNode(cur_scene, imported_scene, model_directory, imported_scene->mRootNode, root_entity);
+        ProcessNode(cur_scene, imported_scene->mRootNode, root_entity, path);
     }
 
     void SceneImporter::ImportSprite(const String& path) {
@@ -301,7 +145,7 @@ namespace dodoe {
         auto entity = cur_scene->createEntity(entity_name);
 
         auto& sr = entity.addComponent<SpriteRendererComponent>();
-        sr.sprite = PPtr<Sprite>(SpriteLoader::Load(path));
+        sr.sprite = PPtr<Sprite>(ResourceManager::Self().loadObjectByPath<Sprite>(FileID(path)));
         sr.dirty = true;
 
         LOG_INFO("SceneImporter::ImportSprite: {}", path);

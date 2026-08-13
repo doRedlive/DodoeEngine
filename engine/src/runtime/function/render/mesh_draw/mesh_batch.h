@@ -11,7 +11,6 @@ namespace dodoe {
 
     class MaterialSystem;
     struct MaterialInstance;
-    struct MaterialProperties;
 
     struct MeshBatchPassMask {
         Bool pass_relevance[static_cast<Size_t>(MeshPassType::Count)]{false};

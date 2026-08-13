@@ -1,5 +1,3 @@
-// do@Redlive
-
 #pragma once
 
 #include "dopch.h"
@@ -12,49 +10,41 @@
 namespace dodoe {
 
     class DrawCommandList;
-
-    struct MeshUploadData {
-        String name{};
-        DynamicArray<Vector3f> position_data{};
-        DynamicArray<Vector2f> texcoord_data{};
-        DynamicArray<UInt32> normal_data{};
-        DynamicArray<UInt32> index_data{};
-    };
+    class Mesh;
+    class Material;
 
     class PrimitiveRenderObject : public RenderObject {
     protected:
-        MeshUploadData m_upload_data{};
-        DynamicArray<MeshLODData> m_lods{};
-        DynamicArray<MaterialProperties> m_override_materials{};
+        const Mesh* m_mesh{nullptr};
+        Int32 m_section_index{-1};
+        DynamicArray<PPtr<Material>> m_override_materials{};
         PrimitiveMobility m_mobility{PrimitiveMobility::Static};
         Bool m_visible{true};
         Bool m_cast_shadow{true};
 
     public:
-        void setUploadData(const MeshUploadData& upload_data) { m_upload_data = upload_data; }
-        void setLODData(const DynamicArray<MeshLODData>& lods) { m_lods = lods; }
-        void setOverrideMaterials(const DynamicArray<MaterialProperties>& override_materials) { m_override_materials = override_materials; }
+        void setMesh(const Mesh* mesh, const Int32 section_index = -1);
+        void setOverrideMaterials(const DynamicArray<PPtr<Material>>& override_materials) { m_override_materials = override_materials; }
         void setMobility(const PrimitiveMobility mobility) { m_mobility = mobility; }
         void setVisible(const Bool visible) { m_visible = visible; }
         void setCastShadow(const Bool cast_shadow) { m_cast_shadow = cast_shadow; }
 
-        [[nodiscard]] const DynamicArray<MeshLODData>& getLODData() const { return m_lods; }
-        [[nodiscard]] const MeshUploadData& getUploadData() const { return m_upload_data; }
-        [[nodiscard]] const DynamicArray<MaterialProperties>& getOverrideMaterials() const { return m_override_materials; }
+        [[nodiscard]] const Mesh* getMesh() const { return m_mesh; }
+        [[nodiscard]] Int32 getSectionIndex() const { return m_section_index; }
+        [[nodiscard]] const DynamicArray<PPtr<Material>>& getOverrideMaterials() const { return m_override_materials; }
         [[nodiscard]] PrimitiveMobility getMobility() const { return m_mobility; }
         [[nodiscard]] Bool isVisible() const { return m_visible; }
         [[nodiscard]] Bool castsShadow() const { return m_cast_shadow; }
-        [[nodiscard]] const String& getMeshName() const { return m_upload_data.name; }
 
         [[nodiscard]] virtual UInt32 getInstanceCount() const;
         virtual void appendInstanceSceneData(DynamicArray<InstanceSceneData>& out_instance_scene_data, const Matrix4f& world_transform) const;
 
         [[nodiscard]] RenderObjectDirtyFlags diff(const RenderObject& previous) const override;
-        [[nodiscard]] virtual DynamicArray<MaterialProperties> resolveMaterials() const;
-        [[nodiscard]] virtual DynamicArray<SubMesh> buildSections(const DynamicArray<MaterialProperties>& resolved_materials) const;
+        [[nodiscard]] virtual DynamicArray<PPtr<Material>> resolveMaterials() const;
+        [[nodiscard]] virtual DynamicArray<SubMesh> buildSections(const DynamicArray<PPtr<Material>>& resolved_materials) const;
         [[nodiscard]] virtual DynamicArray<MeshBatch> buildMeshBatches(
             Identifier primitive_id,
-            const DynamicArray<MaterialProperties>& resolved_materials,
+            const DynamicArray<PPtr<Material>>& resolved_materials,
             UInt32 first_instance) const;
         [[nodiscard]] virtual PrimitiveSceneInfo buildSceneInfo(
             Identifier primitive_id,

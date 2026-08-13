@@ -3,10 +3,13 @@
 #include "dopch.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/object/pptr.h"
 #include "runtime/function/render/render_scene/primitive_scene_info.h"
-#include "runtime/function/render/render_scene/primitive_render_object.h"
-#include "runtime/function/render/mesh_draw/mesh_data.h"
 #include "runtime/function/render/material/material.h"
+
+namespace dodoe {
+    class Mesh;
+}
 
 REFLECTION_TYPE(FoliageRendererInstance)
 REFLECTION_TYPE(FoliageRendererComponent)
@@ -34,11 +37,9 @@ namespace dodoe {
         REFLECTION_BODY(FoliageRendererComponent)
 
         META(Enable)
-        MeshUploadData upload_data;
+        PPtr<Mesh> mesh;
         META(Enable)
-        DynamicArray<MeshLODData> lods;
-        META(Enable)
-        DynamicArray<MaterialProperties> override_materials{};
+        DynamicArray<PPtr<Material>> override_materials{};
         META(Enable)
         PrimitiveMobility mobility{PrimitiveMobility::Static};
         META(Enable)

@@ -4,6 +4,9 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/static_mesh_render_object.h"
+#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 
 #include "runtime/core/math/math.h"
 
@@ -51,10 +54,20 @@ namespace dodoe {
             return false;
         }
 
-        if (mesh.lods.empty()) {
+        Mesh* resolved = mesh.mesh.get();
+        if (!resolved && !mesh.mesh.getLegacyPath().empty()) {
+            resolved = ResourceManager::Self().loadObjectByPath<Mesh>(FileID(mesh.mesh.getLegacyPath()));
+        }
+        if (!resolved) {
             RenderCommandQueue::RemovePrimitive(id.id);
             m_submitted_objects.erase(id.id);
             return true;
+        }
+
+        const String legacy_path = mesh.mesh.getLegacyPath();
+        mesh.mesh = PPtr<Mesh>(resolved);
+        if (!legacy_path.empty()) {
+            mesh.mesh.setLegacyPath(legacy_path);
         }
 
         auto render_object = buildRenderObject(mesh);
@@ -86,7 +99,7 @@ namespace dodoe {
         return submitted.find(id.id) == submitted.end() ||
             render_object == nullptr ||
             render_object->getRenderObjectType() != RenderObjectType::StaticMesh ||
-            render_object->getLODData().size() != mesh.lods.size() ||
+            render_object->getMesh() != mesh.mesh.get() ||
             transform.dirty ||
             hierarchy_dirty ||
             id.dirty ||
@@ -105,8 +118,7 @@ namespace dodoe {
 
     Scope<PrimitiveRenderObject> MeshRendererSystem::buildRenderObject(const MeshRendererComponent& mesh) {
         auto render_object = create_scope<StaticMeshRenderObject>();
-        render_object->setUploadData(mesh.upload_data);
-        render_object->setLODData(mesh.lods);
+        render_object->setMesh(mesh.mesh.get(), mesh.section_index);
         render_object->setOverrideMaterials(mesh.override_materials);
         render_object->setMobility(mesh.mobility);
         render_object->setVisible(mesh.visible);

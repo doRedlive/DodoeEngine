@@ -11,7 +11,7 @@
 #include "runtime/function/world/components.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/service/world/scene_importer.h"
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/function/render/texture/sprite_manager.h"
 #include "runtime/core/utils/common.h"
 
 

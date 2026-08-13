@@ -214,6 +214,7 @@ namespace Generator
                     info.cpp_getter_body =
                         "if (auto* c = TryGetComponent<" + compName + ">(uuid)) { "
                         "if (auto* obj = c->" + fieldName + ".get()) return (int)obj->getInstanceID(); "
+                        "if (!c->" + fieldName + ".getLegacyPath().empty()) { if (auto* obj = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(c->" + fieldName + ".getLegacyPath()))) return (int)obj->getInstanceID(); } "
                         "} return 0;";
                 } else {
                     info.cpp_getter_body =
@@ -230,7 +231,8 @@ namespace Generator
                     "        return;\n"
                     "    }\n"
                     "    if (auto* obj = Object::FindObjectFromInstanceID((InstanceID)v)) {\n"
-                    "        c->" + fieldName + " = " + info.field_type_cpp + "(obj->getUUID(), (InstanceID)v);\n" +
+                    "        c->" + fieldName + " = " + info.field_type_cpp + "(static_cast<" +
+                        info.field_type_cpp.substr(5, info.field_type_cpp.size() - 6) + "*>(obj));\n" +
                     dirtyAssign +
                     "        return;\n"
                     "    }\n"

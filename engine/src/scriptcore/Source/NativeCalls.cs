@@ -32,6 +32,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_FoliageRendererInstance_wind_phase_set;
         public delegate* unmanaged<ulong, float> native_FoliageRendererInstance_variation_get;
         public delegate* unmanaged<ulong, float, void> native_FoliageRendererInstance_variation_set;
+        public delegate* unmanaged<ulong, int> native_FoliageRendererComponent_mesh_get;
+        public delegate* unmanaged<ulong, int, void> native_FoliageRendererComponent_mesh_set;
         public delegate* unmanaged<ulong, bool> native_FoliageRendererComponent_visible_get;
         public delegate* unmanaged<ulong, bool, void> native_FoliageRendererComponent_visible_set;
         public delegate* unmanaged<ulong, bool> native_FoliageRendererComponent_cast_shadow_get;
@@ -90,6 +92,10 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_CircleCollider2dComponent_restitution_set;
         public delegate* unmanaged<ulong, float> native_CircleCollider2dComponent_restitution_threshold_get;
         public delegate* unmanaged<ulong, float, void> native_CircleCollider2dComponent_restitution_threshold_set;
+        public delegate* unmanaged<ulong, int> native_MeshRendererComponent_mesh_get;
+        public delegate* unmanaged<ulong, int, void> native_MeshRendererComponent_mesh_set;
+        public delegate* unmanaged<ulong, int> native_MeshRendererComponent_section_index_get;
+        public delegate* unmanaged<ulong, int, void> native_MeshRendererComponent_section_index_set;
         public delegate* unmanaged<ulong, bool> native_MeshRendererComponent_visible_get;
         public delegate* unmanaged<ulong, bool, void> native_MeshRendererComponent_visible_set;
         public delegate* unmanaged<ulong, bool> native_MeshRendererComponent_cast_shadow_get;
@@ -184,8 +190,11 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, ulong, void>                                     native_entity_set_parent;
         public delegate* unmanaged<byte*>                                                  native_get_asset_directory;
         public delegate* unmanaged<int, byte*>                                            native_object_get_type_name;
+        public delegate* unmanaged<int, int, int>                                         native_object_is_alive;
+        public delegate* unmanaged<int, int>                                              native_object_get_generation;
         public delegate* unmanaged<byte*, int>                                            native_texture_load;
         public delegate* unmanaged<byte*, int>                                            native_sprite_load;
+        public delegate* unmanaged<byte*, byte*, int>                                     native_load_object;
         public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene;
         public delegate* unmanaged<byte*>                                                 native_world_get_active_scene_name;
         public delegate* unmanaged<byte*>                                                 native_world_get_active_scene_entities;
@@ -377,6 +386,10 @@ internal static unsafe partial class NativeCalls
 
     internal static string Native_ObjectGetTypeName(int instanceID) => PtrToStr(b->native_object_get_type_name(instanceID));
 
+    internal static bool Native_ObjectIsAlive(int instanceID, int generation) => b->native_object_is_alive(instanceID, generation) != 0;
+
+    internal static int Native_ObjectGeneration(int instanceID) => b->native_object_get_generation(instanceID);
+
     internal static int Native_TextureLoad(string path)
     {
         var ptr = StrToPtr(path);
@@ -387,6 +400,18 @@ internal static unsafe partial class NativeCalls
     {
         var ptr = StrToPtr(path);
         try { return b->native_sprite_load(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static int Native_LoadObject(string path, string typeName)
+    {
+        var pPtr = StrToPtr(path);
+        var tPtr = StrToPtr(typeName);
+        try { return b->native_load_object(pPtr, tPtr); }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)pPtr);
+            Marshal.FreeCoTaskMem((IntPtr)tPtr);
+        }
     }
 
     // === UI Wrapper Methods ===

@@ -4,7 +4,7 @@
 
 #include "py_bindings.h"
 
-#include "runtime/function/animation/anim_clip_2d.h"
+#include "runtime/function/animation/animation.h"
 #include "runtime/function/render/texture/sprite.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
@@ -40,7 +40,7 @@ void RegisterResource(py::module_& m) {
         auto handle = ResourceManager::Self().getTexture(path);
         TextureRes res;
         if (handle.isValid()) {
-            res.id = static_cast<InstanceID>(static_cast<UInt64>(handle.getUUID()));
+            res.id = static_cast<InstanceID>(static_cast<UInt64>(handle.getObjectID().asset_id));
             res.path = path;
         }
         return res;

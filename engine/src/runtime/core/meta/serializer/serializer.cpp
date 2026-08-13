@@ -231,21 +231,13 @@ namespace dodoe {
     template <>
     Json Serializer::write(const FileID& instance) {
         Json j = Json::object();
-        j["uuid"] = Serializer::write(instance.getUUID());
+        j["path"] = Serializer::write(instance.getPath());
         return j;
     }
     template <>
     FileID& Serializer::read(const Json& json_context, FileID& instance) {
         DO_ASSERT(json_context.is_object(), "Serializer::read<FileID> expects object");
-        if (json_context.contains("uuid")) {
-            UUID uuid;
-            Serializer::read(json_context.at("uuid"), uuid);
-            String path;
-            if (json_context.contains("path")) {
-                Serializer::read(json_context.at("path"), path);
-            }
-            instance = FileID(path, uuid);
-        } else if (json_context.contains("path")) {
+        if (json_context.contains("path")) {
             String path;
             Serializer::read(json_context.at("path"), path);
             instance = FileID(path);

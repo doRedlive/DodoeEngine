@@ -12,6 +12,8 @@
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/function/render/texture/texture_manager.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
@@ -47,12 +49,8 @@ namespace dodoe {
     void TestPass::build(RenderGraphBuilder& graph,
                           const RenderPassBuildContext& context) {
         GfxTextureHandle test_texture{};
-        if (auto* texture_manager = context.shared_render_service
-                ? context.shared_render_service->getTextureManager()
-                : nullptr) {
-            if (auto* texture = texture_manager->loadTexture("engine/res/pictures/grm.jpg")) {
-                test_texture = texture->getGpuHandle();
-            }
+        if (auto* texture = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID("engine/res/pictures/grm.jpg"))) {
+            test_texture = texture->getGpuHandle();
         }
 
         graph.addPass<TestPassParameters>(

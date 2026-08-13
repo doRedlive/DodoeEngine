@@ -92,12 +92,6 @@ namespace dodoe {
 
     class RenderScene : public Managed<RenderScene, RenderSceneCreateInfo> {
         friend class Managed<RenderScene, RenderSceneCreateInfo>;
-        struct Aabb {
-            Vector3f min{0.0f};
-            Vector3f max{0.0f};
-        };
-
-        UnorderedMap<Size_t, Aabb> m_mesh_bounds_cache{};
         UnorderedMap<UUID, Scope<PrimitiveRenderObject>> m_primitive_objects{};
         UnorderedMap<UUID, Scope<SpriteRenderObject>> m_sprite_objects{};
         UnorderedMap<UUID, GpuObjectHandle> m_cpu_to_gpu_map{};
@@ -134,8 +128,6 @@ namespace dodoe {
         void submitUIInstances(DynamicArray<UISceneInfo> instances);
 
         void flushUpdates(DrawCommandList& cmd_list);
-
-        [[nodiscard]] const Aabb& getMeshBounds(const MeshUploadData& upload_data);
 
         [[nodiscard]] const DynamicArray<PrimitiveSceneInfo>& getPrimitiveSceneInfos() const { return m_primitive_scene_infos; }
         [[nodiscard]] const DynamicArray<SpriteSceneInfo>& getSpriteSceneInfos() const { return m_sprite_scene_infos; }

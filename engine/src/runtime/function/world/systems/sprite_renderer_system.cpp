@@ -6,7 +6,8 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 
 #include "runtime/core/math/math.h"
 
@@ -60,9 +61,16 @@ namespace dodoe {
         sprite_object->setUUID(id.id);
 
         Sprite* resolved = sr.sprite.get();
+        if (!resolved && !sr.sprite.getLegacyPath().empty()) {
+            resolved = ResourceManager::Self().loadObjectByPath<Sprite>(FileID(sr.sprite.getLegacyPath()));
+        }
 
         if (resolved) {
+            const String legacy_path = sr.sprite.getLegacyPath();
             sr.sprite = PPtr<Sprite>(resolved);
+            if (!legacy_path.empty()) {
+                sr.sprite.setLegacyPath(legacy_path);
+            }
             sprite_object->setSprite(PPtr<Sprite>(resolved));
             const Vector2f natural = computeSpriteNaturalSize(resolved);
             Matrix4f world = Math::Scale(buildWorldMatrix(transform), Vector3f(natural.x, natural.y, 1.0f));

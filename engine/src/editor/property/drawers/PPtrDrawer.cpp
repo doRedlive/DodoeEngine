@@ -7,8 +7,9 @@
 #include "framework/asset/AssetDatabase.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/object/object.h"
+#include "runtime/core/object/object_id.h"
 #include "runtime/core/object/pptr.h"
-#include "runtime/resource/file/file_id.h"
 
 #include <QComboBox>
 #include <QHBoxLayout>
@@ -38,9 +39,18 @@ QWidget* PPtrDrawer::build(const PropertyContext& pc)
     auto field = *pc.field;
     void* ptr = field.get(pc.componentPtr);
     if (ptr) {
-        auto* fileId = static_cast<dodoe::FileID*>(ptr);
-        if (fileId->isValid()) {
-            QString cur = QString::fromUtf8(fileId->getPath().c_str());
+        auto* pptr = reinterpret_cast<dodoe::PPtr<void>*>(ptr);
+        QString cur;
+        const auto& id = pptr->getObjectID();
+        if (id.isValid()) {
+            if (auto info = pc.ctx->assets().findByGuid(id.asset_id)) {
+                cur = QString::fromStdString(info->path);
+            }
+        }
+        if (cur.isEmpty() && !pptr->getLegacyPath().empty()) {
+            cur = QString::fromUtf8(pptr->getLegacyPath().c_str());
+        }
+        if (!cur.isEmpty()) {
             int idx = combo->findText(cur);
             if (idx < 0) {
                 combo->addItem(cur);
@@ -52,14 +62,30 @@ QWidget* PPtrDrawer::build(const PropertyContext& pc)
 
     QObject::connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
         [pc, field, combo](int idx) mutable {
-            auto* fileId = static_cast<dodoe::FileID*>(field.get(pc.componentPtr));
-            std::string oldPath = (fileId && fileId->isValid()) ? std::string(fileId->getPath().c_str()) : std::string();
-            std::string newPath = (idx <= 0) ? "" : combo->itemText(idx).toStdString();
-            if (newPath.empty()) {
-                *fileId = dodoe::FileID();
+            auto* pptr = reinterpret_cast<dodoe::PPtr<void>*>(field.get(pc.componentPtr));
+            const dodoe::ObjectID oldId = pptr ? pptr->getObjectID() : dodoe::ObjectID{};
+            std::string oldPath;
+            if (oldId.isValid()) {
+                if (auto info = pc.ctx->assets().findByGuid(oldId.asset_id)) {
+                    oldPath = info->path;
+                }
             }
-            else {
-                *fileId = dodoe::FileID(dodoe::String(newPath.c_str(), newPath.size()));
+            else if (pptr && !pptr->getLegacyPath().empty()) {
+                oldPath = pptr->getLegacyPath().c_str();
+            }
+
+            std::string newPath = (idx <= 0) ? "" : combo->itemText(idx).toStdString();
+            dodoe::ObjectID newId;
+            if (!newPath.empty()) {
+                for (const auto& a : pc.ctx->assets().list()) {
+                    if (a.path == newPath) {
+                        newId = dodoe::ObjectID{a.guid, 0};
+                        break;
+                    }
+                }
+            }
+            if (pptr) {
+                pptr->setIdentity(newId, newId.isValid() ? dodoe::Object::FindInstanceID(newId) : 0);
             }
             auto cmd = std::make_unique<SetFieldValueCommand>(
                 pc.entity, pc.componentName, field.getFieldName(),

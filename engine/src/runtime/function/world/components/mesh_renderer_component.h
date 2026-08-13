@@ -6,11 +6,13 @@
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/object/pptr.h"
 #include "runtime/function/render/render_scene/primitive_scene_info.h"
-#include "runtime/function/render/render_scene/primitive_render_object.h"
-#include "runtime/function/render/mesh_draw/mesh_data.h"
 #include "runtime/function/render/material/material.h"
 #include "runtime/function/animation/skeleton.h"
 #include "runtime/core/math/math.h"
+
+namespace dodoe {
+    class Mesh;
+}
 
 REFLECTION_TYPE(MeshRendererComponent)
 
@@ -20,11 +22,11 @@ namespace dodoe {
 		REFLECTION_BODY(MeshRendererComponent)
 
         META(Enable)
-		MeshUploadData upload_data;
+        PPtr<Mesh> mesh;
         META(Enable)
-        DynamicArray<MeshLODData> lods;
+        Int32 section_index{0};
         META(Enable)
-        DynamicArray<MaterialProperties> override_materials{};
+        DynamicArray<PPtr<Material>> override_materials{};
         META(Enable)
         bool visible{true};
         META(Enable)

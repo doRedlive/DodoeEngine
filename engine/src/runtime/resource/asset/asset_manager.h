@@ -16,6 +16,7 @@
 
 #include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/core/async/task_scheduler.h"
+#include "runtime/core/object/object_id.h"
 #include "runtime/resource/file/file_id.h"
 
 #include <shared_mutex>
@@ -28,9 +29,9 @@ namespace dodoe {
         friend class Managed<AssetManager, AssetManagerCreateInfo>;
 
         Scope<AssetDatabase> m_database;
-        UnorderedMap<FileID, Scope<Asset>> m_assets;
-        UnorderedMap<String, FileID> m_path_to_file_id;
-        DynamicArray<FileID> m_assets_by_type[static_cast<Size_t>(AssetType::Count)];
+        UnorderedMap<UUID, Scope<Asset>> m_assets;
+        UnorderedMap<String, UUID> m_path_to_asset_id;
+        DynamicArray<UUID> m_assets_by_type[static_cast<Size_t>(AssetType::Count)];
         FsPath m_asset_dir;
         mutable std::shared_mutex m_mutex;
 
@@ -44,15 +45,17 @@ namespace dodoe {
 
     public:
         [[nodiscard]] AssetDatabase* getDatabase() const { return m_database.get(); }
+        [[nodiscard]] const FsPath& getAssetDir() const { return m_asset_dir; }
 
-        FileID registerAsset(const String& source_path, AssetType type);
+        UUID registerAsset(const String& source_path, AssetType type);
         Scope<Asset> createAssetInstance(AssetType type);
+        void registerMaterialAsset(Scope<MaterialAsset> asset);
 
-        [[nodiscard]] Asset* findAsset(const FileID& file_id) const;
+        [[nodiscard]] Asset* findAsset(const UUID& asset_id) const;
 
         template<typename T>
-        [[nodiscard]] T* findAsset(const FileID& file_id) const {
-            Asset* asset = findAsset(file_id);
+        [[nodiscard]] T* findAsset(const UUID& asset_id) const {
+            Asset* asset = findAsset(asset_id);
             if (asset && asset->getType() == T::kStaticType) {
                 return static_cast<T*>(asset);
             }
@@ -61,29 +64,27 @@ namespace dodoe {
 
         [[nodiscard]] Asset* findAssetByPath(const String& source_path) const;
 
-        [[nodiscard]] Asset* findAssetByUUID(const UUID& uuid) const;
-        [[nodiscard]] FileID findFileIDByUUID(const UUID& uuid) const;
-
-        [[nodiscard]] String findPathByUUID(const UUID& uuid) const;
+        [[nodiscard]] ObjectID resolvePathToRef(const FileID& file_id) const;
+        [[nodiscard]] ObjectID resolveSubObjectRef(const FileID& file_id, UInt32 local_id) const;
 
         template<typename T>
-        [[nodiscard]] AssetHandle<T> getHandle(const UUID& uuid) const {
-            return AssetHandle<T>(uuid);
+        [[nodiscard]] AssetHandle<T> getHandle(const UUID& asset_id) const {
+            return AssetHandle<T>(ObjectID{asset_id, 0});
         }
 
         template<typename T>
         [[nodiscard]] AssetHandle<T> getHandleByPath(const String& source_path) const {
             std::shared_lock lock(m_mutex);
-            auto it = m_path_to_file_id.find(source_path);
-            if (it != m_path_to_file_id.end()) {
-                return AssetHandle<T>(it->second.getUUID());
+            auto it = m_path_to_asset_id.find(source_path);
+            if (it != m_path_to_asset_id.end()) {
+                return AssetHandle<T>(ObjectID{it->second, 0});
             }
             return AssetHandle<T>();
         }
 
         template<typename T>
-        [[nodiscard]] T* loadAssetSync(const FileID& file_id) {
-            T* asset = findAsset<T>(file_id);
+        [[nodiscard]] T* loadAssetSync(const UUID& asset_id) {
+            T* asset = findAsset<T>(asset_id);
             if (!asset) {
                 return nullptr;
             }
@@ -104,31 +105,22 @@ namespace dodoe {
         }
 
         template<typename T>
-        [[nodiscard]] T* loadAssetSync(const UUID& uuid) {
-            const FileID file_id = findFileIDByUUID(uuid);
-            if (!file_id.isValid()) {
-                return nullptr;
-            }
-            return loadAssetSync<T>(file_id);
-        }
-
-        template<typename T>
-        [[nodiscard]] auto loadAssetAsync(const FileID& file_id) -> std::future<T*> {
-            return TaskScheduler::Self().async([this, file_id]() -> T* {
-                return loadAssetSync<T>(file_id);
+        [[nodiscard]] auto loadAssetAsync(const UUID& asset_id) -> std::future<T*> {
+            return TaskScheduler::Self().async([this, asset_id]() -> T* {
+                return loadAssetSync<T>(asset_id);
             });
         }
 
-        void unloadAsset(const FileID& file_id);
+        void unloadAsset(const UUID& asset_id);
         void unloadAll();
-        Bool saveAsset(const FileID& file_id) const;
+        Bool saveAsset(const UUID& asset_id) const;
 
         Bool loadAssets();
         [[nodiscard]] auto loadAssetsAsync() const -> std::future<void>;
         void discoverAssets();
 
-        [[nodiscard]] Bool isAssetDirty(const FileID& file_id) const;
-        Bool reimportAsset(const FileID& file_id);
+        [[nodiscard]] Bool isAssetDirty(const UUID& asset_id) const;
+        Bool reimportAsset(const UUID& asset_id);
         Bool refreshAssets();
 
         template<typename T>
@@ -142,8 +134,8 @@ namespace dodoe {
             const Size_t type_idx = static_cast<Size_t>(T::kStaticType);
             DynamicArray<AssetHandle<T>> result;
             result.reserve(m_assets_by_type[type_idx].size());
-            for (const auto& fid : m_assets_by_type[type_idx]) {
-                result.emplace_back(fid.getUUID());
+            for (const auto& asset_id : m_assets_by_type[type_idx]) {
+                result.emplace_back(ObjectID{asset_id, 0});
             }
             return result;
         }
@@ -151,10 +143,10 @@ namespace dodoe {
         [[nodiscard]] Size_t getAssetCount() const;
         [[nodiscard]] Size_t getAssetCountOfType(AssetType type) const;
 
-        [[nodiscard]] DynamicArray<FileID> getDependents(const FileID& file_id) const;
-        [[nodiscard]] DynamicArray<UUID> getDependencies(const FileID& file_id) const;
+        [[nodiscard]] DynamicArray<UUID> getDependents(const UUID& asset_id) const;
+        [[nodiscard]] DynamicArray<ObjectID> getDependencies(const UUID& asset_id) const;
 
-        [[nodiscard]] String getAssetPath(const FileID& file_id) const;
+        [[nodiscard]] String getAssetPath(const UUID& asset_id) const;
 
         template<typename AssetType>
         Bool loadAssetFile(const String& asset_url, AssetType& out_asset) const {
