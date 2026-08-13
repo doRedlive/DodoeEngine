@@ -16,13 +16,7 @@ namespace dodoe {
 
     namespace {
 
-        constexpr UInt64 kMaterialUuidSalt = 0xA5A5A5A5A5A5A5A5ULL;
-
         UnorderedMap<InstanceID, Scope<Material>> s_material_cache{};
-
-        ObjectID MakeDefaultMaterialObjectID(const String& path) {
-            return ObjectID{UUID(static_cast<UInt64>(string2hash(path)) ^ kMaterialUuidSalt), 0};
-        }
 
     }
 
@@ -91,28 +85,22 @@ namespace dodoe {
         return true;
     }
 
-    Material* Material::Load(const String& path) {
-        if (path.empty()) {
+    Material* Material::Create(const ObjectID& ref, const String& path) {
+        if (!ref.isValid() || path.empty()) {
             return nullptr;
         }
 
-        ObjectID id;
+        String absolute_path = path;
         if (auto* asset_manager = ResourceManager::Self().getAssetManager()) {
-            id = asset_manager->resolvePathToRef(FileID(path));
-        }
-        if (!id.isValid()) {
-            id = MakeDefaultMaterialObjectID(path);
-        }
-
-        const InstanceID existing = Object::FindInstanceID(id);
-        if (existing != 0) {
-            return static_cast<Material*>(Object::FindObjectFromInstanceID(existing));
+            if (FsPath(path.c_str()).is_relative()) {
+                absolute_path = String((asset_manager->getAssetDir() / FsPath(path.c_str())).generic_string().c_str());
+            }
         }
 
-        auto material = create_scope<Material>(id);
+        auto material = create_scope<Material>(ref);
         Material* raw = material.get();
-        raw->setPath(path);
-        raw->loadFromJson(path);
+        raw->setPath(absolute_path);
+        raw->loadFromJson(absolute_path);
         const InstanceID instance_id = raw->getInstanceID();
         s_material_cache.emplace(instance_id, std::move(material));
         return raw;

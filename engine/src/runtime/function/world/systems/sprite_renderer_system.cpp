@@ -6,7 +6,8 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 
 #include "runtime/core/math/math.h"
 
@@ -61,7 +62,7 @@ namespace dodoe {
 
         Sprite* resolved = sr.sprite.get();
         if (!resolved && !sr.sprite.getLegacyPath().empty()) {
-            resolved = SpriteLoader::Load(sr.sprite.getLegacyPath());
+            resolved = ResourceManager::Self().loadObjectByPath<Sprite>(FileID(sr.sprite.getLegacyPath()));
         }
 
         if (resolved) {

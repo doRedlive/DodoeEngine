@@ -11,8 +11,10 @@ namespace dodoe {
 
     Json Asset::serializeMeta() const {
         Json json;
-        json["file_id"] = Serializer::write(m_meta.file_id);
-        json["type"] = AssetTypeToString(m_meta.type);
+        json["asset_id"] = Serializer::write(m_meta.ref.asset_id);
+        json["sub_object_id"] = Serializer::write(m_meta.ref.local_id);
+        json["source_file"] = Serializer::write(m_meta.source_file);
+        json["type"] = assetTypeToString(m_meta.type);
         json["name"] = m_meta.name;
         json["source_path"] = m_meta.source_path;
         json["source_file_mtime"] = m_meta.source_file_mtime;
@@ -27,7 +29,10 @@ namespace dodoe {
 
         Json deps = Json::array();
         for (const auto& dep : m_meta.dependencies) {
-            deps.push_back(Serializer::write(dep));
+            Json dep_json = Json::object();
+            dep_json["asset_id"] = Serializer::write(dep.asset_id);
+            dep_json["sub_object_id"] = Serializer::write(dep.local_id);
+            deps.push_back(dep_json);
         }
         json["dependencies"] = deps;
 
@@ -41,13 +46,17 @@ namespace dodoe {
             return false;
         }
 
-        if (json.contains("file_id")) {
-            FileID fid;
-            Serializer::read(json["file_id"], fid);
-            setFileID(fid);
+        if (json.contains("asset_id")) {
+            m_meta.ref.asset_id = UUID(json["asset_id"].get<UInt64>());
+        }
+        if (json.contains("sub_object_id")) {
+            m_meta.ref.local_id = json["sub_object_id"].get<UInt32>();
+        }
+        if (json.contains("source_file")) {
+            Serializer::read(json["source_file"], m_meta.source_file);
         }
         if (json.contains("type")) {
-            m_meta.type = AssetTypeFromString(json["type"].get<String>());
+            m_meta.type = assetTypeFromString(json["type"].get<String>());
         }
         if (json.contains("name")) {
             m_meta.name = json["name"].get<String>();
@@ -71,9 +80,14 @@ namespace dodoe {
         }
         if (json.contains("dependencies")) {
             for (const auto& dep : json["dependencies"]) {
-                UUID dep_uuid;
-                Serializer::read(dep, dep_uuid);
-                m_meta.dependencies.push_back(dep_uuid);
+                ObjectID dep_id;
+                if (dep.contains("asset_id")) {
+                    dep_id.asset_id = UUID(dep["asset_id"].get<UInt64>());
+                }
+                if (dep.contains("sub_object_id")) {
+                    dep_id.local_id = dep["sub_object_id"].get<UInt32>();
+                }
+                m_meta.dependencies.push_back(dep_id);
             }
         }
         if (json.contains("is_builtin")) {
@@ -83,7 +97,7 @@ namespace dodoe {
         return true;
     }
 
-    const char* Asset::AssetTypeToString(AssetType type) {
+    const char* Asset::assetTypeToString(AssetType type) {
         switch (type) {
             case AssetType::Texture:        return "Texture";
             case AssetType::Sprite:          return "Sprite";
@@ -101,7 +115,7 @@ namespace dodoe {
         }
     }
 
-    AssetType Asset::AssetTypeFromString(const String& str) {
+    AssetType Asset::assetTypeFromString(const String& str) {
         if (str == "Texture")        return AssetType::Texture;
         if (str == "Sprite")          return AssetType::Sprite;
         if (str == "Mesh")           return AssetType::Mesh;
@@ -116,7 +130,7 @@ namespace dodoe {
         return AssetType::Unknown;
     }
 
-    const char* Asset::AssetTypeToExtension(AssetType type) {
+    const char* Asset::assetTypeToExtension(AssetType type) {
         switch (type) {
             case AssetType::Texture:
             case AssetType::Sprite:          return ".png";
@@ -134,7 +148,7 @@ namespace dodoe {
         }
     }
 
-    Bool Asset::AssetTypeIsReadOnly(AssetType type) {
+    Bool Asset::assetTypeIsReadOnly(AssetType type) {
         switch (type) {
             case AssetType::Texture:
             case AssetType::Sprite:

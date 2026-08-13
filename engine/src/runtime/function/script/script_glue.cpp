@@ -12,9 +12,12 @@
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components/tilemap/tileset_asset.h"
 #include "runtime/core/project/project.h"
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/function/render/texture/sprite_manager.h"
 #include "runtime/function/render/material/material.h"
+#include "runtime/function/render/mesh/mesh.h"
 #include "runtime/function/animation/animation.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 #include "runtime/core/utils/json.h"
 #include "runtime/function/ui/ui_manager.h"
 #include "runtime/function/ui/ui_button.h"
@@ -258,33 +261,38 @@ namespace dodoe {
 
         static int native_texture_load(const char* path) {
             if (!path || path[0] == '\0') return 0;
-            auto tex = Texture2D::Load(String(path));
+            auto* tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(String(path)));
             return tex ? (int)tex->getInstanceID() : 0;
         }
 
         static int native_sprite_load(const char* path) {
             if (!path || path[0] == '\0') return 0;
-            auto sprite = SpriteLoader::Load(String(path));
+            auto* sprite = ResourceManager::Self().loadObjectByPath<Sprite>(FileID(String(path)));
             return sprite ? (int)sprite->getInstanceID() : 0;
         }
 
         static int native_load_object(const char* path, const char* type_name) {
             if (!path || path[0] == '\0' || !type_name) return 0;
+            const FileID file_id{String(path)};
             if (strcmp(type_name, "Texture2D") == 0) {
-                auto tex = Texture2D::Load(String(path));
-                return tex ? (int)tex->getInstanceID() : 0;
+                auto* obj = ResourceManager::Self().loadObjectByPath<Texture2D>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
             }
             if (strcmp(type_name, "Sprite") == 0) {
-                auto sprite = SpriteLoader::Load(String(path));
-                return sprite ? (int)sprite->getInstanceID() : 0;
+                auto* obj = ResourceManager::Self().loadObjectByPath<Sprite>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
             }
             if (strcmp(type_name, "Material") == 0) {
-                auto mat = Material::Load(String(path));
-                return mat ? (int)mat->getInstanceID() : 0;
+                auto* obj = ResourceManager::Self().loadObjectByPath<Material>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
             }
             if (strcmp(type_name, "AnimationClip") == 0) {
-                auto clip = AnimationClip::Load(String(path));
-                return clip ? (int)clip->getInstanceID() : 0;
+                auto* obj = ResourceManager::Self().loadObjectByPath<AnimationClip>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
+            }
+            if (strcmp(type_name, "Mesh") == 0) {
+                auto* obj = ResourceManager::Self().loadObjectByPath<Mesh>(file_id);
+                return obj ? (int)obj->getInstanceID() : 0;
             }
             return 0;
         }
@@ -667,6 +675,8 @@ X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
     X(native_FoliageRendererInstance_wind_phase_set, void, (uint64_t e, float v), e, v) \
     X(native_FoliageRendererInstance_variation_get, float, (uint64_t e), e) \
     X(native_FoliageRendererInstance_variation_set, void, (uint64_t e, float v), e, v) \
+    X(native_FoliageRendererComponent_mesh_get, int, (uint64_t e), e) \
+    X(native_FoliageRendererComponent_mesh_set, void, (uint64_t e, int v), e, v) \
     X(native_FoliageRendererComponent_visible_get, bool, (uint64_t e), e) \
     X(native_FoliageRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
     X(native_FoliageRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
@@ -713,6 +723,10 @@ X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
     X(native_Rigidbody2dComponent_gravity_scale_set, void, (uint64_t e, float v), e, v) \
     X(native_Rigidbody2dComponent_fixed_rotation_get, bool, (uint64_t e), e) \
     X(native_Rigidbody2dComponent_fixed_rotation_set, void, (uint64_t e, bool v), e, v) \
+    X(native_MeshRendererComponent_mesh_get, int, (uint64_t e), e) \
+    X(native_MeshRendererComponent_mesh_set, void, (uint64_t e, int v), e, v) \
+    X(native_MeshRendererComponent_section_index_get, int, (uint64_t e), e) \
+    X(native_MeshRendererComponent_section_index_set, void, (uint64_t e, int v), e, v) \
     X(native_MeshRendererComponent_visible_get, bool, (uint64_t e), e) \
     X(native_MeshRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
     X(native_MeshRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \

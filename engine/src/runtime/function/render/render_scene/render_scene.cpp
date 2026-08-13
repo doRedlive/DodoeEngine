@@ -6,6 +6,7 @@
 #include "runtime/core/utils/common.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/mesh/mesh.h"
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/resource_manager.h"
@@ -24,7 +25,6 @@ namespace dodoe {
     }
 
     void RenderScene::reset() {
-        m_mesh_bounds_cache.clear();
         m_primitive_objects.clear();
         m_sprite_objects.clear();
         m_scene_data_dirty = true;
@@ -241,20 +241,24 @@ namespace dodoe {
 
     void RenderScene::upsertPrimitiveSceneInfo(const UUID id) {
         PrimitiveRenderObject* primitive = findPrimitive(id);
-        const auto& lod_data = primitive->getLODData();
-        if (primitive == nullptr || lod_data.empty()) {
+        if (primitive == nullptr || !primitive->getMesh() || primitive->getMesh()->getLODData().empty()) {
             removePrimitiveSceneInfo(id);
             return;
         }
 
-        primitive->createResources(GDrawCommandList);
+        Vector3f bounds_min(-0.5f, -0.5f, -0.5f);
+        Vector3f bounds_max(0.5f, 0.5f, 0.5f);
+        const Mesh* mesh = primitive->getMesh();
+        if (mesh) {
+            bounds_min = mesh->getBoundsMin();
+            bounds_max = mesh->getBoundsMax();
+        }
 
-        const auto& bounds = getMeshBounds(primitive->getUploadData());
         PrimitiveSceneInfo info = primitive->buildSceneInfo(
             static_cast<Identifier>(static_cast<uint64_t>(id)),
             primitive->getWorldTransform(),
-            bounds.min,
-            bounds.max);
+            bounds_min,
+            bounds_max);
 
         resolveBatchMaterialInstances(info);
 
@@ -302,44 +306,44 @@ namespace dodoe {
         const auto& materials = info.getMaterials();
         auto& batches = info.getMeshBatches();
 
-        auto resolveTexture = [&](const FileID& file_id) -> GfxTextureHandle {
-            if (!file_id.isValid() || !texture_manager) return {};
-            const auto* asset_manager = ResourceManager::Self().getAssetManager();
-            ObjectID ref = asset_manager ? asset_manager->resolvePathToRef(file_id) : ObjectID{};
-            if (!ref.isValid()) {
-                ref = ObjectID{UUID(static_cast<UInt64>(string2hash(file_id.getPath()))), 0};
-            }
-            InstanceID tex_id = Object::FindInstanceID(ref);
-            if (tex_id == 0) {
-                if (auto* tex = Texture2D::Load(file_id.getPath())) {
-                    tex_id = tex->getInstanceID();
+        auto resolveTexture = [&](const PPtr<Texture2D>& texture_ptr) -> GfxTextureHandle {
+            if (!texture_manager) return {};
+            Texture2D* tex = texture_ptr.get();
+            if (!tex && !texture_ptr.getLegacyPath().empty()) {
+                const String legacy_path = texture_ptr.getLegacyPath();
+                tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(legacy_path));
+                if (!tex) {
+                    tex = ResourceManager::Self().loadObject<Texture2D>(UUID(static_cast<UInt64>(string2hash(legacy_path))), 0);
                 }
             }
-            if (auto* tex = texture_manager->findTexture2D(tex_id)) {
-                return tex->getGpuHandle();
-            }
-            return {};
+            return tex ? tex->getGpuHandle() : GfxTextureHandle{};
         };
 
         for (Size_t i = 0; i < batches.size(); i++) {
             auto& batch = batches[i];
             if (batch.material_instance) continue;
 
-            const auto& props = i < materials.size() ? materials[i] : MaterialProperties{};
+            const PPtr<Material>& material_ptr = i < materials.size() ? materials[i] : PPtr<Material>{};
+            Material* material = material_ptr.get();
+            if (!material && !material_ptr.getLegacyPath().empty()) {
+                material = ResourceManager::Self().loadObjectByPath<Material>(FileID(material_ptr.getLegacyPath()));
+            }
 
             UnorderedMap<String, MaterialParamValue> overrides;
-            auto addTex = [&](const String& name, const FileID& file_id) {
-                GfxTextureHandle handle = resolveTexture(file_id);
+            auto addTex = [&](const String& name, const PPtr<Texture2D>& texture_ptr) {
+                const GfxTextureHandle handle = resolveTexture(texture_ptr);
                 if (handle) {
                     MaterialParamValue val{};
                     val.texture = handle;
                     overrides[name] = val;
                 }
             };
-            addTex("base_color_texture", props.base_color_texture);
-            addTex("normal_texture", props.normal_texture);
-            addTex("metallic_roughness_texture", props.metallic_roughness_texture);
-            addTex("emissive_texture", props.emissive_texture);
+            if (material) {
+                addTex("base_color_texture", material->getBaseColorTexture());
+                addTex("normal_texture", material->getNormalTexture());
+                addTex("metallic_roughness_texture", material->getMetallicRoughnessTexture());
+                addTex("emissive_texture", material->getEmissiveTexture());
+            }
 
             String instance_name = String(fmt::format("Mat_{}_{}", info.getId(), i).c_str());
             batch.material_instance = const_cast<MaterialInstance*>(
@@ -455,40 +459,6 @@ namespace dodoe {
         }
         m_sprite_scene_infos.pop_back();
         m_sprite_scene_info_indices.erase(it);
-    }
-
-    const RenderScene::Aabb& RenderScene::getMeshBounds(const MeshUploadData& upload_data) {
-        static const Aabb kDefaultBounds{
-            Vector3f(-0.5f, -0.5f, -0.5f),
-            Vector3f(0.5f, 0.5f, 0.5f)
-        };
-
-        if (upload_data.position_data.empty()) {
-            return kDefaultBounds;
-        }
-
-        const Size_t hash = upload_data.name.empty() ? 0 : std::hash<String>{}(upload_data.name);
-        const auto cached = m_mesh_bounds_cache.find(hash);
-        if (cached != m_mesh_bounds_cache.end()) {
-            return cached->second;
-        }
-
-        Vector3f min_corner = upload_data.position_data.front();
-        Vector3f max_corner = upload_data.position_data.front();
-        for (const auto& position : upload_data.position_data) {
-            min_corner = Vector3f(
-                (std::min)(min_corner.x, position.x),
-                (std::min)(min_corner.y, position.y),
-                (std::min)(min_corner.z, position.z)
-            );
-            max_corner = Vector3f(
-                (std::max)(max_corner.x, position.x),
-                (std::max)(max_corner.y, position.y),
-                (std::max)(max_corner.z, position.z)
-            );
-        }
-
-        return m_mesh_bounds_cache.emplace(hash, Aabb{min_corner, max_corner}).first->second;
     }
 
     void RenderScene::rebuildPipelineSceneData(DrawCommandList& cmd_list) {

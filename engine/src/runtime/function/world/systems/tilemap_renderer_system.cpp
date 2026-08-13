@@ -7,6 +7,8 @@
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/sprite_render_object.h"
 #include "runtime/function/render/texture/texture.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 
 namespace dodoe {
 
@@ -87,7 +89,7 @@ namespace dodoe {
                     sprite_obj->setUVRect(u0, v0, u1, v1);
 
                     UInt32 atlas_index = 0;
-                    if (auto* tex = Texture2D::Load(tileset->image_path)) {
+                    if (auto* tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(tileset->image_path))) {
                         atlas_index = tex->getDescriptorIndex() >= 0
                             ? static_cast<UInt32>(tex->getDescriptorIndex())
                             : tex->getSlot();

@@ -22,7 +22,7 @@ namespace dodoe {
         Matrix4f m_world_transform{1.0f};
         Vector3f m_bounds_min{0.0f};
         Vector3f m_bounds_max{0.0f};
-        DynamicArray<MaterialProperties> m_materials{};
+        DynamicArray<PPtr<Material>> m_materials{};
         DynamicArray<SubMesh> m_sub_meshes{};
         DynamicArray<MeshBatch> m_mesh_batches{};
         PrimitiveMobility m_mobility{PrimitiveMobility::Static};
@@ -39,7 +39,7 @@ namespace dodoe {
         explicit PrimitiveSceneInfo(const Identifier id) : m_id(id) { }
 
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
-        void setMaterials(const DynamicArray<MaterialProperties>& materials) { m_materials = materials; }
+        void setMaterials(const DynamicArray<PPtr<Material>>& materials) { m_materials = materials; }
         void setSubMeshes(const DynamicArray<SubMesh>& sub_meshes) { m_sub_meshes = sub_meshes; }
         void setMeshBatches(const DynamicArray<MeshBatch>& mesh_batches) { m_mesh_batches = mesh_batches; }
         void setMobility(const PrimitiveMobility mobility) { m_mobility = mobility; }
@@ -56,7 +56,7 @@ namespace dodoe {
         [[nodiscard]] const Matrix4f& getWorldTransform() const { return m_world_transform; }
         [[nodiscard]] const Vector3f& getBoundsMin() const { return m_bounds_min; }
         [[nodiscard]] const Vector3f& getBoundsMax() const { return m_bounds_max; }
-        [[nodiscard]] const DynamicArray<MaterialProperties>& getMaterials() const { return m_materials; }
+        [[nodiscard]] const DynamicArray<PPtr<Material>>& getMaterials() const { return m_materials; }
         [[nodiscard]] const DynamicArray<SubMesh>& getSubMeshes() const { return m_sub_meshes; }
         [[nodiscard]] DynamicArray<MeshBatch>& getMeshBatches() { return m_mesh_batches; }
         [[nodiscard]] const DynamicArray<MeshBatch>& getMeshBatches() const { return m_mesh_batches; }
@@ -81,8 +81,8 @@ namespace dodoe {
             return false;
 #endif
         }
-        [[nodiscard]] const MaterialProperties& getMaterial(const Size_t material_index) const {
-            static const MaterialProperties k_null_material{};
+        [[nodiscard]] const PPtr<Material>& getMaterial(const Size_t material_index) const {
+            static const PPtr<Material> k_null_material{};
             return material_index < m_materials.size() ? m_materials[material_index] : k_null_material;
         }
         [[nodiscard]] UInt32 getInstanceCount() const { return m_instance_count; }

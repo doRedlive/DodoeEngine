@@ -4,6 +4,9 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/foliage_render_object.h"
+#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 
 #include "runtime/core/math/math.h"
 
@@ -51,6 +54,22 @@ namespace dodoe {
             return false;
         }
 
+        Mesh* resolved = foliage.mesh.get();
+        if (!resolved && !foliage.mesh.getLegacyPath().empty()) {
+            resolved = ResourceManager::Self().loadObjectByPath<Mesh>(FileID(foliage.mesh.getLegacyPath()));
+        }
+        if (!resolved) {
+            RenderCommandQueue::RemovePrimitive(id.id);
+            m_submitted_objects.erase(id.id);
+            return true;
+        }
+
+        const String legacy_path = foliage.mesh.getLegacyPath();
+        foliage.mesh = PPtr<Mesh>(resolved);
+        if (!legacy_path.empty()) {
+            foliage.mesh.setLegacyPath(legacy_path);
+        }
+
         auto render_object = buildRenderObject(foliage);
         render_object->setUUID(id.id);
         render_object->setWorldTransform(buildWorldMatrix(transform));
@@ -90,8 +109,7 @@ namespace dodoe {
 
         FoliageRenderType buildFoliageType(const FoliageRendererComponent& component) {
             FoliageRenderType foliage_type{};
-            foliage_type.upload_data = component.upload_data;
-            foliage_type.lods = component.lods;
+            foliage_type.mesh = component.mesh.get();
             foliage_type.override_materials = component.override_materials;
             foliage_type.mobility = component.mobility;
             foliage_type.visible = component.visible;

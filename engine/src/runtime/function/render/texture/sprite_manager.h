@@ -8,11 +8,10 @@
 
 namespace dodoe {
 
-    class DODOE_API SpriteLoader {
+    class DODOE_API SpriteManager {
     public:
         static void Initialize();
-        [[nodiscard]] static Sprite* Load(const String& path);
-        [[nodiscard]] static Sprite* Find(InstanceID id);
+        [[nodiscard]] static Sprite* Create(const ObjectID& ref, const String& path);
         [[nodiscard]] static Sprite* GetFallback();
         static void Shutdown();
     };

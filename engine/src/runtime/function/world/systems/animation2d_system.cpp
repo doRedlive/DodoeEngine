@@ -1,6 +1,8 @@
 #include "animation2d_system.h"
 
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/function/render/texture/sprite.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 
 namespace dodoe {
 
@@ -52,7 +54,7 @@ namespace dodoe {
 
             auto* tex = static_cast<Texture2D*>(Object::FindObjectFromInstanceID(current_frame.texture_id));
             if (tex) {
-                sprite_renderer.sprite = PPtr<Sprite>(SpriteLoader::Load(tex->getPath()));
+                sprite_renderer.sprite = PPtr<Sprite>(ResourceManager::Self().loadObjectByPath<Sprite>(FileID(tex->getPath())));
                 sprite_renderer.sprite.setLegacyPath(tex->getPath());
             }
         }

@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 
+#include "runtime/core/utils/uuid.h"
 #include "runtime/function/window/window.h"
 #include "runtime/function/input/key_code.h"
 #include "runtime/function/input/mouse_code.h"

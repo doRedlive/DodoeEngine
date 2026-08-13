@@ -5,7 +5,12 @@
 #include "dopch.h"
 
 #include "runtime/function/graphics/gfx.h"
+#include "runtime/core/object/pptr.h"
 #include "runtime/function/render/material/material.h"
+
+namespace dodoe {
+    class Material;
+}
 
 namespace dodoe {
 
@@ -17,7 +22,7 @@ namespace dodoe {
     };
 
     struct SubMesh {
-        MaterialProperties material{};
+        PPtr<Material> material{};
         UInt32 index_offset{0};
         UInt32 vertex_offset{0};
         UInt32 index_count{0};
@@ -26,6 +31,14 @@ namespace dodoe {
         MeshGeometryPrimitiveType primitive_type{MeshGeometryPrimitiveType::Triangles};
 
         [[nodiscard]] Bool isValid() const { return index_count > 0; }
+    };
+
+    struct MeshUploadData {
+        String name{};
+        DynamicArray<Vector3f> position_data{};
+        DynamicArray<Vector2f> texcoord_data{};
+        DynamicArray<UInt32> normal_data{};
+        DynamicArray<UInt32> index_data{};
     };
 
     struct MeshBufferData {
@@ -50,21 +63,6 @@ namespace dodoe {
                 count += sm.index_count;
             }
             return count;
-        }
-    };
-
-    struct Mesh {
-        DynamicArray<MeshLODData> lods;
-
-        [[nodiscard]] Bool isValid() const { return !lods.empty(); }
-
-        [[nodiscard]] const MeshLODData* activeLOD(Float screen_size = 1.0f) const {
-            for (Size_t i = 0; i < lods.size(); ++i) {
-                if (lods[i].screen_size >= screen_size) {
-                    return &lods[i];
-                }
-            }
-            return lods.empty() ? nullptr : &lods.back();
         }
     };
 

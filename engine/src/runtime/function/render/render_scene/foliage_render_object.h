@@ -9,9 +9,8 @@
 namespace dodoe {
 
     struct FoliageRenderType {
-        MeshUploadData upload_data{};
-        DynamicArray<MeshLODData> lods{};
-        DynamicArray<MaterialProperties> override_materials{};
+        const Mesh* mesh{nullptr};
+        DynamicArray<PPtr<Material>> override_materials{};
         PrimitiveMobility mobility{PrimitiveMobility::Static};
         Bool visible{true};
         Bool cast_shadow{true};
@@ -57,7 +56,7 @@ namespace dodoe {
         [[nodiscard]] RenderObjectDirtyFlags diff(const RenderObject& previous) const override;
         [[nodiscard]] DynamicArray<MeshBatch> buildMeshBatches(
             Identifier primitive_id,
-            const DynamicArray<MaterialProperties>& resolved_materials,
+            const DynamicArray<PPtr<Material>>& resolved_materials,
             UInt32 first_instance) const override;
         [[nodiscard]] PrimitiveSceneInfo buildSceneInfo(
             Identifier primitive_id,

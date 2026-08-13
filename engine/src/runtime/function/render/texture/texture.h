@@ -53,8 +53,6 @@ namespace dodoe {
         void setDimensions(const Int32 w, const Int32 h) { m_width = w; m_height = h; }
         void setDescriptorIndex(DescriptorIndex index) { m_descriptor_index = index; }
         void setSlot(UInt32 slot) { m_slot = slot; }
-
-        [[nodiscard]] static Texture2D* Load(const String& path);
     };
 
     class DODOE_API TextureCubemap : public Texture {

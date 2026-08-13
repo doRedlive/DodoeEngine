@@ -53,6 +53,13 @@ namespace dodoe {
             m_id = id;
             m_instance_id = instance_id;
         }
+
+        Bool operator==(const PPtr& other) const {
+            return m_id == other.m_id && m_instance_id == other.m_instance_id && m_legacy_path == other.m_legacy_path;
+        }
+        Bool operator!=(const PPtr& other) const {
+            return !(*this == other);
+        }
     };
 
 } // dodoe

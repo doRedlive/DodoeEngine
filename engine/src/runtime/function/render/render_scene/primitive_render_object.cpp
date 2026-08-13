@@ -2,12 +2,15 @@
 
 #include "primitive_render_object.h"
 #include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/render/mesh/mesh.h"
 
 namespace dodoe {
 
     const MeshLODData* PrimitiveRenderObject::activeLOD() const {
-        if (m_lods.empty()) return nullptr;
-        return &m_lods[0];
+        if (!m_mesh || m_mesh->getLODData().empty()) {
+            return nullptr;
+        }
+        return &m_mesh->getLODData()[0];
     }
 
     UInt32 PrimitiveRenderObject::getInstanceCount() const {
@@ -21,6 +24,11 @@ namespace dodoe {
         out_instance_scene_data.push_back(instance_scene_data);
     }
 
+    void PrimitiveRenderObject::setMesh(const Mesh* mesh, const Int32 section_index) {
+        m_mesh = mesh;
+        m_section_index = section_index;
+    }
+
     RenderObjectDirtyFlags PrimitiveRenderObject::diff(const RenderObject& previous) const {
         if (getRenderObjectType() != previous.getRenderObjectType()) {
             return RenderObjectDirtyFlags::All;
@@ -29,8 +37,7 @@ namespace dodoe {
         const auto& prev_prim = static_cast<const PrimitiveRenderObject&>(previous);
         RenderObjectDirtyFlags dirty_flags = RenderObjectDirtyFlags::None;
 
-        const Bool lods_changed = m_lods.size() != prev_prim.m_lods.size();
-        if (lods_changed) {
+        if (m_mesh != prev_prim.m_mesh || m_section_index != prev_prim.m_section_index) {
             dirty_flags |= RenderObjectDirtyFlags::Mesh;
         }
 
@@ -55,8 +62,8 @@ namespace dodoe {
         return dirty_flags;
     }
 
-    DynamicArray<MaterialProperties> PrimitiveRenderObject::resolveMaterials() const {
-        DynamicArray<MaterialProperties> materials{};
+    DynamicArray<PPtr<Material>> PrimitiveRenderObject::resolveMaterials() const {
+        DynamicArray<PPtr<Material>> materials{};
         const auto* lod = activeLOD();
         if (!lod) {
             return materials;
@@ -64,16 +71,21 @@ namespace dodoe {
 
         materials.reserve(lod->sub_meshes.size());
         for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
-            MaterialProperties material = lod->sub_meshes[section_index].material;
-            if (section_index < m_override_materials.size()) {
-                material = m_override_materials[section_index];
+            if (m_section_index >= 0 && static_cast<Int32>(section_index) != m_section_index) {
+                continue;
+            }
+
+            PPtr<Material> material = lod->sub_meshes[section_index].material;
+            const auto& override_material = section_index < m_override_materials.size() ? m_override_materials[section_index] : PPtr<Material>{};
+            if (override_material.isValid() || !override_material.getLegacyPath().empty()) {
+                material = override_material;
             }
             materials.push_back(material);
         }
         return materials;
     }
 
-    DynamicArray<SubMesh> PrimitiveRenderObject::buildSections(const DynamicArray<MaterialProperties>& resolved_materials) const {
+    DynamicArray<SubMesh> PrimitiveRenderObject::buildSections(const DynamicArray<PPtr<Material>>& resolved_materials) const {
         DynamicArray<SubMesh> sections{};
         const auto* lod = activeLOD();
         if (!lod) {
@@ -82,6 +94,10 @@ namespace dodoe {
 
         sections.reserve(lod->sub_meshes.size());
         for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
+            if (m_section_index >= 0 && static_cast<Int32>(section_index) != m_section_index) {
+                continue;
+            }
+
             const auto& mesh_section = lod->sub_meshes[section_index];
 
             SubMesh section{};
@@ -100,7 +116,7 @@ namespace dodoe {
 
     DynamicArray<MeshBatch> PrimitiveRenderObject::buildMeshBatches(
         const Identifier primitive_id,
-        const DynamicArray<MaterialProperties>& resolved_materials,
+        const DynamicArray<PPtr<Material>>& resolved_materials,
         const UInt32 first_instance) const
     {
         DynamicArray<MeshBatch> mesh_batches{};
@@ -112,6 +128,10 @@ namespace dodoe {
         const auto& buffers = lod->buffers;
         mesh_batches.reserve(lod->sub_meshes.size());
         for (Size_t section_index = 0; section_index < lod->sub_meshes.size(); section_index++) {
+            if (m_section_index >= 0 && static_cast<Int32>(section_index) != m_section_index) {
+                continue;
+            }
+
             const auto& mesh_section = lod->sub_meshes[section_index];
             if (mesh_section.index_count == 0) {
                 continue;
@@ -121,7 +141,7 @@ namespace dodoe {
             element.index_count = mesh_section.index_count;
             element.index_offset = mesh_section.index_offset;
             element.vertex_offset = mesh_section.vertex_offset;
-            element.section_index = static_cast<UInt32>(section_index);
+            element.section_index = mesh_section.section_index;
             element.uses_instance_range = true;
             element.first_instance = first_instance;
             element.instance_count = 1;
@@ -162,56 +182,8 @@ namespace dodoe {
     }
 
     bool PrimitiveRenderObject::createResources(DrawCommandList& cmd_list) {
-        if (m_upload_data.position_data.empty() || m_upload_data.index_data.empty()) {
-            return false;
-        }
-
-        const auto vertex_count = m_upload_data.position_data.size();
-        const auto index_count = m_upload_data.index_data.size();
-        constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
-        const Size_t vertex_byte_size = kVertexStride * vertex_count;
-        const Size_t index_byte_size = sizeof(UInt32) * index_count;
-
-        GfxBufferHandle& vb = m_lods.empty() ? m_lods.emplace_back().buffers.vertex_buffer : m_lods[0].buffers.vertex_buffer;
-        GfxBufferHandle& ib = m_lods.empty() ? m_lods.emplace_back().buffers.index_buffer : m_lods[0].buffers.index_buffer;
-
-        bool resources_created = false;
-
-        if (vertex_count > 0 && !vb) {
-            auto vertex_buffer_desc = GfxBufferDesc()
-                .setByteSize(vertex_byte_size)
-                .setIsVertexBuffer(true)
-                .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
-                .setDebugName(fmt::format("Vertex Buffer {}", m_upload_data.name));
-
-            DynamicArray<std::byte> vertex_bytes(vertex_byte_size);
-            for (Size_t i = 0; i < vertex_count; ++i) {
-                const Size_t base_offset = i * kVertexStride;
-                std::memcpy(vertex_bytes.data() + base_offset, &m_upload_data.position_data[i], sizeof(Vector3f));
-
-                const UInt32 normal = i < m_upload_data.normal_data.size() ?
-                    m_upload_data.normal_data[i] : 0;
-                std::memcpy(vertex_bytes.data() + base_offset + sizeof(Vector3f), &normal, sizeof(UInt32));
-
-                const Vector2f uv = i < m_upload_data.texcoord_data.size() ?
-                    m_upload_data.texcoord_data[i] : Vector2f(0.0f);
-                std::memcpy(vertex_bytes.data() + base_offset + sizeof(Vector3f) + sizeof(UInt32), &uv, sizeof(Vector2f));
-            }
-            vb = cmd_list.createBuffer(vertex_buffer_desc, vertex_bytes.data(), vertex_byte_size);
-            resources_created = true;
-        }
-
-        if (index_count > 0 && !ib) {
-            auto index_buffer_desc = GfxBufferDesc()
-                .setByteSize(index_byte_size)
-                .setIsIndexBuffer(true)
-                .enableAutomaticStateTracking(GfxResourceStates::IndexBuffer)
-                .setDebugName(fmt::format("Index Buffer {}", m_upload_data.name));
-            ib = cmd_list.createBuffer(index_buffer_desc, m_upload_data.index_data.data(), index_byte_size);
-            resources_created = true;
-        }
-
-        return resources_created;
+        (void)cmd_list;
+        return false;
     }
 
 } // dodoe

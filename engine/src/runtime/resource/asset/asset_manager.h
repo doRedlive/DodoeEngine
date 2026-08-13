@@ -49,6 +49,7 @@ namespace dodoe {
 
         UUID registerAsset(const String& source_path, AssetType type);
         Scope<Asset> createAssetInstance(AssetType type);
+        void registerMaterialAsset(Scope<MaterialAsset> asset);
 
         [[nodiscard]] Asset* findAsset(const UUID& asset_id) const;
 
@@ -64,6 +65,7 @@ namespace dodoe {
         [[nodiscard]] Asset* findAssetByPath(const String& source_path) const;
 
         [[nodiscard]] ObjectID resolvePathToRef(const FileID& file_id) const;
+        [[nodiscard]] ObjectID resolveSubObjectRef(const FileID& file_id, UInt32 local_id) const;
 
         template<typename T>
         [[nodiscard]] AssetHandle<T> getHandle(const UUID& asset_id) const {

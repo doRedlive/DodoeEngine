@@ -30,15 +30,6 @@ namespace dodoe {
         }
     }
 
-    Texture2D* Texture2D::Load(const String& path) {
-        auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
-        if (!texture_manager) {
-            DO_ERROR("Texture2D::Load: texture manager not initialized");
-            return nullptr;
-        }
-        return texture_manager->loadTexture(path);
-    }
-
     TextureCubemap* TextureCubemap::LoadFromFaces(const DynamicArray<String>& face_paths) {
         auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
         if (!texture_manager) {
@@ -59,30 +50,12 @@ namespace dodoe {
         m_slot_lut.clear();
         m_texture2d_cache.clear();
         m_cubemap_cache.clear();
-        m_texture_by_path.clear();
         m_cubemap_by_path.clear();
         m_fallback = {};
         m_fallback_cubemap = {};
         m_device = nullptr;
         m_descriptor_table = nullptr;
         m_gfx = nullptr;
-    }
-
-    Texture2D* TextureManager::loadTexture(const String& path) {
-        return loadTexture(path, GDrawCommandList, nullptr);
-    }
-
-    Texture2D* TextureManager::loadTexture(const String& path, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
-        const auto path_it = m_texture_by_path.find(path);
-        if (path_it != m_texture_by_path.end()) {
-            const InstanceID existing = path_it->second;
-            const auto it = m_texture2d_cache.find(existing);
-            if (it != m_texture2d_cache.end()) {
-                return it->second.get();
-            }
-        }
-
-        return createTexture(path, ResolveTextureRef(path), cmd_list, staging);
     }
 
     Texture* TextureManager::findTexture(const InstanceID id) {
@@ -188,7 +161,6 @@ namespace dodoe {
 
         const InstanceID id = texture->getInstanceID();
         m_texture2d_cache.emplace(id, std::move(texture));
-        m_texture_by_path[path] = id;
         return texture_raw;
     }
 

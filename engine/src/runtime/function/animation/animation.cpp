@@ -18,13 +18,7 @@ namespace dodoe {
 
     namespace {
 
-        constexpr UInt64 kAnimationClipUuidSalt = 0x5555A5A5AAAA5A5AULL;
-
         UnorderedMap<InstanceID, Scope<AnimationClip>> s_animation_clip_cache{};
-
-        ObjectID MakeDefaultAnimationClipObjectID(const String& path) {
-            return ObjectID{UUID(static_cast<UInt64>(string2hash(path)) ^ kAnimationClipUuidSalt), 0};
-        }
 
     }
 
@@ -73,28 +67,22 @@ namespace dodoe {
         return true;
     }
 
-    AnimationClip* AnimationClip::Load(const String& path) {
-        if (path.empty()) {
+    AnimationClip* AnimationClip::Create(const ObjectID& ref, const String& path) {
+        if (!ref.isValid() || path.empty()) {
             return nullptr;
         }
 
-        ObjectID id;
+        String absolute_path = path;
         if (auto* asset_manager = ResourceManager::Self().getAssetManager()) {
-            id = asset_manager->resolvePathToRef(FileID(path));
-        }
-        if (!id.isValid()) {
-            id = MakeDefaultAnimationClipObjectID(path);
-        }
-
-        const InstanceID existing = Object::FindInstanceID(id);
-        if (existing != 0) {
-            return static_cast<AnimationClip*>(Object::FindObjectFromInstanceID(existing));
+            if (FsPath(path.c_str()).is_relative()) {
+                absolute_path = String((asset_manager->getAssetDir() / FsPath(path.c_str())).generic_string().c_str());
+            }
         }
 
-        auto clip = create_scope<AnimationClip>(id);
+        auto clip = create_scope<AnimationClip>(ref);
         AnimationClip* raw = clip.get();
-        raw->setPath(path);
-        raw->loadFromJson(path);
+        raw->setPath(absolute_path);
+        raw->loadFromJson(absolute_path);
         const InstanceID instance_id = raw->getInstanceID();
         s_animation_clip_cache.emplace(instance_id, std::move(clip));
         return raw;

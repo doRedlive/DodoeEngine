@@ -44,8 +44,7 @@ namespace dodoe {
     } // namespace
 
     void FoliageRenderObject::applyType(const FoliageRenderType& type) {
-        setUploadData(type.upload_data);
-        setLODData(type.lods);
+        setMesh(type.mesh);
         setOverrideMaterials(type.override_materials);
         setMobility(type.mobility);
         setVisible(type.visible);
@@ -110,7 +109,7 @@ namespace dodoe {
 
     DynamicArray<MeshBatch> FoliageRenderObject::buildMeshBatches(
         const Identifier primitive_id,
-        const DynamicArray<MaterialProperties>& resolved_materials,
+        const DynamicArray<PPtr<Material>>& resolved_materials,
         const UInt32 first_instance) const
     {
         const auto* lod = activeLOD();

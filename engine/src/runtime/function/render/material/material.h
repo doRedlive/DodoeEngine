@@ -65,7 +65,7 @@ namespace dodoe {
         [[nodiscard]] Bool loadFromJson(const String& absolute_path);
         [[nodiscard]] Bool saveToJson(const String& absolute_path) const;
 
-        [[nodiscard]] static Material* Load(const String& path);
+        [[nodiscard]] static Material* Create(const ObjectID& ref, const String& path);
         static void Shutdown();
     };
 
