@@ -46,6 +46,7 @@ namespace dodoe {
         bool setEntityManagedComponentFields(uint64_t entity_uuid, const String& full_name,
                                               const Json& fields);
         bool addEntityManagedComponentFromManaged(uint64_t entity_uuid, const String& full_name);
+        bool removeEntityManagedComponentFromManaged(uint64_t entity_uuid, const String& full_name);
         void removeEntityFromManagedWorld(uint64_t entity_uuid);
         [[nodiscard]] const UnorderedMap<String, ComponentTypeInfo>& getComponentClassUmap() const { return m_component_class_umap; }
         [[nodiscard]] const UnorderedMap<ui64, DynamicArray<Pair<String, String>>>& getFieldSnapshot() const { return m_field_snapshot; }

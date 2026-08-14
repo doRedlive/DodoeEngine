@@ -5,6 +5,7 @@
 #include "scene.h"
 
 #include "runtime/core/application.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/core/project/project.h"
 #include "runtime/resource/res_type/scene_res.h"
 #include "runtime/resource/resource_manager.h"
@@ -12,6 +13,7 @@
 #include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/core/async/task_scheduler.h"
 
+#include "systems/animator_system.h"
 #include "systems/camera_system.h"
 #include "systems/foliage_renderer_system.h"
 #include "systems/light_system.h"
@@ -19,6 +21,7 @@
 #include "systems/sky_light_system.h"
 #include "systems/mesh_renderer_system.h"
 #include "systems/physics2d_system.h"
+#include "systems/physics3d_system.h"
 #include "systems/rect_renderer_system.h"
 #include "systems/sprite_renderer_system.h"
 #include "systems/mono_system.h"
@@ -111,13 +114,20 @@ namespace dodoe {
         void WarmupComponentsPools(Registry& reg) {
             reg.ensurePoolExists<CameraComponent>();
             reg.ensurePoolExists<CircleRendererComponent>();
+            reg.ensurePoolExists<AnimationPoseComponent>();
+            reg.ensurePoolExists<AnimationDriveModeComponent>();
+            reg.ensurePoolExists<BoneAttachmentComponent>();
             reg.ensurePoolExists<BoxCollider2dComponent>();
             reg.ensurePoolExists<CircleCollider2dComponent>();
+            reg.ensurePoolExists<BoxColliderComponent>();
+            reg.ensurePoolExists<SphereColliderComponent>();
+            reg.ensurePoolExists<CapsuleColliderComponent>();
             reg.ensurePoolExists<FoliageRendererComponent>();
             reg.ensurePoolExists<IDComponent>();
             reg.ensurePoolExists<MeshRendererComponent>();
             reg.ensurePoolExists<RectRendererComponent>();
             reg.ensurePoolExists<Rigidbody2dComponent>();
+            reg.ensurePoolExists<RigidbodyComponent>();
             reg.ensurePoolExists<PointLightComponent>();
             reg.ensurePoolExists<SpotLightComponent>();
             reg.ensurePoolExists<LineRendererComponent>();
@@ -128,6 +138,35 @@ namespace dodoe {
             reg.ensurePoolExists<HierarchyComponent>();
             reg.ensurePoolExists<TilemapComponent>();
             reg.ensurePoolExists<TileLayerComponent>();
+            reg.ensurePoolExists<SetVelocity2dRequest>();
+            reg.ensurePoolExists<ApplyForce2dRequest>();
+            reg.ensurePoolExists<ApplyImpulse2dRequest>();
+            reg.ensurePoolExists<SetVelocityRequest>();
+            reg.ensurePoolExists<ApplyForceRequest>();
+            reg.ensurePoolExists<ApplyImpulseRequest>();
+            reg.ensurePoolExists<TeleportRequest>();
+            reg.ensurePoolExists<PlayAnimationRequest>();
+            reg.ensurePoolExists<StopAnimationRequest>();
+            reg.ensurePoolExists<ResumeAnimationRequest>();
+        }
+
+        CommandContext MakeCommandContext(Registry& reg) {
+            CommandContext context;
+            context.scene = reg.scene_context;
+            context.registry = &reg;
+            context.add_managed = [](uint64_t uuid, const String& type_name) {
+                ScriptSystem* script_system = GetScriptSystem();
+                if (script_system && script_system->getScriptRuntime()) {
+                    script_system->getScriptRuntime()->addEntityManagedComponentFromManaged(uuid, type_name);
+                }
+            };
+            context.remove_managed = [](uint64_t uuid, const String& type_name) {
+                ScriptSystem* script_system = GetScriptSystem();
+                if (script_system && script_system->getScriptRuntime()) {
+                    script_system->getScriptRuntime()->removeEntityManagedComponentFromManaged(uuid, type_name);
+                }
+            };
+            return context;
         }
 
         void ExecuteSystemsParallel(
@@ -145,7 +184,7 @@ namespace dodoe {
                         sys->update(reg, dt);
                     }
                 }
-                cmd_buf.apply(reg);
+                cmd_buf.apply(MakeCommandContext(reg));
                 cmd_buf.reset();
                 return;
             }
@@ -180,7 +219,7 @@ namespace dodoe {
                 }
             }
 
-            cmd_buf.apply(reg);
+            cmd_buf.apply(MakeCommandContext(reg));
             cmd_buf.reset();
         }
 
@@ -209,21 +248,25 @@ namespace dodoe {
 
     bool World::setupSystems() {
         auto mono = create_ref<MonoSystem>();
+        auto animator = create_ref<AnimatorSystem>();
         auto camera_system = create_ref<CameraSystem>();
         auto light_system = create_ref<LightSystem>();
         auto sky_light = create_ref<SkyLightSystem>();
         auto physics2d = create_ref<Physics2dSystem>();
+        auto physics3d = create_ref<Physics3dSystem>();
         auto foliage_renderer = create_ref<FoliageRendererSystem>();
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
         auto tilemap_renderer = create_ref<TilemapRendererSystem>();
         auto rect_renderer = create_ref<RectRendererSystem>();
         auto line_renderer = create_ref<LineRendererSystem>();
-        registerRuntimeSystem(mono);
+        registerGameplaySystem(mono);
+        registerRuntimeSystem(animator);
         registerRuntimeSystem(camera_system);
         registerRuntimeSystem(light_system);
         registerRuntimeSystem(sky_light);
         registerRuntimeSystem(physics2d);
+        registerRuntimeSystem(physics3d);
         registerRuntimeSystem(foliage_renderer);
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
@@ -231,9 +274,11 @@ namespace dodoe {
         registerRuntimeSystem(rect_renderer);
         registerRuntimeSystem(line_renderer);
 
+        registerSimulationSystem(animator);
         registerSimulationSystem(camera_system);
         registerSimulationSystem(light_system);
         registerSimulationSystem(physics2d);
+        registerSimulationSystem(physics3d);
         registerSimulationSystem(foliage_renderer);
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);
@@ -269,6 +314,13 @@ namespace dodoe {
 
     void World::update(const float dt) {
         drainAsyncCompletions();
+
+        if (m_state != WorldState::Pause && dt > 0.0f) {
+            auto* physics_system = GetPhysicsSystem();
+            if (physics_system) {
+                physics_system->step(dt);
+            }
+        }
 
         switch (m_state) {
             case WorldState::Runtime:
@@ -458,6 +510,11 @@ namespace dodoe {
         m_task_graph_dirty = true;
     }
 
+    void World::registerGameplaySystem(Ref<System> system) {
+        if (!system) return;
+        m_gameplay_systems.push_back(std::move(system));
+    }
+
     void World::buildTaskGraphs() {
         BuildGraphForSystems(m_runtime_task_graph, m_runtime_systems);
         BuildGraphForSystems(m_simulation_task_graph, m_simulation_systems);
@@ -465,6 +522,11 @@ namespace dodoe {
     }
 
     void World::onRuntimeStart(Registry& reg) {
+        for (auto& sys : m_gameplay_systems) {
+            if (sys) {
+                sys->start(reg);
+            }
+        }
         for (auto& sys : m_runtime_systems) {
             if (sys) {
                 sys->start(reg);
@@ -473,6 +535,15 @@ namespace dodoe {
     }
 
     void World::onRuntimeUpdate(Registry& reg, const float dt) {
+        for (auto& sys : m_gameplay_systems) {
+            if (sys) {
+                sys->update(reg, dt);
+            }
+        }
+
+        m_command_buffer.apply(MakeCommandContext(reg));
+        m_command_buffer.reset();
+
         if (m_task_graph_dirty) {
             buildTaskGraphs();
         }
@@ -480,6 +551,11 @@ namespace dodoe {
     }
 
     void World::onRuntimeFinalize(Registry& reg) {
+        for (auto& sys : m_gameplay_systems) {
+            if (sys) {
+                sys->finalize(reg);
+            }
+        }
         for (auto& sys : m_runtime_systems) {
             if (sys) {
                 sys->finalize(reg);

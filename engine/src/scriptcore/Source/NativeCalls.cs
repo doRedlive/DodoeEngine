@@ -18,6 +18,21 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, ulong>                                          native_id_component_get_id;
         public delegate* unmanaged<ulong, byte*>                                          native_id_component_get_name;
         public delegate* unmanaged<ulong, byte*, void>                                    native_id_component_set_name;
+        public delegate* unmanaged<ulong, void>                                           native_entity_enqueue_destroy;
+        public delegate* unmanaged<ulong, byte*, void>                                    native_entity_enqueue_add_component;
+        public delegate* unmanaged<ulong, byte*, void>                                    native_entity_enqueue_remove_component;
+        public delegate* unmanaged<ulong, byte*, void>                                    native_entity_enqueue_add_managed;
+        public delegate* unmanaged<ulong, byte*, void>                                    native_entity_enqueue_remove_managed;
+        public delegate* unmanaged<ulong, float, float, void>                             native_Rigidbody2dComponent_SetVelocity;
+        public delegate* unmanaged<ulong, float, float, void>                             native_Rigidbody2dComponent_ApplyForce;
+        public delegate* unmanaged<ulong, float, float, void>                             native_Rigidbody2dComponent_ApplyImpulse;
+        public delegate* unmanaged<ulong, float, float, float, void>                      native_RigidbodyComponent_SetVelocity;
+        public delegate* unmanaged<ulong, float, float, float, void>                      native_RigidbodyComponent_ApplyForce;
+        public delegate* unmanaged<ulong, float, float, float, void>                      native_RigidbodyComponent_ApplyImpulse;
+        public delegate* unmanaged<ulong, float, float, float, float, float, float, float, void> native_RigidbodyComponent_Teleport;
+        public delegate* unmanaged<ulong, byte*, void>                                    native_AnimatorComponent_Play;
+        public delegate* unmanaged<ulong, void>                                           native_AnimatorComponent_Stop;
+        public delegate* unmanaged<ulong, void>                                           native_AnimatorComponent_Resume;
         // === NATIVE_BINDINGS_GENERATED_START ===
 // === GENERATED BINDINGS START (do not edit manually) ===
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_FoliageRendererInstance_position_get;
@@ -272,7 +287,7 @@ internal static unsafe partial class NativeCalls
 
     internal static bool Native_EntityHasComponent(ulong entityId, Type componentType)
     {
-        var name = componentType.Name;
+        var name = ComponentManager.GetNativeTypeName(componentType);
         var ptr = StrToPtr(name);
         try { return b->native_entity_has_component(entityId, ptr) != 0; }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
@@ -282,7 +297,7 @@ internal static unsafe partial class NativeCalls
 
     internal static void Native_EntityAddComponent(ulong entityId, Type componentType)
     {
-        var name = componentType.Name;
+        var name = ComponentManager.GetNativeTypeName(componentType);
         var ptr = StrToPtr(name);
         try { b->native_entity_add_component(entityId, ptr); }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
@@ -290,7 +305,7 @@ internal static unsafe partial class NativeCalls
 
     internal static void Native_EntityRemoveComponent(ulong entityId, Type componentType)
     {
-        var name = componentType.Name;
+        var name = ComponentManager.GetNativeTypeName(componentType);
         var ptr = StrToPtr(name);
         try { b->native_entity_remove_component(entityId, ptr); }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
@@ -303,7 +318,7 @@ internal static unsafe partial class NativeCalls
 
     internal static bool Native_ComponentExists(ulong entityId, Type componentType)
     {
-        var name = componentType.Name;
+        var name = ComponentManager.GetNativeTypeName(componentType);
         var ptr = StrToPtr(name);
         try { return b->native_component_exists(entityId, ptr) != 0; }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
@@ -358,6 +373,61 @@ internal static unsafe partial class NativeCalls
     }
 
     internal static void Native_DestroyEntity(ulong entityId) => b->native_destroy_entity(entityId);
+
+    internal static void Native_EntityEnqueueDestroy(ulong entityId) => b->native_entity_enqueue_destroy(entityId);
+
+    internal static void Native_EntityEnqueueAddComponent(ulong entityId, string typeName)
+    {
+        var ptr = StrToPtr(typeName);
+        try { b->native_entity_enqueue_add_component(entityId, ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static void Native_EntityEnqueueRemoveComponent(ulong entityId, string typeName)
+    {
+        var ptr = StrToPtr(typeName);
+        try { b->native_entity_enqueue_remove_component(entityId, ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static void Native_EntityEnqueueAddManaged(ulong entityId, string typeName)
+    {
+        var ptr = StrToPtr(typeName);
+        try { b->native_entity_enqueue_add_managed(entityId, ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static void Native_EntityEnqueueRemoveManaged(ulong entityId, string typeName)
+    {
+        var ptr = StrToPtr(typeName);
+        try { b->native_entity_enqueue_remove_managed(entityId, ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static void Native_Rigidbody2D_SetVelocity(ulong entityId, float x, float y) => b->native_Rigidbody2dComponent_SetVelocity(entityId, x, y);
+
+    internal static void Native_Rigidbody2D_ApplyForce(ulong entityId, float x, float y) => b->native_Rigidbody2dComponent_ApplyForce(entityId, x, y);
+
+    internal static void Native_Rigidbody2D_ApplyImpulse(ulong entityId, float x, float y) => b->native_Rigidbody2dComponent_ApplyImpulse(entityId, x, y);
+
+    internal static void Native_Rigidbody_SetVelocity(ulong entityId, float x, float y, float z) => b->native_RigidbodyComponent_SetVelocity(entityId, x, y, z);
+
+    internal static void Native_Rigidbody_ApplyForce(ulong entityId, float x, float y, float z) => b->native_RigidbodyComponent_ApplyForce(entityId, x, y, z);
+
+    internal static void Native_Rigidbody_ApplyImpulse(ulong entityId, float x, float y, float z) => b->native_RigidbodyComponent_ApplyImpulse(entityId, x, y, z);
+
+    internal static void Native_Rigidbody_Teleport(ulong entityId, float px, float py, float pz, float qx, float qy, float qz, float qw) => b->native_RigidbodyComponent_Teleport(entityId, px, py, pz, qx, qy, qz, qw);
+
+    internal static void Native_Animator_Play(ulong entityId, string name)
+    {
+        var ptr = StrToPtr(name);
+        try { b->native_AnimatorComponent_Play(entityId, ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static void Native_Animator_Stop(ulong entityId) => b->native_AnimatorComponent_Stop(entityId);
+
+    internal static void Native_Animator_Resume(ulong entityId) => b->native_AnimatorComponent_Resume(entityId);
 
     internal static void Native_TilemapSetData(ulong entityId, int w, int h, int tw, int th)
     {

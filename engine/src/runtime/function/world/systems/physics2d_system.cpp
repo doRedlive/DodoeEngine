@@ -11,8 +11,9 @@ namespace dodoe {
     SystemAccess Physics2dSystem::getAccess() const {
         return SystemAccessBuilder{}
             .readsComponents<Rigidbody2dComponent, BoxCollider2dComponent, CircleCollider2dComponent,
-                             DistanceJoint2dComponent, RevoluteJoint2dComponent>()
-            .writesComponents<TransformComponent>()
+                             DistanceJoint2dComponent, RevoluteJoint2dComponent,
+                             SetVelocity2dRequest, ApplyForce2dRequest, ApplyImpulse2dRequest>()
+            .writesComponents<TransformComponent, SetVelocity2dRequest, ApplyForce2dRequest, ApplyImpulse2dRequest>()
             .hasStructuralChanges(true)
             .build();
     }
@@ -28,13 +29,6 @@ namespace dodoe {
         updateRuntimeParams(state, reg.raw());
         updateJoints(state, reg.raw());
         applyRequests(state, reg.raw());
-
-        if (dt > 0.0f) {
-            auto* physics_system = GetPhysicsSystem();
-            if (physics_system) {
-                physics_system->step(dt);
-            }
-        }
 
         syncTransform(state, reg.raw());
         processCollisionEvents(state, reg.raw());
@@ -694,27 +688,38 @@ namespace dodoe {
     }
 
     void Physics2dSystem::applyRequests(RegistryState& state, entt::registry& registry) {
-        for (auto entity : registry.view<Rigidbody2dComponent>()) {
+        for (auto entity : registry.view<Rigidbody2dComponent, SetVelocity2dRequest>()) {
             const ui32 key = static_cast<ui32>(entity);
             const auto body_it = state.body_umap.find(key);
             if (body_it == state.body_umap.end()) {
                 continue;
             }
-
-            auto& rb2d = registry.get<Rigidbody2dComponent>(entity);
-            if (rb2d.velocity_request.x != 0.0f || rb2d.velocity_request.y != 0.0f) {
-                b2Body_SetLinearVelocity(body_it->second, { rb2d.velocity_request.x, rb2d.velocity_request.y });
-                rb2d.velocity_request = { 0.0f, 0.0f };
-            }
-            if (rb2d.force_request.x != 0.0f || rb2d.force_request.y != 0.0f) {
-                b2Body_ApplyForceToCenter(body_it->second, { rb2d.force_request.x, rb2d.force_request.y }, true);
-                rb2d.force_request = { 0.0f, 0.0f };
-            }
-            if (rb2d.impulse_request.x != 0.0f || rb2d.impulse_request.y != 0.0f) {
-                b2Body_ApplyLinearImpulseToCenter(body_it->second, { rb2d.impulse_request.x, rb2d.impulse_request.y }, true);
-                rb2d.impulse_request = { 0.0f, 0.0f };
-            }
+            const auto& request = registry.get<SetVelocity2dRequest>(entity);
+            b2Body_SetLinearVelocity(body_it->second, { request.velocity.x, request.velocity.y });
         }
+        registry.clear<SetVelocity2dRequest>();
+
+        for (auto entity : registry.view<Rigidbody2dComponent, ApplyForce2dRequest>()) {
+            const ui32 key = static_cast<ui32>(entity);
+            const auto body_it = state.body_umap.find(key);
+            if (body_it == state.body_umap.end()) {
+                continue;
+            }
+            const auto& request = registry.get<ApplyForce2dRequest>(entity);
+            b2Body_ApplyForceToCenter(body_it->second, { request.force.x, request.force.y }, true);
+        }
+        registry.clear<ApplyForce2dRequest>();
+
+        for (auto entity : registry.view<Rigidbody2dComponent, ApplyImpulse2dRequest>()) {
+            const ui32 key = static_cast<ui32>(entity);
+            const auto body_it = state.body_umap.find(key);
+            if (body_it == state.body_umap.end()) {
+                continue;
+            }
+            const auto& request = registry.get<ApplyImpulse2dRequest>(entity);
+            b2Body_ApplyLinearImpulseToCenter(body_it->second, { request.impulse.x, request.impulse.y }, true);
+        }
+        registry.clear<ApplyImpulse2dRequest>();
     }
 
     void Physics2dSystem::syncTransform(RegistryState& state, entt::registry& registry) {

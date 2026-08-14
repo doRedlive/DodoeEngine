@@ -25,10 +25,6 @@ namespace dodoe {
         float gravity_scale{1.0f};
         META(Enable)
         bool fixed_rotation{ false };
-
-        Vector2f velocity_request{ 0.0f, 0.0f };
-        Vector2f force_request{ 0.0f, 0.0f };
-        Vector2f impulse_request{ 0.0f, 0.0f };
     };
 
 } // dodoe

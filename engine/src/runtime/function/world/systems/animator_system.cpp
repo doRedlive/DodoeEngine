@@ -127,8 +127,11 @@ namespace dodoe {
 
     SystemAccess AnimatorSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent>()
-            .writesComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent>()
+            .readsComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent, AnimationPoseComponent,
+                             PlayAnimationRequest, StopAnimationRequest, ResumeAnimationRequest>()
+            .writesComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent, AnimationPoseComponent,
+                             PlayAnimationRequest, StopAnimationRequest, ResumeAnimationRequest>()
+            .hasStructuralChanges(true)
             .build();
     }
 
@@ -137,9 +140,10 @@ namespace dodoe {
         for (auto entity : view) {
             auto& animator = reg.get<AnimatorComponent>(entity);
 
-            if (!animator.play_request.empty()) {
+            if (reg.all_of<PlayAnimationRequest>(entity)) {
+                const auto& request = reg.get<PlayAnimationRequest>(entity);
                 if (animator.controller) {
-                    const Size_t index = animator.controller->findState(animator.play_request);
+                    const Size_t index = animator.controller->findState(request.name);
                     if (index != AnimatorController::kInvalidState) {
                         animator.cur_state = index;
                         animator.state_time = 0.0f;
@@ -149,15 +153,12 @@ namespace dodoe {
                         animator.playing = true;
                     }
                 }
-                animator.play_request.clear();
             }
-            if (animator.stop_requested) {
+            if (reg.all_of<StopAnimationRequest>(entity)) {
                 animator.playing = false;
-                animator.stop_requested = false;
             }
-            if (animator.resume_requested) {
+            if (reg.all_of<ResumeAnimationRequest>(entity)) {
                 animator.playing = true;
-                animator.resume_requested = false;
             }
 
             animator.pending_events.clear();
@@ -257,11 +258,23 @@ namespace dodoe {
 
                 DynamicArray<BoneBindPose> local_poses;
                 DynamicArray<Matrix4f> world_matrices;
+                DynamicArray<Matrix4f> skinning_matrices;
                 clip->sample(*mesh_renderer.skeleton, sample_time, local_poses);
                 mesh_renderer.skeleton->computeWorldMatrices(local_poses, world_matrices);
-                mesh_renderer.skeleton->computeSkinningMatrices(world_matrices, mesh_renderer.skinning_matrices);
+                mesh_renderer.skeleton->computeSkinningMatrices(world_matrices, skinning_matrices);
+                mesh_renderer.skinning_matrices.swap(skinning_matrices);
+
+                auto& pose = reg.get_or_emplace<AnimationPoseComponent>(entity);
+                pose.local_poses = std::move(local_poses);
+                pose.world_matrices = std::move(world_matrices);
+                pose.skinning_matrices = mesh_renderer.skinning_matrices;
+                pose.dirty = true;
             }
         }
+
+        reg.raw().clear<PlayAnimationRequest>();
+        reg.raw().clear<StopAnimationRequest>();
+        reg.raw().clear<ResumeAnimationRequest>();
     }
 
 } // dodoe

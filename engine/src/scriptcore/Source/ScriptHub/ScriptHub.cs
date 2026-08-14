@@ -40,6 +40,7 @@ public static partial class ScriptHub
             "get_entity_component_data" => GetEntityComponentData(args, result),
             "set_entity_component_data" => SetEntityComponentData(args),
             "add_entity_component"  => AddEntityComponent(args),
+            "remove_entity_component" => RemoveEntityComponent(args),
             "remove_entity"         => RemoveEntity(args),
             "register_natives"      => RegisterNatives(args),
             _ => -1

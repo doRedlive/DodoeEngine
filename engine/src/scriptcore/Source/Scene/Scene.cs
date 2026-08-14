@@ -316,7 +316,7 @@ public class Scene
             }
 
             _activeBehaviours.RemoveAll(mb => mb.GameObject == go);
-            NativeCalls.Native_DestroyEntity(go.ID);
+            World.Current.CommandBuffer.DestroyEntity(go.ID);
             Unregister(go.ID);
         }
     }

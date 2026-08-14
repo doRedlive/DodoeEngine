@@ -66,7 +66,9 @@ namespace dodoe {
 
 		[[nodiscard]] static entt::entity NullEntity() { return entt::null; }
 		[[nodiscard]] entt::entity handle() const { return handle_; }
-		[[nodiscard]] bool valid() const { return handle_ != entt::null; }	
+		[[nodiscard]] bool valid() const { return handle_ != entt::null; }
+		[[nodiscard]] Scene* getScene() const { return scene_; }
+
 		[[nodiscard]] UUID uuid() { return getComponent<IDComponent>().id; }	
 		[[nodiscard]] const String& name() { return getComponent<IDComponent>().name; }
 		

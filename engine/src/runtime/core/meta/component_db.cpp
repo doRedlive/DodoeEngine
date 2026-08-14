@@ -177,8 +177,12 @@ namespace dodoe {
         registerComponent<HierarchyComponent>("HierarchyComponent", false);
 
         registerComponent<AnimatorComponent>("AnimatorComponent");
+        registerComponent<AnimationDriveModeComponent>("AnimationDriveModeComponent");
+        registerComponent<BoneAttachmentComponent>("BoneAttachmentComponent");
         registerComponent<CameraComponent>("CameraComponent");
+        registerComponent<BoxColliderComponent>("BoxColliderComponent");
         registerComponent<BoxCollider2dComponent>("BoxCollider2dComponent");
+        registerComponent<CapsuleColliderComponent>("CapsuleColliderComponent");
         registerComponent<CircleCollider2dComponent>("CircleCollider2dComponent");
         registerComponent<FoliageRendererComponent>("FoliageRendererComponent");
         registerComponent<PointLightComponent>("PointLightComponent");
@@ -189,6 +193,8 @@ namespace dodoe {
         registerComponent<MeshRendererComponent>("MeshRendererComponent");
         registerComponent<RectRendererComponent>("RectRendererComponent");
         registerComponent<Rigidbody2dComponent>("Rigidbody2dComponent");
+        registerComponent<RigidbodyComponent>("RigidbodyComponent");
+        registerComponent<SphereColliderComponent>("SphereColliderComponent");
         registerComponent<SpriteRendererComponent>("SpriteRendererComponent");
         registerComponent<TilemapComponent>("TilemapComponent", false);
         registerComponent<TileLayerComponent>("TileLayerComponent");

@@ -206,6 +206,15 @@ namespace dodoe {
         return rc == 1;
     }
 
+    bool ScriptRuntime::removeEntityManagedComponentFromManaged(uint64_t entity_uuid, const String& full_name) {
+        if (!m_call) return false;
+
+        void* args[2] = { &entity_uuid, (void*)full_name.c_str() };
+        void* result = nullptr;
+        int rc = m_call("remove_entity_component", args, &result);
+        return rc == 1;
+    }
+
     void ScriptRuntime::removeEntityFromManagedWorld(uint64_t entity_uuid) {
         if (!m_call) return;
 

@@ -8,6 +8,7 @@
 #include "dopch.h"
 
 #include "physics2d_world.h"
+#include "physics_world.h"
 
 namespace dodoe {
 
@@ -24,9 +25,12 @@ namespace dodoe {
 
 		[[nodiscard]] Physics2dWorld* getWorld2d() { return m_world_2d.get(); }
 		[[nodiscard]] const Physics2dWorld* getWorld2d() const { return m_world_2d.get(); }
+		[[nodiscard]] PhysicsWorld* getWorld3d() { return m_world_3d.get(); }
+		[[nodiscard]] const PhysicsWorld* getWorld3d() const { return m_world_3d.get(); }
 
 	private:
 		Scope<Physics2dWorld> m_world_2d{nullptr};
+		Scope<PhysicsWorld> m_world_3d{nullptr};
 
 		bool initialize(const PhysicsSystemCreateInfo& create_info);
 		void shutdown();

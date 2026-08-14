@@ -10,3 +10,6 @@
 [submodule "engine/external/SPIRV-Cross"]
 	path = engine/external/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross.git
+[submodule "engine/external/JoltPhysics"]
+	path = engine/external/JoltPhysics
+	url = https://github.com/jrouwe/JoltPhysics.git

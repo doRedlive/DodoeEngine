@@ -16,15 +16,24 @@ internal static class ComponentManager
         return result;
     }
 
+    public static string GetNativeTypeName(Type t)
+    {
+        if (t == typeof(Rigidbody2D)) return "Rigidbody2dComponent";
+        if (t == typeof(Animator)) return "AnimatorComponent";
+        if (t == typeof(Rigidbody)) return "RigidbodyComponent";
+        if (t == typeof(BoxCollider)) return "BoxColliderComponent";
+        if (t == typeof(SphereCollider)) return "SphereColliderComponent";
+        if (t == typeof(CapsuleCollider)) return "CapsuleColliderComponent";
+        return t.Name;
+    }
+
     public static T Add<T>(Entity e) where T : CakeComponent, new()
     {
         var type = typeof(T);
 
         if (IsNative(type))
         {
-            if (NativeCalls.Native_EntityHasComponent(e.ID, type))
-                return Get<T>(e);
-            NativeCalls.Native_EntityAddComponent(e.ID, type);
+            World.Current.CommandBuffer.AddComponent<T>(e.ID);
             return (T)(object)NativeProxyFactory.Create(type, e);
         }
 
@@ -80,8 +89,7 @@ internal static class ComponentManager
 
         if (IsNative(type))
         {
-            if (NativeCalls.Native_EntityHasComponent(e.ID, type))
-                NativeCalls.Native_EntityRemoveComponent(e.ID, type);
+            World.Current.CommandBuffer.RemoveComponent<T>(e.ID);
             return;
         }
 

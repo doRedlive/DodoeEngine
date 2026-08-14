@@ -16,7 +16,7 @@ namespace dodoe {
 
     SystemAccess MeshRendererSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, MeshRendererComponent, HierarchyComponent>()
+            .readsComponents<IDComponent, TransformComponent, MeshRendererComponent, HierarchyComponent, AnimationPoseComponent>()
             .build();
     }
 
@@ -40,6 +40,14 @@ namespace dodoe {
             }
             id.dirty = false;
             mesh.dirty = false;
+            if (entity.hasComponent<AnimationPoseComponent>()) {
+                auto& pose = entity.getComponent<AnimationPoseComponent>();
+                if (pose.dirty) {
+                    mesh.skinning_matrices = pose.skinning_matrices;
+                    pose.dirty = false;
+                    mesh.dirty = true;
+                }
+            }
         }
 
         pruneRemovedObjects(active_renderers);

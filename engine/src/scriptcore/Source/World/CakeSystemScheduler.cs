@@ -37,7 +37,6 @@ internal static class CakeSystemScheduler
     {
         Refresh();
         var levels = _graph.Levels;
-        var world = World.Current;
         foreach (var level in levels)
         {
             if (level.Length == 1)
@@ -54,9 +53,6 @@ internal static class CakeSystemScheduler
                     catch (Exception e) { Debug.LogError($"OnUpdate error in {sys.GetType().Name}: {e}"); }
                 });
             }
-
-            if (world.CommandBuffer.HasCommands)
-                world.CommandBuffer.Apply(world);
         }
     }
 

@@ -3,7 +3,12 @@
 #pragma once
 
 #include "runtime/function/world/components/animator_component.h"
+#include "runtime/function/world/components/animation_drive_mode_component.h"
+#include "runtime/function/world/components/animation_pose_component.h"
+#include "runtime/function/world/components/bone_attachment_component.h"
+#include "runtime/function/world/components/box_collider_component.h"
 #include "runtime/function/world/components/camera_component.h"
+#include "runtime/function/world/components/capsule_collider_component.h"
 #include "runtime/function/world/components/circle_renderer_component.h"
 #include "runtime/function/world/components/collider2d_component.h"
 #include "runtime/function/world/components/foliage_renderer_component.h"
@@ -11,7 +16,10 @@
 #include "runtime/function/world/components/joint2d_component.h"
 #include "runtime/function/world/components/mesh_renderer_component.h"
 #include "runtime/function/world/components/rect_renderer_component.h"
+#include "runtime/function/world/components/request_components.h"
 #include "runtime/function/world/components/rigidbody2d_component.h"
+#include "runtime/function/world/components/rigidbody_component.h"
+#include "runtime/function/world/components/sphere_collider_component.h"
 #include "runtime/function/world/components/light_component.h"
 #include "runtime/function/world/components/line_renderer_component.h"
 #include "runtime/function/world/components/sky_light_component.h"

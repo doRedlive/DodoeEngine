@@ -50,6 +50,7 @@ target_include_directories(${TARGET_NAME}
                 ${ENGINE_ROOT_DIR}/external/glm
                 ${ENGINE_ROOT_DIR}/external/entt/src
                 ${ENGINE_ROOT_DIR}/external/box2d/include
+                ${ENGINE_ROOT_DIR}/external/JoltPhysics
                 ${ENGINE_ROOT_DIR}/external/vulkanmemoryallocator/include
                 ${ENGINE_ROOT_DIR}/external/json/include
                 ${ENGINE_ROOT_DIR}/external/assimp/include
@@ -74,6 +75,7 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC imgui
         PUBLIC EnTT::EnTT
         PUBLIC box2d
+        PUBLIC Jolt
         PUBLIC assimp
         PUBLIC cutie
         PUBLIC cutie_vk

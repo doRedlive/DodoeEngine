@@ -141,6 +141,27 @@ public static partial class ScriptHub
         return 1;
     }
 
+    private static unsafe int RemoveEntityComponent(void** args)
+    {
+        var entityId = *(ulong*)args[0];
+        var fullName = Marshal.PtrToStringUTF8((IntPtr)args[1]);
+        if (World.Current is null || string.IsNullOrWhiteSpace(fullName))
+            return 0;
+
+        var type = FindComponentType(fullName);
+        if (type is null || !typeof(CakeComponent).IsAssignableFrom(type))
+            return 0;
+
+        var entity = new Entity(entityId);
+        var generic = typeof(Entity).GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .FirstOrDefault(m => m.Name == "RemoveComponent" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0);
+        if (generic is null) return 0;
+
+        var closed = generic.MakeGenericMethod(type);
+        closed.Invoke(entity, null);
+        return 1;
+    }
+
     private static unsafe int RemoveEntity(void** args)
     {
         var entityId = *(ulong*)args[0];

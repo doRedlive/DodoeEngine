@@ -10,6 +10,7 @@
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
+#include "runtime/function/world/entity_requests.h"
 #include "runtime/function/world/components/tilemap/tileset.h"
 #include "runtime/core/project/project.h"
 #include "runtime/function/render/texture/sprite_manager.h"
@@ -194,6 +195,90 @@ namespace dodoe {
             if (!e.valid()) { DO_ERROR("destroy_entity: {} not found", u); return; }
             s->destroyEntity(e);
             if (GetScriptSystem()) if (auto* r = GetScriptSystem()->getScriptRuntime()) r->removeEntityFromManagedWorld(u);
+        }
+
+        static void native_entity_enqueue_destroy(uint64_t u) {
+            World* world = GetWorld();
+            if (!world) return;
+            world->getCommandBuffer().destroyEntity(UUID(u));
+        }
+
+        static void native_entity_enqueue_add_component(uint64_t u, const char* type) {
+            World* world = GetWorld();
+            if (!world || !type) return;
+            auto it = s_EntityAddComponentFuncUmap.find(type);
+            if (it == s_EntityAddComponentFuncUmap.end()) return;
+            world->getCommandBuffer().addComponentByName(UUID(u), it->second);
+        }
+
+        static void native_entity_enqueue_remove_component(uint64_t u, const char* type) {
+            World* world = GetWorld();
+            if (!world || !type) return;
+            auto it = s_EntityRemoveComponentFuncUmap.find(type);
+            if (it == s_EntityRemoveComponentFuncUmap.end()) return;
+            world->getCommandBuffer().removeComponentByName(UUID(u), it->second);
+        }
+
+        static void native_entity_enqueue_add_managed(uint64_t u, const char* type) {
+            World* world = GetWorld();
+            if (!world || !type) return;
+            world->getCommandBuffer().addManagedComponent(UUID(u), type);
+        }
+
+        static void native_entity_enqueue_remove_managed(uint64_t u, const char* type) {
+            World* world = GetWorld();
+            if (!world || !type) return;
+            world->getCommandBuffer().removeManagedComponent(UUID(u), type);
+        }
+
+        static void native_Rigidbody2dComponent_SetVelocity(uint64_t u, float x, float y) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) setVelocity2d(e, { x, y });
+        }
+
+        static void native_Rigidbody2dComponent_ApplyForce(uint64_t u, float x, float y) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) applyForce2d(e, { x, y });
+        }
+
+        static void native_Rigidbody2dComponent_ApplyImpulse(uint64_t u, float x, float y) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) applyImpulse2d(e, { x, y });
+        }
+
+        static void native_RigidbodyComponent_SetVelocity(uint64_t u, float x, float y, float z) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) setVelocity3d(e, { x, y, z });
+        }
+
+        static void native_RigidbodyComponent_ApplyForce(uint64_t u, float x, float y, float z) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) applyForce3d(e, { x, y, z });
+        }
+
+        static void native_RigidbodyComponent_ApplyImpulse(uint64_t u, float x, float y, float z) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) applyImpulse3d(e, { x, y, z });
+        }
+
+        static void native_RigidbodyComponent_Teleport(uint64_t u, float px, float py, float pz, float qx, float qy, float qz, float qw) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) teleportEntity(e, { px, py, pz }, Quaternion(qw, qx, qy, qz));
+        }
+
+        static void native_AnimatorComponent_Play(uint64_t u, const char* name) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) animatorPlay(e, name ? name : "");
+        }
+
+        static void native_AnimatorComponent_Stop(uint64_t u) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) animatorStop(e);
+        }
+
+        static void native_AnimatorComponent_Resume(uint64_t u) {
+            Entity e = TryGetEntityByUuid(u);
+            if (e.valid()) animatorResume(e);
         }
 
         static void native_tilemap_set_data(uint64_t u, int w, int h, int tw, int th) {
@@ -667,6 +752,21 @@ namespace dodoe {
     X(native_id_component_get_id, uint64_t, (uint64_t e), e) \
     X(native_id_component_get_name, const char*, (uint64_t e), e) \
     X(native_id_component_set_name, void, (uint64_t e, const char* v), e, v) \
+    X(native_entity_enqueue_destroy, void, (uint64_t e), e) \
+    X(native_entity_enqueue_add_component, void, (uint64_t e, const char* type), e, type) \
+    X(native_entity_enqueue_remove_component, void, (uint64_t e, const char* type), e, type) \
+    X(native_entity_enqueue_add_managed, void, (uint64_t e, const char* type), e, type) \
+    X(native_entity_enqueue_remove_managed, void, (uint64_t e, const char* type), e, type) \
+    X(native_Rigidbody2dComponent_SetVelocity, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_Rigidbody2dComponent_ApplyForce, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_Rigidbody2dComponent_ApplyImpulse, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_RigidbodyComponent_SetVelocity, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_RigidbodyComponent_ApplyForce, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_RigidbodyComponent_ApplyImpulse, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_RigidbodyComponent_Teleport, void, (uint64_t e, float px, float py, float pz, float qx, float qy, float qz, float qw), e, px, py, pz, qx, qy, qz, qw) \
+    X(native_AnimatorComponent_Play, void, (uint64_t e, const char* name), e, name) \
+    X(native_AnimatorComponent_Stop, void, (uint64_t e), e) \
+    X(native_AnimatorComponent_Resume, void, (uint64_t e), e) \
     /* === NATIVE_BINDINGS_GENERATED_START === */ \
 X(native_FoliageRendererInstance_position_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_FoliageRendererInstance_position_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \

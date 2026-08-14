@@ -23,10 +23,6 @@ namespace dodoe {
         META(Enable)
         Bool play_on_awake{true};
 
-        String play_request{};
-        Bool stop_requested{false};
-        Bool resume_requested{false};
-
         Size_t cur_state{0};
         Float state_time{0.0f};
         Float prev_state_time{0.0f};

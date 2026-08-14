@@ -31,9 +31,7 @@ public class World
 
     public void DestroyEntity(Entity entity)
     {
-        ulong entityId = entity.ID;
-        NativeCalls.Native_DestroyEntity(entityId);
-        RemoveEntityLocal(entityId);
+        CommandBuffer.DestroyEntity(entity.ID);
     }
 
     public void AddOrReplaceComponent<T>(ulong entity, T component) where T : CakeComponent

@@ -54,6 +54,7 @@ namespace dodoe {
 
         DynamicArray<Ref<System>> m_runtime_systems{};
         DynamicArray<Ref<System>> m_simulation_systems{};
+        DynamicArray<Ref<System>> m_gameplay_systems{};
 
         std::mutex m_async_mutex{};
         DynamicArray<std::function<void()>> m_async_completions{};
@@ -96,6 +97,9 @@ namespace dodoe {
 
         void registerRuntimeSystem(Ref<System> system);
         void registerSimulationSystem(Ref<System> system);
+        void registerGameplaySystem(Ref<System> system);
+
+        [[nodiscard]] WorldCommands& getCommandBuffer() { return m_command_buffer; }
 
         static void SetForceSequential(bool v) { s_force_sequential = v; }
         [[nodiscard]] static bool IsForceSequential() { return s_force_sequential; }
