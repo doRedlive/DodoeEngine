@@ -155,7 +155,7 @@ namespace dodoe {
             return m_transitions.size() - 1;
         }
 
-        [[nodiscard]] Bool loadFromJson(const String& absolute_path);
+        Bool loadFromJson(const String& absolute_path);
         [[nodiscard]] Bool saveToJson(const String& absolute_path) const;
 
         [[nodiscard]] static AnimatorController* Create(const ObjectID& ref, const String& path);

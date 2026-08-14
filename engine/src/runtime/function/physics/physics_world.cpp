@@ -22,8 +22,7 @@
 #include <Jolt/Physics/Collision/CollisionCollector.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/CollisionGroup.h>
-#include <Jolt/Physics/Collision/Contact/ContactListener.h>
-#include <Jolt/Physics/Collision/Contact/ContactManifold.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/GroupFilter.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
@@ -35,7 +34,7 @@
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
-#include <Jolt/Physics/MotionProperties.h>
+#include <Jolt/Physics/Body/MotionProperties.h>
 
 #include <Jolt/RegisterTypes.h>
 
@@ -43,6 +42,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 
@@ -127,7 +127,7 @@ namespace dodoe {
         struct ContactData {
             std::mutex mutex;
             DynamicArray<ContactEvent> events;
-            std::unordered_map<ui64, ui64> body_shape_user_data;
+            UnorderedMap<ui64, ui64> body_shape_user_data;
         };
 
         class ContactListenerImpl final : public JPH::ContactListener {
@@ -150,7 +150,7 @@ namespace dodoe {
             ContactEvent event;
             event.body_a = inBody1.GetID().GetIndexAndSequenceNumber();
             event.body_b = inBody2.GetID().GetIndexAndSequenceNumber();
-            if (inManifold.GetNumContactPoints() > 0) {
+            if (inManifold.mRelativeContactPointsOn1.size() > 0) {
                 event.point = ToVector3(inManifold.GetWorldSpaceContactPointOn1(0));
             }
             event.normal = ToVector3(inManifold.mWorldSpaceNormal);
@@ -185,8 +185,8 @@ namespace dodoe {
 
         void ContactListenerImpl::OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) {
             ContactEvent event;
-            event.body_a = inSubShapePair.GetBody1().GetIndexAndSequenceNumber();
-            event.body_b = inSubShapePair.GetBody2().GetIndexAndSequenceNumber();
+            event.body_a = inSubShapePair.GetBody1ID().GetIndexAndSequenceNumber();
+            event.body_b = inSubShapePair.GetBody2ID().GetIndexAndSequenceNumber();
             event.phase = ContactPhase::End;
             std::lock_guard<std::mutex> lock(m_data->mutex);
             m_data->events.push_back(event);
@@ -216,7 +216,7 @@ namespace dodoe {
                 }
             }
 
-            void DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor, JPH::ECastShadow inCastShadow) override {
+            void DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor, JPH::DebugRenderer::ECastShadow inCastShadow) override {
                 (void)inCastShadow;
                 DrawLine(inV1, inV2, inColor);
                 DrawLine(inV2, inV3, inColor);
@@ -228,11 +228,18 @@ namespace dodoe {
             JPH::DebugRenderer::Batch CreateTriangleBatch(const JPH::DebugRenderer::Triangle*, int) override { return JPH::DebugRenderer::Batch(); }
             JPH::DebugRenderer::Batch CreateTriangleBatch(const JPH::DebugRenderer::Vertex*, int, const JPH::uint32*, int) override { return JPH::DebugRenderer::Batch(); }
 
-            void DrawGeometry(JPH::RMat44Arg, const JPH::AABox&, float, JPH::ColorArg, const JPH::DebugRenderer::GeometryRef&, JPH::ECullMode, JPH::ECastShadow, JPH::EDrawMode) override {}
+            void DrawGeometry(JPH::RMat44Arg, const JPH::AABox&, float, JPH::ColorArg, const JPH::DebugRenderer::GeometryRef&, JPH::DebugRenderer::ECullMode, JPH::DebugRenderer::ECastShadow, JPH::DebugRenderer::EDrawMode) override {}
 
         private:
             PhysicsDebugger* m_debugger{nullptr};
+
+        public:
+            static void operator delete(void* ptr, std::size_t size) noexcept;
         };
+
+        void JoltDebugRendererImpl::operator delete(void* ptr, const std::size_t size) noexcept {
+            Memory::DeallocatePersistent(ptr, size, AllocTag::Object);
+        }
 
         struct LogicalBody {
             RigidBodyType type{RigidBodyType::Static};
@@ -270,8 +277,9 @@ namespace dodoe {
                 settings.mMassPropertiesOverride.mMass = lb.mass_override;
             }
             settings.mCollisionGroup = JPH::CollisionGroup(lb.group_filter.GetPtr(), 0, 0);
-            JPH::BodyID body_id = system.GetBodyInterface().CreateBody(settings);
-            if (lb.enabled) {
+            JPH::Body* body = system.GetBodyInterface().CreateBody(settings);
+            JPH::BodyID body_id = body != nullptr ? body->GetID() : JPH::BodyID();
+            if (lb.enabled && body != nullptr) {
                 system.GetBodyInterface().AddBody(body_id, JPH::EActivation::Activate);
             }
             return body_id;
@@ -294,10 +302,10 @@ namespace dodoe {
         float accumulator{0.0f};
         int last_step_count{0};
         Scope<PhysicsDebugger> debugger{nullptr};
-        std::unique_ptr<JoltDebugRendererImpl> debug_renderer{nullptr};
-        std::unordered_map<ui64, LogicalBody> bodies;
-        std::unordered_map<ui64, JPH::BodyID> shape_bodies;
-        std::unordered_map<ui64, ui64> shape_to_body;
+        OwnPtr<JoltDebugRendererImpl> debug_renderer{nullptr};
+        UnorderedMap<ui64, LogicalBody> bodies;
+        UnorderedMap<ui64, JPH::BodyID> shape_bodies;
+        UnorderedMap<ui64, ui64> shape_to_body;
         ui64 next_body_handle{1};
         ui64 next_shape_handle{1};
 
@@ -307,21 +315,28 @@ namespace dodoe {
             fixed_dt = info.fixed_dt;
             max_sub_steps = info.max_sub_steps;
         }
+
+        static void operator delete(void* ptr, std::size_t size) noexcept;
     };
+
+    void PhysicsWorld::Impl::operator delete(void* ptr, const std::size_t size) noexcept {
+        Memory::DeallocatePersistent(ptr, size, AllocTag::Object);
+    }
 
     PhysicsWorld::~PhysicsWorld() {
         shutdown();
     }
 
     bool PhysicsWorld::initialize(const PhysicsWorldCreateInfo& create_info) {
-        m_impl = create_scope<Impl>(create_info);
+        JPH::RegisterDefaultAllocator();
+        m_impl = create_own_ptr<Impl>(create_info);
         JPH::Factory::sInstance = new JPH::Factory();
         JPH::RegisterTypes();
         m_impl->system.Init(65536, 0, 65536, 10240, m_impl->broad_phase, m_impl->object_vs_broad_phase, m_impl->object_layer_pair);
         m_impl->system.SetGravity(JPH::Vec3(create_info.gravity.x, create_info.gravity.y, create_info.gravity.z));
         m_impl->system.SetContactListener(&m_impl->contact_listener);
         m_impl->debugger = PhysicsDebugger::Create({});
-        m_impl->debug_renderer = std::make_unique<JoltDebugRendererImpl>(m_impl->debugger.get());
+        m_impl->debug_renderer = create_own_ptr<JoltDebugRendererImpl>(m_impl->debugger.get());
         return true;
     }
 
@@ -366,7 +381,7 @@ namespace dodoe {
             JPH::BodyManager::DrawSettings settings;
             settings.mDrawShape = true;
             settings.mDrawShapeWireframe = false;
-            settings.mDrawShapeColor = JPH::EShapeColor::MotionTypeColor;
+            settings.mDrawShapeColor = JPH::BodyManager::EShapeColor::MotionTypeColor;
             impl.system.DrawBodies(settings, impl.debug_renderer.get());
             impl.debugger->flush();
         }
@@ -437,7 +452,7 @@ namespace dodoe {
             return;
         }
         lb.type = type;
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : lb.body_ids) {
             bi.SetMotionType(id, ToMotionType(type), JPH::EActivation::Activate);
         }
@@ -453,7 +468,7 @@ namespace dodoe {
             return;
         }
         lb.enabled = enabled;
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : lb.body_ids) {
             if (enabled) {
                 bi.AddBody(id, JPH::EActivation::Activate);
@@ -470,7 +485,7 @@ namespace dodoe {
         }
         LogicalBody& lb = it->second;
         lb.gravity_scale = scale;
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : lb.body_ids) {
             bi.SetGravityFactor(id, scale);
         }
@@ -542,7 +557,7 @@ namespace dodoe {
         }
         LogicalBody& lb = it->second;
         lb.is_bullet = bullet;
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : lb.body_ids) {
             bi.SetMotionQuality(id, bullet ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete);
         }
@@ -580,7 +595,7 @@ namespace dodoe {
         LogicalBody& lb = it->second;
         lb.position = position;
         lb.rotation = rotation;
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : lb.body_ids) {
             bi.SetPositionAndRotation(id, ToVec3(position), ToJoltQuat(rotation), JPH::EActivation::Activate);
         }
@@ -595,7 +610,7 @@ namespace dodoe {
         if (lb.body_ids.empty()) {
             return lb.position;
         }
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         if (bi.IsAdded(lb.body_ids[0])) {
             return ToVector3(bi.GetPosition(lb.body_ids[0]));
         }
@@ -611,7 +626,7 @@ namespace dodoe {
         if (lb.body_ids.empty()) {
             return lb.rotation;
         }
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         if (bi.IsAdded(lb.body_ids[0])) {
             return ToGlmQuat(bi.GetRotation(lb.body_ids[0]));
         }
@@ -623,7 +638,7 @@ namespace dodoe {
         if (it == m_impl->bodies.end()) {
             return;
         }
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : it->second.body_ids) {
             bi.SetLinearVelocity(id, ToVec3(velocity));
         }
@@ -634,7 +649,7 @@ namespace dodoe {
         if (it == m_impl->bodies.end()) {
             return;
         }
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : it->second.body_ids) {
             bi.AddForce(id, ToVec3(force));
         }
@@ -645,7 +660,7 @@ namespace dodoe {
         if (it == m_impl->bodies.end()) {
             return;
         }
-        const JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
+        JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (const JPH::BodyID id : it->second.body_ids) {
             bi.AddImpulse(id, ToVec3(impulse));
         }
@@ -882,11 +897,7 @@ namespace dodoe {
     }
 
     int PhysicsWorld::getActiveBodyCount() const {
-        return static_cast<int>(m_impl->system.GetNumActiveBodies(JPH::EBodyType::Dynamic));
-    }
-
-    int PhysicsWorld::getIslandCount() const {
-        return m_impl->system.GetNumIslands();
+        return static_cast<int>(m_impl->system.GetNumActiveBodies(JPH::EBodyType::RigidBody));
     }
 
 } // dodoe

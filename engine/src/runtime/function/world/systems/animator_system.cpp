@@ -5,7 +5,9 @@
 #include "runtime/function/animation/animator_controller.h"
 #include "runtime/function/animation/anim_clip.h"
 #include "runtime/function/animation/skeleton.h"
-#include "runtime/service/sprite/sprite_loader.h"
+#include "runtime/function/render/texture/sprite.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/file/file_id.h"
 
 namespace dodoe {
 
@@ -223,7 +225,7 @@ namespace dodoe {
                     auto* tex = frame.texture.get();
                     if (tex) {
                         auto& sprite_renderer = reg.get<SpriteRendererComponent>(entity);
-                        sprite_renderer.sprite = PPtr<Sprite>(SpriteLoader::Load(tex->getPath()));
+                        sprite_renderer.sprite = PPtr<Sprite>(ResourceManager::Self().loadObjectByPath<Sprite>(FileID(tex->getPath())));
                         animator.applied_frame_id = animator.cur_frame_id;
                     }
                 }

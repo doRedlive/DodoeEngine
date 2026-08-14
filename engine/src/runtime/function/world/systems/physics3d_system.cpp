@@ -145,7 +145,6 @@ namespace dodoe {
         }
         out_stats.step_count = static_cast<ui32>(world->getLastStepCount());
         out_stats.active_body_count = static_cast<ui32>(world->getActiveBodyCount());
-        out_stats.island_count = static_cast<ui32>(world->getIslandCount());
         out_stats.raycast_ms = m_last_raycast_ms;
     }
 

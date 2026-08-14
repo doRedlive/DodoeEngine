@@ -6,6 +6,7 @@
 
 #include "physics_debug.h"
 #include "runtime/core/math/math.h"
+#include "runtime/core/memory/own_ptr.h"
 
 namespace dodoe {
 
@@ -135,11 +136,10 @@ namespace dodoe {
 
         [[nodiscard]] int getLastStepCount() const;
         [[nodiscard]] int getActiveBodyCount() const;
-        [[nodiscard]] int getIslandCount() const;
 
     private:
         struct Impl;
-        Scope<Impl> m_impl{ nullptr };
+        OwnPtr<Impl> m_impl{ nullptr };
 
         bool initialize(const PhysicsWorldCreateInfo& create_info);
         void shutdown();

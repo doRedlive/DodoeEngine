@@ -23,6 +23,8 @@ namespace dodoe {
         Bool m_cast_shadow{true};
 
     public:
+        [[nodiscard]] RenderObjectType getRenderObjectType() const override { return RenderObjectType::StaticMesh; }
+
         void setMesh(const Mesh* mesh, const Int32 section_index = -1);
         void setOverrideMaterials(const DynamicArray<PPtr<Material>>& override_materials) { m_override_materials = override_materials; }
         void setMobility(const PrimitiveMobility mobility) { m_mobility = mobility; }

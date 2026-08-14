@@ -14,6 +14,7 @@ namespace dodoe {
         const FileID& source_file;
         const String& source_path;
         const String& absolute_source_path;
+        const UUID& source_guid;
         const Json& settings;
         const AssetMetaData* cached_meta;
     };

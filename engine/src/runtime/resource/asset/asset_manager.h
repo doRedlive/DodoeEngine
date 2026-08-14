@@ -11,7 +11,7 @@
 #include "types/sprite_asset.h"
 #include "types/mesh_asset.h"
 #include "types/material_asset.h"
-#include "types/animation_clip_asset.h"
+#include "types/anim2d_clip_asset.h"
 #include "types/scene_asset.h"
 
 #include "runtime/core/meta/serializer/serializer.h"

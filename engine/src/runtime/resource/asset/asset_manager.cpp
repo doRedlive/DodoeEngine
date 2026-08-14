@@ -225,7 +225,7 @@ namespace dodoe {
 
         std::error_code ec;
         const FsPath rel = std::filesystem::relative(abs, m_asset_dir, ec);
-        const String rel_str = rel.generic_string();
+        const String rel_str = String(rel.generic_string().c_str());
         if (ec || rel.empty() || rel_str.starts_with("..")) {
             DO_WARN("AssetManager::ensureImported: '{}' is outside the project asset directory '{}'",
                     absolute_path, m_asset_dir.string());
@@ -479,7 +479,7 @@ namespace dodoe {
         }
 
         ImportContext ctx{FileID(source_path), source_path, String(absolute_path.generic_string().c_str()),
-                          settings.settings, up_to_date ? &cached : nullptr};
+                          asset_id, settings.settings, up_to_date ? &cached : nullptr};
 
         lock.unlock();
         Scope<Asset> asset = importer->import(ctx);

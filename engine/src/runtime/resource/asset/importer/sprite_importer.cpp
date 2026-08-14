@@ -9,7 +9,7 @@ namespace dodoe {
     Scope<Asset> SpriteImporter::import(const ImportContext& ctx) {
         auto sprite = create_scope<SpriteAsset>();
         sprite->setName(FileSystem::PathToNameNoExt(ctx.source_path));
-        sprite->setTextureSource(ctx.source_file.getUUID());
+        sprite->setTextureSource(ctx.source_guid);
 
         if (ctx.settings.contains("pixelsPerUnit") && ctx.settings["pixelsPerUnit"].is_number()) {
             sprite->setPixelsPerUnit(ctx.settings["pixelsPerUnit"].get<Float>());

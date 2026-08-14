@@ -3,8 +3,12 @@
 #include "physics_debug.h"
 
 #include <cfloat>
+#include <cstddef>
+#include <cstring>
 #include <glm/gtx/quaternion.hpp>
 
+#include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/render/mesh/mesh.h"
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"
 
@@ -14,6 +18,9 @@ namespace dodoe {
 
         constexpr Size_t kBoxVertexCount = 8;
         constexpr Size_t kBoxIndexCount = 36;
+        constexpr Size_t kBoxVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
+        constexpr Size_t kBoxVertexByteSize = kBoxVertexStride * kBoxVertexCount;
+        constexpr Size_t kBoxIndexByteSize = sizeof(UInt32) * kBoxIndexCount;
 
         Vector4f ColorToVector4(const UInt32 rgba) {
             return {
@@ -22,6 +29,78 @@ namespace dodoe {
                 static_cast<float>((rgba >> 8) & 0xFF) / 255.0f,
                 static_cast<float>(rgba & 0xFF) / 255.0f,
             };
+        }
+
+        Scope<Mesh> BuildUnitBoxMesh() {
+            const Vector3f positions[kBoxVertexCount] = {
+                { -0.5f, -0.5f, -0.5f }, { 0.5f, -0.5f, -0.5f }, { 0.5f, 0.5f, -0.5f }, { -0.5f, 0.5f, -0.5f },
+                { -0.5f, -0.5f, 0.5f }, { 0.5f, -0.5f, 0.5f }, { 0.5f, 0.5f, 0.5f }, { -0.5f, 0.5f, 0.5f },
+            };
+            const UInt32 indices[kBoxIndexCount] = {
+                0, 1, 2, 2, 3, 0,
+                1, 5, 6, 6, 2, 1,
+                5, 4, 7, 7, 6, 5,
+                4, 0, 3, 3, 7, 4,
+                3, 2, 6, 6, 7, 3,
+                4, 5, 1, 1, 0, 4,
+            };
+
+            DynamicArray<std::byte> vertex_bytes(kBoxVertexByteSize);
+            for (Size_t vertex_index = 0; vertex_index < kBoxVertexCount; ++vertex_index) {
+                const Size_t base_offset = vertex_index * kBoxVertexStride;
+                std::memcpy(vertex_bytes.data() + base_offset, &positions[vertex_index], sizeof(Vector3f));
+                const UInt32 normal = 0;
+                std::memcpy(vertex_bytes.data() + base_offset + sizeof(Vector3f), &normal, sizeof(UInt32));
+                const Vector2f uv(0.0f);
+                std::memcpy(vertex_bytes.data() + base_offset + sizeof(Vector3f) + sizeof(UInt32), &uv, sizeof(Vector2f));
+            }
+
+            MeshLODData lod{};
+            auto vertex_buffer_desc = GfxBufferDesc()
+                .setByteSize(kBoxVertexByteSize)
+                .setIsVertexBuffer(true)
+                .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
+                .setDebugName("Physics Debug Vertex Buffer");
+            lod.buffers.vertex_buffer = GDrawCommandList.createBuffer(vertex_buffer_desc, vertex_bytes.data(), kBoxVertexByteSize);
+
+            auto index_buffer_desc = GfxBufferDesc()
+                .setByteSize(kBoxIndexByteSize)
+                .setIsIndexBuffer(true)
+                .enableAutomaticStateTracking(GfxResourceStates::IndexBuffer)
+                .setDebugName("Physics Debug Index Buffer");
+            lod.buffers.index_buffer = GDrawCommandList.createBuffer(index_buffer_desc, indices, kBoxIndexByteSize);
+
+            SubMesh section{};
+            section.index_offset = 0;
+            section.vertex_offset = 0;
+            section.index_count = static_cast<UInt32>(kBoxIndexCount);
+            section.vertex_count = static_cast<UInt32>(kBoxVertexCount);
+            section.section_index = 0;
+            section.primitive_type = MeshGeometryPrimitiveType::Triangles;
+            lod.sub_meshes.push_back(section);
+
+            auto mesh = create_scope<Mesh>();
+            mesh->setName("physics_debug_box");
+            DynamicArray<MeshLODData> lods;
+            lods.push_back(std::move(lod));
+            mesh->setLODData(lods);
+            mesh->setBounds(Vector3f(-0.5f, -0.5f, -0.5f), Vector3f(0.5f, 0.5f, 0.5f));
+            return mesh;
+        }
+
+        const Mesh* GetUnitBoxMesh() {
+            static Scope<Mesh> s_unit_box = BuildUnitBoxMesh();
+            return s_unit_box.get();
+        }
+
+        PPtr<Material> GetColorMaterial(const UInt32 rgba) {
+            static UnorderedMap<UInt32, Scope<Material>> s_materials;
+            Scope<Material>& material = s_materials[rgba];
+            if (!material) {
+                material = create_scope<Material>(ObjectID{UUID::Generate(), 0});
+                material->setColor(ColorToVector4(rgba));
+            }
+            return PPtr<Material>(material.get());
         }
 
     }
@@ -90,41 +169,11 @@ namespace dodoe {
         object->setVisible(true);
         object->setCastShadow(false);
         object->setWorldTransform(buildLineMatrix(line));
+        object->setMesh(GetUnitBoxMesh(), 0);
 
-        MeshUploadData upload_data;
-        upload_data.name = "physics_debug_line";
-        upload_data.position_data = {
-            { -0.5f, -0.5f, -0.5f }, { 0.5f, -0.5f, -0.5f }, { 0.5f, 0.5f, -0.5f }, { -0.5f, 0.5f, -0.5f },
-            { -0.5f, -0.5f, 0.5f }, { 0.5f, -0.5f, 0.5f }, { 0.5f, 0.5f, 0.5f }, { -0.5f, 0.5f, 0.5f },
-        };
-        upload_data.texcoord_data.assign(kBoxVertexCount, Vector2f(0.0f));
-        upload_data.normal_data.assign(kBoxVertexCount, 0u);
-        upload_data.index_data = {
-            0, 1, 2, 2, 3, 0,
-            1, 5, 6, 6, 2, 1,
-            5, 4, 7, 7, 6, 5,
-            4, 0, 3, 3, 7, 4,
-            3, 2, 6, 6, 7, 3,
-            4, 5, 1, 1, 0, 4,
-        };
-        object->setUploadData(upload_data);
-
-        SubMesh section;
-        section.material.color = ColorToVector4(line.color);
-        section.index_offset = 0;
-        section.vertex_offset = 0;
-        section.index_count = static_cast<UInt32>(kBoxIndexCount);
-        section.vertex_count = static_cast<UInt32>(kBoxVertexCount);
-        section.section_index = 0;
-        section.primitive_type = MeshGeometryPrimitiveType::Triangles;
-
-        MeshLODData lod;
-        lod.screen_size = 1.0f;
-        lod.sub_meshes.push_back(section);
-
-        DynamicArray<MeshLODData> lods;
-        lods.push_back(std::move(lod));
-        object->setLODData(lods);
+        DynamicArray<PPtr<Material>> materials;
+        materials.push_back(GetColorMaterial(line.color));
+        object->setOverrideMaterials(materials);
         return object;
     }
 

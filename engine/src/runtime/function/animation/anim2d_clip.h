@@ -62,7 +62,7 @@ namespace dodoe {
             return total;
         }
 
-        [[nodiscard]] Bool loadFromJson(const String& absolute_path);
+        Bool loadFromJson(const String& absolute_path);
         [[nodiscard]] Bool saveToJson(const String& absolute_path) const;
 
         [[nodiscard]] static Anim2DClip* Create(const ObjectID& ref, const String& path);

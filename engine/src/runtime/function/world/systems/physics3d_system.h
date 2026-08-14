@@ -36,7 +36,6 @@ namespace dodoe {
     struct PhysicsStats {
         ui32 step_count{ 0 };
         ui32 active_body_count{ 0 };
-        ui32 island_count{ 0 };
         float raycast_ms{ 0.0f };
     };
 

@@ -359,7 +359,7 @@ namespace dodoe {
         const ui32 key = static_cast<ui32>(entity);
         if (auto it = state.box_shape_umap.find(key); it != state.box_shape_umap.end()) {
             if (B2_IS_NON_NULL(it->second)) {
-                b2DestroyShape(it->second);
+                b2DestroyShape(it->second, true);
             }
             state.box_shape_umap.erase(it);
         }
@@ -369,7 +369,7 @@ namespace dodoe {
         const ui32 key = static_cast<ui32>(entity);
         if (auto it = state.circle_shape_umap.find(key); it != state.circle_shape_umap.end()) {
             if (B2_IS_NON_NULL(it->second)) {
-                b2DestroyShape(it->second);
+                b2DestroyShape(it->second, true);
             }
             state.circle_shape_umap.erase(it);
         }
@@ -410,7 +410,6 @@ namespace dodoe {
         }
         shape_def.material.friction = bc2d.friction;
         shape_def.material.restitution = bc2d.restitution;
-        shape_def.material.restitutionThreshold = bc2d.restitution_threshold;
 
         b2Polygon box = b2MakeOffsetBox(half_width, half_height, { bc2d.offset.x, bc2d.offset.y }, b2Rot_identity);
         b2ShapeId shape_id = b2CreatePolygonShape(body_it->second, &shape_def, &box);
@@ -449,7 +448,6 @@ namespace dodoe {
         }
         shape_def.material.friction = cc2d.friction;
         shape_def.material.restitution = cc2d.restitution;
-        shape_def.material.restitutionThreshold = cc2d.restitution_threshold;
 
         const b2Circle circle{ { cc2d.offset.x, cc2d.offset.y }, radius };
         b2ShapeId shape_id = b2CreateCircleShape(body_it->second, &shape_def, &circle);
@@ -749,7 +747,7 @@ namespace dodoe {
     }
 
     void Physics2dSystem::processCollisionEvents(RegistryState& state, entt::registry& registry) {
-        const auto* world_2d = GetPhysicsSystem()->getWorld2d();
+        auto* world_2d = GetPhysicsSystem()->getWorld2d();
         if (!world_2d) {
             return;
         }

@@ -127,32 +127,32 @@ namespace dodoe {
 		}
 
 		template<typename Component, typename... Args>
-		Component& emplace(const Entity& entity, Args&&... args) {
+		decltype(auto) emplace(const Entity& entity, Args&&... args) {
 			return registry_.template emplace<Component>(GetEntityHandle_Help(entity), std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
-		Component& emplace(const entt::entity entity, Args&&... args) {
+		decltype(auto) emplace(const entt::entity entity, Args&&... args) {
 			return registry_.template emplace<Component>(entity, std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
-		Component& get_or_emplace(const Entity& entity, Args&&... args) {
+		decltype(auto) get_or_emplace(const Entity& entity, Args&&... args) {
 			return registry_.template get_or_emplace<Component>(GetEntityHandle_Help(entity), std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
-		Component& get_or_emplace(const entt::entity entity, Args&&... args) {
+		decltype(auto) get_or_emplace(const entt::entity entity, Args&&... args) {
 			return registry_.template get_or_emplace<Component>(entity, std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
-		Component& emplace_or_replace(const Entity& entity, Args&&... args) {
+		decltype(auto) emplace_or_replace(const Entity& entity, Args&&... args) {
 			return registry_.template emplace_or_replace<Component>(GetEntityHandle_Help(entity), std::forward<Args>(args)...);
 		}
 
 		template<typename Component, typename... Args>
-		Component& emplace_or_replace(const entt::entity entity, Args&&... args) {
+		decltype(auto) emplace_or_replace(const entt::entity entity, Args&&... args) {
 			return registry_.template emplace_or_replace<Component>(entity, std::forward<Args>(args)...);
 		}
 
