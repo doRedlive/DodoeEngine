@@ -66,8 +66,6 @@ namespace dodoe {
         if (m_system_class_umap.find("GreenCake.CakeBehaviourSystem") == m_system_class_umap.end()) {
             m_system_class_umap["GreenCake.CakeBehaviourSystem"] = {"GreenCake.CakeBehaviourSystem", "GreenCake", "CakeBehaviourSystem"};
         }
-
-        DO_DEBUG("load assembly classes: system class count {}", m_system_class_umap.size());
     }
 
     void ScriptRuntime::createSystemInstances() {

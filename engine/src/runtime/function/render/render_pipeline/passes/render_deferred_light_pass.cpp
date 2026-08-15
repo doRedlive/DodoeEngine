@@ -14,7 +14,7 @@
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
-#include "runtime/function/render/pipeline/pipeline_state_cache.h"
+#include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"

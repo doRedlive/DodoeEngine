@@ -4,7 +4,7 @@
 
 #include "dopch.h"
 
-#include "runtime/function/render/texture/sprite.h"
+#include "runtime/function/render/pixel2d/sprite.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {

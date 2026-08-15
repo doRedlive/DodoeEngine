@@ -5,7 +5,7 @@
 #include "runtime/function/animation/animator_controller.h"
 #include "runtime/function/animation/anim_clip.h"
 #include "runtime/function/animation/skeleton.h"
-#include "runtime/function/render/texture/sprite.h"
+#include "runtime/function/render/pixel2d/sprite.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 

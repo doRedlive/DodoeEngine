@@ -54,7 +54,6 @@ namespace dodoe {
             m_entries.push_back(std::move(e));
         }
 
-        DO_INFO("ShaderManifest::loadFromFile loaded {} shaders from {}", m_entries.size(), full_path.string());
         return true;
     }
 

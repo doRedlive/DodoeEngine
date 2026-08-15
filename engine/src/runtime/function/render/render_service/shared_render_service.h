@@ -7,7 +7,7 @@
 #include "runtime/core/container/deferred_deletion.h"
 #include "runtime/function/render/shader/descriptor_table_manager.h"
 #include "runtime/function/render/shader/global_samplers.h"
-#include "runtime/function/render/pipeline/pipeline_state_cache.h"
+#include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/render_service/render_target_system.h"

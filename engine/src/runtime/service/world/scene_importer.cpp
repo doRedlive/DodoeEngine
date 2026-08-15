@@ -16,7 +16,7 @@
 #include "runtime/resource/asset/types/mesh_asset.h"
 #include "runtime/core/object/pptr.h"
 #include "runtime/function/render/mesh/mesh.h"
-#include "runtime/function/render/texture/sprite_manager.h"
+#include "runtime/function/render/pixel2d/sprite_manager.h"
 
 namespace dodoe {
 
@@ -150,7 +150,6 @@ namespace dodoe {
 
     void SceneImporter::ImportAsset(const String& path) {
         const String ext(FsPath(path).extension().string().c_str());
-        DO_DEBUG("Import Asset");
 
         if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb" ||
             ext == ".OBJ" || ext == ".FBX" || ext == ".GLTF" || ext == ".GLB") {

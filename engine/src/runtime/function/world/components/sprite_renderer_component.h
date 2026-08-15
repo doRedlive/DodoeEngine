@@ -8,7 +8,7 @@
 #include "runtime/core/utils/uuid.h"
 #include "runtime/core/utils/util.h"
 #include "runtime/core/object/pptr.h"
-#include "runtime/function/render/texture/sprite.h"
+#include "runtime/function/render/pixel2d/sprite.h"
 
 REFLECTION_TYPE(SpriteRendererComponent)
 

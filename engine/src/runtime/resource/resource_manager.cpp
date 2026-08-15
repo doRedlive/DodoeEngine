@@ -13,8 +13,8 @@
 #include "runtime/function/animation/anim_clip.h"
 #include "runtime/function/animation/skeleton.h"
 #include "runtime/function/animation/animator_controller.h"
-#include "runtime/function/world/components/tilemap/tileset.h"
-#include "runtime/function/render/texture/sprite_manager.h"
+#include "runtime/function/render/pixel2d/tileset.h"
+#include "runtime/function/render/pixel2d/sprite_manager.h"
 
 namespace dodoe {
 

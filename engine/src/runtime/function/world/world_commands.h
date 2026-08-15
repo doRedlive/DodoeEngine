@@ -17,15 +17,15 @@ namespace dodoe {
         Scene* scene{ nullptr };
         Registry* registry{ nullptr };
 
-        std::function<void(uint64_t entity_uuid, const String& type_name)> add_managed;
-        std::function<void(uint64_t entity_uuid, const String& type_name)> remove_managed;
+        std::function<void(UInt64 entity_uuid, const String& type_name)> add_managed;
+        std::function<void(UInt64 entity_uuid, const String& type_name)> remove_managed;
 
         [[nodiscard]] Entity resolveEntity(const UUID& uuid) const {
             if (!scene) return {};
             return scene->tryGetEntityByUUID(uuid);
         }
 
-        void report(const char* op, uint64_t uuid) const {
+        void report(const char* op, UInt64 uuid) const {
             DO_DEBUG("CommandBuffer: {} dropped, entity {} not found", op, uuid);
         }
     };
@@ -33,7 +33,7 @@ namespace dodoe {
     class WorldCommands : public CommandList<CommandContext> {
     public:
         void destroyEntity(const UUID& uuid);
-        void destroyEntity(uint64_t uuid) { destroyEntity(UUID(uuid)); }
+        void destroyEntity(UInt64 uuid) { destroyEntity(UUID(uuid)); }
 
         template<typename T, typename... Args>
         void emplaceComponent(const UUID& uuid, Args&&... args);
@@ -56,7 +56,7 @@ namespace dodoe {
             void execute(CommandContext& context) const {
                 Entity entity = context.resolveEntity(uuid);
                 if (!entity.valid()) {
-                    context.report("destroy", static_cast<uint64_t>(uuid));
+                    context.report("destroy", static_cast<UInt64>(uuid));
                     return;
                 }
                 if (context.scene) context.scene->destroyEntity(entity);
@@ -122,7 +122,7 @@ namespace dodoe {
             void execute(CommandContext& context) const {
                 Entity entity = context.resolveEntity(uuid);
                 if (!entity.valid()) return;
-                if (context.add_managed) context.add_managed(static_cast<uint64_t>(uuid), type_name);
+                if (context.add_managed) context.add_managed(static_cast<UInt64>(uuid), type_name);
             }
         };
 
@@ -133,7 +133,7 @@ namespace dodoe {
             void execute(CommandContext& context) const {
                 Entity entity = context.resolveEntity(uuid);
                 if (!entity.valid()) return;
-                if (context.remove_managed) context.remove_managed(static_cast<uint64_t>(uuid), type_name);
+                if (context.remove_managed) context.remove_managed(static_cast<UInt64>(uuid), type_name);
             }
         };
     };

@@ -6,7 +6,7 @@
 
 #include "runtime/resource/asset/asset.h"
 #include "runtime/resource/parser/texture_blob.h"
-#include "runtime/function/render/texture/sprite.h"
+#include "runtime/function/render/pixel2d/sprite.h"
 
 namespace dodoe {
 

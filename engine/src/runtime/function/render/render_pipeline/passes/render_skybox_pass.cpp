@@ -10,7 +10,7 @@
 #include "../render_pipeline_pass_utils.h"
 
 #include "runtime/function/render/render_scene/render_scene.h"
-#include "runtime/function/render/pipeline/pipeline_state_cache.h"
+#include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/shader/global_samplers.h"

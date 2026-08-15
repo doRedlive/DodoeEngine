@@ -228,10 +228,7 @@ namespace dodoe {
 
         if (ImGui::Button("Reload Scripts")) {
             Bool success = GetScriptSystem()->reloadScripts();
-            if (success) {
-                DO_DEBUG("Reload Scripts success!");
-                DO_DEBUG("MonoScriptSystem count is {}", GetScriptSystem()->getScriptRuntime()->logSystemClassCount());
-            }
+            if (success) DO_INFO("Reload Scripts succeed!");
         }
         ImGui::End();
     }

@@ -13,7 +13,7 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/shader/global_samplers.h"
-#include "runtime/function/render/pipeline/pipeline_state_cache.h"
+#include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
 
 namespace dodoe {

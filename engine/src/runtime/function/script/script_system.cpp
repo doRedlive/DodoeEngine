@@ -16,11 +16,11 @@ namespace dodoe {
 
     Bool ScriptSystem::reloadScripts() {
         if (!m_script_engine->onScriptSourcesChanged()) {
-            DO_DEBUG("Scripts sources don't changed");
+            DO_ERROR("Scripts sources don't changed");
             return false;
         }
         if (!m_script_engine->buildAppAssembly()) {
-            DO_DEBUG("Build App Assembly failed");
+            DO_ERROR("Build App Assembly failed");
             return false;
         }
 
@@ -29,7 +29,7 @@ namespace dodoe {
         m_script_engine->unloadAppAssembly();
 
         if (!m_script_engine->loadAppAssembly()) {
-            DO_DEBUG("load app assembly failed");
+            DO_ERROR("load app assembly failed");
             return false;
         }
         ScriptGlue::Register();

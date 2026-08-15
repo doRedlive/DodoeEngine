@@ -5,7 +5,7 @@
 #include "py_bindings.h"
 
 #include "runtime/function/animation/animation.h"
-#include "runtime/function/render/texture/sprite.h"
+#include "runtime/function/render/pixel2d/sprite.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 
