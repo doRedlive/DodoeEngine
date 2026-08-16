@@ -4,7 +4,7 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/foliage_render_object.h"
-#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/function/render/mesh_draw/mesh.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 

@@ -8,7 +8,7 @@
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/material/material.h"
-#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/function/render/mesh_draw/mesh.h"
 #include "runtime/function/animation/animation.h"
 #include "runtime/function/animation/anim_clip.h"
 #include "runtime/function/animation/skeleton.h"

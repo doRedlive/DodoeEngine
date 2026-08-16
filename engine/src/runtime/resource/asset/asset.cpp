@@ -14,7 +14,7 @@ namespace dodoe {
         json["asset_id"] = Serializer::write(m_meta.ref.asset_id);
         json["sub_object_id"] = Serializer::write(m_meta.ref.local_id);
         json["source_file"] = Serializer::write(m_meta.source_file);
-        json["type"] = assetTypeToString(m_meta.type);
+        json["type"] = AssetTypeToString(m_meta.type);
         json["name"] = m_meta.name;
         json["source_path"] = m_meta.source_path;
         json["source_file_mtime"] = m_meta.source_file_mtime;
@@ -56,7 +56,7 @@ namespace dodoe {
             Serializer::read(json["source_file"], m_meta.source_file);
         }
         if (json.contains("type")) {
-            m_meta.type = assetTypeFromString(json["type"].get<String>());
+            m_meta.type = AssetTypeFromString(json["type"].get<String>());
         }
         if (json.contains("name")) {
             m_meta.name = json["name"].get<String>();
@@ -97,7 +97,7 @@ namespace dodoe {
         return true;
     }
 
-    const char* Asset::assetTypeToString(AssetType type) {
+    const char* Asset::AssetTypeToString(AssetType type) {
         switch (type) {
             case AssetType::Texture:        return "Texture";
             case AssetType::Sprite:          return "Sprite";
@@ -116,7 +116,7 @@ namespace dodoe {
         }
     }
 
-    AssetType Asset::assetTypeFromString(const String& str) {
+    AssetType Asset::AssetTypeFromString(const String& str) {
         if (str == "Texture")        return AssetType::Texture;
         if (str == "Sprite")          return AssetType::Sprite;
         if (str == "Mesh")           return AssetType::Mesh;
@@ -133,7 +133,7 @@ namespace dodoe {
         return AssetType::Unknown;
     }
 
-    const char* Asset::assetTypeToExtension(AssetType type) {
+    const char* Asset::AssetTypeToExtension(AssetType type) {
         switch (type) {
             case AssetType::Texture:
             case AssetType::Sprite:          return ".png";
@@ -152,7 +152,7 @@ namespace dodoe {
         }
     }
 
-    Bool Asset::assetTypeIsReadOnly(AssetType type) {
+    Bool Asset::AssetTypeIsReadOnly(AssetType type) {
         switch (type) {
             case AssetType::Texture:
             case AssetType::Sprite:

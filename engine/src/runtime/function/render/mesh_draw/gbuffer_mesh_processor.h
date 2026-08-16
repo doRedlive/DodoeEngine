@@ -8,7 +8,9 @@
 #include "cached_mesh_draw_command.h"
 
 #include "../render_scene/primitive_scene_info.h"
+#include "../render_service/shared_render_service.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/graphics/draw_command_list.h"
 
 namespace dodoe {
 
@@ -32,12 +34,20 @@ namespace dodoe {
         GfxBufferHandle m_global_constant_buffer{};
         GfxBufferHandle m_view_constant_buffer{};
         GfxBufferHandle m_primitive_constant_buffer{};
+        SharedRenderService* m_shared_render_service{nullptr};
+        GfxInputLayoutHandle m_gbuffer_input_layout{};
+        GfxFramebufferInfo m_gbuffer_framebuffer_info{};
+
+        [[nodiscard]] GfxGraphicsPipelineHandle resolvePipelineFor(
+            const MaterialInstance* material_instance,
+            DrawCommandList& cmd_list) const;
 
     public:
-        GBufferMeshProcessor(GfxBindingSetHandle descriptor_binding_set,
-                             BindingLayoutCache& binding_layout_cache,
-                             BindingSetCache& binding_set_cache);
+        explicit GBufferMeshProcessor(SharedRenderService* shared_render_service);
         void reset() override;
+
+        void updateFrameData(GfxInputLayoutHandle gbuffer_input_layout,
+                             GfxFramebufferInfo gbuffer_framebuffer_info);
 
         [[nodiscard]] const GfxBindingLayoutHandle& getGlobalBindingLayout() const { return m_global_binding_layout; }
         [[nodiscard]] const GfxBindingLayoutHandle& getViewBindingLayout() const { return m_view_binding_layout; }
@@ -59,7 +69,8 @@ namespace dodoe {
             const Matrix4f& view_projection,
             MeshDrawCommandCache& cache,
             DynamicArray<MeshDrawInstance>& out_instances,
-            DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data) const;
+            DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data,
+            DrawCommandList& cmd_list) const;
 
         void buildDynamicCommands(
             const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
@@ -68,7 +79,8 @@ namespace dodoe {
             const Matrix4f& view_projection,
             DynamicArray<MeshDrawCommand>& frame_commands,
             DynamicArray<MeshDrawInstance>& out_instances,
-            DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data) const;
+            DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data,
+            DrawCommandList& cmd_list) const;
     };
 
 } // namespace dodoe

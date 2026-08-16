@@ -15,7 +15,7 @@
 #include "runtime/core/project/project.h"
 #include "runtime/function/render/pixel2d/sprite_manager.h"
 #include "runtime/function/render/material/material.h"
-#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/function/render/mesh_draw/mesh.h"
 #include "runtime/function/animation/animation.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"

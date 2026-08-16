@@ -85,10 +85,10 @@ namespace dodoe {
         [[nodiscard]] virtual Json serializeMeta() const;
         [[nodiscard]] virtual Bool deserializeMeta(const Json& json);
 
-        [[nodiscard]] static const char* assetTypeToString(AssetType type);
-        [[nodiscard]] static AssetType assetTypeFromString(const String& str);
-        [[nodiscard]] static const char* assetTypeToExtension(AssetType type);
-        [[nodiscard]] static Bool assetTypeIsReadOnly(AssetType type);
+        [[nodiscard]] static const char* AssetTypeToString(AssetType type);
+        [[nodiscard]] static AssetType AssetTypeFromString(const String& str);
+        [[nodiscard]] static const char* AssetTypeToExtension(AssetType type);
+        [[nodiscard]] static Bool AssetTypeIsReadOnly(AssetType type);
     };
 
 } // dodoe

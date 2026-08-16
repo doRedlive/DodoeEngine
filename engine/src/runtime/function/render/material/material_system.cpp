@@ -40,6 +40,56 @@ namespace dodoe {
     }
 
     void MaterialSystem::registerBuiltinTemplates() {
+        MaterialTemplateDesc standard_pbr;
+        standard_pbr.name = "StandardPBR";
+        standard_pbr.shader_name = "GBuffer";
+        {
+            MaterialParamDef color_def;
+            color_def.name = "base_color";
+            color_def.display_name = "Base Color";
+            color_def.type = MaterialParamType::Color4;
+            color_def.default_value.f[0] = 1.0f;
+            color_def.default_value.f[1] = 1.0f;
+            color_def.default_value.f[2] = 1.0f;
+            color_def.default_value.f[3] = 1.0f;
+            standard_pbr.param_defs.push_back(color_def);
+        }
+        {
+            MaterialParamDef emissive_def;
+            emissive_def.name = "emissive_color";
+            emissive_def.display_name = "Emissive Color";
+            emissive_def.type = MaterialParamType::Color3;
+            emissive_def.default_value.f[0] = 0.0f;
+            emissive_def.default_value.f[1] = 0.0f;
+            emissive_def.default_value.f[2] = 0.0f;
+            standard_pbr.param_defs.push_back(emissive_def);
+        }
+        {
+            MaterialParamDef metallic_def;
+            metallic_def.name = "metallic";
+            metallic_def.display_name = "Metallic";
+            metallic_def.type = MaterialParamType::Float;
+            metallic_def.default_value.f[0] = 0.0f;
+            metallic_def.min_value.f[0] = 0.0f;
+            metallic_def.max_value.f[0] = 1.0f;
+            standard_pbr.param_defs.push_back(metallic_def);
+        }
+        {
+            MaterialParamDef roughness_def;
+            roughness_def.name = "roughness";
+            roughness_def.display_name = "Roughness";
+            roughness_def.type = MaterialParamType::Float;
+            roughness_def.default_value.f[0] = 1.0f;
+            roughness_def.min_value.f[0] = 0.0f;
+            roughness_def.max_value.f[0] = 1.0f;
+            standard_pbr.param_defs.push_back(roughness_def);
+        }
+        standard_pbr.param_defs.push_back({"base_color_texture", "Base Color Texture", MaterialParamType::Texture2D});
+        standard_pbr.param_defs.push_back({"metallic_roughness_texture", "Metallic Roughness Texture", MaterialParamType::Texture2D});
+        standard_pbr.param_defs.push_back({"normal_texture", "Normal Texture", MaterialParamType::Texture2D});
+        standard_pbr.param_defs.push_back({"emissive_texture", "Emissive Texture", MaterialParamType::Texture2D});
+        registerTemplate(standard_pbr);
+
         MaterialTemplateDesc gbuffer;
         gbuffer.name = "GBuffer";
         gbuffer.shader_name = "GBuffer";
@@ -267,6 +317,115 @@ namespace dodoe {
         }
 
         inst.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
+
+        inst.parameter_data.clear();
+        if (m_shader_library && inst.tpl && inst.tpl->resolved) {
+            const String ps_name = inst.tpl->desc.shader_name + "PS";
+            const String vs_name = inst.tpl->desc.shader_name + "VS";
+            const ShaderReflectionData* refls[2] = {
+                m_shader_library->getReflection(vs_name),
+                m_shader_library->getReflection(ps_name)
+            };
+            for (const auto* refl : refls) {
+                if (!refl) continue;
+                for (const auto& cb : refl->constant_buffers) {
+                    const Bool is_material_cb =
+                        (cb.set == static_cast<UInt32>(ShaderParameterSet::Material) &&
+                         cb.slot == shader_bindings::kMaterialBindingConstants) ||
+                        (cb.name.findCaseInsensitive("Material") != String::npos);
+                    if (is_material_cb && cb.size > 0) {
+                        buildConstantBufferData(inst.desc.name, cb, inst.parameter_data);
+                        break;
+                    }
+                }
+                if (!inst.parameter_data.empty()) break;
+            }
+            if (inst.parameter_data.empty()) {
+                constexpr Size_t kStandardPBR_CB_Size = sizeof(Float) * 4 * 4;
+                inst.parameter_data.resize(kStandardPBR_CB_Size, 0);
+                UnorderedMap<String, MaterialParamValue> resolved_cb_params;
+                getResolvedParams(inst.desc.name, resolved_cb_params);
+                UInt8* dst = inst.parameter_data.data();
+                auto writeFloat4 = [&](UInt32 offset, const Float* v) {
+                    if (offset + sizeof(Float) * 4 <= kStandardPBR_CB_Size) {
+                        std::memcpy(dst + offset, v, sizeof(Float) * 4);
+                    }
+                };
+                const Float default_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+                const Float default_emissive[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+                const Float default_pbr[4] = {0.0f, 1.0f, 0.0f, 0.0f};
+                Float color[4] = {default_color[0], default_color[1], default_color[2], default_color[3]};
+                Float emissive[4] = {default_emissive[0], default_emissive[1], default_emissive[2], default_emissive[3]};
+                Float pbr[4] = {default_pbr[0], default_pbr[1], default_pbr[2], default_pbr[3]};
+                auto it_c = resolved_cb_params.find("base_color");
+                if (it_c != resolved_cb_params.end()) {
+                    color[0] = it_c->second.f[0]; color[1] = it_c->second.f[1];
+                    color[2] = it_c->second.f[2]; color[3] = it_c->second.f[3];
+                }
+                auto it_e = resolved_cb_params.find("emissive_color");
+                if (it_e != resolved_cb_params.end()) {
+                    emissive[0] = it_e->second.f[0]; emissive[1] = it_e->second.f[1];
+                    emissive[2] = it_e->second.f[2];
+                }
+                auto it_m = resolved_cb_params.find("metallic");
+                if (it_m != resolved_cb_params.end()) pbr[0] = it_m->second.f[0];
+                auto it_r = resolved_cb_params.find("roughness");
+                if (it_r != resolved_cb_params.end()) pbr[1] = it_r->second.f[0];
+                writeFloat4(0, color);
+                writeFloat4(16, emissive);
+                writeFloat4(32, pbr);
+            }
+        }
+
+        if (m_binding_layout_cache && m_binding_set_cache) {
+            GfxBindingLayoutDesc mat_layout_desc{};
+            mat_layout_desc.setVisibility(GfxShaderType::All);
+            mat_layout_desc.setRegisterSpaceIsDescriptorSet(true);
+            mat_layout_desc.setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material));
+            if (!inst.parameter_data.empty()) {
+                mat_layout_desc.addItem(GfxBindingLayoutItem::VolatileConstantBuffer(shader_bindings::kMaterialBindingConstants));
+            }
+            mat_layout_desc.addItem(GfxBindingLayoutItem::Sampler(shader_bindings::kMaterialBindingSampler));
+            if (!RenderSettings::IsBindlessActive() && !inst.textures.empty()) {
+                for (UInt32 tex_slot = 0; tex_slot < std::min<UInt32>(4, static_cast<UInt32>(inst.textures.size())); ++tex_slot) {
+                    mat_layout_desc.addItem(GfxBindingLayoutItem::Texture_SRV(shader_bindings::kMaterialBindingBaseColor + tex_slot));
+                }
+            }
+            inst.material_binding_layout = m_binding_layout_cache->getOrCreate(mat_layout_desc);
+
+            const Size_t cb_size = inst.parameter_data.size();
+            if (cb_size > 0) {
+                constexpr UInt32 kMatCBVersions = 4096;
+                inst.material_cb = GDrawCommandList.createBuffer(
+                    GfxBufferDesc()
+                        .setByteSize(static_cast<UInt32>(cb_size))
+                        .setIsConstantBuffer(true)
+                        .setIsVolatile(true)
+                        .setMaxVersions(kMatCBVersions)
+                        .setDebugName(fmt::format("MaterialCB {}", inst.desc.name).c_str()));
+                if (inst.material_cb) {
+                    GDrawCommandList.setupBuffer(inst.material_cb);
+                    GDrawCommandList.writeBuffer(inst.material_cb, inst.parameter_data.data(), cb_size);
+                }
+            }
+
+            GfxBindingSetDesc mat_set_desc{};
+            if (inst.material_cb) {
+                mat_set_desc.addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kMaterialBindingConstants, inst.material_cb->getRHIHandle()));
+            }
+            mat_set_desc.addItem(GfxBindingSetItem::Sampler(shader_bindings::kMaterialBindingSampler, inst.sampler));
+            if (!RenderSettings::IsBindlessActive() && !inst.textures.empty()) {
+                for (UInt32 tex_slot = 0; tex_slot < std::min<UInt32>(4, static_cast<UInt32>(inst.textures.size())); ++tex_slot) {
+                    mat_set_desc.addItem(GfxBindingSetItem::Texture_SRV(
+                        shader_bindings::kMaterialBindingBaseColor + tex_slot,
+                        inst.textures[tex_slot]->getRHIHandle()));
+                }
+            }
+            inst.material_binding_set = m_binding_set_cache->getOrCreate(
+                mat_set_desc,
+                inst.material_binding_layout,
+                m_binding_layout_cache->getLayoutGeneration(inst.material_binding_layout));
+        }
 
         if (!RenderSettings::IsBindlessActive() && m_binding_layout_cache && m_binding_set_cache && !inst.textures.empty()) {
             auto texture_layout = m_binding_layout_cache->getOrCreate(

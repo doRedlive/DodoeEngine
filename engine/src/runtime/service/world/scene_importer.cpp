@@ -15,7 +15,7 @@
 #include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/asset/types/mesh_asset.h"
 #include "runtime/core/object/pptr.h"
-#include "runtime/function/render/mesh/mesh.h"
+#include "runtime/function/render/mesh_draw/mesh.h"
 #include "runtime/function/render/pixel2d/sprite_manager.h"
 
 namespace dodoe {

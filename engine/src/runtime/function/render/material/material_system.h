@@ -99,6 +99,12 @@ namespace dodoe {
         GfxSamplerHandle sampler{};
         GfxBindingSetHandle texture_binding_set{};
 
+        GfxBufferHandle material_cb{};
+        GfxBindingSetHandle material_binding_set{};
+        GfxBindingLayoutHandle material_binding_layout{};
+
+        DynamicArray<UInt8> parameter_data;
+
         UInt64 revision{0};
         Bool resolved{false};
     };
