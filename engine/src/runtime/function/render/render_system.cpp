@@ -13,6 +13,7 @@
 namespace dodoe {
 
     Bool RenderSystem::initialize(const RenderSystemCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::initialize", "startup");
         m_window_manager = info.window_manager;
 
         auto window = m_window_manager->getWindow();
@@ -38,10 +39,13 @@ namespace dodoe {
             m_gfx.get(),
             m_shared_render_service.get()
         });
-        return m_render_scene && m_shared_render_service && m_render_pipeline && m_frame_scheduler;
+        const Bool initialized = m_render_scene && m_shared_render_service && m_render_pipeline && m_frame_scheduler;
+        DO_INFO("Initialization {}.", initialized ? "completed" : "failed");
+        return initialized;
     }
 
     void RenderSystem::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::shutdown", "shutdown");
         m_game_command_queue.close();
         m_gfx->waitForIdle();
         RenderPipeline::Destroy(m_render_pipeline);
@@ -52,6 +56,7 @@ namespace dodoe {
         m_gfx->clearGarbage();
         GfxContext::Destroy(m_gfx);
         RenderViewManager::Destroy(m_view_manager);
+        DO_INFO("Shutdown completed.");
     }
 
     void RenderSystem::enqueueRenderCommand(RenderCommand&& cmd) {
@@ -67,6 +72,7 @@ namespace dodoe {
     }
 
     void RenderSystem::renderFrameOnRenderThread(const ThreadingMode mode, DrawThread* draw_thread) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrameOnRenderThread", "frame");
         if (mode == ThreadingMode::DualThread && !acquireApplicationGraphicsContext()) {
             DO_ERROR("RenderSystem failed to acquire graphics context for render thread.");
             return;
@@ -78,6 +84,7 @@ namespace dodoe {
     }
 
     void RenderSystem::renderFrame(const ThreadingMode mode, DrawThread* draw_thread) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrame", "frame");
         Memory::AdvanceFrameEpoch();
 
         auto* gfx = m_gfx.get();
@@ -121,6 +128,7 @@ namespace dodoe {
 
         RenderCommand cmd;
         while (m_game_command_queue.tryPop(cmd)) {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::applyRenderCommand", "render-command");
             applyRenderCommand(*scene, cmd);
         }
 
@@ -130,6 +138,7 @@ namespace dodoe {
         }
 
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
 
         auto* time_sys = GetTimeSystem();
         const Float frame_time = time_sys->current_time();

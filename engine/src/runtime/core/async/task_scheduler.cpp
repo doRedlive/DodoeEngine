@@ -13,12 +13,15 @@ namespace dodoe {
 
     TaskScheduler::TaskScheduler(Size_t thread_count)
         : m_thread_count(std::max<Size_t>(1, thread_count)) {
+        DO_PROFILE_SCOPE_CATEGORY("TaskScheduler::TaskScheduler", "startup");
         for (Size_t i = 0; i < m_thread_count; i++) {
             m_threads.emplace_back(&TaskScheduler::workerLoop, this);
         }
+        DO_INFO("Started {} worker threads.", m_thread_count);
     }
 
     TaskScheduler::~TaskScheduler() {
+        DO_PROFILE_SCOPE_CATEGORY("TaskScheduler::~TaskScheduler", "shutdown");
         {
             std::unique_lock<std::mutex> lock(m_queue_mutex);
             m_stop = true;
@@ -29,9 +32,11 @@ namespace dodoe {
                 thread.join();
             }
         }
+        DO_INFO("Stopped.");
     }
 
     void TaskScheduler::workerLoop() {
+        DO_PROFILE_THREAD_NAME("TaskWorker");
         Memory::InitThread();
         while (true) {
             UInt64 cur = Memory::CurrentFrameEpoch();
@@ -53,6 +58,7 @@ namespace dodoe {
                 task = std::move(m_tasks.front());
                 m_tasks.pop();
             }
+            DO_PROFILE_SCOPE_CATEGORY("TaskScheduler::task", "task");
             task();
         }
     }

@@ -24,11 +24,13 @@ namespace dodoe {
     }
 
     void ResourceManager::initialize(const ResourceManagerInitInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("ResourceManager::initialize", "startup");
         m_assetManager = AssetManager::Create({});
         SpriteManager::Initialize();
     }
 
     void ResourceManager::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("ResourceManager::shutdown", "shutdown");
         SpriteManager::Shutdown();
         Material::Shutdown();
         Mesh::Shutdown();
@@ -41,6 +43,7 @@ namespace dodoe {
     }
 
     Bool ResourceManager::loadAssets() {
+        DO_PROFILE_SCOPE_CATEGORY("ResourceManager::loadAssets", "startup");
         return m_assetManager->loadAssets();
     }
 

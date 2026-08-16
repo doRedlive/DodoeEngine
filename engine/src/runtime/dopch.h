@@ -28,6 +28,7 @@
 #include "runtime/core/base.h"
 #include "runtime/core/container/containers.h"
 #include "runtime/core/asserts.h"
+#include "runtime/core/debug/instrumentor.h"
 #include "runtime/core/memory/managed.h"
 #include "runtime/function/log/log_system.h"
 

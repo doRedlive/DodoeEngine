@@ -15,6 +15,7 @@ namespace dodoe {
     }
 
     Bool ScriptSystem::reloadScripts() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptSystem::reloadScripts", "script");
         if (!m_script_engine->onScriptSourcesChanged()) {
             DO_ERROR("Scripts sources don't changed");
             return false;
@@ -41,6 +42,7 @@ namespace dodoe {
     }
 
     Bool ScriptSystem::initialize(const ScriptSystemCreateInfo& create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptSystem::initialize", "startup");
         m_script_engine = ScriptEngine::Create({});
         if (!m_script_engine) {
             DO_ASSERT(false, "ScriptEngine initialize failed!");
@@ -66,6 +68,7 @@ namespace dodoe {
     }
 
     void ScriptSystem::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptSystem::shutdown", "shutdown");
         if (m_tool_interp) {
             m_tool_interp->Shutdown();
             m_tool_interp.reset();

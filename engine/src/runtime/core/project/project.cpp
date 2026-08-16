@@ -14,6 +14,7 @@ namespace dodoe {
 	}
 
 	Ref<Project> Project::Load(const FsPath& path) {
+		DO_PROFILE_SCOPE_CATEGORY("Project::Load", "startup");
 		const Ref<Project> project = create_ref<Project>();
 
 		if (ProjectSerializer serializer(project); serializer.deserialize(path)) {

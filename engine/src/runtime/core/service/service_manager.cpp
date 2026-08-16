@@ -5,11 +5,13 @@
 namespace dodoe {
 
     Bool ServiceManager::initialize(const ServiceManagerCreateInfo&) {
+        DO_PROFILE_SCOPE_CATEGORY("ServiceManager::initialize", "startup");
         initializeAll();
         return true;
     }
 
     void ServiceManager::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("ServiceManager::shutdown", "shutdown");
         shutdownAll();
     }
 

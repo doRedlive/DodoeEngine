@@ -38,6 +38,7 @@ namespace dodoe {
 	}
 
 	bool ProjectSerializer::deserialize(const FsPath& file_path) {
+		DO_PROFILE_SCOPE_CATEGORY("ProjectSerializer::deserialize", "startup");
 		auto& config = project_->config();
 
 		Json data;

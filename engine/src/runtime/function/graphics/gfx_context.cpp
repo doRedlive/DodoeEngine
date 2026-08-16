@@ -45,6 +45,7 @@ namespace dodoe {
     }
 
     void GfxContext::initialize(const GfxBackendCreateInfo& create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxContext::initialize", "startup");
         window_handle_ = create_info.window_handle;
 
         if (create_info.api_type == RenderBackendApiType::Vulkan) {
@@ -66,6 +67,7 @@ namespace dodoe {
     }
 
     void GfxContext::initializeVulkan(const GfxBackendCreateInfo& create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxContext::initializeVulkan", "startup");
         OutputDebugStringA("[GFX] Vulkan initialize begin\n");
 
         vulkan_backend_ = VulkanBackend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation, create_info.width, create_info.height});
@@ -109,6 +111,7 @@ namespace dodoe {
     }
 
     void GfxContext::initializeOpenGL(const GfxBackendCreateInfo& create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxContext::initializeOpenGL", "startup");
         OutputDebugStringA("[GFX] OpenGL initialize begin\n");
 
         opengl_backend_ = OpenGLBackend::Create({create_info.window_handle, create_info.width, create_info.height});
@@ -130,6 +133,7 @@ namespace dodoe {
     }
 
     void GfxContext::initializeD3D12(const GfxBackendCreateInfo& create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxContext::initializeD3D12", "startup");
         OutputDebugStringA("[GFX] D3D12 initialize begin\n");
 
         d3d12_backend_ = D3D12Backend::Create({create_info.window_handle, create_info.host_handle, create_info.enable_validation, create_info.width, create_info.height});
@@ -159,6 +163,7 @@ namespace dodoe {
     }
 
     void GfxContext::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxContext::shutdown", "shutdown");
         cmd_ = nullptr;
         swapchain_textures_.clear();
         swapchain_framebuffers_.clear();

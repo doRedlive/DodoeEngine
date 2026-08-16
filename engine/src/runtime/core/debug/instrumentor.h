@@ -2,35 +2,20 @@
 
 #pragma once
 
-#include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <fstream>
-#include <iostream>
+#include <functional>
 #include <iomanip>
-#include <string>
-#include <thread>
 #include <mutex>
 #include <sstream>
+#include <string>
+#include <string_view>
+#include <thread>
 
 namespace dodoe {
 
-    using FloatingPointMicroseconds = std::chrono::duration<double, std::micro>;
-
-    struct ProfileResult {
-        String name;
-        FloatingPointMicroseconds start;
-        std::chrono::microseconds elapsed_time;
-        std::thread::id thread_id;
-    };
-
-    struct InstrumentationSession {
-        String name;
-    };
-
     class Instrumentor {
-        std::mutex m_mutex;
-        InstrumentationSession* m_cur_session;
-        std::ofstream m_output_stream;
     public:
         Instrumentor(const Instrumentor&) = delete;
         Instrumentor(Instrumentor&&) = delete;
@@ -40,160 +25,184 @@ namespace dodoe {
             return instance;
         }
 
-        void beginSession(const String& name, const String& file_path = "result.json") {
+        static std::int64_t nowMicroseconds() {
+            static const auto process_start = std::chrono::steady_clock::now();
+            return std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - process_start).count();
+        }
+
+        void beginSession(std::string_view name, std::string_view file_path = "DodoeProfile.json") {
             std::lock_guard lock(m_mutex);
-            if (m_cur_session) {
-                std::cerr << "Instrumentor::beginSession error\n";
-                internalEndSession();
+            endSessionLocked();
+
+            m_output_stream.open(std::string(file_path), std::ios::out | std::ios::trunc);
+            if (!m_output_stream.is_open()) {
+                return;
             }
 
-            m_output_stream.open(file_path);
-            if (m_output_stream.is_open()) {
-                m_cur_session = new InstrumentationSession({name});
-                writeHeader();
-            }
-            else {
-                std::cerr << "Instrumentor could not open results file " << file_path << std::endl;
-            }
+            m_session_name.assign(name);
+            m_has_written_event = false;
+            writeHeaderLocked();
+            writeThreadNameLocked("MainThread");
+            m_output_stream.flush();
         }
 
         void endSession() {
             std::lock_guard lock(m_mutex);
-            internalEndSession();
+            endSessionLocked();
         }
 
-        void writeProfile(const ProfileResult& result) {
-            std::stringstream json;
-			json << std::setprecision(3) << std::fixed;
-			json << ",{";
-			json << "\"cat\":\"function\",";
-			json << "\"dur\":" << (result.elapsed_time.count()) << ',';
-			json << "\"name\":\"" << result.name << "\",";
-			json << "\"ph\":\"X\",";
-			json << "\"pid\":0,";
-			json << "\"tid\":" << result.thread_id << ",";
-			json << "\"ts\":" << result.start.count();
-			json << "}";
-
+        void writeProfile(std::string_view name, std::string_view category,
+                          std::int64_t start_time_us, std::int64_t duration_us) {
             std::lock_guard lock(m_mutex);
-            if (m_cur_session) {
-                m_output_stream << json.str();
+            if (!m_output_stream.is_open()) {
+                return;
+            }
+
+            writeEventPrefixLocked();
+            m_output_stream << "{\"cat\":\"" << escape(nameOr(category, "function"))
+                            << "\",\"dur\":" << duration_us
+                            << ",\"name\":\"" << escape(name)
+                            << "\",\"ph\":\"X\",\"pid\":0,\"tid\":" << threadId()
+                            << ",\"ts\":" << start_time_us << '}';
+            if (category != "frame" && category != "task") {
                 m_output_stream.flush();
             }
         }
-    private:
-        Instrumentor() : m_cur_session(nullptr) { }
-        ~Instrumentor() { endSession(); }
 
-        void internalEndSession() {
-            if (m_cur_session) {
-                writeFooter();
-                m_output_stream.close();
-                delete m_cur_session;
-                m_cur_session = nullptr;
+        void writeThreadName(std::string_view name) {
+            std::lock_guard lock(m_mutex);
+            if (!m_output_stream.is_open()) {
+                return;
             }
-        }
-
-        void writeHeader() {
-            m_output_stream << "{\"otherData\": {}, \"traceEvents\":[{}";
+            writeThreadNameLocked(name);
             m_output_stream.flush();
         }
 
-        void writeFooter() {
+    private:
+        Instrumentor() = default;
+
+        ~Instrumentor() {
+            endSession();
+        }
+
+        static std::string_view nameOr(std::string_view value, std::string_view fallback) {
+            return value.empty() ? fallback : value;
+        }
+
+        static std::uint64_t threadId() {
+            return static_cast<std::uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+        }
+
+        static std::string escape(std::string_view value) {
+            std::string escaped;
+            escaped.reserve(value.size());
+            for (const char ch : value) {
+                switch (ch) {
+                case '\\': escaped += "\\\\"; break;
+                case '\"': escaped += "\\\""; break;
+                case '\n': escaped += "\\n"; break;
+                case '\r': escaped += "\\r"; break;
+                case '\t': escaped += "\\t"; break;
+                default:
+                    if (static_cast<unsigned char>(ch) < 0x20) {
+                        std::ostringstream stream;
+                        stream << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                               << static_cast<int>(static_cast<unsigned char>(ch));
+                        escaped += stream.str();
+                    } else {
+                        escaped += ch;
+                    }
+                    break;
+                }
+            }
+            return escaped;
+        }
+
+        void endSessionLocked() {
+            if (!m_output_stream.is_open()) {
+                return;
+            }
             m_output_stream << "]}";
-            m_output_stream.flush();
+            m_output_stream.close();
+            m_session_name.clear();
+            m_has_written_event = false;
         }
-        
+
+        void writeHeaderLocked() {
+            m_output_stream << "{\"displayTimeUnit\":\"ms\",\"otherData\":{\"session\":\""
+                            << escape(m_session_name) << "\"},\"traceEvents\":[";
+        }
+
+        void writeEventPrefixLocked() {
+            if (m_has_written_event) {
+                m_output_stream << ',';
+            }
+            m_has_written_event = true;
+        }
+
+        void writeThreadNameLocked(std::string_view name) {
+            writeEventPrefixLocked();
+            m_output_stream << "{\"name\":\"thread_name\",\"ph\":\"M\",\"pid\":0,\"tid\":"
+                            << threadId() << ",\"args\":{\"name\":\"" << escape(name) << "\"}}";
+        }
+
+        std::mutex m_mutex{};
+        std::ofstream m_output_stream{};
+        std::string m_session_name{};
+        bool m_has_written_event{false};
     };
 
-	class InstrumentationTimer {
-	public:
-		InstrumentationTimer(const char* name)
-			: name_(name), stopped_(false) {
-			start_timepoint_ = std::chrono::steady_clock::now();
-		}
+    class InstrumentationTimer {
+    public:
+        InstrumentationTimer(std::string_view name, std::string_view category)
+            : m_name(name), m_category(category), m_start_time_us(Instrumentor::nowMicroseconds()) {
+        }
 
-		~InstrumentationTimer() {
-			if (!stopped_)
-				stop();
-		}
+        ~InstrumentationTimer() {
+            stop();
+        }
 
-		void stop() {
-			auto end_timepoint = std::chrono::steady_clock::now();
-			auto high_res_start = FloatingPointMicroseconds{ start_timepoint_.time_since_epoch() };
-			auto elapsed_time = std::chrono::time_point_cast<std::chrono::microseconds>(end_timepoint).time_since_epoch() - std::chrono::time_point_cast<std::chrono::microseconds>(start_timepoint_).time_since_epoch();
+        InstrumentationTimer(const InstrumentationTimer&) = delete;
+        InstrumentationTimer& operator=(const InstrumentationTimer&) = delete;
 
-			Instrumentor::Self().writeProfile({ name_, high_res_start, elapsed_time, std::this_thread::get_id() });
+        void stop() {
+            if (m_stopped) {
+                return;
+            }
+            const std::int64_t end_time_us = Instrumentor::nowMicroseconds();
+            Instrumentor::Self().writeProfile(m_name, m_category, m_start_time_us, end_time_us - m_start_time_us);
+            m_stopped = true;
+        }
 
-			stopped_ = true;
-		}
+    private:
+        std::string m_name;
+        std::string m_category;
+        std::int64_t m_start_time_us{0};
+        bool m_stopped{false};
+    };
 
-	private:
-		const char* name_;
-		std::chrono::time_point<std::chrono::steady_clock> start_timepoint_;
-		bool stopped_;
-	};
+}
 
-	namespace InstrumentorUtils {
-
-		template <size_t N>
-		struct ChangeResult {
-			char Data[N];
-		};
-
-		template <size_t N, size_t K>
-		consteval auto CleanupOutputString(const char(&expr)[N], const char(&remove)[K]) {
-			ChangeResult<N> result = {};
-
-			size_t src_index = 0;
-			size_t dst_index = 0;
-			while (src_index < N) {
-				size_t match_index = 0;
-				while (match_index < K - 1 && src_index + match_index < N - 1 && expr[src_index + match_index] == remove[match_index])
-					match_index++;
-				if (match_index == K - 1)
-					src_index += match_index;
-				result.Data[dst_index++] = expr[src_index] == '"' ? '\'' : expr[src_index];
-				src_index++;
-			}
-			return result;
-		}
-	} // InstrumentorUtils
-} // dodoe
-
-#define DO_PROFILE 0
-#if DO_PROFILE
-	// Resolve which function signature macro will be used. Note that this only
-	// is resolved when the (pre)compiler starts, so the syntax highlighting
-	// could mark the wrong one in your editor!
-	#if defined(__GNUC__) || (defined(__MWERKS__) && (__MWERKS__ >= 0x3000)) || (defined(__ICC) && (__ICC >= 600)) || defined(__ghs__)
-		#define DO_FUNC_SIG __PRETTY_FUNCTION__
-	#elif defined(__DMC__) && (__DMC__ >= 0x810)
-		#define DO_FUNC_SIG __PRETTY_FUNCTION__
-	#elif (defined(__FUNCSIG__) || (_MSC_VER))
-		#define DO_FUNC_SIG __FUNCSIG__
-	#elif (defined(__INTEL_COMPILER) && (__INTEL_COMPILER >= 600)) || (defined(__IBMCPP__) && (__IBMCPP__ >= 500))
-		#define DO_FUNC_SIG __FUNCTION__
-	#elif defined(__BORLANDC__) && (__BORLANDC__ >= 0x550)
-		#define DO_FUNC_SIG __FUNC__
-	#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
-		#define DO_FUNC_SIG __func__
-	#elif defined(__cplusplus) && (__cplusplus >= 201103)
-		#define DO_FUNC_SIG __func__
-	#else
-		#define DO_FUNC_SIG "DO_FUNC_SIG unknown!"
-	#endif
-
-	#define DO_PROFILE_BEGIN_SESSION(name, filepath) ::dodoe::Instrumentor::Self().beginSession(name, filepath)
-	#define DO_PROFILE_END_SESSION() ::dodoe::Instrumentor::Self().endSession()
-	#define DO_PROFILE_SCOPE_LINE2(name, line) constexpr auto fixedName##line = ::dodoe::InstrumentorUtils::CleanupOutputString(name, "__cdecl ");\
-										   ::dodoe::InstrumentationTimer timer##line(fixedName##line.Data)
-	#define DO_PROFILE_SCOPE_LINE(name, line) DO_PROFILE_SCOPE_LINE2(name, line)
-	#define DO_PROFILE_SCOPE(name) DO_PROFILE_SCOPE_LINE(name, __LINE__)
-	#define DO_PROFILE_FUNCTION() DO_PROFILE_SCOPE(DO_FUNC_SIG)
+#if defined(DODOE_PROFILE_ENABLED) && DODOE_PROFILE_ENABLED
+    #define DODOE_PROFILE_CONCAT_INNER(left, right) left##right
+    #define DODOE_PROFILE_CONCAT(left, right) DODOE_PROFILE_CONCAT_INNER(left, right)
+    #if defined(_MSC_VER)
+        #define DODOE_PROFILE_FUNCTION_NAME __FUNCSIG__
+    #else
+        #define DODOE_PROFILE_FUNCTION_NAME __PRETTY_FUNCTION__
+    #endif
+    #define DO_PROFILE_BEGIN_SESSION(name, file_path) ::dodoe::Instrumentor::Self().beginSession((name), (file_path))
+    #define DO_PROFILE_END_SESSION() ::dodoe::Instrumentor::Self().endSession()
+    #define DO_PROFILE_THREAD_NAME(name) ::dodoe::Instrumentor::Self().writeThreadName((name))
+    #define DO_PROFILE_SCOPE_CATEGORY(name, category) ::dodoe::InstrumentationTimer DODOE_PROFILE_CONCAT(dodoe_profile_timer_, __COUNTER__)((name), (category))
+    #define DO_PROFILE_SCOPE(name) DO_PROFILE_SCOPE_CATEGORY((name), "function")
+    #define DO_PROFILE_FUNCTION() DO_PROFILE_SCOPE(DODOE_PROFILE_FUNCTION_NAME)
 #else
-	#define DO_PROFILE_BEGIN_SESSION(name, filepath)
-	#define DO_PROFILE_END_SESSION()
-	#define DO_PROFILE_SCOPE(name)
-	#define DO_PROFILE_FUNCTION()
+    #define DO_PROFILE_BEGIN_SESSION(name, file_path)
+    #define DO_PROFILE_END_SESSION()
+    #define DO_PROFILE_THREAD_NAME(name)
+    #define DO_PROFILE_SCOPE_CATEGORY(name, category)
+    #define DO_PROFILE_SCOPE(name)
+    #define DO_PROFILE_FUNCTION()
 #endif

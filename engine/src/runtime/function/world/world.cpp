@@ -226,6 +226,7 @@ namespace dodoe {
     } // anonymous namespace
 
     Bool World::initialize(const WorldCreateInfo& create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("World::initialize", "startup");
         m_name = create_info.name;
         if (Application::Self().getAppMode() != AppMode::Game) {
             m_state = WorldState::Simulation;
@@ -235,6 +236,7 @@ namespace dodoe {
     }
 
     void World::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("World::shutdown", "shutdown");
         cleanupScenes();
         cleanupSystems();
         for (auto& scene : m_scenes) {
@@ -247,6 +249,7 @@ namespace dodoe {
     }
 
     bool World::setupSystems() {
+        DO_PROFILE_SCOPE_CATEGORY("World::setupSystems", "startup");
         auto mono = create_ref<MonoSystem>();
         auto animator = create_ref<AnimatorSystem>();
         auto camera_system = create_ref<CameraSystem>();
@@ -296,6 +299,7 @@ namespace dodoe {
     }
 
     void World::start() {
+        DO_PROFILE_SCOPE_CATEGORY("World::start", "startup");
         switch (m_state) {
             case WorldState::Runtime:
                 for (auto& scene : m_active_scenes) {
@@ -313,6 +317,7 @@ namespace dodoe {
     }
 
     void World::update(const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("World::update", "frame");
         drainAsyncCompletions();
 
         if (m_state != WorldState::Pause && dt > 0.0f) {
@@ -409,6 +414,7 @@ namespace dodoe {
     }
 
     Scene* World::loadScene(const String& name, LoadSceneMode mode) {
+        DO_PROFILE_SCOPE_CATEGORY("World::loadScene", "startup");
         auto* asset_manager = ResourceManager::Self().getAssetManager();
         if (!asset_manager) {
             DO_ERROR("loadScene: AssetManager not available");
@@ -416,6 +422,7 @@ namespace dodoe {
         }
 
         const String asset_url((FsPath("Scenes") / (name + ".doscn")).generic_string().c_str());
+        DO_DEBUG("Resolving scene asset '{}'.", asset_url);
         auto handle = asset_manager->getHandleByPath<SceneAsset>(asset_url);
         SceneRes scene_res;
         if (handle.isValid()) {
@@ -434,6 +441,7 @@ namespace dodoe {
         if (!scene) {
             scene = createScene(scene_name);
             scene->deserialize(scene_res);
+            DO_DEBUG("Deserialized scene '{}'.", scene_name);
         }
 
         const Bool is_single = mode == LoadSceneMode::Single;
@@ -447,6 +455,7 @@ namespace dodoe {
         const auto active_it = std::find(m_active_scenes.begin(), m_active_scenes.end(), scene);
         if (active_it == m_active_scenes.end()) {
             activateScene(scene->getName());
+            DO_DEBUG("Activated scene '{}'.", scene->getName());
         }
 
         if (is_single || m_current_scene == nullptr) {

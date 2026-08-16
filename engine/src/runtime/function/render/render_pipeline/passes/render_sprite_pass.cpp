@@ -5,9 +5,9 @@
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
 
-#include "../../render_view/render_view.h"
-#include "../../render_view/sprite_view_extension.h"
-#include "../render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_view/sprite_view_extension.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "render_pass_blackboard_keys.h"
 
 #include "runtime/function/render/render_graph/render_graph_builder.h"
@@ -20,8 +20,6 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
-
-#include <algorithm>
 
 namespace dodoe {
 

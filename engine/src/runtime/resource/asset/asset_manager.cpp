@@ -33,11 +33,13 @@ namespace dodoe {
     }
 
     Bool AssetManager::initialize(const AssetManagerCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("AssetManager::initialize", "startup");
         (void)info;
         return true;
     }
 
     void AssetManager::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("AssetManager::shutdown", "shutdown");
         unloadAll();
         if (m_database && m_database->isDirty()) {
             m_database->save();
@@ -280,6 +282,7 @@ namespace dodoe {
     }
 
     Bool AssetManager::loadAssets() {
+        DO_PROFILE_SCOPE_CATEGORY("AssetManager::loadAssets", "startup");
         if (m_database) {
             return true;
         }
@@ -292,6 +295,7 @@ namespace dodoe {
         m_asset_dir = Project::ProjectDirectory() / active_project->config().asset_directory;
 
         const auto configs_dir = Project::ProjectDirectory() / "Configs";
+        DO_INFO("Loading asset database from '{}'.", configs_dir.string());
         m_database = create_scope<AssetDatabase>(configs_dir);
         if (!m_database->load()) {
             return false;
@@ -313,10 +317,12 @@ namespace dodoe {
         }
 
         if (!asset_ids.empty()) {
+            DO_INFO("Loaded {} assets from database.", asset_ids.size());
             return true;
         }
 
         EnsureBuiltinImporters();
+        DO_INFO("Scanning asset directory '{}'.", m_asset_dir.string());
 
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
@@ -395,6 +401,7 @@ namespace dodoe {
             return false;
         }
 
+        DO_INFO("Asset scan completed with {} assets.", m_assets.size());
         return true;
     }
 
@@ -424,6 +431,7 @@ namespace dodoe {
     void AssetManager::importSourceFile(const FsPath& absolute_path,
                                         const String& source_path,
                                         const String& ext) {
+        DO_DEBUG("Importing asset '{}'.", source_path);
         std::unique_lock lock(m_mutex);
 
         AssetImporter* default_importer = ImporterRegistry::Self().find(ext);

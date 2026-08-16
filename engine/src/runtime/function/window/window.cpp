@@ -8,6 +8,7 @@
 namespace dodoe {
 
     Bool Window::initialize(const WindowManagerCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("Window::initialize", "startup");
         m_prop = info.prop;
         m_host_handle = info.host_handle;
         if (isHostMode()) {
@@ -41,6 +42,7 @@ namespace dodoe {
     }
 
     void Window::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("Window::shutdown", "shutdown");
         if (isHostMode()) {
             m_host_handle = nullptr;
             return;

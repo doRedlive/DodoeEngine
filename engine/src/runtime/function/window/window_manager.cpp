@@ -15,6 +15,7 @@
 namespace dodoe {
 
     bool WindowManager::initialize(const WindowManagerCreateInfo& init_info) {
+        DO_PROFILE_SCOPE_CATEGORY("WindowManager::initialize", "startup");
 
         EventSystem::Subscribe<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
         EventSystem::Subscribe<WindowCloseEvent, &WindowManager::onWindowClose>(this);
@@ -32,6 +33,7 @@ namespace dodoe {
     }
 
     void WindowManager::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("WindowManager::shutdown", "shutdown");
         EventSystem::Unsubscribe<WindowFocusEvent, &WindowManager::onWindowFocus>(this);
         EventSystem::Unsubscribe<WindowLostFocusEvent, &WindowManager::onWindowLostFocus>(this);
         EventSystem::Unsubscribe<WindowCloseEvent, &WindowManager::onWindowClose>(this);

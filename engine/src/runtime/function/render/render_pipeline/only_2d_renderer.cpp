@@ -7,6 +7,9 @@
 #include "render_feature/sprite_feature.h"
 #include "render_feature/ui_feature.h"
 #include "render_feature/imgui_feature.h"
+#ifdef DODOE_EDITOR_ENABLED
+#include "render_feature/gizmo_feature.h"
+#endif//DODOE_EDITOR_ENABLED
 
 namespace dodoe {
 
@@ -21,8 +24,11 @@ namespace dodoe {
         m_shared_render_service = info.shared_render_service;
 
         addFeature<SpriteFeature>();
-        addFeature<UIFeature>();  // do@Redlive
+        addFeature<UIFeature>();
         addFeature<PostProcess2DFeature>();
+#ifdef DODOE_EDITOR_ENABLED
+	    addFeature<GizmoFeature>();
+#endif//DODOE_EDITOR_ENABLED
         addFeature<ImGuiFeature>();
         addFeature<PresentFeature>();
 

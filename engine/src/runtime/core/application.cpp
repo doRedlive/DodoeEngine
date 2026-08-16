@@ -111,14 +111,17 @@ namespace dodoe {
     }
 
     Application::Application(const ApplicationSpecification& spec) {
+        DO_PROFILE_SCOPE_CATEGORY("Application::Application", "startup");
         m_app_spec = spec;
         loadConfigFile();
         m_context = SystemContext::Create({m_app_spec});
         m_instance = this;
         m_running = true;
+        DO_INFO("Created '{}'.", m_app_spec.name);
     }
 
     Application::~Application() {
+        DO_PROFILE_SCOPE_CATEGORY("Application::~Application", "shutdown");
         SystemContext::Destroy(m_context);
         m_instance = nullptr;
         m_running = false;
@@ -133,6 +136,8 @@ namespace dodoe {
     }
 
     void Application::run() {
+        DO_PROFILE_SCOPE_CATEGORY("Application::run", "runtime");
+        DO_PROFILE_THREAD_NAME("MainThread");
         TaskScheduler::Self();
 
         EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);

@@ -1,5 +1,7 @@
 set(TARGET_NAME DodoeRuntime)
 
+option(DODOE_ENABLE_PROFILING "Enable Chrome trace profiling" ON)
+
 find_package(Vulkan REQUIRED)
 if (NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan SDK not found!")
@@ -61,6 +63,7 @@ target_include_directories(${TARGET_NAME}
 )
 
 target_compile_definitions(${TARGET_NAME} PUBLIC $<$<CONFIG:Debug>:DODOE_DEBUG_ENABLED>)
+target_compile_definitions(${TARGET_NAME} PUBLIC $<$<BOOL:${DODOE_ENABLE_PROFILING}>:DODOE_PROFILE_ENABLED=1>)
 if(DODOE_EDITOR)
     target_compile_definitions(${TARGET_NAME} PUBLIC DODOE_EDITOR_ENABLED)
 endif()

@@ -16,6 +16,18 @@ namespace dodoe {
 
         std::atomic_uint64_t s_log_sequence{0};
 
+        std::string_view moduleName(const std::string_view source_file) {
+            if (source_file.empty()) {
+                return "Unknown";
+            }
+            const Size_t separator = source_file.find_last_of("\\/");
+            const std::string_view file_name = separator == std::string_view::npos
+                ? source_file
+                : source_file.substr(separator + 1);
+            const Size_t extension = file_name.find_last_of('.');
+            return extension == std::string_view::npos ? file_name : file_name.substr(0, extension);
+        }
+
     }
 
     const auto kLogLevelUmap = std::unordered_map<spdlog::level::level_enum, LogLevel>{
@@ -95,7 +107,7 @@ namespace dodoe {
     std::shared_ptr<MemSinkMt> s_engine_console_sink = std::make_shared<MemSinkMt>();
 
     void Log::Initialize() {
-        m_core_logger->set_pattern("%^[%T] %n: %v%$");
+        m_core_logger->set_pattern("%^[%T] [%l] %n: %v%$");
         m_client_logger->set_pattern("%^[%T] [%l] %n: %v%$");
 
         SetLoggerLevel(m_core_logger, LogLevel::Trace);
@@ -105,7 +117,7 @@ namespace dodoe {
         auto core_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("engine.log", true);
         auto client_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("client.log", true);
 
-        console_sink->set_pattern("%^[%T] %n: %v%$");
+        console_sink->set_pattern("%^[%T] [%l] %n: %v%$");
         core_file_sink->set_pattern("[%T] [%l] %n: %v");
         client_file_sink->set_pattern("[%T] [%l] %n: %v");
         s_editor_console_sink->set_pattern("[%T] %n: %v");
@@ -119,6 +131,8 @@ namespace dodoe {
         m_client_logger->sinks().push_back(console_sink);
         m_client_logger->sinks().push_back(client_file_sink);
         m_client_logger->sinks().push_back(s_editor_console_sink);
+        m_core_logger->flush_on(spdlog::level::debug);
+        m_client_logger->flush_on(spdlog::level::debug);
     }
 
     void Log::SetLoggerLevel(const std::shared_ptr<spdlog::logger>& logger, const LogLevel level) {
@@ -131,12 +145,12 @@ namespace dodoe {
         }
     }
 
-    void Log::CoreLog(LogLevel level, std::string_view message) {
-        m_core_logger->log(kSpdlogLevelUmap.at(level), "{}", message);
+    void Log::CoreLog(LogLevel level, std::string_view message, std::string_view source_file) {
+        m_core_logger->log(kSpdlogLevelUmap.at(level), "[{}] {}", moduleName(source_file), message);
     }
 
-    void Log::ClientLog(LogLevel level, std::string_view message) {
-        m_client_logger->log(kSpdlogLevelUmap.at(level), "{}", message);
+    void Log::ClientLog(LogLevel level, std::string_view message, std::string_view source_file) {
+        m_client_logger->log(kSpdlogLevelUmap.at(level), "[{}] {}", moduleName(source_file), message);
     }
 
     std::vector<LogMessage> Log::GetCoreLogs() {

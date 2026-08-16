@@ -5,6 +5,7 @@
 namespace dodoe {
 
     Bool SharedRenderService::initialize(const SharedRenderServiceCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("SharedRenderService::initialize", "startup");
         m_gfx_context = info.gfx_context;
 
         DO_ASSERT(m_gfx_context != nullptr, "SharedRenderService requires gfx_context");
@@ -44,6 +45,7 @@ namespace dodoe {
     }
 
     void SharedRenderService::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("SharedRenderService::shutdown", "shutdown");
         GlobalSamplers::reset();
 
         if (m_input_layout_cache) {

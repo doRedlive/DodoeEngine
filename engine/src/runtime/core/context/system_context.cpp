@@ -37,6 +37,7 @@ namespace dodoe {
     SystemContext::~SystemContext() = default;
 
     bool SystemContext::initialize(SystemContextCreateInfo create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::initialize", "startup");
         m_init_info = create_info;
         Bool success = preInit();
         return success;
@@ -47,19 +48,25 @@ namespace dodoe {
     }
 
     Bool SystemContext::preInit() {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::preInit", "startup");
         Log::Initialize();
         Memory::Init();
         EventSystem::Initialize();
         TypeMetaRegister::MetaRegister();
+        DO_INFO("Core services initialized.");
         return true;
     }
 
     Bool SystemContext::initializeModules() {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::initializeModules", "startup");
         m_service_manager = ServiceManager::Create({});
+        DO_INFO("ServiceManager initialized.");
 
         m_time_system = TimeSystem::Create({});
+        DO_INFO("TimeSystem initialized.");
 
         ResourceManager::Self().initialize({});
+        DO_INFO("ResourceManager initialized.");
 
         WindowManagerCreateInfo window_manager_create_info;
         window_manager_create_info.host_handle = m_init_info.spec.host_handle;
@@ -68,6 +75,7 @@ namespace dodoe {
         window_manager_create_info.prop.height = m_init_info.spec.height;
         window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;
         m_window_manager = WindowManager::Create(window_manager_create_info);
+        DO_INFO("WindowManager initialized.");
 
         RenderSettingsInitInfo render_settings_init_info;
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
@@ -75,29 +83,37 @@ namespace dodoe {
         render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
         render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
+        DO_INFO("RenderSettings initialized.");
 
 #ifdef DODOE_DEBUG_ENABLED
         ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
 #endif
 
         m_ui_manager = UIManager::Create({m_window_manager.get()});
+        DO_INFO("UIManager initialized.");
 
         m_debugger      = Debugger::Create({});
+        DO_INFO("Debugger initialized.");
 #ifdef DODOE_DEBUG_ENABLED
         DebugImGui::RegisterDebugPanel();
 #endif
         m_render_system = RenderSystem::Create({m_window_manager.get()});
         DO_ASSERT(m_render_system, "RenderSystem init failed");
+        DO_INFO("RenderSystem initialized.");
 
         m_input_manager = InputManager::Create({});
+        DO_INFO("InputManager initialized.");
 
         m_script_system = ScriptSystem::Create({});
         DO_ASSERT(m_script_system, "ScriptSystem init failed");
+        DO_INFO("ScriptSystem initialized.");
         m_physics_system = PhysicsSystem::Create({});
         DO_ASSERT(m_physics_system, "PhysicsSystem init failed");
+        DO_INFO("PhysicsSystem initialized.");
 
         m_world = World::Create({"Main"});
         DO_ASSERT(m_world, "World init failed");
+        DO_INFO("World initialized.");
 
         const auto threading_mode = RenderSettings::GetThreadingMode();
         auto* gfx = m_render_system->getGfx();
@@ -113,6 +129,7 @@ namespace dodoe {
             }));
             m_render_thread->start(threading_mode);
             m_render_system->setRenderThread(m_render_thread.get());
+            DO_INFO("Triple-thread rendering initialized.");
             break;
 
         case ThreadingMode::DualThread:
@@ -124,6 +141,7 @@ namespace dodoe {
             }));
             m_render_thread->start(threading_mode);
             m_render_system->setRenderThread(m_render_thread.get());
+            DO_INFO("Dual-thread rendering initialized.");
             break;
 
         case ThreadingMode::SingleThread:
@@ -131,6 +149,7 @@ namespace dodoe {
                 m_render_system->renderFrame(ThreadingMode::SingleThread, nullptr);
             }));
             m_render_system->setRenderThread(m_render_thread.get());
+            DO_INFO("Single-thread rendering initialized.");
             break;
         }
 
@@ -138,6 +157,7 @@ namespace dodoe {
     }
 
     void SystemContext::startRuntime() {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::startRuntime", "startup");
         if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
             DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
                 "SystemContext failed to acquire graphics context for startup.");
@@ -154,12 +174,14 @@ namespace dodoe {
         DO_ASSERT(start_scene, "World failed to load start scene '{}'", start_scene_name);
 
         m_world->start();
+        DO_INFO("Runtime startup completed with scene '{}'.", start_scene_name);
     }
 
     void SystemContext::stopRuntime() {
     }
 
     void SystemContext::finalizeModules() {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::finalizeModules", "shutdown");
         if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
             DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
                 "SystemContext failed to acquire graphics context for shutdown.");
@@ -195,6 +217,7 @@ namespace dodoe {
         WindowManager::Destroy(m_window_manager);
 
         TimeSystem::Destroy(m_time_system);
+        DO_INFO("Module shutdown completed.");
     }
 
     void SystemContext::postShutdown() {
@@ -203,11 +226,13 @@ namespace dodoe {
     }
 
     void SystemContext::tickOneFrame() {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::tickOneFrame", "frame");
         updateTick(m_time_system->getDeltaTime());
         renderTick();
     }
 
     void SystemContext::updateTick(const float delta_time) {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::updateTick", "frame");
         if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
             DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
                 "SystemContext failed to acquire graphics context for update.");
@@ -223,6 +248,7 @@ namespace dodoe {
     }
 
     void SystemContext::renderTick() {
+        DO_PROFILE_SCOPE_CATEGORY("SystemContext::renderTick", "frame");
 #ifdef DODOE_DEBUG_ENABLED
         ImGuiBuilder::PrepareImGui();
 #endif

@@ -16,6 +16,7 @@ namespace dodoe {
     }
 
     void RenderThread::start(const ThreadingMode mode) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderThread::start", "startup");
         if (m_running) return;
         m_mode = mode;
         if (m_mode == ThreadingMode::SingleThread) {
@@ -24,9 +25,11 @@ namespace dodoe {
         }
         m_running = true;
         m_thread = std::thread(&RenderThread::loop, this);
+        DO_INFO("Started.");
     }
 
     void RenderThread::stop() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderThread::stop", "shutdown");
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (!m_running) return;
@@ -38,6 +41,7 @@ namespace dodoe {
         }
         m_frame_task = nullptr;
         m_draw_thread = nullptr;
+        DO_INFO("Stopped.");
     }
 
     void RenderThread::submit() {
@@ -50,6 +54,7 @@ namespace dodoe {
     }
 
     void RenderThread::submitAndWait() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderThread::submitAndWait", "frame");
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_has_pending_frame = true;
@@ -62,12 +67,14 @@ namespace dodoe {
     }
 
     void RenderThread::executeFrameOnce() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderThread::executeFrameOnce", "frame");
         if (m_frame_task) {
             m_frame_task();
         }
     }
 
     void RenderThread::loop() {
+        DO_PROFILE_THREAD_NAME("RenderThread");
         Memory::InitThread();
         while (true) {
             UInt64 cur = Memory::CurrentFrameEpoch();
@@ -90,6 +97,7 @@ namespace dodoe {
             }
 
             if (m_frame_task) {
+                DO_PROFILE_SCOPE_CATEGORY("RenderThread::frame", "frame");
                 m_frame_task();
             }
 

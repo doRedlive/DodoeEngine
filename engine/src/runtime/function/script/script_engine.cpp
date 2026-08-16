@@ -123,6 +123,7 @@ namespace dodoe {
     }
 
     Bool ScriptEngine::initialize(const ScriptEngineCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptEngine::initialize", "startup");
         m_native_host = NativeHost::Create({});
         if (!m_native_host) {
             DO_ERROR("ScriptEngine: NativeHost creation failed");
@@ -135,6 +136,7 @@ namespace dodoe {
     }
 
     void ScriptEngine::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptEngine::shutdown", "shutdown");
         unloadAppAssembly(false);
 
         if (m_native_host) {
@@ -183,6 +185,7 @@ namespace dodoe {
     }
 
     Bool ScriptEngine::loadAppAssembly() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptEngine::loadAppAssembly", "startup");
         const auto active_project = Project::ActiveProject();
         if (!active_project) {
             return false;

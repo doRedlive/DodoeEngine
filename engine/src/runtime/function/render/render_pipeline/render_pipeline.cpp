@@ -9,6 +9,7 @@
 namespace dodoe {
 
     Bool RenderPipeline::initialize(const RendererCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderPipeline::initialize", "startup");
         const auto pipeline_type = RenderSettings::GetRenderingPipelineType();
 
         switch (pipeline_type) {

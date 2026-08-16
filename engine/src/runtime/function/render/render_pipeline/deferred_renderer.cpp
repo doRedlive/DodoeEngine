@@ -13,7 +13,7 @@
 #include "render_feature/imgui_feature.h"
 #ifdef DODOE_EDITOR_ENABLED
 #include "render_feature/gizmo_feature.h"
-#endif
+#endif//DODOE_EDITOR_ENABLED
 #include "runtime/function/render/render_scene/render_object.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_settings.h"
@@ -47,7 +47,7 @@ namespace dodoe {
 	    addFeature<UIFeature>();
 #ifdef DODOE_EDITOR_ENABLED
 	    addFeature<GizmoFeature>();
-	#endif
+#endif//DODOE_EDITOR_ENABLED
 	    addFeature<ImGuiFeature>();
 	    addFeature<PresentFeature>();
 
