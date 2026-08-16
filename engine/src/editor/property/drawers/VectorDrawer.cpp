@@ -2,7 +2,7 @@
 
 #include "VectorDrawer.h"
 #include "framework/EditorContext.h"
-#include "framework/command/commands/SetFieldValueCommand.h"
+#include "property/FieldEditCommand.h"
 #include "framework/command/CommandStack.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
@@ -99,9 +99,8 @@ QWidget* VectorDrawer<N>::build(const PropertyContext& pc)
                     int* iv = static_cast<int*>(field.get(pc.componentPtr));
                     int oldIv = iv[idx];
                     iv[idx] = v;
-                    auto cmd = std::make_unique<SetFieldValueCommand>(
-                        pc.entity, pc.componentName, field.getFieldName(),
-                        dodoe::Json(std::to_string(oldIv)), dodoe::Json(std::to_string(v)));
+                    auto cmd = MakeFieldEditCommand(pc, field.getFieldName(),
+                        dodoe::Json(oldIv), dodoe::Json(v));
                     pc.ctx->commands().execute(std::move(cmd));
                 });
             layout->addWidget(labeledAxis(container, kLabels[i], sb));
@@ -116,9 +115,8 @@ QWidget* VectorDrawer<N>::build(const PropertyContext& pc)
                     float* fv = static_cast<float*>(field.get(pc.componentPtr));
                     float oldFv = fv[idx];
                     fv[idx] = static_cast<float>(v);
-                    auto cmd = std::make_unique<SetFieldValueCommand>(
-                        pc.entity, pc.componentName, field.getFieldName(),
-                        dodoe::Json(std::to_string(oldFv)), dodoe::Json(std::to_string(v)));
+                    auto cmd = MakeFieldEditCommand(pc, field.getFieldName(),
+                        dodoe::Json(oldFv), dodoe::Json(static_cast<float>(v)));
                     pc.ctx->commands().execute(std::move(cmd));
                 });
             layout->addWidget(labeledAxis(container, kLabels[i], sb));

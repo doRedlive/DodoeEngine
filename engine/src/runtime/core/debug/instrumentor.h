@@ -70,6 +70,20 @@ namespace dodoe {
             }
         }
 
+        void writeInstant(std::string_view name, std::string_view category) {
+            std::lock_guard lock(m_mutex);
+            if (!m_output_stream.is_open()) {
+                return;
+            }
+
+            writeEventPrefixLocked();
+            m_output_stream << "{\"cat\":\"" << escape(nameOr(category, "function"))
+                            << "\",\"name\":\"" << escape(name)
+                            << "\",\"ph\":\"i\",\"pid\":0,\"s\":\"t\",\"tid\":"
+                            << threadId() << ",\"ts\":" << nowMicroseconds() << '}';
+            m_output_stream.flush();
+        }
+
         void writeThreadName(std::string_view name) {
             std::lock_guard lock(m_mutex);
             if (!m_output_stream.is_open()) {
@@ -195,6 +209,7 @@ namespace dodoe {
     #define DO_PROFILE_BEGIN_SESSION(name, file_path) ::dodoe::Instrumentor::Self().beginSession((name), (file_path))
     #define DO_PROFILE_END_SESSION() ::dodoe::Instrumentor::Self().endSession()
     #define DO_PROFILE_THREAD_NAME(name) ::dodoe::Instrumentor::Self().writeThreadName((name))
+    #define DO_PROFILE_MARK(name, category) ::dodoe::Instrumentor::Self().writeInstant((name), (category))
     #define DO_PROFILE_SCOPE_CATEGORY(name, category) ::dodoe::InstrumentationTimer DODOE_PROFILE_CONCAT(dodoe_profile_timer_, __COUNTER__)((name), (category))
     #define DO_PROFILE_SCOPE(name) DO_PROFILE_SCOPE_CATEGORY((name), "function")
     #define DO_PROFILE_FUNCTION() DO_PROFILE_SCOPE(DODOE_PROFILE_FUNCTION_NAME)
@@ -202,6 +217,7 @@ namespace dodoe {
     #define DO_PROFILE_BEGIN_SESSION(name, file_path)
     #define DO_PROFILE_END_SESSION()
     #define DO_PROFILE_THREAD_NAME(name)
+    #define DO_PROFILE_MARK(name, category)
     #define DO_PROFILE_SCOPE_CATEGORY(name, category)
     #define DO_PROFILE_SCOPE(name)
     #define DO_PROFILE_FUNCTION()

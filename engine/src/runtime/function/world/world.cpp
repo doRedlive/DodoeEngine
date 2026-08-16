@@ -422,7 +422,7 @@ namespace dodoe {
         }
 
         const String asset_url((FsPath("Scenes") / (name + ".doscn")).generic_string().c_str());
-        DO_DEBUG("Resolving scene asset '{}'.", asset_url);
+        DO_PROFILE_MARK("World::loadScene.resolveAsset", "startup");
         auto handle = asset_manager->getHandleByPath<SceneAsset>(asset_url);
         SceneRes scene_res;
         if (handle.isValid()) {
@@ -441,7 +441,7 @@ namespace dodoe {
         if (!scene) {
             scene = createScene(scene_name);
             scene->deserialize(scene_res);
-            DO_DEBUG("Deserialized scene '{}'.", scene_name);
+            DO_PROFILE_MARK("World::loadScene.deserialize", "startup");
         }
 
         const Bool is_single = mode == LoadSceneMode::Single;
@@ -455,7 +455,7 @@ namespace dodoe {
         const auto active_it = std::find(m_active_scenes.begin(), m_active_scenes.end(), scene);
         if (active_it == m_active_scenes.end()) {
             activateScene(scene->getName());
-            DO_DEBUG("Activated scene '{}'.", scene->getName());
+            DO_PROFILE_MARK("World::loadScene.activate", "startup");
         }
 
         if (is_single || m_current_scene == nullptr) {

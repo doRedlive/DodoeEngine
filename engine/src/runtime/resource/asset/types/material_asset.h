@@ -4,20 +4,33 @@
 
 #include "dopch.h"
 
+#include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/resource/asset/asset.h"
 #include "runtime/resource/asset/asset_handle.h"
 #include "runtime/resource/asset/types/texture_asset.h"
 
+REFLECTION_TYPE(MaterialAsset)
+
 namespace dodoe {
 
-    class MaterialAsset : public Asset {
+    CLASS(MaterialAsset, WhiteListFields) : public Asset {
+        REFLECTION_BODY(MaterialAsset)
+
+        META(Enable)
         Vector4f m_color{1.0f, 1.0f, 1.0f, 1.0f};
+        META(Enable)
         Vector3f m_emissive{0.0f, 0.0f, 0.0f};
+        META(Enable)
         Float m_metallic{0.0f};
+        META(Enable)
         Float m_roughness{1.0f};
+        META(Enable, AssetHandle)
         AssetHandle<TextureAsset> m_base_color_texture{};
+        META(Enable, AssetHandle)
         AssetHandle<TextureAsset> m_normal_texture{};
+        META(Enable, AssetHandle)
         AssetHandle<TextureAsset> m_metallic_roughness_texture{};
+        META(Enable, AssetHandle)
         AssetHandle<TextureAsset> m_emissive_texture{};
 
     public:

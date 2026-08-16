@@ -25,6 +25,7 @@ struct PropertyContext {
     std::string              componentName;
     void*                    componentPtr = nullptr;
     dodoe::FieldAccessor*    field        = nullptr;
+    bool                     isAsset     = false;
 };
 
 class PropertyDrawer {

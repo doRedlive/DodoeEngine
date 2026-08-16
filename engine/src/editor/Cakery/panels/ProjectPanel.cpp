@@ -49,6 +49,13 @@ ProjectPanel::ProjectPanel(EditorContext& ctx, QWidget* parent)
     m_splitter->setStretchFactor(0, 1);
     m_splitter->setStretchFactor(1, 2);
     layout->addWidget(m_splitter, 1);
+
+    QObject::connect(m_assetGrid, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+        auto raw = item->data(Qt::UserRole).toULongLong();
+        if (raw != 0) {
+            m_ctx.selection().selectAsset(dodoe::UUID(raw));
+        }
+    });
 }
 
 void ProjectPanel::refresh()
@@ -79,6 +86,7 @@ void ProjectPanel::populateFromAssetDatabase()
         QFileInfo fi(QString::fromStdString(entry.path));
         auto* item = new QListWidgetItem();
         item->setText(fi.fileName());
+        item->setData(Qt::UserRole, QVariant::fromValue(static_cast<quint64>(entry.uuid)));
         if (entry.type == "texture") {
             item->setIcon(QIcon(fi.filePath()));
         }

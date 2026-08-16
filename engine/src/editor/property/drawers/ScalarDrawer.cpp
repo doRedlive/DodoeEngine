@@ -2,7 +2,7 @@
 
 #include "ScalarDrawer.h"
 #include "framework/EditorContext.h"
-#include "framework/command/commands/SetFieldValueCommand.h"
+#include "property/FieldEditCommand.h"
 #include "framework/command/CommandStack.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
@@ -29,11 +29,10 @@ QWidget* ScalarDrawer::build(const PropertyContext& pc)
 
         QObject::connect(cb, &QCheckBox::toggled, [pc, field](bool v) mutable {
             bool bv = v;
-            dodoe::Json oldVal = *static_cast<bool*>(field.get(pc.componentPtr)) ? "true" : "false";
-            dodoe::Json newVal = bv ? "true" : "false";
+            dodoe::Json oldVal = *static_cast<bool*>(field.get(pc.componentPtr));
+            dodoe::Json newVal = bv;
             field.set(pc.componentPtr, &bv);
-            auto cmd = std::make_unique<SetFieldValueCommand>(
-                pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
+            auto cmd = MakeFieldEditCommand(pc, field.getFieldName(), std::move(oldVal), std::move(newVal));
             pc.ctx->commands().execute(std::move(cmd));
         });
 
@@ -87,43 +86,39 @@ QWidget* ScalarDrawer::build(const PropertyContext& pc)
             case dodoe::FieldType::F32: {
                 float fv = static_cast<float>(v);
                 float oldFv = *static_cast<float*>(field.get(pc.componentPtr));
-                dodoe::Json oldVal = std::to_string(oldFv);
-                dodoe::Json newVal = std::to_string(fv);
+                dodoe::Json oldVal = oldFv;
+                dodoe::Json newVal = fv;
                 field.set(pc.componentPtr, &fv);
-                auto cmd = std::make_unique<SetFieldValueCommand>(
-                    pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
+                auto cmd = MakeFieldEditCommand(pc, field.getFieldName(), std::move(oldVal), std::move(newVal));
                 pc.ctx->commands().execute(std::move(cmd));
                 break;
             }
             case dodoe::FieldType::F64: {
                 double oldV = *static_cast<double*>(field.get(pc.componentPtr));
-                dodoe::Json oldVal = std::to_string(oldV);
-                dodoe::Json newVal = std::to_string(v);
+                dodoe::Json oldVal = oldV;
+                dodoe::Json newVal = v;
                 field.set(pc.componentPtr, &v);
-                auto cmd = std::make_unique<SetFieldValueCommand>(
-                    pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
+                auto cmd = MakeFieldEditCommand(pc, field.getFieldName(), std::move(oldVal), std::move(newVal));
                 pc.ctx->commands().execute(std::move(cmd));
                 break;
             }
             case dodoe::FieldType::I32: {
                 int iv = static_cast<int>(std::round(v));
                 int oldIv = *static_cast<int*>(field.get(pc.componentPtr));
-                dodoe::Json oldVal = std::to_string(oldIv);
-                dodoe::Json newVal = std::to_string(iv);
+                dodoe::Json oldVal = oldIv;
+                dodoe::Json newVal = iv;
                 field.set(pc.componentPtr, &iv);
-                auto cmd = std::make_unique<SetFieldValueCommand>(
-                    pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
+                auto cmd = MakeFieldEditCommand(pc, field.getFieldName(), std::move(oldVal), std::move(newVal));
                 pc.ctx->commands().execute(std::move(cmd));
                 break;
             }
             case dodoe::FieldType::U32: {
                 unsigned int uv = static_cast<unsigned int>(std::round(v));
                 unsigned int oldUv = *static_cast<unsigned int*>(field.get(pc.componentPtr));
-                dodoe::Json oldVal = std::to_string(oldUv);
-                dodoe::Json newVal = std::to_string(uv);
+                dodoe::Json oldVal = oldUv;
+                dodoe::Json newVal = uv;
                 field.set(pc.componentPtr, &uv);
-                auto cmd = std::make_unique<SetFieldValueCommand>(
-                    pc.entity, pc.componentName, field.getFieldName(), oldVal, newVal);
+                auto cmd = MakeFieldEditCommand(pc, field.getFieldName(), std::move(oldVal), std::move(newVal));
                 pc.ctx->commands().execute(std::move(cmd));
                 break;
             }

@@ -7,6 +7,7 @@
 #include "drawers/ColorDrawer.h"
 #include "drawers/EnumDrawer.h"
 #include "drawers/PPtrDrawer.h"
+#include "drawers/AssetHandleDrawer.h"
 #include "drawers/CompositeDrawer.h"
 #include "drawers/ArrayDrawer.h"
 #include "drawers/ReadOnlyDrawer.h"
@@ -90,6 +91,7 @@ std::unique_ptr<PropertyDrawer> PropertyDrawerRegistry::create(dodoe::FieldAcces
 
 void PropertyDrawerRegistry::registerBuiltinDrawers()
 {
+    registerByAttribute("AssetHandle", []() { return std::make_unique<AssetHandleDrawer>(); });
     registerByType("float",     []() { return std::make_unique<ScalarDrawer>(); });
     registerByType("double",    []() { return std::make_unique<ScalarDrawer>(); });
     registerByType("int",       []() { return std::make_unique<ScalarDrawer>(); });

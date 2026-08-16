@@ -2,7 +2,7 @@
 
 #include "StringDrawer.h"
 #include "framework/EditorContext.h"
-#include "framework/command/commands/SetFieldValueCommand.h"
+#include "property/FieldEditCommand.h"
 #include "framework/command/CommandStack.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
@@ -25,8 +25,7 @@ QWidget* StringDrawer::build(const PropertyContext& pc)
         const std::string newText = le->text().toStdString();
         dodoe::String newVal(newText.c_str(), newText.size());
         field.set(pc.componentPtr, &newVal);
-        auto cmd = std::make_unique<SetFieldValueCommand>(
-            pc.entity, pc.componentName, field.getFieldName(),
+        auto cmd = MakeFieldEditCommand(pc, field.getFieldName(),
             dodoe::Json(std::string(oldVal.c_str())), dodoe::Json(newText));
         pc.ctx->commands().execute(std::move(cmd));
     });

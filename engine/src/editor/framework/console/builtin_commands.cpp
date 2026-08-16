@@ -1,6 +1,7 @@
 #include "CommandRegistry.h"
 
 #include "framework/EditorContext.h"
+#include "framework/asset/AssetDatabase.h"
 #include "framework/command/CommandStack.h"
 #include "framework/command/commands/CreateEntityCommand.h"
 #include "framework/command/commands/DeleteEntityCommand.h"
@@ -401,6 +402,15 @@ void RegisterBuiltinCommands() {
                      return CommandResult::Ok("Scene saved");
                  }
                  return CommandResult::Err("Save failed");
+             }});
+
+    reg.add({"asset.save_all", "Save all modified assets",
+             "asset.save_all",
+             {},
+             true,
+             [](EditorContext& ctx, const CommandArgs&) -> CommandResult {
+                 size_t saved = ctx.assets().saveAllDirty();
+                 return CommandResult::Ok("Saved " + std::to_string(saved) + " asset(s)");
              }});
 
     reg.add({"query.entities", "List entities in the active scene",

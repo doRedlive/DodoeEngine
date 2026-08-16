@@ -4,6 +4,7 @@
     { "path": "File/Open Scene...",    "command": "scene.open",  "shortcut": "Ctrl+O" },
     { "path": "File/Save",             "command": "scene.save",  "shortcut": "Ctrl+S" },
     { "path": "File/Save As...",       "command": "scene.saveas" },
+    { "path": "File/Save Assets",      "command": "asset.save_all", "shortcut": "Ctrl+Shift+S" },
     { "path": "Edit/Undo",             "command": "history.undo", "shortcut": "Ctrl+Z" },
     { "path": "Edit/Redo",             "command": "history.redo", "shortcut": "Ctrl+Y" },
     { "path": "GameObject/Create Empty",     "command": "entity.create", "args": { "name": "GameObject" } },

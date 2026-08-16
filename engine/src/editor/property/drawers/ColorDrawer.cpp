@@ -2,10 +2,11 @@
 
 #include "ColorDrawer.h"
 #include "framework/EditorContext.h"
-#include "framework/command/commands/SetFieldValueCommand.h"
+#include "property/FieldEditCommand.h"
 #include "framework/command/CommandStack.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/core/utils/util.h"
 #include "runtime/core/utils/json.h"
 
@@ -57,9 +58,9 @@ QWidget* ColorDrawer::build(const PropertyContext& pc)
         dodoe::Color* col = static_cast<dodoe::Color*>(field->get(pc.componentPtr));
         dodoe::Color old = *col;
         col->r = cr; col->g = cg; col->b = cb; col->a = ca;
-        auto cmd = std::make_unique<SetFieldValueCommand>(
-            pc.entity, pc.componentName, field->getFieldName(),
-            dodoe::Json(""), dodoe::Json(""));
+        dodoe::Color newCol{cr, cg, cb, ca};
+        auto cmd = MakeFieldEditCommand(pc, field->getFieldName(),
+            dodoe::Serializer::write(old), dodoe::Serializer::write(newCol));
         pc.ctx->commands().execute(std::move(cmd));
     };
 

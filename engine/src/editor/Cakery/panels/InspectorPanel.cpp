@@ -10,6 +10,9 @@
 
 #include "runtime/core/meta/component_db.h"
 #include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/asset/asset_manager.h"
+#include "runtime/resource/asset/asset.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/components/id_component.h"
@@ -60,6 +63,8 @@ InspectorPanel::InspectorPanel(EditorContext& ctx, QWidget* parent)
             m_nameEdit->clear();
             m_addBtn->setEnabled(false);
             clearEditors();
+        } else if (m_ctx.selection().target() == SelectionTarget::Asset) {
+            rebuildForAsset(sel.front());
         } else {
             rebuildForEntity(sel.front());
         }
@@ -70,7 +75,10 @@ InspectorPanel::InspectorPanel(EditorContext& ctx, QWidget* parent)
 void InspectorPanel::refresh()
 {
     auto& sel = m_ctx.selection();
-    if (!sel.empty()) {
+    if (sel.empty()) return;
+    if (m_ctx.selection().target() == SelectionTarget::Asset) {
+        rebuildForAsset(sel.primary());
+    } else {
         rebuildForEntity(sel.primary());
     }
 }
@@ -85,6 +93,7 @@ void InspectorPanel::clearEditors()
     }
     m_entries.clear();
     m_currentEntity = dodoe::UUID();
+    m_currentAsset = dodoe::UUID();
 }
 
 void InspectorPanel::applyFieldAttributes(dodoe::FieldAccessor* fields, int count, const std::string& typeName)
@@ -115,10 +124,146 @@ void InspectorPanel::applyFieldAttributes(dodoe::FieldAccessor* fields, int coun
     }
 }
 
+void InspectorPanel::renderFields(const std::string& typeName, void* objPtr, dodoe::UUID ownerUuid, bool isAsset)
+{
+    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(dodoe::String(typeName.c_str()));
+    if (!meta.isValid()) return;
+
+    dodoe::FieldAccessor* fields = nullptr;
+    int count = meta.get_field_list(fields);
+    if (count <= 0) { delete[] fields; return; }
+
+    applyFieldAttributes(fields, count, typeName.c_str());
+
+    auto* group = new QGroupBox(QString::fromStdString(typeName.c_str()), m_editorContainer);
+    auto* groupLayout = new QVBoxLayout(group);
+
+    InspectorContext ic;
+    ic.ctx           = &m_ctx;
+    ic.entity        = ownerUuid;
+    ic.componentName = typeName;
+    ic.componentPtr  = objPtr;
+    ic.parent        = group;
+
+    auto customEditor = CustomEditorRegistry::self().create(typeName.c_str());
+    if (customEditor) {
+        QWidget* w = customEditor->build(ic);
+        if (w) {
+            groupLayout->addWidget(w);
+            m_entries.push_back({typeName.c_str(), "", nullptr, customEditor.release(), w});
+        }
+    } else {
+        auto& reg = PropertyDrawerRegistry::self();
+        for (int i = 0; i < count; ++i) {
+            if (fields[i].isHidden()) continue;
+
+            const char* headerText = fields[i].attribute("Header");
+            if (headerText && headerText[0]) {
+                auto* headerLabel = new QLabel(QString::fromUtf8(headerText));
+                headerLabel->setStyleSheet("color:#4EC9B0; font-size:11px; font-weight:bold;");
+                groupLayout->addWidget(headerLabel);
+            }
+
+            PropertyContext pc;
+            pc.ctx           = &m_ctx;
+            pc.entity        = ownerUuid;
+            pc.componentName = typeName;
+            pc.componentPtr  = objPtr;
+            pc.field         = &fields[i];
+            pc.isAsset       = isAsset;
+
+            auto drawer = reg.create(fields[i]);
+            if (drawer) {
+                QWidget* w = drawer->build(pc);
+                if (w) {
+                    const char* tooltip = fields[i].attribute("Tooltip");
+                    if (tooltip && tooltip[0]) {
+                        w->setToolTip(QString::fromUtf8(tooltip));
+                    }
+
+                    groupLayout->addWidget(w);
+                    m_entries.push_back({typeName.c_str(), fields[i].getFieldName(), drawer.release(), nullptr, w});
+                }
+            }
+        }
+    }
+
+    delete[] fields;
+    m_editorLayout->insertWidget(m_editorLayout->count() - 1, group);
+}
+
+void InspectorPanel::addPlaceholder(const QString& text)
+{
+    auto* label = new QLabel(text, m_editorContainer);
+    label->setStyleSheet("color:#8C8C8C; font-size:12px;");
+    label->setAlignment(Qt::AlignCenter);
+    m_editorLayout->insertWidget(m_editorLayout->count() - 1, label);
+}
+
+void InspectorPanel::showAssetMeta(dodoe::Asset* asset)
+{
+    auto* group = new QGroupBox("Asset", m_editorContainer);
+    auto* gl = new QVBoxLayout(group);
+    auto addRow = [gl](const QString& key, const QString& val) {
+        auto* row = new QHBoxLayout();
+        auto* k = new QLabel(key);
+        k->setStyleSheet("color:#8C8C8C;font-size:11px;min-width:70px;");
+        auto* v = new QLabel(val);
+        v->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        row->addWidget(k);
+        row->addWidget(v, 1);
+        gl->addLayout(row);
+    };
+    addRow("Name", QString::fromUtf8(asset->getName().c_str()));
+    addRow("Type", QString::fromUtf8(dodoe::Asset::assetTypeToString(asset->getType())));
+    addRow("Path", QString::fromUtf8(asset->getSourcePath().c_str()));
+    addRow("Builtin", asset->getMetaData().is_builtin ? "Yes" : "No");
+    m_editorLayout->insertWidget(m_editorLayout->count() - 1, group);
+}
+
+void InspectorPanel::rebuildForAsset(dodoe::UUID uuid)
+{
+    m_currentEntity = dodoe::UUID();
+    m_currentAsset = uuid;
+
+    auto* am = dodoe::ResourceManager::Self().getAssetManager();
+    if (!am) return;
+
+    dodoe::Asset* asset = am->findAsset(uuid);
+    if (!asset) {
+        m_nameEdit->setEnabled(false);
+        m_nameEdit->clear();
+        m_addBtn->setEnabled(false);
+        clearEditors();
+        addPlaceholder("Asset not loaded");
+        return;
+    }
+
+    m_nameEdit->setEnabled(true);
+    m_nameEdit->setText(QString::fromUtf8(asset->getName().c_str()));
+    m_addBtn->setEnabled(false);
+
+    std::string typeName = std::string(dodoe::Asset::assetTypeToString(asset->getType())) + "Asset";
+    bool reflectable = dodoe::TypeMeta::newMetaFromName(dodoe::String(typeName.c_str())).isValid();
+
+    clearEditors();
+
+    if (asset->isReadOnly() || !reflectable) {
+        showAssetMeta(asset);
+        if (!asset->isReadOnly()) {
+            addPlaceholder("Editor not implemented yet");
+        }
+        return;
+    }
+
+    renderFields(typeName, asset, uuid, true);
+}
+
 void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
 {
     bool sameEntity = (uuid == m_currentEntity);
     m_currentEntity = uuid;
+    m_currentAsset = dodoe::UUID();
 
     auto* scene = m_ctx.activeScene();
     if (!scene) return;
@@ -159,8 +304,6 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
 
     clearEditors();
 
-    auto& reg = PropertyDrawerRegistry::self();
-
     for (auto& entry : db.entries()) {
         if (entry.name == "IDComponent" || entry.name == "TagComponent") continue;
         if (!db.hasComponent(entity, entry.name)) continue;
@@ -168,68 +311,7 @@ void InspectorPanel::rebuildForEntity(dodoe::UUID uuid)
         void* compPtr = db.getComponentPtr(entity, entry.name);
         if (!compPtr) continue;
 
-        dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(entry.name);
-        if (!meta.isValid()) continue;
-
-        dodoe::FieldAccessor* fields = nullptr;
-        int count = meta.get_field_list(fields);
-        if (count <= 0) { delete[] fields; continue; }
-
-        applyFieldAttributes(fields, count, entry.name.c_str());
-
-        auto* group = new QGroupBox(QString::fromStdString(entry.name.c_str()), m_editorContainer);
-        auto* groupLayout = new QVBoxLayout(group);
-
-        InspectorContext ic;
-        ic.ctx           = &m_ctx;
-        ic.entity        = uuid;
-        ic.componentName = entry.name;
-        ic.componentPtr  = compPtr;
-        ic.parent        = group;
-
-        auto customEditor = CustomEditorRegistry::self().create(entry.name.c_str());
-        if (customEditor) {
-            QWidget* w = customEditor->build(ic);
-            if (w) {
-                groupLayout->addWidget(w);
-                m_entries.push_back({entry.name.c_str(), "", nullptr, customEditor.release(), w});
-            }
-        } else {
-            for (int i = 0; i < count; ++i) {
-                if (fields[i].isHidden()) continue;
-
-                const char* headerText = fields[i].attribute("Header");
-                if (headerText && headerText[0]) {
-                    auto* headerLabel = new QLabel(QString::fromUtf8(headerText));
-                    headerLabel->setStyleSheet("color:#4EC9B0; font-size:11px; font-weight:bold;");
-                    groupLayout->addWidget(headerLabel);
-                }
-
-                PropertyContext pc;
-                pc.ctx           = &m_ctx;
-                pc.entity        = uuid;
-                pc.componentName = entry.name;
-                pc.componentPtr  = compPtr;
-                pc.field         = &fields[i];
-
-                auto drawer = reg.create(fields[i]);
-                if (drawer) {
-                    QWidget* w = drawer->build(pc);
-                    if (w) {
-                        const char* tooltip = fields[i].attribute("Tooltip");
-                        if (tooltip && tooltip[0]) {
-                            w->setToolTip(QString::fromUtf8(tooltip));
-                        }
-
-                        groupLayout->addWidget(w);
-                        m_entries.push_back({entry.name.c_str(), fields[i].getFieldName(), drawer.release(), nullptr, w});
-                    }
-                }
-            }
-        }
-
-        delete[] fields;
-        m_editorLayout->insertWidget(m_editorLayout->count() - 1, group);
+        renderFields(entry.name.c_str(), compPtr, uuid);
     }
 }
 

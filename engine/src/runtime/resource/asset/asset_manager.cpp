@@ -295,7 +295,7 @@ namespace dodoe {
         m_asset_dir = Project::ProjectDirectory() / active_project->config().asset_directory;
 
         const auto configs_dir = Project::ProjectDirectory() / "Configs";
-        DO_INFO("Loading asset database from '{}'.", configs_dir.string());
+        DO_PROFILE_MARK("AssetManager::loadAssets.loadDatabase", "startup");
         m_database = create_scope<AssetDatabase>(configs_dir);
         if (!m_database->load()) {
             return false;
@@ -317,12 +317,12 @@ namespace dodoe {
         }
 
         if (!asset_ids.empty()) {
-            DO_INFO("Loaded {} assets from database.", asset_ids.size());
+            DO_PROFILE_MARK("AssetManager::loadAssets.databaseReady", "startup");
             return true;
         }
 
         EnsureBuiltinImporters();
-        DO_INFO("Scanning asset directory '{}'.", m_asset_dir.string());
+        DO_PROFILE_MARK("AssetManager::loadAssets.scanDirectory", "startup");
 
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
@@ -401,7 +401,7 @@ namespace dodoe {
             return false;
         }
 
-        DO_INFO("Asset scan completed with {} assets.", m_assets.size());
+        DO_PROFILE_MARK("AssetManager::loadAssets.scanComplete", "startup");
         return true;
     }
 
@@ -431,7 +431,7 @@ namespace dodoe {
     void AssetManager::importSourceFile(const FsPath& absolute_path,
                                         const String& source_path,
                                         const String& ext) {
-        DO_DEBUG("Importing asset '{}'.", source_path);
+        DO_PROFILE_MARK("AssetManager::importSourceFile", "startup");
         std::unique_lock lock(m_mutex);
 
         AssetImporter* default_importer = ImporterRegistry::Self().find(ext);

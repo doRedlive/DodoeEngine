@@ -4,17 +4,29 @@
 
 #include "dopch.h"
 
+#include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/resource/asset/asset.h"
+
+REFLECTION_TYPE(TilesetAsset)
 
 namespace dodoe {
 
-    class TilesetAsset : public Asset {
+    CLASS(TilesetAsset, WhiteListFields) : public Asset {
+        REFLECTION_BODY(TilesetAsset)
+
+        META(Enable)
         String m_name{};
+        META(Enable)
         UInt32 m_first_gid{1};
+        META(Enable)
         UInt32 m_tile_width{16};
+        META(Enable)
         UInt32 m_tile_height{16};
+        META(Enable)
         UInt32 m_columns{0};
+        META(Enable)
         UInt32 m_tile_count{0};
+        META(Enable)
         String m_image_path{};
         Identifier m_texture_id{0};
 

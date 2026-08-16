@@ -10,6 +10,8 @@
 
 namespace cakery {
 
+enum class SelectionTarget { None, Entity, Asset };
+
 class SelectionManager {
 public:
     const std::vector<dodoe::UUID>& selected() const { return m_selected; }
@@ -27,8 +29,18 @@ public:
     void select(dodoe::UUID id) {
         m_selected.clear();
         if (id.isValid()) m_selected.push_back(id);
+        m_target = SelectionTarget::Entity;
         notify();
     }
+
+    void selectAsset(dodoe::UUID id) {
+        m_selected.clear();
+        if (id.isValid()) m_selected.push_back(id);
+        m_target = SelectionTarget::Asset;
+        notify();
+    }
+
+    SelectionTarget target() const { return m_target; }
 
     void selectMany(std::vector<dodoe::UUID> ids) {
         m_selected = std::move(ids);
@@ -65,6 +77,7 @@ public:
     void clear() {
         if (!m_selected.empty()) {
             m_selected.clear();
+            m_target = SelectionTarget::None;
             notify();
         }
     }
@@ -73,6 +86,7 @@ public:
 
 private:
     std::vector<dodoe::UUID> m_selected;
+    SelectionTarget m_target{SelectionTarget::None};
 
     void notify() { changed.fire(m_selected); }
 };

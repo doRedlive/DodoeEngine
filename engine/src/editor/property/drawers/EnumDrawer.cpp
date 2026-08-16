@@ -2,7 +2,7 @@
 
 #include "EnumDrawer.h"
 #include "framework/EditorContext.h"
-#include "framework/command/commands/SetFieldValueCommand.h"
+#include "property/FieldEditCommand.h"
 #include "framework/command/CommandStack.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
@@ -39,9 +39,8 @@ QWidget* EnumDrawer::build(const PropertyContext& pc)
             int oldVal = *static_cast<int*>(field.get(pc.componentPtr));
             int newVal = combo->itemData(idx).toInt();
             field.set(pc.componentPtr, &newVal);
-            auto cmd = std::make_unique<SetFieldValueCommand>(
-                pc.entity, pc.componentName, field.getFieldName(),
-                dodoe::Json(std::to_string(oldVal)), dodoe::Json(std::to_string(newVal)));
+            auto cmd = MakeFieldEditCommand(pc, field.getFieldName(),
+                dodoe::Json(oldVal), dodoe::Json(newVal));
             pc.ctx->commands().execute(std::move(cmd));
         });
 

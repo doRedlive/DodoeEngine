@@ -158,21 +158,25 @@ namespace dodoe {
 
     void SystemContext::startRuntime() {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::startRuntime", "startup");
+        DO_PROFILE_MARK("SystemContext::startRuntime.acquireGraphicsContext", "startup");
         if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
             DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
                 "SystemContext failed to acquire graphics context for startup.");
         }
 
         DO_ASSERT(ResourceManager::Self().loadAssets(), "Failed to load asset database");
+        DO_PROFILE_MARK("SystemContext::startRuntime.assetsReady", "startup");
 
         const auto active_project = Project::ActiveProject();
         DO_ASSERT(active_project, "No active project when starting runtime");
         const auto& start_scene_name = active_project->config().start_scene_name;
         DO_ASSERT(!start_scene_name.empty(), "StartSceneName is empty!");
 
+        DO_PROFILE_MARK("SystemContext::startRuntime.loadScene", "startup");
         Scene* start_scene = m_world->loadScene(start_scene_name, LoadSceneMode::Single);
         DO_ASSERT(start_scene, "World failed to load start scene '{}'", start_scene_name);
 
+        DO_PROFILE_MARK("SystemContext::startRuntime.startWorld", "startup");
         m_world->start();
         DO_INFO("Runtime startup completed with scene '{}'.", start_scene_name);
     }

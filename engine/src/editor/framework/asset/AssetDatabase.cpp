@@ -1,37 +1,31 @@
 #include "AssetDatabase.h"
 #include "framework/EditorContext.h"
 
-#include "runtime/core/project/project.h"
-
-#include <filesystem>
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/asset/asset_manager.h"
 
 namespace cakery {
 
 void AssetDatabase::refresh() {
     m_assets.clear();
 
-    auto proj = dodoe::Project::ActiveProject();
-    if (!proj) return;
+    auto* am = dodoe::ResourceManager::Self().getAssetManager();
+    if (!am) return;
+    auto* db = am->getDatabase();
+    if (!db) return;
 
-    std::string assetPath = proj->config().project_path.string();
-    if (assetPath.empty()) return;
-
-    namespace fs = std::filesystem;
-    if (!fs::exists(assetPath)) return;
-
-    for (auto& entry : fs::recursive_directory_iterator(assetPath)) {
-        if (!entry.is_regular_file()) continue;
-        auto ext = entry.path().extension().string();
-        std::string type;
-        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp") type = "texture";
-        else if (ext == ".obj" || ext == ".fbx" || ext == ".gltf") type = "mesh";
-        else if (ext == ".tmj" || ext == ".tsj") type = "tilemap";
-        else if (ext == ".scene") type = "scene";
-        else type = "unknown";
+    const dodoe::FsPath assetDir = am->getAssetDir();
+    for (const auto& id : db->getAllAssetIDs()) {
+        dodoe::AssetMetaData meta = db->getMetaData(id);
+        if (meta.source_path.empty()) continue;
 
         AssetInfo info;
-        info.path = entry.path().string();
-        info.type = type;
+        info.uuid = id.asset_id;
+        dodoe::FsPath sp(meta.source_path.c_str());
+        info.path = sp.is_absolute()
+                        ? std::string(meta.source_path.c_str())
+                        : std::string((assetDir / sp).generic_string().c_str());
+        info.type = dodoe::Asset::assetTypeToString(meta.type);
         m_assets.push_back(info);
     }
 
@@ -52,6 +46,22 @@ std::optional<AssetDatabase::AssetInfo> AssetDatabase::findByGuid(dodoe::UUID gu
         if (a.uuid == guid) return a;
     }
     return std::nullopt;
+}
+
+size_t AssetDatabase::saveAllDirty() {
+    auto* am = dodoe::ResourceManager::Self().getAssetManager();
+    if (!am) return 0;
+
+    size_t saved = 0;
+    for (auto it = m_dirty.begin(); it != m_dirty.end();) {
+        if (am->saveAsset(*it)) {
+            ++saved;
+            it = m_dirty.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    return saved;
 }
 
 } // namespace cakery

@@ -7,7 +7,7 @@
 #include "runtime/core/application.h"
 #include "runtime/core/debug/debugger.h"
 #include "runtime/core/layer/layer_stack.h"
-#include "runtime/core/service/service_manager.h"
+#include "runtime/service/service_manager.h"
 #include "runtime/core/thread/render_thread.h"
 #include "runtime/core/thread/draw_thread.h"
 #include "runtime/function/world/world.h"
