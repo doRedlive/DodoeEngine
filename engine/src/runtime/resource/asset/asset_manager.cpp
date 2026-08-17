@@ -106,7 +106,7 @@ namespace dodoe {
             return it->second;
         }
 
-        UUID asset_id = AssetDatabase::GenerateUUID();
+        UUID asset_id = AssetDatabase::generateUUID();
 
         AssetMetaData meta;
         meta.ref = ObjectID{asset_id, 0};
@@ -650,13 +650,13 @@ namespace dodoe {
                     meta.ref.asset_id = UUID(fid["file_uuid"].get<UInt64>());
                 }
             } else {
-                meta.ref = ObjectID{AssetDatabase::GenerateUUID(), 0};
+                meta.ref = ObjectID{AssetDatabase::generateUUID(), 0};
             }
             if (json.contains("sub_object_id")) {
                 meta.ref.local_id = json["sub_object_id"].get<UInt32>();
             }
             if (json.contains("type")) {
-                meta.type = Asset::AssetTypeFromString(json["type"].get<String>());
+                meta.type = Asset::assetTypeFromString(json["type"].get<String>());
             }
             if (json.contains("name")) {
                 meta.name = json["name"].get<String>();

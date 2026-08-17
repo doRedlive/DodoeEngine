@@ -9,8 +9,6 @@
 
 namespace dodoe {
 
-    struct MaterialInstance;
-
     struct MeshDrawCommandCacheKey {
         Size_t batch_hash{0};
         Size_t material_hash{0};
@@ -30,7 +28,6 @@ namespace dodoe {
         DynamicArray<GfxVertexBufferBinding> m_vertex_bindings{};
         GfxIndexBufferBinding m_index_binding{};
         GfxDrawArguments m_draw_args{};
-        MaterialInstance* m_material_instance{nullptr};
 
     public:
         [[nodiscard]] MeshPassType getPassType() const { return m_pass_type; }
@@ -39,7 +36,6 @@ namespace dodoe {
         [[nodiscard]] const DynamicArray<GfxVertexBufferBinding>& getVertexBindings() const { return m_vertex_bindings; }
         [[nodiscard]] const GfxIndexBufferBinding& getIndexBinding() const { return m_index_binding; }
         [[nodiscard]] const GfxDrawArguments& getDrawArguments() const { return m_draw_args; }
-        [[nodiscard]] MaterialInstance* getMaterialInstance() const { return m_material_instance; }
 
         void setPassType(const MeshPassType pass_type) { m_pass_type = pass_type; }
         void setPipeline(GfxGraphicsPipelineHandle pipeline) { m_pipeline = std::move(pipeline); }
@@ -49,7 +45,6 @@ namespace dodoe {
         void addVertexBinding(const GfxVertexBufferBinding& binding) { m_vertex_bindings.push_back(binding); }
         void setIndexBinding(const GfxIndexBufferBinding& binding) { m_index_binding = binding; }
         void setDrawArguments(const GfxDrawArguments& args) { m_draw_args = args; }
-        void setMaterialInstance(MaterialInstance* mi) { m_material_instance = mi; }
     };
 
     struct MeshDrawInstance {

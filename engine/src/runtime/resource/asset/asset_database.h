@@ -32,7 +32,7 @@ namespace dodoe {
 
         void markDirty() { m_dirty = true; }
         [[nodiscard]] Bool isDirty() const { return m_dirty; }
-        [[nodiscard]] static UUID GenerateUUID();
+        [[nodiscard]] static UUID generateUUID();
     };
 
 } // dodoe

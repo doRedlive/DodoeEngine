@@ -70,7 +70,7 @@ namespace dodoe {
         if (!handle.isValid()) {
             return AssetHandle<SceneAsset>();
         }
-        m_assetManager->loadAssetSync<SceneAsset>(handle.getObjectID().asset_id);
+        (void)m_assetManager->loadAssetSync<SceneAsset>(handle.getObjectID().asset_id);
         return handle;
     }
 

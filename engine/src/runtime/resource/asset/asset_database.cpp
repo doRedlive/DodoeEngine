@@ -64,7 +64,7 @@ namespace dodoe {
             meta.source_file = FileID(asset_json.value("source_path", String()));
 
             if (asset_json.contains("type")) {
-                meta.type = Asset::AssetTypeFromString(asset_json["type"].get<String>());
+                meta.type = Asset::assetTypeFromString(asset_json["type"].get<String>());
             }
             if (asset_json.contains("name")) {
                 meta.name = asset_json["name"].get<String>();
@@ -128,7 +128,7 @@ namespace dodoe {
             Json asset_json;
             asset_json["asset_id"] = static_cast<UInt64>(id.asset_id);
             asset_json["sub_object_id"] = id.local_id;
-            asset_json["type"] = Asset::AssetTypeToString(meta.type);
+            asset_json["type"] = Asset::assetTypeToString(meta.type);
             asset_json["name"] = meta.name;
             asset_json["source_path"] = meta.source_path;
             asset_json["source_file_mtime"] = meta.source_file_mtime;
@@ -217,7 +217,7 @@ namespace dodoe {
         return result;
     }
 
-    UUID AssetDatabase::GenerateUUID() {
+    UUID AssetDatabase::generateUUID() {
         return UUID::Generate();
     }
 

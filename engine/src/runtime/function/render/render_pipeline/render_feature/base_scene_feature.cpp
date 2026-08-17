@@ -101,44 +101,19 @@ namespace dodoe {
                                                             const GfxBindingLayoutHandle& view_binding_layout,
                                                             const GfxBindingLayoutHandle& primitive_binding_layout,
                                                             const GfxBindingLayoutHandle& sampler_binding_layout,
-                                                            const MaterialInstance* material_instance,
                                                             DescriptorTableManager* descriptor_table,
                                                             BindingLayoutCache* binding_layout_cache) {
-        GfxShaderHandle vs = shader_library.getGBufferVertexShader();
-        GfxShaderHandle ps = shader_library.getGBufferPixelShader();
-        GfxBindingLayoutHandle material_layout = sampler_binding_layout;
-
-        if (material_instance && material_instance->tpl && material_instance->tpl->resolved) {
-            if (material_instance->tpl->vertex_shader) vs = material_instance->tpl->vertex_shader;
-            if (material_instance->tpl->pixel_shader)  ps = material_instance->tpl->pixel_shader;
-            if (material_instance->material_binding_layout) {
-                material_layout = material_instance->material_binding_layout;
-            }
-        }
-
         auto pipeline_desc = GfxGraphicsPipelineDesc()
-            .setVertexShader(vs)
-            .setPixelShader(ps)
+            .setVertexShader(shader_library.getGBufferVertexShader())
+            .setPixelShader(shader_library.getGBufferPixelShader())
             .setInputLayout(gbuffer_input_layout)
             .addBindingLayout(global_binding_layout)
-            .addBindingLayout(view_binding_layout);
-
-        if (material_instance && material_instance->material_binding_layout) {
-            pipeline_desc.addBindingLayout(material_instance->material_binding_layout);
-        } else if (RenderSettings::IsBindlessActive()) {
-            pipeline_desc.addBindingLayout(material_layout);
-        } else if (binding_layout_cache && material_instance && material_instance->texture_binding_set) {
-            auto fallback_material_layout = binding_layout_cache->getOrCreate(
-                GfxBindingLayoutDesc()
-                    .setVisibility(GfxShaderType::Pixel)
-                    .setRegisterSpaceIsDescriptorSet(true)
-                    .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
-                    .addItem(GfxBindingLayoutItem::Sampler(1))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(2))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
-            pipeline_desc.addBindingLayout(fallback_material_layout);
+            .addBindingLayout(view_binding_layout)
+            .setPrimType(GfxPrimitiveType::TriangleList);
+        if (RenderSettings::IsBindlessActive()) {
+            pipeline_desc.addBindingLayout(sampler_binding_layout);
         } else if (binding_layout_cache) {
-            auto fallback_material_layout = binding_layout_cache->getOrCreate(
+            auto material_layout = binding_layout_cache->getOrCreate(
                 GfxBindingLayoutDesc()
                     .setVisibility(GfxShaderType::Pixel)
                     .setRegisterSpaceIsDescriptorSet(true)
@@ -146,7 +121,7 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::Sampler(1))
                     .addItem(GfxBindingLayoutItem::Texture_SRV(2))
                     .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
-            pipeline_desc.addBindingLayout(fallback_material_layout);
+            pipeline_desc.addBindingLayout(material_layout);
         }
         pipeline_desc.addBindingLayout(primitive_binding_layout);
         if (RenderSettings::IsBindlessActive() && descriptor_table && descriptor_table->getDescriptorTable()) {
@@ -163,16 +138,10 @@ namespace dodoe {
     static GfxGraphicsPipelineDesc MakeShadowPipelineDesc(const ShaderLibrary& shader_library,
                                                            GfxInputLayoutHandle shadow_input_layout,
                                                            const GfxBindingLayoutHandle& global_binding_layout,
-                                                           const GfxBindingLayoutHandle& view_binding_layout,
-                                                           const MaterialInstance* material_instance) {
-        GfxShaderHandle vs = shader_library.getShadowVertexShader();
-        GfxShaderHandle ps = shader_library.getShadowPixelShader();
-        if (material_instance && material_instance->tpl && material_instance->tpl->resolved) {
-            if (material_instance->tpl->vertex_shader) vs = material_instance->tpl->vertex_shader;
-        }
+                                                           const GfxBindingLayoutHandle& view_binding_layout) {
         auto pipeline_desc = GfxGraphicsPipelineDesc()
-            .setVertexShader(vs)
-            .setPixelShader(ps)
+            .setVertexShader(shader_library.getShadowVertexShader())
+            .setPixelShader(shader_library.getShadowPixelShader())
             .setInputLayout(shadow_input_layout)
             .addBindingLayout(global_binding_layout)
             .addBindingLayout(view_binding_layout)
@@ -214,8 +183,20 @@ namespace dodoe {
         m_shadow_map = create_scope<RenderTargetHandle>();
         m_shadow_map->initialize(BuildShadowMapDesc(), *gfx, deletion_queue);
 
-        m_gbuffer_processor = create_scope<GBufferMeshProcessor>(m_shared_render_service);
-	    m_shadow_processor = create_scope<DirectionalShadowMeshProcessor>(m_shared_render_service);
+        GfxBindingSetHandle descriptor_binding_set{};
+        auto* descriptor_table = resources.getDescriptorTable();
+        if (descriptor_table && descriptor_table->getDescriptorTable()) {
+            descriptor_binding_set = create_ref<GfxBindingSet>(
+                cutie::BindingSetHandle(descriptor_table->getDescriptorTable()));
+        }
+        auto* binding_layout_cache = resources.getBindingLayoutCache();
+        auto* binding_set_cache = resources.getBindingSetCache();
+        DO_ASSERT(binding_layout_cache != nullptr, "BaseSceneFeature binding layout cache is null");
+        DO_ASSERT(binding_set_cache != nullptr, "BaseSceneFeature binding set cache is null");
+        m_gbuffer_processor = create_scope<GBufferMeshProcessor>(
+            descriptor_binding_set, *binding_layout_cache, *binding_set_cache);
+	    m_shadow_processor = create_scope<DirectionalShadowMeshProcessor>(
+            *binding_layout_cache, *binding_set_cache);
 
         m_skybox_cb = create_ref<GfxBuffer>(
             GfxBufferDesc()
@@ -328,8 +309,6 @@ namespace dodoe {
         DO_ASSERT(m_shared_render_service != nullptr, "BaseSceneFeature shared render service is null");
         DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "BaseSceneFeature shader library is null");
         DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "BaseSceneFeature pipeline cache is null");
-        DO_ASSERT(m_gbuffer_processor != nullptr, "BaseSceneFeature GBuffer processor is null");
-        DO_ASSERT(m_shadow_processor != nullptr, "BaseSceneFeature shadow processor is null");
 
         const auto& shader_library = *m_shared_render_service->getShaderLibrary();
 
@@ -355,11 +334,31 @@ namespace dodoe {
             ? input_layout_cache->getOrCreate(mesh_vertex_attributes, shader_library.getShadowVertexShader())
             : GfxInputLayoutHandle{};
 
+        auto* pso_cache = m_shared_render_service->getPipelineStateCache();
+        DO_ASSERT(pso_cache != nullptr, "BaseSceneFeature PSO cache is null");
+
         const auto gbuffer_fb_info = MakeGBufferFramebufferInfo();
         const auto shadow_fb_info  = MakeShadowFramebufferInfo();
 
-        m_gbuffer_processor->updateFrameData(gbuffer_input_layout, gbuffer_fb_info);
-        m_shadow_processor->updateFrameData(shadow_input_layout, shadow_fb_info);
+        pso_cache->resolveGraphicsPipeline(
+            MeshPassType::GBuffer,
+            MakeGBufferPipelineDesc(shader_library, gbuffer_input_layout,
+                m_gbuffer_processor->getGlobalBindingLayout(),
+                m_gbuffer_processor->getViewBindingLayout(),
+                m_gbuffer_processor->getPrimitiveBindingLayout(),
+                m_gbuffer_processor->getSamplerBindingLayout(),
+                m_shared_render_service->getDescriptorTable(),
+                m_shared_render_service->getBindingLayoutCache()),
+            gbuffer_fb_info,
+            cmd_list);
+
+        pso_cache->resolveGraphicsPipeline(
+            MeshPassType::DirectionalShadow,
+            MakeShadowPipelineDesc(shader_library, shadow_input_layout,
+                m_shadow_processor->getGlobalBindingLayout(),
+                m_shadow_processor->getViewBindingLayout()),
+            shadow_fb_info,
+            cmd_list);
 
         m_gbuffer_draw_lists.resize(view_family.getSize());
         m_shadow_draw_lists.resize(view_family.getSize());
@@ -383,8 +382,8 @@ namespace dodoe {
                 view.getViewProjectionMatrix(),
                 m_mesh_draw_cache,
                 gbuffer_list.cached_instances,
-                gbuffer_list.cached_shader_data,
-                cmd_list);
+                gbuffer_list.cached_shader_data
+            );
             m_gbuffer_processor->buildDynamicCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
@@ -392,24 +391,24 @@ namespace dodoe {
                 view.getViewProjectionMatrix(),
                 gbuffer_list.frame_commands,
                 gbuffer_list.dynamic_instances,
-                gbuffer_list.dynamic_shader_data,
-                cmd_list);
+                gbuffer_list.dynamic_shader_data
+            );
             m_shadow_processor->buildCachedCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
                 mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::DirectionalShadow)],
                 mesh_ext.directional_shadow_view_projection,
                 m_mesh_draw_cache,
-                shadow_list.cached_instances,
-                cmd_list);
+                shadow_list.cached_instances
+            );
             m_shadow_processor->buildDynamicCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
                 mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::DirectionalShadow)],
                 mesh_ext.directional_shadow_view_projection,
                 shadow_list.frame_commands,
-                shadow_list.dynamic_instances,
-                cmd_list);
+                shadow_list.dynamic_instances
+            );
         }
     }
 

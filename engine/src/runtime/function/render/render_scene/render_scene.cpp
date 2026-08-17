@@ -319,9 +319,6 @@ namespace dodoe {
             return tex ? tex->getGpuHandle() : GfxTextureHandle{};
         };
 
-        const Bool has_standard_pbr = material_system && material_system->findTemplate("StandardPBR") != nullptr;
-        const String tpl_name = has_standard_pbr ? "StandardPBR" : "GBuffer";
-
         for (Size_t i = 0; i < batches.size(); i++) {
             auto& batch = batches[i];
             if (batch.material_instance) continue;
@@ -341,28 +338,7 @@ namespace dodoe {
                     overrides[name] = val;
                 }
             };
-            auto addFloat = [&](const String& name, Float v) {
-                MaterialParamValue val{};
-                val.f[0] = v;
-                overrides[name] = val;
-            };
-            auto addFloat4 = [&](const String& name, const Vector4f& v) {
-                MaterialParamValue val{};
-                val.f[0] = v.x; val.f[1] = v.y; val.f[2] = v.z; val.f[3] = v.w;
-                overrides[name] = val;
-            };
-            auto addFloat3 = [&](const String& name, const Vector3f& v) {
-                MaterialParamValue val{};
-                val.f[0] = v.x; val.f[1] = v.y; val.f[2] = v.z;
-                overrides[name] = val;
-            };
             if (material) {
-                if (has_standard_pbr) {
-                    addFloat4("base_color", material->getColor());
-                    addFloat3("emissive_color", material->getEmissive());
-                    addFloat("metallic", material->getMetallic());
-                    addFloat("roughness", material->getRoughness());
-                }
                 addTex("base_color_texture", material->getBaseColorTexture());
                 addTex("normal_texture", material->getNormalTexture());
                 addTex("metallic_roughness_texture", material->getMetallicRoughnessTexture());
@@ -371,7 +347,7 @@ namespace dodoe {
 
             String instance_name = String(fmt::format("Mat_{}_{}", info.getId(), i).c_str());
             batch.material_instance = const_cast<MaterialInstance*>(
-                material_system->getOrCreateInstance(instance_name, tpl_name, overrides));
+                material_system->getOrCreateInstance(instance_name, "GBuffer", overrides));
         }
     }
 
