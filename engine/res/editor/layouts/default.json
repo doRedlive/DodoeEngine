@@ -1,0 +1,13 @@
+{
+  "name": "Default",
+  "panels": [
+    { "id": "Scene",      "factory": "Scene",      "area": "Center", "central": true },
+    { "id": "Game",       "factory": "Game",       "area": "Center", "tabWith": "Scene" },
+    { "id": "Hierarchy",  "factory": "Hierarchy",  "area": "Left" },
+    { "id": "Inspector",  "factory": "Inspector",  "area": "Right" },
+    { "id": "Project",    "factory": "Project",    "area": "Bottom", "relativeTo": "Hierarchy" },
+    { "id": "Console",    "factory": "Console",    "area": "Bottom", "relativeTo": "Inspector" },
+    { "id": "Terminal",   "factory": "Terminal",   "area": "Center", "tabWith": "Console" }
+  ],
+  "sizes": { "left": 300, "right": 360, "bottom": 260 }
+}

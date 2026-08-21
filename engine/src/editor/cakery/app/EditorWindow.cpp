@@ -14,14 +14,14 @@
 #include "framework/command/commands/CreateEntityCommand.h"
 #include "framework/command/commands/DeleteEntityCommand.h"
 #include "framework/console/CommandRegistry.h"
-#include "Cakery/panels/ScenePanel.h"
-#include "Cakery/panels/GamePanel.h"
-#include "Cakery/panels/HierarchyPanel.h"
-#include "Cakery/panels/InspectorPanel.h"
-#include "Cakery/panels/ConsolePanel.h"
-#include "Cakery/panels/ProjectPanel.h"
-#include "Cakery/panels/TerminalPanel.h"
-#include "Cakery/panels/TilePalettePanel.h"
+#include "cakery/panels/ScenePanel.h"
+#include "cakery/panels/GamePanel.h"
+#include "cakery/panels/HierarchyPanel.h"
+#include "cakery/panels/InspectorPanel.h"
+#include "cakery/panels/ConsolePanel.h"
+#include "cakery/panels/ProjectPanel.h"
+#include "cakery/panels/TerminalPanel.h"
+#include "cakery/panels/TilePalettePanel.h"
 
 #include <QFileInfo>
 

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Cakery/panels/Panel.h"
+#include "cakery/panels/Panel.h"
 
 #include <QWidget>
 #include <functional>

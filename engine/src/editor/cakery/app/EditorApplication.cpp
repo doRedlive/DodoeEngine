@@ -4,7 +4,7 @@
 #include "EditorWindow.h"
 #include "framework/EditorContext.h"
 #include "framework/config/EditorConfig.h"
-#include "Cakery/project/ProjectManagerWindow.h"
+#include "cakery/project/ProjectManagerWindow.h"
 
 #include "runtime/function/log/log_system.h"
 
