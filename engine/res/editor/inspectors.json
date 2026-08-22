@@ -1,6 +1,0 @@
-{
-  "fieldAttributes": {
-    "TransformComponent.rotation":  { "Range": [0, 360], "Tooltip": "Euler angles (degrees)" },
-    "TransformComponent.internalId":{ "Hidden": true }
-  }
-}

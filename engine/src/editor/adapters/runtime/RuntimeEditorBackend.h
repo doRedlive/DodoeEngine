@@ -1,0 +1,93 @@
+// do@Redlive
+
+#pragma once
+
+#include "adapters/runtime/services/AssetDatabase.h"
+#include "bridge/EditorBackend.h"
+#include "core/document/EditorDocument.h"
+#include "runtime/core/math/math.h"
+
+#include <chrono>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+
+namespace dodoe {
+    class Application;
+    class EditorCameraProvider;
+    class Entity;
+    class RenderViewTarget;
+    class SceneRes;
+}
+
+namespace cakery {
+
+class EditorCamera;
+
+class RuntimeEditorBackend final : public IEditorBackend {
+public:
+    RuntimeEditorBackend();
+    ~RuntimeEditorBackend() override;
+
+    RuntimeEditorBackend(const RuntimeEditorBackend&) = delete;
+    RuntimeEditorBackend& operator=(const RuntimeEditorBackend&) = delete;
+
+    BackendCapabilities capabilities() const override;
+    bool openProject(const ProjectDescriptor& project) override;
+    bool openDocument(const std::string& documentId) override;
+    bool execute(const EditorCommandMessage& command) override;
+    void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
+    bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;
+    void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
+    bool detachSceneSurface() override;
+    void tickAtSafePoint() override;
+    void shutdown() override;
+    BackendStatus status() const override;
+    std::string diagnostic() const override;
+
+private:
+    bool bootRuntime();
+    void applyPendingMetrics();
+    bool reconcileScene(const EditorDocument& document);
+    void updateGizmo();
+    void pickAt(float screenX, float screenY);
+    void setPlayAction(const std::string& action);
+    dodoe::Entity selectedSceneEntity() const;
+    int hitTestGizmo(float screenX, float screenY);
+    void beginDrag(int axis, float screenX, float screenY);
+    void updateDrag(float screenX, float screenY);
+    void endDrag();
+    void emitTransformChange(const dodoe::Vector3f& position, const dodoe::Vector3f& rotation,
+                             const dodoe::Vector3f& scale);
+
+    std::unique_ptr<dodoe::Application> m_app;
+    std::unique_ptr<EditorCamera> m_camera;
+    std::unique_ptr<dodoe::EditorCameraProvider> m_cameraProvider;
+    dodoe::RenderViewTarget* m_sceneTarget = nullptr;
+    std::function<void(const BackendEventMessage&)> m_eventCallback;
+    std::chrono::steady_clock::time_point m_lastTick;
+    ProjectDescriptor m_project;
+    SceneSurfaceDescriptor m_surface;
+    ViewportMetrics m_pending;
+    EditorDocument m_document;
+    std::unique_ptr<AssetDatabase> m_assetDatabase;
+    std::unique_ptr<dodoe::SceneRes> m_playSnapshot;
+    std::uint64_t m_selectedUuid = 0;
+    std::string m_gizmoMode = "translate";
+    std::string m_playState = "edit";
+    int m_dragAxis = -1;
+    std::string m_dragMode;
+    dodoe::Vector3f m_dragStartPosition{0.0f, 0.0f, 0.0f};
+    dodoe::Vector3f m_dragStartRotation{0.0f, 0.0f, 0.0f};
+    dodoe::Vector3f m_dragStartScale{1.0f, 1.0f, 1.0f};
+    dodoe::Vector3f m_dragPlanePoint{0.0f, 0.0f, 0.0f};
+    float m_dragStartAngle = 0.0f;
+    bool m_hasDocument = false;
+    bool m_hasPendingMetrics = false;
+    bool m_booted = false;
+    BackendState m_state = BackendState::Created;
+    std::string m_diagnostic;
+};
+
+} // namespace cakery

@@ -1,7 +1,6 @@
 {
   "panels": {
     "Scene":     { "factory": "Scene",     "icon": "icons/panel_scene.svg",     "visible": true  },
-    "Game":      { "factory": "Game",      "icon": "icons/panel_game.svg",      "visible": false },
     "Hierarchy": { "factory": "Hierarchy", "icon": "icons/panel_hierarchy.svg", "visible": true  },
     "Inspector": { "factory": "Inspector", "icon": "icons/panel_inspector.svg", "visible": true  },
     "Project":   { "factory": "Project",   "icon": "icons/panel_project.svg",   "visible": true  },

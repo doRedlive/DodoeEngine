@@ -3,18 +3,22 @@
 #pragma once
 
 #include <QApplication>
+#include "core/EditorSession.h"
+#include "services/EditorResourceLocator.h"
+
 #include <memory>
 
 namespace cakery {
 
-class EditorContext;
 class EditorWindow;
 class ProjectManagerWindow;
+class EditorWorkspaceContext;
 
 class EditorApplication : public QApplication {
     Q_OBJECT
 public:
-    EditorApplication(int& argc, char** argv);
+    EditorApplication(int& argc, char** argv, const QString& applicationName,
+                      std::unique_ptr<IEditorBackend> backend);
     ~EditorApplication() override;
 
     int run();
@@ -22,7 +26,10 @@ public:
 private:
     void onProjectSelected(const QString& projectPath);
 
-    std::unique_ptr<EditorContext>    m_ctx;
+    QString m_applicationName;
+    std::unique_ptr<EditorSession>   m_session;
+    std::unique_ptr<EditorResourceLocator> m_resources;
+    std::unique_ptr<EditorWorkspaceContext> m_workspace;
     ProjectManagerWindow*             m_projectWindow = nullptr;
     EditorWindow*                     m_editorWindow  = nullptr;
 };
