@@ -11,6 +11,7 @@ class QTimer;
 
 namespace ads {
 class CDockManager;
+class CDockWidget;
 }
 
 namespace cakery {
@@ -42,6 +43,7 @@ private:
 
     EditorWorkspaceContext& m_context;
     ads::CDockManager* m_dockManager = nullptr;
+    ads::CDockWidget* m_sceneDock = nullptr;
     SceneSurface* m_sceneSurface = nullptr;
     HierarchyPanel* m_hierarchy = nullptr;
     InspectorPanel* m_inspector = nullptr;

@@ -17,6 +17,7 @@
 #include <QFileInfo>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QList>
 #include <QListWidget>
 #include <QMenu>
 #include <QMenuBar>
@@ -331,9 +332,10 @@ void EditorWindow::createMenus()
 void EditorWindow::createToolbar()
 {
     auto* toolbar = addToolBar(tr("Editor"));
+    toolbar->setObjectName(QStringLiteral("editorToolbar"));
     toolbar->setMovable(false);
     auto* mode = new QLabel(QApplication::applicationName(), toolbar);
-    mode->setStyleSheet(QStringLiteral("color: #6fb1ff; font-weight: bold; padding: 0 8px;"));
+    mode->setObjectName(QStringLiteral("editorBrand"));
     toolbar->addWidget(mode);
     toolbar->addSeparator();
     const bool sim = m_context.capabilities().simulation;
@@ -363,9 +365,10 @@ void EditorWindow::createDocks()
 {
     auto* sceneDock = new ads::CDockWidget(QStringLiteral("Scene"));
     sceneDock->setObjectName(QStringLiteral("Scene"));
+    m_sceneDock = sceneDock;
     m_sceneSurface = new SceneSurface(m_context, sceneDock);
     sceneDock->setWidget(m_sceneSurface);
-    sceneDock->setFeature(ads::CDockWidget::DockWidgetClosable, false);
+    sceneDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
     sceneDock->setFeature(ads::CDockWidget::DockWidgetFloatable, false);
     sceneDock->setFeature(ads::CDockWidget::DockWidgetMovable, false);
     m_dockManager->setCentralWidget(sceneDock);
@@ -389,7 +392,7 @@ void EditorWindow::createPanels()
     project->setObjectName(QStringLiteral("Project"));
     m_projectPanel = new ProjectPanel(m_context, project);
     project->setWidget(m_projectPanel);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, project);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, project, hierarchy->dockAreaWidget());
 
     auto* console = new ads::CDockWidget(tr("Console"));
     console->setObjectName(QStringLiteral("Console"));
@@ -397,13 +400,18 @@ void EditorWindow::createPanels()
     m_console->addItem(tr("NullEditorBackend active"));
     m_console->addItem(tr("DodoeRuntime, renderer and runtime window are not loaded"));
     console->setWidget(m_console);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, console, project->dockAreaWidget());
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, console, m_sceneDock->dockAreaWidget());
 
     auto* terminal = new ads::CDockWidget(tr("Terminal"));
     terminal->setObjectName(QStringLiteral("Terminal"));
     terminal->setWidget(unavailablePanel(tr("Terminal unavailable"),
         tr("Runtime command services are disabled in Editor-Only mode."), terminal));
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, terminal, console->dockAreaWidget());
+
+    // Establish the single-Scene authoring layout before the user resizes any dock.
+    m_dockManager->setSplitterSizes(inspector->dockAreaWidget(), QList<int>{260, 820, 320});
+    m_dockManager->setSplitterSizes(hierarchy->dockAreaWidget(), QList<int>{610, 240});
+    m_dockManager->setSplitterSizes(console->dockAreaWidget(), QList<int>{610, 240});
 }
 
 void EditorWindow::startSafePointTimer()
