@@ -6,10 +6,11 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
-class QComboBox;
 class QLineEdit;
 class QVBoxLayout;
 
@@ -26,13 +27,13 @@ private:
     void refresh();
     void onDocumentChanged();
     void onRenameEntity(const QString& name);
-    void onAddComponent();
+    void addComponent(const std::string& typeName);
     void commitComponentValue(std::uint64_t uuid, std::size_t index, const nlohmann::json& value);
 
     EditorWorkspaceContext& m_context;
     QVBoxLayout* m_layout = nullptr;
     QLineEdit* m_nameEdit = nullptr;
-    QComboBox* m_componentCombo = nullptr;
+    std::vector<bool> m_componentExpanded;
     bool m_editing = false;
 };
 

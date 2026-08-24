@@ -282,34 +282,35 @@ QGroupBox::title {
 }
 
 QGroupBox#inspectorNestedGroup {
-    background: #2a2a2a;
+    background: transparent;
     border: none;
-    border-radius: 4px;
-    margin-top: 6px;
-    padding: 6px 8px;
+    border-radius: 0;
+    margin-top: 4px;
+    padding: 2px 4px;
 }
 
 QGroupBox#inspectorNestedGroup::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 6px;
+    left: 4px;
     height: 14px;
-    padding: 0 3px;
+    padding: 0 2px;
     background: transparent;
-    color: #a0a0a0;
+    color: #8a8a8a;
     font-size: 12px;
     font-weight: 600;
 }
 
 QLabel#inspectorFieldLabel {
-    color: #a0a0a0;
+    color: #A8A8A8;
     padding-left: 2px;
 }
 
 QLineEdit#inspectorObjectName {
-    min-height: 24px;
-    font-size: 13px;
+    min-height: 32px;
+    font-size: 15px;
     font-weight: 600;
+    color: #E5E5E5;
     background: transparent;
     border: none;
 }
@@ -317,15 +318,35 @@ QLineEdit#inspectorObjectName {
 QWidget#inspectorSelectionBar {
     background: #2e2e2e;
     border: 1px solid #1f1f1f;
-    border-radius: 5px;
+    border-radius: 6px;
+    min-height: 40px;
+}
+
+QToolButton#inspectorObjectMenu {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    min-width: 26px;
+    max-width: 26px;
+    min-height: 26px;
+    color: #a0a0a0;
+}
+
+QToolButton#inspectorObjectMenu:hover {
+    background: #3a3a3a;
+    color: #E8E8E8;
 }
 
 QLineEdit#inspectorFilter {
     min-height: 22px;
-    background: #2e2e2e;
+    background: #2a2a2a;
     border: 1px solid #1f1f1f;
-    border-radius: 4px;
-    color: #a0a0a0;
+    border-radius: 5px;
+    color: #b0b0b0;
+}
+
+QLineEdit#inspectorFilter:focus {
+    border-color: #4c83b8;
 }
 
 QWidget#inspectorSection {
@@ -336,26 +357,48 @@ QWidget#inspectorSection {
     padding: 0;
 }
 
-QToolButton#inspectorSectionHeader {
-    min-height: 24px;
-    background: transparent;
-    color: #b8b8b8;
+QWidget#inspectorSectionHeaderRow {
+    background: #2a2a2a;
     border: none;
     border-radius: 4px;
-    padding: 0 4px;
+    min-height: 22px;
+}
+
+QPushButton#inspectorSectionHeader {
+    min-height: 22px;
+    background: transparent;
+    color: #D0D0D0;
+    border: none;
+    border-radius: 4px;
+    padding: 0 8px;
     text-align: left;
     font-weight: 600;
 }
 
-QToolButton#inspectorSectionHeader:hover {
-    background: #2c2c2c;
+QPushButton#inspectorSectionHeader:hover {
+    background: #323232;
     color: #E8E8E8;
 }
 
-QToolButton#inspectorSectionHeader:checked {
+QPushButton#inspectorSectionHeader:checked {
     background: transparent;
-    color: #d8d8d8;
+    color: #D0D0D0;
     border: none;
+}
+
+QToolButton#inspectorSectionMenu {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    color: #8a8a8a;
+}
+
+QToolButton#inspectorSectionMenu:hover {
+    background: #3a3a3a;
+    color: #E8E8E8;
 }
 
 QWidget#inspectorSectionBody {
@@ -364,34 +407,115 @@ QWidget#inspectorSectionBody {
     border-radius: 0;
 }
 
-QWidget#inspectorVector QDoubleSpinBox {
-    min-width: 0;
+QWidget#inspectorSectionBody QDoubleSpinBox,
+QWidget#inspectorSectionBody QSpinBox,
+QWidget#inspectorSectionBody QLineEdit {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 3px;
+    min-height: 26px;
+}
+
+QWidget#inspectorSectionBody QDoubleSpinBox:focus,
+QWidget#inspectorSectionBody QSpinBox:focus,
+QWidget#inspectorSectionBody QLineEdit:focus {
+    border-color: #4c83b8;
+}
+
+QWidget#inspectorVector {
+    background: transparent;
+    border: none;
+}
+
+QWidget#inspectorBoolField {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 4px;
+}
+
+QLabel#inspectorBoolText {
+    color: #b0b0b0;
+}
+
+QWidget#inspectorColorField {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 4px;
+}
+
+QWidget#inspectorLayerGrid {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 4px;
+}
+
+QPushButton#inspectorLayerCell {
+    background: #2f3a45;
+    color: #8aa0b5;
+    border: none;
+    border-radius: 3px;
+    font-size: 10px;
+}
+
+QPushButton#inspectorLayerCell:hover {
+    background: #3a4754;
+}
+
+QPushButton#inspectorLayerCell[selected="true"] {
+    background: #4c83b8;
+    color: #ffffff;
+}
+
+QPushButton#inspectorLayerCell[selected="true"]:hover {
+    background: #5a92c6;
 }
 
 QLabel#inspectorAxisLabel {
     color: #8a8a8a;
-    font-size: 10px;
-    min-width: 9px;
+    font-size: 11px;
+    min-width: 10px;
 }
 
-QPushButton#inspectorRemoveButton {
-    background: #2a2a2a;
-    color: #a0a0a0;
-    border-color: #1f1f1f;
-    min-height: 22px;
+QLabel#inspectorAxisLabel[axis="x"] {
+    color: #b07070;
 }
 
-QPushButton#inspectorRemoveButton:hover {
-    background: #3a2f2f;
-    color: #d6a0a0;
-    border-color: #6a4a4a;
+QLabel#inspectorAxisLabel[axis="y"] {
+    color: #709b70;
 }
 
-QWidget#inspectorAddRow {
+QLabel#inspectorAxisLabel[axis="z"] {
+    color: #7088b0;
+}
+
+QLabel#inspectorAxisLabel[axis="w"] {
+    color: #8070b0;
+}
+
+QPushButton#inspectorAddButton {
     background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 3px 0;
+    border: 1px dashed #3a3a3a;
+    border-radius: 4px;
+    min-height: 26px;
+    color: #a0a0a0;
+}
+
+QPushButton#inspectorAddButton:hover {
+    border-color: #4c83b8;
+    color: #E8E8E8;
+}
+
+QLineEdit#inspectorAddSearch {
+    background: #2a2a2a;
+    border: 1px solid #1f1f1f;
+    border-radius: 4px;
+    padding: 3px 6px;
+    min-height: 20px;
+    color: #b0b0b0;
+}
+
+QLineEdit#inspectorAddSearch:focus {
+    border-color: #4c83b8;
 }
 
 QScrollBar:vertical {

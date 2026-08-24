@@ -6,15 +6,18 @@
 #include "cakery/ui/inspector/EditorJsonWidget.h"
 #include "core/document/EditorDocumentModel.h"
 
+#include <QAction>
 #include <QComboBox>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWidgetAction>
 
 #include <string>
 #include <vector>
@@ -83,8 +86,8 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
     auto* container = new QWidget();
     container->setObjectName(QStringLiteral("inspectorContent"));
     m_layout = new QVBoxLayout(container);
-    m_layout->setContentsMargins(8, 8, 8, 10);
-    m_layout->setSpacing(5);
+    m_layout->setContentsMargins(16, 16, 16, 16);
+    m_layout->setSpacing(8);
     scroll->setWidget(container);
     outer->addWidget(scroll);
 
@@ -116,15 +119,31 @@ void InspectorPanel::refresh()
     auto* selectionBar = new QWidget(this);
     selectionBar->setObjectName(QStringLiteral("inspectorSelectionBar"));
     auto* selectionLayout = new QHBoxLayout(selectionBar);
-    selectionLayout->setContentsMargins(7, 6, 7, 6);
-    selectionLayout->setSpacing(5);
+    selectionLayout->setContentsMargins(10, 8, 6, 8);
+    selectionLayout->setSpacing(8);
 
     m_nameEdit = new QLineEdit(QString::fromStdString(entity->name), selectionBar);
     m_nameEdit->setObjectName(QStringLiteral("inspectorObjectName"));
+    m_nameEdit->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     connect(m_nameEdit, &QLineEdit::editingFinished, this, [this]() {
         onRenameEntity(m_nameEdit->text());
     });
-    selectionLayout->addWidget(m_nameEdit);
+    selectionLayout->addWidget(m_nameEdit, 1);
+
+    auto* objectMenu = new QMenu(selectionBar);
+    QAction* removeEntityAction = objectMenu->addAction(tr("Remove Entity"));
+    connect(removeEntityAction, &QAction::triggered, this, [this, uuid]() {
+        m_context.session().deleteEntity(uuid);
+    });
+
+    auto* objectMenuBtn = new QToolButton(selectionBar);
+    objectMenuBtn->setObjectName(QStringLiteral("inspectorObjectMenu"));
+    objectMenuBtn->setText(QStringLiteral("⋯"));
+    objectMenuBtn->setCursor(Qt::PointingHandCursor);
+    connect(objectMenuBtn, &QToolButton::clicked, objectMenuBtn, [objectMenuBtn, objectMenu]() {
+        objectMenu->popup(objectMenuBtn->mapToGlobal(QPoint(0, objectMenuBtn->height())));
+    });
+    selectionLayout->addWidget(objectMenuBtn);
     m_layout->addWidget(selectionBar);
 
     auto* filter = new QLineEdit(this);
@@ -137,27 +156,58 @@ void InspectorPanel::refresh()
     for (std::size_t i = 0; i < entity->nativeComponents.size(); ++i) {
         const EditorComponent& component = entity->nativeComponents[i];
         const QString componentName = inspectorSectionName(QString::fromStdString(component.typeName));
+        const bool expanded = (i < m_componentExpanded.size()) ? m_componentExpanded[i] : true;
         auto* section = new QWidget(this);
         section->setObjectName(QStringLiteral("inspectorSection"));
         auto* sectionLayout = new QVBoxLayout(section);
         sectionLayout->setContentsMargins(0, 0, 0, 0);
         sectionLayout->setSpacing(0);
 
-        auto* header = new QToolButton(section);
+        auto* headerRow = new QWidget(section);
+        headerRow->setObjectName(QStringLiteral("inspectorSectionHeaderRow"));
+        auto* headerRowLayout = new QHBoxLayout(headerRow);
+        headerRowLayout->setContentsMargins(0, 0, 0, 0);
+        headerRowLayout->setSpacing(0);
+
+        auto* header = new QPushButton(headerRow);
         header->setObjectName(QStringLiteral("inspectorSectionHeader"));
-        header->setText(componentName);
+        header->setText((expanded ? QStringLiteral("▾ ") : QStringLiteral("▸ ")) + componentName);
         header->setCheckable(true);
-        header->setChecked(true);
-        header->setAutoRaise(true);
-        header->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-        header->setArrowType(Qt::DownArrow);
-        sectionLayout->addWidget(header);
+        header->setChecked(expanded);
+        header->setFlat(true);
+        headerRowLayout->addWidget(header, 1);
+
+        auto* sectionMenu = new QMenu(section);
+        QAction* removeAction = sectionMenu->addAction(tr("Remove Component"));
+        connect(removeAction, &QAction::triggered, this, [this, uuid, i]() {
+            if (i < m_componentExpanded.size()) {
+                m_componentExpanded.erase(m_componentExpanded.begin() + static_cast<std::ptrdiff_t>(i));
+            }
+            m_context.session().removeComponent(uuid, i);
+        });
+
+        auto* menuBtn = new QToolButton(headerRow);
+        menuBtn->setObjectName(QStringLiteral("inspectorSectionMenu"));
+        menuBtn->setText(QStringLiteral("⋯"));
+        menuBtn->setCursor(Qt::PointingHandCursor);
+        connect(menuBtn, &QToolButton::clicked, menuBtn, [menuBtn, sectionMenu]() {
+            sectionMenu->popup(menuBtn->mapToGlobal(QPoint(0, menuBtn->height())));
+        });
+        headerRowLayout->addWidget(menuBtn);
+
+        header->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(header, &QWidget::customContextMenuRequested, header, [header, sectionMenu](const QPoint& pos) {
+            sectionMenu->popup(header->mapToGlobal(pos));
+        });
+
+        sectionLayout->addWidget(headerRow);
 
         auto* body = new QWidget(section);
         body->setObjectName(QStringLiteral("inspectorSectionBody"));
+        body->setVisible(expanded);
         auto* bodyLayout = new QVBoxLayout(body);
-        bodyLayout->setContentsMargins(8, 5, 8, 7);
-        bodyLayout->setSpacing(5);
+        bodyLayout->setContentsMargins(6, 8, 0, 4);
+        bodyLayout->setSpacing(8);
 
         auto* editor = new EditorJsonWidget(component.value, body);
         connect(editor, &EditorJsonWidget::valueChanged, this, [this, uuid, i, editor]() {
@@ -165,43 +215,59 @@ void InspectorPanel::refresh()
         });
         bodyLayout->addWidget(editor);
 
-        auto* remove = new QPushButton(tr("Remove Component"), body);
-        remove->setObjectName(QStringLiteral("inspectorRemoveButton"));
-        connect(remove, &QPushButton::clicked, this, [this, uuid, i]() {
-            m_context.session().removeComponent(uuid, i);
-        });
-        bodyLayout->addWidget(remove);
         sectionLayout->addWidget(body);
-        connect(header, &QToolButton::toggled, this, [header, body](bool expanded) {
-            header->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
+        connect(header, &QPushButton::toggled, this, [this, i, header, body, componentName](bool expanded) {
+            header->setText((expanded ? QStringLiteral("▾ ") : QStringLiteral("▸ ")) + componentName);
             body->setVisible(expanded);
+            if (m_componentExpanded.size() <= i) {
+                m_componentExpanded.resize(i + 1, true);
+            }
+            m_componentExpanded[i] = expanded;
         });
 
         componentSections.push_back(section);
         m_layout->addWidget(section);
     }
 
+    m_componentExpanded.resize(entity->nativeComponents.size(), true);
+
     connect(filter, &QLineEdit::textChanged, this, [componentSections](const QString& text) {
         for (QWidget* section : componentSections) {
             section->setVisible(text.isEmpty()
-                || section->findChild<QToolButton*>(QStringLiteral("inspectorSectionHeader"))->text()
+                || section->findChild<QPushButton*>(QStringLiteral("inspectorSectionHeader"))->text()
                     .contains(text, Qt::CaseInsensitive));
         }
     });
 
-    auto* addRow = new QWidget(this);
-    addRow->setObjectName(QStringLiteral("inspectorAddRow"));
-    auto* addLayout = new QHBoxLayout(addRow);
-    addLayout->setContentsMargins(0, 0, 0, 0);
-    m_componentCombo = new QComboBox(addRow);
+    auto* addBtn = new QPushButton(tr("Add Component"), this);
+    addBtn->setObjectName(QStringLiteral("inspectorAddButton"));
+    addBtn->setCursor(Qt::PointingHandCursor);
+    auto* addMenu = new QMenu(addBtn);
+    auto* search = new QLineEdit(addMenu);
+    search->setObjectName(QStringLiteral("inspectorAddSearch"));
+    search->setPlaceholderText(tr("Search components..."));
+    auto* searchAction = new QWidgetAction(addMenu);
+    searchAction->setDefaultWidget(search);
+    addMenu->addAction(searchAction);
+    std::vector<QAction*> typeActions;
     for (const auto& entry : ComponentTemplates()) {
-        m_componentCombo->addItem(QString::fromUtf8(entry.typeName));
+        QAction* action = addMenu->addAction(QString::fromUtf8(entry.typeName));
+        typeActions.push_back(action);
+        connect(action, &QAction::triggered, this, [this, typeName = entry.typeName]() {
+            addComponent(typeName);
+        });
     }
-    auto* add = new QPushButton(tr("Add Component"), addRow);
-    connect(add, &QPushButton::clicked, this, &InspectorPanel::onAddComponent);
-    addLayout->addWidget(m_componentCombo, 1);
-    addLayout->addWidget(add);
-    m_layout->addWidget(addRow);
+    connect(search, &QLineEdit::textChanged, this, [typeActions](const QString& text) {
+        for (QAction* action : typeActions) {
+            action->setVisible(action->text().contains(text, Qt::CaseInsensitive));
+        }
+    });
+    connect(addBtn, &QPushButton::clicked, this, [addBtn, addMenu, search]() {
+        search->clear();
+        addMenu->popup(addBtn->mapToGlobal(QPoint(0, -addMenu->sizeHint().height())));
+        search->setFocus(Qt::PopupFocusReason);
+    });
+    m_layout->addWidget(addBtn);
 
     m_layout->addStretch();
 }
@@ -222,13 +288,12 @@ void InspectorPanel::onRenameEntity(const QString& name)
     }
 }
 
-void InspectorPanel::onAddComponent()
+void InspectorPanel::addComponent(const std::string& typeName)
 {
     const std::uint64_t uuid = m_context.session().selection().selected();
-    if (!uuid || !m_componentCombo) {
+    if (!uuid) {
         return;
     }
-    const std::string typeName = m_componentCombo->currentText().toStdString();
     for (const auto& entry : ComponentTemplates()) {
         if (entry.typeName == typeName) {
             m_context.session().addComponent(uuid, EditorComponent{typeName, entry.defaultValue});

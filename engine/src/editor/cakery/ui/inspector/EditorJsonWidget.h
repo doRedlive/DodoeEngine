@@ -26,6 +26,10 @@ signals:
 private:
     void rebuild();
     void buildField(QFormLayout* form, const std::string& key, const std::string& path, const nlohmann::json& value);
+    QWidget* buildVectorField(const std::string& path, const nlohmann::json& value);
+    QWidget* buildColorField(const std::string& path, const nlohmann::json& value);
+    QWidget* buildBoolField(const std::string& path, const nlohmann::json& value);
+    QWidget* buildLayerField(const std::string& path, const nlohmann::json& value);
     nlohmann::json& valueAt(const std::string& path);
 
     nlohmann::json m_value;
