@@ -4,6 +4,8 @@
 
 #include "EditorDocument.h"
 
+#include "core/Signal.h"
+
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -39,14 +41,14 @@ public:
     bool removeComponent(std::uint64_t uuid, std::size_t nativeIndex);
     bool updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value);
 
-    void subscribe(std::function<void()> onChange);
+    ScopedConnection subscribe(std::function<void()> onChange);
     void notifyChanged();
 
 private:
     EditorDocument m_document;
     std::filesystem::path m_path;
     bool m_hasDocument = false;
-    std::vector<std::function<void()>> m_observers;
+    Signal<> m_changed;
 };
 
 } // namespace cakery

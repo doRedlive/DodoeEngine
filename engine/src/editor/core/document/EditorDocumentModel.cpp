@@ -184,14 +184,12 @@ bool EditorDocumentModel::updateComponent(std::uint64_t uuid, std::size_t native
     return true;
 }
 
-void EditorDocumentModel::subscribe(std::function<void()> onChange) {
-    m_observers.push_back(std::move(onChange));
+ScopedConnection EditorDocumentModel::subscribe(std::function<void()> onChange) {
+    return ScopedConnection(m_changed, m_changed.connect(std::move(onChange)));
 }
 
 void EditorDocumentModel::notifyChanged() {
-    for (const auto& observer : m_observers) {
-        observer();
-    }
+    m_changed.fire();
 }
 
 } // namespace cakery

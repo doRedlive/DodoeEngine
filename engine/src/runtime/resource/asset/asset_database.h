@@ -22,11 +22,11 @@ namespace dodoe {
         Bool save();
 
         [[nodiscard]] Bool hasAsset(const ObjectID& id) const;
-        [[nodiscard]] AssetMetaData getMetaData(const ObjectID& id) const;
+        [[nodiscard]] AssetMetaData DODOE_API getMetaData(const ObjectID& id) const;
         void setMetaData(const ObjectID& id, const AssetMetaData& meta);
         void removeAsset(const ObjectID& id);
 
-        [[nodiscard]] DynamicArray<ObjectID> getAllAssetIDs() const;
+        [[nodiscard]] DynamicArray<ObjectID> DODOE_API getAllAssetIDs() const;
         [[nodiscard]] DynamicArray<ObjectID> getAssetsOfType(AssetType type) const;
         [[nodiscard]] DynamicArray<ObjectID> getAssetsByTag(const String& tag) const;
 

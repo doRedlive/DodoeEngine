@@ -111,6 +111,7 @@ namespace dodoe {
             case AssetType::Tileset:         return "Tileset";
             case AssetType::Prefab:          return "Prefab";
             case AssetType::Audio:           return "Audio";
+            case AssetType::InputAction:     return "InputAction";
             case AssetType::Unknown:
             default:                         return "Unknown";
         }
@@ -130,6 +131,7 @@ namespace dodoe {
         if (str == "Tileset")         return AssetType::Tileset;
         if (str == "Prefab")          return AssetType::Prefab;
         if (str == "Audio")           return AssetType::Audio;
+        if (str == "InputAction")     return AssetType::InputAction;
         return AssetType::Unknown;
     }
 
@@ -147,6 +149,7 @@ namespace dodoe {
             case AssetType::Tileset:         return ".tsx";
             case AssetType::Prefab:          return ".prefab";
             case AssetType::Audio:           return ".wav";
+            case AssetType::InputAction:     return ".doinput";
             case AssetType::Unknown:
             default:                         return ".asset";
         }
@@ -167,6 +170,7 @@ namespace dodoe {
             case AssetType::Scene:
             case AssetType::Tileset:
             case AssetType::Prefab:
+            case AssetType::InputAction:
                 return false;
             case AssetType::Unknown:
             default:

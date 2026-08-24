@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "core/Signal.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <functional>
@@ -89,20 +91,18 @@ public:
     const std::vector<std::uint64_t>& selectedAll() const { return m_selected; }
     Target target() const { return m_target; }
 
-    void subscribe(std::function<void()> onChange) {
-        m_observers.push_back(std::move(onChange));
+    ScopedConnection subscribe(std::function<void()> onChange) {
+        return ScopedConnection(m_changed, m_changed.connect(std::move(onChange)));
     }
 
 private:
     void emitChanged() const {
-        for (const auto& observer : m_observers) {
-            observer();
-        }
+        m_changed.fire();
     }
 
     std::vector<std::uint64_t> m_selected;
     Target m_target = Target::None;
-    std::vector<std::function<void()>> m_observers;
+    Signal<> m_changed;
 };
 
 } // namespace cakery

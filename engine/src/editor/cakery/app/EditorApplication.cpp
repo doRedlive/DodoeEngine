@@ -62,15 +62,19 @@ int EditorApplication::run()
 
 void EditorApplication::onProjectSelected(const QString& projectPath)
 {
+    m_editorWindow = new EditorWindow(*m_workspace);
+    if (!m_editorWindow->enterWorkspace(projectPath)) {
+        delete m_editorWindow;
+        m_editorWindow = nullptr;
+        return;
+    }
+
     if (m_projectWindow) {
         m_projectWindow->close();
         m_projectWindow->deleteLater();
         m_projectWindow = nullptr;
     }
-
-    m_editorWindow = new EditorWindow(*m_workspace);
     m_editorWindow->show();
-    m_editorWindow->enterWorkspace(projectPath);
 }
 
 } // namespace cakery

@@ -43,7 +43,20 @@ public static partial class ScriptHub
             "remove_entity_component" => RemoveEntityComponent(args),
             "remove_entity"         => RemoveEntity(args),
             "register_natives"      => RegisterNatives(args),
+            "input_action_event"    => DispatchInputEvent(args),
             _ => -1
         };
+    }
+
+    private static unsafe int DispatchInputEvent(void** args)
+    {
+        uint actionId = args[0] == null ? 0u : *(uint*)args[0];
+        int phase = args[1] == null ? 0 : *(int*)args[1];
+        int valueType = args[2] == null ? 0 : *(int*)args[2];
+        int boolValue = args[3] == null ? 0 : *(int*)args[3];
+        float v0 = args[4] == null ? 0.0f : *(float*)args[4];
+        float v1 = args[5] == null ? 0.0f : *(float*)args[5];
+        InputEventHub.Dispatch(actionId, phase, valueType, boolValue, v0, v1);
+        return 0;
     }
 }

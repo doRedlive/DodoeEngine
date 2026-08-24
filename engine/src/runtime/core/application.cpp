@@ -149,11 +149,13 @@ namespace dodoe {
         m_context->getLayerStack().attach();
 
         while (m_running) {
-            EventSystem::Poll();
             EventSystem::Publish<BeforeOneTickEvent>();
+            m_context->getInputManager()->beginFrame();
+            EventSystem::Poll();
+            EventSystem::Handle();
+            m_context->getInputManager()->update(m_context->getTimeSystem()->getDeltaTime());
             m_context->tickOneFrame();
             EventSystem::Publish<AfterOneTickEvent>();
-            EventSystem::Handle();
         }
 
         m_context->getLayerStack().detach();

@@ -278,7 +278,8 @@ void SyncNativeComponents(dodoe::Entity entity, const std::vector<EditorComponen
     auto& component_db = dodoe::ComponentDB::self();
     for (const auto& component : components) {
         if (component.typeName == "HierarchyComponent") continue;
-        const auto* entry = component_db.find(component.typeName);
+        const auto* entry = component_db.find(
+            dodoe::String(component.typeName.data(), component.typeName.size()));
         if (!entry || !entry->readJson) continue;
         if (!entry->contains(entity)) {
             if (!entry->canAdd()) continue;
@@ -519,6 +520,7 @@ void RuntimeEditorBackend::tickAtSafePoint()
     const float dt = std::min(0.05f, std::chrono::duration<float>(now - m_lastTick).count());
     m_lastTick = now;
 
+    EventSystem::Publish<BeforeOneTickEvent>();
     if (auto* input = m_app->context().getInputManager()) {
         input->beginFrame();
     }
@@ -533,7 +535,7 @@ void RuntimeEditorBackend::tickAtSafePoint()
     }
     updateGizmo();
     m_app->context().tickOneFrame();
-    EventSystem::Handle();
+    EventSystem::Publish<AfterOneTickEvent>();
 }
 
 void RuntimeEditorBackend::shutdown()
@@ -669,22 +671,26 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
     }
     Scene* scene = world->getActiveScene();
     if (!scene) {
-        scene = world->createScene(document.name.empty() ? String("Untitled") : String(document.name));
+        scene = world->createScene(document.name.empty()
+            ? dodoe::String("Untitled")
+            : dodoe::String(document.name.data(), document.name.size()));
         if (!scene) {
             return false;
         }
         world->setActiveScene(scene);
     } else if (!document.name.empty() && scene->getName().c_str() != document.name) {
-        scene->setName(String(document.name));
+        scene->setName(dodoe::String(document.name.data(), document.name.size()));
     }
 
     for (const EditorEntity& entity : document.entities) {
-        const UUID uuid(entity.uuid);
+        const dodoe::UUID uuid(entity.uuid);
         Entity sceneEntity = scene->tryGetEntityByUUID(uuid);
         if (!sceneEntity.valid()) {
-            sceneEntity = scene->createEntity(uuid, String(entity.name));
+            sceneEntity = scene->createEntity(
+                uuid, dodoe::String(entity.name.data(), entity.name.size()));
         } else if (sceneEntity.name().c_str() != entity.name) {
-            sceneEntity.getComponent<IDComponent>().setName(String(entity.name));
+            sceneEntity.getComponent<IDComponent>().setName(
+                dodoe::String(entity.name.data(), entity.name.size()));
         }
         SyncNativeComponents(sceneEntity, entity.nativeComponents);
     }

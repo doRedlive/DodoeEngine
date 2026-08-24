@@ -2,7 +2,8 @@
 
 #pragma once
 
-#include "dopch.h"
+#include "runtime/core/base.h"
+#include "runtime/core/core.h"
 
 #include <spdlog/spdlog.h>
 
@@ -18,9 +19,9 @@ namespace dodoe {
     };
 
     struct LogMessage {
-        String content;
-        String payload;
-        String logger_name;
+        std::string content;
+        std::string payload;
+        std::string logger_name;
         LogLevel level{ LogLevel::Trace };
         uint32_t repeat_count{1};
         uint64_t sequence{0};
@@ -44,8 +45,8 @@ namespace dodoe {
 
         static void SetLoggerLevel(const Ref<spdlog::logger>& logger, LogLevel level);
 
-        static DynamicArray<LogMessage> GetCoreLogs();
-        static DynamicArray<LogMessage> GetClientLogs();
+        static std::vector<LogMessage> GetCoreLogs();
+        static std::vector<LogMessage> GetClientLogs();
         static void ClearClientLogs();
         static void ClearCoreLogs();
 

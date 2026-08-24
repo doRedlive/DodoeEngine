@@ -112,8 +112,10 @@ void RegisterReparentCommand()
                  if (args.positional.size() < 2) {
                      return CommandResult::Err("Usage: entity.reparent <uuid> <parent_uuid>");
                  }
-                 dodoe::UUID childUuid = dodoe::UUID::FromString(args.positional[0]);
-                 dodoe::UUID newParentUuid = dodoe::UUID::FromString(args.positional[1]);
+                 dodoe::UUID childUuid = dodoe::UUID::FromString(
+                     dodoe::String(args.positional[0].data(), args.positional[0].size()));
+                 dodoe::UUID newParentUuid = dodoe::UUID::FromString(
+                     dodoe::String(args.positional[1].data(), args.positional[1].size()));
                  auto* scene = ActiveScene();
                  if (!scene) return CommandResult::Err("No active scene");
                  auto child = ResolveEntity(scene, childUuid);

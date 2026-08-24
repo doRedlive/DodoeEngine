@@ -101,7 +101,10 @@ namespace dodoe {
         DO_ASSERT(m_render_system, "RenderSystem init failed");
         DO_INFO("RenderSystem initialized.");
 
-        m_input_manager = InputManager::Create({});
+        InputManagerInitInfo input_init_info;
+        input_init_info.native_window = m_window_manager->getWindow()->getNativeWindow();
+        input_init_info.host_mode = m_window_manager->getWindow()->isHostMode();
+        m_input_manager = InputManager::Create(input_init_info);
         DO_INFO("InputManager initialized.");
 
         m_script_system = ScriptSystem::Create({});
@@ -246,7 +249,6 @@ namespace dodoe {
             layer->updateTick(delta_time);
         }
 
-        m_input_manager->update();
         m_world->update(delta_time);
         m_ui_manager->update(delta_time);
     }

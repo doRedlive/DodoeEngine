@@ -4,6 +4,8 @@
 
 #include <QWidget>
 
+#include "core/Signal.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -35,6 +37,8 @@ private:
     QLineEdit* m_nameEdit = nullptr;
     std::vector<bool> m_componentExpanded;
     bool m_editing = false;
+    ScopedConnection m_documentSubscription;
+    ScopedConnection m_selectionSubscription;
 };
 
 } // namespace cakery

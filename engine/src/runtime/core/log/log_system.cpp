@@ -22,7 +22,7 @@ namespace dodoe {
     class MemorySink : public spdlog::sinks::base_sink<Mutex> {
     public:
         [[nodiscard]]
-        DynamicArray<LogMessage> getLogs() {
+        std::vector<LogMessage> getLogs() {
             std::lock_guard<Mutex> lock(this->mutex_);
             return m_log_msg_buffer;
         }
@@ -40,9 +40,9 @@ namespace dodoe {
             const auto sequence = ++s_log_sequence;
 
             LogMessage log_msg;
-            log_msg.content = String(formatted.begin(), formatted.end());
-            log_msg.payload = String(msg.payload.begin(), msg.payload.end());
-            log_msg.logger_name = String(msg.logger_name.begin(), msg.logger_name.end());
+            log_msg.content = std::string(formatted.begin(), formatted.end());
+            log_msg.payload = std::string(msg.payload.begin(), msg.payload.end());
+            log_msg.logger_name = std::string(msg.logger_name.begin(), msg.logger_name.end());
             log_msg.level = static_cast<LogLevel>(msg.level);
             log_msg.sequence = sequence;
 
@@ -64,7 +64,7 @@ namespace dodoe {
         void flush_() override {}
 
     private:
-        DynamicArray<LogMessage> m_log_msg_buffer{};
+        std::vector<LogMessage> m_log_msg_buffer{};
     };
 
     using MemSinkMt = MemorySink<std::mutex>;
@@ -115,11 +115,11 @@ namespace dodoe {
         }
     }
 
-    DynamicArray<LogMessage> Log::GetCoreLogs() {
+    std::vector<LogMessage> Log::GetCoreLogs() {
         return s_engine_console_sink->getLogs();
     }
 
-    DynamicArray<LogMessage> Log::GetClientLogs() {
+    std::vector<LogMessage> Log::GetClientLogs() {
         return s_editor_console_sink->getLogs();
     }
 

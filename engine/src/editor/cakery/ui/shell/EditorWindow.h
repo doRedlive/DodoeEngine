@@ -4,6 +4,8 @@
 
 #include <QMainWindow>
 
+#include "core/Signal.h"
+
 class QAction;
 class QListWidget;
 class QTimer;
@@ -27,7 +29,7 @@ public:
     explicit EditorWindow(EditorWorkspaceContext& context, QWidget* parent = nullptr);
     ~EditorWindow() override;
 
-    void enterWorkspace(const QString& projectPath);
+    bool enterWorkspace(const QString& projectPath);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -52,6 +54,7 @@ private:
     QAction* m_redoAction = nullptr;
     QTimer* m_safePointTimer = nullptr;
     bool m_closed = false;
+    ScopedConnection m_historySubscription;
 };
 
 } // namespace cakery

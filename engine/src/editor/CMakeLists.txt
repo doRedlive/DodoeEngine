@@ -83,6 +83,8 @@ target_include_directories(EditorRuntimeBackend PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ENGINE_ROOT_DIR}/src
     ${ENGINE_ROOT_DIR}/src/runtime
+    ${ENGINE_ROOT_DIR}/external/glm
+    ${ENGINE_ROOT_DIR}/external/spdlog/include
 )
 set_target_properties(EditorRuntimeBackend PROPERTIES FOLDER "Engine/Editor")
 

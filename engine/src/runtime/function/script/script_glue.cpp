@@ -3,6 +3,7 @@
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/input/input.h"
+#include "runtime/function/input/input_serialization.h"
 #include "runtime/function/script/script_engine.h"
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/time/time_system.h"
@@ -176,7 +177,240 @@ namespace dodoe {
             if (e.valid() && type && s_EntityRemoveComponentFuncUmap.count(type)) s_EntityRemoveComponentFuncUmap.at(type)(e);
         }
 
-        static int native_is_key_down(int key) { return Input::IsKeyPressed(static_cast<KeyCode>(key)) ? 1 : 0; }
+        static int native_input_register_action_map(const char* map_name, int priority) {
+            return Input::RegisterActionMap(map_name ? String(map_name) : String{}, priority) ? 1 : 0;
+        }
+        static int native_input_set_action_map_enabled(const char* map_name, int enabled) {
+            return Input::SetActionMapEnabled(map_name ? StringView(map_name) : StringView{}, enabled != 0) ? 1 : 0;
+        }
+        static int native_input_set_action_map_consume(const char* map_name, int consume) {
+            return Input::SetActionMapConsume(map_name ? StringView(map_name) : StringView{}, consume != 0) ? 1 : 0;
+        }
+        static int native_input_push_context(const char* map_name) {
+            return Input::PushInputContext(map_name ? StringView(map_name) : StringView{}) ? 1 : 0;
+        }
+        static int native_input_pop_context(const char* map_name) {
+            return Input::PopInputContext(map_name ? StringView(map_name) : StringView{}) ? 1 : 0;
+        }
+        static int native_input_register_action(const char* map_name, const char* action_name, int value_type) {
+            return Input::RegisterAction(map_name ? StringView(map_name) : StringView{},
+                                          action_name ? String(action_name) : String{},
+                                          static_cast<InputActionValueType>(value_type)) ? 1 : 0;
+        }
+        static int native_input_bind_key(const char* map_name, const char* action_name, int key, float scale) {
+            return Input::BindKey(map_name ? StringView(map_name) : StringView{},
+                                  action_name ? StringView(action_name) : StringView{},
+                                  static_cast<KeyCode>(key), scale) ? 1 : 0;
+        }
+        static int native_input_unregister_action_map(const char* map_name) {
+            return Input::UnregisterActionMap(map_name ? StringView(map_name) : StringView{}) ? 1 : 0;
+        }
+        static int native_input_bind_key2d(const char* map_name, const char* action_name, int key, float x, float y) {
+            return Input::BindKey2D(map_name ? StringView(map_name) : StringView{},
+                                    action_name ? StringView(action_name) : StringView{},
+                                    static_cast<KeyCode>(key), Vector2f(x, y)) ? 1 : 0;
+        }
+        static int native_input_bind_mouse_button(const char* map_name, const char* action_name, int button, float scale) {
+            return Input::BindMouseButton(map_name ? StringView(map_name) : StringView{},
+                                          action_name ? StringView(action_name) : StringView{},
+                                          static_cast<MouseCode>(button), scale) ? 1 : 0;
+        }
+        static int native_input_bind_mouse_delta(const char* map_name, const char* action_name, float scale) {
+            return Input::BindMouseDelta(map_name ? StringView(map_name) : StringView{},
+                                         action_name ? StringView(action_name) : StringView{}, scale) ? 1 : 0;
+        }
+        static int native_input_bind_mouse_wheel(const char* map_name, const char* action_name, float scale) {
+            return Input::BindMouseWheel(map_name ? StringView(map_name) : StringView{},
+                                         action_name ? StringView(action_name) : StringView{}, scale) ? 1 : 0;
+        }
+        static void native_input_get_mouse_position(float* x, float* y) {
+            const Vector2f v = Input::GetMousePosition();
+            if (x) *x = v.x;
+            if (y) *y = v.y;
+        }
+        static void native_input_get_mouse_delta(float* x, float* y) {
+            const Vector2f v = Input::GetMouseDelta();
+            if (x) *x = v.x;
+            if (y) *y = v.y;
+        }
+        static void native_input_get_mouse_wheel(float* x, float* y) {
+            const Vector2f v = Input::GetMouseWheel();
+            if (x) *x = v.x;
+            if (y) *y = v.y;
+        }
+        static int native_input_is_action_down(const char* action_name) {
+            return Input::IsActionDown(action_name ? StringView(action_name) : StringView{}) ? 1 : 0;
+        }
+        static int native_input_was_action_pressed(const char* action_name) {
+            return Input::WasActionPressed(action_name ? StringView(action_name) : StringView{}) ? 1 : 0;
+        }
+        static int native_input_was_action_released(const char* action_name) {
+            return Input::WasActionReleased(action_name ? StringView(action_name) : StringView{}) ? 1 : 0;
+        }
+        static float native_input_get_action_axis(const char* action_name) {
+            return Input::GetActionAxis(action_name ? StringView(action_name) : StringView{});
+        }
+        static void native_input_get_action_vector2(const char* action_name, float* x, float* y) {
+            const Vector2f value = Input::GetActionVector2(action_name ? StringView(action_name) : StringView{});
+            if (x) *x = value.x;
+            if (y) *y = value.y;
+        }
+        static int native_input_set_binding_interaction(const char* map_name, const char* action_name,
+                                                        int interaction, float hold_seconds) {
+            return Input::SetBindingInteraction(map_name ? StringView(map_name) : StringView{},
+                                                action_name ? StringView(action_name) : StringView{},
+                                                static_cast<InputInteraction>(interaction), hold_seconds) ? 1 : 0;
+        }
+        static int native_input_load_action_asset(const char* path) {
+            return Input::LoadActionAsset(path ? String(path) : String{}) ? 1 : 0;
+        }
+        static int native_input_bind_gamepad_button(const char* map_name, const char* action_name, int button,
+                                                    uint32_t device_id, float scale) {
+            return Input::BindGamepadButton(map_name ? StringView(map_name) : StringView{},
+                                            action_name ? StringView(action_name) : StringView{},
+                                            static_cast<GamepadButtonCode>(button), device_id, scale) ? 1 : 0;
+        }
+        static int native_input_bind_gamepad_axis(const char* map_name, const char* action_name, int axis,
+                                                  uint32_t device_id, float scale) {
+            return Input::BindGamepadAxis(map_name ? StringView(map_name) : StringView{},
+                                          action_name ? StringView(action_name) : StringView{},
+                                          static_cast<GamepadAxisCode>(axis), device_id, scale) ? 1 : 0;
+        }
+        static int native_input_bind_gamepad_stick(const char* map_name, const char* action_name, int stick_axis,
+                                                   uint32_t device_id, float scale) {
+            return Input::BindGamepadStick(map_name ? StringView(map_name) : StringView{},
+                                           action_name ? StringView(action_name) : StringView{},
+                                           static_cast<GamepadAxisCode>(stick_axis), device_id, scale) ? 1 : 0;
+        }
+        static int native_input_bind_composite(const char* map_name, const char* action_name, const char* parts_json,
+                                               uint32_t device_id) {
+            DynamicArray<InputBinding> parts;
+            if (parts_json) {
+                try {
+                    const Json j = Json::parse(parts_json);
+                    if (j.is_array()) {
+                        for (const auto& part : j) parts.push_back(ParseInputBinding(part));
+                    }
+                } catch (const Json::exception&) {
+                }
+            }
+            return Input::BindComposite(map_name ? StringView(map_name) : StringView{},
+                                        action_name ? StringView(action_name) : StringView{}, parts, device_id) ? 1 : 0;
+        }
+        static int native_input_set_binding_tap_params(const char* map_name, const char* action_name,
+                                                       int binding_index, int tap_count, float tap_window) {
+            return Input::SetBindingTapParams(map_name ? StringView(map_name) : StringView{},
+                                              action_name ? StringView(action_name) : StringView{},
+                                              static_cast<Size_t>(binding_index), tap_count, tap_window) ? 1 : 0;
+        }
+        static int native_input_set_binding_repeat_params(const char* map_name, const char* action_name,
+                                                          int binding_index, float repeat_delay, float repeat_rate) {
+            return Input::SetBindingRepeatParams(map_name ? StringView(map_name) : StringView{},
+                                                 action_name ? StringView(action_name) : StringView{},
+                                                 static_cast<Size_t>(binding_index), repeat_delay, repeat_rate) ? 1 : 0;
+        }
+        static int native_input_set_binding_processor(const char* map_name, const char* action_name,
+                                                      int binding_index, int type, float a, float b) {
+            InputProcessor processor;
+            processor.type = static_cast<InputProcessorType>(type);
+            processor.a = a;
+            processor.b = b;
+            return Input::SetBindingProcessor(map_name ? StringView(map_name) : StringView{},
+                                              action_name ? StringView(action_name) : StringView{},
+                                              static_cast<Size_t>(binding_index), processor) ? 1 : 0;
+        }
+        static uint32_t native_input_find_action_id(const char* map_name, const char* action_name) {
+            return Input::FindActionId(map_name ? StringView(map_name) : StringView{},
+                                       action_name ? StringView(action_name) : StringView{});
+        }
+        static uint32_t native_input_find_action_id_q(const char* qualified_name) {
+            return Input::FindActionId(qualified_name ? StringView(qualified_name) : StringView{});
+        }
+        static int native_input_is_action_down_id(uint32_t action_id) { return Input::IsActionDown(action_id) ? 1 : 0; }
+        static int native_input_was_action_pressed_id(uint32_t action_id) {
+            return Input::WasActionPressed(action_id) ? 1 : 0;
+        }
+        static int native_input_was_action_released_id(uint32_t action_id) {
+            return Input::WasActionReleased(action_id) ? 1 : 0;
+        }
+        static float native_input_get_action_axis_id(uint32_t action_id) { return Input::GetActionAxis(action_id); }
+        static void native_input_get_action_vector2_id(uint32_t action_id, float* x, float* y) {
+            const Vector2f value = Input::GetActionVector2(action_id);
+            if (x) *x = value.x;
+            if (y) *y = value.y;
+        }
+        static void ForwardInputEvent(const InputActionEvent& event) {
+            if (!s_ScriptEngine) return;
+            auto call = s_ScriptEngine->getCallFn();
+            if (!call) return;
+            int phase = static_cast<int>(event.phase);
+            int vtype = 0;
+            int vbool = 0;
+            float v0 = 0.0f;
+            float v1 = 0.0f;
+            if (const auto* b = std::get_if<Bool>(&event.value)) { vtype = 0; vbool = *b ? 1 : 0; }
+            else if (const auto* f = std::get_if<Float>(&event.value)) { vtype = 1; v0 = *f; }
+            else if (const auto* v = std::get_if<Vector2f>(&event.value)) { vtype = 2; v0 = v->x; v1 = v->y; }
+            uint32_t action_id = event.action_id;
+            void* args[6] = { &action_id, &phase, &vtype, &vbool, &v0, &v1 };
+            call("input_action_event", args, nullptr);
+        }
+        static uint64_t native_input_subscribe(const char* action_name, int phase) {
+            if (!action_name) return 0;
+            return Input::Subscribe(StringView(action_name), static_cast<InputActionPhase>(phase), ForwardInputEvent);
+        }
+        static uint64_t native_input_subscribe_id(uint32_t action_id, int phase) {
+            return Input::Subscribe(action_id, static_cast<InputActionPhase>(phase), ForwardInputEvent);
+        }
+        static void native_input_unsubscribe(uint64_t subscription_id) { Input::Unsubscribe(subscription_id); }
+        static int native_input_set_binding_override(const char* map_name, const char* action_name,
+                                                     int binding_index, const char* binding_json) {
+            if (!binding_json) return 0;
+            try {
+                const InputBinding binding = ParseInputBinding(Json::parse(binding_json));
+                return Input::SetBindingOverride(map_name ? StringView(map_name) : StringView{},
+                                                 action_name ? StringView(action_name) : StringView{},
+                                                 static_cast<Size_t>(binding_index), binding) ? 1 : 0;
+            } catch (const Json::exception&) {
+                return 0;
+            }
+        }
+        static int native_input_clear_binding_override(const char* map_name, const char* action_name,
+                                                       int binding_index) {
+            return Input::ClearBindingOverride(map_name ? StringView(map_name) : StringView{},
+                                               action_name ? StringView(action_name) : StringView{},
+                                               static_cast<Size_t>(binding_index)) ? 1 : 0;
+        }
+        static int native_input_begin_rebind_session(const char* map_name, const char* action_name,
+                                                     int binding_index) {
+            return Input::BeginRebindSession(map_name ? StringView(map_name) : StringView{},
+                                             action_name ? StringView(action_name) : StringView{},
+                                             static_cast<Size_t>(binding_index)) ? 1 : 0;
+        }
+        static void native_input_cancel_rebind_session() { Input::CancelRebindSession(); }
+        static int native_input_is_rebind_session_active() { return Input::IsRebindSessionActive() ? 1 : 0; }
+        static int native_input_load_config_overrides(const char* project_path, const char* user_path) {
+            return Input::LoadConfigOverrides(project_path ? FsPath(project_path) : FsPath{},
+                                              user_path ? FsPath(user_path) : FsPath{}) ? 1 : 0;
+        }
+        static int native_input_save_user_config_overrides(const char* user_path) {
+            return Input::SaveUserConfigOverrides(user_path ? FsPath(user_path) : FsPath{}) ? 1 : 0;
+        }
+        static int native_input_is_gamepad_connected(uint32_t device_id) {
+            return Input::IsGamepadConnected(device_id) ? 1 : 0;
+        }
+        static int native_input_is_gamepad_button_down(uint32_t device_id, int button) {
+            return Input::IsGamepadButtonDown(device_id, static_cast<GamepadButtonCode>(button)) ? 1 : 0;
+        }
+        static int native_input_is_gamepad_button_pressed(uint32_t device_id, int button) {
+            return Input::IsGamepadButtonPressed(device_id, static_cast<GamepadButtonCode>(button)) ? 1 : 0;
+        }
+        static int native_input_is_gamepad_button_released(uint32_t device_id, int button) {
+            return Input::IsGamepadButtonReleased(device_id, static_cast<GamepadButtonCode>(button)) ? 1 : 0;
+        }
+        static float native_input_get_gamepad_axis(uint32_t device_id, int axis) {
+            return Input::GetGamepadAxis(device_id, static_cast<GamepadAxisCode>(axis));
+        }
         static float native_time_get_delta_time() { auto* ts = GetTimeSystem(); return ts ? ts->getDeltaTime() : 0.0f; }
 
         static uint64_t native_id_component_get_id(uint64_t u) { auto* c = TryGetComponent<IDComponent>(u); return c ? (uint64_t)c->id : 0; }
@@ -751,7 +985,57 @@ namespace dodoe {
     X(native_component_exists, int, (uint64_t e, const char* type), e, type) \
     X(native_entity_add_component, void, (uint64_t e, const char* type), e, type) \
     X(native_entity_remove_component, void, (uint64_t e, const char* type), e, type) \
-    X(native_is_key_down, int, (int key), key) \
+    X(native_input_register_action_map, int, (const char* map_name, int priority), map_name, priority) \
+    X(native_input_set_action_map_enabled, int, (const char* map_name, int enabled), map_name, enabled) \
+    X(native_input_set_action_map_consume, int, (const char* map_name, int consume), map_name, consume) \
+    X(native_input_push_context, int, (const char* map_name), map_name) \
+    X(native_input_pop_context, int, (const char* map_name), map_name) \
+    X(native_input_register_action, int, (const char* map_name, const char* action_name, int value_type), map_name, action_name, value_type) \
+    X(native_input_bind_key, int, (const char* map_name, const char* action_name, int key, float scale), map_name, action_name, key, scale) \
+    X(native_input_unregister_action_map, int, (const char* map_name), map_name) \
+    X(native_input_bind_key2d, int, (const char* map_name, const char* action_name, int key, float x, float y), map_name, action_name, key, x, y) \
+    X(native_input_bind_mouse_button, int, (const char* map_name, const char* action_name, int button, float scale), map_name, action_name, button, scale) \
+    X(native_input_bind_mouse_delta, int, (const char* map_name, const char* action_name, float scale), map_name, action_name, scale) \
+    X(native_input_bind_mouse_wheel, int, (const char* map_name, const char* action_name, float scale), map_name, action_name, scale) \
+    X(native_input_get_mouse_position, void, (float* x, float* y), x, y) \
+    X(native_input_get_mouse_delta, void, (float* x, float* y), x, y) \
+    X(native_input_get_mouse_wheel, void, (float* x, float* y), x, y) \
+    X(native_input_is_action_down, int, (const char* action_name), action_name) \
+    X(native_input_was_action_pressed, int, (const char* action_name), action_name) \
+    X(native_input_was_action_released, int, (const char* action_name), action_name) \
+    X(native_input_get_action_axis, float, (const char* action_name), action_name) \
+    X(native_input_get_action_vector2, void, (const char* action_name, float* x, float* y), action_name, x, y) \
+    X(native_input_set_binding_interaction, int, (const char* map_name, const char* action_name, int interaction, float hold_seconds), map_name, action_name, interaction, hold_seconds) \
+    X(native_input_load_action_asset, int, (const char* path), path) \
+    X(native_input_bind_gamepad_button, int, (const char* map_name, const char* action_name, int button, uint32_t device_id, float scale), map_name, action_name, button, device_id, scale) \
+    X(native_input_bind_gamepad_axis, int, (const char* map_name, const char* action_name, int axis, uint32_t device_id, float scale), map_name, action_name, axis, device_id, scale) \
+    X(native_input_bind_gamepad_stick, int, (const char* map_name, const char* action_name, int stick_axis, uint32_t device_id, float scale), map_name, action_name, stick_axis, device_id, scale) \
+    X(native_input_bind_composite, int, (const char* map_name, const char* action_name, const char* parts_json, uint32_t device_id), map_name, action_name, parts_json, device_id) \
+    X(native_input_set_binding_tap_params, int, (const char* map_name, const char* action_name, int binding_index, int tap_count, float tap_window), map_name, action_name, binding_index, tap_count, tap_window) \
+    X(native_input_set_binding_repeat_params, int, (const char* map_name, const char* action_name, int binding_index, float repeat_delay, float repeat_rate), map_name, action_name, binding_index, repeat_delay, repeat_rate) \
+    X(native_input_set_binding_processor, int, (const char* map_name, const char* action_name, int binding_index, int type, float a, float b), map_name, action_name, binding_index, type, a, b) \
+    X(native_input_find_action_id, uint32_t, (const char* map_name, const char* action_name), map_name, action_name) \
+    X(native_input_find_action_id_q, uint32_t, (const char* qualified_name), qualified_name) \
+    X(native_input_is_action_down_id, int, (uint32_t action_id), action_id) \
+    X(native_input_was_action_pressed_id, int, (uint32_t action_id), action_id) \
+    X(native_input_was_action_released_id, int, (uint32_t action_id), action_id) \
+    X(native_input_get_action_axis_id, float, (uint32_t action_id), action_id) \
+    X(native_input_get_action_vector2_id, void, (uint32_t action_id, float* x, float* y), action_id, x, y) \
+    X(native_input_subscribe, uint64_t, (const char* action_name, int phase), action_name, phase) \
+    X(native_input_subscribe_id, uint64_t, (uint32_t action_id, int phase), action_id, phase) \
+    X(native_input_unsubscribe, void, (uint64_t subscription_id), subscription_id) \
+    X(native_input_set_binding_override, int, (const char* map_name, const char* action_name, int binding_index, const char* binding_json), map_name, action_name, binding_index, binding_json) \
+    X(native_input_clear_binding_override, int, (const char* map_name, const char* action_name, int binding_index), map_name, action_name, binding_index) \
+    X(native_input_begin_rebind_session, int, (const char* map_name, const char* action_name, int binding_index), map_name, action_name, binding_index) \
+    X(native_input_cancel_rebind_session, void, (), ) \
+    X(native_input_is_rebind_session_active, int, (), ) \
+    X(native_input_load_config_overrides, int, (const char* project_path, const char* user_path), project_path, user_path) \
+    X(native_input_save_user_config_overrides, int, (const char* user_path), user_path) \
+    X(native_input_is_gamepad_connected, int, (uint32_t device_id), device_id) \
+    X(native_input_is_gamepad_button_down, int, (uint32_t device_id, int button), device_id, button) \
+    X(native_input_is_gamepad_button_pressed, int, (uint32_t device_id, int button), device_id, button) \
+    X(native_input_is_gamepad_button_released, int, (uint32_t device_id, int button), device_id, button) \
+    X(native_input_get_gamepad_axis, float, (uint32_t device_id, int axis), device_id, axis) \
     X(native_time_get_delta_time, float, (), ) \
     X(native_id_component_get_id, uint64_t, (uint64_t e), e) \
     X(native_id_component_get_name, const char*, (uint64_t e), e) \

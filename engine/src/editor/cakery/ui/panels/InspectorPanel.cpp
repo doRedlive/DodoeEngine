@@ -91,8 +91,8 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
     scroll->setWidget(container);
     outer->addWidget(scroll);
 
-    m_context.session().documentModel().subscribe([this]() { onDocumentChanged(); });
-    m_context.session().selection().subscribe([this]() { refresh(); });
+    m_documentSubscription = m_context.session().documentModel().subscribe([this]() { onDocumentChanged(); });
+    m_selectionSubscription = m_context.session().selection().subscribe([this]() { refresh(); });
     refresh();
 }
 

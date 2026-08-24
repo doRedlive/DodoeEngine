@@ -188,6 +188,7 @@ namespace dodoe {
         DO_PROFILE_SCOPE_CATEGORY("ScriptEngine::loadAppAssembly", "startup");
         const auto active_project = Project::ActiveProject();
         if (!active_project) {
+            DO_ERROR("ScriptEngine: loadAppAssembly failed, no active project");
             return false;
         }
 

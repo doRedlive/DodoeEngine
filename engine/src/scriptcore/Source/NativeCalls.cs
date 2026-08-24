@@ -13,7 +13,57 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, byte*, int>                                     native_component_exists;
         public delegate* unmanaged<ulong, byte*, void>                                    native_entity_add_component;
         public delegate* unmanaged<ulong, byte*, void>                                    native_entity_remove_component;
-        public delegate* unmanaged<int, int>                                              native_is_key_down;
+        public delegate* unmanaged<byte*, int, int>                                       native_input_register_action_map;
+        public delegate* unmanaged<byte*, int, int>                                       native_input_set_action_map_enabled;
+        public delegate* unmanaged<byte*, int, int>                                       native_input_set_action_map_consume;
+        public delegate* unmanaged<byte*, int>                                             native_input_push_context;
+        public delegate* unmanaged<byte*, int>                                             native_input_pop_context;
+        public delegate* unmanaged<byte*, byte*, int, int>                                native_input_register_action;
+        public delegate* unmanaged<byte*, byte*, int, float, int>                         native_input_bind_key;
+        public delegate* unmanaged<byte*, int>                                             native_input_unregister_action_map;
+        public delegate* unmanaged<byte*, byte*, int, float, float, int>                   native_input_bind_key2d;
+        public delegate* unmanaged<byte*, byte*, int, float, int>                          native_input_bind_mouse_button;
+        public delegate* unmanaged<byte*, byte*, float, int>                               native_input_bind_mouse_delta;
+        public delegate* unmanaged<byte*, byte*, float, int>                               native_input_bind_mouse_wheel;
+        public delegate* unmanaged<float*, float*, void>                                   native_input_get_mouse_position;
+        public delegate* unmanaged<float*, float*, void>                                   native_input_get_mouse_delta;
+        public delegate* unmanaged<float*, float*, void>                                   native_input_get_mouse_wheel;
+        public delegate* unmanaged<byte*, int>                                             native_input_is_action_down;
+        public delegate* unmanaged<byte*, int>                                             native_input_was_action_pressed;
+        public delegate* unmanaged<byte*, int>                                             native_input_was_action_released;
+        public delegate* unmanaged<byte*, float>                                           native_input_get_action_axis;
+        public delegate* unmanaged<byte*, float*, float*, void>                            native_input_get_action_vector2;
+        public delegate* unmanaged<byte*, byte*, int, float, int>                           native_input_set_binding_interaction;
+        public delegate* unmanaged<byte*, int>                                             native_input_load_action_asset;
+        public delegate* unmanaged<byte*, byte*, int, uint, float, int>                    native_input_bind_gamepad_button;
+        public delegate* unmanaged<byte*, byte*, int, uint, float, int>                    native_input_bind_gamepad_axis;
+        public delegate* unmanaged<byte*, byte*, int, uint, float, int>                    native_input_bind_gamepad_stick;
+        public delegate* unmanaged<byte*, byte*, byte*, uint, int>                         native_input_bind_composite;
+        public delegate* unmanaged<byte*, byte*, int, int, float, int>                     native_input_set_binding_tap_params;
+        public delegate* unmanaged<byte*, byte*, int, float, float, int>                   native_input_set_binding_repeat_params;
+        public delegate* unmanaged<byte*, byte*, int, int, float, float, int>              native_input_set_binding_processor;
+        public delegate* unmanaged<byte*, byte*, uint>                                     native_input_find_action_id;
+        public delegate* unmanaged<byte*, uint>                                            native_input_find_action_id_q;
+        public delegate* unmanaged<uint, int>                                              native_input_is_action_down_id;
+        public delegate* unmanaged<uint, int>                                              native_input_was_action_pressed_id;
+        public delegate* unmanaged<uint, int>                                              native_input_was_action_released_id;
+        public delegate* unmanaged<uint, float>                                            native_input_get_action_axis_id;
+        public delegate* unmanaged<uint, float*, float*, void>                             native_input_get_action_vector2_id;
+        public delegate* unmanaged<byte*, int, ulong>                                      native_input_subscribe;
+        public delegate* unmanaged<uint, int, ulong>                                       native_input_subscribe_id;
+        public delegate* unmanaged<ulong, void>                                            native_input_unsubscribe;
+        public delegate* unmanaged<byte*, byte*, int, byte*, int>                          native_input_set_binding_override;
+        public delegate* unmanaged<byte*, byte*, int, int>                                 native_input_clear_binding_override;
+        public delegate* unmanaged<byte*, byte*, int, int>                                 native_input_begin_rebind_session;
+        public delegate* unmanaged<void>                                                   native_input_cancel_rebind_session;
+        public delegate* unmanaged<int>                                                    native_input_is_rebind_session_active;
+        public delegate* unmanaged<byte*, byte*, int>                                      native_input_load_config_overrides;
+        public delegate* unmanaged<byte*, int>                                             native_input_save_user_config_overrides;
+        public delegate* unmanaged<uint, int>                                              native_input_is_gamepad_connected;
+        public delegate* unmanaged<uint, int, int>                                         native_input_is_gamepad_button_down;
+        public delegate* unmanaged<uint, int, int>                                         native_input_is_gamepad_button_pressed;
+        public delegate* unmanaged<uint, int, int>                                         native_input_is_gamepad_button_released;
+        public delegate* unmanaged<uint, int, float>                                       native_input_get_gamepad_axis;
         public delegate* unmanaged<float>                                                 native_time_get_delta_time;
         public delegate* unmanaged<ulong, ulong>                                          native_id_component_get_id;
         public delegate* unmanaged<ulong, byte*>                                          native_id_component_get_name;
@@ -425,10 +475,365 @@ internal static unsafe partial class NativeCalls
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
 
-    internal static bool Native_IsKeyDown(KeyCode keycode)
+    internal static bool Native_InputRegisterActionMap(string mapName, int priority)
     {
-        return b->native_is_key_down((int)keycode) != 0;
+        var ptr = StrToPtr(mapName);
+        try { return b->native_input_register_action_map(ptr, priority) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
+
+    internal static bool Native_InputSetActionMapEnabled(string mapName, bool enabled)
+    {
+        var ptr = StrToPtr(mapName);
+        try { return b->native_input_set_action_map_enabled(ptr, enabled ? 1 : 0) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputSetActionMapConsume(string mapName, bool consume)
+    {
+        var ptr = StrToPtr(mapName);
+        try { return b->native_input_set_action_map_consume(ptr, consume ? 1 : 0) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputPushContext(string mapName)
+    {
+        var ptr = StrToPtr(mapName);
+        try { return b->native_input_push_context(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputPopContext(string mapName)
+    {
+        var ptr = StrToPtr(mapName);
+        try { return b->native_input_pop_context(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputRegisterAction(string mapName, string actionName, int valueType)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_register_action(mapPtr, actionPtr, valueType) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+        }
+    }
+
+    internal static bool Native_InputBindKey(string mapName, string actionName, KeyCode key, float scale)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_key(mapPtr, actionPtr, (int)key, scale) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+        }
+    }
+
+    internal static bool Native_InputUnregisterActionMap(string mapName)
+    {
+        var ptr = StrToPtr(mapName);
+        try { return b->native_input_unregister_action_map(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputBindKey2D(string mapName, string actionName, KeyCode key, float x, float y)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_key2d(mapPtr, actionPtr, (int)key, x, y) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+        }
+    }
+
+    internal static bool Native_InputBindMouseButton(string mapName, string actionName, MouseCode button, float scale)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_mouse_button(mapPtr, actionPtr, (int)button, scale) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+        }
+    }
+
+    internal static bool Native_InputBindMouseDelta(string mapName, string actionName, float scale)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_mouse_delta(mapPtr, actionPtr, scale) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+        }
+    }
+
+    internal static bool Native_InputBindMouseWheel(string mapName, string actionName, float scale)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_mouse_wheel(mapPtr, actionPtr, scale) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+        }
+    }
+
+    internal static Vector2f Native_InputGetMousePosition()
+    {
+        float x = 0.0f, y = 0.0f;
+        b->native_input_get_mouse_position(&x, &y);
+        return new Vector2f(x, y);
+    }
+
+    internal static Vector2f Native_InputGetMouseDelta()
+    {
+        float x = 0.0f, y = 0.0f;
+        b->native_input_get_mouse_delta(&x, &y);
+        return new Vector2f(x, y);
+    }
+
+    internal static Vector2f Native_InputGetMouseWheel()
+    {
+        float x = 0.0f, y = 0.0f;
+        b->native_input_get_mouse_wheel(&x, &y);
+        return new Vector2f(x, y);
+    }
+
+    internal static bool Native_InputIsActionDown(string actionName)
+    {
+        var ptr = StrToPtr(actionName);
+        try { return b->native_input_is_action_down(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputWasActionPressed(string actionName)
+    {
+        var ptr = StrToPtr(actionName);
+        try { return b->native_input_was_action_pressed(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputWasActionReleased(string actionName)
+    {
+        var ptr = StrToPtr(actionName);
+        try { return b->native_input_was_action_released(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static float Native_InputGetActionAxis(string actionName)
+    {
+        var ptr = StrToPtr(actionName);
+        try { return b->native_input_get_action_axis(ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static Vector2f Native_InputGetActionVector2(string actionName)
+    {
+        var ptr = StrToPtr(actionName);
+        try
+        {
+            float x = 0.0f, y = 0.0f;
+            b->native_input_get_action_vector2(ptr, &x, &y);
+            return new Vector2f(x, y);
+        }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputSetBindingInteraction(string mapName, string actionName, int interaction, float holdSeconds)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_set_binding_interaction(mapPtr, actionPtr, interaction, holdSeconds) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+        }
+    }
+
+    internal static bool Native_InputLoadActionAsset(string path)
+    {
+        var ptr = StrToPtr(path);
+        try { return b->native_input_load_action_asset(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputBindGamepadButton(string mapName, string actionName, int button, uint deviceId, float scale)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_gamepad_button(mapPtr, actionPtr, button, deviceId, scale) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static bool Native_InputBindGamepadAxis(string mapName, string actionName, int axis, uint deviceId, float scale)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_gamepad_axis(mapPtr, actionPtr, axis, deviceId, scale) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static bool Native_InputBindGamepadStick(string mapName, string actionName, int stickAxis, uint deviceId, float scale)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_bind_gamepad_stick(mapPtr, actionPtr, stickAxis, deviceId, scale) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static bool Native_InputBindComposite(string mapName, string actionName, string partsJson, uint deviceId)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        var jsonPtr = StrToPtr(partsJson);
+        try { return b->native_input_bind_composite(mapPtr, actionPtr, jsonPtr, deviceId) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+            Marshal.FreeCoTaskMem((IntPtr)jsonPtr);
+        }
+    }
+
+    internal static bool Native_InputSetBindingTapParams(string mapName, string actionName, int bindingIndex, int tapCount, float tapWindow)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_set_binding_tap_params(mapPtr, actionPtr, bindingIndex, tapCount, tapWindow) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static bool Native_InputSetBindingRepeatParams(string mapName, string actionName, int bindingIndex, float repeatDelay, float repeatRate)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_set_binding_repeat_params(mapPtr, actionPtr, bindingIndex, repeatDelay, repeatRate) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static bool Native_InputSetBindingProcessor(string mapName, string actionName, int bindingIndex, int type, float a, float bVal)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_set_binding_processor(mapPtr, actionPtr, bindingIndex, type, a, bVal) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static uint Native_InputFindActionId(string mapName, string actionName)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_find_action_id(mapPtr, actionPtr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static uint Native_InputFindActionId(string qualifiedName)
+    {
+        var ptr = StrToPtr(qualifiedName);
+        try { return b->native_input_find_action_id_q(ptr); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputIsActionDown(uint actionId) => b->native_input_is_action_down_id(actionId) != 0;
+
+    internal static bool Native_InputWasActionPressed(uint actionId) => b->native_input_was_action_pressed_id(actionId) != 0;
+
+    internal static bool Native_InputWasActionReleased(uint actionId) => b->native_input_was_action_released_id(actionId) != 0;
+
+    internal static float Native_InputGetActionAxis(uint actionId) => b->native_input_get_action_axis_id(actionId);
+
+    internal static Vector2f Native_InputGetActionVector2(uint actionId)
+    {
+        float x = 0.0f, y = 0.0f;
+        b->native_input_get_action_vector2_id(actionId, &x, &y);
+        return new Vector2f(x, y);
+    }
+
+    internal static ulong Native_InputSubscribe(string actionName, int phase)
+    {
+        var ptr = StrToPtr(actionName);
+        try { return b->native_input_subscribe(ptr, phase); }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static ulong Native_InputSubscribe(uint actionId, int phase) => b->native_input_subscribe_id(actionId, phase);
+
+    internal static void Native_InputUnsubscribe(ulong subscriptionId) => b->native_input_unsubscribe(subscriptionId);
+
+    internal static bool Native_InputSetBindingOverride(string mapName, string actionName, int bindingIndex, string bindingJson)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        var jsonPtr = StrToPtr(bindingJson);
+        try { return b->native_input_set_binding_override(mapPtr, actionPtr, bindingIndex, jsonPtr) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)mapPtr);
+            Marshal.FreeCoTaskMem((IntPtr)actionPtr);
+            Marshal.FreeCoTaskMem((IntPtr)jsonPtr);
+        }
+    }
+
+    internal static bool Native_InputClearBindingOverride(string mapName, string actionName, int bindingIndex)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_clear_binding_override(mapPtr, actionPtr, bindingIndex) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static bool Native_InputBeginRebindSession(string mapName, string actionName, int bindingIndex)
+    {
+        var mapPtr = StrToPtr(mapName);
+        var actionPtr = StrToPtr(actionName);
+        try { return b->native_input_begin_rebind_session(mapPtr, actionPtr, bindingIndex) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)mapPtr); Marshal.FreeCoTaskMem((IntPtr)actionPtr); }
+    }
+
+    internal static void Native_InputCancelRebindSession() => b->native_input_cancel_rebind_session();
+
+    internal static bool Native_InputIsRebindSessionActive() => b->native_input_is_rebind_session_active() != 0;
+
+    internal static bool Native_InputLoadConfigOverrides(string projectPath, string userPath)
+    {
+        var projectPtr = StrToPtr(projectPath);
+        var userPtr = StrToPtr(userPath);
+        try { return b->native_input_load_config_overrides(projectPtr, userPtr) != 0; }
+        finally
+        {
+            Marshal.FreeCoTaskMem((IntPtr)projectPtr);
+            Marshal.FreeCoTaskMem((IntPtr)userPtr);
+        }
+    }
+
+    internal static bool Native_InputSaveUserConfigOverrides(string userPath)
+    {
+        var ptr = StrToPtr(userPath);
+        try { return b->native_input_save_user_config_overrides(ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_InputIsGamepadConnected(uint deviceId) => b->native_input_is_gamepad_connected(deviceId) != 0;
+
+    internal static bool Native_InputIsGamepadButtonDown(uint deviceId, int button) => b->native_input_is_gamepad_button_down(deviceId, button) != 0;
+
+    internal static bool Native_InputIsGamepadButtonPressed(uint deviceId, int button) => b->native_input_is_gamepad_button_pressed(deviceId, button) != 0;
+
+    internal static bool Native_InputIsGamepadButtonReleased(uint deviceId, int button) => b->native_input_is_gamepad_button_released(deviceId, button) != 0;
+
+    internal static float Native_InputGetGamepadAxis(uint deviceId, int axis) => b->native_input_get_gamepad_axis(deviceId, axis);
 
     internal static bool Native_ComponentExists(ulong entityId, Type componentType)
     {

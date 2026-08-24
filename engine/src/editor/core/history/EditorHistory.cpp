@@ -72,14 +72,12 @@ std::string EditorHistory::redoLabel() const {
     return m_redoStack.back()->label();
 }
 
-void EditorHistory::subscribe(std::function<void()> onChange) {
-    m_observers.push_back(std::move(onChange));
+ScopedConnection EditorHistory::subscribe(std::function<void()> onChange) {
+    return ScopedConnection(m_changed, m_changed.connect(std::move(onChange)));
 }
 
 void EditorHistory::emitChanged() const {
-    for (const auto& observer : m_observers) {
-        observer();
-    }
+    m_changed.fire();
 }
 
 } // namespace cakery

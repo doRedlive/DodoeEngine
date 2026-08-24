@@ -8,6 +8,7 @@
 #include "core/document/EditorDocumentModel.h"
 #include "core/history/EditorHistory.h"
 #include "core/EditorSelection.h"
+#include "core/Signal.h"
 
 #include <cstdint>
 #include <memory>
@@ -78,6 +79,7 @@ private:
     EditorSessionState m_state = EditorSessionState::Created;
     EditorDocumentModel m_documentModel;
     EditorSelection m_selection;
+    ScopedConnection m_selectionSubscription;
     EditorHistory m_history;
     EditHistory m_editHistory{m_history, m_documentModel};
     std::uint64_t m_lastViewportSequence = 0;

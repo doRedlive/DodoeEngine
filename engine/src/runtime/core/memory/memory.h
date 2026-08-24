@@ -2,7 +2,8 @@
 
 #pragma once
 
-#include "dopch.h"
+#include "runtime/core/base.h"
+#include "runtime/core/core.h"
 #include "allocator.h"
 
 #include <atomic>

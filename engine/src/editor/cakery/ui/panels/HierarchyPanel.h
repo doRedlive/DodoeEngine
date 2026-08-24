@@ -4,6 +4,8 @@
 
 #include <QWidget>
 
+#include "core/Signal.h"
+
 #include <cstdint>
 
 class QTreeWidget;
@@ -29,6 +31,8 @@ private:
 
     EditorWorkspaceContext& m_context;
     QTreeWidget* m_tree = nullptr;
+    ScopedConnection m_documentSubscription;
+    ScopedConnection m_selectionSubscription;
 };
 
 } // namespace cakery

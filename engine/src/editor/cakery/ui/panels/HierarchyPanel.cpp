@@ -35,8 +35,8 @@ HierarchyPanel::HierarchyPanel(EditorWorkspaceContext& context, QWidget* parent)
     connect(m_tree, &QTreeWidget::itemChanged, this, &HierarchyPanel::onItemEdited);
     connect(m_tree, &QTreeWidget::customContextMenuRequested, this, &HierarchyPanel::onContextMenu);
 
-    m_context.session().documentModel().subscribe([this]() { refresh(); });
-    m_context.session().selection().subscribe([this]() { refreshSelection(); });
+    m_documentSubscription = m_context.session().documentModel().subscribe([this]() { refresh(); });
+    m_selectionSubscription = m_context.session().selection().subscribe([this]() { refreshSelection(); });
     refresh();
 }
 

@@ -24,6 +24,7 @@ namespace dodoe {
         Tileset,
         Prefab,
         Audio,
+        InputAction,
         Count
     };
 
@@ -85,7 +86,7 @@ namespace dodoe {
         [[nodiscard]] virtual Json serializeMeta() const;
         [[nodiscard]] virtual Bool deserializeMeta(const Json& json);
 
-        [[nodiscard]] static const char* assetTypeToString(AssetType type);
+        [[nodiscard]] static DODOE_API const char* assetTypeToString(AssetType type);
         [[nodiscard]] static AssetType assetTypeFromString(const String& str);
         [[nodiscard]] static const char* assetTypeToExtension(AssetType type);
         [[nodiscard]] static Bool assetTypeIsReadOnly(AssetType type);

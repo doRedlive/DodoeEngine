@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/commands/EditorCommand.h"
+#include "core/Signal.h"
 
 #include <functional>
 #include <memory>
@@ -30,7 +31,7 @@ public:
     std::string undoLabel() const;
     std::string redoLabel() const;
 
-    void subscribe(std::function<void()> onChange);
+    ScopedConnection subscribe(std::function<void()> onChange);
 
 private:
     void emitChanged() const;
@@ -39,7 +40,7 @@ private:
     std::vector<std::unique_ptr<EditorCommand>> m_redoStack;
     bool m_merging = false;
     EditorCommand* m_lastMergeable = nullptr;
-    std::vector<std::function<void()>> m_observers;
+    Signal<> m_changed;
 };
 
 } // namespace cakery

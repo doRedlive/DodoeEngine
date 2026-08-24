@@ -22,7 +22,7 @@ EditorSession::EditorSession(std::unique_ptr<IEditorBackend> backend)
     m_editHistory.changed.connect([this]() {
         notifyDocumentChanged();
     });
-    m_selection.subscribe([this]() {
+    m_selectionSubscription = m_selection.subscribe([this]() {
         if (!m_backend) {
             return;
         }

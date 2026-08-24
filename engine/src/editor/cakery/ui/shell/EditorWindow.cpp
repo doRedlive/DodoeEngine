@@ -268,7 +268,7 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     createPanels();
     startSafePointTimer();
 
-    m_context.session().history().subscribe([this]() { refreshUndoRedoActions(); });
+    m_historySubscription = m_context.session().history().subscribe([this]() { refreshUndoRedoActions(); });
     refreshUndoRedoActions();
 }
 
@@ -511,7 +511,7 @@ void EditorWindow::refreshUndoRedoActions()
     if (m_redoAction) m_redoAction->setEnabled(m_context.session().history().canRedo());
 }
 
-void EditorWindow::enterWorkspace(const QString& projectPath)
+bool EditorWindow::enterWorkspace(const QString& projectPath)
 {
     ProjectDescriptor project;
     project.rootPath = QFileInfo(projectPath).isDir()
@@ -519,7 +519,7 @@ void EditorWindow::enterWorkspace(const QString& projectPath)
         : QFileInfo(projectPath).absolutePath().toStdString();
     if (!m_context.session().openProject(project)) {
         statusBar()->showMessage(tr("Project could not be opened"), 3000);
-        return;
+        return false;
     }
     m_context.resources().setProjectRoot(std::filesystem::path(project.rootPath));
     if (m_console) {
@@ -532,6 +532,7 @@ void EditorWindow::enterWorkspace(const QString& projectPath)
     if (m_sceneSurface) {
         m_sceneSurface->attach();
     }
+    return true;
 }
 
 void EditorWindow::closeEvent(QCloseEvent* event)

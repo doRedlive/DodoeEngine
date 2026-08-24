@@ -13,6 +13,7 @@
 #include "types/material_asset.h"
 #include "types/anim2d_clip_asset.h"
 #include "types/scene_asset.h"
+#include "types/input_action_asset.h"
 
 #include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/core/async/task_scheduler.h"
@@ -115,7 +116,7 @@ namespace dodoe {
 
         void unloadAsset(const UUID& asset_id);
         void unloadAll();
-        Bool saveAsset(const UUID& asset_id) const;
+        Bool DODOE_API saveAsset(const UUID& asset_id) const;
 
         Bool loadAssets();
         [[nodiscard]] auto loadAssetsAsync() const -> std::future<void>;

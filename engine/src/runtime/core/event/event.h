@@ -29,13 +29,13 @@ namespace dodoe {
     };
     
     struct KeyPressedEvent {
-        KeyPressedEvent(const KeyCode scancode, const bool repeat) : scancode(scancode), repeat(repeat) { }
-        KeyCode scancode;
+        KeyPressedEvent(const KeyCode key, const bool repeat) : key(key), repeat(repeat) { }
+        KeyCode key;
         bool repeat;
     };
     struct KeyReleasedEvent {
-        explicit KeyReleasedEvent(const KeyCode scancode) : scancode(scancode) { }
-        KeyCode scancode;
+        explicit KeyReleasedEvent(const KeyCode key) : key(key) { }
+        KeyCode key;
     };
     
     struct MouseButtonPressedEvent {

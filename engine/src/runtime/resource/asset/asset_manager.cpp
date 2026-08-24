@@ -13,6 +13,7 @@
 #include "runtime/resource/asset/importer/model_importer.h"
 #include "runtime/resource/asset/types/animator_controller_asset.h"
 #include "runtime/resource/asset/types/tileset_asset.h"
+#include "runtime/resource/asset/types/input_action_asset.h"
 
 namespace dodoe {
 
@@ -30,6 +31,7 @@ namespace dodoe {
         const String kAnimClipExt = ".doaniclip";
         const String kAnimatorControllerExt = ".doanim";
         const String kTilesetExt = ".tsx";
+        const String kInputActionExt = ".doinput";
     }
 
     Bool AssetManager::initialize(const AssetManagerCreateInfo& info) {
@@ -94,6 +96,7 @@ namespace dodoe {
             case AssetType::AnimatorController: return create_scope<AnimatorControllerAsset>();
             case AssetType::Scene:           return create_scope<SceneAsset>();
             case AssetType::Tileset:         return create_scope<TilesetAsset>();
+            case AssetType::InputAction:     return create_scope<InputActionAsset>();
             default:                         return nullptr;
         }
     }
@@ -390,6 +393,14 @@ namespace dodoe {
                         tileset->setLoadState(AssetLoadState::Loaded);
                     }
                     m_assets[asset_id] = std::move(tileset);
+                } else if (ext == kInputActionExt) {
+                    UUID asset_id = registerAsset(source_path, AssetType::InputAction);
+                    auto input = create_scope<InputActionAsset>();
+                    input->setObjectID(ObjectID{asset_id, 0});
+                    input->setName(FileSystem::PathToNameNoExt(source_path));
+                    String abs_path(entry.path().generic_string().c_str());
+                    if (input->loadFromSource(abs_path)) input->setLoadState(AssetLoadState::Loaded);
+                    m_assets[asset_id] = std::move(input);
                 } else if (std::ranges::find(kImageExts, ext) != kImageExts.end()
                            || std::ranges::find(kModelExts, ext) != kModelExts.end()) {
                     importSourceFile(entry.path(), source_path, ext);

@@ -280,7 +280,8 @@ void TilePaintService::RegisterCommands()
                      return CommandResult::Err("width/height must be positive integers");
                  }
                  auto cmd = std::make_unique<CreateTilemapCommand>(
-                     name, static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
+                     dodoe::String(name.data(), name.size()),
+                     static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
                  auto* executed = session.history().execute(std::move(cmd), session.documentModel());
                  if (!executed) return CommandResult::Err("Failed to create tilemap");
                  session.notifyDocumentChanged();
@@ -301,9 +302,12 @@ void TilePaintService::RegisterCommands()
                  if (!scene) return CommandResult::Err("No active scene");
                  dodoe::UUID tilemapUuid;
                  if (!args.positional.empty()) {
-                     tilemapUuid = dodoe::UUID::FromString(args.positional[0]);
+                     tilemapUuid = dodoe::UUID::FromString(
+                         dodoe::String(args.positional[0].data(), args.positional[0].size()));
                  } else if (args.named.contains("tilemap")) {
-                     tilemapUuid = dodoe::UUID::FromString(args.named["tilemap"].get<std::string>());
+                     const auto tilemapId = args.named["tilemap"].get<std::string>();
+                     tilemapUuid = dodoe::UUID::FromString(
+                         dodoe::String(tilemapId.data(), tilemapId.size()));
                  }
                  if (!tilemapUuid.isValid()) return CommandResult::Err("No tilemap UUID specified");
                  auto tilemapEntity = ResolveEntity(scene, tilemapUuid);
@@ -328,7 +332,8 @@ void TilePaintService::RegisterCommands()
                      return CommandResult::Err("width/height must be positive integers");
                  }
                  auto cmd = std::make_unique<CreateTileLayerCommand>(
-                     tilemapUuid, name, static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
+                     tilemapUuid, dodoe::String(name.data(), name.size()),
+                     static_cast<dodoe::UInt32>(w), static_cast<dodoe::UInt32>(h));
                  auto* executed = session.history().execute(std::move(cmd), session.documentModel());
                  if (!executed) return CommandResult::Err("Failed to create layer");
                  session.notifyDocumentChanged();

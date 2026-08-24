@@ -54,7 +54,7 @@ namespace dodoe {
 
     class ResourceManager {
     public:
-        static ResourceManager& Self();
+        static DODOE_API ResourceManager& Self();
 
         ResourceManager(const ResourceManager&) = delete;
         ResourceManager& operator=(const ResourceManager&) = delete;
