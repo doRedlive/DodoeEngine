@@ -5,7 +5,6 @@
 #include <QMainWindow>
 
 class QAction;
-class QLabel;
 class QListWidget;
 class QTimer;
 
@@ -52,7 +51,6 @@ private:
     QAction* m_undoAction = nullptr;
     QAction* m_redoAction = nullptr;
     QTimer* m_safePointTimer = nullptr;
-    QLabel* m_statusLabel = nullptr;
     bool m_closed = false;
 };
 

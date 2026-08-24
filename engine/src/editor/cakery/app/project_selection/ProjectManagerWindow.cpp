@@ -21,6 +21,7 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     : QDialog(parent)
 {
     setWindowTitle("Cakery Engine - Project Manager");
+    setObjectName("ProjectManagerWindow");
     resize(960, 640);
     setMinimumSize(720, 480);
 
@@ -33,7 +34,7 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     titleFont.setPointSize(20);
     titleFont.setBold(true);
     titleLabel->setFont(titleFont);
-    titleLabel->setStyleSheet("color: white;");
+    titleLabel->setObjectName("projectManagerTitle");
     headerLayout->addWidget(titleLabel);
     headerLayout->addStretch();
 
@@ -48,7 +49,7 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     headerLayout->addWidget(m_searchEdit);
 
     auto* newBtn = new QPushButton("New", this);
-    newBtn->setStyleSheet("background: #1E90FF; color: white;");
+    newBtn->setObjectName("projectPrimaryButton");
     headerLayout->addWidget(newBtn);
 
     auto* importBtn = new QPushButton("Import", this);
@@ -63,12 +64,12 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     auto* splitter = new QSplitter(Qt::Horizontal, this);
 
     m_projectList = new QListWidget(this);
-    m_projectList->setStyleSheet("QListWidget { background: #1A1A1A; border: none; }");
+    m_projectList->setObjectName("projectList");
     m_projectList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     splitter->addWidget(m_projectList);
 
     m_detailPanel = new QWidget(this);
-    m_detailPanel->setStyleSheet("background: #222;");
+    m_detailPanel->setObjectName("projectDetailPanel");
     auto* detailLayout = new QVBoxLayout(m_detailPanel);
     detailLayout->setContentsMargins(24, 24, 24, 24);
 
@@ -77,36 +78,37 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     nameFont.setPointSize(18);
     nameFont.setBold(true);
     m_detailName->setFont(nameFont);
-    m_detailName->setStyleSheet("color: white;");
+    m_detailName->setObjectName("projectDetailName");
     m_detailName->setWordWrap(true);
     detailLayout->addWidget(m_detailName);
 
     m_detailDesc = new QLabel("", m_detailPanel);
-    m_detailDesc->setStyleSheet("color: #888;");
+    m_detailDesc->setObjectName("projectDetailDescription");
     m_detailDesc->setWordWrap(true);
     detailLayout->addWidget(m_detailDesc);
 
     detailLayout->addSpacing(16);
 
     m_detailPath = new QLabel("", m_detailPanel);
-    m_detailPath->setStyleSheet("color: #999;");
+    m_detailPath->setObjectName("projectDetailPath");
     m_detailPath->setWordWrap(true);
     detailLayout->addWidget(m_detailPath);
 
     m_detailDate = new QLabel("", m_detailPanel);
-    m_detailDate->setStyleSheet("color: #999;");
+    m_detailDate->setObjectName("projectDetailDate");
     detailLayout->addWidget(m_detailDate);
 
     detailLayout->addStretch();
 
     m_openBtn = new QPushButton("Open", m_detailPanel);
-    m_openBtn->setStyleSheet("background: #1E90FF; color: white; font-size: 14px;");
+    m_openBtn->setObjectName("projectPrimaryButton");
     m_openBtn->setFixedHeight(36);
     m_openBtn->setEnabled(false);
     detailLayout->addWidget(m_openBtn);
 
     auto* showInExplorerBtn = new QPushButton("Show in Explorer", m_detailPanel);
     showInExplorerBtn->setFlat(true);
+    showInExplorerBtn->setObjectName("projectFlatButton");
     detailLayout->addWidget(showInExplorerBtn);
 
     splitter->addWidget(m_detailPanel);

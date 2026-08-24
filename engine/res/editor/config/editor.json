@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "theme": "unity-dark",
+  "theme": "cakery-dark",
   "defaultLayout": "default",
   "shortcuts": {
     "edit.undo": "Ctrl+Z",

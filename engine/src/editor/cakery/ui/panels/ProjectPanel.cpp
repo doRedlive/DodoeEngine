@@ -4,14 +4,29 @@
 
 #include "cakery/ui/EditorWorkspaceContext.h"
 
+#include <QApplication>
+#include <QDir>
 #include <QFileInfo>
+#include <QIcon>
 #include <QTreeWidget>
+#include <QSize>
 #include <QVBoxLayout>
 
 #include <filesystem>
 #include <string>
 
 namespace cakery {
+
+namespace {
+
+QIcon contentBrowserIcon(const QString& fileName)
+{
+    const QString path = QDir(QApplication::applicationDirPath())
+        .filePath(QStringLiteral("resources/pictures/ContentBrowser/") + fileName);
+    return QIcon(path);
+}
+
+} // namespace
 
 ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
@@ -21,6 +36,8 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     m_tree = new QTreeWidget(this);
     m_tree->setHeaderHidden(true);
+    m_tree->setIconSize(QSize(16, 16));
+    m_tree->setIndentation(16);
     layout->addWidget(m_tree);
 
     connect(m_tree, &QTreeWidget::itemDoubleClicked, this, &ProjectPanel::onDocumentDoubleClicked);
@@ -39,6 +56,7 @@ void ProjectPanel::refresh()
 
     auto* rootItem = new QTreeWidgetItem(m_tree);
     rootItem->setText(0, QFileInfo(QString::fromStdString(root)).fileName());
+    rootItem->setIcon(0, contentBrowserIcon(QStringLiteral("DirectoryIcon.png")));
 
     std::error_code ec;
     std::filesystem::recursive_directory_iterator it(
@@ -58,6 +76,7 @@ void ProjectPanel::refresh()
         }
         auto* child = new QTreeWidgetItem(rootItem);
         child->setText(0, QString::fromStdString(path.filename().string()));
+        child->setIcon(0, contentBrowserIcon(QStringLiteral("FileIcon.png")));
         child->setData(0, Qt::UserRole, QString::fromStdString(path.string()));
     }
     rootItem->setExpanded(true);

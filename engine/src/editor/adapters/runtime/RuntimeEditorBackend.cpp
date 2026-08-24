@@ -519,7 +519,14 @@ void RuntimeEditorBackend::tickAtSafePoint()
     const float dt = std::min(0.05f, std::chrono::duration<float>(now - m_lastTick).count());
     m_lastTick = now;
 
+    if (auto* input = m_app->context().getInputManager()) {
+        input->beginFrame();
+    }
     EventSystem::Poll();
+    EventSystem::Handle();
+    if (auto* input = m_app->context().getInputManager()) {
+        input->update(dt);
+    }
     if (m_camera) {
         m_camera->update(dt);
         m_camera->commitToRenderChannel();

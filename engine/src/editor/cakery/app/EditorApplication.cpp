@@ -25,7 +25,7 @@ EditorApplication::EditorApplication(int& argc, char** argv, const QString& appl
     }
     m_resources = std::make_unique<EditorResourceLocator>(builtinEditorDir.toStdString());
 
-    const auto themePath = m_resources->resolve("editor://themes/unity-dark.qss");
+    const auto themePath = m_resources->resolve("editor://themes/cakery-dark.qss");
     QFile styleFile(QString::fromStdString(themePath.string()));
     if (styleFile.open(QFile::ReadOnly | QFile::Text)) setStyleSheet(styleFile.readAll());
 

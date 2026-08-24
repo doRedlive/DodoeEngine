@@ -67,7 +67,7 @@ std::string EditorConfig::themeName() const
     if (m_editor.contains("theme") && m_editor["theme"].is_string()) {
         return m_editor["theme"].get<std::string>();
     }
-    return "unity-dark";
+    return "cakery-dark";
 }
 
 std::string EditorConfig::defaultLayoutName() const

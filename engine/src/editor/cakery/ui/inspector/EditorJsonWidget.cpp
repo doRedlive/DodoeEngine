@@ -30,7 +30,7 @@ QDoubleSpinBox* MakeDoubleSpinBox(double value) {
 
 QLabel* MakeNonEditableLabel(const std::string& text) {
     auto* label = new QLabel(QString::fromStdString(text));
-    label->setStyleSheet(QStringLiteral("color: #777;"));
+    label->setStyleSheet(QStringLiteral("color: #A0A0A0;"));
     return label;
 }
 
@@ -63,6 +63,8 @@ void EditorJsonWidget::rebuild() {
     layout->setContentsMargins(0, 0, 0, 0);
     auto* form = new QFormLayout();
     form->setContentsMargins(0, 0, 0, 0);
+    form->setHorizontalSpacing(10);
+    form->setVerticalSpacing(5);
     form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
     for (auto it = m_value.begin(); it != m_value.end(); ++it) {
         buildField(form, it.key(), it.key(), it.value());
@@ -73,8 +75,11 @@ void EditorJsonWidget::rebuild() {
 void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, const std::string& path, const nlohmann::json& value) {
     if (value.is_object()) {
         auto* group = new QGroupBox(QString::fromStdString(key));
+        group->setObjectName(QStringLiteral("inspectorNestedGroup"));
         auto* subForm = new QFormLayout(group);
         subForm->setContentsMargins(6, 6, 6, 6);
+        subForm->setHorizontalSpacing(8);
+        subForm->setVerticalSpacing(5);
         subForm->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
         for (auto it = value.begin(); it != value.end(); ++it) {
             const std::string subPath = path + "." + it.key();
@@ -85,6 +90,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
     }
 
     QLabel* label = new QLabel(QString::fromStdString(key));
+    label->setObjectName(QStringLiteral("inspectorFieldLabel"));
 
     if (value.is_number_integer() || value.is_number_unsigned()) {
         const long long number = value.get<long long>();
@@ -144,10 +150,17 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
         }
         if (allNumbers && !value.empty()) {
             auto* container = new QWidget();
+            container->setObjectName(QStringLiteral("inspectorVector"));
             auto* hbox = new QHBoxLayout(container);
             hbox->setContentsMargins(0, 0, 0, 0);
+            hbox->setSpacing(3);
             std::vector<QDoubleSpinBox*> spins;
-            for (const auto& element : value) {
+            static constexpr const char* axisNames[] = {"X", "Y", "Z", "W"};
+            for (std::size_t index = 0; index < value.size(); ++index) {
+                const auto& element = value[index];
+                auto* axis = new QLabel(QString::fromLatin1(axisNames[index < 4 ? index : 3]), container);
+                axis->setObjectName(QStringLiteral("inspectorAxisLabel"));
+                hbox->addWidget(axis);
                 auto* spin = MakeDoubleSpinBox(element.get<double>());
                 spins.push_back(spin);
                 hbox->addWidget(spin);
