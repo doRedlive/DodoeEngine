@@ -2,6 +2,8 @@
 
 #include "render_frame_scheduler.h"
 
+#include <limits>
+
 namespace dodoe {
 
     Bool RenderFrameScheduler::initialize(const RenderFrameSchedulerCreateInfo& info) {
@@ -61,6 +63,21 @@ namespace dodoe {
         if (ctx.completion_query) {
             m_device->setEventQuery(ctx.completion_query, GfxCommandQueue::Graphics);
         }
+    }
+
+    void RenderFrameScheduler::retireCompletedFrames() {
+        for (auto& slot : m_slots) {
+            slot.command_list.beginFrame();
+            slot.transient_resource_pool.releaseAll();
+            if (slot.staging) {
+                slot.staging->reset();
+            }
+            if (slot.completion_query) {
+                m_device->resetEventQuery(slot.completion_query);
+            }
+            slot.in_flight = false;
+        }
+        m_deletion_queue.processCompleted((std::numeric_limits<UInt64>::max)());
     }
 
     void RenderFrameScheduler::deferDeleteFunc(std::function<void()> deleter) {

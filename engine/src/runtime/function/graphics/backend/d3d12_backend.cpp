@@ -383,14 +383,7 @@ namespace dodoe {
             return false;
         }
 
-        ++m_fence_value;
-        m_frame_fence_values[backbuffer_index] = m_fence_value;
-        HRESULT hr = m_graphics_queue->Signal(m_fence.Get(), m_fence_value);
-        if (FAILED(hr)) {
-            DO_ERROR("D3D12Backend::presentImage: Signal fence failed with HRESULT={:08X}", static_cast<UINT>(hr));
-            return false;
-        }
-
+        HRESULT hr = DXGI_ERROR_INVALID_CALL;
         switch (RenderSettings::GetPresentMode()) {
         case PresentMode::VSync:
             hr = m_swapchain->Present(1, 0);
@@ -406,6 +399,14 @@ namespace dodoe {
         if (hr == DXGI_ERROR_DEVICE_REMOVED) {
             HRESULT device_removed = m_device->GetDeviceRemovedReason();
             DO_ERROR("D3D12Backend::presentImage: Device removed! HRESULT={:08X}", static_cast<UINT>(device_removed));
+            return false;
+        }
+
+        ++m_fence_value;
+        m_frame_fence_values[backbuffer_index] = m_fence_value;
+        HRESULT signal_hr = m_graphics_queue->Signal(m_fence.Get(), m_fence_value);
+        if (FAILED(signal_hr)) {
+            DO_ERROR("D3D12Backend::presentImage: Signal fence failed with HRESULT={:08X}", static_cast<UINT>(signal_hr));
             return false;
         }
 
@@ -431,7 +432,10 @@ namespace dodoe {
             m_swapchain_height,
             m_backbuffer_format,
             GetSwapchainFlags());
-        DO_ASSERT(SUCCEEDED(hr), "D3D12Backend::recreateSwapchain: ResizeBuffers failed with HRESULT={:08X}", static_cast<UINT>(hr));
+        if (FAILED(hr)) {
+            DO_ERROR("D3D12Backend::recreateSwapchain: ResizeBuffers failed with HRESULT=0x{:08X}", static_cast<UINT>(hr));
+        }
+        DO_ASSERT(SUCCEEDED(hr), "D3D12Backend::recreateSwapchain: ResizeBuffers failed");
 
         createBackbufferRTVs();
         return true;

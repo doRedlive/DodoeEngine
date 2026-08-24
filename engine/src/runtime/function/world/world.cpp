@@ -102,12 +102,6 @@ namespace dodoe {
                 }
             }
 
-            for (Size_t ei = 0; ei < count; ei++) {
-                for (const auto to : graph.getEdges()[ei]) {
-                    DO_INFO("  edge {} -> {}", ei, to);
-                }
-            }
-            DO_INFO("BuildGraphForSystems: {} nodes", count);
             graph.compile();
         }
 

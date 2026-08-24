@@ -43,6 +43,7 @@ namespace dodoe {
     public:
         FrameContext beginFrame(UInt32 swapchain_image_index);
         void endFrame(FrameContext& ctx);
+        void retireCompletedFrames();
 
         void deferDeleteFunc(std::function<void()> deleter);
 

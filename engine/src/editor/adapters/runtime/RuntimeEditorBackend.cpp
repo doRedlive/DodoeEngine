@@ -643,7 +643,6 @@ void RuntimeEditorBackend::applyPendingMetrics()
 
     if (m_sceneTarget) {
         m_sceneTarget->setLogicalSize(Vector2f(static_cast<float>(pixelW), static_cast<float>(pixelH)));
-        m_sceneTarget->resize(Vector2i(pixelW, pixelH), Vector2i(pixelW, pixelH));
     }
     if (m_camera) {
         m_camera->setViewportSize(static_cast<float>(pixelW), static_cast<float>(pixelH));

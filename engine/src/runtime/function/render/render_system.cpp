@@ -111,6 +111,7 @@ namespace dodoe {
 
         if (any_window_dirty) {
             m_gfx->waitForIdle();
+            m_frame_scheduler->retireCompletedFrames();
             if (!m_gfx->recreateSwapchain(static_cast<UInt32>(cur_pixel.x),
                                           static_cast<UInt32>(cur_pixel.y))) {
                 DO_ERROR("RenderSystem failed to recreate swapchain on window resize.");

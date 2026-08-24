@@ -30,7 +30,7 @@
 #include "runtime/core/asserts.h"
 #include "runtime/core/debug/instrumentor.h"
 #include "runtime/core/memory/managed.h"
-#include "runtime/function/log/log_system.h"
+#include "runtime/core/log/log_system.h"
 
 using dodoe::Bool;
 using dodoe::Byte;
