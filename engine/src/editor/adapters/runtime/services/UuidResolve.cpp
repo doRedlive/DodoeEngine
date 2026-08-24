@@ -4,7 +4,7 @@
 
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
-#include "runtime/function/log/log_system.h"
+#include "runtime/core/log/log_system.h"
 
 namespace cakery {
 

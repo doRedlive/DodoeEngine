@@ -2,7 +2,7 @@
 
 #include "memory.h"
 #include "thread_allocator.h"
-#include "runtime/function/log/log_system.h"
+#include "runtime/core/log/log_system.h"
 
 namespace dodoe {
 

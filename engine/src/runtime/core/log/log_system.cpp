@@ -16,43 +16,13 @@ namespace dodoe {
 
         std::atomic_uint64_t s_log_sequence{0};
 
-        std::string_view moduleName(const std::string_view source_file) {
-            if (source_file.empty()) {
-                return "Unknown";
-            }
-            const Size_t separator = source_file.find_last_of("\\/");
-            const std::string_view file_name = separator == std::string_view::npos
-                ? source_file
-                : source_file.substr(separator + 1);
-            const Size_t extension = file_name.find_last_of('.');
-            return extension == std::string_view::npos ? file_name : file_name.substr(0, extension);
-        }
-
     }
-
-    const auto kLogLevelUmap = std::unordered_map<spdlog::level::level_enum, LogLevel>{
-        {spdlog::level::trace, LogLevel::Trace},
-        {spdlog::level::debug, LogLevel::Debug},
-        {spdlog::level::info, LogLevel::Info},
-        {spdlog::level::warn, LogLevel::Warn},
-        {spdlog::level::err, LogLevel::Error},
-        {spdlog::level::critical, LogLevel::Critical},
-    };
-
-    const auto kSpdlogLevelUmap = std::unordered_map<LogLevel, spdlog::level::level_enum>{
-        {LogLevel::Trace, spdlog::level::trace},
-        {LogLevel::Debug, spdlog::level::debug},
-        {LogLevel::Info, spdlog::level::info},
-        {LogLevel::Warn, spdlog::level::warn},
-        {LogLevel::Error, spdlog::level::err},
-        {LogLevel::Critical, spdlog::level::critical},
-    };
 
     template<typename Mutex>
     class MemorySink : public spdlog::sinks::base_sink<Mutex> {
     public:
         [[nodiscard]]
-        std::vector<LogMessage> getLogs() {
+        DynamicArray<LogMessage> getLogs() {
             std::lock_guard<Mutex> lock(this->mutex_);
             return m_log_msg_buffer;
         }
@@ -73,7 +43,7 @@ namespace dodoe {
             log_msg.content = String(formatted.begin(), formatted.end());
             log_msg.payload = String(msg.payload.begin(), msg.payload.end());
             log_msg.logger_name = String(msg.logger_name.begin(), msg.logger_name.end());
-            log_msg.level = kLogLevelUmap.at(msg.level);
+            log_msg.level = static_cast<LogLevel>(msg.level);
             log_msg.sequence = sequence;
 
             if (!m_log_msg_buffer.empty()) {
@@ -94,17 +64,17 @@ namespace dodoe {
         void flush_() override {}
 
     private:
-        std::vector<LogMessage> m_log_msg_buffer{};
+        DynamicArray<LogMessage> m_log_msg_buffer{};
     };
 
     using MemSinkMt = MemorySink<std::mutex>;
 
-    std::shared_ptr<spdlog::logger> Log::m_core_logger   = spdlog::stdout_color_mt("Engine");
-    std::shared_ptr<spdlog::logger> Log::m_client_logger = spdlog::stdout_color_mt("Client");
+    Ref<spdlog::logger> Log::m_core_logger   = create_ref<spdlog::logger>("Engine");
+    Ref<spdlog::logger> Log::m_client_logger = create_ref<spdlog::logger>("Client");
     LogLevel Log::m_core_level   = LogLevel::Trace;
     LogLevel Log::m_client_level = LogLevel::Debug;
-    std::shared_ptr<MemSinkMt> s_editor_console_sink = std::make_shared<MemSinkMt>();
-    std::shared_ptr<MemSinkMt> s_engine_console_sink = std::make_shared<MemSinkMt>();
+    Ref<MemSinkMt> s_editor_console_sink = create_ref<MemSinkMt>();
+    Ref<MemSinkMt> s_engine_console_sink = create_ref<MemSinkMt>();
 
     void Log::Initialize() {
         m_core_logger->set_pattern("%^[%T] [%l] %n: %v%$");
@@ -127,37 +97,29 @@ namespace dodoe {
         m_client_logger->sinks().clear();
         m_core_logger->sinks().push_back(console_sink);
         m_core_logger->sinks().push_back(core_file_sink);
-        m_core_logger->sinks().push_back(s_engine_console_sink);
+        m_core_logger->sinks().push_back(std::shared_ptr<MemSinkMt>(s_engine_console_sink.get(), [](MemSinkMt*) {}));
         m_client_logger->sinks().push_back(console_sink);
         m_client_logger->sinks().push_back(client_file_sink);
-        m_client_logger->sinks().push_back(s_editor_console_sink);
+        m_client_logger->sinks().push_back(std::shared_ptr<MemSinkMt>(s_editor_console_sink.get(), [](MemSinkMt*) {}));
         m_core_logger->flush_on(spdlog::level::debug);
         m_client_logger->flush_on(spdlog::level::debug);
     }
 
-    void Log::SetLoggerLevel(const std::shared_ptr<spdlog::logger>& logger, const LogLevel level) {
-        logger->set_level(kSpdlogLevelUmap.at(level));
+    void Log::SetLoggerLevel(const Ref<spdlog::logger>& logger, const LogLevel level) {
+        logger->set_level(static_cast<spdlog::level::level_enum>(level));
 
-        if (logger == m_core_logger) {
+        if (logger.get() == m_core_logger.get()) {
             m_core_level = level;
-        } else if (logger == m_client_logger) {
+        } else if (logger.get() == m_client_logger.get()) {
             m_client_level = level;
         }
     }
 
-    void Log::CoreLog(LogLevel level, std::string_view message, std::string_view source_file) {
-        m_core_logger->log(kSpdlogLevelUmap.at(level), "[{}] {}", moduleName(source_file), message);
-    }
-
-    void Log::ClientLog(LogLevel level, std::string_view message, std::string_view source_file) {
-        m_client_logger->log(kSpdlogLevelUmap.at(level), "[{}] {}", moduleName(source_file), message);
-    }
-
-    std::vector<LogMessage> Log::GetCoreLogs() {
+    DynamicArray<LogMessage> Log::GetCoreLogs() {
         return s_engine_console_sink->getLogs();
     }
 
-    std::vector<LogMessage> Log::GetClientLogs() {
+    DynamicArray<LogMessage> Log::GetClientLogs() {
         return s_editor_console_sink->getLogs();
     }
 
