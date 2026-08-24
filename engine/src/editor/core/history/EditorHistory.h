@@ -24,6 +24,8 @@ public:
     bool canRedo() const { return !m_redoStack.empty(); }
     std::size_t undoCount() const { return m_undoStack.size(); }
     std::size_t redoCount() const { return m_redoStack.size(); }
+    const std::vector<std::unique_ptr<EditorCommand>>& undoStack() const { return m_undoStack; }
+    const std::vector<std::unique_ptr<EditorCommand>>& redoStack() const { return m_redoStack; }
 
     void beginMerge() { m_merging = true; }
     void endMerge() { m_merging = false; m_lastMergeable = nullptr; }

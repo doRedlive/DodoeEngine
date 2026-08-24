@@ -11,7 +11,6 @@ local TagComponent = dodoe.TagComponent
 local RigidbodyBodyType = dodoe.RigidbodyBodyType
 
 local Input = dodoe.Input
-local KeyCode = dodoe.KeyCode
 
 local TestSystem  = {}
 

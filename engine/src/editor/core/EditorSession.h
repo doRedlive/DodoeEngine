@@ -11,6 +11,7 @@
 #include "core/Signal.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <utility>
@@ -46,6 +47,8 @@ public:
 
     EditorSessionState state() const;
     const ProjectDescriptor& project() const;
+    std::filesystem::path assetRoot() const;
+    bool newScene(const std::filesystem::path& directory, const std::string& name);
     BackendCapabilities capabilities() const;
     BackendStatus status() const;
     std::string diagnostic() const;

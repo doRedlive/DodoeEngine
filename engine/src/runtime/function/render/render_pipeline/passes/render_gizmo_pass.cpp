@@ -23,19 +23,19 @@ namespace dodoe {
         RenderGraphTextureHandle color_target{};
         RenderGraphBufferHandle vertex_buffer{};
         RenderGraphBufferHandle index_buffer{};
+        GizmoChannelData gizmo_data{};
     };
 
     void GizmoPass::build(RenderGraphBuilder& graph,
                            const RenderPassBuildContext& context) {
         if (!context.view.hasViewFlag(RenderView::kShowEditorPrimitives)) return;
 
-        auto& channel_data = GetGizmoChannel().get<GizmoChannelData>();
-        if (!channel_data.has_data || channel_data.commands.empty()) return;
-
         graph.addPass<GizmoPassParameters>(
             "GizmoPass",
-            RenderGraphPassFlags::Raster,
+            RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
             [&context](RenderGraphPassBuilder& pass_builder, GizmoPassParameters& parameters) {
+                const auto& channel_data = GetGizmoChannel().get<GizmoChannelData>();
+                parameters.gizmo_data = channel_data;
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 RenderGraphAttachmentInfo color_attachment{};
                 color_attachment.load_op = LoadOp::Load;
@@ -55,7 +55,10 @@ namespace dodoe {
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG GizmoVB");
-                parameters.vertex_buffer = pass_builder.write(pass_builder.createTransientBuffer(vb_desc, "GizmoVertexBuffer"));
+                parameters.vertex_buffer = pass_builder.writeBuffer(
+                    pass_builder.createTransientBuffer(vb_desc, "GizmoVertexBuffer"),
+                    RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.vertex_buffer, RenderGraphPipelineStage::VertexShader);
 
                 RenderGraphBufferDesc ib_desc{};
                 ib_desc.desc = GfxBufferDesc()
@@ -63,7 +66,10 @@ namespace dodoe {
                     .setIsIndexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG GizmoIB");
-                parameters.index_buffer = pass_builder.write(pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer"));
+                parameters.index_buffer = pass_builder.writeBuffer(
+                    pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer"),
+                    RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.index_buffer, RenderGraphPipelineStage::VertexShader);
             },
             [this](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
@@ -86,13 +92,13 @@ namespace dodoe {
                     return;
                 }
 
-                const auto& gizmo_data = GetGizmoChannel().get<GizmoChannelData>();
+                const auto& gizmo_data = parameters.gizmo_data;
                 if (gizmo_data.vertices.empty() || gizmo_data.commands.empty()) {
                     return;
                 }
 
                 GfxDepthStencilState ds;
-                ds.enableDepthTest().setDepthFunc(GfxComparisonFunc::Less).disableDepthWrite().disableStencil();
+                ds.disableDepthTest().disableDepthWrite().disableStencil();
                 GfxRasterState raster;
                 raster.setCullNone();
                 GfxRenderState render_state;

@@ -48,8 +48,8 @@ private:
     Mode m_mode = Mode::Orbit;
 
     dodoe::Vector3f m_pivot{0.0f, 0.0f, 0.0f};
-    float m_distance = 10.0f;
-    float m_yaw   = 0.0f;
+    float m_distance = 100.0f;
+    float m_yaw   = -90.0f;
     float m_pitch = 0.0f;
     float m_fov   = 60.0f;
 

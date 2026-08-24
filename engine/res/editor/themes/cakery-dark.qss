@@ -65,14 +65,40 @@ QMenu::separator {
     margin: 4px 6px;
 }
 
-QToolBar,
-QToolBar#editorToolbar {
+QToolBar {
     background: #151515;
     border: none;
     border-bottom: 1px solid #1f1f1f;
     spacing: 1px;
     padding: 3px 0;
     min-height: 30px;
+}
+
+#editorTitleBar {
+    background: #151515;
+    border: none;
+    border-bottom: 1px solid #1f1f1f;
+}
+
+#editorTitleBar QMenuBar {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+QToolBar#editorToolbar {
+    background: #242424;
+    border: none;
+    spacing: 8px;
+    padding: 4px 10px;
+    min-height: 30px;
+}
+
+#editorToolbar QLabel#editorBrand {
+    color: #E8E8E8;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 0 16px 0 4px;
 }
 
 QToolBar::separator {
@@ -88,17 +114,34 @@ QToolBar QLabel {
     padding: 0 7px 0 3px;
 }
 
-QToolBar QLabel#editorBrand {
-    color: #E8E8E8;
-    font-weight: 700;
-    padding-left: 4px;
-    padding-right: 9px;
+#editorToolbar QToolButton#runtimeToolButton {
+    border: none;
+    border-radius: 6px;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 24px;
+    padding: 0;
+    background: transparent;
+    color: #c8c8c8;
 }
 
-QToolBar#editorToolbar QToolButton {
-    min-width: 24px;
-    max-width: 24px;
-    padding: 1px 4px;
+#editorToolbar QToolButton#runtimeToolButton:hover {
+    background: #2c2c2c;
+    color: #E8E8E8;
+}
+
+#editorToolbar QToolButton#runtimeToolButton:pressed {
+    background: #383838;
+    color: #E8E8E8;
+}
+
+#editorToolbar QToolButton#runtimeToolButton:checked {
+    background: #4c83b8;
+    color: #ffffff;
+}
+
+#editorToolbar QToolButton#runtimeToolButton:disabled {
+    color: #555555;
 }
 
 QToolBar#sceneToolbar {
@@ -115,6 +158,30 @@ QToolBar#sceneToolbar QToolButton {
     max-width: 27px;
     min-height: 21px;
     padding: 1px 4px;
+}
+
+#windowMinButton,
+#windowMaxButton,
+#windowCloseButton {
+    border: none;
+    border-radius: 0;
+    min-width: 44px;
+    max-width: 44px;
+    min-height: 30px;
+    padding: 0;
+    background: transparent;
+    color: #c8c8c8;
+    font-size: 13px;
+}
+
+#windowMinButton:hover,
+#windowMaxButton:hover {
+    background: #2c2c2c;
+}
+
+#windowCloseButton:hover {
+    background: #e81123;
+    color: #ffffff;
 }
 
 QToolButton {
@@ -730,26 +797,32 @@ ads--CAutoHideSideBar {
 ads--CAutoHideTab {
     background: #242424;
     color: #a0a0a0;
-    border: none;
-    border-radius: 5px;
-    padding: 6px 9px;
+    border: 1px solid #1f1f1f;
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin: 2px;
 }
 
 ads--CAutoHideTab:hover,
 ads--CAutoHideTab[activeTab="true"] {
     background: #323232;
     color: #d8d8d8;
+    border-color: #3a3a3a;
 }
 
 ads--CAutoHideDockContainer {
     background: #242424;
-    border: 1px solid #1f1f1f;
-    border-radius: 6px;
+    border: 1px solid #3a3a3a;
+    border-radius: 10px;
+    margin: 6px;
 }
 
 ads--CAutoHideDockContainer ads--CDockAreaTitleBar {
-    background: #242424;
-    border-bottom: none;
+    background: #2a2a2a;
+    border: none;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom: 1px solid #1f1f1f;
 }
 
 /* Keeps the already-built preview free of visible close glyphs as well. */

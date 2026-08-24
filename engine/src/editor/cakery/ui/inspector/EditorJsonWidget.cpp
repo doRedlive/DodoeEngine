@@ -355,6 +355,32 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
             form->addRow(label, buildLayerField(path, value));
             return;
         }
+        if (key == "id") {
+            std::string text;
+            if (value.is_number_unsigned()) {
+                text = std::to_string(value.get<unsigned long long>());
+            } else {
+                text = std::to_string(value.get<long long>());
+            }
+            form->addRow(label, MakeNonEditableLabel(text));
+            return;
+        }
+        if (value.is_number_unsigned()) {
+            const unsigned long long number = value.get<unsigned long long>();
+            if (number > static_cast<unsigned long long>(std::numeric_limits<int>::max())) {
+                form->addRow(label, MakeNonEditableLabel(std::to_string(number)));
+                return;
+            }
+            auto* spin = new ScrubIntSpinBox();
+            spin->setRange(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+            spin->setValue(static_cast<int>(number));
+            connect(spin, &QSpinBox::editingFinished, this, [this, path, spin]() {
+                valueAt(path) = spin->value();
+                emit valueChanged();
+            });
+            form->addRow(label, spin);
+            return;
+        }
         const long long number = value.get<long long>();
         if (number >= std::numeric_limits<int>::min() && number <= std::numeric_limits<int>::max()) {
             auto* spin = new ScrubIntSpinBox();

@@ -3,6 +3,8 @@
 #include "NullEditorBackend.h"
 
 #include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
 
 namespace cakery {
 
@@ -16,6 +18,7 @@ BackendCapabilities NullEditorBackend::capabilities() const
 
 bool NullEditorBackend::openProject(const ProjectDescriptor& project)
 {
+    m_project = project;
     m_status = {BackendState::OpeningProject, "Opening Editor-Only project."};
     if (project.rootPath.empty() || !std::filesystem::is_directory(project.rootPath)) {
         m_status = {BackendState::Failed, "Project directory does not exist."};
@@ -24,6 +27,45 @@ bool NullEditorBackend::openProject(const ProjectDescriptor& project)
     m_projectPath = project.rootPath;
     m_status = {BackendState::Ready, "Editor-Only project opened. Authoring is available; scene preview and simulation are unavailable."};
     return true;
+}
+
+std::string NullEditorBackend::startScenePath() const
+{
+    std::filesystem::path projectFile(m_project.projectFile);
+    const std::filesystem::path projectRoot(m_project.rootPath);
+    if (projectFile.empty() && std::filesystem::is_directory(projectRoot)) {
+        for (const auto& entry : std::filesystem::directory_iterator(projectRoot)) {
+            if (entry.is_regular_file() && entry.path().extension().string() == ".doproj") {
+                projectFile = entry.path();
+                break;
+            }
+        }
+    }
+    if (projectFile.empty() || !std::filesystem::is_regular_file(projectFile)) {
+        return {};
+    }
+    std::ifstream fin(projectFile);
+    if (!fin.is_open()) {
+        return {};
+    }
+    nlohmann::json data;
+    try {
+        fin >> data;
+    } catch (const nlohmann::json::exception&) {
+        return {};
+    }
+    if (!data.contains("Project") || !data["Project"].is_object()) {
+        return {};
+    }
+    const auto& project_node = data["Project"];
+    if (!project_node.contains("StartSceneName") || !project_node["StartSceneName"].is_string()) {
+        return {};
+    }
+    const std::string asset_directory = project_node.contains("AssetDirectory") && project_node["AssetDirectory"].is_string()
+        ? project_node["AssetDirectory"].get<std::string>()
+        : std::string("Assets");
+    const std::string scene_name = project_node["StartSceneName"].get<std::string>();
+    return (projectRoot / asset_directory / "Scenes" / (scene_name + ".doscn")).string();
 }
 
 bool NullEditorBackend::openDocument(const std::string& documentId)

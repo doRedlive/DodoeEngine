@@ -26,6 +26,7 @@ namespace dodoe {
         friend class WindowManager;
 
         WindowProperty m_prop{};
+        Vector2i m_host_pixel_size{1, 1};
 
         GLFWwindow* m_glfw_window{nullptr};
         void* m_host_handle{nullptr};
@@ -45,6 +46,7 @@ namespace dodoe {
         void maximize();
         void restore();
         void setSize(Int width, Int height);
+        void setPixelSize(Int width, Int height);
     };
 
 } // dodoe

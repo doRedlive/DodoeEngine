@@ -102,6 +102,8 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.h

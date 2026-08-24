@@ -1,9 +1,21 @@
 // do@Redlive
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <windowsx.h>
+#endif
+
 #include "EditorWindow.h"
 
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "cakery/ui/panels/HierarchyPanel.h"
+#include "cakery/ui/panels/HistoryPanel.h"
 #include "cakery/ui/panels/InspectorPanel.h"
 #include "cakery/ui/panels/ProjectPanel.h"
 
@@ -11,12 +23,14 @@
 #include <DockManager.h>
 #include <DockWidget.h>
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QActionGroup>
 #include <QCloseEvent>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHBoxLayout>
 #include <QIcon>
 #include <QKeyEvent>
 #include <QLabel>
@@ -28,12 +42,13 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QResizeEvent>
-#include <QStatusBar>
 #include <QTimer>
 #include <QToolBar>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWheelEvent>
 #include <QWidget>
+#include <QWindow>
 
 #include <cmath>
 #include <cstdint>
@@ -244,8 +259,10 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     } else {
         setWindowTitle(QStringLiteral("%1 - Preview").arg(QApplication::applicationName()));
     }
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     resize(1440, 900);
     setMinimumSize(900, 600);
+    setStatusBar(nullptr);
 
     ads::CDockManager::setConfigFlag(ads::CDockManager::OpaqueSplitterResize, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DisableStylesheet, true);
@@ -262,6 +279,7 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     ads::CDockManager::setAutoHideConfigFlag(ads::CDockManager::AutoHideCloseOnOutsideMouseClick, true);
     m_dockManager = new ads::CDockManager(this);
 
+    createTitleBar();
     createMenus();
     createToolbar();
     createDocks();
@@ -281,7 +299,7 @@ EditorWindow::~EditorWindow()
 
 void EditorWindow::createMenus()
 {
-    auto* file = menuBar()->addMenu(tr("File"));
+    auto* file = m_menuBar->addMenu(tr("File"));
     auto* open = file->addAction(tr("Open Project..."));
     connect(open, &QAction::triggered, this, [this]() {
         const QString path = QFileDialog::getExistingDirectory(this, tr("Open Project"));
@@ -292,34 +310,27 @@ void EditorWindow::createMenus()
     save->setShortcut(QKeySequence::Save);
     connect(save, &QAction::triggered, this, [this]() {
         if (!m_context.session().documentModel().hasDocument()) {
-            statusBar()->showMessage(tr("No scene document is open"), 2500);
             return;
         }
-        if (m_context.session().saveDocument(std::string())) {
-            statusBar()->showMessage(tr("Scene saved"), 2500);
-        } else {
-            statusBar()->showMessage(tr("Scene could not be saved"), 2500);
-        }
+        m_context.session().saveDocument(std::string());
     });
 
     auto* saveAs = file->addAction(tr("Save Scene As..."));
     connect(saveAs, &QAction::triggered, this, [this]() {
         if (!m_context.session().documentModel().hasDocument()) {
-            statusBar()->showMessage(tr("No scene document is open"), 2500);
             return;
         }
         const QString path = QFileDialog::getSaveFileName(
             this, tr("Save Scene As"), QString(), tr("Dodoe Scene (*.doscn)"));
         if (!path.isEmpty()) {
             m_context.session().saveDocument(path.toStdString());
-            statusBar()->showMessage(tr("Scene saved"), 2500);
         }
     });
 
     file->addSeparator();
     file->addAction(tr("Close"), this, &QWidget::close);
 
-    auto* edit = menuBar()->addMenu(tr("Edit"));
+    auto* edit = m_menuBar->addMenu(tr("Edit"));
     m_undoAction = edit->addAction(tr("Undo"));
     m_undoAction->setShortcut(QKeySequence::Undo);
     connect(m_undoAction, &QAction::triggered, this, [this]() { m_context.session().undo(); });
@@ -327,7 +338,7 @@ void EditorWindow::createMenus()
     m_redoAction->setShortcut(QKeySequence::Redo);
     connect(m_redoAction, &QAction::triggered, this, [this]() { m_context.session().redo(); });
 
-    auto* runtime = menuBar()->addMenu(tr("Runtime"));
+    auto* runtime = m_menuBar->addMenu(tr("Runtime"));
     const bool sim = m_context.capabilities().simulation;
     auto* play = runtime->addAction(tr("Play"));
     play->setEnabled(sim);
@@ -350,51 +361,202 @@ void EditorWindow::createMenus()
         }
     }
 
-    auto* window = menuBar()->addMenu(tr("Window"));
-    window->addAction(tr("Reset Layout"), this, [this]() {
-        statusBar()->showMessage(tr("Single Scene layout is fixed in Editor-Only mode"), 2500);
-    });
+    auto* window = m_menuBar->addMenu(tr("Window"));
+    window->addAction(tr("Reset Layout"), this, []() {});
+}
+
+void EditorWindow::createTitleBar()
+{
+    m_titleBar = new QWidget(this);
+    m_titleBar->setObjectName(QStringLiteral("editorTitleBar"));
+    setMenuWidget(m_titleBar);
+    m_titleBar->installEventFilter(this);
+
+    auto* titleBarLayout = new QHBoxLayout(m_titleBar);
+    titleBarLayout->setContentsMargins(10, 2, 0, 2);
+    titleBarLayout->setSpacing(4);
+
+    m_menuBar = new QMenuBar(m_titleBar);
+    m_menuBar->installEventFilter(this);
+    titleBarLayout->addWidget(m_menuBar);
+
+    titleBarLayout->addStretch();
+
+    auto* minButton = new QToolButton(m_titleBar);
+    minButton->setObjectName(QStringLiteral("windowMinButton"));
+    minButton->setText(QStringLiteral("—"));
+    minButton->setToolTip(tr("Minimize"));
+    connect(minButton, &QToolButton::clicked, this, &QWidget::showMinimized);
+    titleBarLayout->addWidget(minButton);
+
+    m_maxButton = new QToolButton(m_titleBar);
+    m_maxButton->setObjectName(QStringLiteral("windowMaxButton"));
+    m_maxButton->setText(QStringLiteral("□"));
+    m_maxButton->setToolTip(tr("Maximize"));
+    connect(m_maxButton, &QToolButton::clicked, this, &EditorWindow::toggleMaximize);
+    titleBarLayout->addWidget(m_maxButton);
+
+    auto* closeButton = new QToolButton(m_titleBar);
+    closeButton->setObjectName(QStringLiteral("windowCloseButton"));
+    closeButton->setText(QStringLiteral("✕"));
+    closeButton->setToolTip(tr("Close"));
+    connect(closeButton, &QToolButton::clicked, this, &QWidget::close);
+    titleBarLayout->addWidget(closeButton);
 }
 
 void EditorWindow::createToolbar()
 {
-    auto* toolbar = addToolBar(tr("Editor"));
-    toolbar->setObjectName(QStringLiteral("editorToolbar"));
-    toolbar->setMovable(false);
-    toolbar->setIconSize(QSize(16, 16));
+    m_editorToolbar = addToolBar(tr("Tools"));
+    m_editorToolbar->setObjectName(QStringLiteral("editorToolbar"));
+    m_editorToolbar->setMovable(false);
 
-    auto* leadingSpacer = new QWidget(toolbar);
-    leadingSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    toolbar->addWidget(leadingSpacer);
+    auto* brand = new QLabel(QApplication::applicationName(), m_editorToolbar);
+    brand->setObjectName(QStringLiteral("editorBrand"));
+    brand->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_editorToolbar->addWidget(brand);
 
     const bool sim = m_context.capabilities().simulation;
-    struct RuntimeAction {
+    struct RuntimeButton {
         QString tooltip;
         QString icon;
         const char* command;
     };
-    const RuntimeAction runtimeActions[] = {
+    const RuntimeButton runtimeButtons[] = {
         {tr("Play"), QStringLiteral("PlayButton.png"), "play"},
         {tr("Pause"), QStringLiteral("PauseButton.png"), "pause"},
         {tr("Stop"), QStringLiteral("StopButton.png"), "stop"},
     };
-    for (const RuntimeAction& runtimeAction : runtimeActions) {
-        auto* action = toolbar->addAction(editorButtonIcon(runtimeAction.icon), QString());
-        action->setToolTip(runtimeAction.tooltip);
-        action->setEnabled(sim);
+    for (const RuntimeButton& runtimeButton : runtimeButtons) {
+        auto* button = new QToolButton(m_editorToolbar);
+        button->setObjectName(QStringLiteral("runtimeToolButton"));
+        button->setIcon(editorButtonIcon(runtimeButton.icon));
+        button->setIconSize(QSize(16, 16));
+        button->setToolTip(runtimeButton.tooltip);
+        button->setEnabled(sim);
         if (!sim) {
-            action->setToolTip(tr("Runtime scene tools are unavailable in Editor-Only mode"));
+            button->setToolTip(tr("Runtime scene tools are unavailable in Editor-Only mode"));
         }
-        connect(action, &QAction::triggered, this, [this, command = runtimeAction.command]() {
+        connect(button, &QToolButton::clicked, this, [this, command = runtimeButton.command]() {
             m_context.session().execute(EditorCommandMessage{command, ""});
         });
+        m_editorToolbar->addWidget(button);
     }
 
-    auto* trailingSpacer = new QWidget(toolbar);
+    auto* trailingSpacer = new QWidget(m_editorToolbar);
     trailingSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    toolbar->addWidget(trailingSpacer);
-
+    trailingSpacer->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_editorToolbar->addWidget(trailingSpacer);
 }
+
+void EditorWindow::toggleMaximize()
+{
+    if (isMaximized()) {
+        showNormal();
+    } else {
+        showMaximized();
+    }
+}
+
+void EditorWindow::changeEvent(QEvent* event)
+{
+    if (event->type() == QEvent::WindowStateChange && m_maxButton) {
+        m_maxButton->setText(isMaximized() ? QStringLiteral("▣") : QStringLiteral("□"));
+    }
+    QMainWindow::changeEvent(event);
+}
+
+bool EditorWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    const bool dragSurface = (watched == m_titleBar);
+    const bool menuSurface = qobject_cast<QMenuBar*>(watched) != nullptr;
+    if (event->type() == QEvent::MouseButtonPress) {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        const bool draggable = dragSurface
+            || (menuSurface && !overMenuAction(qobject_cast<QMenuBar*>(watched), mouse->pos()));
+        if (draggable && mouse->button() == Qt::LeftButton && windowHandle()) {
+            windowHandle()->startSystemMove();
+            return true;
+        }
+    } else if (event->type() == QEvent::MouseButtonDblClick) {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        const bool draggable = dragSurface
+            || (menuSurface && !overMenuAction(qobject_cast<QMenuBar*>(watched), mouse->pos()));
+        if (draggable && mouse->button() == Qt::LeftButton) {
+            toggleMaximize();
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
+}
+
+bool EditorWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
+{
+#ifdef _WIN32
+    if (eventType == "windows_generic_MSG" || eventType == "windows_dispatcher_MSG") {
+        MSG* msg = static_cast<MSG*>(message);
+        if (msg->message == WM_NCHITTEST) {
+            const int x = GET_X_LPARAM(msg->lParam);
+            const int y = GET_Y_LPARAM(msg->lParam);
+            const QPoint pos = mapFromGlobal(QPoint(x, y));
+            const int border = 6;
+            const bool left = pos.x() < border;
+            const bool right = pos.x() >= width() - border;
+            const bool top = pos.y() < border;
+            const bool bottom = pos.y() >= height() - border;
+            if (top && left) { *result = HTTOPLEFT; return true; }
+            if (top && right) { *result = HTTOPRIGHT; return true; }
+            if (bottom && left) { *result = HTBOTTOMLEFT; return true; }
+            if (bottom && right) { *result = HTBOTTOMRIGHT; return true; }
+            if (left) { *result = HTLEFT; return true; }
+            if (right) { *result = HTRIGHT; return true; }
+            if (top) { *result = HTTOP; return true; }
+            if (bottom) { *result = HTBOTTOM; return true; }
+            const bool inTopArea = (m_titleBar && m_titleBar->geometry().contains(pos));
+            if (inTopArea && !overInteractiveChild(pos)) {
+                *result = HTCAPTION;
+                return true;
+            }
+        } else if (msg->message == WM_GETMINMAXINFO) {
+            MINMAXINFO* mmi = reinterpret_cast<MINMAXINFO*>(msg->lParam);
+            RECT work{0, 0, 0, 0};
+            SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
+            mmi->ptMaxPosition.x = work.left;
+            mmi->ptMaxPosition.y = work.top;
+            mmi->ptMaxSize.x = work.right - work.left;
+            mmi->ptMaxSize.y = work.bottom - work.top;
+            *result = 0;
+            return true;
+        }
+    }
+#endif
+    return QMainWindow::nativeEvent(eventType, message, result);
+}
+
+bool EditorWindow::overInteractiveChild(const QPoint& pos) const
+{
+    QWidget* child = childAt(pos);
+    while (child && child != this) {
+        if (qobject_cast<QAbstractButton*>(child)) {
+            return true;
+        }
+        if (auto* menuBar = qobject_cast<QMenuBar*>(child)) {
+            return overMenuAction(menuBar, menuBar->mapFrom(this, pos));
+        }
+        child = child->parentWidget();
+    }
+    return false;
+}
+
+bool EditorWindow::overMenuAction(QMenuBar* menuBar, const QPoint& localPos) const
+{
+    for (QAction* action : menuBar->actions()) {
+        if (menuBar->actionGeometry(action).contains(localPos)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 void EditorWindow::createDocks()
 {
@@ -489,6 +651,13 @@ void EditorWindow::createPanels()
     terminal->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, terminal, console->dockAreaWidget());
 
+    auto* history = new ads::CDockWidget(tr("History"));
+    history->setObjectName(QStringLiteral("History"));
+    m_historyPanel = new HistoryPanel(m_context, history);
+    history->setWidget(m_historyPanel);
+    history->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, history, console->dockAreaWidget());
+
     // Establish the single-Scene authoring layout before the user resizes any dock.
     m_dockManager->setSplitterSizes(inspector->dockAreaWidget(), QList<int>{260, 820, 320});
     m_dockManager->setSplitterSizes(hierarchy->dockAreaWidget(), QList<int>{610, 240});
@@ -514,11 +683,14 @@ void EditorWindow::refreshUndoRedoActions()
 bool EditorWindow::enterWorkspace(const QString& projectPath)
 {
     ProjectDescriptor project;
-    project.rootPath = QFileInfo(projectPath).isDir()
+    const QFileInfo projectInfo(projectPath);
+    project.rootPath = projectInfo.isDir()
         ? projectPath.toStdString()
-        : QFileInfo(projectPath).absolutePath().toStdString();
+        : projectInfo.absolutePath().toStdString();
+    if (projectInfo.isFile()) {
+        project.projectFile = projectPath.toStdString();
+    }
     if (!m_context.session().openProject(project)) {
-        statusBar()->showMessage(tr("Project could not be opened"), 3000);
         return false;
     }
     m_context.resources().setProjectRoot(std::filesystem::path(project.rootPath));
@@ -528,11 +700,27 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
     if (m_projectPanel) {
         m_projectPanel->refresh();
     }
-    statusBar()->showMessage(tr("Project opened"), 2500);
     if (m_sceneSurface) {
         m_sceneSurface->attach();
     }
     return true;
+}
+
+void EditorWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+#ifdef _WIN32
+    using DwmSetWindowAttributeFn = HRESULT(WINAPI*)(HWND, DWORD, LPCVOID, DWORD);
+    static HMODULE dwmModule = LoadLibraryW(L"dwmapi.dll");
+    if (dwmModule) {
+        auto setWindowAttribute = reinterpret_cast<DwmSetWindowAttributeFn>(
+            GetProcAddress(dwmModule, "DwmSetWindowAttribute"));
+        if (setWindowAttribute) {
+            const DWORD cornerPreference = 2;
+            setWindowAttribute(reinterpret_cast<HWND>(winId()), 33, &cornerPreference, sizeof(cornerPreference));
+        }
+    }
+#endif
 }
 
 void EditorWindow::closeEvent(QCloseEvent* event)

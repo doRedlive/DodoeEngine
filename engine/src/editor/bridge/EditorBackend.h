@@ -32,6 +32,7 @@ struct BackendStatus {
 
 struct ProjectDescriptor {
     std::string rootPath;
+    std::string projectFile;
 };
 
 struct SceneSurfaceDescriptor {
@@ -65,6 +66,7 @@ public:
     virtual BackendCapabilities capabilities() const = 0;
     virtual bool openProject(const ProjectDescriptor& project) = 0;
     virtual bool openDocument(const std::string& documentId) = 0;
+    virtual std::string startScenePath() const = 0;
     virtual bool execute(const EditorCommandMessage& command) = 0;
     virtual void setEventCallback(std::function<void(const BackendEventMessage&)> callback) = 0;
     virtual bool attachSceneSurface(const SceneSurfaceDescriptor& surface) = 0;

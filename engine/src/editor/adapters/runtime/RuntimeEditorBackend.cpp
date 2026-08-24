@@ -33,6 +33,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 
 using namespace dodoe;
 
@@ -324,8 +325,19 @@ bool RuntimeEditorBackend::openProject(const ProjectDescriptor& project)
     m_project = project;
 
     TaskScheduler::Self();
-    Project::Load(project.rootPath);
-    if (!Project::ActiveProject()) {
+    std::filesystem::path projectFile(project.projectFile);
+    if (projectFile.empty()) {
+        const std::filesystem::path projectRoot(project.rootPath);
+        if (std::filesystem::is_directory(projectRoot)) {
+            for (const auto& entry : std::filesystem::directory_iterator(projectRoot)) {
+                if (entry.is_regular_file() && entry.path().extension().string() == ".doproj") {
+                    projectFile = entry.path();
+                    break;
+                }
+            }
+        }
+    }
+    if (projectFile.empty() || !Project::Load(projectFile)) {
         m_state = BackendState::Failed;
         m_diagnostic = "Runtime backend: project could not be loaded.";
         return false;
@@ -334,6 +346,16 @@ bool RuntimeEditorBackend::openProject(const ProjectDescriptor& project)
     m_state = BackendState::OpeningProject;
     m_diagnostic = "Runtime backend: project loaded, preview boots on surface attach.";
     return true;
+}
+
+std::string RuntimeEditorBackend::startScenePath() const
+{
+    const auto active_project = Project::ActiveProject();
+    if (!active_project || active_project->config().start_scene_name.empty()) {
+        return {};
+    }
+    return (Project::AssetDirectory() / "Scenes" /
+            (active_project->config().start_scene_name + ".doscn")).string();
 }
 
 bool RuntimeEditorBackend::openDocument(const std::string& documentId)
@@ -465,6 +487,13 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
         return true;
     }
 
+    if (command.name == "asset.refresh") {
+        if (m_assetDatabase) {
+            m_assetDatabase->refresh();
+        }
+        return true;
+    }
+
     return true;
 }
 
@@ -485,6 +514,9 @@ bool RuntimeEditorBackend::attachSceneSurface(const SceneSurfaceDescriptor& surf
     applyPendingMetrics();
     if (m_hasDocument && !reconcileScene(m_document)) {
         return false;
+    }
+    if (m_camera) {
+        m_camera->commitToRenderChannel();
     }
     return true;
 }
@@ -646,15 +678,19 @@ void RuntimeEditorBackend::applyPendingMetrics()
         return;
     }
 
+    const int logicalW = m_pending.logicalWidth;
+    const int logicalH = m_pending.logicalHeight;
     const int pixelW = m_pending.pixelWidth;
     const int pixelH = m_pending.pixelHeight;
-    window->setSize(pixelW, pixelH);
+    window->setSize(logicalW, logicalH);
+    window->setPixelSize(pixelW, pixelH);
 
     if (m_sceneTarget) {
-        m_sceneTarget->setLogicalSize(Vector2f(static_cast<float>(pixelW), static_cast<float>(pixelH)));
+        m_sceneTarget->setLogicalSize(Vector2f(static_cast<float>(logicalW), static_cast<float>(logicalH)));
+        m_sceneTarget->resize(Vector2i(logicalW, logicalH), Vector2i(pixelW, pixelH));
     }
     if (m_camera) {
-        m_camera->setViewportSize(static_cast<float>(pixelW), static_cast<float>(pixelH));
+        m_camera->setViewportSize(static_cast<float>(logicalW), static_cast<float>(logicalH));
     }
     m_hasPendingMetrics = false;
 }

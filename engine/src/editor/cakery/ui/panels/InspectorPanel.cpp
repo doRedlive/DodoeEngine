@@ -155,6 +155,9 @@ void InspectorPanel::refresh()
 
     for (std::size_t i = 0; i < entity->nativeComponents.size(); ++i) {
         const EditorComponent& component = entity->nativeComponents[i];
+        if (component.typeName == "IDComponent") {
+            continue;
+        }
         const QString componentName = inspectorSectionName(QString::fromStdString(component.typeName));
         const bool expanded = (i < m_componentExpanded.size()) ? m_componentExpanded[i] : true;
         auto* section = new QWidget(this);

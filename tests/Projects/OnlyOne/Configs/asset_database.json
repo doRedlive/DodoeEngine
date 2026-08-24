@@ -9243,6 +9243,19 @@
             "tags": [],
             "type": "Texture"
         },
+        "15667484270109913121": {
+            "asset_file_mtime": 0,
+            "asset_id": 15667484270109913121,
+            "dependencies": [],
+            "import_signature": 1706034583,
+            "is_builtin": false,
+            "name": "grm",
+            "source_file_mtime": 13413777352,
+            "source_path": "Pictures/grm.jpg",
+            "sub_object_id": 0,
+            "tags": [],
+            "type": "Texture"
+        },
         "15672378449481644281": {
             "asset_file_mtime": 0,
             "asset_id": 15672378449481644281,

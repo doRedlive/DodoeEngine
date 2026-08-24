@@ -19,7 +19,7 @@ public class GameControllerSystem : CakeSystem
 
     public override void OnUpdate()
     {
-
+        Debug.Log("Update");
     }
 
     public override void OnDestroy()

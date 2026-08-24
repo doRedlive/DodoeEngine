@@ -5,6 +5,7 @@
 #include "core/document/EditorDocumentSerializer.h"
 
 #include <cstdlib>
+#include <fstream>
 #include <vector>
 
 namespace cakery {
@@ -58,6 +59,10 @@ bool EditorSession::openProject(ProjectDescriptor project)
               backendCapabilities.scenePreview || backendCapabilities.simulation
         ? EditorSessionState::Ready
         : EditorSessionState::Degraded;
+    const std::string startScenePath = m_backend->startScenePath();
+    if (!startScenePath.empty()) {
+        openDocument(startScenePath);
+    }
     return true;
 }
 
@@ -162,6 +167,78 @@ EditorSessionState EditorSession::state() const
 const ProjectDescriptor& EditorSession::project() const
 {
     return m_project;
+}
+
+std::filesystem::path EditorSession::assetRoot() const
+{
+    if (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded) {
+        return {};
+    }
+    std::filesystem::path projectFile(m_project.projectFile);
+    if (projectFile.empty()) {
+        const std::filesystem::path root(m_project.rootPath);
+        std::error_code ec;
+        for (auto it = std::filesystem::directory_iterator(root, ec);
+             it != std::filesystem::directory_iterator(); it.increment(ec)) {
+            if (ec) {
+                ec.clear();
+                continue;
+            }
+            if (it->is_regular_file(ec) && it->path().extension().string() == ".doproj") {
+                projectFile = it->path();
+                break;
+            }
+        }
+    }
+    std::filesystem::path projectDir = projectFile.parent_path();
+    if (projectDir.empty()) {
+        projectDir = m_project.rootPath;
+    }
+    std::string assetDirName = "Assets";
+    if (!projectFile.empty()) {
+        std::ifstream file(projectFile);
+        if (file.is_open()) {
+            try {
+                nlohmann::json root;
+                file >> root;
+                if (root.contains("Project") && root["Project"].is_object() &&
+                    root["Project"].contains("AssetDirectory") &&
+                    root["Project"]["AssetDirectory"].is_string()) {
+                    assetDirName = root["Project"]["AssetDirectory"].get<std::string>();
+                }
+            } catch (const nlohmann::json::exception&) {
+            }
+        }
+    }
+    return projectDir / assetDirName;
+}
+
+bool EditorSession::newScene(const std::filesystem::path& directory, const std::string& name)
+{
+    if (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded) {
+        return false;
+    }
+    if (directory.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(directory, ec);
+    if (ec) {
+        return false;
+    }
+    const std::string sceneName = name.empty() ? std::string("New Scene") : name;
+    std::filesystem::path path = directory / (sceneName + ".doscn");
+    int counter = 1;
+    while (std::filesystem::exists(path)) {
+        path = directory / (sceneName + " " + std::to_string(counter) + ".doscn");
+        ++counter;
+    }
+    EditorDocument blank;
+    blank.name = sceneName;
+    if (!EditorDocumentSerializer::save(blank, path)) {
+        return false;
+    }
+    return openDocument(path.string());
 }
 
 BackendCapabilities EditorSession::capabilities() const

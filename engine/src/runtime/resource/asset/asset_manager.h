@@ -124,7 +124,7 @@ namespace dodoe {
 
         [[nodiscard]] Bool isAssetDirty(const UUID& asset_id) const;
         Bool reimportAsset(const UUID& asset_id);
-        Bool refreshAssets();
+        Bool DODOE_API refreshAssets();
 
         template<typename T>
         [[nodiscard]] DynamicArray<AssetHandle<T>> getAssets() const {

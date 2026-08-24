@@ -10,6 +10,7 @@ void AssetDatabase::refresh() {
 
     auto* am = dodoe::ResourceManager::Self().getAssetManager();
     if (!am) return;
+    if (!am->refreshAssets()) return;
     auto* db = am->getDatabase();
     if (!db) return;
 
