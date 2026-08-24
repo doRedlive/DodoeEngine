@@ -94,7 +94,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
             spin->setValue(static_cast<int>(number));
             connect(spin, &QSpinBox::editingFinished, this, [this, path, spin]() {
                 valueAt(path) = spin->value();
-                emit valueChanged(m_value);
+                emit valueChanged();
             });
             form->addRow(label, spin);
         } else {
@@ -107,7 +107,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
         auto* spin = MakeDoubleSpinBox(value.get<double>());
         connect(spin, &QDoubleSpinBox::editingFinished, this, [this, path, spin]() {
             valueAt(path) = spin->value();
-            emit valueChanged(m_value);
+            emit valueChanged();
         });
         form->addRow(label, spin);
         return;
@@ -118,7 +118,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
         check->setChecked(value.get<bool>());
         connect(check, &QCheckBox::toggled, this, [this, path, check](bool on) {
             valueAt(path) = on;
-            emit valueChanged(m_value);
+            emit valueChanged();
         });
         form->addRow(label, check);
         return;
@@ -128,7 +128,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
         auto* edit = new QLineEdit(QString::fromStdString(value.get<std::string>()));
         connect(edit, &QLineEdit::editingFinished, this, [this, path, edit]() {
             valueAt(path) = edit->text().toStdString();
-            emit valueChanged(m_value);
+            emit valueChanged();
         });
         form->addRow(label, edit);
         return;
@@ -159,7 +159,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
                         array.push_back(s->value());
                     }
                     valueAt(path) = array;
-                    emit valueChanged(m_value);
+                    emit valueChanged();
                 });
             }
             form->addRow(label, container);

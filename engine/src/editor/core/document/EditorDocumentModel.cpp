@@ -40,7 +40,7 @@ bool EditorDocumentModel::save(const std::filesystem::path& path) const {
 
 void EditorDocumentModel::close() {
     m_document = EditorDocument{};
-    m_path = {};
+    m_path.clear();
     m_hasDocument = false;
     notifyChanged();
 }
@@ -139,7 +139,7 @@ void EditorDocumentModel::replaceDocument(const EditorDocument& document) {
 void EditorDocumentModel::newScene(const std::string& name) {
     m_document = EditorDocument{};
     m_document.name = name.empty() ? std::string("Untitled") : name;
-    m_path = {};
+    m_path.clear();
     m_hasDocument = true;
     notifyChanged();
 }

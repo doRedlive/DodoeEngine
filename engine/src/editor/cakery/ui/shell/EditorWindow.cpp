@@ -64,7 +64,7 @@ public:
     {
         if (m_attached) return;
         SceneSurfaceDescriptor surface;
-        surface.nativeHandle = reinterpret_cast<std::uintptr_t>(winId());
+        surface.nativeHandle = static_cast<std::uintptr_t>(winId());
         m_attached = m_context.session().attachSceneSurface(surface);
         publishMetrics();
     }
@@ -190,7 +190,7 @@ private:
         metrics.devicePixelRatio = dpr;
         metrics.pixelWidth = static_cast<int>(std::lround(width() * dpr));
         metrics.pixelHeight = static_cast<int>(std::lround(height() * dpr));
-        metrics.nativeHandle = reinterpret_cast<std::uintptr_t>(winId());
+        metrics.nativeHandle = static_cast<std::uintptr_t>(winId());
         metrics.sequence = ++m_sequence;
         m_context.session().submitViewportMetrics(metrics);
     }

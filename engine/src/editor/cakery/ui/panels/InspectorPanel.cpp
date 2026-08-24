@@ -112,8 +112,8 @@ void InspectorPanel::refresh()
         auto* groupLayout = new QVBoxLayout(group);
 
         auto* editor = new EditorJsonWidget(component.value, group);
-        connect(editor, &EditorJsonWidget::valueChanged, this, [this, uuid, i](const nlohmann::json& value) {
-            commitComponentValue(uuid, i, value);
+        connect(editor, &EditorJsonWidget::valueChanged, this, [this, uuid, i, editor]() {
+            commitComponentValue(uuid, i, editor->value());
         });
         groupLayout->addWidget(editor);
 

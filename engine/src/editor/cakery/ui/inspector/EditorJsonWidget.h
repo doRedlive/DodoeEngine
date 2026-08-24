@@ -21,7 +21,7 @@ public:
     const nlohmann::json& value() const { return m_value; }
 
 signals:
-    void valueChanged(const nlohmann::json& value);
+    void valueChanged();
 
 private:
     void rebuild();
