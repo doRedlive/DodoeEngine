@@ -2,11 +2,14 @@
 .vs/
 # .vscode/
 .claude/
+.codex/
 bin/
 build/
 build_check/
 obj/
 _generated/
+
+DodoeProfile.json
 
 **./.DS_Store
 .DS_Store

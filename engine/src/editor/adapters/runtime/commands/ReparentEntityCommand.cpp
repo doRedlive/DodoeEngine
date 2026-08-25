@@ -92,7 +92,7 @@ void ReparentEntityCommand::doReparent(EditorDocumentModel& model, dodoe::UUID n
 
 std::string ReparentEntityCommand::label() const
 {
-    return "Reparent Entity";
+    return "Reparent GameObject";
 }
 
 void RegisterReparentCommand()
@@ -103,9 +103,9 @@ void RegisterReparentCommand()
 
     auto& reg = CommandRegistry::self();
 
-    reg.add({"entity.reparent", "Change entity parent",
+    reg.add({"entity.reparent", "Change GameObject parent",
              "entity.reparent <uuid> <parent_uuid>",
-             {{"uuid", "uuid", "Entity UUID", true},
+             {{"uuid", "uuid", "GameObject UUID", true},
               {"parent", "uuid", "New parent UUID", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
@@ -119,7 +119,7 @@ void RegisterReparentCommand()
                  auto* scene = ActiveScene();
                  if (!scene) return CommandResult::Err("No active scene");
                  auto child = ResolveEntity(scene, childUuid);
-                 if (!child.valid()) return CommandResult::Err("Child entity not found");
+                 if (!child.valid()) return CommandResult::Err("Child GameObject not found");
                  dodoe::UUID oldParent;
                  if (child.hasComponent<dodoe::HierarchyComponent>()) {
                      oldParent = child.getComponent<dodoe::HierarchyComponent>().parent_uuid;

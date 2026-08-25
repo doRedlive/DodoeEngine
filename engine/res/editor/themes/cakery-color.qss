@@ -1,0 +1,34 @@
+/* Color-only override. Layout, typography, spacing, and geometry come from cakery-dark.qss. */
+QWidget { background: #282a36; color: #f8f8f2; }
+QMainWindow, #editorTitleBar, QMenuBar, QToolBar { background: #21222c; color: #f8f8f2; border-color: #44475a; }
+QMenu, QComboBox QAbstractItemView { background: #282a36; color: #f8f8f2; border-color: #44475a; }
+QMenu::item:selected, QMenuBar::item:selected, QTreeWidget::item:selected, QListWidget::item:selected, QTableWidget::item:selected { background: #44475a; color: #f8f8f2; }
+QToolButton, QPushButton { background: #343746; color: #f8f8f2; border-color: #44475a; }
+QToolButton:hover, QPushButton:hover { background: #44475a; border-color: #bd93f9; }
+QToolButton:pressed, QPushButton:pressed { background: #6272a4; }
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #21222c; color: #f8f8f2; border-color: #44475a; selection-background-color: #bd93f9; }
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border-color: #bd93f9; }
+QTreeWidget, QListWidget, QTableWidget, QTreeView, QListView, QScrollArea { background: #282a36; color: #f8f8f2; }
+QTreeWidget::item:hover, QListWidget::item:hover { background: #343746; }
+ads--CDockWidget { background: #282a36; border-color: #44475a; }
+ads--CDockAreaTabBar, ads--CDockAreaTitleBar { background: #21222c; border-color: #44475a; }
+ads--CAutoHideDockContainer, ads--CAutoHideDockContainer #autoHideDockArea, ads--CAutoHideDockContainer ads--CDockWidget { background: #282a36; }
+ads--CAutoHideDockContainer { border-color: #44475a; }
+ads--CAutoHideDockContainer ads--CDockAreaTitleBar { background: #21222c; border-bottom-color: #44475a; }
+QWidget#inspectorSelectionBar, QWidget#inspectorSectionHeaderRow, QGroupBox { background: #21222c; border-color: #44475a; }
+QWidget#inspectorSectionBody QDoubleSpinBox, QWidget#inspectorSectionBody QSpinBox, QWidget#inspectorSectionBody QLineEdit, QWidget#inspectorBoolField, QWidget#inspectorColorField, QComboBox#inspectorLayerField, QToolButton#inspectorMaskField { background: #21222c; border-color: #44475a; }
+QLineEdit#consoleSearch, QLineEdit#historySearch, QComboBox#consoleLevelFilter, QListWidget#consoleList, QListWidget#historyList { background: #21222c; border-color: #44475a; }
+QToolButton#consoleToolButton, QToolButton#historyToolButton { background: #343746; border-color: #44475a; }
+QToolButton#inspectorAssetReference, QLabel#inspectorAssetPreview, QListWidget#projectAssetGrid { background: #21222c; border-color: #44475a; }
+QToolButton#inspectorAssetReference:hover { border-color: #bd93f9; } QListWidget#projectAssetGrid::item:selected { background: #44475a; }
+QToolButton#inspectorAssetReferenceClear, QFrame#inspectorAssetPicker QLineEdit, QFrame#inspectorAssetPicker QListWidget { background: #21222c; border-color: #44475a; }
+QFrame#inspectorAssetPicker QListWidget::item:selected { background: #44475a; }
+QScrollBar:vertical, QScrollBar:horizontal { background: #282a36; } QScrollBar::handle:vertical, QScrollBar::handle:horizontal { background: #6272a4; border-color: #282a36; }
+#editorToolbar QToolButton#runtimeToolButton[runtimeCommand="play"], QToolBar#sceneToolbar QToolButton[sceneTool="translate"] { color: #50fa7b; }
+#editorToolbar QToolButton#runtimeToolButton[runtimeCommand="pause"], QToolBar#sceneToolbar QToolButton[sceneTool="rotate"] { color: #f1fa8c; }
+#editorToolbar QToolButton#runtimeToolButton[runtimeCommand="stop"] { color: #ff79c6; } QToolBar#sceneToolbar QToolButton[sceneTool="scale"] { color: #8be9fd; }
+#editorToolbar QToolButton#runtimeToolButton:checked, QCheckBox::indicator:checked { background: #bd93f9; border-color: #bd93f9; color: #282a36; }
+QLabel#inspectorAxisLabel[axis="x"] { color: #e84d5b; } QLabel#inspectorAxisLabel[axis="y"] { color: #58b96f; } QLabel#inspectorAxisLabel[axis="z"] { color: #4d9de0; } QLabel#inspectorAxisLabel[axis="w"] { color: #b588d8; }
+QSlider::groove:horizontal { background: #44475a; } QSlider::handle:horizontal { background: #bd93f9; }
+QStatusBar { background: #21222c; color: #6272a4; border-color: #44475a; }
+QPushButton#projectPrimaryButton { background: #bd93f9; color: #282a36; border-color: #bd93f9; } QPushButton#projectPrimaryButton:hover { background: #d6b7ff; }

@@ -3,12 +3,13 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QByteArray>
+#include <QString>
 
 #include "core/Signal.h"
 
 class QAction;
 class QEvent;
-class QListWidget;
 class QMenuBar;
 class QPoint;
 class QShowEvent;
@@ -24,6 +25,7 @@ class CDockWidget;
 namespace cakery {
 
 class EditorWorkspaceContext;
+class ConsolePanel;
 class HierarchyPanel;
 class HistoryPanel;
 class InspectorPanel;
@@ -53,7 +55,11 @@ private:
     void createPanels();
     void startSafePointTimer();
     void refreshUndoRedoActions();
+    void resetLayout();
+    void restoreLayoutState();
+    void saveLayoutState() const;
     void toggleMaximize();
+    void updateMaximizeButton();
     bool overInteractiveChild(const QPoint& pos) const;
     bool overMenuAction(QMenuBar* menuBar, const QPoint& localPos) const;
 
@@ -65,7 +71,7 @@ private:
     HistoryPanel* m_historyPanel = nullptr;
     InspectorPanel* m_inspector = nullptr;
     ProjectPanel* m_projectPanel = nullptr;
-    QListWidget* m_console = nullptr;
+    ConsolePanel* m_console = nullptr;
     QWidget* m_titleBar = nullptr;
     QToolBar* m_editorToolbar = nullptr;
     QMenuBar* m_menuBar = nullptr;
@@ -74,6 +80,8 @@ private:
     QAction* m_redoAction = nullptr;
     QTimer* m_safePointTimer = nullptr;
     bool m_closed = false;
+    QByteArray* m_defaultLayoutState = nullptr;
+    QString m_layoutStatePath;
     ScopedConnection m_historySubscription;
 };
 

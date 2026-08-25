@@ -13,7 +13,11 @@
 
 #include "EditorWindow.h"
 
+#include "cakery/app/EditorApplication.h"
+#include "services/EditorConfig.h"
 #include "cakery/ui/EditorWorkspaceContext.h"
+#include "cakery/ui/EditorIcons.h"
+#include "cakery/ui/panels/ConsolePanel.h"
 #include "cakery/ui/panels/HierarchyPanel.h"
 #include "cakery/ui/panels/HistoryPanel.h"
 #include "cakery/ui/panels/InspectorPanel.h"
@@ -27,7 +31,9 @@
 #include <QApplication>
 #include <QActionGroup>
 #include <QCloseEvent>
+#include <QByteArray>
 #include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -38,13 +44,17 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QPixmap>
 #include <QResizeEvent>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
+#include <QStandardPaths>
 #include <QVBoxLayout>
 #include <QWheelEvent>
 #include <QWidget>
@@ -52,8 +62,10 @@
 
 #include <cmath>
 #include <cstdint>
+#include <array>
 #include <filesystem>
 #include <string>
+#include <utility>
 
 namespace cakery {
 
@@ -66,19 +78,34 @@ int toCameraButton(Qt::MouseButton button)
     return 2;
 }
 
-QIcon editorButtonIcon(const QString& fileName)
+#ifdef _WIN32
+void UpdateWindowsFrameAttributes(QWidget* widget)
 {
-    const QString path = QDir(QApplication::applicationDirPath())
-        .filePath(QStringLiteral("resources/pictures/Buttons/") + fileName);
-    return QIcon(path);
-}
+    using DwmSetWindowAttributeFn = HRESULT(WINAPI*)(HWND, DWORD, LPCVOID, DWORD);
+    constexpr DWORD kDwmWindowCornerPreference = 33;
+    constexpr DWORD kDwmBorderColor = 34;
+    constexpr DWORD kDwmCornerDoNotRound = 1;
+    constexpr DWORD kDwmCornerRound = 2;
+    constexpr DWORD kDwmColorNone = 0xFFFFFFFE;
 
-QIcon editorToolIcon(const QString& fileName)
-{
-    const QString path = QDir(QApplication::applicationDirPath())
-        .filePath(QStringLiteral("resources/editor/icons/") + fileName);
-    return QIcon(path);
+    static HMODULE dwmModule = LoadLibraryW(L"dwmapi.dll");
+    if (!dwmModule) {
+        return;
+    }
+    const auto setWindowAttribute = reinterpret_cast<DwmSetWindowAttributeFn>(
+        GetProcAddress(dwmModule, "DwmSetWindowAttribute"));
+    if (!setWindowAttribute) {
+        return;
+    }
+
+    const bool edgeToEdge = widget->isMaximized() || widget->isFullScreen();
+    const DWORD cornerPreference = edgeToEdge ? kDwmCornerDoNotRound : kDwmCornerRound;
+    const DWORD borderColor = edgeToEdge ? kDwmColorNone : RGB(21, 21, 21);
+    const HWND window = reinterpret_cast<HWND>(widget->winId());
+    setWindowAttribute(window, kDwmWindowCornerPreference, &cornerPreference, sizeof(cornerPreference));
+    setWindowAttribute(window, kDwmBorderColor, &borderColor, sizeof(borderColor));
 }
+#endif
 
 } // namespace
 
@@ -99,8 +126,18 @@ public:
         if (m_attached) return;
         SceneSurfaceDescriptor surface;
         surface.nativeHandle = static_cast<std::uintptr_t>(winId());
+        const float dpr = static_cast<float>(devicePixelRatioF());
+        surface.logicalWidth = width();
+        surface.logicalHeight = height();
+        surface.devicePixelRatio = dpr;
+        surface.pixelWidth = static_cast<int>(std::lround(width() * dpr));
+        surface.pixelHeight = static_cast<int>(std::lround(height() * dpr));
+        // The backend must see the first real surface size before creating its
+        // host swapchain; otherwise the first frame is built at a fallback size.
+        m_context.session().submitViewportMetrics(ViewportMetrics{
+            surface.logicalWidth, surface.logicalHeight, surface.devicePixelRatio,
+            surface.pixelWidth, surface.pixelHeight, surface.nativeHandle, ++m_sequence});
         m_attached = m_context.session().attachSceneSurface(surface);
-        publishMetrics();
     }
 
 protected:
@@ -134,13 +171,13 @@ protected:
         painter.setFont(titleFont);
         painter.setPen(QColor("#E8E8E8"));
         painter.drawText(rect().adjusted(20, height() / 2 - 34, -20, 0),
-                         Qt::AlignHCenter | Qt::AlignTop, "Scene");
+                         Qt::AlignHCenter | Qt::AlignTop, tr("Scene"));
 
         painter.setFont(QFont());
         painter.setPen(QColor("#A0A0A0"));
         painter.drawText(rect().adjusted(20, height() / 2 + 2, -20, 0),
                          Qt::AlignHCenter | Qt::AlignTop,
-                         "Scene preview unavailable in Editor-Only");
+                         tr("Scene preview unavailable in Editor-Only"));
     }
 
     void mousePressEvent(QMouseEvent* event) override
@@ -284,6 +321,12 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     createToolbar();
     createDocks();
     createPanels();
+    m_defaultLayoutState = new QByteArray(m_dockManager->saveState(1));
+    const QString safeName = QApplication::applicationName().toLower().replace(
+        QRegularExpression(QStringLiteral("[^a-z0-9]+")), QStringLiteral("_"));
+    m_layoutStatePath = QDir(QStandardPaths::writableLocation(
+        QStandardPaths::AppDataLocation)).filePath(safeName + QStringLiteral("_layout.state"));
+    restoreLayoutState();
     startSafePointTimer();
 
     m_historySubscription = m_context.session().history().subscribe([this]() { refreshUndoRedoActions(); });
@@ -295,6 +338,7 @@ EditorWindow::~EditorWindow()
     if (m_safePointTimer) {
         m_safePointTimer->stop();
     }
+    delete m_defaultLayoutState;
 }
 
 void EditorWindow::createMenus()
@@ -328,7 +372,8 @@ void EditorWindow::createMenus()
     });
 
     file->addSeparator();
-    file->addAction(tr("Close"), this, &QWidget::close);
+    auto* close = file->addAction(tr("Close"));
+    connect(close, &QAction::triggered, this, &QWidget::close);
 
     auto* edit = m_menuBar->addMenu(tr("Edit"));
     m_undoAction = edit->addAction(tr("Undo"));
@@ -362,7 +407,65 @@ void EditorWindow::createMenus()
     }
 
     auto* window = m_menuBar->addMenu(tr("Window"));
-    window->addAction(tr("Reset Layout"), this, []() {});
+    auto* reset = window->addAction(tr("Reset Layout"));
+    connect(reset, &QAction::triggered, this, &EditorWindow::resetLayout);
+
+    auto* themes = window->addMenu(tr("Theme"));
+    const std::array<std::pair<const char*, const char*>, 3> themeChoices = {{
+        {"cakery-light", QT_TR_NOOP("Light")},
+        {"cakery-dark", QT_TR_NOOP("Dark")},
+        {"cakery-color", QT_TR_NOOP("Color")},
+    }};
+    auto* themeGroup = new QActionGroup(themes);
+    themeGroup->setExclusive(true);
+    const std::string activeTheme = EditorConfig::self().themeName();
+    for (const auto& [themeName, themeLabel] : themeChoices) {
+        auto* action = themes->addAction(tr(themeLabel));
+        action->setCheckable(true);
+        action->setChecked(activeTheme == themeName);
+        themeGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [themeName]() {
+            if (auto* application = qobject_cast<EditorApplication*>(qApp)) {
+                EditorConfig::self().setThemeName(themeName);
+                application->applyTheme(QString::fromLatin1(themeName));
+            }
+        });
+    }
+}
+
+void EditorWindow::resetLayout()
+{
+    if (m_defaultLayoutState && !m_defaultLayoutState->isEmpty()) {
+        m_dockManager->restoreState(*m_defaultLayoutState, 1);
+    }
+}
+
+void EditorWindow::restoreLayoutState()
+{
+    if (m_layoutStatePath.isEmpty()) {
+        return;
+    }
+    QFile file(m_layoutStatePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+    const QByteArray state = file.readAll();
+    if (!state.isEmpty() && !m_dockManager->restoreState(state, 1)) {
+        resetLayout();
+    }
+}
+
+void EditorWindow::saveLayoutState() const
+{
+    if (m_layoutStatePath.isEmpty() || !m_dockManager) {
+        return;
+    }
+    QDir().mkpath(QFileInfo(m_layoutStatePath).absolutePath());
+    QFile file(m_layoutStatePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        file.write(m_dockManager->saveState(1));
+        file.close();
+    }
 }
 
 void EditorWindow::createTitleBar()
@@ -376,6 +479,14 @@ void EditorWindow::createTitleBar()
     titleBarLayout->setContentsMargins(10, 2, 0, 2);
     titleBarLayout->setSpacing(4);
 
+    auto* titleIcon = new QLabel(m_titleBar);
+    titleIcon->setObjectName(QStringLiteral("editorTitleIcon"));
+    titleIcon->setFixedSize(22, 22);
+    titleIcon->setAlignment(Qt::AlignCenter);
+    titleIcon->setAttribute(Qt::WA_TransparentForMouseEvents);
+    titleIcon->setPixmap(windowIcon().pixmap(QSize(18, 18)));
+    titleBarLayout->addWidget(titleIcon);
+
     m_menuBar = new QMenuBar(m_titleBar);
     m_menuBar->installEventFilter(this);
     titleBarLayout->addWidget(m_menuBar);
@@ -384,21 +495,24 @@ void EditorWindow::createTitleBar()
 
     auto* minButton = new QToolButton(m_titleBar);
     minButton->setObjectName(QStringLiteral("windowMinButton"));
-    minButton->setText(QStringLiteral("—"));
+    minButton->setIcon(editorIcon(QStringLiteral("minus.svg")));
+    minButton->setIconSize(QSize(16, 16));
     minButton->setToolTip(tr("Minimize"));
     connect(minButton, &QToolButton::clicked, this, &QWidget::showMinimized);
     titleBarLayout->addWidget(minButton);
 
     m_maxButton = new QToolButton(m_titleBar);
     m_maxButton->setObjectName(QStringLiteral("windowMaxButton"));
-    m_maxButton->setText(QStringLiteral("□"));
+    m_maxButton->setIcon(editorIcon(QStringLiteral("maximize-2.svg")));
+    m_maxButton->setIconSize(QSize(16, 16));
     m_maxButton->setToolTip(tr("Maximize"));
     connect(m_maxButton, &QToolButton::clicked, this, &EditorWindow::toggleMaximize);
     titleBarLayout->addWidget(m_maxButton);
 
     auto* closeButton = new QToolButton(m_titleBar);
     closeButton->setObjectName(QStringLiteral("windowCloseButton"));
-    closeButton->setText(QStringLiteral("✕"));
+    closeButton->setIcon(editorIcon(QStringLiteral("x.svg")));
+    closeButton->setIconSize(QSize(16, 16));
     closeButton->setToolTip(tr("Close"));
     connect(closeButton, &QToolButton::clicked, this, &QWidget::close);
     titleBarLayout->addWidget(closeButton);
@@ -422,14 +536,15 @@ void EditorWindow::createToolbar()
         const char* command;
     };
     const RuntimeButton runtimeButtons[] = {
-        {tr("Play"), QStringLiteral("PlayButton.png"), "play"},
-        {tr("Pause"), QStringLiteral("PauseButton.png"), "pause"},
-        {tr("Stop"), QStringLiteral("StopButton.png"), "stop"},
+        {tr("Play"), QStringLiteral("play.svg"), "play"},
+        {tr("Pause"), QStringLiteral("pause.svg"), "pause"},
+        {tr("Stop"), QStringLiteral("square.svg"), "stop"},
     };
     for (const RuntimeButton& runtimeButton : runtimeButtons) {
         auto* button = new QToolButton(m_editorToolbar);
         button->setObjectName(QStringLiteral("runtimeToolButton"));
-        button->setIcon(editorButtonIcon(runtimeButton.icon));
+        button->setProperty("runtimeCommand", QString::fromLatin1(runtimeButton.command));
+        button->setIcon(editorIcon(runtimeButton.icon));
         button->setIconSize(QSize(16, 16));
         button->setToolTip(runtimeButton.tooltip);
         button->setEnabled(sim);
@@ -450,17 +565,31 @@ void EditorWindow::createToolbar()
 
 void EditorWindow::toggleMaximize()
 {
-    if (isMaximized()) {
+    if (isMaximized() || isFullScreen()) {
         showNormal();
     } else {
         showMaximized();
     }
 }
 
+void EditorWindow::updateMaximizeButton()
+{
+    if (!m_maxButton) {
+        return;
+    }
+    const bool restore = isMaximized() || isFullScreen();
+    m_maxButton->setIcon(editorIcon(restore ? QStringLiteral("minimize-2.svg")
+                                             : QStringLiteral("maximize-2.svg")));
+    m_maxButton->setToolTip(restore ? tr("Restore Down") : tr("Maximize"));
+}
+
 void EditorWindow::changeEvent(QEvent* event)
 {
     if (event->type() == QEvent::WindowStateChange && m_maxButton) {
-        m_maxButton->setText(isMaximized() ? QStringLiteral("▣") : QStringLiteral("□"));
+        updateMaximizeButton();
+#ifdef _WIN32
+        UpdateWindowsFrameAttributes(this);
+#endif
     }
     QMainWindow::changeEvent(event);
 }
@@ -499,18 +628,21 @@ bool EditorWindow::nativeEvent(const QByteArray& eventType, void* message, qintp
             const int y = GET_Y_LPARAM(msg->lParam);
             const QPoint pos = mapFromGlobal(QPoint(x, y));
             const int border = 6;
+            const bool resizable = !isMaximized() && !isFullScreen();
             const bool left = pos.x() < border;
             const bool right = pos.x() >= width() - border;
             const bool top = pos.y() < border;
             const bool bottom = pos.y() >= height() - border;
-            if (top && left) { *result = HTTOPLEFT; return true; }
-            if (top && right) { *result = HTTOPRIGHT; return true; }
-            if (bottom && left) { *result = HTBOTTOMLEFT; return true; }
-            if (bottom && right) { *result = HTBOTTOMRIGHT; return true; }
-            if (left) { *result = HTLEFT; return true; }
-            if (right) { *result = HTRIGHT; return true; }
-            if (top) { *result = HTTOP; return true; }
-            if (bottom) { *result = HTBOTTOM; return true; }
+            if (resizable) {
+                if (top && left) { *result = HTTOPLEFT; return true; }
+                if (top && right) { *result = HTTOPRIGHT; return true; }
+                if (bottom && left) { *result = HTBOTTOMLEFT; return true; }
+                if (bottom && right) { *result = HTBOTTOMRIGHT; return true; }
+                if (left) { *result = HTLEFT; return true; }
+                if (right) { *result = HTRIGHT; return true; }
+                if (top) { *result = HTTOP; return true; }
+                if (bottom) { *result = HTBOTTOM; return true; }
+            }
             const bool inTopArea = (m_titleBar && m_titleBar->geometry().contains(pos));
             if (inTopArea && !overInteractiveChild(pos)) {
                 *result = HTCAPTION;
@@ -560,7 +692,7 @@ bool EditorWindow::overMenuAction(QMenuBar* menuBar, const QPoint& localPos) con
 
 void EditorWindow::createDocks()
 {
-    auto* sceneDock = new ads::CDockWidget(QStringLiteral("Scene"));
+    auto* sceneDock = new ads::CDockWidget(tr("Scene"));
     sceneDock->setObjectName(QStringLiteral("Scene"));
     m_sceneDock = sceneDock;
     auto* sceneBody = new QWidget(sceneDock);
@@ -582,13 +714,16 @@ void EditorWindow::createDocks()
     };
     const SceneTool sceneTools[] = {
         {tr("Hand"), QStringLiteral("hand.svg"), "none"},
-        {tr("Move"), QStringLiteral("move.svg"), "translate"},
-        {tr("Rotate"), QStringLiteral("rotate.svg"), "rotate"},
-        {tr("Scale"), QStringLiteral("scale.svg"), "scale"},
+        {tr("Move"), QStringLiteral("move-3d.svg"), "translate"},
+        {tr("Rotate"), QStringLiteral("rotate-3d.svg"), "rotate"},
+        {tr("Scale"), QStringLiteral("scale-3d.svg"), "scale"},
     };
     const bool sim = m_context.capabilities().simulation;
     for (const SceneTool& sceneTool : sceneTools) {
-        auto* action = sceneToolbar->addAction(editorToolIcon(sceneTool.icon), QString());
+        auto* action = sceneToolbar->addAction(editorIcon(sceneTool.icon), QString());
+        if (auto* toolButton = sceneToolbar->widgetForAction(action)) {
+            toolButton->setProperty("sceneTool", QString::fromLatin1(sceneTool.mode));
+        }
         action->setCheckable(true);
         action->setEnabled(sim);
         action->setToolTip(sceneTool.tooltip);
@@ -632,14 +767,20 @@ void EditorWindow::createPanels()
     project->setObjectName(QStringLiteral("Project"));
     m_projectPanel = new ProjectPanel(m_context, project);
     project->setWidget(m_projectPanel);
+    connect(m_projectPanel, &ProjectPanel::assetSelected,
+            m_inspector, &InspectorPanel::setSelectedAsset);
+    connect(m_projectPanel, &ProjectPanel::assetSelectionCleared,
+            m_inspector, &InspectorPanel::clearSelectedAsset);
     project->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, project, hierarchy->dockAreaWidget());
 
     auto* console = new ads::CDockWidget(tr("Console"));
     console->setObjectName(QStringLiteral("Console"));
-    m_console = new QListWidget(console);
-    m_console->addItem(tr("NullEditorBackend active"));
-    m_console->addItem(tr("DodoeRuntime, renderer and runtime window are not loaded"));
+    m_console = new ConsolePanel(m_context, console);
+    m_console->append(ConsoleLogLevel::Info, tr("Editor console ready"),
+                      QStringLiteral("Cakery"));
+    m_console->append(ConsoleLogLevel::Info, QString::fromStdString(m_context.diagnostic()),
+                      QStringLiteral("Backend"));
     console->setWidget(m_console);
     console->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, console, m_sceneDock->dockAreaWidget());
@@ -695,7 +836,8 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
     }
     m_context.resources().setProjectRoot(std::filesystem::path(project.rootPath));
     if (m_console) {
-        m_console->addItem(QString::fromStdString(m_context.diagnostic()));
+        m_console->append(ConsoleLogLevel::Info, QString::fromStdString(m_context.diagnostic()),
+                          QStringLiteral("Backend"));
     }
     if (m_projectPanel) {
         m_projectPanel->refresh();
@@ -710,16 +852,7 @@ void EditorWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
 #ifdef _WIN32
-    using DwmSetWindowAttributeFn = HRESULT(WINAPI*)(HWND, DWORD, LPCVOID, DWORD);
-    static HMODULE dwmModule = LoadLibraryW(L"dwmapi.dll");
-    if (dwmModule) {
-        auto setWindowAttribute = reinterpret_cast<DwmSetWindowAttributeFn>(
-            GetProcAddress(dwmModule, "DwmSetWindowAttribute"));
-        if (setWindowAttribute) {
-            const DWORD cornerPreference = 2;
-            setWindowAttribute(reinterpret_cast<HWND>(winId()), 33, &cornerPreference, sizeof(cornerPreference));
-        }
-    }
+    UpdateWindowsFrameAttributes(this);
 #endif
 }
 
@@ -729,7 +862,36 @@ void EditorWindow::closeEvent(QCloseEvent* event)
         event->accept();
         return;
     }
+    if (m_context.session().documentModel().isDirty()) {
+        const auto choice = QMessageBox::warning(
+            this,
+            tr("Unsaved Changes"),
+            tr("The current scene has unsaved changes."),
+            QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel,
+            QMessageBox::Save);
+        if (choice == QMessageBox::Cancel) {
+            event->ignore();
+            return;
+        }
+        if (choice == QMessageBox::Save) {
+            std::string target;
+            if (m_context.session().documentModel().path().empty()) {
+                const QString path = QFileDialog::getSaveFileName(
+                    this, tr("Save Scene As"), QString(), tr("Dodoe Scene (*.doscn)"));
+                if (path.isEmpty()) {
+                    event->ignore();
+                    return;
+                }
+                target = path.toStdString();
+            }
+            if (!m_context.session().saveDocument(target)) {
+                event->ignore();
+                return;
+            }
+        }
+    }
     m_closed = true;
+    saveLayoutState();
     if (m_safePointTimer) {
         m_safePointTimer->stop();
     }

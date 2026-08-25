@@ -20,6 +20,7 @@ namespace dodoe {
     struct WindowManagerCreateInfo {
         void* host_handle = nullptr;
         WindowProperty prop{};
+        Vector2i host_pixel_size{0, 0};
     };
 
 } // dodoe

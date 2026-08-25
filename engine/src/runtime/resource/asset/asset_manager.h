@@ -68,7 +68,7 @@ namespace dodoe {
         [[nodiscard]] ObjectID resolvePathToRef(const FileID& file_id) const;
         [[nodiscard]] ObjectID resolveSubObjectRef(const FileID& file_id, UInt32 local_id) const;
 
-        [[nodiscard]] ObjectID ensureImported(const String& absolute_path);
+        [[nodiscard]] ObjectID DODOE_API ensureImported(const String& absolute_path);
 
         template<typename T>
         [[nodiscard]] AssetHandle<T> getHandle(const UUID& asset_id) const {
@@ -122,8 +122,8 @@ namespace dodoe {
         [[nodiscard]] auto loadAssetsAsync() const -> std::future<void>;
         void discoverAssets();
 
-        [[nodiscard]] Bool isAssetDirty(const UUID& asset_id) const;
-        Bool reimportAsset(const UUID& asset_id);
+        [[nodiscard]] Bool DODOE_API isAssetDirty(const UUID& asset_id) const;
+        Bool DODOE_API reimportAsset(const UUID& asset_id);
         Bool DODOE_API refreshAssets();
 
         template<typename T>

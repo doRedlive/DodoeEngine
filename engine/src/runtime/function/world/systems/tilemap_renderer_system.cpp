@@ -28,6 +28,14 @@ namespace dodoe {
 
         for (auto entity : tilemap_view) {
             auto& tm = entity.getComponent<TilemapComponent>();
+            for (auto& tilesetRef : tm.tilesets) {
+                if (!tilesetRef.get() && tilesetRef.getObjectID().isValid()) {
+                    const ObjectID& ref = tilesetRef.getObjectID();
+                    if (Tileset* resolved = ResourceManager::Self().loadObject<Tileset>(ref.asset_id, ref.local_id)) {
+                        tilesetRef = PPtr<Tileset>(resolved);
+                    }
+                }
+            }
             if (tm.dirty) {
                 syncTilemap(entity);
             }

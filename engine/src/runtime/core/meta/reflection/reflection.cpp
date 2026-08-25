@@ -210,6 +210,20 @@ namespace dodoe {
 
             return MethodAccessor(nullptr);
         }
+
+        bool TypeMeta::set_field_attribute(const char* field_name, const char* key, const char* value) {
+            if (!field_name || !key || !value) {
+                return false;
+            }
+            auto it = std::find_if(fields_.begin(), fields_.end(), [&](const auto& field) {
+                return std::strcmp(field.getFieldName(), field_name) == 0;
+            });
+            if (it == fields_.end()) {
+                return false;
+            }
+            it->setAttribute(key, value);
+            return true;
+        }
         
         TypeMeta& TypeMeta::operator=(const TypeMeta& dest) {
             if (this == &dest) {

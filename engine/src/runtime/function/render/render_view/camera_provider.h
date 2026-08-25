@@ -15,7 +15,7 @@ namespace dodoe {
 #endif
     };
 
-    class IndexedCameraProvider : public ICameraProvider {
+    class DODOE_API IndexedCameraProvider : public ICameraProvider {
         Size_t m_index;
     public:
         explicit IndexedCameraProvider(Size_t index) : m_index(index) {}

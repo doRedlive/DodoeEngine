@@ -31,6 +31,13 @@ bool EditorConfig::load(const std::string& builtinDir, const std::string& projec
         mergeOverride(m_inspectors, projectDir, "inspectors.json");
     }
 
+    if (!userDir.empty()) {
+        mergeOverride(m_editor,     userDir, "editor.json");
+        mergeOverride(m_menus,      userDir, "menus.json");
+        mergeOverride(m_panels,     userDir, "panels.json");
+        mergeOverride(m_inspectors, userDir, "inspectors.json");
+    }
+
     if (m_editor.is_null()) {
         m_editor = dodoe::Json::object();
     }
@@ -89,6 +96,29 @@ std::string EditorConfig::shortcut(const std::string& action) const
         return m_editor["shortcuts"][action].get<std::string>();
     }
     return "";
+}
+
+void EditorConfig::setThemeName(const std::string& themeName)
+{
+    if (themeName.empty()) {
+        return;
+    }
+    m_editor["theme"] = themeName;
+    if (m_userDir.empty()) {
+        return;
+    }
+
+    std::filesystem::create_directories(m_userDir);
+    const std::string path = m_userDir + "/editor.json";
+    dodoe::Json override = loadJsonFile(path);
+    if (override.is_null() || !override.is_object()) {
+        override = dodoe::Json::object();
+    }
+    override["theme"] = themeName;
+    std::ofstream file(path);
+    if (file.is_open()) {
+        file << override.dump(2) << '\n';
+    }
 }
 
 void EditorConfig::reload()

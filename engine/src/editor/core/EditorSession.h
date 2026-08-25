@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace cakery {
 
@@ -40,6 +41,10 @@ public:
     bool openDocument(const std::string& documentPath);
     bool saveDocument(const std::string& documentPath);
     bool execute(EditorCommandMessage command);
+    bool inspectComponent(const std::string& typeName,
+                          std::vector<InspectorFieldMetadata>& fields) const;
+    bool listAssets(std::vector<AssetBrowserEntry>& entries) const;
+    bool getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const;
     bool attachSceneSurface(SceneSurfaceDescriptor surface);
     void submitViewportMetrics(ViewportMetrics metrics);
     void tick();
@@ -52,6 +57,8 @@ public:
     BackendCapabilities capabilities() const;
     BackendStatus status() const;
     std::string diagnostic() const;
+    bool listLogs(std::vector<BackendLogEntry>& entries) const;
+    bool clearLogs();
 
     EditorDocumentModel& documentModel() { return m_documentModel; }
     const EditorDocumentModel& documentModel() const { return m_documentModel; }
@@ -65,9 +72,12 @@ public:
     std::uint64_t createEntity(const std::string& name);
     bool deleteEntity(std::uint64_t uuid);
     bool renameEntity(std::uint64_t uuid, const std::string& name);
+    bool reparentEntity(std::uint64_t uuid, std::uint64_t newParent);
     bool addComponent(std::uint64_t uuid, const EditorComponent& component);
     bool removeComponent(std::uint64_t uuid, std::size_t nativeIndex);
     bool updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value);
+    bool removeManagedComponent(std::uint64_t uuid, std::size_t index);
+    bool updateManagedComponent(std::uint64_t uuid, std::size_t index, const nlohmann::json& value);
     bool undo();
     bool redo();
     void notifyDocumentChanged();

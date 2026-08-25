@@ -10,7 +10,9 @@ namespace dodoe {
     Bool Window::initialize(const WindowManagerCreateInfo& info) {
         DO_PROFILE_SCOPE_CATEGORY("Window::initialize", "startup");
         m_prop = info.prop;
-        m_host_pixel_size = Vector2i(m_prop.width, m_prop.height);
+        m_host_pixel_size = info.host_pixel_size.x > 0 && info.host_pixel_size.y > 0
+            ? info.host_pixel_size
+            : Vector2i(m_prop.width, m_prop.height);
         m_host_handle = info.host_handle;
         if (isHostMode()) {
             m_glfw_window = nullptr;

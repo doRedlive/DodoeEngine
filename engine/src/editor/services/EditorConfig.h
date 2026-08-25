@@ -32,6 +32,7 @@ public:
     std::string builtinDir() const { return m_builtinDir; }
 
     std::string shortcut(const std::string& action) const;
+    void setThemeName(const std::string& themeName);
 
     void reload();
 

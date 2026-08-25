@@ -7,6 +7,7 @@
 #include "core/EditorSession.h"
 
 #include <cstdlib>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -98,14 +99,14 @@ void RegisterBuiltinCommands() {
 
     auto& reg = CommandRegistry::self();
 
-    reg.add({"entity.create", "Create a new entity",
+    reg.add({"entity.create", "Create a new GameObject",
              "entity.create name=<string> [parent=<uuid>] [preset=<string>]",
-             {{"name", "string", "Entity name", true},
-              {"parent", "uuid", "Parent entity UUID", false},
+             {{"name", "string", "GameObject name", true},
+              {"parent", "uuid", "Parent GameObject UUID", false},
               {"preset", "string", "Preset type (Cube, Sphere, etc.)", false}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::string name = args.named.value("name", args.named.value("preset", "Entity"));
+                 std::string name = args.named.value("name", args.named.value("preset", "GameObject"));
                  auto cmd = std::make_unique<CreateEntityCommand>(name);
                  std::string label = cmd->label();
                  session.history().execute(std::move(cmd), session.documentModel());
@@ -113,9 +114,9 @@ void RegisterBuiltinCommands() {
                  return CommandResult::Ok(label);
              }});
 
-    reg.add({"entity.delete", "Delete an entity and its children",
+    reg.add({"entity.delete", "Delete a GameObject and its children",
              "entity.delete <uuid>",
-             {{"uuid", "uuid", "Entity UUID", true}},
+             {{"uuid", "uuid", "GameObject UUID", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  std::uint64_t uuid;
@@ -124,16 +125,16 @@ void RegisterBuiltinCommands() {
                  } else {
                      uuid = primarySelection(session);
                  }
-                 if (uuid == 0) return CommandResult::Err("No entity specified");
+                 if (uuid == 0) return CommandResult::Err("No GameObject specified");
                  session.history().execute(std::make_unique<DeleteEntityCommand>(uuid), session.documentModel());
                  session.selection().remove(uuid);
                  session.notifyDocumentChanged();
-                 return CommandResult::Ok("Entity deleted");
+                 return CommandResult::Ok("GameObject deleted");
              }});
 
-    reg.add({"entity.rename", "Rename an entity",
+    reg.add({"entity.rename", "Rename a GameObject",
              "entity.rename <uuid> <name>",
-             {{"uuid", "uuid", "Entity UUID", true},
+             {{"uuid", "uuid", "GameObject UUID", true},
               {"name", "string", "New name", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
@@ -148,17 +149,17 @@ void RegisterBuiltinCommands() {
                  } else {
                      return CommandResult::Err("Usage: entity.rename <uuid> <name>");
                  }
-                 if (uuid == 0) return CommandResult::Err("No entity specified");
+                 if (uuid == 0) return CommandResult::Err("No GameObject specified");
                  const EditorEntity* entity = session.documentModel().findEntity(uuid);
-                 if (!entity) return CommandResult::Err("Entity not found");
+                 if (!entity) return CommandResult::Err("GameObject not found");
                  session.history().execute(std::make_unique<RenameEntityCommand>(uuid, newName), session.documentModel());
                  session.notifyDocumentChanged();
                  return CommandResult::Ok("Renamed to: " + newName);
              }});
 
-    reg.add({"entity.select", "Select entities by UUID",
+    reg.add({"entity.select", "Select GameObjects by UUID",
              "entity.select <uuid...>",
-             {{"uuid", "uuid", "Entity UUID", true}},
+             {{"uuid", "uuid", "GameObject UUID", true}},
              false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  if (args.positional.empty()) {
@@ -169,12 +170,12 @@ void RegisterBuiltinCommands() {
                      uuids.push_back(ParseUuid(p));
                  }
                  session.selection().selectMany(uuids);
-                 return CommandResult::Ok("Selected " + std::to_string(uuids.size()) + " entities");
+                 return CommandResult::Ok("Selected " + std::to_string(uuids.size()) + " GameObjects");
              }});
 
-    reg.add({"component.add", "Add a component to an entity",
+    reg.add({"component.add", "Add a component to a GameObject",
              "component.add <uuid> <Type>",
-             {{"uuid", "uuid", "Entity UUID", true},
+             {{"uuid", "uuid", "GameObject UUID", true},
               {"type", "string", "Component type name", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
@@ -197,9 +198,9 @@ void RegisterBuiltinCommands() {
                  return CommandResult::Ok("Added " + compType);
              }});
 
-    reg.add({"component.remove", "Remove a component from an entity",
+    reg.add({"component.remove", "Remove a component from a GameObject",
              "component.remove <uuid> <Type>",
-             {{"uuid", "uuid", "Entity UUID", true},
+             {{"uuid", "uuid", "GameObject UUID", true},
               {"type", "string", "Component type name", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
@@ -226,7 +227,7 @@ void RegisterBuiltinCommands() {
 
     reg.add({"component.set", "Set a component field value",
              "component.set <uuid> <Type>.<field> <value>",
-             {{"uuid", "uuid", "Entity UUID", true},
+             {{"uuid", "uuid", "GameObject UUID", true},
               {"field", "string", "ComponentType.fieldName", true},
               {"value", "string", "New value", true}},
              true,
@@ -250,7 +251,7 @@ void RegisterBuiltinCommands() {
                      return CommandResult::Err("Unknown component type: " + comp);
                  }
                  const EditorEntity* entity = session.documentModel().findEntity(uuid);
-                 if (!entity) return CommandResult::Err("Entity not found");
+                 if (!entity) return CommandResult::Err("GameObject not found");
                  const nlohmann::json& compValue = entity->nativeComponents[idx].value;
                  if (!compValue.contains(field)) {
                      return CommandResult::Err("Unknown field: " + field);
@@ -325,11 +326,35 @@ void RegisterBuiltinCommands() {
              "asset.import [path]",
              {{"path", "string", "Asset file path", false}},
              true,
-             [](EditorSession&, const CommandArgs&) -> CommandResult {
-                 return CommandResult::Ok();
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 const std::string path = args.named.value(
+                     "path", args.positional.empty() ? std::string() : args.positional[0]);
+                 if (path.empty()) {
+                     return CommandResult::Err("No asset path specified");
+                 }
+                 if (!session.execute({"asset.import", path})) {
+                     return CommandResult::Err("Asset import request failed");
+                 }
+                 return CommandResult::Ok("Import requested: " + path);
              }});
 
-    reg.add({"query.entities", "List entities in the active scene",
+    reg.add({"asset.reimport", "Reimport an existing project asset",
+             "asset.reimport <path>",
+             {{"path", "string", "Asset file path", true}},
+             true,
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 const std::string path = args.named.value(
+                     "path", args.positional.empty() ? std::string() : args.positional[0]);
+                 if (path.empty()) {
+                     return CommandResult::Err("No asset path specified");
+                 }
+                 if (!session.execute({"asset.reimport", path})) {
+                     return CommandResult::Err("Asset reimport request failed");
+                 }
+                 return CommandResult::Ok("Reimport requested: " + path);
+             }});
+
+    reg.add({"query.entities", "List GameObjects in the active scene",
              "query.entities",
              {},
              false,
@@ -342,12 +367,12 @@ void RegisterBuiltinCommands() {
                      e["uuid"] = std::to_string(entity.uuid);
                      result.push_back(e);
                  }
-                 return CommandResult::Ok(std::to_string(result.size()) + " entities", result);
+                 return CommandResult::Ok(std::to_string(result.size()) + " GameObjects", result);
              }});
 
-    reg.add({"query.components", "List components on an entity",
+    reg.add({"query.components", "List components on a GameObject",
              "query.components <uuid>",
-             {{"uuid", "uuid", "Entity UUID", true}},
+             {{"uuid", "uuid", "GameObject UUID", true}},
              false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  std::uint64_t uuid;
@@ -356,14 +381,48 @@ void RegisterBuiltinCommands() {
                  } else {
                      uuid = primarySelection(session);
                  }
-                 if (uuid == 0) return CommandResult::Err("No entity specified");
+                 if (uuid == 0) return CommandResult::Err("No GameObject specified");
                  const EditorEntity* entity = session.documentModel().findEntity(uuid);
-                 if (!entity) return CommandResult::Err("Entity not found");
+                 if (!entity) return CommandResult::Err("GameObject not found");
                  nlohmann::json result = nlohmann::json::array();
                  for (const auto& comp : entity->nativeComponents) {
                      result.push_back(comp.typeName);
                  }
                  return CommandResult::Ok("", result);
+             }});
+
+    reg.add({"query.assets", "Search imported project assets",
+             "query.assets [filter]",
+             {{"filter", "string", "Name, path, type, extension, or GUID substring", false}},
+             false,
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 const std::string filter = args.named.value(
+                     "filter", args.positional.empty() ? std::string() : args.positional[0]);
+                 std::vector<AssetBrowserEntry> assets;
+                 if (!session.listAssets(assets)) {
+                     return CommandResult::Err("Asset database is unavailable");
+                 }
+                 nlohmann::json result = nlohmann::json::array();
+                 for (const auto& asset : assets) {
+                     if (!filter.empty()) {
+                         const std::string haystack = asset.name + " " + asset.path + " " +
+                             asset.type + " " + asset.extension + " " +
+                             std::to_string(static_cast<std::uint64_t>(asset.uuid));
+                         if (haystack.find(filter) == std::string::npos) {
+                             continue;
+                         }
+                     }
+                     nlohmann::json item;
+                     item["uuid"] = std::to_string(static_cast<std::uint64_t>(asset.uuid));
+                     item["name"] = asset.name;
+                     item["path"] = asset.path;
+                     item["type"] = asset.type;
+                     item["extension"] = asset.extension;
+                     item["dirty"] = asset.dirty;
+                     item["dependencies"] = asset.dependencies;
+                     result.push_back(std::move(item));
+                 }
+                 return CommandResult::Ok(std::to_string(result.size()) + " assets", result);
              }});
 
     reg.add({"history.undo", "Undo last command",

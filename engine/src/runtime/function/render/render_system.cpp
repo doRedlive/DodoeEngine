@@ -28,6 +28,10 @@ namespace dodoe {
             false;
 #endif
         Vector2i init_pixel = window->getPixelSize();
+        if (window->isHostMode()) {
+            init_pixel.x = std::max(init_pixel.x, 1);
+            init_pixel.y = std::max(init_pixel.y, 1);
+        }
         m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, RenderFeatureSettings{}, window->isHostMode() ? window->getNativeHandle() : nullptr, static_cast<UInt32>(init_pixel.x), static_cast<UInt32>(init_pixel.y)});
         GDrawCommandList.setDevice(*m_gfx);
 

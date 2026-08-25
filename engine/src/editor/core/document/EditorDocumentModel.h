@@ -17,10 +17,11 @@ namespace cakery {
 class EditorDocumentModel {
 public:
     bool load(const std::filesystem::path& path);
-    bool save(const std::filesystem::path& path) const;
+    bool save(const std::filesystem::path& path);
     void close();
 
     bool hasDocument() const { return m_hasDocument; }
+    bool isDirty() const { return m_dirty; }
     const std::string& name() const;
     const std::filesystem::path& path() const { return m_path; }
     const std::vector<EditorEntity>& entities() const { return m_document.entities; }
@@ -40,6 +41,9 @@ public:
     bool insertComponent(std::uint64_t uuid, std::size_t index, const EditorComponent& component);
     bool removeComponent(std::uint64_t uuid, std::size_t nativeIndex);
     bool updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value);
+    bool insertManagedComponent(std::uint64_t uuid, std::size_t index, const EditorComponent& component);
+    bool removeManagedComponent(std::uint64_t uuid, std::size_t index);
+    bool updateManagedComponent(std::uint64_t uuid, std::size_t index, const nlohmann::json& value);
 
     ScopedConnection subscribe(std::function<void()> onChange);
     void notifyChanged();
@@ -48,6 +52,7 @@ private:
     EditorDocument m_document;
     std::filesystem::path m_path;
     bool m_hasDocument = false;
+    bool m_dirty = false;
     Signal<> m_changed;
 };
 

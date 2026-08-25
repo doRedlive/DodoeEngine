@@ -250,11 +250,15 @@ namespace dodoe {
 
         UInt32 w = width;
         UInt32 h = height;
-        if (w == 0 || h == 0) {
+        // In host mode the HWND client area is authoritative. The caller's
+        // logical size can differ from drawable pixels under Qt/DPI scaling.
+        if (m_host_handle != nullptr || w == 0 || h == 0) {
             RECT rect;
             GetClientRect(hwnd, &rect);
-            w = rect.right - rect.left;
-            h = rect.bottom - rect.top;
+            if (rect.right > rect.left && rect.bottom > rect.top) {
+                w = static_cast<UInt32>(rect.right - rect.left);
+                h = static_cast<UInt32>(rect.bottom - rect.top);
+            }
         }
         m_swapchain_width = (w == 0) ? 1 : w;
         m_swapchain_height = (h == 0) ? 1 : h;

@@ -98,7 +98,7 @@ QToolBar#editorToolbar {
     color: #E8E8E8;
     font-weight: 700;
     font-size: 13px;
-    padding: 0 16px 0 4px;
+    padding: 0 16px 0 16px;
 }
 
 QToolBar::separator {
@@ -124,6 +124,10 @@ QToolBar QLabel {
     background: transparent;
     color: #c8c8c8;
 }
+
+#editorToolbar QToolButton#runtimeToolButton[runtimeCommand="play"] { color: #50fa7b; }
+#editorToolbar QToolButton#runtimeToolButton[runtimeCommand="pause"] { color: #f1fa8c; }
+#editorToolbar QToolButton#runtimeToolButton[runtimeCommand="stop"] { color: #ff79c6; }
 
 #editorToolbar QToolButton#runtimeToolButton:hover {
     background: #2c2c2c;
@@ -159,6 +163,10 @@ QToolBar#sceneToolbar QToolButton {
     min-height: 21px;
     padding: 1px 4px;
 }
+
+QToolBar#sceneToolbar QToolButton[sceneTool="translate"] { color: #50fa7b; }
+QToolBar#sceneToolbar QToolButton[sceneTool="rotate"] { color: #f1fa8c; }
+QToolBar#sceneToolbar QToolButton[sceneTool="scale"] { color: #8be9fd; }
 
 #windowMinButton,
 #windowMaxButton,
@@ -236,6 +244,10 @@ QTreeWidget, QListWidget, QTableWidget, QTreeView, QListView {
 }
 
 QTreeWidget::branch {
+    background: transparent;
+}
+
+QTreeWidget::branch:selected, QTreeView::branch:selected {
     background: transparent;
 }
 
@@ -317,7 +329,7 @@ QComboBox QAbstractItemView {
 }
 
 QDoubleSpinBox, QSpinBox {
-    min-width: 24px;
+    min-width: 64px;
 }
 
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button,
@@ -371,6 +383,97 @@ QGroupBox#inspectorNestedGroup::title {
 QLabel#inspectorFieldLabel {
     color: #A8A8A8;
     padding-left: 2px;
+}
+
+QToolButton#inspectorAssetReference {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 3px;
+    color: #d0d0d0;
+    padding: 2px 6px;
+    text-align: left;
+}
+
+QToolButton#inspectorAssetReference:hover {
+    border-color: #4c83b8;
+    background: #292929;
+}
+
+QToolButton#inspectorAssetReferenceClear {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 3px;
+    color: #a8a8a8;
+}
+
+QToolButton#inspectorAssetReferenceClear:hover {
+    background: #3a2b2b;
+    color: #f0b0b0;
+}
+
+QFrame#inspectorAssetPicker {
+    background: #252525;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+}
+
+QFrame#inspectorAssetPicker QLineEdit {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 3px;
+    min-height: 26px;
+}
+
+QFrame#inspectorAssetPicker QListWidget {
+    background: #202020;
+    border: none;
+    padding: 2px;
+}
+
+QFrame#inspectorAssetPicker QListWidget::item {
+    border-radius: 3px;
+    padding: 3px;
+}
+
+QFrame#inspectorAssetPicker QListWidget::item:hover {
+    background: #323232;
+}
+
+QFrame#inspectorAssetPicker QListWidget::item:selected {
+    background: #3a5670;
+}
+
+QLabel#inspectorAssetName {
+    color: #e5e5e5;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QLabel#inspectorAssetPreview {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 4px;
+    min-height: 120px;
+}
+
+QListWidget#projectAssetGrid {
+    background: #202020;
+    border: none;
+    padding: 6px;
+}
+
+QListWidget#projectAssetGrid::item {
+    border-radius: 4px;
+    padding: 4px;
+}
+
+QListWidget#projectAssetGrid::item:hover {
+    background: #323232;
+}
+
+QListWidget#projectAssetGrid::item:selected {
+    background: #3a5670;
+    color: #f0f0f0;
 }
 
 QLineEdit#inspectorObjectName {
@@ -500,76 +603,56 @@ QWidget#inspectorBoolField {
     border-radius: 4px;
 }
 
-QLabel#inspectorBoolText {
-    color: #b0b0b0;
-}
-
 QWidget#inspectorColorField {
     background: #1f1f1f;
     border: 1px solid #151515;
     border-radius: 4px;
 }
 
-QWidget#inspectorLayerGrid {
+QComboBox#inspectorLayerField, QToolButton#inspectorMaskField {
     background: #1f1f1f;
     border: 1px solid #151515;
-    border-radius: 4px;
-}
-
-QPushButton#inspectorLayerCell {
-    background: #2f3a45;
-    color: #8aa0b5;
-    border: none;
     border-radius: 3px;
-    font-size: 10px;
-}
-
-QPushButton#inspectorLayerCell:hover {
-    background: #3a4754;
-}
-
-QPushButton#inspectorLayerCell[selected="true"] {
-    background: #4c83b8;
-    color: #ffffff;
-}
-
-QPushButton#inspectorLayerCell[selected="true"]:hover {
-    background: #5a92c6;
+    min-height: 26px;
+    padding: 1px 6px;
 }
 
 QLabel#inspectorAxisLabel {
     color: #8a8a8a;
     font-size: 11px;
+    font-weight: 600;
     min-width: 10px;
 }
 
 QLabel#inspectorAxisLabel[axis="x"] {
-    color: #b07070;
+    color: #e84d5b;
 }
 
 QLabel#inspectorAxisLabel[axis="y"] {
-    color: #709b70;
+    color: #58b96f;
 }
 
 QLabel#inspectorAxisLabel[axis="z"] {
-    color: #7088b0;
+    color: #4d9de0;
 }
 
 QLabel#inspectorAxisLabel[axis="w"] {
-    color: #8070b0;
+    color: #b588d8;
 }
 
 QPushButton#inspectorAddButton {
-    background: transparent;
-    border: 1px dashed #3a3a3a;
+    background: #323232;
+    border: 1px solid #444444;
     border-radius: 4px;
-    min-height: 26px;
-    color: #a0a0a0;
+    min-height: 30px;
+    color: #dedede;
+    font-weight: 600;
 }
 
 QPushButton#inspectorAddButton:hover {
-    border-color: #4c83b8;
-    color: #E8E8E8;
+    background: #3a3a3a;
+    border-color: #5c5c5c;
+    color: #ffffff;
 }
 
 QLineEdit#inspectorAddSearch {
@@ -585,17 +668,53 @@ QLineEdit#inspectorAddSearch:focus {
     border-color: #4c83b8;
 }
 
+QLineEdit#consoleSearch, QLineEdit#historySearch,
+QComboBox#consoleLevelFilter {
+    min-height: 24px;
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 3px;
+}
+
+QToolButton#consoleToolButton, QToolButton#historyToolButton {
+    background: #2e2e2e;
+    border: 1px solid #1f1f1f;
+    border-radius: 3px;
+    min-width: 26px;
+    max-width: 26px;
+    min-height: 24px;
+    padding: 0;
+}
+
+QToolButton#consoleToolButton:hover, QToolButton#historyToolButton:hover {
+    background: #3a3a3a;
+    border-color: #555555;
+}
+
+QListWidget#consoleList, QListWidget#historyList {
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 3px;
+    padding: 2px;
+}
+
+QListWidget#consoleList::item, QListWidget#historyList::item {
+    border-radius: 2px;
+    margin: 0;
+    padding: 3px 6px;
+}
+
 QScrollBar:vertical {
     background: #242424;
-    width: 9px;
+    width: 8px;
     margin: 0;
 }
 
 QScrollBar::handle:vertical {
     background: #3a3a3a;
-    border: 2px solid #242424;
+    border: none;
     min-height: 28px;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 QScrollBar::handle:vertical:hover {
@@ -608,14 +727,14 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 QScrollBar:horizontal {
     background: #242424;
-    height: 9px;
+    height: 8px;
 }
 
 QScrollBar::handle:horizontal {
     background: #3a3a3a;
-    border: 2px solid #242424;
+    border: none;
     min-width: 28px;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 QScrollBar::handle:horizontal:hover {
@@ -624,6 +743,12 @@ QScrollBar::handle:horizontal:hover {
 
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     width: 0;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal,
+QScrollBar::corner {
+    background: #242424;
 }
 
 QSlider::groove:horizontal {
@@ -670,10 +795,19 @@ QStatusBar {
     border-top: 1px solid #1f1f1f;
 }
 
-QSplitter::handle,
-ads--CDockSplitter::handle {
+QSplitter, ads--CDockSplitter {
+    qproperty-handleWidth: 1;
+}
+
+QSplitter::handle:horizontal,
+ads--CDockSplitter::handle:horizontal {
     background: #151515;
     width: 1px;
+}
+
+QSplitter::handle:vertical,
+ads--CDockSplitter::handle:vertical {
+    background: #151515;
     height: 1px;
 }
 
@@ -694,7 +828,7 @@ ads--CFloatingDockContainer {
 ads--CDockAreaWidget {
     background: #151515;
     border: none;
-    margin: 3px;
+    margin: 2px;
     padding: 0;
 }
 
@@ -705,7 +839,9 @@ ads--CDockManager {
 ads--CDockWidget {
     background: #242424;
     border: 1px solid #1f1f1f;
-    border-radius: 6px;
+    border-top: none;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
     margin: 0;
     padding: 0;
 }
@@ -726,11 +862,13 @@ ads--CDockAreaTabBar {
 ads--CDockAreaTitleBar {
     background: #242424;
     padding: 3px 4px 2px;
-    border: none;
+    border: 1px solid #1f1f1f;
     min-height: 30px;
     max-height: 30px;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
 }
 
 ads--CDockWidgetTab {
@@ -813,16 +951,36 @@ ads--CAutoHideTab[activeTab="true"] {
 ads--CAutoHideDockContainer {
     background: #242424;
     border: 1px solid #3a3a3a;
-    border-radius: 10px;
-    margin: 6px;
+    border-radius: 6px;
+    margin: 0;
+}
+
+ads--CAutoHideDockContainer #autoHideDockArea {
+    background: #242424;
+    margin: 0;
+    padding: 0;
 }
 
 ads--CAutoHideDockContainer ads--CDockAreaTitleBar {
-    background: #2a2a2a;
+    background: #242424;
     border: none;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
     border-bottom: 1px solid #1f1f1f;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+ads--CAutoHideDockContainer ads--CDockWidget {
+    background: #242424;
+    border: none;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+ads--CAutoHideDockContainer ads--CResizeHandle {
+    background: transparent;
+    border: none;
 }
 
 /* Keeps the already-built preview free of visible close glyphs as well. */

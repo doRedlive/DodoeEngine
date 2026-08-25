@@ -8,6 +8,8 @@
 
 #include <memory>
 
+class QTranslator;
+
 namespace cakery {
 
 class EditorWindow;
@@ -22,11 +24,13 @@ public:
     ~EditorApplication() override;
 
     int run();
+    void applyTheme(const QString& themeName);
 
 private:
     void onProjectSelected(const QString& projectPath);
 
     QString m_applicationName;
+    std::unique_ptr<QTranslator> m_translator;
     std::unique_ptr<EditorSession>   m_session;
     std::unique_ptr<EditorResourceLocator> m_resources;
     std::unique_ptr<EditorWorkspaceContext> m_workspace;

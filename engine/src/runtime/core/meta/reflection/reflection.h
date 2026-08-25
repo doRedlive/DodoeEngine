@@ -132,6 +132,7 @@ namespace dodoe {
             int get_base_class_reflection_instance_list(ReflectionInstance*& out_list, void* instance);
             FieldAccessor get_field_by_name(const char* name);
             MethodAccessor get_method_by_name(const char* name);
+            bool set_field_attribute(const char* field_name, const char* key, const char* value);
             bool isValid() const { return is_valid_; }
             TypeMeta& operator=(const TypeMeta& dest);
 

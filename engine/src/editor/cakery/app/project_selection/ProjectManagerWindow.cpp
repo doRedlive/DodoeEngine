@@ -14,13 +14,16 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QHeaderView>
+#include <QDesktopServices>
+#include <QInputDialog>
+#include <QUrl>
 
 namespace cakery {
 
 ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     : QDialog(parent)
 {
-    setWindowTitle("Cakery Engine - Project Manager");
+    setWindowTitle(tr("Cakery Engine - Project Manager"));
     setObjectName("ProjectManagerWindow");
     resize(960, 640);
     setMinimumSize(720, 480);
@@ -29,7 +32,7 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
 
     // Header
     auto* headerLayout = new QHBoxLayout();
-    auto* titleLabel = new QLabel("Cakery Engine", this);
+    auto* titleLabel = new QLabel(tr("Cakery Engine"), this);
     QFont titleFont = titleLabel->font();
     titleFont.setPointSize(20);
     titleFont.setBold(true);
@@ -39,24 +42,27 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     headerLayout->addStretch();
 
     m_sortCombo = new QComboBox(this);
-    m_sortCombo->addItems({"Last Edited", "Name", "Path"});
+    m_sortCombo->addItems({tr("Last Edited"), tr("Name"), tr("Path")});
     headerLayout->addWidget(m_sortCombo);
 
     m_searchEdit = new QLineEdit(this);
-    m_searchEdit->setPlaceholderText("Filter projects...");
+    m_searchEdit->setPlaceholderText(tr("Filter projects..."));
     m_searchEdit->setClearButtonEnabled(true);
     m_searchEdit->setFixedWidth(180);
     headerLayout->addWidget(m_searchEdit);
 
-    auto* newBtn = new QPushButton("New", this);
+    auto* newBtn = new QPushButton(tr("New"), this);
     newBtn->setObjectName("projectPrimaryButton");
     headerLayout->addWidget(newBtn);
 
-    auto* importBtn = new QPushButton("Import", this);
+    auto* importBtn = new QPushButton(tr("Import"), this);
     headerLayout->addWidget(importBtn);
 
-    auto* scanBtn = new QPushButton("Scan", this);
+    auto* scanBtn = new QPushButton(tr("Scan"), this);
     headerLayout->addWidget(scanBtn);
+
+    auto* refreshBtn = new QPushButton(tr("Refresh"), this);
+    headerLayout->addWidget(refreshBtn);
 
     mainLayout->addLayout(headerLayout);
 
@@ -73,7 +79,7 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     auto* detailLayout = new QVBoxLayout(m_detailPanel);
     detailLayout->setContentsMargins(24, 24, 24, 24);
 
-    m_detailName = new QLabel("No Project Selected", m_detailPanel);
+    m_detailName = new QLabel(tr("No Project Selected"), m_detailPanel);
     QFont nameFont = m_detailName->font();
     nameFont.setPointSize(18);
     nameFont.setBold(true);
@@ -82,34 +88,35 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     m_detailName->setWordWrap(true);
     detailLayout->addWidget(m_detailName);
 
-    m_detailDesc = new QLabel("", m_detailPanel);
+    m_detailDesc = new QLabel(QString(), m_detailPanel);
     m_detailDesc->setObjectName("projectDetailDescription");
     m_detailDesc->setWordWrap(true);
     detailLayout->addWidget(m_detailDesc);
 
     detailLayout->addSpacing(16);
 
-    m_detailPath = new QLabel("", m_detailPanel);
+    m_detailPath = new QLabel(QString(), m_detailPanel);
     m_detailPath->setObjectName("projectDetailPath");
     m_detailPath->setWordWrap(true);
     detailLayout->addWidget(m_detailPath);
 
-    m_detailDate = new QLabel("", m_detailPanel);
+    m_detailDate = new QLabel(QString(), m_detailPanel);
     m_detailDate->setObjectName("projectDetailDate");
     detailLayout->addWidget(m_detailDate);
 
     detailLayout->addStretch();
 
-    m_openBtn = new QPushButton("Open", m_detailPanel);
+    m_openBtn = new QPushButton(tr("Open"), m_detailPanel);
     m_openBtn->setObjectName("projectPrimaryButton");
     m_openBtn->setFixedHeight(36);
     m_openBtn->setEnabled(false);
     detailLayout->addWidget(m_openBtn);
 
-    auto* showInExplorerBtn = new QPushButton("Show in Explorer", m_detailPanel);
-    showInExplorerBtn->setFlat(true);
-    showInExplorerBtn->setObjectName("projectFlatButton");
-    detailLayout->addWidget(showInExplorerBtn);
+    m_showInExplorerBtn = new QPushButton(tr("Show in Explorer"), m_detailPanel);
+    m_showInExplorerBtn->setFlat(true);
+    m_showInExplorerBtn->setObjectName("projectFlatButton");
+    m_showInExplorerBtn->setEnabled(false);
+    detailLayout->addWidget(m_showInExplorerBtn);
 
     splitter->addWidget(m_detailPanel);
     splitter->setStretchFactor(0, 3);
@@ -125,6 +132,8 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     connect(newBtn, &QPushButton::clicked, this, &ProjectManagerWindow::onNewProject);
     connect(importBtn, &QPushButton::clicked, this, &ProjectManagerWindow::onImportProject);
     connect(scanBtn, &QPushButton::clicked, this, &ProjectManagerWindow::onScanFolder);
+    connect(refreshBtn, &QPushButton::clicked, this, &ProjectManagerWindow::onRefresh);
+    connect(m_showInExplorerBtn, &QPushButton::clicked, this, &ProjectManagerWindow::onShowInExplorer);
 
     // Load projects
     ProjectConfig::getInstance().load();
@@ -169,20 +178,22 @@ void ProjectManagerWindow::rebuildList()
 void ProjectManagerWindow::updateDetailPanel()
 {
     if (m_selectedIndex < 0 || m_selectedIndex >= m_filtered.size()) {
-        m_detailName->setText("No Project Selected");
-        m_detailDesc->setText("Select a project from the list or create a new one.");
-        m_detailPath->setText("");
-        m_detailDate->setText("");
+        m_detailName->setText(tr("No Project Selected"));
+        m_detailDesc->setText(tr("Select a project from the list or create a new one."));
+        m_detailPath->clear();
+        m_detailDate->clear();
         m_openBtn->setEnabled(false);
+        m_showInExplorerBtn->setEnabled(false);
         return;
     }
 
     const auto& proj = m_filtered[m_selectedIndex];
     m_detailName->setText(proj.name);
     m_detailDesc->setText(proj.description);
-    m_detailPath->setText("Location: " + proj.projectPath);
-    m_detailDate->setText("Modified: " + proj.displayDate());
+    m_detailPath->setText(tr("Location: %1").arg(proj.projectPath));
+    m_detailDate->setText(tr("Modified: %1").arg(proj.displayDate()));
     m_openBtn->setEnabled(!proj.isMissing);
+    m_showInExplorerBtn->setEnabled(!proj.isMissing && !proj.projectPath.isEmpty());
 }
 
 void ProjectManagerWindow::onProjectSelected()
@@ -222,12 +233,21 @@ void ProjectManagerWindow::onOpenProject()
 
 void ProjectManagerWindow::onNewProject()
 {
-    QString name = "NewProject";
-    QString location = QFileDialog::getExistingDirectory(this, "Select Project Location",
+    bool ok = false;
+    const QString name = QInputDialog::getText(
+        this, tr("New Project"), tr("Project name:"), QLineEdit::Normal,
+        QStringLiteral("NewProject"), &ok).trimmed();
+    if (!ok || name.isEmpty() || name.contains('/') || name.contains('\\')) return;
+    QString location = QFileDialog::getExistingDirectory(this, tr("Select Project Location"),
                                                           QDir::homePath());
     if (location.isEmpty()) return;
 
     QString fullDir = QDir(location).filePath(name);
+    if (QDir(fullDir).exists()) {
+        QMessageBox::warning(this, tr("Create Project"),
+                             tr("A project directory with this name already exists."));
+        return;
+    }
     QDir().mkpath(QDir(fullDir).filePath("Assets/Scenes"));
     QDir().mkpath(QDir(fullDir).filePath("Binaries"));
     QDir().mkpath(QDir(fullDir).filePath("Configs"));
@@ -244,10 +264,13 @@ void ProjectManagerWindow::onNewProject()
     root["Project"] = projObj;
 
     QFile file(projFile);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-        file.close();
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::critical(this, tr("Create Project"), tr("Could not create the project file."));
+        QDir(fullDir).removeRecursively();
+        return;
     }
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    file.close();
 
     // Create the start scene file
     QJsonObject sceneRoot;
@@ -275,10 +298,13 @@ void ProjectManagerWindow::onNewProject()
     sceneRoot["m_entities"] = entities;
 
     QFile sceneFile(QDir(fullDir).filePath("Assets/Scenes/Main.doscn"));
-    if (sceneFile.open(QIODevice::WriteOnly)) {
-        sceneFile.write(QJsonDocument(sceneRoot).toJson(QJsonDocument::Indented));
-        sceneFile.close();
+    if (!sceneFile.open(QIODevice::WriteOnly)) {
+        QMessageBox::critical(this, tr("Create Project"), tr("Could not create the start scene."));
+        QDir(fullDir).removeRecursively();
+        return;
     }
+    sceneFile.write(QJsonDocument(sceneRoot).toJson(QJsonDocument::Indented));
+    sceneFile.close();
 
     ProjectEntry entry;
     entry.name = name;
@@ -298,9 +324,9 @@ void ProjectManagerWindow::onNewProject()
 
 void ProjectManagerWindow::onImportProject()
 {
-    QString filePath = QFileDialog::getOpenFileName(this, "Import .doproj File",
+    QString filePath = QFileDialog::getOpenFileName(this, tr("Import .doproj File"),
                                                      QDir::homePath(),
-                                                     "Dodoe Project (*.doproj)");
+                                                     tr("Dodoe Project (*.doproj)"));
     if (filePath.isEmpty()) return;
 
     QFileInfo fi(filePath);
@@ -318,7 +344,7 @@ void ProjectManagerWindow::onImportProject()
 
 void ProjectManagerWindow::onScanFolder()
 {
-    QString folder = QFileDialog::getExistingDirectory(this, "Scan Folder for Projects");
+    QString folder = QFileDialog::getExistingDirectory(this, tr("Scan Folder for Projects"));
     if (folder.isEmpty()) return;
 
     QDirIterator it(folder, {"*.doproj"}, QDir::Files, QDirIterator::Subdirectories);
@@ -344,6 +370,18 @@ void ProjectManagerWindow::onRefresh()
 {
     ProjectConfig::getInstance().load();
     rebuildList();
+}
+
+void ProjectManagerWindow::onShowInExplorer()
+{
+    if (m_selectedIndex < 0 || m_selectedIndex >= m_filtered.size()) return;
+    const ProjectEntry& project = m_filtered[m_selectedIndex];
+    const QString path = project.projectPath.isEmpty()
+        ? QFileInfo(project.projectFile).absolutePath()
+        : project.projectPath;
+    if (!path.isEmpty() && QFileInfo::exists(path)) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    }
 }
 
 } // namespace cakery

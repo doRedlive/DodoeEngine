@@ -16,6 +16,7 @@
 namespace dodoe {
     class Application;
     class EditorCameraProvider;
+    class IndexedCameraProvider;
     class Entity;
     class RenderViewTarget;
     class SceneRes;
@@ -38,6 +39,12 @@ public:
     bool openDocument(const std::string& documentId) override;
     std::string startScenePath() const override;
     bool execute(const EditorCommandMessage& command) override;
+    bool inspectComponent(const std::string& typeName,
+                          std::vector<InspectorFieldMetadata>& fields) const override;
+    bool listAssets(std::vector<AssetBrowserEntry>& entries) const override;
+    bool getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const override;
+    bool listLogs(std::vector<BackendLogEntry>& entries) const override;
+    bool clearLogs() override;
     void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
     bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;
     void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
@@ -84,6 +91,7 @@ private:
     dodoe::Vector3f m_dragStartScale{1.0f, 1.0f, 1.0f};
     dodoe::Vector3f m_dragPlanePoint{0.0f, 0.0f, 0.0f};
     float m_dragStartAngle = 0.0f;
+    float m_dragStartAxisParam = 0.0f;
     bool m_hasDocument = false;
     bool m_hasPendingMetrics = false;
     bool m_booted = false;

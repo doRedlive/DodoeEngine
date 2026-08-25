@@ -4,10 +4,12 @@
 
 #include <QWidget>
 
+#include "bridge/EditorBackend.h"
 #include "core/Signal.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,19 +26,24 @@ class InspectorPanel : public QWidget {
     Q_OBJECT
 public:
     explicit InspectorPanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
+    void setSelectedAsset(const AssetBrowserEntry& asset);
+    void clearSelectedAsset();
 
 private:
     void refresh();
     void onDocumentChanged();
     void onRenameEntity(const QString& name);
     void addComponent(const std::string& typeName);
-    void commitComponentValue(std::uint64_t uuid, std::size_t index, const nlohmann::json& value);
+    void commitComponentValue(std::uint64_t uuid, std::size_t index,
+                              const nlohmann::json& value, bool managed);
 
     EditorWorkspaceContext& m_context;
     QVBoxLayout* m_layout = nullptr;
     QLineEdit* m_nameEdit = nullptr;
     std::vector<bool> m_componentExpanded;
+    std::vector<bool> m_managedComponentExpanded;
     bool m_editing = false;
+    std::optional<AssetBrowserEntry> m_selectedAsset;
     ScopedConnection m_documentSubscription;
     ScopedConnection m_selectionSubscription;
 };

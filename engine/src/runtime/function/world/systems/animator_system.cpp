@@ -165,6 +165,13 @@ namespace dodoe {
 
             animator.pending_events.clear();
 
+            if (!animator.controller.get() && animator.controller.getObjectID().isValid()) {
+                const ObjectID& ref = animator.controller.getObjectID();
+                if (AnimatorController* resolved =
+                        ResourceManager::Self().loadObject<AnimatorController>(ref.asset_id, ref.local_id)) {
+                    animator.controller = PPtr<AnimatorController>(resolved);
+                }
+            }
             if (!animator.playing || !animator.controller) {
                 continue;
             }

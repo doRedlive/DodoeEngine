@@ -40,6 +40,18 @@ public class PlayerController : CakeBehaviour
         {
             _sr.Sprite = _walkFrames[0];
         }
+
+        SetupInput();
+    }
+
+    private static void SetupInput()
+    {
+        Input.RegisterActionMap("Gameplay");
+        Input.RegisterAction("Gameplay", "Move", InputActionValueType.Axis2D);
+        Input.BindKey2D("Gameplay", "Move", KeyCode.W, 0f, 1f);
+        Input.BindKey2D("Gameplay", "Move", KeyCode.S, 0f, -1f);
+        Input.BindKey2D("Gameplay", "Move", KeyCode.A, -1f, 0f);
+        Input.BindKey2D("Gameplay", "Move", KeyCode.D, 1f, 0f);
     }
 
     private Sprite[] LoadFrames(string pattern)
@@ -67,11 +79,9 @@ public class PlayerController : CakeBehaviour
         float dt = Time.DeltaTime;
         Vector3f p = Transform.Position;
 
-        float dx = 0f, dy = 0f;
-        if (Input.IsKeyDown(KeyCode.W)) dy += 1f;
-        if (Input.IsKeyDown(KeyCode.S)) dy -= 1f;
-        if (Input.IsKeyDown(KeyCode.A)) dx -= 1f;
-        if (Input.IsKeyDown(KeyCode.D)) dx += 1f;
+        Vector2f move = Input.GetActionVector2("Gameplay/Move");
+        float dx = move.x;
+        float dy = move.y;
 
         bool moving = (dx != 0f || dy != 0f);
         if (moving)

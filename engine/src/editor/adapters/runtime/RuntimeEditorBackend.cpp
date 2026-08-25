@@ -3,6 +3,7 @@
 #include "RuntimeEditorBackend.h"
 
 #include "EditorCamera.h"
+#include "adapters/runtime/services/FieldAttributes.h"
 #include "adapters/runtime/services/TilePaintService.h"
 #include "commands/ReparentEntityCommand.h"
 #include "core/document/EditorDocumentSerializer.h"
@@ -12,6 +13,7 @@
 #include "runtime/core/channel/gizmo_channel.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/event/event_system.h"
+#include "runtime/core/log/log_system.h"
 #include "runtime/core/meta/component_db.h"
 #include "runtime/core/project/project.h"
 #include "runtime/core/utils/uuid.h"
@@ -19,6 +21,8 @@
 #include "runtime/function/render/render_view/camera_provider.h"
 #include "runtime/function/render/render_view/render_view_manager.h"
 #include "runtime/function/render/render_view/render_view_target.h"
+#include "runtime/function/script/script_runtime.h"
+#include "runtime/function/script/script_system.h"
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/world/components/id_component.h"
@@ -27,6 +31,8 @@
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/world.h"
 #include "runtime/resource/res_type/scene_res.h"
+#include "runtime/resource/resource_manager.h"
+#include "runtime/resource/asset/importer/import_settings_io.h"
 #include "runtime/service/editor/picking_backend.h"
 
 #include <algorithm>
@@ -34,12 +40,26 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <unordered_set>
 
 using namespace dodoe;
 
 namespace cakery {
 
 namespace {
+
+BackendLogLevel ToBackendLogLevel(dodoe::LogLevel level)
+{
+    switch (level) {
+    case dodoe::LogLevel::Trace: return BackendLogLevel::Trace;
+    case dodoe::LogLevel::Debug: return BackendLogLevel::Debug;
+    case dodoe::LogLevel::Info: return BackendLogLevel::Info;
+    case dodoe::LogLevel::Warn: return BackendLogLevel::Warning;
+    case dodoe::LogLevel::Error: return BackendLogLevel::Error;
+    case dodoe::LogLevel::Critical: return BackendLogLevel::Critical;
+    }
+    return BackendLogLevel::Info;
+}
 
 constexpr Float kHandleLength = 1.0f;
 constexpr Float kArrowHeadLength = 0.15f;
@@ -289,6 +309,49 @@ void SyncNativeComponents(dodoe::Entity entity, const std::vector<EditorComponen
         void* ptr = entry->get(entity);
         if (!ptr) continue;
         (void)entry->readJson(ptr, component.value);
+        if (entry->markDirty) {
+            entry->markDirty(entity);
+        }
+    }
+}
+
+void SyncManagedComponents(dodoe::SystemContext& context, dodoe::Entity entity,
+                           const std::vector<EditorComponent>& components)
+{
+    auto* scriptSystem = context.getScriptSystem();
+    auto* scriptRuntime = scriptSystem ? scriptSystem->getScriptRuntime() : nullptr;
+    if (!scriptRuntime) {
+        return;
+    }
+
+    const std::uint64_t uuid = static_cast<std::uint64_t>(entity.uuid());
+    dodoe::DynamicArray<dodoe::Pair<dodoe::String, dodoe::Json>> existing;
+    scriptRuntime->getEntityManagedComponentFields(uuid, existing);
+
+    std::unordered_set<std::string> desired;
+    for (const auto& component : components) {
+        desired.insert(component.typeName);
+        bool present = false;
+        for (const auto& [typeName, fields] : existing) {
+            if (std::string(typeName.c_str()) == component.typeName) {
+                present = true;
+                break;
+            }
+        }
+        if (!present) {
+            scriptRuntime->addEntityManagedComponentFromManaged(
+                uuid, dodoe::String(component.typeName.data(), component.typeName.size()));
+        }
+        scriptRuntime->setEntityManagedComponentFields(
+            uuid,
+            dodoe::String(component.typeName.data(), component.typeName.size()),
+            component.value);
+    }
+
+    for (const auto& [typeName, fields] : existing) {
+        if (!desired.contains(std::string(typeName.c_str()))) {
+            scriptRuntime->removeEntityManagedComponentFromManaged(uuid, typeName);
+        }
     }
 }
 
@@ -313,6 +376,108 @@ BackendCapabilities RuntimeEditorBackend::capabilities() const
     caps.scenePreview = true;
     caps.simulation = true;
     return caps;
+}
+
+bool RuntimeEditorBackend::inspectComponent(
+    const std::string& typeName, std::vector<InspectorFieldMetadata>& fields) const
+{
+    fields.clear();
+    dodoe::TypeMeta meta = dodoe::TypeMeta::newMetaFromName(
+        dodoe::String(typeName.data(), typeName.size()));
+    if (!meta.isValid()) {
+        return false;
+    }
+
+    FieldAttributeRegistry::self().applyTo(meta, typeName);
+    dodoe::FieldAccessor* reflectedFields = nullptr;
+    const int count = meta.get_field_list(reflectedFields);
+    fields.reserve(static_cast<std::size_t>(count));
+
+    for (int i = 0; i < count; ++i) {
+        auto& reflected = reflectedFields[i];
+        InspectorFieldMetadata field;
+        field.name = reflected.getFieldName();
+        field.typeName = reflected.getFieldTypeName();
+        field.hidden = reflected.isHidden();
+        field.readOnly = reflected.isReadOnly();
+        field.tooltip = reflected.attribute("Tooltip");
+        field.hasRange = reflected.attributeRange(field.rangeMin, field.rangeMax);
+
+        const bool isAssetReference = reflected.hasAttribute("AssetHandle")
+            || field.typeName.find("PPtr<") != std::string::npos
+            || field.typeName.find("AssetHandle<") != std::string::npos;
+        switch (reflected.getFieldType()) {
+        case dodoe::FieldType::Bool: field.kind = InspectorFieldKind::Bool; break;
+        case dodoe::FieldType::I32: field.kind = InspectorFieldKind::Integer; break;
+        case dodoe::FieldType::U32: field.kind = InspectorFieldKind::UnsignedInteger; break;
+        case dodoe::FieldType::F32: field.kind = InspectorFieldKind::Float; break;
+        case dodoe::FieldType::F64: field.kind = InspectorFieldKind::Double; break;
+        case dodoe::FieldType::String: field.kind = InspectorFieldKind::String; break;
+        case dodoe::FieldType::Enum: field.kind = InspectorFieldKind::Enum; break;
+        case dodoe::FieldType::Vec2:
+        case dodoe::FieldType::Vec3:
+        case dodoe::FieldType::Vec4:
+        case dodoe::FieldType::Vec2i:
+        case dodoe::FieldType::Vec3i:
+        case dodoe::FieldType::Vec4i: field.kind = InspectorFieldKind::Vector; break;
+        case dodoe::FieldType::Color: field.kind = InspectorFieldKind::Color; break;
+        case dodoe::FieldType::Struct: field.kind = InspectorFieldKind::Struct; break;
+        case dodoe::FieldType::Array: field.kind = InspectorFieldKind::Array; break;
+        default: field.kind = InspectorFieldKind::Unknown; break;
+        }
+        if (isAssetReference) {
+            field.kind = InspectorFieldKind::AssetHandle;
+        }
+
+        dodoe::EnumValueList enumValues;
+        if (reflected.enumValues(enumValues)) {
+            field.kind = InspectorFieldKind::Enum;
+            field.enumValues.reserve(enumValues.size());
+            for (const auto& [name, value] : enumValues) {
+                field.enumValues.push_back({name, value});
+            }
+        }
+        fields.push_back(std::move(field));
+    }
+    delete[] reflectedFields;
+    return !fields.empty();
+}
+
+bool RuntimeEditorBackend::listAssets(std::vector<AssetBrowserEntry>& entries) const
+{
+    entries.clear();
+    if (!m_assetDatabase) {
+        return false;
+    }
+    for (const auto& asset : m_assetDatabase->list()) {
+        AssetBrowserEntry entry;
+        entry.uuid = static_cast<std::uint64_t>(asset.uuid);
+        entry.path = asset.path;
+        entry.name = asset.name;
+        entry.type = asset.type;
+        entry.extension = asset.extension;
+        entry.dirty = asset.dirty;
+        entry.dependencies = asset.dependencies;
+        entries.push_back(std::move(entry));
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::getAssetImportSettings(const std::string& path,
+                                                  AssetImportSettings& settings) const
+{
+    settings = AssetImportSettings{};
+    auto* assetManager = dodoe::ResourceManager::Self().getAssetManager();
+    if (!assetManager || path.empty()) {
+        return false;
+    }
+    dodoe::ImportSettings imported;
+    if (!dodoe::ImportSettingsIO::Load(dodoe::FsPath(path), imported)) {
+        return false;
+    }
+    settings.importer = imported.importer.c_str();
+    settings.settings = imported.settings;
+    return true;
 }
 
 bool RuntimeEditorBackend::openProject(const ProjectDescriptor& project)
@@ -494,6 +659,106 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
         return true;
     }
 
+    if (command.name == "asset.import") {
+        if (command.payload.empty()) {
+            return false;
+        }
+        auto& resourceManager = dodoe::ResourceManager::Self();
+        auto* assetManager = resourceManager.getAssetManager();
+        if (!assetManager) {
+            return false;
+        }
+        const std::filesystem::path source(command.payload);
+        const dodoe::ObjectID imported = assetManager->ensureImported(
+            dodoe::String(source.is_absolute()
+                ? source.lexically_normal().string().c_str()
+                : std::filesystem::absolute(source).lexically_normal().string().c_str()));
+        if (!imported.isValid()) {
+            return false;
+        }
+        if (m_assetDatabase) {
+            m_assetDatabase->refresh();
+        }
+        return true;
+    }
+
+    if (command.name == "asset.reimport") {
+        if (command.payload.empty()) {
+            return false;
+        }
+        auto& resourceManager = dodoe::ResourceManager::Self();
+        auto* assetManager = resourceManager.getAssetManager();
+        if (!assetManager) {
+            return false;
+        }
+        std::error_code ec;
+        const std::filesystem::path absolutePath = std::filesystem::absolute(command.payload).lexically_normal();
+        const std::filesystem::path relativePath = std::filesystem::relative(
+            absolutePath, std::filesystem::path(assetManager->getAssetDir().string()), ec);
+        if (ec || relativePath.empty() || relativePath.string().starts_with("..")) {
+            return false;
+        }
+        auto* database = assetManager->getDatabase();
+        if (!database) {
+            return false;
+        }
+        dodoe::UUID assetId;
+        const std::string normalizedRelative = relativePath.generic_string();
+        for (const auto& objectId : database->getAllAssetIDs()) {
+            const dodoe::AssetMetaData metadata = database->getMetaData(objectId);
+            if (std::filesystem::path(metadata.source_path.c_str()).generic_string() == normalizedRelative) {
+                assetId = objectId.asset_id;
+                break;
+            }
+        }
+        if (!assetId.isValid() || !assetManager->reimportAsset(assetId)) {
+            return false;
+        }
+        if (m_assetDatabase) {
+            m_assetDatabase->refresh();
+        }
+        return true;
+    }
+
+    if (command.name == "asset.update_settings") {
+        try {
+            const dodoe::Json payload = dodoe::Json::parse(command.payload);
+            if (!payload.contains("path") || !payload["path"].is_string() ||
+                !payload.contains("settings") || !payload["settings"].is_object()) {
+                return false;
+            }
+            auto* assetManager = dodoe::ResourceManager::Self().getAssetManager();
+            if (!assetManager) {
+                return false;
+            }
+            const std::filesystem::path sourcePath = std::filesystem::absolute(
+                payload["path"].get<std::string>()).lexically_normal();
+            std::error_code ec;
+            const std::filesystem::path relativePath = std::filesystem::relative(
+                sourcePath, std::filesystem::path(assetManager->getAssetDir().string()), ec);
+            if (ec || relativePath.empty() || relativePath.string().starts_with("..")) {
+                return false;
+            }
+            dodoe::ImportSettings importSettings;
+            if (!dodoe::ImportSettingsIO::Load(dodoe::FsPath(sourcePath.string()), importSettings)) {
+                return false;
+            }
+            importSettings.settings = payload["settings"];
+            if (!dodoe::ImportSettingsIO::Save(dodoe::FsPath(sourcePath.string()), importSettings)) {
+                return false;
+            }
+            if (importSettings.guid.isValid() && !assetManager->reimportAsset(importSettings.guid)) {
+                return false;
+            }
+            if (m_assetDatabase) {
+                m_assetDatabase->refresh();
+            }
+            return true;
+        } catch (const dodoe::Json::exception&) {
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -508,6 +773,16 @@ bool RuntimeEditorBackend::attachSceneSurface(const SceneSurfaceDescriptor& surf
         return false;
     }
     m_surface = surface;
+    if (m_surface.logicalWidth > 0 && m_surface.logicalHeight > 0 &&
+        m_surface.pixelWidth > 0 && m_surface.pixelHeight > 0) {
+        m_pending.logicalWidth = m_surface.logicalWidth;
+        m_pending.logicalHeight = m_surface.logicalHeight;
+        m_pending.devicePixelRatio = m_surface.devicePixelRatio;
+        m_pending.pixelWidth = m_surface.pixelWidth;
+        m_pending.pixelHeight = m_surface.pixelHeight;
+        m_pending.nativeHandle = m_surface.nativeHandle;
+        m_hasPendingMetrics = true;
+    }
     if (!m_booted && !bootRuntime()) {
         return false;
     }
@@ -603,6 +878,30 @@ std::string RuntimeEditorBackend::diagnostic() const
     return m_diagnostic;
 }
 
+bool RuntimeEditorBackend::listLogs(std::vector<BackendLogEntry>& entries) const
+{
+    entries.clear();
+    const auto append = [&entries](const std::vector<dodoe::LogMessage>& logs) {
+        for (const dodoe::LogMessage& log : logs) {
+            entries.push_back({log.payload, log.logger_name, ToBackendLogLevel(log.level),
+                               log.repeat_count, log.sequence});
+        }
+    };
+    append(dodoe::Log::GetCoreLogs());
+    append(dodoe::Log::GetClientLogs());
+    std::sort(entries.begin(), entries.end(), [](const BackendLogEntry& lhs, const BackendLogEntry& rhs) {
+        return lhs.sequence < rhs.sequence;
+    });
+    return true;
+}
+
+bool RuntimeEditorBackend::clearLogs()
+{
+    dodoe::Log::ClearCoreLogs();
+    dodoe::Log::ClearClientLogs();
+    return true;
+}
+
 bool RuntimeEditorBackend::bootRuntime()
 {
     if (m_booted) {
@@ -611,6 +910,8 @@ bool RuntimeEditorBackend::bootRuntime()
 
     const float bootW = m_pending.logicalWidth > 0 ? static_cast<float>(m_pending.logicalWidth) : 1280.0f;
     const float bootH = m_pending.logicalHeight > 0 ? static_cast<float>(m_pending.logicalHeight) : 720.0f;
+    const int bootPixelW = m_pending.pixelWidth > 0 ? m_pending.pixelWidth : static_cast<int>(bootW);
+    const int bootPixelH = m_pending.pixelHeight > 0 ? m_pending.pixelHeight : static_cast<int>(bootH);
 
     ApplicationSpecification spec;
     spec.name = "Cakery";
@@ -618,6 +919,8 @@ bool RuntimeEditorBackend::bootRuntime()
     spec.window_resizeable = true;
     spec.width = static_cast<UInt32>(bootW);
     spec.height = static_cast<UInt32>(bootH);
+    spec.pixel_width = static_cast<UInt32>(bootPixelW);
+    spec.pixel_height = static_cast<UInt32>(bootPixelH);
     spec.host_handle = reinterpret_cast<void*>(m_surface.nativeHandle);
     spec.render_settings.api = RenderBackendApiType::D3D12;
     spec.render_settings.pipeline = RenderingPipelineType::Deferred;
@@ -649,12 +952,19 @@ bool RuntimeEditorBackend::bootRuntime()
         info.camera = m_cameraProvider.get();
         info.logical = dodoe::Vector2f(bootW, bootH);
         info.window  = dodoe::Vector2i(static_cast<int>(bootW), static_cast<int>(bootH));
-        info.pixel   = dodoe::Vector2i(static_cast<int>(bootW), static_cast<int>(bootH));
+        info.pixel   = dodoe::Vector2i(bootPixelW, bootPixelH);
         m_sceneTarget = viewMgr->createViewTarget(info);
     }
 
     if (m_camera) {
         m_camera->setViewportSize(bootW, bootH);
+    }
+
+    // Window::getPixelSize() is initialized from the host metrics, so the
+    // first render-system frame creates the swapchain at the same pixel size
+    // as the Qt surface instead of the logical fallback size.
+    if (auto* window = ctx.getWindowManager()->getWindow()) {
+        window->setPixelSize(bootPixelW, bootPixelH);
     }
 
     m_lastTick = std::chrono::steady_clock::now();
@@ -729,6 +1039,7 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
                 dodoe::String(entity.name.data(), entity.name.size()));
         }
         SyncNativeComponents(sceneEntity, entity.nativeComponents);
+        SyncManagedComponents(*ctx, sceneEntity, entity.managedComponents);
     }
 
     for (Entity sceneEntity : scene->getEntities()) {
@@ -798,12 +1109,15 @@ void RuntimeEditorBackend::pickAt(float screenX, float screenY)
     dodoe::Vector3f origin, dir;
     m_camera->screenToRay(screenX, screenY, origin, dir);
     dodoe::Entity entity = dodoe::PickingBackend::RaycastNearest(*scene, origin, dir);
-    m_selectedUuid = entity.valid()
-        ? static_cast<std::uint64_t>(entity.uuid())
-        : 0;
+    if (!entity.valid()) {
+        // A miss in the current lightweight picker is not proof that the user
+        // intended to clear the selection. Keep the Inspector stable until a
+        // real entity hit is reported.
+        return;
+    }
+    m_selectedUuid = static_cast<std::uint64_t>(entity.uuid());
     if (m_eventCallback) {
-        m_eventCallback(BackendEventMessage{"selection_changed",
-            m_selectedUuid == 0 ? std::string() : std::to_string(m_selectedUuid)});
+        m_eventCallback(BackendEventMessage{"selection_changed", std::to_string(m_selectedUuid)});
     }
 }
 
@@ -942,6 +1256,23 @@ void RuntimeEditorBackend::beginDrag(int axis, float screenX, float screenY)
         }
     }
 
+    if (m_dragMode == "scale") {
+        const dodoe::Vector2f start = m_camera->projectToScreen(m_dragStartPosition);
+        const dodoe::Vector2f end = m_camera->projectToScreen(
+            m_dragStartPosition + kAxes[m_dragAxis] * kHandleLength);
+        const dodoe::Vector2f axisScreen = end - start;
+        const float axisLengthSq = axisScreen.x * axisScreen.x + axisScreen.y * axisScreen.y;
+        // A view-facing axis has no screen-space direction in a 2D/editor
+        // view. It cannot provide a meaningful drag distance.
+        if (axisLengthSq < 1e-6f) {
+            m_dragAxis = -1;
+            m_dragMode.clear();
+            return;
+        }
+        const dodoe::Vector2f mouseOffset{screenX - start.x, screenY - start.y};
+        m_dragStartAxisParam = (mouseOffset.x * axisScreen.x + mouseOffset.y * axisScreen.y) / axisLengthSq;
+    }
+
     if (m_dragMode == "rotate") {
         const dodoe::Vector2f centerScreen = m_camera->projectToScreen(m_dragStartPosition);
         m_dragStartAngle = std::atan2(screenY - centerScreen.y, screenX - centerScreen.x);
@@ -980,15 +1311,20 @@ void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
         transform.setRotation(newRotation);
         emitTransformChange(transform.getPosition(), newRotation, transform.getScale());
     } else if (m_dragMode == "scale") {
-        dodoe::Vector3f origin, dir;
-        m_camera->screenToRay(screenX, screenY, origin, dir);
-        dodoe::Vector3f planePoint;
-        if (!RayPlaneIntersect(origin, dir, m_dragStartPosition, m_camera->forwardDirection(), planePoint)) {
+        const dodoe::Vector2f start = m_camera->projectToScreen(m_dragStartPosition);
+        const dodoe::Vector2f end = m_camera->projectToScreen(
+            m_dragStartPosition + kAxes[m_dragAxis] * kHandleLength);
+        const dodoe::Vector2f axisScreen = end - start;
+        const float axisLengthSq = axisScreen.x * axisScreen.x + axisScreen.y * axisScreen.y;
+        if (axisLengthSq < 1e-6f) {
             return;
         }
-        const float movement = dodoe::Math::Dot(planePoint - m_dragPlanePoint, kAxes[m_dragAxis]);
+        const dodoe::Vector2f mouseOffset{screenX - start.x, screenY - start.y};
+        const float axisParam = (mouseOffset.x * axisScreen.x + mouseOffset.y * axisScreen.y) / axisLengthSq;
+        const float movement = axisParam - m_dragStartAxisParam;
         dodoe::Vector3f newScale = m_dragStartScale;
-        newScale[m_dragAxis] = std::max(0.01f, m_dragStartScale[m_dragAxis] + movement);
+        newScale[m_dragAxis] = std::max(0.01f,
+            m_dragStartScale[m_dragAxis] + movement * kHandleLength);
         transform.setScale(newScale);
         emitTransformChange(transform.getPosition(), transform.getRotation(), newScale);
     }

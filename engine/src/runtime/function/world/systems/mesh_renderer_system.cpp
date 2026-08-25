@@ -63,6 +63,10 @@ namespace dodoe {
         }
 
         Mesh* resolved = mesh.mesh.get();
+        if (!resolved && mesh.mesh.getObjectID().isValid()) {
+            const ObjectID& ref = mesh.mesh.getObjectID();
+            resolved = ResourceManager::Self().loadObject<Mesh>(ref.asset_id, ref.local_id);
+        }
         if (!resolved && !mesh.mesh.getLegacyPath().empty()) {
             resolved = ResourceManager::Self().loadObjectByPath<Mesh>(FileID(mesh.mesh.getLegacyPath()));
         }

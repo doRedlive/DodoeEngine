@@ -4,10 +4,15 @@
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "cakery/ui/shell/EditorWindow.h"
 #include "cakery/app/project_selection/ProjectManagerWindow.h"
+#include "services/EditorConfig.h"
 
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QIcon>
+#include <QLocale>
+#include <QTranslator>
+#include <QStandardPaths>
 
 namespace cakery {
 
@@ -18,19 +23,64 @@ EditorApplication::EditorApplication(int& argc, char** argv, const QString& appl
     setOrganizationName("Redlive");
     setApplicationName(m_applicationName);
 
+    m_translator = std::make_unique<QTranslator>();
+    QString language = qEnvironmentVariable("DODOE_LANGUAGE");
+    if (language.isEmpty()) {
+        language = QLocale::system().name();
+    }
+    const QString catalog = language.startsWith(QStringLiteral("zh"), Qt::CaseInsensitive)
+        ? QStringLiteral("Cakery_zh_CN")
+        : QStringLiteral("Cakery_en");
+    if (m_translator->load(QStringLiteral(":/i18n/") + catalog + QStringLiteral(".qm"))) {
+        installTranslator(m_translator.get());
+    }
+
     const QString appEditorDir = QDir(applicationDirPath()).filePath("resources/editor");
     QString builtinEditorDir = appEditorDir;
     if (!QDir(builtinEditorDir).exists()) {
         builtinEditorDir = QDir(applicationDirPath()).absoluteFilePath("../../engine/res/editor");
     }
+    QString applicationIconPath = QDir(applicationDirPath())
+        .filePath("resources/pictures/Dodoe-White.jpg");
+    if (!QFileInfo::exists(applicationIconPath)) {
+        applicationIconPath = QDir(applicationDirPath())
+            .absoluteFilePath("../../engine/res/pictures/Dodoe-White.jpg");
+    }
+    if (QFileInfo::exists(applicationIconPath)) {
+        setWindowIcon(QIcon(applicationIconPath));
+    }
     m_resources = std::make_unique<EditorResourceLocator>(builtinEditorDir.toStdString());
+    const QString userEditorDir = QDir(QStandardPaths::writableLocation(
+        QStandardPaths::AppDataLocation)).filePath("Editor");
+    EditorConfig::self().load(builtinEditorDir.toStdString(), {}, userEditorDir.toStdString());
 
-    const auto themePath = m_resources->resolve("editor://themes/cakery-dark.qss");
-    QFile styleFile(QString::fromStdString(themePath.string()));
-    if (styleFile.open(QFile::ReadOnly | QFile::Text)) setStyleSheet(styleFile.readAll());
+    applyTheme(QString::fromStdString(EditorConfig::self().themeName()));
 
     m_session = std::make_unique<EditorSession>(std::move(backend));
     m_workspace = std::make_unique<EditorWorkspaceContext>(*m_session, *m_resources);
+}
+
+void EditorApplication::applyTheme(const QString& themeName)
+{
+    const QString normalized = themeName.trimmed().isEmpty()
+        ? QStringLiteral("cakery-dark")
+        : themeName.trimmed();
+    const auto basePath = m_resources->resolve("editor://themes/cakery-dark.qss");
+    QFile baseFile(QString::fromStdString(basePath.string()));
+    if (!baseFile.open(QFile::ReadOnly | QFile::Text)) {
+        return;
+    }
+
+    QString styleSheet = QString::fromUtf8(baseFile.readAll());
+    if (normalized != QStringLiteral("cakery-dark")) {
+        const auto overridePath = m_resources->resolve(
+            (std::string("editor://themes/") + normalized.toStdString() + ".qss").c_str());
+        QFile overrideFile(QString::fromStdString(overridePath.string()));
+        if (overrideFile.open(QFile::ReadOnly | QFile::Text)) {
+            styleSheet += QStringLiteral("\n") + QString::fromUtf8(overrideFile.readAll());
+        }
+    }
+    setStyleSheet(styleSheet);
 }
 
 EditorApplication::~EditorApplication()
@@ -62,6 +112,17 @@ int EditorApplication::run()
 
 void EditorApplication::onProjectSelected(const QString& projectPath)
 {
+    const QFileInfo selectedInfo(projectPath);
+    const QString projectRoot = selectedInfo.isDir()
+        ? projectPath
+        : selectedInfo.absolutePath();
+    const QString projectEditorDir = QDir(projectRoot).filePath("ProjectSettings/Editor");
+    const QString userEditorDir = QDir(QStandardPaths::writableLocation(
+        QStandardPaths::AppDataLocation)).filePath("Editor");
+    EditorConfig::self().load(m_resources->packagedRoot().string(),
+                              projectEditorDir.toStdString(),
+                              userEditorDir.toStdString());
+    applyTheme(QString::fromStdString(EditorConfig::self().themeName()));
     m_editorWindow = new EditorWindow(*m_workspace);
     if (!m_editorWindow->enterWorkspace(projectPath)) {
         delete m_editorWindow;

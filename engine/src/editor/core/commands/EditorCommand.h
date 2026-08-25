@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace cakery {
 
@@ -43,9 +44,14 @@ public:
     std::string label() const override;
 
 private:
+    struct SavedEntity {
+        std::size_t index = 0;
+        EditorEntity entity;
+    };
+
     std::uint64_t m_uuid = 0;
-    std::size_t m_index = 0;
-    EditorEntity m_savedEntity;
+    std::vector<SavedEntity> m_savedEntities;
+    bool m_captured = false;
 };
 
 class RenameEntityCommand final : public EditorCommand {
@@ -103,6 +109,35 @@ private:
     nlohmann::json m_newValue;
 };
 
+class RemoveManagedComponentCommand final : public EditorCommand {
+public:
+    RemoveManagedComponentCommand(std::uint64_t uuid, std::size_t index);
+    void execute(EditorDocumentModel& model) override;
+    void revert(EditorDocumentModel& model) override;
+    std::string label() const override;
+
+private:
+    std::uint64_t m_uuid = 0;
+    std::size_t m_index = 0;
+    EditorComponent m_savedComponent;
+    bool m_saved = false;
+};
+
+class UpdateManagedComponentCommand final : public EditorCommand {
+public:
+    UpdateManagedComponentCommand(std::uint64_t uuid, std::size_t index, nlohmann::json newValue);
+    void execute(EditorDocumentModel& model) override;
+    void revert(EditorDocumentModel& model) override;
+    std::string label() const override;
+    bool mergeWith(const EditorCommand& next) override;
+
+private:
+    std::uint64_t m_uuid = 0;
+    std::size_t m_index = 0;
+    nlohmann::json m_oldValue;
+    nlohmann::json m_newValue;
+};
+
 class SetFieldValueCommand final : public EditorCommand {
 public:
     SetFieldValueCommand(std::uint64_t uuid, std::size_t nativeIndex, std::string fieldPath, nlohmann::json newValue);
@@ -119,6 +154,20 @@ private:
     std::string m_fieldPath;
     nlohmann::json m_oldValue;
     nlohmann::json m_newValue;
+};
+
+class ReparentDocumentCommand final : public EditorCommand {
+public:
+    ReparentDocumentCommand(std::uint64_t uuid, std::uint64_t newParent);
+    void execute(EditorDocumentModel& model) override;
+    void revert(EditorDocumentModel& model) override;
+    std::string label() const override;
+
+private:
+    std::uint64_t m_uuid = 0;
+    std::uint64_t m_newParent = 0;
+    std::uint64_t m_oldParent = 0;
+    bool m_captured = false;
 };
 
 } // namespace cakery

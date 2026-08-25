@@ -74,6 +74,9 @@ namespace dodoe {
         window_manager_create_info.prop.width = m_init_info.spec.width;
         window_manager_create_info.prop.height = m_init_info.spec.height;
         window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;
+        window_manager_create_info.host_pixel_size = Vector2i(
+            static_cast<Int32>(m_init_info.spec.pixel_width),
+            static_cast<Int32>(m_init_info.spec.pixel_height));
         m_window_manager = WindowManager::Create(window_manager_create_info);
         DO_INFO("WindowManager initialized.");
 

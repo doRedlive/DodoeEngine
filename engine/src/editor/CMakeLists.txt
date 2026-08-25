@@ -1,7 +1,7 @@
 set(TARGET_NAME Cakery)
 set(PREVIEW_TARGET_NAME CakeryPreview)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools)
 
 set(EDITOR_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/bridge/EditorBackend.h
@@ -96,18 +96,26 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/project_selection/ProjectManagerWindow.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/project_selection/ProjectManagerWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/EditorWorkspaceContext.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/EditorIcons.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/shell/EditorWindow.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/shell/EditorWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ConsolePanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ConsolePanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.cpp
+)
+set_source_files_properties(
+    ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_en.ts
+    ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_zh_CN.ts
+    PROPERTIES HEADER_FILE_ONLY TRUE
 )
 add_library(EditorUI STATIC ${EDITOR_UI_SOURCES})
 target_link_libraries(EditorUI PUBLIC EditorCore EditorServices Qt6::Widgets qtadvanceddocking-qt6)
@@ -169,6 +177,15 @@ target_link_libraries(${TARGET_NAME}
 target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 setup_cakery_product(${TARGET_NAME} ON)
 
+set(CAKERY_TRANSLATIONS
+    ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_en.ts
+    ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_zh_CN.ts
+)
+qt_add_translations(${TARGET_NAME}
+    TS_FILES ${CAKERY_TRANSLATIONS}
+    RESOURCE_PREFIX "/i18n"
+)
+
 qt_add_executable(${PREVIEW_TARGET_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/products/cakery_preview/main.cpp)
 target_link_libraries(${PREVIEW_TARGET_NAME}
     PRIVATE EditorUI
@@ -177,3 +194,7 @@ target_link_libraries(${PREVIEW_TARGET_NAME}
 )
 target_include_directories(${PREVIEW_TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 setup_cakery_product(${PREVIEW_TARGET_NAME} OFF)
+qt_add_translations(${PREVIEW_TARGET_NAME}
+    TS_FILES ${CAKERY_TRANSLATIONS}
+    RESOURCE_PREFIX "/i18n"
+)

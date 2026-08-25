@@ -61,6 +61,10 @@ namespace dodoe {
         sprite_object->setUUID(id.id);
 
         Sprite* resolved = sr.sprite.get();
+        if (!resolved && sr.sprite.getObjectID().isValid()) {
+            const ObjectID& ref = sr.sprite.getObjectID();
+            resolved = ResourceManager::Self().loadObject<Sprite>(ref.asset_id, ref.local_id);
+        }
         if (!resolved && !sr.sprite.getLegacyPath().empty()) {
             resolved = ResourceManager::Self().loadObjectByPath<Sprite>(FileID(sr.sprite.getLegacyPath()));
         }

@@ -55,6 +55,10 @@ namespace dodoe {
         }
 
         Mesh* resolved = foliage.mesh.get();
+        if (!resolved && foliage.mesh.getObjectID().isValid()) {
+            const ObjectID& ref = foliage.mesh.getObjectID();
+            resolved = ResourceManager::Self().loadObject<Mesh>(ref.asset_id, ref.local_id);
+        }
         if (!resolved && !foliage.mesh.getLegacyPath().empty()) {
             resolved = ResourceManager::Self().loadObjectByPath<Mesh>(FileID(foliage.mesh.getLegacyPath()));
         }

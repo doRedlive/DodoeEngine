@@ -69,6 +69,9 @@ CommandResult CommandRegistry::executeStructured(EditorSession& session, const s
         return CommandResult::Err("Command has no handler: " + name);
     }
     CommandArgs cargs;
+    if (args.is_object()) {
+        cargs.named = args;
+    }
     cargs.raw = args;
     return spec->handler(session, cargs);
 }

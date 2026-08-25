@@ -96,7 +96,9 @@ namespace dodoe {
     }
 
     Texture2D* TextureManager::createTexture(const String& path, const ObjectID& ref, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
-        const auto absolute_path = FileSystem::RelativeToAbsolute(path, FileSystem::GetEngineRootPath());
+        const auto* asset_manager = ResourceManager::Self().getAssetManager();
+        const FsPath base = asset_manager ? asset_manager->getAssetDir() : FsPath{};
+        const auto absolute_path = FileSystem::RelativeToAbsolute(path, base);
         TextureBlob data(absolute_path);
         if (!data.isValid()) {
             DO_ERROR("TextureManager: Create texture {0} failed!", path);

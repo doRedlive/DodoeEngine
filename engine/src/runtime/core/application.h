@@ -39,6 +39,9 @@ namespace dodoe {
         META(Enable)
         UInt32 height{ 1080 };
 
+        UInt32 pixel_width{ 0 };
+        UInt32 pixel_height{ 0 };
+
         META(Enable)
         Bool window_resizeable{ true };
 

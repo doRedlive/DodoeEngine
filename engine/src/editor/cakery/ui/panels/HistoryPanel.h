@@ -7,7 +7,8 @@
 #include "core/Signal.h"
 
 class QListWidget;
-class QListWidgetItem;
+class QLineEdit;
+class QToolButton;
 
 namespace cakery {
 
@@ -20,10 +21,15 @@ public:
 
 private:
     void refresh();
-    void onItemClicked(QListWidgetItem* item);
+    void undo();
+    void redo();
+    void clear();
 
     EditorWorkspaceContext& m_context;
     QListWidget* m_list = nullptr;
+    QLineEdit* m_search = nullptr;
+    QToolButton* m_undo = nullptr;
+    QToolButton* m_redo = nullptr;
     ScopedConnection m_historySubscription;
 };
 

@@ -27,6 +27,7 @@ private slots:
     void onImportProject();
     void onScanFolder();
     void onRefresh();
+    void onShowInExplorer();
     void onProjectSelected();
     void onSearchChanged(const QString& text);
     void onSortChanged(int index);
@@ -44,6 +45,7 @@ private:
     QLabel* m_detailDate = nullptr;
     QLabel* m_detailDesc = nullptr;
     QPushButton* m_openBtn = nullptr;
+    QPushButton* m_showInExplorerBtn = nullptr;
 
     QList<ProjectEntry> m_filtered;
     int m_selectedIndex = -1;

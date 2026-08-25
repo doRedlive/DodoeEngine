@@ -31,6 +31,21 @@ std::vector<EditorComponent> ReadComponents(const nlohmann::json& entityJson, co
     return components;
 }
 
+std::uint64_t ParentFromHierarchyComponent(const std::vector<EditorComponent>& components)
+{
+    for (const auto& component : components) {
+        if (component.typeName != "HierarchyComponent" || !component.value.is_object()) {
+            continue;
+        }
+        const auto it = component.value.find("parent_uuid");
+        if (it != component.value.end() &&
+            (it->is_number_unsigned() || it->is_number_integer())) {
+            return it->get<std::uint64_t>();
+        }
+    }
+    return 0;
+}
+
 nlohmann::json WriteComponents(const std::vector<EditorComponent>& components) {
     nlohmann::json array = nlohmann::json::array();
     for (const auto& component : components) {
@@ -75,7 +90,9 @@ bool EditorDocumentSerializer::fromJson(const nlohmann::json& root, EditorDocume
             if (entityJson.contains("m_uuid") && entityJson["m_uuid"].is_number_integer()) {
                 entity.uuid = entityJson["m_uuid"].get<std::uint64_t>();
             }
-            if (entityJson.contains("m_parent") && entityJson["m_parent"].is_number_integer()) {
+            const bool hasSerializedParent = entityJson.contains("m_parent") &&
+                (entityJson["m_parent"].is_number_unsigned() || entityJson["m_parent"].is_number_integer());
+            if (hasSerializedParent) {
                 entity.parent = entityJson["m_parent"].get<std::uint64_t>();
             }
             if (entityJson.contains("m_name") && entityJson["m_name"].is_string()) {
@@ -83,6 +100,9 @@ bool EditorDocumentSerializer::fromJson(const nlohmann::json& root, EditorDocume
             }
             entity.nativeComponents = ReadComponents(entityJson, "m_native_components");
             entity.managedComponents = ReadComponents(entityJson, "m_managed_components");
+            if (!hasSerializedParent || entity.parent == 0) {
+                entity.parent = ParentFromHierarchyComponent(entity.nativeComponents);
+            }
             document.entities.push_back(std::move(entity));
         }
     }

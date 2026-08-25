@@ -29,7 +29,7 @@ namespace dodoe {
         DynamicArray<SpriteMeta> sprites{};
     };
 
-    class ImportSettingsIO {
+    class DODOE_API ImportSettingsIO {
     public:
         static constexpr const char* kMetaSuffix = ".meta";
 

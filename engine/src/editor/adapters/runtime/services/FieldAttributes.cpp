@@ -15,38 +15,59 @@ FieldAttributeRegistry& FieldAttributeRegistry::self() {
 }
 
 void FieldAttributeRegistry::registerDefaults() {
+    if (m_defaultsRegistered) {
+        return;
+    }
+    m_defaultsRegistered = true;
+
+    // These are editor hints only; the runtime serializer remains the source
+    // of truth for the component JSON representation.
+    m_defaults = {
+        {"CameraComponent", "fov", "Range", "1,179"},
+        {"CameraComponent", "near_plane", "Range", "0.001,1000"},
+        {"CameraComponent", "far_plane", "Range", "1,100000"},
+        {"Rigidbody2dComponent", "gravity_scale", "Range", "0,10"},
+        {"RigidbodyComponent", "gravity_scale", "Range", "0,10"},
+    };
 }
 
 void FieldAttributeRegistry::applyTo(dodoe::TypeMeta& meta, const std::string& typeName) {
-    dodoe::FieldAccessor* fields = nullptr;
-    int count = meta.get_field_list(fields);
+    registerDefaults();
+
+    for (const auto& attr : m_defaults) {
+        if (typeName == attr.typeName) {
+            meta.set_field_attribute(attr.fieldName, attr.key, attr.value);
+        }
+    }
 
     auto& inspectors = EditorConfig::self().inspectorsJson();
     if (inspectors.contains("fieldAttributes")) {
         auto& attrs = inspectors["fieldAttributes"];
-        for (int i = 0; i < count; ++i) {
-            std::string key = typeName + "." + std::string(fields[i].getFieldName());
-            if (attrs.contains(key)) {
-                auto& fa = attrs[key];
-                if (fa.contains("Hidden") && fa["Hidden"].get<bool>()) {
-                    fields[i].setAttribute("Hidden", "true");
-                }
-                if (fa.contains("Tooltip") && fa["Tooltip"].is_string()) {
-                    fields[i].setAttribute("Tooltip", fa["Tooltip"].get<std::string>().c_str());
-                }
-                if (fa.contains("Range") && fa["Range"].is_array() && fa["Range"].size() == 2) {
-                    std::string rangeStr = std::to_string(fa["Range"][0].get<float>()) + "," +
-                                           std::to_string(fa["Range"][1].get<float>());
-                    fields[i].setAttribute("Range", rangeStr.c_str());
-                }
-                if (fa.contains("ReadOnly") && fa["ReadOnly"].get<bool>()) {
-                    fields[i].setAttribute("ReadOnly", "true");
-                }
+        for (auto it = attrs.begin(); it != attrs.end(); ++it) {
+            const std::string prefix = typeName + ".";
+            if (it.key().rfind(prefix, 0) != 0 || !it.value().is_object()) {
+                continue;
+            }
+            const std::string fieldName = it.key().substr(prefix.size());
+            const auto& fa = it.value();
+            if (fa.contains("Hidden") && fa["Hidden"].is_boolean() && fa["Hidden"].get<bool>()) {
+                meta.set_field_attribute(fieldName.c_str(), "Hidden", "true");
+            }
+            if (fa.contains("Tooltip") && fa["Tooltip"].is_string()) {
+                const std::string tooltip = fa["Tooltip"].get<std::string>();
+                meta.set_field_attribute(fieldName.c_str(), "Tooltip", tooltip.c_str());
+            }
+            if (fa.contains("Range") && fa["Range"].is_array() && fa["Range"].size() == 2 &&
+                fa["Range"][0].is_number() && fa["Range"][1].is_number()) {
+                const std::string rangeStr = std::to_string(fa["Range"][0].get<float>()) + "," +
+                                              std::to_string(fa["Range"][1].get<float>());
+                meta.set_field_attribute(fieldName.c_str(), "Range", rangeStr.c_str());
+            }
+            if (fa.contains("ReadOnly") && fa["ReadOnly"].is_boolean() && fa["ReadOnly"].get<bool>()) {
+                meta.set_field_attribute(fieldName.c_str(), "ReadOnly", "true");
             }
         }
     }
-
-    delete[] fields;
 }
 
 } // namespace cakery

@@ -4,11 +4,22 @@
 
 #include <QWidget>
 
+#include "bridge/EditorBackend.h"
+
 #include <filesystem>
+#include <vector>
 
 class QPoint;
 class QTreeWidget;
 class QTreeWidgetItem;
+class QLineEdit;
+class QComboBox;
+class QFileSystemWatcher;
+class AssetTreeWidget;
+class QLabel;
+class QScrollArea;
+class QListWidget;
+class QListWidgetItem;
 
 namespace cakery {
 
@@ -21,17 +32,38 @@ public:
 
     void refresh();
 
+signals:
+    void assetSelected(const cakery::AssetBrowserEntry& asset);
+    void assetSelectionCleared();
+
 private:
     void addDirectory(QTreeWidgetItem* parentItem, const std::filesystem::path& directory);
+    bool filterTreeItem(QTreeWidgetItem* item, const QString& filter);
     std::filesystem::path selectedDirectory() const;
     void onContextMenu(const QPoint& pos);
     void onNewScene();
     void onNewFolder();
+    void onImportAsset();
+    void onReimportAsset();
+    void onRenameAsset();
+    void onDeleteAsset();
+    void onRevealAsset();
     void onDocumentDoubleClicked(QTreeWidgetItem* item, int column);
+    void updatePreview(QTreeWidgetItem* item);
+    void populateAssetGrid(const std::filesystem::path& directory);
+    void selectTreeAsset(const QString& path);
 
     EditorWorkspaceContext& m_context;
     QTreeWidget* m_tree = nullptr;
+    QLabel* m_preview = nullptr;
+    QScrollArea* m_previewScroll = nullptr;
+    QListWidget* m_assetGrid = nullptr;
+    QLineEdit* m_filter = nullptr;
+    QComboBox* m_typeFilter = nullptr;
+    QFileSystemWatcher* m_watcher = nullptr;
+    bool m_refreshPending = false;
     std::filesystem::path m_root;
+    std::vector<AssetBrowserEntry> m_assets;
 };
 
 } // namespace cakery

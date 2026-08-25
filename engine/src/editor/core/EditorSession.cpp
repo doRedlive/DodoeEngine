@@ -102,11 +102,44 @@ bool EditorSession::execute(EditorCommandMessage command)
     return m_backend->execute(command);
 }
 
+bool EditorSession::inspectComponent(const std::string& typeName,
+                                     std::vector<InspectorFieldMetadata>& fields) const
+{
+    fields.clear();
+    return m_backend && m_backend->inspectComponent(typeName, fields);
+}
+
+bool EditorSession::listAssets(std::vector<AssetBrowserEntry>& entries) const
+{
+    entries.clear();
+    return m_backend && m_backend->listAssets(entries);
+}
+
+bool EditorSession::getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const
+{
+    settings = AssetImportSettings{};
+    return m_backend && m_backend->getAssetImportSettings(path, settings);
+}
+
 bool EditorSession::attachSceneSurface(SceneSurfaceDescriptor surface)
 {
     if (!m_backend || surface.nativeHandle == 0 || m_state == EditorSessionState::Closing ||
         m_state == EditorSessionState::Closed) {
         return false;
+    }
+    if (surface.logicalWidth > 0 && surface.logicalHeight > 0 &&
+        surface.pixelWidth > 0 && surface.pixelHeight > 0) {
+        ViewportMetrics metrics;
+        metrics.logicalWidth = surface.logicalWidth;
+        metrics.logicalHeight = surface.logicalHeight;
+        metrics.devicePixelRatio = surface.devicePixelRatio;
+        metrics.pixelWidth = surface.pixelWidth;
+        metrics.pixelHeight = surface.pixelHeight;
+        metrics.nativeHandle = surface.nativeHandle;
+        if (metrics.sequence <= m_lastViewportSequence) {
+            metrics.sequence = m_lastViewportSequence + 1;
+        }
+        submitViewportMetrics(metrics);
     }
     m_surfaceAttached = m_backend->attachSceneSurface(surface);
     if (m_surfaceAttached && m_hasPendingViewportMetrics) {
@@ -256,6 +289,20 @@ std::string EditorSession::diagnostic() const
     return m_backend ? m_backend->diagnostic() : "No editor backend is available.";
 }
 
+bool EditorSession::listLogs(std::vector<BackendLogEntry>& entries) const
+{
+    if (!m_backend) {
+        entries.clear();
+        return false;
+    }
+    return m_backend->listLogs(entries);
+}
+
+bool EditorSession::clearLogs()
+{
+    return m_backend && m_backend->clearLogs();
+}
+
 bool EditorSession::canEditDocument() const
 {
     return m_documentModel.hasDocument() &&
@@ -281,8 +328,10 @@ bool EditorSession::deleteEntity(std::uint64_t uuid)
         return false;
     }
     m_history.execute(std::make_unique<DeleteEntityCommand>(uuid), m_documentModel);
-    if (m_selection.selected() == uuid) {
-        m_selection.clear();
+    for (const std::uint64_t selected : m_selection.selectedAll()) {
+        if (!m_documentModel.findEntity(selected)) {
+            m_selection.remove(selected);
+        }
     }
     notifyDocumentChanged();
     return true;
@@ -294,6 +343,22 @@ bool EditorSession::renameEntity(std::uint64_t uuid, const std::string& name)
         return false;
     }
     m_history.execute(std::make_unique<RenameEntityCommand>(uuid, name), m_documentModel);
+    notifyDocumentChanged();
+    return true;
+}
+
+bool EditorSession::reparentEntity(std::uint64_t uuid, std::uint64_t newParent)
+{
+    if (!canEditDocument() || !m_documentModel.findEntity(uuid)) {
+        return false;
+    }
+    if (newParent != 0 && !m_documentModel.findEntity(newParent)) {
+        return false;
+    }
+    auto command = std::make_unique<ReparentDocumentCommand>(uuid, newParent);
+    if (!m_history.execute(std::move(command), m_documentModel)) {
+        return false;
+    }
     notifyDocumentChanged();
     return true;
 }
@@ -332,6 +397,35 @@ bool EditorSession::updateComponent(std::uint64_t uuid, std::size_t nativeIndex,
         return false;
     }
     m_history.execute(std::make_unique<UpdateComponentCommand>(uuid, nativeIndex, value), m_documentModel);
+    notifyDocumentChanged();
+    return true;
+}
+
+bool EditorSession::removeManagedComponent(std::uint64_t uuid, std::size_t index)
+{
+    if (!canEditDocument()) {
+        return false;
+    }
+    const EditorEntity* entity = m_documentModel.findEntity(uuid);
+    if (!entity || index >= entity->managedComponents.size()) {
+        return false;
+    }
+    m_history.execute(std::make_unique<RemoveManagedComponentCommand>(uuid, index), m_documentModel);
+    notifyDocumentChanged();
+    return true;
+}
+
+bool EditorSession::updateManagedComponent(std::uint64_t uuid, std::size_t index,
+                                            const nlohmann::json& value)
+{
+    if (!canEditDocument()) {
+        return false;
+    }
+    const EditorEntity* entity = m_documentModel.findEntity(uuid);
+    if (!entity || index >= entity->managedComponents.size()) {
+        return false;
+    }
+    m_history.execute(std::make_unique<UpdateManagedComponentCommand>(uuid, index, value), m_documentModel);
     notifyDocumentChanged();
     return true;
 }

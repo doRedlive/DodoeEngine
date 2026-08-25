@@ -15,7 +15,7 @@ namespace cakery {
 
 QString ProjectEntry::displayDate() const
 {
-    if (isMissing) return "Missing";
+    if (isMissing) return QCoreApplication::translate("ProjectConfig", "Missing");
     qint64 ticks = lastModifiedUnix > 0 ? lastModifiedUnix : lastOpenedUnix;
     if (ticks == 0) return "";
     QDateTime dt = QDateTime::fromSecsSinceEpoch(ticks);

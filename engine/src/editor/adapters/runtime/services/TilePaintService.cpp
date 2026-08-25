@@ -254,7 +254,7 @@ void TilePaintService::RegisterCommands()
 
     auto& reg = CommandRegistry::self();
 
-    reg.add({"tilemap.create", "Create a new tilemap entity with a default layer",
+    reg.add({"tilemap.create", "Create a new tilemap GameObject with a default layer",
              "tilemap.create name=<string> width=<int> height=<int>",
              {{"name", "string", "Tilemap name", true},
               {"width", "int", "Map width in tiles", true},
@@ -292,7 +292,7 @@ void TilePaintService::RegisterCommands()
 
     reg.add({"tilemap.layer", "Create a new tile layer under a tilemap",
              "tilemap.layer <tilemap_uuid> name=<string> width=<int> height=<int>",
-             {{"tilemap", "uuid", "Parent tilemap entity UUID", true},
+             {{"tilemap", "uuid", "Parent tilemap GameObject UUID", true},
               {"name", "string", "Layer name", true},
               {"width", "int", "Layer width in tiles", true},
               {"height", "int", "Layer height in tiles", true}},
@@ -311,9 +311,9 @@ void TilePaintService::RegisterCommands()
                  }
                  if (!tilemapUuid.isValid()) return CommandResult::Err("No tilemap UUID specified");
                  auto tilemapEntity = ResolveEntity(scene, tilemapUuid);
-                 if (!tilemapEntity.valid()) return CommandResult::Err("Tilemap entity not found");
+                 if (!tilemapEntity.valid()) return CommandResult::Err("Tilemap GameObject not found");
                  if (!tilemapEntity.hasComponent<dodoe::TilemapComponent>()) {
-                     return CommandResult::Err("Entity is not a tilemap");
+                     return CommandResult::Err("GameObject is not a tilemap");
                  }
                  std::string name = args.named.value("name",
                      args.positional.size() > 1 ? args.positional[1] : std::string("Layer"));

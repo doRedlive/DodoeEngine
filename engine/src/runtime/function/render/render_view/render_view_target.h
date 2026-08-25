@@ -25,6 +25,7 @@ namespace dodoe {
     public:
         void resize(Vector2i window, Vector2i pixel) { m_viewport.resize(window, pixel); }
         void setLogicalSize(Vector2f logical)        { m_viewport.setLogicalSize(logical); }
+        void setCamera(ICameraProvider* camera)       { m_camera = camera; }
 
         [[nodiscard]] const RenderViewport& getViewport() const { return m_viewport; }
         [[nodiscard]] ICameraProvider* getCamera() const        { return m_camera; }
