@@ -253,6 +253,57 @@ namespace dodoe {
         return resolvePathToRef(FileID(source_path));
     }
 
+    ObjectID AssetManager::ensureTilesetImported(const String& absolute_path) {
+        if (m_asset_dir.empty() || !m_database) {
+            DO_ERROR("AssetManager::ensureTilesetImported: asset manager not initialized");
+            return {};
+        }
+
+        const FsPath abs = FsPath(absolute_path.c_str()).lexically_normal();
+        if (!std::filesystem::exists(abs) || !std::filesystem::is_regular_file(abs)) {
+            DO_ERROR("AssetManager::ensureTilesetImported: '{}' is not a regular file", absolute_path);
+            return {};
+        }
+
+        std::error_code ec;
+        const FsPath rel = std::filesystem::relative(abs, m_asset_dir, ec);
+        const String rel_str = String(rel.generic_string().c_str());
+        if (ec || rel.empty() || rel_str.starts_with("..")) {
+            DO_WARN("AssetManager::ensureTilesetImported: '{}' is outside the project asset directory '{}'",
+                    absolute_path, m_asset_dir.string());
+            return {};
+        }
+        const String source_path = String(rel_str.c_str());
+
+        UUID asset_id;
+        {
+            std::unique_lock lock(m_mutex);
+            const auto it = m_path_to_asset_id.find(source_path);
+            if (it != m_path_to_asset_id.end()) {
+                asset_id = it->second;
+            }
+        }
+        if (!asset_id.isValid()) {
+            asset_id = registerAsset(source_path, AssetType::Tileset);
+            if (!asset_id.isValid()) {
+                return {};
+            }
+        }
+        {
+            std::unique_lock lock(m_mutex);
+            if (m_assets.find(asset_id) == m_assets.end()) {
+                auto tileset = create_scope<TilesetAsset>();
+                tileset->setObjectID(ObjectID{asset_id, 0});
+                tileset->setName(FileSystem::PathToNameNoExt(source_path));
+                if (tileset->loadFromSource(abs.generic_string().c_str())) {
+                    tileset->setLoadState(AssetLoadState::Loaded);
+                }
+                m_assets[asset_id] = std::move(tileset);
+            }
+        }
+        return ObjectID{asset_id, 0};
+    }
+
     void AssetManager::unloadAsset(const UUID& asset_id) {
         std::unique_lock lock(m_mutex);
         auto it = m_assets.find(asset_id);

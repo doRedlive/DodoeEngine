@@ -41,10 +41,7 @@ namespace dodoe {
 
     using GizmoChannel = DataChannel<GizmoChannelData>;
 
-    inline GizmoChannel& GetGizmoChannel() {
-        static GizmoChannel channel;
-        return channel;
-    }
+    DODOE_API GizmoChannel& GetGizmoChannel();
 
 } // namespace dodoe
 

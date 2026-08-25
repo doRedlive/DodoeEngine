@@ -22,6 +22,9 @@
 #include "cakery/ui/panels/HistoryPanel.h"
 #include "cakery/ui/panels/InspectorPanel.h"
 #include "cakery/ui/panels/ProjectPanel.h"
+#include "cakery/ui/panels/SettingsPanel.h"
+#include "cakery/ui/panels/TileLayersPanel.h"
+#include "cakery/ui/panels/TilePalettePanel.h"
 
 #include <DockAreaWidget.h>
 #include <DockManager.h>
@@ -321,6 +324,7 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     createToolbar();
     createDocks();
     createPanels();
+    createWindowMenu();
     m_defaultLayoutState = new QByteArray(m_dockManager->saveState(1));
     const QString safeName = QApplication::applicationName().toLower().replace(
         QRegularExpression(QStringLiteral("[^a-z0-9]+")), QStringLiteral("_"));
@@ -331,6 +335,22 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
 
     m_historySubscription = m_context.session().history().subscribe([this]() { refreshUndoRedoActions(); });
     refreshUndoRedoActions();
+
+    m_cameraModeSubscription = ScopedConnection(
+        m_context.session().cameraModeChanged,
+        m_context.session().cameraModeChanged.connect([this](const std::string& mode) {
+            const bool is2d = mode == "2d";
+            if (m_camera2DAction) {
+                m_camera2DAction->setChecked(is2d);
+                m_camera2DAction->setIcon(editorIcon(is2d ? QStringLiteral("viewport-2d.svg")
+                                                          : QStringLiteral("viewport-3d.svg")));
+            }
+        }));
+    m_tileModeSubscription = ScopedConnection(
+        m_context.session().tileEditModeChanged,
+        m_context.session().tileEditModeChanged.connect([this](bool active) {
+            updateTileToolbar(active);
+        }));
 }
 
 EditorWindow::~EditorWindow()
@@ -406,11 +426,24 @@ void EditorWindow::createMenus()
         }
     }
 
-    auto* window = m_menuBar->addMenu(tr("Window"));
-    auto* reset = window->addAction(tr("Reset Layout"));
-    connect(reset, &QAction::triggered, this, &EditorWindow::resetLayout);
+    auto* tile = m_menuBar->addMenu(tr("Tile"));
+    auto* createTilemap = tile->addAction(tr("Create Tilemap..."));
+    connect(createTilemap, &QAction::triggered, this, [this]() {
+        if (m_tilePalette) {
+            m_tilePalette->onNewTilemap();
+        }
+    });
 
-    auto* themes = window->addMenu(tr("Theme"));
+    m_settingsMenu = m_menuBar->addMenu(tr("Settings"));
+}
+
+void EditorWindow::createWindowMenu()
+{
+    m_windowMenu = m_menuBar->addMenu(tr("Window"));
+    m_resetLayoutAction = m_windowMenu->addAction(tr("Reset Layout"));
+    connect(m_resetLayoutAction, &QAction::triggered, this, &EditorWindow::resetLayout);
+
+    auto* themes = m_windowMenu->addMenu(tr("Theme"));
     const std::array<std::pair<const char*, const char*>, 3> themeChoices = {{
         {"cakery-light", QT_TR_NOOP("Light")},
         {"cakery-dark", QT_TR_NOOP("Dark")},
@@ -431,6 +464,46 @@ void EditorWindow::createMenus()
             }
         });
     }
+    populatePanelMenus();
+}
+
+void EditorWindow::populatePanelMenus()
+{
+    const std::array<ads::CDockWidget*, 10> panelDocks = {
+        m_hierarchyDock, m_inspectorDock, m_projectDock, m_consoleDock,
+        m_terminalDock, m_historyDock, m_gameSettingsDock, m_engineSettingsDock,
+        m_tilePaletteDock, m_tileLayersDock,
+    };
+    QList<QAction*> toggleActions;
+    for (ads::CDockWidget* dock : panelDocks) {
+        if (!dock) {
+            continue;
+        }
+        setupPanelToggle(dock);
+        toggleActions.push_back(dock->toggleViewAction());
+    }
+    if (m_windowMenu && m_resetLayoutAction) {
+        m_windowMenu->insertActions(m_resetLayoutAction, toggleActions);
+        m_windowMenu->insertSeparator(m_resetLayoutAction);
+    }
+    if (m_settingsMenu) {
+        if (m_gameSettingsDock) m_settingsMenu->addAction(m_gameSettingsDock->toggleViewAction());
+        if (m_engineSettingsDock) m_settingsMenu->addAction(m_engineSettingsDock->toggleViewAction());
+    }
+}
+
+void EditorWindow::setupPanelToggle(ads::CDockWidget* dock)
+{
+    QAction* action = dock->toggleViewAction();
+    const QIcon checkIcon = editorIcon(QStringLiteral("check.svg"));
+    QPixmap blankPixmap(16, 16);
+    blankPixmap.fill(Qt::transparent);
+    const QIcon blankIcon(blankPixmap);
+    const auto applyIcon = [action, checkIcon, blankIcon](bool checked) {
+        action->setIcon(checked ? checkIcon : blankIcon);
+    };
+    applyIcon(action->isChecked());
+    connect(dock, &ads::CDockWidget::viewToggled, this, applyIcon);
 }
 
 void EditorWindow::resetLayout()
@@ -705,6 +778,16 @@ void EditorWindow::createDocks()
     sceneToolbar->setMovable(false);
     sceneToolbar->setIconSize(QSize(16, 16));
     sceneToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+
+    m_camera2DAction = sceneToolbar->addAction(editorIcon(QStringLiteral("viewport-3d.svg")), QString());
+    m_camera2DAction->setCheckable(true);
+    m_camera2DAction->setChecked(false);
+    m_camera2DAction->setToolTip(tr("Toggle 2D/3D view mode"));
+    connect(m_camera2DAction, &QAction::triggered, this, [this](bool checked) {
+        m_context.session().execute(EditorCommandMessage{
+            "camera_mode", checked ? std::string("2d") : std::string("3d")});
+    });
+
     auto* toolGroup = new QActionGroup(sceneToolbar);
     toolGroup->setExclusive(true);
     struct SceneTool {
@@ -733,6 +816,37 @@ void EditorWindow::createDocks()
             m_context.session().execute(EditorCommandMessage{"gizmo_mode", mode});
         });
     }
+
+    sceneToolbar->addSeparator();
+    m_tileToolGroup = new QActionGroup(sceneToolbar);
+    m_tileToolGroup->setExclusive(true);
+    struct TileToolEntry {
+        const char* tooltip;
+        const char* icon;
+        const char* mode;
+    };
+    const TileToolEntry tileTools[] = {
+        {QT_TR_NOOP("Select"), "tile-select.svg", "select"},
+        {QT_TR_NOOP("Brush"), "tile-brush.svg", "brush"},
+        {QT_TR_NOOP("Fill"), "tile-fill.svg", "fill"},
+        {QT_TR_NOOP("Eraser"), "tile-eraser.svg", "erase"},
+        {QT_TR_NOOP("Rectangle"), "tile-rect.svg", "rect"},
+        {QT_TR_NOOP("Line"), "tile-line.svg", "line"},
+        {QT_TR_NOOP("Picker"), "tile-picker.svg", "picker"},
+    };
+    for (const TileToolEntry& tileTool : tileTools) {
+        auto* action = sceneToolbar->addAction(
+            editorIcon(QString::fromLatin1(tileTool.icon)), QString());
+        action->setCheckable(true);
+        action->setEnabled(false);
+        action->setToolTip(tr(tileTool.tooltip));
+        m_tileToolGroup->addAction(action);
+        if (tileTool.mode[0] == 's') action->setChecked(true);
+        connect(action, &QAction::triggered, this, [this, mode = tileTool.mode]() {
+            m_context.session().execute(EditorCommandMessage{"tilemap.tool", mode});
+        });
+    }
+    updateTileToolbar(false);
     sceneLayout->addWidget(sceneToolbar);
 
     m_sceneSurface = new SceneSurface(m_context, sceneBody);
@@ -749,60 +863,96 @@ void EditorWindow::createDocks()
 
 void EditorWindow::createPanels()
 {
-    auto* hierarchy = new ads::CDockWidget(tr("Hierarchy"));
-    hierarchy->setObjectName(QStringLiteral("Hierarchy"));
-    m_hierarchy = new HierarchyPanel(m_context, hierarchy);
-    hierarchy->setWidget(m_hierarchy);
-    hierarchy->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::LeftDockWidgetArea, hierarchy);
+    m_hierarchyDock = new ads::CDockWidget(tr("Hierarchy"));
+    m_hierarchyDock->setObjectName(QStringLiteral("Hierarchy"));
+    m_hierarchy = new HierarchyPanel(m_context, m_hierarchyDock);
+    m_hierarchyDock->setWidget(m_hierarchy);
+    m_hierarchyDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::LeftDockWidgetArea, m_hierarchyDock);
 
-    auto* inspector = new ads::CDockWidget(tr("Inspector"));
-    inspector->setObjectName(QStringLiteral("Inspector"));
-    m_inspector = new InspectorPanel(m_context, inspector);
-    inspector->setWidget(m_inspector);
-    inspector->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::RightDockWidgetArea, inspector);
+    m_inspectorDock = new ads::CDockWidget(tr("Inspector"));
+    m_inspectorDock->setObjectName(QStringLiteral("Inspector"));
+    m_inspector = new InspectorPanel(m_context, m_inspectorDock);
+    m_inspectorDock->setWidget(m_inspector);
+    m_inspectorDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_inspectorDock);
 
-    auto* project = new ads::CDockWidget(tr("Project"));
-    project->setObjectName(QStringLiteral("Project"));
-    m_projectPanel = new ProjectPanel(m_context, project);
-    project->setWidget(m_projectPanel);
+    m_projectDock = new ads::CDockWidget(tr("Project"));
+    m_projectDock->setObjectName(QStringLiteral("Project"));
+    m_projectPanel = new ProjectPanel(m_context, m_projectDock);
+    m_projectDock->setWidget(m_projectPanel);
     connect(m_projectPanel, &ProjectPanel::assetSelected,
             m_inspector, &InspectorPanel::setSelectedAsset);
     connect(m_projectPanel, &ProjectPanel::assetSelectionCleared,
             m_inspector, &InspectorPanel::clearSelectedAsset);
-    project->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, project, hierarchy->dockAreaWidget());
+    m_projectDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_projectDock, m_hierarchyDock->dockAreaWidget());
 
-    auto* console = new ads::CDockWidget(tr("Console"));
-    console->setObjectName(QStringLiteral("Console"));
-    m_console = new ConsolePanel(m_context, console);
+    m_consoleDock = new ads::CDockWidget(tr("Console"));
+    m_consoleDock->setObjectName(QStringLiteral("Console"));
+    m_console = new ConsolePanel(m_context, m_consoleDock);
     m_console->append(ConsoleLogLevel::Info, tr("Editor console ready"),
                       QStringLiteral("Cakery"));
     m_console->append(ConsoleLogLevel::Info, QString::fromStdString(m_context.diagnostic()),
                       QStringLiteral("Backend"));
-    console->setWidget(m_console);
-    console->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, console, m_sceneDock->dockAreaWidget());
+    m_consoleDock->setWidget(m_console);
+    m_consoleDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_consoleDock, m_sceneDock->dockAreaWidget());
 
-    auto* terminal = new ads::CDockWidget(tr("Terminal"));
-    terminal->setObjectName(QStringLiteral("Terminal"));
-    terminal->setWidget(unavailablePanel(tr("Terminal unavailable"),
-        tr("Runtime command services are disabled in Editor-Only mode."), terminal));
-    terminal->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, terminal, console->dockAreaWidget());
+    m_terminalDock = new ads::CDockWidget(tr("Terminal"));
+    m_terminalDock->setObjectName(QStringLiteral("Terminal"));
+    m_terminalDock->setWidget(unavailablePanel(tr("Terminal unavailable"),
+        tr("Runtime command services are disabled in Editor-Only mode."), m_terminalDock));
+    m_terminalDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_terminalDock, m_consoleDock->dockAreaWidget());
 
-    auto* history = new ads::CDockWidget(tr("History"));
-    history->setObjectName(QStringLiteral("History"));
-    m_historyPanel = new HistoryPanel(m_context, history);
-    history->setWidget(m_historyPanel);
-    history->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, history, console->dockAreaWidget());
+    m_historyDock = new ads::CDockWidget(tr("History"));
+    m_historyDock->setObjectName(QStringLiteral("History"));
+    m_historyPanel = new HistoryPanel(m_context, m_historyDock);
+    m_historyDock->setWidget(m_historyPanel);
+    m_historyDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_historyDock, m_consoleDock->dockAreaWidget());
+
+    m_tilePaletteDock = new ads::CDockWidget(tr("Tile Palette"));
+    m_tilePaletteDock->setObjectName(QStringLiteral("Tile Palette"));
+    m_tilePalette = new TilePalettePanel(m_context, m_tilePaletteDock);
+    m_tilePaletteDock->setWidget(m_tilePalette);
+    m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_tilePaletteDock, m_historyDock->dockAreaWidget());
+
+    m_tileLayersDock = new ads::CDockWidget(tr("Tile Layers"));
+    m_tileLayersDock->setObjectName(QStringLiteral("Tile Layers"));
+    m_tileLayers = new TileLayersPanel(m_context, m_tileLayersDock);
+    m_tileLayersDock->setWidget(m_tileLayers);
+    m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_tileLayersDock, m_tilePaletteDock->dockAreaWidget());
+
+    m_gameSettingsPanel = new SettingsPanel(nullptr);
+    m_gameSettingsDock = new ads::CDockWidget(tr("Game Settings"));
+    m_gameSettingsDock->setObjectName(QStringLiteral("Game Settings"));
+    m_gameSettingsDock->setWidget(m_gameSettingsPanel);
+    m_gameSettingsDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_gameSettingsDock, m_consoleDock->dockAreaWidget());
+    m_gameSettingsDock->toggleView(false);
+
+    m_engineSettingsPanel = new SettingsPanel(nullptr);
+    m_engineSettingsDock = new ads::CDockWidget(tr("Engine Settings"));
+    m_engineSettingsDock->setObjectName(QStringLiteral("Engine Settings"));
+    m_engineSettingsDock->setWidget(m_engineSettingsPanel);
+    m_engineSettingsDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_engineSettingsDock, m_consoleDock->dockAreaWidget());
+    m_engineSettingsDock->toggleView(false);
+    connect(m_engineSettingsPanel, &SettingsPanel::saved, this, []() {
+        EditorConfig::self().reload();
+        if (auto* application = qobject_cast<EditorApplication*>(qApp)) {
+            application->applyTheme(QString::fromStdString(EditorConfig::self().themeName()));
+        }
+    });
 
     // Establish the single-Scene authoring layout before the user resizes any dock.
-    m_dockManager->setSplitterSizes(inspector->dockAreaWidget(), QList<int>{260, 820, 320});
-    m_dockManager->setSplitterSizes(hierarchy->dockAreaWidget(), QList<int>{610, 240});
-    m_dockManager->setSplitterSizes(console->dockAreaWidget(), QList<int>{610, 240});
+    m_dockManager->setSplitterSizes(m_inspectorDock->dockAreaWidget(), QList<int>{260, 820, 320});
+    m_dockManager->setSplitterSizes(m_hierarchyDock->dockAreaWidget(), QList<int>{610, 240});
+    m_dockManager->setSplitterSizes(m_consoleDock->dockAreaWidget(), QList<int>{610, 240});
 }
 
 void EditorWindow::startSafePointTimer()
@@ -821,6 +971,19 @@ void EditorWindow::refreshUndoRedoActions()
     if (m_redoAction) m_redoAction->setEnabled(m_context.session().history().canRedo());
 }
 
+void EditorWindow::updateTileToolbar(bool active)
+{
+    if (!m_tileToolGroup) {
+        return;
+    }
+    for (QAction* action : m_tileToolGroup->actions()) {
+        action->setEnabled(active);
+    }
+    if (active && m_tileToolGroup->checkedAction() == nullptr) {
+        m_tileToolGroup->actions().first()->setChecked(true);
+    }
+}
+
 bool EditorWindow::enterWorkspace(const QString& projectPath)
 {
     ProjectDescriptor project;
@@ -835,6 +998,16 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
         return false;
     }
     m_context.resources().setProjectRoot(std::filesystem::path(project.rootPath));
+    if (m_gameSettingsPanel) {
+        m_gameSettingsPanel->setFilePath(
+            QDir(QString::fromStdString(project.rootPath)).filePath(QStringLiteral("app_config.json")));
+    }
+    if (m_engineSettingsPanel) {
+        m_engineSettingsPanel->setFallback([this]() { return EditorConfig::self().editorJson(); });
+        m_engineSettingsPanel->setFilePath(
+            QDir(QString::fromStdString(project.rootPath))
+                .filePath(QStringLiteral("ProjectSettings/Editor/editor.json")));
+    }
     if (m_console) {
         m_console->append(ConsoleLogLevel::Info, QString::fromStdString(m_context.diagnostic()),
                           QStringLiteral("Backend"));

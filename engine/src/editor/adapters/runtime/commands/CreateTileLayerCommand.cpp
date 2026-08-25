@@ -2,6 +2,7 @@
 
 #include "CreateTileLayerCommand.h"
 
+#include "TilemapDocumentRefs.h"
 #include "adapters/runtime/services/UuidResolve.h"
 #include "core/document/EditorDocumentModel.h"
 
@@ -86,6 +87,11 @@ void CreateTileLayerCommand::execute(EditorDocumentModel& model)
         value["offset_y"] = 0;
         model.addComponent(static_cast<std::uint64_t>(m_createdUuid),
                            EditorComponent{"TileLayerComponent", std::move(value)});
+        model.reparentEntity(static_cast<std::uint64_t>(m_createdUuid),
+                             static_cast<std::uint64_t>(m_tilemap));
+        if (nlohmann::json* order = FindTilemapLayerOrderArray(model, m_tilemap)) {
+            order->push_back(static_cast<std::uint64_t>(m_createdUuid));
+        }
     }
 }
 
@@ -107,6 +113,11 @@ void CreateTileLayerCommand::revert(EditorDocumentModel& model)
         }
     }
 
+    if (nlohmann::json* order = FindTilemapLayerOrderArray(model, m_tilemap)) {
+        order->erase(std::remove(order->begin(), order->end(),
+                                 static_cast<std::uint64_t>(m_createdUuid)),
+                     order->end());
+    }
     model.deleteEntity(static_cast<std::uint64_t>(m_createdUuid));
 }
 

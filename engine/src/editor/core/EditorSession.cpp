@@ -20,6 +20,7 @@ EditorSession::EditorSession(std::unique_ptr<IEditorBackend> backend)
     m_backend->setEventCallback([this](const BackendEventMessage& event) {
         handleBackendEvent(event);
     });
+    m_backend->setEditorSession(this);
     m_editHistory.changed.connect([this]() {
         notifyDocumentChanged();
     });
@@ -113,6 +114,15 @@ bool EditorSession::listAssets(std::vector<AssetBrowserEntry>& entries) const
 {
     entries.clear();
     return m_backend && m_backend->listAssets(entries);
+}
+
+bool EditorSession::queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->queryTilemapState(tilemapUuid, out);
 }
 
 bool EditorSession::getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const
@@ -486,6 +496,17 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
                 payload.value("value", nlohmann::json::object()));
         } catch (const nlohmann::json::exception&) {
         }
+        return;
+    }
+    if (event.name == "camera_mode_changed") {
+        m_cameraMode = event.payload.empty() ? "3d" : event.payload;
+        cameraModeChanged.fire(m_cameraMode);
+        return;
+    }
+    if (event.name == "tilemap_edit_mode") {
+        const bool active = event.payload == "1";
+        tileEditModeChanged.fire(active);
+        return;
     }
 }
 

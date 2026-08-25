@@ -140,14 +140,14 @@ namespace dodoe {
         ResourceManager() = default;
         Scope<AssetManager> m_assetManager{nullptr};
 
-        Texture2D* LoadTexture2D(const UUID& asset_id, UInt32 local_id);
+        DODOE_API Texture2D* LoadTexture2D(const UUID& asset_id, UInt32 local_id);
         Sprite* LoadSprite(const UUID& asset_id, UInt32 local_id);
         Material* LoadMaterial(const UUID& asset_id, UInt32 local_id);
         Anim2DClip* LoadAnim2DClip(const UUID& asset_id, UInt32 local_id);
         Skeleton* LoadSkeleton(const UUID& asset_id, UInt32 local_id);
         AnimClip* LoadAnimClip(const UUID& asset_id, UInt32 local_id);
         AnimatorController* LoadAnimatorController(const UUID& asset_id, UInt32 local_id);
-        Tileset* LoadTileset(const UUID& asset_id, UInt32 local_id);
+        DODOE_API Tileset* LoadTileset(const UUID& asset_id, UInt32 local_id);
         Mesh* LoadMesh(const UUID& asset_id, UInt32 local_id);
     };
 

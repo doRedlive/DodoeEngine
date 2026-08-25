@@ -10,6 +10,7 @@
 
 class QAction;
 class QEvent;
+class QMenu;
 class QMenuBar;
 class QPoint;
 class QShowEvent;
@@ -31,6 +32,9 @@ class HistoryPanel;
 class InspectorPanel;
 class ProjectPanel;
 class SceneSurface;
+class SettingsPanel;
+class TileLayersPanel;
+class TilePalettePanel;
 
 class EditorWindow : public QMainWindow {
     Q_OBJECT
@@ -53,6 +57,9 @@ private:
     void createMenus();
     void createDocks();
     void createPanels();
+    void createWindowMenu();
+    void populatePanelMenus();
+    void setupPanelToggle(ads::CDockWidget* dock);
     void startSafePointTimer();
     void refreshUndoRedoActions();
     void resetLayout();
@@ -60,29 +67,51 @@ private:
     void saveLayoutState() const;
     void toggleMaximize();
     void updateMaximizeButton();
+    void updateTileToolbar(bool active);
     bool overInteractiveChild(const QPoint& pos) const;
     bool overMenuAction(QMenuBar* menuBar, const QPoint& localPos) const;
 
     EditorWorkspaceContext& m_context;
     ads::CDockManager* m_dockManager = nullptr;
     ads::CDockWidget* m_sceneDock = nullptr;
+    ads::CDockWidget* m_hierarchyDock = nullptr;
+    ads::CDockWidget* m_inspectorDock = nullptr;
+    ads::CDockWidget* m_projectDock = nullptr;
+    ads::CDockWidget* m_consoleDock = nullptr;
+    ads::CDockWidget* m_terminalDock = nullptr;
+    ads::CDockWidget* m_historyDock = nullptr;
+    ads::CDockWidget* m_gameSettingsDock = nullptr;
+    ads::CDockWidget* m_engineSettingsDock = nullptr;
+    ads::CDockWidget* m_tilePaletteDock = nullptr;
+    ads::CDockWidget* m_tileLayersDock = nullptr;
     SceneSurface* m_sceneSurface = nullptr;
     HierarchyPanel* m_hierarchy = nullptr;
     HistoryPanel* m_historyPanel = nullptr;
     InspectorPanel* m_inspector = nullptr;
     ProjectPanel* m_projectPanel = nullptr;
     ConsolePanel* m_console = nullptr;
+    SettingsPanel* m_gameSettingsPanel = nullptr;
+    SettingsPanel* m_engineSettingsPanel = nullptr;
+    TilePalettePanel* m_tilePalette = nullptr;
+    TileLayersPanel* m_tileLayers = nullptr;
     QWidget* m_titleBar = nullptr;
     QToolBar* m_editorToolbar = nullptr;
     QMenuBar* m_menuBar = nullptr;
+    QMenu* m_settingsMenu = nullptr;
+    QMenu* m_windowMenu = nullptr;
+    QAction* m_resetLayoutAction = nullptr;
     QToolButton* m_maxButton = nullptr;
     QAction* m_undoAction = nullptr;
     QAction* m_redoAction = nullptr;
+    QAction* m_camera2DAction = nullptr;
+    QActionGroup* m_tileToolGroup = nullptr;
     QTimer* m_safePointTimer = nullptr;
     bool m_closed = false;
     QByteArray* m_defaultLayoutState = nullptr;
     QString m_layoutStatePath;
     ScopedConnection m_historySubscription;
+    ScopedConnection m_cameraModeSubscription;
+    ScopedConnection m_tileModeSubscription;
 };
 
 } // namespace cakery

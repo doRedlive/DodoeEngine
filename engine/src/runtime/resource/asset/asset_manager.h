@@ -65,10 +65,11 @@ namespace dodoe {
 
         [[nodiscard]] Asset* findAssetByPath(const String& source_path) const;
 
-        [[nodiscard]] ObjectID resolvePathToRef(const FileID& file_id) const;
+        [[nodiscard]] ObjectID DODOE_API resolvePathToRef(const FileID& file_id) const;
         [[nodiscard]] ObjectID resolveSubObjectRef(const FileID& file_id, UInt32 local_id) const;
 
         [[nodiscard]] ObjectID DODOE_API ensureImported(const String& absolute_path);
+        [[nodiscard]] ObjectID DODOE_API ensureTilesetImported(const String& absolute_path);
 
         template<typename T>
         [[nodiscard]] AssetHandle<T> getHandle(const UUID& asset_id) const {

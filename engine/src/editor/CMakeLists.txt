@@ -56,6 +56,9 @@ set_target_properties(EditorNullBackend PROPERTIES FOLDER "Engine/Editor")
 set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorBackend.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorBackend.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorScene.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorGizmo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorTilemap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/AssetDatabase.h
@@ -74,6 +77,16 @@ set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTileLayerCommand.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTileLayerCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilesetCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/RemoveTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/RemoveTilesetCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReorderTileLayerCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReorderTileLayerCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ResizeTilemapCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ResizeTilemapCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/TilemapDocumentRefs.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/TilemapDocumentRefs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReparentEntityCommand.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReparentEntityCommand.cpp
 )
@@ -111,6 +124,12 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/SettingsPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/SettingsPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TileLayersPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TileLayersPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilePalettePanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilePalettePanel.cpp
 )
 set_source_files_properties(
     ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_en.ts

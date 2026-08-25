@@ -1,7 +1,7 @@
 // do@Redlive
 
 #include "EditorCamera.h"
-#include "runtime/core/channel/render_channel.h"
+#include "runtime/core/channel/camera_channel.h"
 #include "runtime/function/render/render_settings.h"
 
 #include <algorithm>
@@ -15,6 +15,19 @@ void EditorCamera::setViewportSize(float w, float h)
 {
     m_vpW = w;
     m_vpH = h;
+}
+
+void EditorCamera::setMode(Mode mode)
+{
+    if (mode == m_mode) {
+        return;
+    }
+    if (mode == Mode::Ortho2D) {
+        m_orthoPan = Vector2f(m_pivot.x, m_pivot.y);
+        const float halfH = m_distance * std::tan(glm::radians(m_fov * 0.5f));
+        m_orthoZoom = halfH * 2.0f;
+    }
+    m_mode = mode;
 }
 
 void EditorCamera::update(float dt)
@@ -84,7 +97,7 @@ dodoe::Vector3f EditorCamera::right() const
 
 void EditorCamera::commitToRenderChannel()
 {
-    auto& ch = dodoe::GetEditorCameraChannel().get<dodoe::MainCameraData>();
+    auto& ch = dodoe::GetEditorCameraChannel().get<dodoe::CameraData>();
     ch.view = view();
     ch.projection = projection();
 }
@@ -98,6 +111,10 @@ void EditorCamera::onMouseDown(float x, float y, int button, bool alt)
     m_lastMouseY = y;
     m_altDown = alt;
 
+    if (m_mode == Mode::Ortho2D) {
+        return;
+    }
+
     if (button == 2) {
         m_mode = Mode::Fly;
     } else if (m_altDown && button == 0) {
@@ -109,6 +126,10 @@ void EditorCamera::onMouseUp(int button)
 {
     if (button >= 0 && button < 3) {
         m_mouseDown[button] = false;
+    }
+
+    if (m_mode == Mode::Ortho2D) {
+        return;
     }
 
     if (button == 2) {

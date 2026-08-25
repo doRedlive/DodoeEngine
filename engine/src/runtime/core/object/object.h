@@ -38,8 +38,8 @@ namespace dodoe {
 
         void setName(const String& n) { m_name = n; }
 
-        [[nodiscard]] static Object* FindObjectFromInstanceID(InstanceID id);
-        [[nodiscard]] static InstanceID FindInstanceID(const ObjectID& id);
+        [[nodiscard]] static DODOE_API Object* FindObjectFromInstanceID(InstanceID id);
+        [[nodiscard]] static DODOE_API InstanceID FindInstanceID(const ObjectID& id);
         [[nodiscard]] static Bool isAlive(InstanceID id, UInt32 generation);
 
         static InstanceID AllocateInstanceID(Object* obj);

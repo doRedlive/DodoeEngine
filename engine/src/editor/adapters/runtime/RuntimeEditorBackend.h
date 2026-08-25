@@ -3,9 +3,11 @@
 #pragma once
 
 #include "adapters/runtime/services/AssetDatabase.h"
+#include "adapters/runtime/services/TilePaintService.h"
 #include "bridge/EditorBackend.h"
 #include "core/document/EditorDocument.h"
 #include "runtime/core/math/math.h"
+#include "runtime/core/utils/uuid.h"
 
 #include <chrono>
 #include <cstdint>
@@ -19,12 +21,15 @@ namespace dodoe {
     class IndexedCameraProvider;
     class Entity;
     class RenderViewTarget;
+    class Scene;
     class SceneRes;
+    class World;
 }
 
 namespace cakery {
 
 class EditorCamera;
+class EditorSession;
 
 class RuntimeEditorBackend final : public IEditorBackend {
 public:
@@ -46,6 +51,8 @@ public:
     bool listLogs(std::vector<BackendLogEntry>& entries) const override;
     bool clearLogs() override;
     void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
+    void setEditorSession(EditorSession* session) override;
+    bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const override;
     bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;
     void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
     bool detachSceneSurface() override;
@@ -56,9 +63,12 @@ public:
 
 private:
     bool bootRuntime();
+    bool executeTilemapCommand(const EditorCommandMessage& command);
     void applyPendingMetrics();
     bool reconcileScene(const EditorDocument& document);
+    void rebuildHierarchy(dodoe::Scene& scene, const EditorDocument& document);
     void updateGizmo();
+    void updateTileOverlay();
     void pickAt(float screenX, float screenY);
     void setPlayAction(const std::string& action);
     dodoe::Entity selectedSceneEntity() const;
@@ -68,6 +78,14 @@ private:
     void endDrag();
     void emitTransformChange(const dodoe::Vector3f& position, const dodoe::Vector3f& rotation,
                              const dodoe::Vector3f& scale);
+    void updateTileEditFromSelection();
+    void activateTilemapEdit(const dodoe::UUID& tilemapUuid, const dodoe::UUID& layerUuid);
+    bool screenToCell(float screenX, float screenY, int& outX, int& outY) const;
+    void executeTilemapLayerField(dodoe::UUID layer, const std::string& field,
+                                  const nlohmann::json& value);
+    dodoe::Entity activeTilemapEntity() const;
+    void emitTilemapEditMode(bool active);
+    dodoe::World* runtimeWorld() const;
 
     std::unique_ptr<dodoe::Application> m_app;
     std::unique_ptr<EditorCamera> m_camera;
@@ -84,6 +102,9 @@ private:
     std::uint64_t m_selectedUuid = 0;
     std::string m_gizmoMode = "translate";
     std::string m_playState = "edit";
+    EditorSession* m_session = nullptr;
+    std::unique_ptr<TilePaintService> m_tilePaint;
+    bool m_tilePaintActive = false;
     int m_dragAxis = -1;
     std::string m_dragMode;
     dodoe::Vector3f m_dragStartPosition{0.0f, 0.0f, 0.0f};

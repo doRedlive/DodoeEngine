@@ -13,6 +13,8 @@ public:
     EditorCamera();
 
     void setViewportSize(float w, float h);
+    void setMode(Mode mode);
+    [[nodiscard]] Mode mode() const { return m_mode; }
     void update(float dt);
     void commitToRenderChannel();
 

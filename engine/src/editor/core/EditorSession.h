@@ -82,6 +82,11 @@ public:
     bool redo();
     void notifyDocumentChanged();
 
+    const std::string& cameraMode() const { return m_cameraMode; }
+    Signal<std::string> cameraModeChanged;
+    Signal<bool> tileEditModeChanged;
+    bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const;
+
 private:
     bool canEditDocument() const;
     void handleBackendEvent(const BackendEventMessage& event);
@@ -99,6 +104,7 @@ private:
     bool m_surfaceAttached = false;
     bool m_hasPendingViewportMetrics = false;
     ViewportMetrics m_pendingViewportMetrics;
+    std::string m_cameraMode{"3d"};
 };
 
 } // namespace cakery

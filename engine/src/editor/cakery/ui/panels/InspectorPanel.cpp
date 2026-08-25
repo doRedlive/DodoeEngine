@@ -97,6 +97,9 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
+    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setAlignment(Qt::AlignTop | Qt::AlignLeft);
     scroll->setFrameShape(QFrame::NoFrame);
     auto* container = new QWidget();
     container->setObjectName(QStringLiteral("inspectorContent"));
@@ -218,6 +221,9 @@ void InspectorPanel::refresh()
     filter->setPlaceholderText(tr("Filter properties"));
     m_layout->addWidget(filter);
 
+    std::vector<AssetBrowserEntry> assets;
+    m_context.session().listAssets(assets);
+
     std::vector<QWidget*> componentSections;
 
     const auto addComponentSection = [&](const EditorComponent& component,
@@ -298,11 +304,9 @@ void InspectorPanel::refresh()
         if (!managed) {
             m_context.session().inspectComponent(component.typeName, reflectedFields);
         }
-        std::vector<AssetBrowserEntry> assets;
-        m_context.session().listAssets(assets);
         auto* editor = reflectedFields.empty()
             ? new EditorJsonWidget(component.value, body)
-            : new EditorJsonWidget(component.value, std::move(reflectedFields), std::move(assets), body);
+            : new EditorJsonWidget(component.value, std::move(reflectedFields), assets, body);
         connect(editor, &EditorJsonWidget::valueChanged, this, [this, uuid, index, managed, editor]() {
             commitComponentValue(uuid, index, editor->value(), managed);
         });

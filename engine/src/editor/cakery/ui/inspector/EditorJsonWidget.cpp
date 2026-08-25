@@ -5,6 +5,7 @@
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDoubleSpinBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -38,14 +39,37 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 namespace cakery {
 
 namespace {
+
+const char* kThumbnailExtensions[] = {".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".webp"};
+
+bool IsAssetImage(const QString& path)
+{
+    const int dot = path.lastIndexOf(QLatin1Char('.'));
+    if (dot < 0) {
+        return false;
+    }
+    const QString suffix = path.mid(dot).toLower();
+    for (const char* extension : kThumbnailExtensions) {
+        if (suffix == QLatin1String(extension)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::mutex gThumbnailMutex;
+std::unordered_map<QString, QImage> gThumbnailCache;
 
 QString AssetReferenceTargetType(const std::string& typeName)
 {
@@ -162,6 +186,7 @@ public:
                 selected(assetId, assetPath);
             });
         });
+        startThumbnailLoading();
     }
 
 private:
@@ -170,13 +195,59 @@ private:
         item->setTextAlignment(Qt::AlignHCenter);
         item->setData(Qt::UserRole, QVariant::fromValue<qulonglong>(id));
         item->setData(Qt::UserRole + 1, path);
-        if (!path.isEmpty()) {
-            QImage image(path);
-            if (!image.isNull()) {
-                item->setIcon(QIcon(QPixmap::fromImage(image.scaled(
-                    QSize(56, 56), Qt::KeepAspectRatio, Qt::SmoothTransformation))));
+    }
+
+    void startThumbnailLoading() {
+        std::vector<QString> paths;
+        paths.reserve(static_cast<std::size_t>(m_grid->count()));
+        for (int i = 1; i < m_grid->count(); ++i) {
+            const QString path = m_grid->item(i)->data(Qt::UserRole + 1).toString();
+            if (!path.isEmpty() && IsAssetImage(path)) {
+                paths.push_back(path);
             }
         }
+        if (paths.empty()) {
+            return;
+        }
+        QPointer<AssetPickerPopup> owner = this;
+        std::thread([owner, paths = std::move(paths)]() {
+            for (const QString& path : paths) {
+                QImage thumb;
+                {
+                    std::lock_guard<std::mutex> lock(gThumbnailMutex);
+                    const auto cached = gThumbnailCache.find(path);
+                    if (cached != gThumbnailCache.end()) {
+                        thumb = cached->second;
+                    }
+                }
+                if (thumb.isNull()) {
+                    QImage image(path);
+                    if (image.isNull()) {
+                        continue;
+                    }
+                    thumb = image.scaled(QSize(56, 56), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    std::lock_guard<std::mutex> lock(gThumbnailMutex);
+                    gThumbnailCache[path] = thumb;
+                }
+                if (!owner) {
+                    break;
+                }
+                const QImage copy = thumb;
+                QMetaObject::invokeMethod(QCoreApplication::instance(), [owner, path, copy]() {
+                    AssetPickerPopup* popup = owner.data();
+                    if (!popup) {
+                        return;
+                    }
+                    for (int i = 0; i < popup->m_grid->count(); ++i) {
+                        auto* item = popup->m_grid->item(i);
+                        if (item->data(Qt::UserRole + 1).toString() == path) {
+                            item->setIcon(QIcon(QPixmap::fromImage(copy)));
+                            break;
+                        }
+                    }
+                }, Qt::QueuedConnection);
+            }
+        }).detach();
     }
 
     QLineEdit* m_filter = nullptr;
@@ -190,10 +261,21 @@ public:
         : QDoubleSpinBox(parent)
     {
         setAlignment(Qt::AlignRight);
+        setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
         lineEdit()->installEventFilter(this);
     }
 
 protected:
+    QSize minimumSizeHint() const override
+    {
+        return QSize(48, QAbstractSpinBox::minimumSizeHint().height());
+    }
+
+    QSize sizeHint() const override
+    {
+        return QSize(88, QAbstractSpinBox::sizeHint().height());
+    }
+
     bool eventFilter(QObject* watched, QEvent* event) override
     {
         if (watched == lineEdit() && event->type() == QEvent::Wheel) {
@@ -215,10 +297,21 @@ public:
         : QSpinBox(parent)
     {
         setAlignment(Qt::AlignRight);
+        setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
         lineEdit()->installEventFilter(this);
     }
 
 protected:
+    QSize minimumSizeHint() const override
+    {
+        return QSize(48, QAbstractSpinBox::minimumSizeHint().height());
+    }
+
+    QSize sizeHint() const override
+    {
+        return QSize(88, QAbstractSpinBox::sizeHint().height());
+    }
+
     bool eventFilter(QObject* watched, QEvent* event) override
     {
         if (watched == lineEdit() && event->type() == QEvent::Wheel) {
@@ -759,10 +852,10 @@ QWidget* EditorJsonWidget::buildVectorField(const std::string& path, const nlohm
         hbox->addWidget(axis);
         auto* spin = MakeDoubleSpinBox(value[index].get<double>());
         InstallNumericScrub(axis, spin);
-        spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         spins.push_back(spin);
-        hbox->addWidget(spin, 1);
+        hbox->addWidget(spin);
     }
+    hbox->addStretch();
     for (auto* spin : spins) {
         connect(spin, &QDoubleSpinBox::editingFinished, this, [this, path, spins]() {
             nlohmann::json array = nlohmann::json::array();

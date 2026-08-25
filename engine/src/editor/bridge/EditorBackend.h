@@ -12,6 +12,8 @@
 
 namespace cakery {
 
+class EditorSession;
+
 struct BackendCapabilities {
     bool documentRead = false;
     bool documentWrite = false;
@@ -157,6 +159,11 @@ public:
         return false;
     }
     virtual bool clearLogs() { return false; }
+    virtual void setEditorSession(EditorSession* /*session*/) {}
+    virtual bool queryTilemapState(const std::string& /*tilemapUuid*/, nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
     virtual void setEventCallback(std::function<void(const BackendEventMessage&)> callback) = 0;
     virtual bool attachSceneSurface(const SceneSurfaceDescriptor& surface) = 0;
     virtual void requestSceneSurfaceResize(const ViewportMetrics& metrics) = 0;

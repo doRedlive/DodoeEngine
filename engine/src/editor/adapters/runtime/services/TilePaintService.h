@@ -11,7 +11,7 @@ namespace cakery {
 
 class EditorSession;
 
-enum class TileTool { Brush, Erase, Fill, Rect, Picker, Line };
+enum class TileTool { Select, Brush, Erase, Fill, Rect, Picker, Line };
 
 struct TileBrush {
     int w = 1, h = 1;
@@ -41,18 +41,26 @@ public:
     void onCellDrag(int cx, int cy);
     void onCellUp();
 
+    void setHoverCell(int cx, int cy) { m_hoverX = cx; m_hoverY = cy; m_hasHover = true; }
+    void clearHover() { m_hasHover = false; }
+    [[nodiscard]] bool hasHover() const { return m_hasHover; }
+    [[nodiscard]] int hoverX() const { return m_hoverX; }
+    [[nodiscard]] int hoverY() const { return m_hoverY; }
+
     bool hasTarget() const { return m_tilemap.isValid() && m_layer.isValid(); }
 
 private:
     EditorSession& m_session;
     dodoe::UUID m_tilemap;
     dodoe::UUID m_layer;
-    TileTool  m_tool = TileTool::Brush;
+    TileTool  m_tool = TileTool::Select;
     TileBrush m_brush;
 
     int  m_anchorX{0}, m_anchorY{0};
     int  m_lastX{0}, m_lastY{0};
+    int  m_hoverX{0}, m_hoverY{0};
     bool m_hasAnchor{false};
+    bool m_hasHover{false};
 };
 
 } // namespace cakery

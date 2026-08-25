@@ -108,7 +108,7 @@ void TilePaintService::setActiveEntity(dodoe::UUID entity) {
 }
 
 void TilePaintService::onCellDown(int cx, int cy) {
-    if (!hasTarget()) return;
+    if (!hasTarget() || m_tool == TileTool::Select) return;
 
     if (m_tool == TileTool::Line || m_tool == TileTool::Rect) {
         m_anchorX = m_lastX = cx;
@@ -191,7 +191,7 @@ void TilePaintService::onCellDown(int cx, int cy) {
 }
 
 void TilePaintService::onCellDrag(int cx, int cy) {
-    if (!hasTarget()) return;
+    if (!hasTarget() || m_tool == TileTool::Select) return;
 
     if (m_tool == TileTool::Line || m_tool == TileTool::Rect) {
         m_lastX = cx;
@@ -218,6 +218,8 @@ void TilePaintService::onCellDrag(int cx, int cy) {
 }
 
 void TilePaintService::onCellUp() {
+    if (!hasTarget() || m_tool == TileTool::Select) return;
+
     if (m_tool == TileTool::Line || m_tool == TileTool::Rect) {
         if (m_hasAnchor) {
             auto cmd = std::make_unique<PaintTilesCommand>(m_tilemap, m_layer);

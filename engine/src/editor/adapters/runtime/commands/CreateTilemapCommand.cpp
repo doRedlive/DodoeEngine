@@ -59,6 +59,19 @@ void CreateTilemapCommand::execute(EditorDocumentModel& model)
         }
     }
 
+    if (!model.findEntity(static_cast<std::uint64_t>(m_createdUuid))) {
+        model.createEntity(std::string(m_name.c_str()), static_cast<std::uint64_t>(m_createdUuid));
+        nlohmann::json value;
+        value["map_width"] = m_width;
+        value["map_height"] = m_height;
+        value["tile_width"] = m_tileWidth;
+        value["tile_height"] = m_tileHeight;
+        value["tilesets"] = nlohmann::json::array();
+        value["dirty"] = true;
+        model.addComponent(static_cast<std::uint64_t>(m_createdUuid),
+                           EditorComponent{"TilemapComponent", std::move(value)});
+    }
+
     dodoe::Entity layerEntity = m_layerUuid.isValid() ? ResolveEntity(scene, m_layerUuid) : dodoe::Entity();
     if (!layerEntity.valid()) {
         CreateTileLayerCommand layerCmd(m_createdUuid, "Layer 1", m_width, m_height);
@@ -71,19 +84,6 @@ void CreateTilemapCommand::execute(EditorDocumentModel& model)
             scene->destroyEntity(tilemapEntity);
             return;
         }
-    }
-
-    if (!model.findEntity(static_cast<std::uint64_t>(m_createdUuid))) {
-        model.createEntity(std::string(m_name.c_str()), static_cast<std::uint64_t>(m_createdUuid));
-        nlohmann::json value;
-        value["map_width"] = m_width;
-        value["map_height"] = m_height;
-        value["tile_width"] = m_tileWidth;
-        value["tile_height"] = m_tileHeight;
-        value["tilesets"] = nlohmann::json::array();
-        value["dirty"] = true;
-        model.addComponent(static_cast<std::uint64_t>(m_createdUuid),
-                           EditorComponent{"TilemapComponent", std::move(value)});
     }
 }
 
