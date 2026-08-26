@@ -96,6 +96,7 @@ namespace dodoe {
     }
 
     Texture2D* TextureManager::createTexture(const String& path, const ObjectID& ref, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
+        DO_PROFILE_SCOPE_CATEGORY("TextureManager::createTexture", "startup");
         const auto* asset_manager = ResourceManager::Self().getAssetManager();
         const FsPath base = asset_manager ? asset_manager->getAssetDir() : FsPath{};
         const auto absolute_path = FileSystem::RelativeToAbsolute(path, base);

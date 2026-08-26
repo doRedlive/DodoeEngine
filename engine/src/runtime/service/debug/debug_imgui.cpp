@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdio>
 #include <functional>
+#include <map>
 
 namespace dodoe {
 
@@ -230,7 +231,57 @@ namespace dodoe {
             Bool success = GetScriptSystem()->reloadScripts();
             if (success) DO_INFO("Reload Scripts succeed!");
         }
+        ImGui::Separator();
+        RenderToolActions();
         ImGui::End();
+    }
+
+    void DebugImGui::RenderToolActions() {
+        auto* script_system = GetScriptSystem();
+        if (!script_system) return;
+
+        ImGui::TextUnformatted("C# Tool Actions ([ToolMenuItem])");
+
+        DynamicArray<String> actions;
+        if (!script_system->listToolActions(actions)) {
+            ImGui::TextDisabled("C# script runtime unavailable");
+            return;
+        }
+        if (actions.empty()) {
+            ImGui::TextDisabled("No tool actions registered");
+            return;
+        }
+
+        static String s_tool_error;
+        if (!s_tool_error.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", s_tool_error.c_str());
+        }
+
+        std::map<String, DynamicArray<String>> groups;
+        for (const String& path : actions) {
+            const size_t slash = path.find('/');
+            const String top = (slash == String::npos) ? path : path.substr(0, slash);
+            groups[top].push_back(path);
+        }
+
+        for (auto& [top, subpaths] : groups) {
+            if (ImGui::TreeNode(top.c_str())) {
+                for (const String& path : subpaths) {
+                    const size_t slash = path.find('/');
+                    const String label = (slash == String::npos) ? path : path.substr(slash + 1);
+                    if (ImGui::MenuItem(label.c_str())) {
+                        String error;
+                        if (script_system->invokeToolAction(path, error)) {
+                            s_tool_error.clear();
+                        }
+                        else {
+                            s_tool_error = error;
+                        }
+                    }
+                }
+                ImGui::TreePop();
+            }
+        }
     }
 
     void DebugImGui::RenderHierarchyPanel() {

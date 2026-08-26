@@ -21,6 +21,7 @@ namespace dodoe {
         static void RenderHierarchyPanel();
         static void RenderInspectorPanel();
         static void RenderDebuggerPanel();
+        static void RenderToolActions();
 
         struct EntityNode {
             Entity entity;

@@ -26,6 +26,7 @@ namespace dodoe {
     }
 
     void Physics2dSystem::update(Registry& reg, const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("Physics2dSystem::update", "frame");
         ensureState(reg);
 
         auto& state = getRegistryState(reg.raw());

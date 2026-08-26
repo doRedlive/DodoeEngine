@@ -371,6 +371,7 @@ namespace dodoe {
     }
 
     void RenderGraph::compile() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderGraph::compile", "frame");
         m_levels.clear();
         m_culled_passes.clear();
         m_compiled = false;
@@ -393,6 +394,7 @@ namespace dodoe {
     }
 
     void RenderGraph::execute(ThreadPool& pool, const RenderGraphExecuteContext& context, DrawCommandList& out_commands) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderGraph::execute", "frame");
         DO_ASSERT(m_compiled, "RenderGraph must be compiled before execute");
         DO_ASSERT(context.gfx_context != nullptr, "RenderGraphContext gfx_context is null");
 
@@ -469,6 +471,7 @@ namespace dodoe {
                 for (Size_t i = 0; i < level.size(); ++i) {
                     const auto pass_index = level[i];
                     const auto pass = m_passes[pass_index];
+                    DO_PROFILE_SCOPE_CATEGORY(pass->getName().c_str(), "render-pass");
                     RenderGraphPassContext pass_context(context, resource_resolver);
                     for (const auto& barrier : pass->getPreBarriers()) {
                         if (barrier.resource_type == RenderGraphResourceType::Texture) {
@@ -500,6 +503,7 @@ namespace dodoe {
                     auto* cmd_list = &pass_command_lists[i];
 
                     pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list, &setupPassAttachments] {
+                        DO_PROFILE_SCOPE_CATEGORY(pass->getName().c_str(), "render-pass");
                         RenderGraphPassContext pass_context(context, resource_resolver);
                         for (const auto& barrier : pass->getPreBarriers()) {
                             if (barrier.resource_type == RenderGraphResourceType::Texture) {

@@ -59,6 +59,8 @@ public:
     std::string diagnostic() const;
     bool listLogs(std::vector<BackendLogEntry>& entries) const;
     bool clearLogs();
+    bool listToolActions(std::vector<std::string>& actions) const;
+    bool invokeToolAction(const std::string& path);
 
     EditorDocumentModel& documentModel() { return m_documentModel; }
     const EditorDocumentModel& documentModel() const { return m_documentModel; }

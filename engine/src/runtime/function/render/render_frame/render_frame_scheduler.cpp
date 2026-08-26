@@ -7,6 +7,7 @@
 namespace dodoe {
 
     Bool RenderFrameScheduler::initialize(const RenderFrameSchedulerCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderFrameScheduler::initialize", "startup");
         m_device = info.device;
         m_current_index = 0;
         m_frame_counter = 0;
@@ -30,6 +31,7 @@ namespace dodoe {
     }
 
     FrameContext RenderFrameScheduler::beginFrame(UInt32 swapchain_image_index) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderFrameScheduler::beginFrame", "frame");
         FrameSlot& slot = m_slots[m_current_index];
 
         if (slot.in_flight && slot.completion_query) {
@@ -66,6 +68,7 @@ namespace dodoe {
     }
 
     void RenderFrameScheduler::retireCompletedFrames() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderFrameScheduler::retireCompletedFrames", "shutdown");
         for (auto& slot : m_slots) {
             slot.command_list.beginFrame();
             slot.transient_resource_pool.releaseAll();

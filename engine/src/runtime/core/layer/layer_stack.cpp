@@ -10,12 +10,14 @@ namespace dodoe {
     }
 
     void LayerStack::attach() {
+        DO_PROFILE_SCOPE_CATEGORY("LayerStack::attach", "startup");
         for (auto& layer : m_layers) {
             layer->attach();
         }
     }
 
     void LayerStack::detach() {
+        DO_PROFILE_SCOPE_CATEGORY("LayerStack::detach", "shutdown");
         for (auto& layer : m_layers) {
             layer->detach();
         }

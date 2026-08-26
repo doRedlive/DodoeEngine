@@ -145,6 +145,7 @@ namespace dodoe {
     }
 
     Bool ScriptEngine::buildAppAssembly() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptEngine::buildAppAssembly", "script");
         const auto active_project = Project::ActiveProject();
         if (PlatformTool::BuildCSharpAssembly(Project::AssetDirectory(), Project::BinariesDirectory(), active_project->config().name)) {
             return true;
@@ -203,6 +204,7 @@ namespace dodoe {
             DO_ERROR("ScriptEngine: failed to read app assembly '{}'", assembly_path.string());
             return false;
         }
+        DO_PROFILE_MARK("ScriptEngine::loadAppAssembly.readAssembly", "startup");
 
         ++m_reload_counter;
 
@@ -225,6 +227,7 @@ namespace dodoe {
             (void*)assembly_path_str.c_str()
         };
 
+        DO_PROFILE_MARK("ScriptEngine::loadAppAssembly.invokeManaged", "startup");
         int rc = m_call("load_app_assembly", args, &result);
         if (rc != 1 || !result) {
             DO_ERROR("ScriptEngine: load_app_assembly failed");

@@ -50,12 +50,6 @@ namespace OnlyOne
         [SerializeField] private float monsterSeparationSlop = 0.015f;
         [SerializeField] private float monsterHitCooldown = 0.1f;
 
-        [Header("Input")]
-        [SerializeField] private KeyCode jumpKey = KeyCode.Space;
-        [SerializeField] private KeyCode dashKey = KeyCode.LeftShift;
-        [SerializeField] private KeyCode shockwaveKey = KeyCode.E;
-        [SerializeField] private KeyCode respawnKey = KeyCode.R;
-
         [Header("Save")]
         [SerializeField] private bool startWithDash;
         [SerializeField] private bool startWithShockwave;
@@ -115,6 +109,8 @@ namespace OnlyOne
 
         private void Awake()
         {
+            SetupInput();
+
             rb = GetComponent<Rigidbody2dComponent>();
             bodyBox = GetComponent<BoxCollider2dComponent>();
             bodyCircle = GetComponent<CircleCollider2dComponent>();
@@ -152,36 +148,64 @@ namespace OnlyOne
             RespawnInternal(false);
         }
 
+        private static bool s_inputReady;
+
+        private static void SetupInput()
+        {
+            if (s_inputReady)
+            {
+                return;
+            }
+            s_inputReady = true;
+
+            Input.RegisterActionMap("Platformer");
+
+            Input.RegisterAction("Platformer", "Move", InputActionValueType.Axis2D);
+            Input.BindKey2D("Platformer", "Move", KeyCode.A, -1f, 0f);
+            Input.BindKey2D("Platformer", "Move", KeyCode.D, 1f, 0f);
+            Input.BindKey2D("Platformer", "Move", KeyCode.LeftArrow, -1f, 0f);
+            Input.BindKey2D("Platformer", "Move", KeyCode.RightArrow, 1f, 0f);
+
+            Input.RegisterAction("Platformer", "Jump", InputActionValueType.Button);
+            Input.BindKey("Platformer", "Jump", KeyCode.Space);
+
+            Input.RegisterAction("Platformer", "Dash", InputActionValueType.Button);
+            Input.BindKey("Platformer", "Dash", KeyCode.LeftShift);
+            Input.BindKey("Platformer", "Dash", KeyCode.RightShift);
+
+            Input.RegisterAction("Platformer", "Shockwave", InputActionValueType.Button);
+            Input.BindKey("Platformer", "Shockwave", KeyCode.E);
+
+            Input.RegisterAction("Platformer", "Slam", InputActionValueType.Button);
+            Input.BindKey("Platformer", "Slam", KeyCode.S);
+            Input.BindKey("Platformer", "Slam", KeyCode.DownArrow);
+
+            Input.RegisterAction("Platformer", "Respawn", InputActionValueType.Button);
+            Input.BindKey("Platformer", "Respawn", KeyCode.R);
+        }
+
         private void Update()
         {
-            moveInput = 0f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            {
-                moveInput -= 1f;
-            }
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            {
-                moveInput += 1f;
-            }
+            moveInput = Input.GetActionVector2("Platformer/Move").x;
 
-            if (Input.GetKeyDown(jumpKey))
+            if (Input.WasActionPressed("Platformer/Jump"))
             {
                 jumpRequested = true;
             }
 
-            if (dashUnlocked && (Input.GetKeyDown(dashKey) || Input.GetKeyDown(KeyCode.RightShift)))
+            if (dashUnlocked && Input.WasActionPressed("Platformer/Dash"))
             {
                 dashRequested = true;
             }
 
-            if (shockwaveUnlocked && Input.GetKeyDown(shockwaveKey))
+            if (shockwaveUnlocked && Input.WasActionPressed("Platformer/Shockwave"))
             {
                 shockwaveRequested = true;
             }
 
-            slamHeld = Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
+            slamHeld = Input.IsActionDown("Platformer/Slam");
 
-            if (Input.GetKeyDown(respawnKey))
+            if (Input.WasActionPressed("Platformer/Respawn"))
             {
                 respawnRequested = true;
             }

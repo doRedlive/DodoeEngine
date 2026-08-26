@@ -12,6 +12,7 @@ namespace dodoe {
     }
 
     void RenderViewFamily::buildVisiblePrimitives(const RenderScene& scene) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderViewFamily::buildVisiblePrimitives", "frame");
         for (auto& view : m_views) {
             view.buildVisiblePrimitives(scene);
             view.buildVisibleSprites(scene);
@@ -19,6 +20,7 @@ namespace dodoe {
     }
 
     void RenderViewFamily::buildVisibleSprites(const RenderScene& scene) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderViewFamily::buildVisibleSprites", "frame");
         for (auto& view : m_views) {
             view.buildVisibleSprites(scene);
         }

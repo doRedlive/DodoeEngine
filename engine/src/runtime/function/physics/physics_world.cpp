@@ -328,6 +328,7 @@ namespace dodoe {
     }
 
     bool PhysicsWorld::initialize(const PhysicsWorldCreateInfo& create_info) {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::initialize", "startup");
         JPH::RegisterDefaultAllocator();
         m_impl = create_own_ptr<Impl>(create_info);
         JPH::Factory::sInstance = new JPH::Factory();
@@ -341,6 +342,7 @@ namespace dodoe {
     }
 
     void PhysicsWorld::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::shutdown", "shutdown");
         if (!m_impl) {
             return;
         }
@@ -366,10 +368,12 @@ namespace dodoe {
     }
 
     void PhysicsWorld::step(const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::step", "physics");
         Impl& impl = *m_impl;
         impl.accumulator += dt;
         impl.last_step_count = 0;
         while (impl.accumulator >= impl.fixed_dt && impl.last_step_count < impl.max_sub_steps) {
+            DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::fixedUpdate", "physics");
             impl.system.Update(impl.fixed_dt, 1, &impl.allocator, &impl.job_system);
             impl.accumulator -= impl.fixed_dt;
             ++impl.last_step_count;
@@ -388,6 +392,7 @@ namespace dodoe {
     }
 
     void PhysicsWorld::takeContactEvents(DynamicArray<ContactEvent>& out_events) {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::takeContactEvents", "physics");
         out_events.clear();
         std::lock_guard<std::mutex> lock(m_impl->contact_data.mutex);
         if (!m_impl->contact_data.events.empty()) {
@@ -396,6 +401,7 @@ namespace dodoe {
     }
 
     ui64 PhysicsWorld::createBody(const BodyCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::createBody", "physics");
         LogicalBody lb;
         lb.type = info.type;
         lb.enabled = info.enabled;
@@ -417,6 +423,7 @@ namespace dodoe {
     }
 
     void PhysicsWorld::destroyBody(const ui64 body) {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::destroyBody", "physics");
         auto it = m_impl->bodies.find(body);
         if (it == m_impl->bodies.end()) {
             return;
@@ -809,6 +816,7 @@ namespace dodoe {
 
     void PhysicsWorld::raycast(const Vector3f& origin, const Vector3f& direction, const float max_distance,
                                const Query3dFilter& filter, DynamicArray<RaycastHit>& out_hits) const {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::raycast", "physics-query");
         out_hits.clear();
         const JPH::ObjectLayer object_layer = MakeObjectLayer(filter.layer, filter.mask);
         const JPH::NarrowPhaseQuery& query = m_impl->system.GetNarrowPhaseQuery();
@@ -838,6 +846,7 @@ namespace dodoe {
 
     void PhysicsWorld::overlapBox(const Vector3f& center, const Vector3f& half_extents, const Quaternion& rotation,
                                   const Query3dFilter& filter, DynamicArray<OverlapHit>& out_hits) const {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::overlapBox", "physics-query");
         out_hits.clear();
         JPH::BoxShapeSettings shape_settings(JPH::Vec3(half_extents.x, half_extents.y, half_extents.z));
         JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
@@ -864,6 +873,7 @@ namespace dodoe {
 
     void PhysicsWorld::overlapSphere(const Vector3f& center, const float radius,
                                      const Query3dFilter& filter, DynamicArray<OverlapHit>& out_hits) const {
+        DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::overlapSphere", "physics-query");
         out_hits.clear();
         JPH::SphereShapeSettings shape_settings(radius);
         JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();

@@ -76,6 +76,7 @@ public static partial class ScriptHub
         gcHandle.Free();
         alc?.Unload();
         AppAlc = null;
+        ClearToolActionCache();
         return 1;
     }
 
@@ -87,6 +88,7 @@ public static partial class ScriptHub
         SystemDispatcher.InvalidateCache();
         World.Reset();
         SceneManager.Reset();
+        ClearToolActionCache();
         return 1;
     }
 

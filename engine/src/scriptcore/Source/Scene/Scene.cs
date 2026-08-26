@@ -337,7 +337,6 @@ public class Scene
 
     internal void NotifyUpdate(float deltaTime)
     {
-        Input.UpdateSnapshot();
         Time.Tick(deltaTime);
         ProcessLifecycle(deltaTime);
         CoroutineManager.Tick(deltaTime);

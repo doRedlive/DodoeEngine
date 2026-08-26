@@ -1,0 +1,17 @@
+{
+    "guid": 14523896047132537921,
+    "importer": "TextureImporter",
+    "settings": {
+        "flipVertical": true,
+        "pixelsPerUnit": 10.0
+    },
+    "sprites": [
+        {
+            "name": "grm",
+            "local_id": 1,
+            "ppu": 10.0,
+            "pivot": [0.5, 0.5],
+            "slice": [0.0, 0.0, 944.0, 885.0]
+        }
+    ]
+}

@@ -313,6 +313,20 @@ bool EditorSession::clearLogs()
     return m_backend && m_backend->clearLogs();
 }
 
+bool EditorSession::listToolActions(std::vector<std::string>& actions) const
+{
+    if (!m_backend) {
+        actions.clear();
+        return false;
+    }
+    return m_backend->listToolActions(actions);
+}
+
+bool EditorSession::invokeToolAction(const std::string& path)
+{
+    return m_backend && m_backend->invokeToolAction(path);
+}
+
 bool EditorSession::canEditDocument() const
 {
     return m_documentModel.hasDocument() &&

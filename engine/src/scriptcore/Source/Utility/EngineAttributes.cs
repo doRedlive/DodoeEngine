@@ -41,3 +41,10 @@ public sealed class TextAreaAttribute : Attribute
     public TextAreaAttribute() { MinLines = 1; MaxLines = int.MaxValue; }
     public TextAreaAttribute(int minLines, int maxLines) { MinLines = minLines; MaxLines = maxLines; }
 }
+
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
+public sealed class ToolMenuItemAttribute : Attribute
+{
+    public string Path { get; }
+    public ToolMenuItemAttribute(string path) { Path = path; }
+}

@@ -45,6 +45,8 @@ public static partial class ScriptHub
             "remove_entity"         => RemoveEntity(args),
             "register_natives"      => RegisterNatives(args),
             "input_action_event"    => DispatchInputEvent(args),
+            "list_tool_actions"     => ListToolActions(args, result),
+            "invoke_tool_action"    => InvokeToolAction(args, result),
             _ => -1
         };
     }

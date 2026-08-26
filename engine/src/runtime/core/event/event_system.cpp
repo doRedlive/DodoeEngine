@@ -18,10 +18,12 @@ namespace dodoe {
     }
 
     void EventSystem::Poll() {
+        DO_PROFILE_SCOPE_CATEGORY("EventSystem::Poll", "frame");
         glfwPollEvents();
     }
 
     void EventSystem::Handle() {
+        DO_PROFILE_SCOPE_CATEGORY("EventSystem::Handle", "frame");
         GetDispatcher().update();
     }
 

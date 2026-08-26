@@ -395,6 +395,7 @@ namespace dodoe {
     }
 
     void World::notifyFixedUpdate() {
+        DO_PROFILE_SCOPE_CATEGORY("World::notifyFixedUpdate", "frame");
         ScriptSystem* script_system = GetScriptSystem();
         if (!script_system) return;
         ScriptRuntime* runtime = script_system->getScriptRuntime();
@@ -576,6 +577,7 @@ namespace dodoe {
     }
 
     void World::onRuntimeStart(Registry& reg) {
+        DO_PROFILE_SCOPE_CATEGORY("World::onRuntimeStart", "startup");
         for (auto& sys : m_gameplay_systems) {
             if (sys) {
                 sys->start(reg);
@@ -589,6 +591,7 @@ namespace dodoe {
     }
 
     void World::onRuntimeUpdate(Registry& reg, const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("World::onRuntimeUpdate", "frame");
         for (auto& sys : m_gameplay_systems) {
             if (sys) {
                 sys->update(reg, dt);
@@ -605,6 +608,7 @@ namespace dodoe {
     }
 
     void World::onRuntimeFinalize(Registry& reg) {
+        DO_PROFILE_SCOPE_CATEGORY("World::onRuntimeFinalize", "shutdown");
         for (auto& sys : m_gameplay_systems) {
             if (sys) {
                 sys->finalize(reg);
@@ -618,6 +622,7 @@ namespace dodoe {
     }
 
     void World::onSimulationStart(Registry& reg) {
+        DO_PROFILE_SCOPE_CATEGORY("World::onSimulationStart", "startup");
         for (auto& sys : m_simulation_systems) {
             if (sys) {
                 sys->start(reg);
@@ -626,6 +631,7 @@ namespace dodoe {
     }
 
     void World::onSimulationUpdate(Registry& reg, const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("World::onSimulationUpdate", "frame");
         if (m_task_graph_dirty) {
             buildTaskGraphs();
         }
@@ -633,6 +639,7 @@ namespace dodoe {
     }
 
     void World::onSimulationFinalize(Registry& reg) {
+        DO_PROFILE_SCOPE_CATEGORY("World::onSimulationFinalize", "shutdown");
         for (auto& sys : m_simulation_systems) {
             if (sys) {
                 sys->finalize(reg);
@@ -641,6 +648,7 @@ namespace dodoe {
     }
 
     std::future<Scene*> World::loadSceneAsync(const String& name, LoadSceneMode mode) {
+        DO_PROFILE_SCOPE_CATEGORY("World::loadSceneAsync", "startup");
         auto promise = create_ref<std::promise<Scene*>>();
         auto future = promise->get_future();
 
@@ -678,6 +686,7 @@ namespace dodoe {
     }
 
     void World::drainAsyncCompletions() {
+        DO_PROFILE_SCOPE_CATEGORY("World::drainAsyncCompletions", "frame");
         DynamicArray<std::function<void()>> pending;
         {
             std::lock_guard<std::mutex> lock(m_async_mutex);
@@ -694,6 +703,7 @@ namespace dodoe {
     }
 
     Scene* World::commitSceneAsync(const SceneRes& scene_res, const String& name, LoadSceneMode mode) {
+        DO_PROFILE_SCOPE_CATEGORY("World::commitSceneAsync", "startup");
         if (mode == LoadSceneMode::Single) {
             auto scenes_to_unload = m_active_scenes;
             for (auto* scene : scenes_to_unload) {
