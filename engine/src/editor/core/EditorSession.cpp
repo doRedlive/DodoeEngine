@@ -125,6 +125,15 @@ bool EditorSession::queryTilemapState(const std::string& tilemapUuid, nlohmann::
     return m_backend->queryTilemapState(tilemapUuid, out);
 }
 
+bool EditorSession::queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->queryAssetThumbnail(path, size, out);
+}
+
 bool EditorSession::getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const
 {
     settings = AssetImportSettings{};

@@ -53,6 +53,7 @@ public:
     void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
     void setEditorSession(EditorSession* session) override;
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const override;
+    bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const override;
     bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;
     void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
     bool detachSceneSurface() override;

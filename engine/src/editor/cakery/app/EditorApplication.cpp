@@ -6,6 +6,8 @@
 #include "cakery/app/project_selection/ProjectManagerWindow.h"
 #include "services/EditorConfig.h"
 
+#include "runtime/core/debug/instrumentor.h"
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -20,6 +22,7 @@ EditorApplication::EditorApplication(int& argc, char** argv, const QString& appl
                                      std::unique_ptr<IEditorBackend> backend)
     : QApplication(argc, argv), m_applicationName(applicationName)
 {
+    DO_PROFILE_BEGIN_SESSION("Cakery", "CakeryProfile.json");
     setOrganizationName("Redlive");
     setApplicationName(m_applicationName);
 
@@ -98,6 +101,7 @@ EditorApplication::~EditorApplication()
     m_workspace.reset();
     m_session.reset();
     m_resources.reset();
+    DO_PROFILE_END_SESSION();
 }
 
 int EditorApplication::run()

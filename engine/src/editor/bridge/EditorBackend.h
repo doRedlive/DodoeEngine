@@ -164,6 +164,12 @@ public:
         out = nullptr;
         return false;
     }
+    // Returns {width, height, data(base64 RGBA)} for a cached asset thumbnail,
+    // or false when the backend has no generator for the asset type.
+    virtual bool queryAssetThumbnail(const std::string& /*path*/, int /*size*/, nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
     virtual void setEventCallback(std::function<void(const BackendEventMessage&)> callback) = 0;
     virtual bool attachSceneSurface(const SceneSurfaceDescriptor& surface) = 0;
     virtual void requestSceneSurfaceResize(const ViewportMetrics& metrics) = 0;

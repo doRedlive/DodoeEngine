@@ -4,18 +4,57 @@
 
 #include "cakery/ui/inspector/EditorJsonWidget.h"
 
-#include <QFileInfo>
 #include <QFrame>
 #include <QHBoxLayout>
-#include <QLabel>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
 
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
+#include <utility>
+#include <vector>
 
 namespace cakery {
+
+namespace {
+
+InspectorFieldMetadata MakeEnumField(
+    const char* path, std::initializer_list<std::pair<const char*, int>> values)
+{
+    InspectorFieldMetadata metadata;
+    metadata.name = path;
+    metadata.kind = InspectorFieldKind::Enum;
+    for (const auto& [name, value] : values) {
+        metadata.enumValues.push_back({name, value});
+    }
+    return metadata;
+}
+
+std::vector<InspectorFieldMetadata> SettingsFieldMetadata()
+{
+    return {
+        MakeEnumField("app_mode", {
+            {"Game", 0}, {"Sandbox", 1}, {"Editor", 2},
+        }),
+        MakeEnumField("render_settings.api", {
+            {"None", 0}, {"OpenGL", 1}, {"Vulkan", 2}, {"D3D12", 3},
+        }),
+        MakeEnumField("render_settings.pipeline", {
+            {"None", 0}, {"Forward", 1}, {"Forward Plus", 2},
+            {"Deferred", 3}, {"Deferred Plus", 4}, {"Only 2D", 5},
+        }),
+        MakeEnumField("render_settings.threading_mode", {
+            {"Triple Thread", 0}, {"Dual Thread", 1}, {"Single Thread", 2},
+        }),
+        MakeEnumField("render_settings.present_mode", {
+            {"VSync", 0}, {"Mailbox", 1}, {"Immediate", 2},
+        }),
+    };
+}
+
+} // namespace
 
 SettingsPanel::SettingsPanel(QWidget* parent)
     : QWidget(parent)
@@ -34,7 +73,7 @@ SettingsPanel::SettingsPanel(QWidget* parent)
     auto* content = new QVBoxLayout(container);
     content->setContentsMargins(16, 16, 16, 16);
     content->setSpacing(8);
-    m_editor = new EditorJsonWidget(nlohmann::json::object(), container);
+    m_editor = new EditorJsonWidget(nlohmann::json::object(), SettingsFieldMetadata(), {}, container);
     content->addWidget(m_editor);
     scroll->setWidget(container);
     outer->addWidget(scroll, 1);
@@ -45,11 +84,7 @@ SettingsPanel::SettingsPanel(QWidget* parent)
     footerLayout->setContentsMargins(12, 8, 12, 8);
     footerLayout->setSpacing(8);
 
-    m_pathLabel = new QLabel(footer);
-    m_pathLabel->setObjectName(QStringLiteral("settingsPanelPath"));
-    m_pathLabel->setText(tr("No file"));
-    m_pathLabel->setStyleSheet(QStringLiteral("color: #909090;"));
-    footerLayout->addWidget(m_pathLabel, 1);
+    footerLayout->addStretch();
 
     auto* reloadButton = new QPushButton(tr("Reload"), footer);
     connect(reloadButton, &QPushButton::clicked, this, [this]() { reload(); });
@@ -66,10 +101,6 @@ SettingsPanel::SettingsPanel(QWidget* parent)
 void SettingsPanel::setFilePath(const QString& path)
 {
     m_filePath = path;
-    if (m_pathLabel) {
-        m_pathLabel->setText(m_filePath.isEmpty() ? tr("No file") : QFileInfo(m_filePath).fileName());
-        m_pathLabel->setToolTip(m_filePath);
-    }
     reload();
 }
 

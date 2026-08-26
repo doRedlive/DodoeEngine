@@ -9,6 +9,9 @@
 #include <filesystem>
 #include <vector>
 
+#include <QHash>
+#include <QPixmap>
+
 class QPoint;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -52,6 +55,7 @@ private:
     void updatePreview(QTreeWidgetItem* item);
     void populateAssetGrid(const std::filesystem::path& directory);
     void selectTreeAsset(const QString& path);
+    QPixmap loadThumbnail(const AssetBrowserEntry& asset);
 
     EditorWorkspaceContext& m_context;
     QTreeWidget* m_tree = nullptr;
@@ -64,6 +68,7 @@ private:
     bool m_refreshPending = false;
     std::filesystem::path m_root;
     std::vector<AssetBrowserEntry> m_assets;
+    QHash<QString, QPair<qint64, QPixmap>> m_thumbnailCache;
 };
 
 } // namespace cakery

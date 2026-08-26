@@ -5,12 +5,18 @@
 #include "EditorCamera.h"
 #include "core/EditorSession.h"
 #include "adapters/runtime/services/FieldAttributes.h"
+#include "commands/CreateTilemapWithTilesetCommand.h"
+#include "commands/ImportMeshCommand.h"
+#include "commands/ImportSpriteCommand.h"
+#include "commands/ImportTiledMapCommand.h"
 #include "commands/ReparentEntityCommand.h"
 #include "core/document/EditorDocumentSerializer.h"
 
 #include "runtime/core/application.h"
+#include "runtime/core/asserts.h"
 #include "runtime/core/async/task_scheduler.h"
 #include "runtime/core/context/system_context.h"
+#include "runtime/core/debug/instrumentor.h"
 #include "runtime/core/event/event_system.h"
 #include "runtime/core/log/log_system.h"
 #include "runtime/core/meta/component_db.h"
@@ -21,6 +27,8 @@
 #include "runtime/function/render/render_view/render_view_target.h"
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
+#include "runtime/function/render/pixel2d/sprite.h"
+#include "runtime/function/render/texture/texture.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/world.h"
 #include "runtime/resource/res_type/scene_res.h"
@@ -28,10 +36,13 @@
 #include "runtime/resource/resource_manager.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <sstream>
 
 using namespace dodoe;
 
@@ -50,6 +61,61 @@ BackendLogLevel ToBackendLogLevel(dodoe::LogLevel level)
     case dodoe::LogLevel::Critical: return BackendLogLevel::Critical;
     }
     return BackendLogLevel::Info;
+}
+
+dodoe::ObjectID EnsureSpriteSubObject(const std::string& absolutePath)
+{
+    auto& resourceManager = dodoe::ResourceManager::Self();
+    auto* assetManager = resourceManager.getAssetManager();
+    if (!assetManager) {
+        return {};
+    }
+
+    const std::filesystem::path abs = std::filesystem::path(absolutePath).lexically_normal();
+    const std::string absStr = abs.generic_string();
+    const dodoe::ObjectID textureRef = assetManager->ensureImported(dodoe::String(absStr.c_str()));
+    if (!textureRef.isValid()) {
+        return {};
+    }
+
+    const std::filesystem::path metaPath(abs.string() + ".meta");
+    dodoe::ImportSettings settings;
+    if (dodoe::ImportSettingsIO::Load(dodoe::FsPath(metaPath.string()), settings) &&
+        settings.sprites.empty()) {
+        auto* texture = resourceManager.loadObjectByPath<dodoe::Texture2D>(
+            dodoe::FileID(dodoe::String(absStr.c_str())));
+        if (texture && texture->getWidth() > 0 && texture->getHeight() > 0) {
+            dodoe::SpriteMeta sprite;
+            sprite.name = dodoe::String("Sprite");
+            sprite.local_id = 1;
+            sprite.ppu = 10.0f;
+            sprite.pivot_x = 0.5f;
+            sprite.pivot_y = 0.5f;
+            sprite.slice_right = static_cast<dodoe::Float>(texture->getWidth());
+            sprite.slice_top = static_cast<dodoe::Float>(texture->getHeight());
+            settings.sprites.push_back(sprite);
+            dodoe::ImportSettingsIO::Save(dodoe::FsPath(metaPath.string()), settings);
+        }
+    }
+
+    return assetManager->resolveSubObjectRef(dodoe::FileID(dodoe::String(absStr.c_str())), 0);
+}
+
+dodoe::Vector3f ScreenToWorldDropPosition(const EditorCamera* camera, float x, float y)
+{
+    if (!camera) {
+        return {0.0f, 0.0f, 0.0f};
+    }
+    dodoe::Vector3f origin;
+    dodoe::Vector3f dir;
+    camera->screenToRay(x, y, origin, dir);
+    if (std::abs(dir.z) > 1e-6f) {
+        const float t = -origin.z / dir.z;
+        if (t >= 0.0f) {
+            return origin + dir * t;
+        }
+    }
+    return {origin.x, origin.y, 0.0f};
 }
 
 } // anonymous namespace
@@ -401,6 +467,150 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
         return true;
     }
 
+    if (command.name == "scene.import_asset") {
+        if (!m_booted || !m_app || !m_session || !m_camera || command.payload.empty()) {
+            return false;
+        }
+        std::string line1;
+        std::string guidText;
+        std::string assetPath;
+        {
+            std::istringstream stream(command.payload);
+            std::getline(stream, line1);
+            std::getline(stream, guidText);
+            std::getline(stream, assetPath);
+        }
+        float dropX = 0.0f;
+        float dropY = 0.0f;
+        if (std::sscanf(line1.c_str(), "%f,%f", &dropX, &dropY) < 2 || assetPath.empty()) {
+            return false;
+        }
+        std::error_code ec;
+        const std::filesystem::path absPath = std::filesystem::absolute(assetPath).lexically_normal();
+        const std::string absStr = absPath.generic_string();
+        const std::string ext = absPath.extension().generic_string();
+        std::string lowerExt = ext;
+        std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        const std::string name = absPath.stem().string();
+        if (name.empty() || lowerExt.empty()) {
+            return false;
+        }
+
+        dodoe::Vector3f worldPos = ScreenToWorldDropPosition(m_camera.get(), dropX, dropY);
+        nlohmann::json position = {worldPos.x, worldPos.y, worldPos.z};
+
+        auto& resourceManager = dodoe::ResourceManager::Self();
+        auto* assetManager = resourceManager.getAssetManager();
+        if (!assetManager) {
+            return false;
+        }
+
+        if (lowerExt == ".tsx") {
+            const dodoe::ObjectID tilesetRef =
+                assetManager->ensureTilesetImported(dodoe::String(absStr.c_str()));
+            if (!tilesetRef.isValid()) {
+                return false;
+            }
+            auto command2 = std::make_unique<CreateTilemapWithTilesetCommand>(
+                dodoe::String(name.c_str()), tilesetRef.asset_id, std::move(position));
+            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+            m_session->notifyDocumentChanged();
+            if (executed) {
+                const dodoe::UUID created =
+                    static_cast<CreateTilemapWithTilesetCommand*>(executed)->created();
+                if (created.isValid()) {
+                    m_session->selection().set(static_cast<std::uint64_t>(created));
+                }
+            }
+            return true;
+        }
+
+        if (lowerExt == ".tmj") {
+            const dodoe::ObjectID mapRef =
+                assetManager->ensureImported(dodoe::String(absStr.c_str()));
+            if (!mapRef.isValid()) {
+                return false;
+            }
+            auto command2 = std::make_unique<ImportTiledMapCommand>(
+                dodoe::String(name.c_str()), mapRef.asset_id, std::move(position));
+            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+            m_session->notifyDocumentChanged();
+            if (executed) {
+                const dodoe::UUID created =
+                    static_cast<ImportTiledMapCommand*>(executed)->created();
+                if (created.isValid()) {
+                    m_session->selection().set(static_cast<std::uint64_t>(created));
+                }
+            }
+            return true;
+        }
+
+        if (lowerExt == ".doscn") {
+            return openDocument(absStr);
+        }
+
+        const dodoe::ObjectID imported = assetManager->ensureImported(dodoe::String(absStr.c_str()));
+        if (!imported.isValid()) {
+            return false;
+        }
+
+        if (lowerExt == ".obj" || lowerExt == ".fbx" || lowerExt == ".gltf" || lowerExt == ".glb") {
+            nlohmann::json meshValue;
+            meshValue["mesh"] = {
+                {"asset_id", static_cast<std::uint64_t>(imported.asset_id)},
+                {"sub_object_id", 0},
+            };
+            meshValue["section_index"] = 0;
+            meshValue["override_materials"] = nlohmann::json::array();
+            meshValue["visible"] = true;
+            meshValue["cast_shadow"] = true;
+            meshValue["mobility"] = 0;
+            auto command2 = std::make_unique<ImportMeshCommand>(name, std::move(meshValue), std::move(position));
+            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+            m_session->notifyDocumentChanged();
+            if (executed) {
+                const std::uint64_t created =
+                    static_cast<ImportMeshCommand*>(executed)->createdUuid();
+                if (created != 0) {
+                    m_session->selection().set(created);
+                }
+            }
+            return true;
+        }
+
+        if (lowerExt == ".png" || lowerExt == ".jpg" || lowerExt == ".jpeg" ||
+            lowerExt == ".bmp" || lowerExt == ".gif" || lowerExt == ".tga" ||
+            lowerExt == ".psd" || lowerExt == ".hdr") {
+            const dodoe::ObjectID spriteRef = EnsureSpriteSubObject(absStr);
+            if (!spriteRef.isValid()) {
+                return false;
+            }
+            nlohmann::json spriteValue;
+            spriteValue["sprite"] = {
+                {"asset_id", static_cast<std::uint64_t>(spriteRef.asset_id)},
+                {"sub_object_id", spriteRef.local_id},
+            };
+            spriteValue["flip"] = false;
+            spriteValue["pivot"] = {0.0, 0.0};
+            spriteValue["depth"] = 0.0;
+            spriteValue["color"] = {1.0, 1.0, 1.0, 1.0};
+            auto command2 = std::make_unique<ImportSpriteCommand>(name, std::move(spriteValue), std::move(position));
+            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+            m_session->notifyDocumentChanged();
+            if (executed) {
+                const std::uint64_t created =
+                    static_cast<ImportSpriteCommand*>(executed)->createdUuid();
+                if (created != 0) {
+                    m_session->selection().set(created);
+                }
+            }
+            return true;
+        }
+
+        return true;
+    }
+
     if (command.name.rfind("tilemap.", 0) == 0) {
         // Tilemap commands operate on the hosted scene. The editor window can
         // dispatch commands before its scene surface has booted the runtime.
@@ -557,6 +767,7 @@ bool RuntimeEditorBackend::attachSceneSurface(const SceneSurfaceDescriptor& surf
     if (!m_booted && !bootRuntime()) {
         return false;
     }
+    DO_ASSERT(m_booted, "Cakery backend: runtime did not boot on surface attach");
     applyPendingMetrics();
     if (m_hasDocument && !reconcileScene(m_document)) {
         return false;
@@ -590,6 +801,7 @@ void RuntimeEditorBackend::tickAtSafePoint()
     if (!m_booted) {
         return;
     }
+    DO_PROFILE_SCOPE_CATEGORY("Cakery::tickAtSafePoint", "frame");
     if (m_hasPendingMetrics) {
         applyPendingMetrics();
     }
@@ -678,6 +890,7 @@ bool RuntimeEditorBackend::bootRuntime()
     if (m_booted) {
         return true;
     }
+    DO_PROFILE_SCOPE_CATEGORY("Cakery::bootRuntime", "boot");
 
     const float bootW = m_pending.logicalWidth > 0 ? static_cast<float>(m_pending.logicalWidth) : 1280.0f;
     const float bootH = m_pending.logicalHeight > 0 ? static_cast<float>(m_pending.logicalHeight) : 720.0f;
@@ -698,16 +911,23 @@ bool RuntimeEditorBackend::bootRuntime()
     spec.render_settings.threading_mode = ThreadingMode::DualThread;
 
     m_app = std::make_unique<Application>(spec);
+    DO_ASSERT(m_app, "Cakery backend: Application failed to create");
     SystemContext& ctx = m_app->context();
 
     EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(m_app.get());
 
     ctx.initializeModules();
+    DO_ASSERT(ctx.getRenderSystem(), "Cakery backend: render system missing after module init");
+    DO_INFO("Cakery backend: runtime modules initialized");
     ctx.startRuntime();
+    DO_ASSERT(ctx.getWorld(), "Cakery backend: world missing after startRuntime");
+    DO_INFO("Cakery backend: runtime started");
     ctx.getLayerStack().attach();
+    DO_INFO("Cakery backend: layer stack attached");
 
     m_assetDatabase = std::make_unique<AssetDatabase>();
     m_assetDatabase->refresh();
+    DO_INFO("Cakery backend: asset database refreshed");
 
     m_camera = std::make_unique<EditorCamera>();
     m_cameraProvider = std::make_unique<dodoe::EditorCameraProvider>();
@@ -726,6 +946,8 @@ bool RuntimeEditorBackend::bootRuntime()
         info.pixel   = dodoe::Vector2i(bootPixelW, bootPixelH);
         m_sceneTarget = viewMgr->createViewTarget(info);
     }
+    DO_ASSERT(m_sceneTarget, "Cakery backend: scene view target failed to create");
+    DO_INFO("Cakery backend: scene view target created");
 
     if (m_camera) {
         m_camera->setViewportSize(bootW, bootH);
@@ -739,6 +961,7 @@ bool RuntimeEditorBackend::bootRuntime()
     m_booted = true;
     m_state = BackendState::Ready;
     m_diagnostic = "Runtime backend booted.";
+    DO_INFO("Cakery backend: runtime boot complete");
     if (m_eventCallback) {
         m_eventCallback(BackendEventMessage{"camera_mode_changed", "3d"});
     }

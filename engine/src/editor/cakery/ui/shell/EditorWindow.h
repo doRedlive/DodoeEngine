@@ -21,6 +21,7 @@ class QToolButton;
 namespace ads {
 class CDockManager;
 class CDockWidget;
+class CFloatingDockContainer;
 }
 
 namespace cakery {
@@ -60,6 +61,7 @@ private:
     void createWindowMenu();
     void populatePanelMenus();
     void setupPanelToggle(ads::CDockWidget* dock);
+    void setupFloatingDockWindow(ads::CFloatingDockContainer* floating);
     void startSafePointTimer();
     void refreshUndoRedoActions();
     void resetLayout();
@@ -67,7 +69,6 @@ private:
     void saveLayoutState() const;
     void toggleMaximize();
     void updateMaximizeButton();
-    void updateTileToolbar(bool active);
     bool overInteractiveChild(const QPoint& pos) const;
     bool overMenuAction(QMenuBar* menuBar, const QPoint& localPos) const;
 
@@ -104,14 +105,12 @@ private:
     QAction* m_undoAction = nullptr;
     QAction* m_redoAction = nullptr;
     QAction* m_camera2DAction = nullptr;
-    QActionGroup* m_tileToolGroup = nullptr;
     QTimer* m_safePointTimer = nullptr;
     bool m_closed = false;
     QByteArray* m_defaultLayoutState = nullptr;
     QString m_layoutStatePath;
     ScopedConnection m_historySubscription;
     ScopedConnection m_cameraModeSubscription;
-    ScopedConnection m_tileModeSubscription;
 };
 
 } // namespace cakery

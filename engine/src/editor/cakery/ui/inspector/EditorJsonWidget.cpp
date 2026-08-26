@@ -260,8 +260,8 @@ public:
     ScrubDoubleSpinBox(QWidget* parent = nullptr)
         : QDoubleSpinBox(parent)
     {
-        setAlignment(Qt::AlignRight);
-        setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+        setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         lineEdit()->installEventFilter(this);
     }
 
@@ -296,8 +296,8 @@ public:
     ScrubIntSpinBox(QWidget* parent = nullptr)
         : QSpinBox(parent)
     {
-        setAlignment(Qt::AlignRight);
-        setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+        setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         lineEdit()->installEventFilter(this);
     }
 
@@ -508,6 +508,9 @@ void EditorJsonWidget::rebuild() {
     form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     std::unordered_set<std::string> rendered;
     for (const auto& metadata : m_fields) {
+        if (metadata.name.find('.') != std::string::npos) {
+            continue;
+        }
         if (metadata.hidden || !m_value.contains(metadata.name)) {
             continue;
         }
@@ -523,9 +526,22 @@ void EditorJsonWidget::rebuild() {
     layout->addLayout(form);
 }
 
+const InspectorFieldMetadata* EditorJsonWidget::metadataForPath(const std::string& path) const
+{
+    for (const auto& metadata : m_fields) {
+        if (metadata.name == path) {
+            return &metadata;
+        }
+    }
+    return nullptr;
+}
+
 void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, const std::string& path,
                                   const nlohmann::json& value,
                                   const InspectorFieldMetadata* metadata) {
+    if (!metadata) {
+        metadata = metadataForPath(path);
+    }
     if (metadata && metadata->kind == InspectorFieldKind::AssetHandle) {
         QLabel* label = new QLabel(TitleCaseKey(key));
         label->setObjectName(QStringLiteral("inspectorFieldLabel"));
@@ -542,14 +558,14 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
         auto* group = new QGroupBox(TitleCaseKey(key));
         group->setObjectName(QStringLiteral("inspectorNestedGroup"));
         auto* subForm = new QFormLayout(group);
-        subForm->setContentsMargins(6, 6, 6, 6);
+        subForm->setContentsMargins(6, 16, 6, 6);
         subForm->setHorizontalSpacing(8);
         subForm->setVerticalSpacing(7);
         subForm->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
         subForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
         for (auto it = value.begin(); it != value.end(); ++it) {
             const std::string subPath = path + "." + it.key();
-            buildField(subForm, it.key(), subPath, it.value());
+            buildField(subForm, it.key(), subPath, it.value(), metadataForPath(subPath));
         }
         form->addRow(group);
         return;
@@ -840,6 +856,7 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const std::string& path,
 QWidget* EditorJsonWidget::buildVectorField(const std::string& path, const nlohmann::json& value) {
     auto* container = new QWidget();
     container->setObjectName(QStringLiteral("inspectorVector"));
+    container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto* hbox = new QHBoxLayout(container);
     hbox->setContentsMargins(0, 0, 0, 0);
     hbox->setSpacing(6);
@@ -851,6 +868,7 @@ QWidget* EditorJsonWidget::buildVectorField(const std::string& path, const nlohm
         axis->setProperty("axis", QString::fromLatin1(axisNames[index < 4 ? index : 3]).toLower());
         hbox->addWidget(axis);
         auto* spin = MakeDoubleSpinBox(value[index].get<double>());
+        spin->setMinimumWidth(0);
         InstallNumericScrub(axis, spin);
         spins.push_back(spin);
         hbox->addWidget(spin);

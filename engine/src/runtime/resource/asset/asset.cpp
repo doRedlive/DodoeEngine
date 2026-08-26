@@ -112,6 +112,7 @@ namespace dodoe {
             case AssetType::Prefab:          return "Prefab";
             case AssetType::Audio:           return "Audio";
             case AssetType::InputAction:     return "InputAction";
+            case AssetType::TiledMap:        return "TiledMap";
             case AssetType::Unknown:
             default:                         return "Unknown";
         }
@@ -132,6 +133,7 @@ namespace dodoe {
         if (str == "Prefab")          return AssetType::Prefab;
         if (str == "Audio")           return AssetType::Audio;
         if (str == "InputAction")     return AssetType::InputAction;
+        if (str == "TiledMap")        return AssetType::TiledMap;
         return AssetType::Unknown;
     }
 

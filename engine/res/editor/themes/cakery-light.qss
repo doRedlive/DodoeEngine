@@ -1,6 +1,13 @@
 /* Color-only override. Layout, typography, spacing, and geometry come from cakery-dark.qss. */
 QWidget { background: #f4f7fb; color: #263447; }
 QMainWindow, #editorTitleBar, QMenuBar, QToolBar { background: #eaf1f8; color: #263447; border-color: #c5d4e4; }
+ads--CFloatingDockContainer { background: #eaf1f8; border-color: #c5d4e4; }
+ads--CFloatingDockContainer ads--CDockContainerWidget { background: #f4f7fb; }
+QDialog#unsavedChangesDialog, QMessageBox { background: #ffffff; border-color: #b9cbe0; }
+QDialog#unsavedChangesDialog QWidget#unsavedChangesBody { background: #ffffff; }
+QDialog#unsavedChangesDialog QLabel#unsavedChangesMessage, QMessageBox QLabel { color: #263447; }
+QDialog#unsavedChangesDialog #editorTitleBar { background: #eaf1f8; border-bottom-color: #c5d4e4; }
+QDialog#unsavedChangesDialog #editorTitleBar QLabel#editorWindowTitle { color: #263447; }
 QMenu, QComboBox QAbstractItemView { background: #ffffff; color: #263447; border-color: #b9cbe0; }
 QMenu::item:selected, QMenuBar::item:selected, QTreeWidget::item:selected, QListWidget::item:selected, QTableWidget::item:selected { background: #cfe4f7; color: #17324d; }
 QToolButton, QPushButton { background: #e8f1f9; color: #263447; border-color: #b9cbe0; }

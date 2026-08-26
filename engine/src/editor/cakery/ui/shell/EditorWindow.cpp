@@ -29,13 +29,18 @@
 #include <DockAreaWidget.h>
 #include <DockManager.h>
 #include <DockWidget.h>
+#include <FloatingDockContainer.h>
 
 #include <QAbstractButton>
 #include <QApplication>
 #include <QActionGroup>
+#include <QBoxLayout>
 #include <QCloseEvent>
 #include <QByteArray>
 #include <QDir>
+#include <QDialog>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -48,16 +53,20 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPixmap>
 #include <QResizeEvent>
 #include <QRegularExpression>
+#include <QStyle>
+#include <QGridLayout>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QStandardPaths>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QWheelEvent>
 #include <QWidget>
@@ -69,6 +78,7 @@
 #include <filesystem>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace cakery {
 
@@ -79,6 +89,224 @@ int toCameraButton(Qt::MouseButton button)
     if (button == Qt::LeftButton) return 0;
     if (button == Qt::MiddleButton) return 1;
     return 2;
+}
+
+class FloatingWindowTitleBar final : public QWidget
+{
+public:
+    explicit FloatingWindowTitleBar(QWidget* window, bool allowMaximize = true)
+        : QWidget(window), m_window(window), m_allowMaximize(allowMaximize)
+    {
+        setObjectName(QStringLiteral("editorTitleBar"));
+        setAttribute(Qt::WA_StyledBackground, true);
+
+        auto* layout = new QHBoxLayout(this);
+        layout->setContentsMargins(10, 2, 0, 2);
+        layout->setSpacing(4);
+
+        m_title = new QLabel(window->windowTitle(), this);
+        m_title->setObjectName(QStringLiteral("editorWindowTitle"));
+        m_title->setAttribute(Qt::WA_TransparentForMouseEvents);
+        layout->addWidget(m_title);
+        layout->addStretch();
+
+        auto addButton = [this, layout](const QString& objectName, const QString& icon,
+                                        const QString& tooltip, auto callback) {
+            auto* button = new QToolButton(this);
+            button->setObjectName(objectName);
+            button->setIcon(editorThemedIcon(icon));
+            button->setIconSize(QSize(16, 16));
+            button->setToolTip(tooltip);
+            connect(button, &QToolButton::clicked, this, callback);
+            layout->addWidget(button);
+            return button;
+        };
+
+        if (m_allowMaximize) {
+            addButton(QStringLiteral("windowMinButton"), QStringLiteral("minus.svg"),
+                      tr("Minimize"), [this]() { m_window->showMinimized(); });
+            m_maxButton = addButton(QStringLiteral("windowMaxButton"),
+                                    QStringLiteral("maximize-2.svg"), tr("Maximize"),
+                                    [this]() { toggleMaximize(); });
+        }
+        addButton(QStringLiteral("windowCloseButton"), QStringLiteral("x.svg"),
+                  tr("Close"), [this]() { m_window->close(); });
+
+        connect(window, &QWidget::windowTitleChanged, this, [this](const QString& title) {
+            m_title->setText(title);
+        });
+        connect(window, &QObject::destroyed, this, [this]() { m_window = nullptr; });
+        updateMaximizeButton();
+    }
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && m_window && m_window->windowHandle()) {
+            m_window->windowHandle()->startSystemMove();
+            event->accept();
+            return;
+        }
+        QWidget::mousePressEvent(event);
+    }
+
+    void mouseDoubleClickEvent(QMouseEvent* event) override
+    {
+        if (m_allowMaximize && event->button() == Qt::LeftButton) {
+            toggleMaximize();
+            event->accept();
+            return;
+        }
+        QWidget::mouseDoubleClickEvent(event);
+    }
+
+private:
+    void toggleMaximize()
+    {
+        if (!m_window) {
+            return;
+        }
+        if (m_window->isMaximized()) {
+            m_window->showNormal();
+        } else {
+            m_window->showMaximized();
+        }
+        updateMaximizeButton();
+    }
+
+    void updateMaximizeButton()
+    {
+        if (!m_maxButton || !m_window) {
+            return;
+        }
+        const bool restore = m_window->isMaximized();
+        m_maxButton->setIcon(editorThemedIcon(restore ? QStringLiteral("minimize-2.svg")
+                                                   : QStringLiteral("maximize-2.svg")));
+        m_maxButton->setToolTip(restore ? tr("Restore Down") : tr("Maximize"));
+    }
+
+    QWidget* m_window = nullptr;
+    QLabel* m_title = nullptr;
+    QToolButton* m_maxButton = nullptr;
+    bool m_allowMaximize = true;
+};
+
+class UnsavedChangesDialog final : public QDialog
+{
+public:
+    explicit UnsavedChangesDialog(QWidget* parent)
+        : QDialog(parent)
+    {
+        setWindowTitle(tr("Unsaved Changes"));
+        setObjectName(QStringLiteral("unsavedChangesDialog"));
+        setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+        setAttribute(Qt::WA_TranslucentBackground, true);
+        setAttribute(Qt::WA_StyledBackground, true);
+        setModal(true);
+        setMinimumWidth(430);
+
+        auto* root = new QVBoxLayout(this);
+        root->setContentsMargins(0, 0, 0, 0);
+        root->setSpacing(0);
+        root->addWidget(new FloatingWindowTitleBar(this, false));
+
+        auto* body = new QWidget(this);
+        body->setObjectName(QStringLiteral("unsavedChangesBody"));
+        auto* bodyLayout = new QVBoxLayout(body);
+        bodyLayout->setContentsMargins(20, 18, 20, 18);
+        bodyLayout->setSpacing(16);
+
+        auto* messageRow = new QHBoxLayout();
+        messageRow->setSpacing(16);
+        auto* icon = new QLabel(body);
+        icon->setPixmap(style()->standardIcon(QStyle::SP_MessageBoxWarning).pixmap(QSize(42, 42)));
+        icon->setFixedSize(42, 42);
+        messageRow->addWidget(icon, 0, Qt::AlignTop);
+        auto* message = new QLabel(tr("The current scene has unsaved changes."), body);
+        message->setObjectName(QStringLiteral("unsavedChangesMessage"));
+        message->setWordWrap(true);
+        messageRow->addWidget(message, 1, Qt::AlignVCenter);
+        bodyLayout->addLayout(messageRow);
+
+        auto* buttons = new QHBoxLayout();
+        buttons->addStretch();
+        auto addButton = [this, buttons](const QString& text, QMessageBox::StandardButton result) {
+            auto* button = new QPushButton(text, this);
+            button->setMinimumWidth(72);
+            connect(button, &QPushButton::clicked, this, [this, result]() {
+                m_result = result;
+                accept();
+            });
+            buttons->addWidget(button);
+        };
+        addButton(tr("Save"), QMessageBox::Save);
+        addButton(tr("Discard"), QMessageBox::Discard);
+        addButton(tr("Cancel"), QMessageBox::Cancel);
+        bodyLayout->addLayout(buttons);
+        root->addWidget(body);
+    }
+
+    QMessageBox::StandardButton result() const { return m_result; }
+
+private:
+    QMessageBox::StandardButton m_result = QMessageBox::Cancel;
+};
+
+void setupFramelessMessageBox(QMessageBox* messageBox)
+{
+    if (!messageBox || messageBox->property("cakeryCustomTitleBar").toBool()) {
+        return;
+    }
+
+    auto* grid = qobject_cast<QGridLayout*>(messageBox->layout());
+    if (!grid) {
+        return;
+    }
+
+    struct GridItem {
+        QLayoutItem* item = nullptr;
+        int row = 0;
+        int column = 0;
+        int rowSpan = 1;
+        int columnSpan = 1;
+    };
+    std::vector<GridItem> items;
+    items.reserve(static_cast<std::size_t>(grid->count()));
+    int columnCount = 1;
+    for (int index = 0; index < grid->count(); ++index) {
+        int row = 0;
+        int column = 0;
+        int rowSpan = 1;
+        int columnSpan = 1;
+        grid->getItemPosition(index, &row, &column, &rowSpan, &columnSpan);
+        items.push_back({nullptr, row, column, rowSpan, columnSpan});
+        columnCount = qMax(columnCount, column + columnSpan);
+    }
+    for (int index = static_cast<int>(items.size()) - 1; index >= 0; --index) {
+        items[static_cast<std::size_t>(index)].item = grid->takeAt(index);
+    }
+
+    messageBox->setProperty("cakeryCustomTitleBar", true);
+    messageBox->setAttribute(Qt::WA_TranslucentBackground, true);
+    messageBox->setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+    grid->addWidget(new FloatingWindowTitleBar(messageBox, false), 0, 0, 1, columnCount);
+    for (const auto& entry : items) {
+        grid->addItem(entry.item, entry.row + 1, entry.column,
+                      entry.rowSpan, entry.columnSpan);
+    }
+    messageBox->show();
+}
+
+ads::CFloatingDockContainer* floatingWindowAncestor(QObject* object)
+{
+    auto* widget = qobject_cast<QWidget*>(object);
+    while (widget) {
+        if (auto* floating = qobject_cast<ads::CFloatingDockContainer*>(widget)) {
+            return floating;
+        }
+        widget = widget->parentWidget();
+    }
+    return nullptr;
 }
 
 #ifdef _WIN32
@@ -122,6 +350,7 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         setAutoFillBackground(false);
         setMouseTracking(true);
+        setAcceptDrops(true);
     }
 
     void attach()
@@ -253,6 +482,33 @@ protected:
         QWidget::keyReleaseEvent(event);
     }
 
+    void dragEnterEvent(QDragEnterEvent* event) override
+    {
+        const QMimeData* mime = event->mimeData();
+        if (mime->hasFormat(QStringLiteral("application/x-cakery-asset")) || mime->hasUrls()) {
+            event->acceptProposedAction();
+            return;
+        }
+        QWidget::dragEnterEvent(event);
+    }
+
+    void dropEvent(QDropEvent* event) override
+    {
+        const QMimeData* mime = event->mimeData();
+        QString payload = QStringLiteral("%1,%2\n")
+            .arg(event->position().x()).arg(event->position().y());
+        if (mime->hasFormat(QStringLiteral("application/x-cakery-asset"))) {
+            payload += QString::fromUtf8(mime->data(QStringLiteral("application/x-cakery-asset")));
+        } else if (mime->hasUrls()) {
+            const QUrl url = mime->urls().first();
+            if (url.isLocalFile()) {
+                payload += QStringLiteral("\n") + url.toLocalFile();
+            }
+        }
+        m_context.session().execute(EditorCommandMessage{"scene.import_asset", payload.toStdString()});
+        event->acceptProposedAction();
+    }
+
 private:
     void publishMetrics()
     {
@@ -306,11 +562,11 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
 
     ads::CDockManager::setConfigFlag(ads::CDockManager::OpaqueSplitterResize, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DisableStylesheet, true);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::ActiveTabHasCloseButton, false);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::AllTabsHaveCloseButton, false);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasCloseButton, false);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasUndockButton, false);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasTabsMenuButton, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::ActiveTabHasCloseButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::AllTabsHaveCloseButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasCloseButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasUndockButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasTabsMenuButton, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DisableTabTextEliding, true);
     ads::CDockManager::setAutoHideConfigFlag(ads::CDockManager::AutoHideFeatureEnabled, true);
     // Auto Hide is available from the dock title context menu only. Godot's
@@ -318,6 +574,9 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     ads::CDockManager::setAutoHideConfigFlag(ads::CDockManager::DockAreaHasAutoHideButton, false);
     ads::CDockManager::setAutoHideConfigFlag(ads::CDockManager::AutoHideCloseOnOutsideMouseClick, true);
     m_dockManager = new ads::CDockManager(this);
+    connect(m_dockManager, &ads::CDockManager::floatingWidgetCreated,
+            this, &EditorWindow::setupFloatingDockWindow);
+    qApp->installEventFilter(this);
 
     createTitleBar();
     createMenus();
@@ -342,19 +601,15 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
             const bool is2d = mode == "2d";
             if (m_camera2DAction) {
                 m_camera2DAction->setChecked(is2d);
-                m_camera2DAction->setIcon(editorIcon(is2d ? QStringLiteral("viewport-2d.svg")
-                                                          : QStringLiteral("viewport-3d.svg")));
+                m_camera2DAction->setIcon(editorThemedIcon(
+                    is2d ? QStringLiteral("viewport-2d.svg") : QStringLiteral("viewport-3d.svg")));
             }
-        }));
-    m_tileModeSubscription = ScopedConnection(
-        m_context.session().tileEditModeChanged,
-        m_context.session().tileEditModeChanged.connect([this](bool active) {
-            updateTileToolbar(active);
         }));
 }
 
 EditorWindow::~EditorWindow()
 {
+    qApp->removeEventFilter(this);
     if (m_safePointTimer) {
         m_safePointTimer->stop();
     }
@@ -426,14 +681,6 @@ void EditorWindow::createMenus()
         }
     }
 
-    auto* tile = m_menuBar->addMenu(tr("Tile"));
-    auto* createTilemap = tile->addAction(tr("Create Tilemap..."));
-    connect(createTilemap, &QAction::triggered, this, [this]() {
-        if (m_tilePalette) {
-            m_tilePalette->onNewTilemap();
-        }
-    });
-
     m_settingsMenu = m_menuBar->addMenu(tr("Settings"));
 }
 
@@ -495,7 +742,7 @@ void EditorWindow::populatePanelMenus()
 void EditorWindow::setupPanelToggle(ads::CDockWidget* dock)
 {
     QAction* action = dock->toggleViewAction();
-    const QIcon checkIcon = editorIcon(QStringLiteral("check.svg"));
+    const QIcon checkIcon = editorThemedIcon(QStringLiteral("check.svg"));
     QPixmap blankPixmap(16, 16);
     blankPixmap.fill(Qt::transparent);
     const QIcon blankIcon(blankPixmap);
@@ -504,6 +751,23 @@ void EditorWindow::setupPanelToggle(ads::CDockWidget* dock)
     };
     applyIcon(action->isChecked());
     connect(dock, &ads::CDockWidget::viewToggled, this, applyIcon);
+}
+
+void EditorWindow::setupFloatingDockWindow(ads::CFloatingDockContainer* floating)
+{
+    if (!floating || floating->property("cakeryCustomTitleBar").toBool()) {
+        return;
+    }
+
+    auto* layout = qobject_cast<QBoxLayout*>(floating->layout());
+    if (!layout) {
+        return;
+    }
+
+    floating->setProperty("cakeryCustomTitleBar", true);
+    floating->setAttribute(Qt::WA_TranslucentBackground, true);
+    floating->setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+    layout->insertWidget(0, new FloatingWindowTitleBar(floating));
 }
 
 void EditorWindow::resetLayout()
@@ -669,6 +933,29 @@ void EditorWindow::changeEvent(QEvent* event)
 
 bool EditorWindow::eventFilter(QObject* watched, QEvent* event)
 {
+    if (event->type() == QEvent::Show) {
+        if (auto* messageBox = qobject_cast<QMessageBox*>(watched)) {
+            setupFramelessMessageBox(messageBox);
+        }
+    }
+
+    if (event->type() == QEvent::MouseButtonPress) {
+        auto* floating = floatingWindowAncestor(watched);
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (floating && mouse->button() == Qt::LeftButton && floating->windowHandle()
+            && !floating->isMaximized()) {
+            const QPoint pos = floating->mapFromGlobal(mouse->globalPosition().toPoint());
+            constexpr int border = 6;
+            Qt::Edges edges;
+            if (pos.x() < border) edges |= Qt::LeftEdge;
+            if (pos.x() >= floating->width() - border) edges |= Qt::RightEdge;
+            if (pos.y() >= floating->height() - border) edges |= Qt::BottomEdge;
+            if (edges != Qt::Edges() && floating->windowHandle()->startSystemResize(edges)) {
+                return true;
+            }
+        }
+    }
+
     const bool dragSurface = (watched == m_titleBar);
     const bool menuSurface = qobject_cast<QMenuBar*>(watched) != nullptr;
     if (event->type() == QEvent::MouseButtonPress) {
@@ -779,7 +1066,8 @@ void EditorWindow::createDocks()
     sceneToolbar->setIconSize(QSize(16, 16));
     sceneToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
-    m_camera2DAction = sceneToolbar->addAction(editorIcon(QStringLiteral("viewport-3d.svg")), QString());
+    m_camera2DAction = sceneToolbar->addAction(
+        editorThemedIcon(QStringLiteral("viewport-3d.svg")), QString());
     m_camera2DAction->setCheckable(true);
     m_camera2DAction->setChecked(false);
     m_camera2DAction->setToolTip(tr("Toggle 2D/3D view mode"));
@@ -803,7 +1091,7 @@ void EditorWindow::createDocks()
     };
     const bool sim = m_context.capabilities().simulation;
     for (const SceneTool& sceneTool : sceneTools) {
-        auto* action = sceneToolbar->addAction(editorIcon(sceneTool.icon), QString());
+        auto* action = sceneToolbar->addAction(editorThemedIcon(sceneTool.icon), QString());
         if (auto* toolButton = sceneToolbar->widgetForAction(action)) {
             toolButton->setProperty("sceneTool", QString::fromLatin1(sceneTool.mode));
         }
@@ -817,36 +1105,6 @@ void EditorWindow::createDocks()
         });
     }
 
-    sceneToolbar->addSeparator();
-    m_tileToolGroup = new QActionGroup(sceneToolbar);
-    m_tileToolGroup->setExclusive(true);
-    struct TileToolEntry {
-        const char* tooltip;
-        const char* icon;
-        const char* mode;
-    };
-    const TileToolEntry tileTools[] = {
-        {QT_TR_NOOP("Select"), "tile-select.svg", "select"},
-        {QT_TR_NOOP("Brush"), "tile-brush.svg", "brush"},
-        {QT_TR_NOOP("Fill"), "tile-fill.svg", "fill"},
-        {QT_TR_NOOP("Eraser"), "tile-eraser.svg", "erase"},
-        {QT_TR_NOOP("Rectangle"), "tile-rect.svg", "rect"},
-        {QT_TR_NOOP("Line"), "tile-line.svg", "line"},
-        {QT_TR_NOOP("Picker"), "tile-picker.svg", "picker"},
-    };
-    for (const TileToolEntry& tileTool : tileTools) {
-        auto* action = sceneToolbar->addAction(
-            editorIcon(QString::fromLatin1(tileTool.icon)), QString());
-        action->setCheckable(true);
-        action->setEnabled(false);
-        action->setToolTip(tr(tileTool.tooltip));
-        m_tileToolGroup->addAction(action);
-        if (tileTool.mode[0] == 's') action->setChecked(true);
-        connect(action, &QAction::triggered, this, [this, mode = tileTool.mode]() {
-            m_context.session().execute(EditorCommandMessage{"tilemap.tool", mode});
-        });
-    }
-    updateTileToolbar(false);
     sceneLayout->addWidget(sceneToolbar);
 
     m_sceneSurface = new SceneSurface(m_context, sceneBody);
@@ -917,6 +1175,9 @@ void EditorWindow::createPanels()
     m_tilePaletteDock->setObjectName(QStringLiteral("Tile Palette"));
     m_tilePalette = new TilePalettePanel(m_context, m_tilePaletteDock);
     m_tilePaletteDock->setWidget(m_tilePalette);
+    m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
+    m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
+    m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
     m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_tilePaletteDock, m_historyDock->dockAreaWidget());
 
@@ -924,6 +1185,9 @@ void EditorWindow::createPanels()
     m_tileLayersDock->setObjectName(QStringLiteral("Tile Layers"));
     m_tileLayers = new TileLayersPanel(m_context, m_tileLayersDock);
     m_tileLayersDock->setWidget(m_tileLayers);
+    m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
+    m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
+    m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_tileLayersDock, m_tilePaletteDock->dockAreaWidget());
 
@@ -969,19 +1233,6 @@ void EditorWindow::refreshUndoRedoActions()
 {
     if (m_undoAction) m_undoAction->setEnabled(m_context.session().history().canUndo());
     if (m_redoAction) m_redoAction->setEnabled(m_context.session().history().canRedo());
-}
-
-void EditorWindow::updateTileToolbar(bool active)
-{
-    if (!m_tileToolGroup) {
-        return;
-    }
-    for (QAction* action : m_tileToolGroup->actions()) {
-        action->setEnabled(active);
-    }
-    if (active && m_tileToolGroup->checkedAction() == nullptr) {
-        m_tileToolGroup->actions().first()->setChecked(true);
-    }
 }
 
 bool EditorWindow::enterWorkspace(const QString& projectPath)
@@ -1036,12 +1287,11 @@ void EditorWindow::closeEvent(QCloseEvent* event)
         return;
     }
     if (m_context.session().documentModel().isDirty()) {
-        const auto choice = QMessageBox::warning(
-            this,
-            tr("Unsaved Changes"),
-            tr("The current scene has unsaved changes."),
-            QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel,
-            QMessageBox::Save);
+        UnsavedChangesDialog dialog(this);
+        dialog.adjustSize();
+        dialog.move(frameGeometry().center() - dialog.rect().center());
+        dialog.exec();
+        const auto choice = dialog.result();
         if (choice == QMessageBox::Cancel) {
             event->ignore();
             return;

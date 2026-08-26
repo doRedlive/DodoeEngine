@@ -25,6 +25,7 @@ namespace dodoe {
         Prefab,
         Audio,
         InputAction,
+        TiledMap,
         Count
     };
 

@@ -11,9 +11,11 @@
 #include "runtime/resource/asset/importer/texture_importer.h"
 #include "runtime/resource/asset/importer/sprite_importer.h"
 #include "runtime/resource/asset/importer/model_importer.h"
+#include "runtime/resource/asset/importer/tiled_map_importer.h"
 #include "runtime/resource/asset/types/animator_controller_asset.h"
 #include "runtime/resource/asset/types/tileset_asset.h"
 #include "runtime/resource/asset/types/input_action_asset.h"
+#include "runtime/resource/asset/types/tiled_map_asset.h"
 
 namespace dodoe {
 
@@ -24,6 +26,10 @@ namespace dodoe {
 
         const DynamicArray<String> kModelExts = {
             ".obj", ".fbx", ".gltf", ".glb"
+        };
+
+        const DynamicArray<String> kTiledMapExts = {
+            ".tmj"
         };
 
         const String kSceneExt = ".doscn";
@@ -97,6 +103,7 @@ namespace dodoe {
             case AssetType::Scene:           return create_scope<SceneAsset>();
             case AssetType::Tileset:         return create_scope<TilesetAsset>();
             case AssetType::InputAction:     return create_scope<InputActionAsset>();
+            case AssetType::TiledMap:        return create_scope<TiledMapAsset>();
             default:                         return nullptr;
         }
     }
@@ -242,7 +249,8 @@ namespace dodoe {
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
         if (std::ranges::find(kImageExts, ext) == kImageExts.end()
-            && std::ranges::find(kModelExts, ext) == kModelExts.end()) {
+            && std::ranges::find(kModelExts, ext) == kModelExts.end()
+            && std::ranges::find(kTiledMapExts, ext) == kTiledMapExts.end()) {
             DO_ERROR("AssetManager::ensureImported: unsupported format '{}'", ext);
             return {};
         }
@@ -453,7 +461,8 @@ namespace dodoe {
                     if (input->loadFromSource(abs_path)) input->setLoadState(AssetLoadState::Loaded);
                     m_assets[asset_id] = std::move(input);
                 } else if (std::ranges::find(kImageExts, ext) != kImageExts.end()
-                           || std::ranges::find(kModelExts, ext) != kModelExts.end()) {
+                           || std::ranges::find(kModelExts, ext) != kModelExts.end()
+                           || std::ranges::find(kTiledMapExts, ext) != kTiledMapExts.end()) {
                     importSourceFile(entry.path(), source_path, ext);
                 }
             }
@@ -486,6 +495,9 @@ namespace dodoe {
         registry.registerImporter("", create_scope<SpriteImporter>());
         for (const auto& ext : kModelExts) {
             registry.registerImporter(ext, create_scope<ModelImporter>());
+        }
+        for (const auto& ext : kTiledMapExts) {
+            registry.registerImporter(ext, create_scope<TiledMapImporter>());
         }
         s_initialized = true;
     }
@@ -655,7 +667,8 @@ namespace dodoe {
                 }
 
                 if (std::ranges::find(kImageExts, ext) == kImageExts.end()
-                    && std::ranges::find(kModelExts, ext) == kModelExts.end()) {
+                    && std::ranges::find(kModelExts, ext) == kModelExts.end()
+                    && std::ranges::find(kTiledMapExts, ext) == kTiledMapExts.end()) {
                     continue;
                 }
 

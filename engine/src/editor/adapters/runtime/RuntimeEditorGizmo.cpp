@@ -7,6 +7,7 @@
 
 #include "runtime/core/channel/gizmo_channel.h"
 #include "runtime/core/context/system_context.h"
+#include "runtime/core/debug/instrumentor.h"
 #include "runtime/service/editor/picking_backend.h"
 #include "runtime/function/world/components/tilemap/tilemap_component.h"
 #include "runtime/function/world/components/transform_component.h"
@@ -320,6 +321,7 @@ void RuntimeEditorBackend::updateTileOverlay()
 
 void RuntimeEditorBackend::updateGizmo()
 {
+    DO_PROFILE_SCOPE_CATEGORY("Cakery::updateGizmo", "frame");
     dodoe::GizmoChannelData& channel_data = dodoe::GetGizmoChannel().get<dodoe::GizmoChannelData>();
     channel_data.clear();
     const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget() &&

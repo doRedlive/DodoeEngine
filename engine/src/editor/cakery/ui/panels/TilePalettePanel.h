@@ -13,7 +13,10 @@
 #include <nlohmann/json.hpp>
 
 class QLabel;
+class QActionGroup;
+class QComboBox;
 class QScrollArea;
+class QToolBar;
 class QToolButton;
 class QVBoxLayout;
 class QPixmap;
@@ -78,17 +81,26 @@ private:
     void onAddTileset();
     void onRemoveTileset();
     void applyBrushHighlight();
+    void rebuildTargetOptions(std::uint64_t activeUuid);
+    void updateToolState(bool active);
+    void setActiveTarget(int index);
     std::string resolveImagePath(const std::string& url) const;
     void rebuildTilesets();
 
     EditorWorkspaceContext& m_context;
+    QToolBar* m_toolBar = nullptr;
+    QActionGroup* m_toolGroup = nullptr;
+    QComboBox* m_targetCombo = nullptr;
+    QLabel* m_brushLabel = nullptr;
     QScrollArea* m_scroll = nullptr;
     QVBoxLayout* m_tilesetsLayout = nullptr;
     QLabel* m_statusLabel = nullptr;
     QToolButton* m_newTilemapButton = nullptr;
     QToolButton* m_addTilesetButton = nullptr;
+    QToolButton* m_removeTilesetButton = nullptr;
     std::vector<TileTilesetView*> m_tilesetViews;
     nlohmann::json m_state;
+    std::uint64_t m_activeTarget = 0;
     ScopedConnection m_selectionConnection;
     ScopedConnection m_documentConnection;
     ScopedConnection m_tileModeConnection;

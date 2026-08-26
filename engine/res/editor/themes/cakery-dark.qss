@@ -78,6 +78,18 @@ QToolBar {
     background: #151515;
     border: none;
     border-bottom: 1px solid #1f1f1f;
+    min-height: 32px;
+    max-height: 32px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+#editorTitleBar QLabel#editorWindowTitle {
+    background: transparent;
+    color: #d8d8d8;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 6px;
 }
 
 #editorTitleBar QMenuBar {
@@ -167,6 +179,31 @@ QToolBar#sceneToolbar QToolButton {
 QToolBar#sceneToolbar QToolButton[sceneTool="translate"] { color: #50fa7b; }
 QToolBar#sceneToolbar QToolButton[sceneTool="rotate"] { color: #f1fa8c; }
 QToolBar#sceneToolbar QToolButton[sceneTool="scale"] { color: #8be9fd; }
+
+QToolBar#tilePaletteToolbar {
+    background: #2a2a2a;
+    border: none;
+    border-bottom: 1px solid #1f1f1f;
+    spacing: 1px;
+    padding: 2px 4px;
+    min-height: 28px;
+}
+
+QToolBar#tilePaletteToolbar QToolButton {
+    min-width: 27px;
+    max-width: 27px;
+    min-height: 22px;
+    padding: 1px 4px;
+}
+
+QComboBox#tilePaletteTarget {
+    min-height: 26px;
+}
+
+QLabel#tilePaletteBrushInspector {
+    color: #a0a0a0;
+    padding: 2px 4px;
+}
 
 #windowMinButton,
 #windowMaxButton,
@@ -597,6 +634,11 @@ QWidget#inspectorVector {
     border: none;
 }
 
+QWidget#inspectorVector QDoubleSpinBox,
+QWidget#inspectorVector QSpinBox {
+    min-width: 0;
+}
+
 QWidget#inspectorBoolField {
     background: #1f1f1f;
     border: 1px solid #151515;
@@ -644,7 +686,8 @@ QPushButton#inspectorAddButton {
     background: #323232;
     border: 1px solid #444444;
     border-radius: 4px;
-    min-height: 30px;
+    min-height: 24px;
+    padding: 1px 8px;
     color: #dedede;
     font-weight: 600;
 }
@@ -820,9 +863,15 @@ ads--CDockContainerWidget,
 ads--CDockSplitter,
 ads--CFloatingDockContainer {
     background: #151515;
-    border: none;
+    border: 1px solid #1f1f1f;
+    border-radius: 8px;
     margin: 0;
     padding: 0;
+}
+
+ads--CFloatingDockContainer ads--CDockContainerWidget {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
 }
 
 ads--CDockAreaWidget {
@@ -998,6 +1047,33 @@ ads--CAutoHideDockContainer ads--CResizeHandle {
 
 QDialog#ProjectManagerWindow {
     background: #151515;
+}
+
+QDialog#unsavedChangesDialog {
+    background: #242424;
+    border: 1px solid #454545;
+    border-radius: 10px;
+}
+
+QMessageBox {
+    background: #242424;
+    border: 1px solid #454545;
+    border-radius: 10px;
+}
+
+QMessageBox QLabel {
+    color: #d8d8d8;
+}
+
+QDialog#unsavedChangesDialog QWidget#unsavedChangesBody {
+    background: #242424;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+QLabel#unsavedChangesMessage {
+    color: #d8d8d8;
+    font-size: 13px;
 }
 
 QLabel#projectManagerTitle {

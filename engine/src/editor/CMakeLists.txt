@@ -59,6 +59,7 @@ set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorScene.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorGizmo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorTilemap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorThumbnail.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/AssetDatabase.h
@@ -89,6 +90,14 @@ set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/TilemapDocumentRefs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReparentEntityCommand.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReparentEntityCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportSpriteCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportSpriteCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportMeshCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportMeshCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapWithTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapWithTilesetCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportTiledMapCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportTiledMapCommand.cpp
 )
 add_library(EditorRuntimeBackend STATIC ${EDITOR_RUNTIME_BACKEND_SOURCES})
 target_link_libraries(EditorRuntimeBackend PRIVATE EditorCore EditorServices DodoeRuntime)
@@ -138,8 +147,10 @@ set_source_files_properties(
 )
 add_library(EditorUI STATIC ${EDITOR_UI_SOURCES})
 target_link_libraries(EditorUI PUBLIC EditorCore EditorServices Qt6::Widgets qtadvanceddocking-qt6)
+target_compile_definitions(EditorUI PUBLIC $<$<BOOL:${DODOE_ENABLE_PROFILING}>:DODOE_PROFILE_ENABLED=1>)
 target_include_directories(EditorUI PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ENGINE_ROOT_DIR}/src
     ${ENGINE_ROOT_DIR}/external/qt-ads/src
 )
 set_target_properties(EditorUI PROPERTIES AUTOMOC ON FOLDER "Engine/Editor")

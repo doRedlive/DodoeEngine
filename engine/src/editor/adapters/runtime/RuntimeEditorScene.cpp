@@ -2,7 +2,10 @@
 
 #include "RuntimeEditorBackend.h"
 
+#include "runtime/core/asserts.h"
 #include "runtime/core/context/system_context.h"
+#include "runtime/core/debug/instrumentor.h"
+#include "runtime/core/log/log_system.h"
 #include "runtime/core/meta/component_db.h"
 #include "runtime/function/script/script_runtime.h"
 #include "runtime/function/script/script_system.h"
@@ -91,8 +94,10 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
     if (m_playState != "edit") {
         return true;
     }
+    DO_PROFILE_SCOPE_CATEGORY("Cakery::reconcileScene", "boot");
     SystemContext* ctx = m_app ? &m_app->context() : nullptr;
     World* world = ctx ? ctx->getWorld() : nullptr;
+    DO_ASSERT(world, "Cakery reconcile: world unavailable for document '{}'", document.name);
     if (!world) {
         return false;
     }
@@ -101,6 +106,7 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
         scene = world->createScene(document.name.empty()
             ? dodoe::String("Untitled")
             : dodoe::String(document.name.data(), document.name.size()));
+        DO_ASSERT(scene, "Cakery reconcile: failed to create scene for '{}'", document.name);
         if (!scene) {
             return false;
         }
@@ -108,6 +114,7 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
     } else if (!document.name.empty() && scene->getName().c_str() != document.name) {
         scene->setName(dodoe::String(document.name.data(), document.name.size()));
     }
+    DO_INFO("Cakery reconcile: document '{}' ({} entities)", document.name, document.entities.size());
 
     for (const EditorEntity& entity : document.entities) {
         const dodoe::UUID uuid(entity.uuid);
@@ -122,6 +129,7 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
         SyncNativeComponents(sceneEntity, entity.nativeComponents);
         SyncManagedComponents(*ctx, sceneEntity, entity.managedComponents);
     }
+    DO_INFO("Cakery reconcile: {} entities synced", document.entities.size());
 
     for (Entity sceneEntity : scene->getEntities()) {
         if (sceneEntity.hasComponent<TagComponent>() &&
@@ -230,6 +238,7 @@ void RuntimeEditorBackend::rebuildHierarchy(dodoe::Scene& scene, const EditorDoc
         parentHC.child_count = static_cast<int>(parentHC.children.size());
         parentHC.dirty = true;
     }
+    DO_INFO("Cakery rebuildHierarchy: rebuilt {} parent link(s)", childrenByParent.size());
 }
 
 } // namespace cakery

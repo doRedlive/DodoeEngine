@@ -9,7 +9,6 @@
 
 #include <nlohmann/json.hpp>
 
-class QLabel;
 class QPushButton;
 
 namespace cakery {
@@ -32,7 +31,6 @@ private:
     void save();
 
     EditorJsonWidget* m_editor = nullptr;
-    QLabel* m_pathLabel = nullptr;
     QString m_filePath;
     std::function<nlohmann::json()> m_fallback;
 };

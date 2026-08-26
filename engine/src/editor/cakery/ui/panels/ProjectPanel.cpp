@@ -6,6 +6,7 @@
 #include "cakery/ui/EditorIcons.h"
 
 #include <QApplication>
+#include <QByteArray>
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
@@ -263,6 +264,93 @@ std::string normalizedPath(const std::filesystem::path& path)
     return result;
 }
 
+bool GetIsInternalDirectory(const std::filesystem::path& path)
+{
+    const std::string name = path.filename().string();
+    if (name == "Library" || name == "Configs") {
+        return true;
+    }
+    return !name.empty() && name.front() == '.';
+}
+
+bool GetHasKnownAssetExtension(const std::filesystem::path& path)
+{
+    const QString ext = QString::fromStdString(path.extension().string()).toLower();
+    static const QStringList kExtensions = {
+        QStringLiteral(".png"), QStringLiteral(".jpg"), QStringLiteral(".jpeg"),
+        QStringLiteral(".bmp"), QStringLiteral(".gif"), QStringLiteral(".tga"),
+        QStringLiteral(".psd"), QStringLiteral(".hdr"), QStringLiteral(".obj"),
+        QStringLiteral(".fbx"), QStringLiteral(".gltf"), QStringLiteral(".glb"),
+        QStringLiteral(".tmj"), QStringLiteral(".tsx"), QStringLiteral(".doscn"),
+        QStringLiteral(".domat"), QStringLiteral(".doaniclip"), QStringLiteral(".doanim"),
+        QStringLiteral(".doinput"), QStringLiteral(".shader"), QStringLiteral(".cs"),
+        QStringLiteral(".prefab"), QStringLiteral(".wav"), QStringLiteral(".ogg"),
+        QStringLiteral(".mp3"), QStringLiteral(".flac")
+    };
+    return kExtensions.contains(ext);
+}
+
+bool GetIsImageAsset(const AssetBrowserEntry& asset)
+{
+    if (asset.type == "Texture" || asset.type == "Sprite") {
+        return true;
+    }
+    const QString ext = QString::fromStdString(asset.extension);
+    static const QStringList kImageExtensions = {
+        QStringLiteral(".png"), QStringLiteral(".jpg"), QStringLiteral(".jpeg"),
+        QStringLiteral(".bmp"), QStringLiteral(".gif"), QStringLiteral(".tga"),
+        QStringLiteral(".psd"), QStringLiteral(".hdr")
+    };
+    return kImageExtensions.contains(ext);
+}
+
+QString GetAssetTypeIcon(const std::string& type, const std::filesystem::path& path)
+{
+    if (type == "Texture" || type == "Sprite") {
+        return QStringLiteral("image.svg");
+    }
+    if (type == "Mesh" || type == "Prefab") {
+        return QStringLiteral("box.svg");
+    }
+    if (type == "Material") {
+        return QStringLiteral("material.svg");
+    }
+    if (type == "Tileset") {
+        return QStringLiteral("grid.svg");
+    }
+    if (type == "TiledMap") {
+        return QStringLiteral("map.svg");
+    }
+    if (type == "Scene") {
+        return QStringLiteral("scene.svg");
+    }
+    const QString ext = QString::fromStdString(path.extension().string()).toLower();
+    if (ext == QStringLiteral(".png") || ext == QStringLiteral(".jpg") ||
+        ext == QStringLiteral(".jpeg") || ext == QStringLiteral(".bmp") ||
+        ext == QStringLiteral(".gif") || ext == QStringLiteral(".tga") ||
+        ext == QStringLiteral(".psd") || ext == QStringLiteral(".hdr")) {
+        return QStringLiteral("image.svg");
+    }
+    if (ext == QStringLiteral(".obj") || ext == QStringLiteral(".fbx") ||
+        ext == QStringLiteral(".gltf") || ext == QStringLiteral(".glb") ||
+        ext == QStringLiteral(".prefab")) {
+        return QStringLiteral("box.svg");
+    }
+    if (ext == QStringLiteral(".tsx")) {
+        return QStringLiteral("grid.svg");
+    }
+    if (ext == QStringLiteral(".tmj")) {
+        return QStringLiteral("map.svg");
+    }
+    if (ext == QStringLiteral(".doscn")) {
+        return QStringLiteral("scene.svg");
+    }
+    if (ext == QStringLiteral(".domat")) {
+        return QStringLiteral("material.svg");
+    }
+    return QStringLiteral("image-minus.svg");
+}
+
 } // namespace
 
 ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
@@ -489,6 +577,9 @@ void ProjectPanel::addDirectory(QTreeWidgetItem* parentItem, const std::filesyst
     std::sort(files.begin(), files.end());
 
     for (const auto& dir : dirs) {
+        if (GetIsInternalDirectory(dir)) {
+            continue;
+        }
         auto* item = new QTreeWidgetItem(parentItem);
         item->setText(0, QString::fromStdString(dir.filename().string()));
         item->setIcon(0, editorIcon(QStringLiteral("folder-up.svg")));
@@ -497,27 +588,36 @@ void ProjectPanel::addDirectory(QTreeWidgetItem* parentItem, const std::filesyst
         addDirectory(item, dir);
     }
     for (const auto& file : files) {
+        if (file.extension() == ".meta") {
+            continue;
+        }
+        const auto normalized = normalizedPath(file);
+        const AssetBrowserEntry* asset = nullptr;
+        for (const auto& candidate : m_assets) {
+            if (normalizedPath(std::filesystem::path(candidate.path)) == normalized) {
+                asset = &candidate;
+                break;
+            }
+        }
+        if (!asset && !GetHasKnownAssetExtension(file)) {
+            continue;
+        }
         auto* item = new QTreeWidgetItem(parentItem);
         item->setText(0, QString::fromStdString(file.filename().string()));
-        item->setIcon(0, editorIcon(QStringLiteral("image-minus.svg")));
+        item->setIcon(0, editorIcon(GetAssetTypeIcon(asset ? asset->type : std::string(), file)));
         item->setData(0, Qt::UserRole, QString::fromStdString(file.string()));
         item->setData(0, Qt::UserRole + 1, false);
-        const auto normalized = normalizedPath(file);
-        for (const auto& asset : m_assets) {
-            if (normalizedPath(std::filesystem::path(asset.path)) != normalized) {
-                continue;
-            }
-            item->setData(0, Qt::UserRole + 2, QString::fromStdString(asset.type));
+        if (asset) {
+            item->setData(0, Qt::UserRole + 2, QString::fromStdString(asset->type));
             item->setData(0, Qt::UserRole + 3,
-                          QString::number(static_cast<qulonglong>(asset.uuid)));
+                          QString::number(static_cast<qulonglong>(asset->uuid)));
             item->setToolTip(0, QStringLiteral("%1\nGUID: %2\nType: %3%4%5")
-                .arg(QString::fromStdString(asset.path))
-                .arg(QString::number(static_cast<qulonglong>(asset.uuid)))
-                .arg(QString::fromStdString(asset.type))
-                .arg(asset.dirty ? tr("\nStatus: Import required") : QString())
-                .arg(asset.dependencies.empty() ? QString() :
-                     tr("\nDependencies: %1").arg(asset.dependencies.size())));
-            break;
+                .arg(QString::fromStdString(asset->path))
+                .arg(QString::number(static_cast<qulonglong>(asset->uuid)))
+                .arg(QString::fromStdString(asset->type))
+                .arg(asset->dirty ? tr("\nStatus: Import required") : QString())
+                .arg(asset->dependencies.empty() ? QString() :
+                     tr("\nDependencies: %1").arg(asset->dependencies.size())));
         }
     }
 }
@@ -731,32 +831,46 @@ void ProjectPanel::populateAssetGrid(const std::filesystem::path& directory)
             continue;
         }
         const auto path = it->path();
-        auto* item = new QListWidgetItem(m_assetGrid);
-        item->setData(Qt::UserRole, QString::fromStdString(path.string()));
-        item->setText(QString::fromStdString(path.filename().string()));
         if (it->is_directory(ec)) {
+            if (GetIsInternalDirectory(path)) {
+                continue;
+            }
+            auto* item = new QListWidgetItem(m_assetGrid);
+            item->setData(Qt::UserRole, QString::fromStdString(path.string()));
+            item->setText(QString::fromStdString(path.filename().string()));
             item->setIcon(editorIcon(QStringLiteral("folder-up.svg")));
             continue;
         }
-        const auto normalized = normalizedPath(path);
-        for (const auto& asset : m_assets) {
-            if (normalizedPath(std::filesystem::path(asset.path)) != normalized) {
-                continue;
-            }
-            item->setData(Qt::UserRole + 1, QString::number(static_cast<qulonglong>(asset.uuid)));
-            item->setToolTip(QStringLiteral("%1\n%2").arg(QString::fromStdString(asset.type),
-                                                            QString::fromStdString(asset.path)));
-            QImage image(QString::fromStdString(asset.path));
-            if (!image.isNull()) {
-                item->setIcon(QIcon(QPixmap::fromImage(image.scaled(
-                    QSize(72, 72), Qt::KeepAspectRatio, Qt::SmoothTransformation))));
-            } else {
-                item->setIcon(editorIcon(QStringLiteral("image-minus.svg")));
-            }
-            break;
+        if (path.extension() == ".meta") {
+            continue;
         }
-        if (item->icon().isNull()) {
-            item->setIcon(editorIcon(QStringLiteral("image-minus.svg")));
+        const auto normalized = normalizedPath(path);
+        const AssetBrowserEntry* asset = nullptr;
+        for (const auto& candidate : m_assets) {
+            if (normalizedPath(std::filesystem::path(candidate.path)) == normalized) {
+                asset = &candidate;
+                break;
+            }
+        }
+        if (!asset && !GetHasKnownAssetExtension(path)) {
+            continue;
+        }
+        auto* item = new QListWidgetItem(m_assetGrid);
+        item->setData(Qt::UserRole, QString::fromStdString(path.string()));
+        item->setText(QString::fromStdString(path.filename().string()));
+        if (asset) {
+            item->setData(Qt::UserRole + 1, QString::number(static_cast<qulonglong>(asset->uuid)));
+            item->setToolTip(QStringLiteral("%1\n%2").arg(QString::fromStdString(asset->type),
+                                                            QString::fromStdString(asset->path)));
+            const QPixmap thumbnail = loadThumbnail(*asset);
+            item->setIcon(thumbnail.isNull()
+                              ? editorIcon(GetAssetTypeIcon(asset->type, path))
+                              : QIcon(thumbnail));
+            if (asset->dirty) {
+                item->setText(item->text() + QStringLiteral(" ⚠"));
+            }
+        } else {
+            item->setIcon(editorIcon(GetAssetTypeIcon(std::string(), path)));
         }
     }
 }
@@ -770,6 +884,49 @@ void ProjectPanel::selectTreeAsset(const QString& path)
             return;
         }
     }
+}
+
+QPixmap ProjectPanel::loadThumbnail(const AssetBrowserEntry& asset)
+{
+    const QString path = QString::fromStdString(asset.path);
+    const QString key = QString::fromStdString(normalizedPath(std::filesystem::path(asset.path)));
+    const qint64 mtime = QFileInfo(path).lastModified().msSinceEpoch();
+    const auto it = m_thumbnailCache.constFind(key);
+    if (it != m_thumbnailCache.constEnd() && it->first == mtime) {
+        return it->second;
+    }
+
+    QPixmap pixmap;
+    if (GetIsImageAsset(asset)) {
+        QImage image(path);
+        if (!image.isNull()) {
+            pixmap = QPixmap::fromImage(image.scaled(
+                QSize(72, 72), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
+    } else {
+        nlohmann::json out;
+        if (m_context.session().queryAssetThumbnail(asset.path, 96, out) && out.is_object()) {
+            const int width = out.value("width", 0);
+            const int height = out.value("height", 0);
+            if (width > 0 && height > 0 && out.contains("data") && out["data"].is_string()) {
+                const QByteArray bytes = QByteArray::fromBase64(
+                    QByteArray::fromStdString(out["data"].get<std::string>()));
+                if (bytes.size() >= width * height * 4) {
+                    const QImage image(reinterpret_cast<const uchar*>(bytes.constData()),
+                                       width, height, width * 4, QImage::Format_RGBA8888);
+                    if (!image.isNull()) {
+                        pixmap = QPixmap::fromImage(image.copy().scaled(
+                            QSize(72, 72), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                    }
+                }
+            }
+        }
+    }
+
+    if (!pixmap.isNull()) {
+        m_thumbnailCache.insert(key, qMakePair(mtime, pixmap));
+    }
+    return pixmap;
 }
 
 void ProjectPanel::onNewScene()

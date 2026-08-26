@@ -34,6 +34,7 @@ private:
     void rebuild();
     void buildField(QFormLayout* form, const std::string& key, const std::string& path,
                     const nlohmann::json& value, const InspectorFieldMetadata* metadata = nullptr);
+    const InspectorFieldMetadata* metadataForPath(const std::string& path) const;
     QWidget* buildVectorField(const std::string& path, const nlohmann::json& value);
     QWidget* buildColorField(const std::string& path, const nlohmann::json& value);
     QWidget* buildBoolField(const std::string& path, const nlohmann::json& value);

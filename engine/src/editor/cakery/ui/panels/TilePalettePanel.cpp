@@ -2,14 +2,19 @@
 
 #include "TilePalettePanel.h"
 
+#include "cakery/ui/EditorIcons.h"
 #include "cakery/ui/EditorWorkspaceContext.h"
+#include "core/document/EditorDocument.h"
 
+#include <QActionGroup>
+#include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QInputDialog>
+#include <QKeySequence>
 #include <QFrame>
 #include <QLabel>
 #include <QLayout>
@@ -21,13 +26,17 @@
 #include <QPixmap>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QSpinBox>
+#include <QToolBar>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
 
 #include <algorithm>
 #include <filesystem>
+#include <string_view>
 
 namespace cakery {
 
@@ -262,6 +271,58 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(4);
 
+    m_toolBar = new QToolBar(this);
+    m_toolBar->setObjectName(QStringLiteral("tilePaletteToolbar"));
+    m_toolBar->setMovable(false);
+    m_toolBar->setIconSize(QSize(18, 18));
+    m_toolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    m_toolGroup = new QActionGroup(m_toolBar);
+    m_toolGroup->setExclusive(true);
+    struct TileToolEntry {
+        const char* tooltip;
+        const char* icon;
+        const char* mode;
+        const char* shortcut;
+    };
+    const TileToolEntry tools[] = {
+        {QT_TR_NOOP("Select"), "tile-select.svg", "select", "S"},
+        {QT_TR_NOOP("Brush"), "tile-brush.svg", "brush", "B"},
+        {QT_TR_NOOP("Box Fill"), "tile-rect.svg", "rect", "U"},
+        {QT_TR_NOOP("Fill"), "tile-fill.svg", "fill", "G"},
+        {QT_TR_NOOP("Eraser"), "tile-eraser.svg", "erase", "D"},
+        {QT_TR_NOOP("Line"), "tile-line.svg", "line", "L"},
+        {QT_TR_NOOP("Picker"), "tile-picker.svg", "picker", "I"},
+    };
+    for (const TileToolEntry& tool : tools) {
+        auto* action = m_toolBar->addAction(editorThemedIcon(QString::fromLatin1(tool.icon)), QString());
+        action->setCheckable(true);
+        action->setEnabled(false);
+        action->setToolTip(tr(tool.tooltip));
+        action->setShortcut(QKeySequence::fromString(QString::fromLatin1(tool.shortcut)));
+        m_toolGroup->addAction(action);
+        if (std::string_view(tool.mode) == "select") {
+            action->setChecked(true);
+        }
+        connect(action, &QAction::triggered, this, [this, mode = tool.mode]() {
+            m_context.session().execute(EditorCommandMessage{"tilemap.tool", mode});
+        });
+    }
+    layout->addWidget(m_toolBar);
+
+    auto* targetRow = new QWidget(this);
+    auto* targetLayout = new QHBoxLayout(targetRow);
+    targetLayout->setContentsMargins(4, 0, 4, 0);
+    targetLayout->setSpacing(6);
+    auto* targetLabel = new QLabel(tr("Active Target"), targetRow);
+    targetLayout->addWidget(targetLabel);
+    m_targetCombo = new QComboBox(targetRow);
+    m_targetCombo->setObjectName(QStringLiteral("tilePaletteTarget"));
+    m_targetCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    targetLayout->addWidget(m_targetCombo, 1);
+    connect(m_targetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &TilePalettePanel::setActiveTarget);
+    layout->addWidget(targetRow);
+
     auto* toolbar = new QWidget(this);
     auto* toolbarLayout = new QHBoxLayout(toolbar);
     toolbarLayout->setContentsMargins(4, 4, 4, 0);
@@ -279,13 +340,23 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
     connect(m_addTilesetButton, &QToolButton::clicked, this, &TilePalettePanel::onAddTileset);
     toolbarLayout->addWidget(m_addTilesetButton);
 
-    auto* removeButton = new QToolButton(toolbar);
-    removeButton->setText(tr("Remove Tileset"));
-    removeButton->setAutoRaise(true);
-    connect(removeButton, &QToolButton::clicked, this, &TilePalettePanel::onRemoveTileset);
-    toolbarLayout->addWidget(removeButton);
+    m_removeTilesetButton = new QToolButton(toolbar);
+    m_removeTilesetButton->setText(tr("Remove Tileset"));
+    m_removeTilesetButton->setAutoRaise(true);
+    connect(m_removeTilesetButton, &QToolButton::clicked, this, &TilePalettePanel::onRemoveTileset);
+    toolbarLayout->addWidget(m_removeTilesetButton);
     toolbarLayout->addStretch();
     layout->addWidget(toolbar);
+
+    auto* brushRow = new QWidget(this);
+    auto* brushLayout = new QHBoxLayout(brushRow);
+    brushLayout->setContentsMargins(4, 0, 4, 0);
+    brushLayout->setSpacing(6);
+    m_brushLabel = new QLabel(brushRow);
+    m_brushLabel->setObjectName(QStringLiteral("tilePaletteBrushInspector"));
+    brushLayout->addWidget(m_brushLabel);
+    brushLayout->addStretch();
+    layout->addWidget(brushRow);
 
     m_statusLabel = new QLabel(this);
     m_statusLabel->setStyleSheet(QStringLiteral("color: #A0A0A0; padding: 4px;"));
@@ -326,11 +397,31 @@ void TilePalettePanel::refresh()
     nlohmann::json state;
     if (!m_context.session().queryTilemapState(std::string(), state)) {
         m_state = nlohmann::json();
+        rebuildTargetOptions(0);
+        updateToolState(false);
+        if (m_brushLabel) {
+            m_brushLabel->setText(tr("Active Brush: None"));
+        }
         m_statusLabel->setText(tr("No tilemap selected. Select a tilemap in the Hierarchy, or create a new one."));
         rebuildTilesets();
         return;
     }
     m_state = std::move(state);
+    const std::uint64_t activeUuid = m_state.contains("tilemap")
+        ? m_state["tilemap"].value("uuid", std::uint64_t(0))
+        : 0;
+    rebuildTargetOptions(activeUuid);
+    updateToolState(activeUuid != 0);
+    if (m_brushLabel) {
+        const nlohmann::json brush = m_state.contains("brush") && m_state["brush"].is_object()
+            ? m_state["brush"] : nlohmann::json::object();
+        const int brushW = brush.value("w", 1);
+        const int brushH = brush.value("h", 1);
+        const std::size_t tileCount = brush.contains("gids") && brush["gids"].is_array()
+            ? brush["gids"].size() : 0;
+        m_brushLabel->setText(QStringLiteral("Active Brush: %1 x %2 (%3 tiles)")
+            .arg(brushW).arg(brushH).arg(static_cast<qulonglong>(tileCount)));
+    }
     const std::string tilemapName = m_state.contains("tilemap")
         ? m_state["tilemap"].value("name", std::string())
         : std::string();
@@ -338,6 +429,68 @@ void TilePalettePanel::refresh()
         .arg(QString::fromStdString(tilemapName))
         .arg(static_cast<qulonglong>(m_state["tilesets"].size())));
     rebuildTilesets();
+}
+
+void TilePalettePanel::rebuildTargetOptions(std::uint64_t activeUuid)
+{
+    if (!m_targetCombo) {
+        return;
+    }
+    const QSignalBlocker blocker(m_targetCombo);
+    m_targetCombo->clear();
+    m_targetCombo->addItem(tr("No Tilemap"), QVariant::fromValue<qulonglong>(0));
+
+    int activeIndex = 0;
+    for (const EditorEntity& entity : m_context.session().documentModel().entities()) {
+        const bool isTilemap = std::any_of(
+            entity.nativeComponents.begin(), entity.nativeComponents.end(),
+            [](const EditorComponent& component) { return component.typeName == "TilemapComponent"; });
+        if (!isTilemap) {
+            continue;
+        }
+        m_targetCombo->addItem(QString::fromStdString(entity.name),
+                               QVariant::fromValue<qulonglong>(entity.uuid));
+        if (entity.uuid == activeUuid) {
+            activeIndex = m_targetCombo->count() - 1;
+        }
+    }
+    m_activeTarget = activeUuid;
+    m_targetCombo->setCurrentIndex(activeIndex);
+}
+
+void TilePalettePanel::updateToolState(bool active)
+{
+    if (m_toolGroup) {
+        for (QAction* action : m_toolGroup->actions()) {
+            action->setEnabled(active);
+        }
+        if (active && !m_toolGroup->checkedAction() && !m_toolGroup->actions().isEmpty()) {
+            m_toolGroup->actions().first()->setChecked(true);
+        }
+    }
+    if (m_addTilesetButton) {
+        m_addTilesetButton->setEnabled(active);
+    }
+    if (m_removeTilesetButton) {
+        m_removeTilesetButton->setEnabled(active);
+    }
+    if (m_targetCombo) {
+        m_targetCombo->setEnabled(m_targetCombo->count() > 1);
+    }
+}
+
+void TilePalettePanel::setActiveTarget(int index)
+{
+    if (!m_targetCombo || index < 0) {
+        return;
+    }
+    const std::uint64_t uuid = m_targetCombo->itemData(index).toULongLong();
+    if (uuid == 0 || uuid == m_activeTarget) {
+        return;
+    }
+    m_activeTarget = uuid;
+    m_context.session().execute(EditorCommandMessage{
+        "tilemap.activate", std::to_string(uuid)});
 }
 
 void TilePalettePanel::rebuildTilesets()
