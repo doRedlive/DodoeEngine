@@ -31,6 +31,7 @@
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/physics/physics_system.h"
+#include "runtime/function/audio/audio_system.h"
 
 namespace dodoe {
 
@@ -111,6 +112,10 @@ namespace dodoe {
             input_init_info.host_mode = m_window_manager->getWindow()->isHostMode();
             m_input_manager = InputManager::Create(input_init_info);
             DO_INFO("InputManager initialized.");
+
+            m_audio_system = AudioSystem::Create({});
+            DO_ASSERT(m_audio_system, "AudioSystem init failed");
+            DO_INFO("AudioSystem initialized.");
         }
 
         m_script_system = ScriptSystem::Create({});
@@ -167,6 +172,7 @@ namespace dodoe {
         World::Destroy(m_world);
         ScriptSystem::Destroy(m_script_system);
         PhysicsSystem::Destroy(m_physics_system);
+        AudioSystem::Destroy(m_audio_system);
 
         m_layer_stack.clearLayers();
 
@@ -213,6 +219,7 @@ namespace dodoe {
 
         m_world->update(delta_time);
         if (m_ui_manager) { m_ui_manager->update(delta_time); }
+        m_audio_system->update(delta_time);
     }
 
     void SystemContext::renderTick() {

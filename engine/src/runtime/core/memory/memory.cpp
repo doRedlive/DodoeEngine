@@ -4,6 +4,13 @@
 #include "thread_allocator.h"
 #include "runtime/core/log/log_system.h"
 
+#if defined(DODOE_TRACY_ENABLED) && DODOE_TRACY_ENABLED
+#include <tracy/Tracy.hpp>
+namespace {
+constexpr int kTracyMemCallstackDepth = 16;
+}
+#endif
+
 namespace dodoe {
 
 	MallocAllocator Memory::s_fallback{};
@@ -104,6 +111,11 @@ namespace dodoe {
 		if (p) {
 			int tier_idx = static_cast<int>(tier);
 			s_tier_stats[tier_idx][tag_idx].recordAlloc(size);
+#if defined(DODOE_TRACY_ENABLED) && DODOE_TRACY_ENABLED
+			if (tier == AllocTier::Persistent) {
+				TracyAllocS(p, size, kTracyMemCallstackDepth);
+			}
+#endif
 		}
 		return p;
 	}
@@ -136,6 +148,11 @@ namespace dodoe {
 
 		int tier_idx = static_cast<int>(tier);
 		s_tier_stats[tier_idx][tag_idx].recordFree(size);
+#if defined(DODOE_TRACY_ENABLED) && DODOE_TRACY_ENABLED
+		if (tier == AllocTier::Persistent) {
+			TracyFreeS(p, kTracyMemCallstackDepth);
+		}
+#endif
 	}
 
 	void* Memory::AllocatePersistent(Size_t size, Size_t align, AllocTag tag) {
