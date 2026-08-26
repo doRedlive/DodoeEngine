@@ -13,6 +13,8 @@ namespace dodoe {
     struct Physics2dWorldCreateInfo {
         float gravity{-9.8f};
         int sub_step_count{4};
+        float fixed_dt{1.0f / 60.0f};
+        int max_sub_steps{4};
     };
 
     enum class Contact2dPhase {
@@ -47,6 +49,8 @@ namespace dodoe {
     public:
         void step(float dt);
         [[nodiscard]] b2WorldId getWorldId() const { return m_world_id; }
+        [[nodiscard]] float getFixedDt() const { return m_fixed_dt; }
+        [[nodiscard]] int getLastStepCount() const { return m_last_step_count; }
         void takeContactEvents(DynamicArray<Contact2dEvent>& out_events);
         void raycast(const Vector2f& origin, const Vector2f& direction, float max_distance,
                      const Query2dFilter& filter, DynamicArray<Raycast2dHit>& out_hits) const;
@@ -56,6 +60,10 @@ namespace dodoe {
     private:
         b2WorldId m_world_id{};
         int m_sub_step_count{0};
+        float m_fixed_dt{1.0f / 60.0f};
+        int m_max_sub_steps{4};
+        float m_accumulator{0.0f};
+        int m_last_step_count{0};
         Scope<PhysicsDebugger> m_debugger{nullptr};
         b2DebugDraw m_debug_draw{};
         DynamicArray<Contact2dEvent> m_contact_events{};

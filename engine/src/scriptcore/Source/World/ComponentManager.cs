@@ -18,12 +18,13 @@ internal static class ComponentManager
 
     public static string GetNativeTypeName(Type t)
     {
-        if (t == typeof(Rigidbody2D)) return "Rigidbody2dComponent";
-        if (t == typeof(Animator)) return "AnimatorComponent";
-        if (t == typeof(Rigidbody)) return "RigidbodyComponent";
-        if (t == typeof(BoxCollider)) return "BoxColliderComponent";
-        if (t == typeof(SphereCollider)) return "SphereColliderComponent";
-        if (t == typeof(CapsuleCollider)) return "CapsuleColliderComponent";
+        if (t == typeof(Rigidbody2dComponent)) return "Rigidbody2dComponent";
+        if (t == typeof(AnimatorComponent)) return "AnimatorComponent";
+        if (t == typeof(BoxCollider2dComponent)) return "BoxCollider2dComponent";
+        if (t == typeof(CircleCollider2dComponent)) return "CircleCollider2dComponent";
+        if (t == typeof(TransformComponent)) return "TransformComponent";
+        if (t == typeof(SpriteRendererComponent)) return "SpriteRendererComponent";
+        if (t == typeof(TagComponent)) return "TagComponent";
         return t.Name;
     }
 

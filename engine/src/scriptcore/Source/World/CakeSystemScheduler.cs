@@ -56,6 +56,16 @@ internal static class CakeSystemScheduler
         }
     }
 
+    public static void ExecuteOnFixedUpdate()
+    {
+        Refresh();
+        foreach (var system in _cachedSystems)
+        {
+            try { system.OnFixedUpdate(); }
+            catch (Exception e) { Debug.LogError($"OnFixedUpdate error in {system.GetType().Name}: {e}"); }
+        }
+    }
+
     public static void ExecuteOnDestroy()
     {
         Refresh();

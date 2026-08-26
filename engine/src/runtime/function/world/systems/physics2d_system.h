@@ -140,11 +140,20 @@ namespace dodoe {
         void finalize(Registry& reg) override;
 
         [[nodiscard]] b2BodyId getBodyId(Registry& reg, const Entity& entity) const;
+        [[nodiscard]] Vector2f getBodyPosition(Registry& reg, const Entity& entity) const;
+        [[nodiscard]] Vector2f getBodyLinearVelocity(Registry& reg, const Entity& entity) const;
+        void moveBodyPosition(Registry& reg, const Entity& entity, const Vector2f& position);
         void takeCollisionEvents(Registry& reg, DynamicArray<Collision2dEvent>& out_events);
         void raycast(Registry& reg, const Vector2f& origin, const Vector2f& direction, float max_distance,
-                     DynamicArray<RaycastHit2d>& out_hits) const;
+                     const Query2dFilter& filter, DynamicArray<RaycastHit2d>& out_hits) const;
+        void boxCast(Registry& reg, const Vector2f& center, const Vector2f& half_size, float angle,
+                     const Vector2f& direction, float max_distance,
+                     const Query2dFilter& filter, DynamicArray<RaycastHit2d>& out_hits) const;
         void overlapAABB(Registry& reg, const Vector2f& center, const Vector2f& half_size,
-                         DynamicArray<ui32>& out_entities) const;
+                         const Query2dFilter& filter, DynamicArray<ui32>& out_entities) const;
+        void ignoreCollision(Registry& reg, const Entity& a, const Entity& b, bool ignore);
+        void getColliderContacts(Registry& reg, const Entity& entity, DynamicArray<ui32>& out_entities) const;
+        bool colliderDistance(Registry& reg, const Entity& a, const Entity& b, float& out_distance) const;
 
     private:
         struct RegistryState {

@@ -23,9 +23,9 @@ namespace dodoe {
         bool is_sensor{ false };
 
         META(Enable)
-        ui32 layer{ 1 };
+        uint32_t layer{ 1 };
         META(Enable)
-        ui32 mask{ 0xFFFFFFFF };
+        uint32_t mask{ 0xFFFFFFFF };
 
         META(Enable)
         float density{ 1.0f };
@@ -51,9 +51,9 @@ namespace dodoe {
         bool is_sensor{ false };
 
         META(Enable)
-        ui32 layer{ 1 };
+        uint32_t layer{ 1 };
         META(Enable)
-        ui32 mask{ 0xFFFFFFFF };
+        uint32_t mask{ 0xFFFFFFFF };
 
         META(Enable)
         float density{ 1.0f };

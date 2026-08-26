@@ -232,6 +232,12 @@ namespace dodoe {
         }
     }
 
+    void ScriptRuntime::onRuntimeFixedUpdate() {
+        if (m_call) {
+            m_call("invoke_fixed_update", nullptr, nullptr);
+        }
+    }
+
     void ScriptRuntime::onRuntimeFinalize() {
         if (m_call) {
             m_call("invoke_finalize", nullptr, nullptr);

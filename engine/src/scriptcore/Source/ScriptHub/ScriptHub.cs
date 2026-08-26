@@ -27,6 +27,7 @@ public static partial class ScriptHub
             "create_instance"       => CreateInstance(args, result),
             "invoke_start"          => InvokeSystemOnCreate(args),
             "invoke_update"         => InvokeSystemOnUpdate(args),
+            "invoke_fixed_update"   => InvokeSystemOnFixedUpdate(args),
             "invoke_finalize"       => InvokeSystemOnDestroy(args),
             "get_field"             => GetField(args, result),
             "set_field"             => SetField(args),

@@ -17,6 +17,11 @@ internal static class SystemDispatcher
         CakeSystemScheduler.ExecuteOnUpdate();
     }
 
+    public static void OnFixedUpdate()
+    {
+        CakeSystemScheduler.ExecuteOnFixedUpdate();
+    }
+
     public static void OnDestroy()
     {
         CakeSystemScheduler.ExecuteOnDestroy();

@@ -289,11 +289,47 @@ namespace dodoe {
     void World::cleanupSystems() {
         m_runtime_systems.clear();
         m_simulation_systems.clear();
+        m_runtime_system_index.clear();
+        m_simulation_system_index.clear();
         m_task_graph_dirty = true;
     }
 
     void World::start() {
         DO_PROFILE_SCOPE_CATEGORY("World::start", "startup");
+        enterState();
+        syncFixedUpdateCallback();
+    }
+
+    void World::setState(WorldState state) {
+        if (m_state == state) {
+            return;
+        }
+        const bool transition = m_state != WorldState::Pause && state != WorldState::Pause;
+        if (transition) {
+            leaveState();
+            m_state = state;
+            enterState();
+        } else {
+            m_state = state;
+        }
+        syncFixedUpdateCallback();
+    }
+
+    void World::syncFixedUpdateCallback() {
+        PhysicsSystem* physics_system = GetPhysicsSystem();
+        if (!physics_system) return;
+        if (m_state == WorldState::Runtime) {
+            physics_system->setFixedUpdateCallback([this]() { notifyFixedUpdate(); });
+        } else {
+            physics_system->setFixedUpdateCallback(nullptr);
+        }
+    }
+
+    void World::switchState() {
+        setState(m_state == WorldState::Runtime ? WorldState::Simulation : WorldState::Runtime);
+    }
+
+    void World::enterState() {
         switch (m_state) {
             case WorldState::Runtime:
                 for (auto& scene : m_active_scenes) {
@@ -303,6 +339,23 @@ namespace dodoe {
             case WorldState::Simulation:
                 for (auto& scene : m_active_scenes) {
                     scene->onSimulationStart();
+                }
+            break;
+            case WorldState::Pause:
+            break;
+        }
+    }
+
+    void World::leaveState() {
+        switch (m_state) {
+            case WorldState::Runtime:
+                for (auto& scene : m_active_scenes) {
+                    scene->onRuntimeStop();
+                }
+            break;
+            case WorldState::Simulation:
+                for (auto& scene : m_active_scenes) {
+                    scene->onSimulationStop();
                 }
             break;
             case WorldState::Pause:
@@ -338,19 +391,15 @@ namespace dodoe {
     }
 
     void World::finalize() {
-        switch (m_state) {
-            case WorldState::Runtime:
-                for (auto& scene : m_active_scenes) {
-                    scene->onRuntimeStop();
-                }
-            break;
-            case WorldState::Simulation:
-                for (auto& scene : m_active_scenes) {
-                    scene->onSimulationStop();
-                }
-            break;
-            case WorldState::Pause:
-            break;
+        leaveState();
+    }
+
+    void World::notifyFixedUpdate() {
+        ScriptSystem* script_system = GetScriptSystem();
+        if (!script_system) return;
+        ScriptRuntime* runtime = script_system->getScriptRuntime();
+        if (runtime) {
+            runtime->onRuntimeFixedUpdate();
         }
     }
 
@@ -503,12 +552,14 @@ namespace dodoe {
 
     void World::registerRuntimeSystem(Ref<System> system) {
         if (!system) return;
+        m_runtime_system_index[typeid(*system)] = system.get();
         m_runtime_systems.push_back(std::move(system));
         m_task_graph_dirty = true;
     }
 
     void World::registerSimulationSystem(Ref<System> system) {
         if (!system) return;
+        m_simulation_system_index[typeid(*system)] = system.get();
         m_simulation_systems.push_back(std::move(system));
         m_task_graph_dirty = true;
     }

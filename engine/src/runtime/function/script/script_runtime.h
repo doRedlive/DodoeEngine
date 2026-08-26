@@ -53,6 +53,7 @@ namespace dodoe {
 
         void onRuntimeStart();
         void onRuntimeUpdate();
+        void onRuntimeFixedUpdate();
         void onRuntimeFinalize();
 
     private:
