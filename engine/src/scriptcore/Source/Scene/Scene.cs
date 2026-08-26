@@ -337,9 +337,31 @@ public class Scene
 
     internal void NotifyUpdate(float deltaTime)
     {
+        Time.Tick(deltaTime);
         ProcessLifecycle(deltaTime);
+        CoroutineManager.Tick(deltaTime);
         try { OnSceneUpdate?.Invoke(this, deltaTime); }
         catch (Exception e) { Debug.LogError($"OnSceneUpdate error: {e}"); }
+    }
+
+    internal void NotifyFixedUpdate(float fixedDeltaTime)
+    {
+        Time.FixedDeltaTime = fixedDeltaTime;
+        ProcessFixedUpdates();
+        CoroutineManager.TickFixed();
+    }
+
+    private void ProcessFixedUpdates()
+    {
+        foreach (var comp in _activeBehaviours)
+        {
+            if (comp._destroyed) continue;
+            if (!comp.Enabled) continue;
+            if (comp.GameObject == null) continue;
+            if (!comp.GameObject.ActiveInHierarchy) continue;
+            try { comp.FixedUpdate(); }
+            catch (Exception e) { Debug.LogError($"FixedUpdate error in {comp.GetType().Name}: {e}"); }
+        }
     }
 
     internal void NotifyStop()

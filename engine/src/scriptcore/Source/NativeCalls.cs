@@ -76,6 +76,22 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, float, void>                             native_Rigidbody2dComponent_SetVelocity;
         public delegate* unmanaged<ulong, float, float, void>                             native_Rigidbody2dComponent_ApplyForce;
         public delegate* unmanaged<ulong, float, float, void>                             native_Rigidbody2dComponent_ApplyImpulse;
+        public delegate* unmanaged<ulong, int>                                            native_Rigidbody2dComponent_type_get;
+        public delegate* unmanaged<ulong, int, void>                                      native_Rigidbody2dComponent_type_set;
+        public delegate* unmanaged<ulong, float*, float*, void>                           native_Rigidbody2dComponent_position_get;
+        public delegate* unmanaged<ulong, float, float, void>                             native_Rigidbody2dComponent_move_position;
+        public delegate* unmanaged<ulong, float*, float*, void>                           native_Rigidbody2dComponent_velocity_get;
+        public delegate* unmanaged<float>                                                 native_time_get_fixed_delta_time;
+        public delegate* unmanaged<ulong, bool>                                           native_spriterenderercomponent_visible_get;
+        public delegate* unmanaged<ulong, bool, void>                                     native_spriterenderercomponent_visible_set;
+        public delegate* unmanaged<int>                                                   native_physics2d_poll_event_count;
+        public delegate* unmanaged<int, IntPtr, int>                                      native_physics2d_get_event;
+        public delegate* unmanaged<float, float, float, float, float, uint, uint, float, IntPtr, int, int> native_physics2d_raycast;
+        public delegate* unmanaged<float, float, float, float, float, float, float, float, uint, uint, IntPtr, int, int> native_physics2d_boxcast;
+        public delegate* unmanaged<float, float, float, float, uint, uint, IntPtr, int, int, int> native_physics2d_overlap_aabb;
+        public delegate* unmanaged<ulong, ulong, bool, void>                              native_physics2d_ignore_collision;
+        public delegate* unmanaged<ulong, IntPtr, int, int, int>                          native_physics2d_get_collider_contacts;
+        public delegate* unmanaged<ulong, ulong, IntPtr, int>                             native_physics2d_collider_distance;
         public delegate* unmanaged<ulong, float, float, float, void>                      native_RigidbodyComponent_SetVelocity;
         public delegate* unmanaged<ulong, float, float, float, void>                      native_RigidbodyComponent_ApplyForce;
         public delegate* unmanaged<ulong, float, float, float, void>                      native_RigidbodyComponent_ApplyImpulse;
@@ -85,22 +101,36 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, void>                                           native_AnimatorComponent_Resume;
         // === NATIVE_BINDINGS_GENERATED_START ===
 // === GENERATED BINDINGS START (do not edit manually) ===
+        public delegate* unmanaged<ulong, float> native_Rigidbody2dComponent_gravity_scale_get;
+        public delegate* unmanaged<ulong, float, void> native_Rigidbody2dComponent_gravity_scale_set;
+        public delegate* unmanaged<ulong, bool> native_Rigidbody2dComponent_fixed_rotation_get;
+        public delegate* unmanaged<ulong, bool, void> native_Rigidbody2dComponent_fixed_rotation_set;
+        public delegate* unmanaged<ulong, float> native_CameraComponent_zoom_get;
+        public delegate* unmanaged<ulong, float, void> native_CameraComponent_zoom_set;
+        public delegate* unmanaged<ulong, float> native_CameraComponent_fov_get;
+        public delegate* unmanaged<ulong, float, void> native_CameraComponent_fov_set;
+        public delegate* unmanaged<ulong, float> native_CameraComponent_near_plane_get;
+        public delegate* unmanaged<ulong, float, void> native_CameraComponent_near_plane_set;
+        public delegate* unmanaged<ulong, float> native_CameraComponent_far_plane_get;
+        public delegate* unmanaged<ulong, float, void> native_CameraComponent_far_plane_set;
+        public delegate* unmanaged<ulong, float> native_CameraComponent_aspect_ratio_get;
+        public delegate* unmanaged<ulong, float, void> native_CameraComponent_aspect_ratio_set;
+        public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_CameraComponent_background_get;
+        public delegate* unmanaged<ulong, float, float, float, float, void> native_CameraComponent_background_set;
+        public delegate* unmanaged<ulong, bool> native_AnimationDriveModeComponent_enabled_get;
+        public delegate* unmanaged<ulong, bool, void> native_AnimationDriveModeComponent_enabled_set;
         public delegate* unmanaged<ulong, int> native_AnimatorComponent_controller_get;
         public delegate* unmanaged<ulong, int, void> native_AnimatorComponent_controller_set;
         public delegate* unmanaged<ulong, float> native_AnimatorComponent_speed_get;
         public delegate* unmanaged<ulong, float, void> native_AnimatorComponent_speed_set;
         public delegate* unmanaged<ulong, bool> native_AnimatorComponent_play_on_awake_get;
         public delegate* unmanaged<ulong, bool, void> native_AnimatorComponent_play_on_awake_set;
-        public delegate* unmanaged<ulong, bool> native_AnimationDriveModeComponent_enabled_get;
-        public delegate* unmanaged<ulong, bool, void> native_AnimationDriveModeComponent_enabled_set;
         public delegate* unmanaged<ulong, byte*> native_BoneAttachmentComponent_bone_name_get;
         public delegate* unmanaged<ulong, byte*, void> native_BoneAttachmentComponent_bone_name_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_BoneAttachmentComponent_local_offset_get;
         public delegate* unmanaged<ulong, float, float, float, void> native_BoneAttachmentComponent_local_offset_set;
         public delegate* unmanaged<ulong, bool> native_BoneAttachmentComponent_follow_rotation_get;
         public delegate* unmanaged<ulong, bool, void> native_BoneAttachmentComponent_follow_rotation_set;
-        public delegate* unmanaged<ulong, float> native_SkyLightComponent_intensity_get;
-        public delegate* unmanaged<ulong, float, void> native_SkyLightComponent_intensity_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_BoxColliderComponent_offset_get;
         public delegate* unmanaged<ulong, float, float, float, void> native_BoxColliderComponent_offset_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_BoxColliderComponent_rotation_get;
@@ -119,18 +149,6 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_BoxColliderComponent_friction_set;
         public delegate* unmanaged<ulong, float> native_BoxColliderComponent_restitution_get;
         public delegate* unmanaged<ulong, float, void> native_BoxColliderComponent_restitution_set;
-        public delegate* unmanaged<ulong, float> native_CameraComponent_zoom_get;
-        public delegate* unmanaged<ulong, float, void> native_CameraComponent_zoom_set;
-        public delegate* unmanaged<ulong, float> native_CameraComponent_fov_get;
-        public delegate* unmanaged<ulong, float, void> native_CameraComponent_fov_set;
-        public delegate* unmanaged<ulong, float> native_CameraComponent_near_plane_get;
-        public delegate* unmanaged<ulong, float, void> native_CameraComponent_near_plane_set;
-        public delegate* unmanaged<ulong, float> native_CameraComponent_far_plane_get;
-        public delegate* unmanaged<ulong, float, void> native_CameraComponent_far_plane_set;
-        public delegate* unmanaged<ulong, float> native_CameraComponent_aspect_ratio_get;
-        public delegate* unmanaged<ulong, float, void> native_CameraComponent_aspect_ratio_set;
-        public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_CameraComponent_background_get;
-        public delegate* unmanaged<ulong, float, float, float, float, void> native_CameraComponent_background_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_CapsuleColliderComponent_offset_get;
         public delegate* unmanaged<ulong, float, float, float, void> native_CapsuleColliderComponent_offset_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_CapsuleColliderComponent_rotation_get;
@@ -165,6 +183,10 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, float, void> native_BoxCollider2dComponent_size_set;
         public delegate* unmanaged<ulong, bool> native_BoxCollider2dComponent_is_sensor_get;
         public delegate* unmanaged<ulong, bool, void> native_BoxCollider2dComponent_is_sensor_set;
+        public delegate* unmanaged<ulong, uint> native_BoxCollider2dComponent_layer_get;
+        public delegate* unmanaged<ulong, uint, void> native_BoxCollider2dComponent_layer_set;
+        public delegate* unmanaged<ulong, uint> native_BoxCollider2dComponent_mask_get;
+        public delegate* unmanaged<ulong, uint, void> native_BoxCollider2dComponent_mask_set;
         public delegate* unmanaged<ulong, float> native_BoxCollider2dComponent_density_get;
         public delegate* unmanaged<ulong, float, void> native_BoxCollider2dComponent_density_set;
         public delegate* unmanaged<ulong, float> native_BoxCollider2dComponent_friction_get;
@@ -179,6 +201,10 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_CircleCollider2dComponent_radius_set;
         public delegate* unmanaged<ulong, bool> native_CircleCollider2dComponent_is_sensor_get;
         public delegate* unmanaged<ulong, bool, void> native_CircleCollider2dComponent_is_sensor_set;
+        public delegate* unmanaged<ulong, uint> native_CircleCollider2dComponent_layer_get;
+        public delegate* unmanaged<ulong, uint, void> native_CircleCollider2dComponent_layer_set;
+        public delegate* unmanaged<ulong, uint> native_CircleCollider2dComponent_mask_get;
+        public delegate* unmanaged<ulong, uint, void> native_CircleCollider2dComponent_mask_set;
         public delegate* unmanaged<ulong, float> native_CircleCollider2dComponent_density_get;
         public delegate* unmanaged<ulong, float, void> native_CircleCollider2dComponent_density_set;
         public delegate* unmanaged<ulong, float> native_CircleCollider2dComponent_friction_get;
@@ -187,14 +213,6 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_CircleCollider2dComponent_restitution_set;
         public delegate* unmanaged<ulong, float> native_CircleCollider2dComponent_restitution_threshold_get;
         public delegate* unmanaged<ulong, float, void> native_CircleCollider2dComponent_restitution_threshold_set;
-        public delegate* unmanaged<ulong, uint> native_TilemapComponent_map_width_get;
-        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_map_width_set;
-        public delegate* unmanaged<ulong, uint> native_TilemapComponent_map_height_get;
-        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_map_height_set;
-        public delegate* unmanaged<ulong, uint> native_TilemapComponent_tile_width_get;
-        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_tile_width_set;
-        public delegate* unmanaged<ulong, uint> native_TilemapComponent_tile_height_get;
-        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_tile_height_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_FoliageRendererInstance_position_get;
         public delegate* unmanaged<ulong, float, float, float, void> native_FoliageRendererInstance_position_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_FoliageRendererInstance_rotation_get;
@@ -245,10 +263,6 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_RevoluteJoint2dComponent_motor_speed_set;
         public delegate* unmanaged<ulong, float> native_RevoluteJoint2dComponent_max_motor_torque_get;
         public delegate* unmanaged<ulong, float, void> native_RevoluteJoint2dComponent_max_motor_torque_set;
-        public delegate* unmanaged<ulong, float> native_Rigidbody2dComponent_gravity_scale_get;
-        public delegate* unmanaged<ulong, float, void> native_Rigidbody2dComponent_gravity_scale_set;
-        public delegate* unmanaged<ulong, bool> native_Rigidbody2dComponent_fixed_rotation_get;
-        public delegate* unmanaged<ulong, bool, void> native_Rigidbody2dComponent_fixed_rotation_set;
         public delegate* unmanaged<ulong, int> native_MeshRendererComponent_mesh_get;
         public delegate* unmanaged<ulong, int, void> native_MeshRendererComponent_mesh_set;
         public delegate* unmanaged<ulong, int> native_MeshRendererComponent_section_index_get;
@@ -257,26 +271,6 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, bool, void> native_MeshRendererComponent_visible_set;
         public delegate* unmanaged<ulong, bool> native_MeshRendererComponent_cast_shadow_get;
         public delegate* unmanaged<ulong, bool, void> native_MeshRendererComponent_cast_shadow_set;
-        public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_PointLightComponent_color_get;
-        public delegate* unmanaged<ulong, float, float, float, float, void> native_PointLightComponent_color_set;
-        public delegate* unmanaged<ulong, float> native_PointLightComponent_intensity_get;
-        public delegate* unmanaged<ulong, float, void> native_PointLightComponent_intensity_set;
-        public delegate* unmanaged<ulong, float> native_PointLightComponent_radius_get;
-        public delegate* unmanaged<ulong, float, void> native_PointLightComponent_radius_set;
-        public delegate* unmanaged<ulong, float> native_PointLightComponent_range_get;
-        public delegate* unmanaged<ulong, float, void> native_PointLightComponent_range_set;
-        public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_SpotLightComponent_color_get;
-        public delegate* unmanaged<ulong, float, float, float, float, void> native_SpotLightComponent_color_set;
-        public delegate* unmanaged<ulong, float> native_SpotLightComponent_intensity_get;
-        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_intensity_set;
-        public delegate* unmanaged<ulong, float> native_SpotLightComponent_radius_get;
-        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_radius_set;
-        public delegate* unmanaged<ulong, float> native_SpotLightComponent_range_get;
-        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_range_set;
-        public delegate* unmanaged<ulong, float> native_SpotLightComponent_inner_angle_get;
-        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_inner_angle_set;
-        public delegate* unmanaged<ulong, float> native_SpotLightComponent_outer_angle_get;
-        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_outer_angle_set;
         public delegate* unmanaged<ulong, float*, float*, void> native_RectRendererComponent_size_get;
         public delegate* unmanaged<ulong, float, float, void> native_RectRendererComponent_size_set;
         public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_RectRendererComponent_color_get;
@@ -315,6 +309,28 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_SphereColliderComponent_friction_set;
         public delegate* unmanaged<ulong, float> native_SphereColliderComponent_restitution_get;
         public delegate* unmanaged<ulong, float, void> native_SphereColliderComponent_restitution_set;
+        public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_PointLightComponent_color_get;
+        public delegate* unmanaged<ulong, float, float, float, float, void> native_PointLightComponent_color_set;
+        public delegate* unmanaged<ulong, float> native_PointLightComponent_intensity_get;
+        public delegate* unmanaged<ulong, float, void> native_PointLightComponent_intensity_set;
+        public delegate* unmanaged<ulong, float> native_PointLightComponent_radius_get;
+        public delegate* unmanaged<ulong, float, void> native_PointLightComponent_radius_set;
+        public delegate* unmanaged<ulong, float> native_PointLightComponent_range_get;
+        public delegate* unmanaged<ulong, float, void> native_PointLightComponent_range_set;
+        public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_SpotLightComponent_color_get;
+        public delegate* unmanaged<ulong, float, float, float, float, void> native_SpotLightComponent_color_set;
+        public delegate* unmanaged<ulong, float> native_SpotLightComponent_intensity_get;
+        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_intensity_set;
+        public delegate* unmanaged<ulong, float> native_SpotLightComponent_radius_get;
+        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_radius_set;
+        public delegate* unmanaged<ulong, float> native_SpotLightComponent_range_get;
+        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_range_set;
+        public delegate* unmanaged<ulong, float> native_SpotLightComponent_inner_angle_get;
+        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_inner_angle_set;
+        public delegate* unmanaged<ulong, float> native_SpotLightComponent_outer_angle_get;
+        public delegate* unmanaged<ulong, float, void> native_SpotLightComponent_outer_angle_set;
+        public delegate* unmanaged<ulong, byte*> native_TagComponent_tag_get;
+        public delegate* unmanaged<ulong, byte*, void> native_TagComponent_tag_set;
         public delegate* unmanaged<ulong, float*, float*, void> native_LineRendererComponent_direction_get;
         public delegate* unmanaged<ulong, float, float, void> native_LineRendererComponent_direction_set;
         public delegate* unmanaged<ulong, float> native_LineRendererComponent_length_get;
@@ -323,6 +339,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_LineRendererComponent_thickness_set;
         public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_LineRendererComponent_color_get;
         public delegate* unmanaged<ulong, float, float, float, float, void> native_LineRendererComponent_color_set;
+        public delegate* unmanaged<ulong, float> native_SkyLightComponent_intensity_get;
+        public delegate* unmanaged<ulong, float, void> native_SkyLightComponent_intensity_set;
         public delegate* unmanaged<ulong, int> native_SpriteRendererComponent_sprite_get;
         public delegate* unmanaged<ulong, int, void> native_SpriteRendererComponent_sprite_set;
         public delegate* unmanaged<ulong, bool> native_SpriteRendererComponent_flip_get;
@@ -333,8 +351,6 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_SpriteRendererComponent_depth_set;
         public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_SpriteRendererComponent_color_get;
         public delegate* unmanaged<ulong, float, float, float, float, void> native_SpriteRendererComponent_color_set;
-        public delegate* unmanaged<ulong, byte*> native_TagComponent_tag_get;
-        public delegate* unmanaged<ulong, byte*, void> native_TagComponent_tag_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_TransformComponent_position_get;
         public delegate* unmanaged<ulong, float, float, float, void> native_TransformComponent_position_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_TransformComponent_rotation_get;
@@ -345,6 +361,14 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, ulong, void> native_HierarchyComponent_parent_uuid_set;
         public delegate* unmanaged<ulong, int> native_HierarchyComponent_child_count_get;
         public delegate* unmanaged<ulong, int, void> native_HierarchyComponent_child_count_set;
+        public delegate* unmanaged<ulong, uint> native_TilemapComponent_map_width_get;
+        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_map_width_set;
+        public delegate* unmanaged<ulong, uint> native_TilemapComponent_map_height_get;
+        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_map_height_set;
+        public delegate* unmanaged<ulong, uint> native_TilemapComponent_tile_width_get;
+        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_tile_width_set;
+        public delegate* unmanaged<ulong, uint> native_TilemapComponent_tile_height_get;
+        public delegate* unmanaged<ulong, uint, void> native_TilemapComponent_tile_height_set;
         public delegate* unmanaged<ulong, byte*> native_TileLayerComponent_layer_name_get;
         public delegate* unmanaged<ulong, byte*, void> native_TileLayerComponent_layer_name_set;
         public delegate* unmanaged<ulong, uint> native_TileLayerComponent_layer_width_get;
@@ -1066,5 +1090,109 @@ internal static unsafe partial class NativeCalls
         var ptr = StrToPtr(eventName);
         try { return b->native_ui_poll_event(elementId, ptr); }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static int Rigidbody2dComponent_Type_Get(ulong entityId)
+    {
+        var f = b->native_Rigidbody2dComponent_type_get;
+        return f != null ? f(entityId) : 0;
+    }
+    internal static void Rigidbody2dComponent_Type_Set(ulong entityId, int value)
+    { if (b->native_Rigidbody2dComponent_type_set != null) b->native_Rigidbody2dComponent_type_set(entityId, value); }
+
+    internal static Vector2f Rigidbody2dComponent_Velocity_Get(ulong entityId)
+    {
+        float x = 0, y = 0;
+        var f = b->native_Rigidbody2dComponent_velocity_get;
+        if (f != null) f(entityId, &x, &y);
+        return new Vector2f(x, y);
+    }
+    internal static void Rigidbody2dComponent_Velocity_Set(ulong entityId, Vector2f value)
+    {
+        Rigidbody2dComponent_SetVelocity(entityId, value.x, value.y);
+    }
+    internal static void Rigidbody2dComponent_SetVelocity(ulong entityId, float vx, float vy)
+    {
+        var f = b->native_Rigidbody2dComponent_SetVelocity;
+        if (f != null) f(entityId, vx, vy);
+    }
+    internal static void Rigidbody2dComponent_ApplyForce(ulong entityId, float fx, float fy)
+    {
+        var f = b->native_Rigidbody2dComponent_ApplyForce;
+        if (f != null) f(entityId, fx, fy);
+    }
+    internal static void Rigidbody2dComponent_ApplyImpulse(ulong entityId, float fx, float fy)
+    {
+        var f = b->native_Rigidbody2dComponent_ApplyImpulse;
+        if (f != null) f(entityId, fx, fy);
+    }
+
+    internal static void Rigidbody2dComponent_MovePosition(ulong entityId, float x, float y)
+    {
+        var f = b->native_Rigidbody2dComponent_move_position;
+        if (f != null) { f(entityId, x, y); return; }
+        var t = b->native_TransformComponent_position_set;
+        if (t != null) t(entityId, x, y, 0f);
+    }
+
+    internal static float Native_Time_GetFixedDeltaTime()
+    {
+        var f = b->native_time_get_fixed_delta_time;
+        return f != null ? f() : 1f / 60f;
+    }
+
+    internal static int Physics2d_PollEventCount()
+    {
+        var f = b->native_physics2d_poll_event_count;
+        return f != null ? f() : 0;
+    }
+    internal static unsafe int Physics2d_GetEvent(int idx, float* out9)
+    {
+        var f = b->native_physics2d_get_event;
+        return f != null ? f(idx, (IntPtr)out9) : 0;
+    }
+    internal static unsafe int Physics2d_Raycast(float ox, float oy, float dx, float dy, float md,
+                                                  uint layer, uint mask, float minFrac, float* outHits8, int cap)
+    {
+        var f = b->native_physics2d_raycast;
+        return f != null ? f(ox, oy, dx, dy, md, layer, mask, minFrac, (IntPtr)outHits8, cap) : 0;
+    }
+    internal static unsafe int Physics2d_BoxCast(float cx, float cy, float hx, float hy, float ang,
+                                                  float dx, float dy, float md, uint layer, uint mask,
+                                                  float* outHits8, int cap)
+    {
+        var f = b->native_physics2d_boxcast;
+        return f != null ? f(cx, cy, hx, hy, ang, dx, dy, md, layer, mask, (IntPtr)outHits8, cap) : 0;
+    }
+    internal static unsafe int Physics2d_OverlapAABB(float cx, float cy, float hx, float hy,
+                                                      uint layer, uint mask, uint* outIds, int cap, int strideWords)
+    {
+        var f = b->native_physics2d_overlap_aabb;
+        return f != null ? f(cx, cy, hx, hy, layer, mask, (IntPtr)outIds, cap, strideWords) : 0;
+    }
+    internal static void Physics2d_IgnoreCollision(ulong a, ulong entityB, bool ignore)
+    {
+        var f = b->native_physics2d_ignore_collision;
+        if (f != null) f(a, entityB, ignore);
+    }
+    internal static unsafe int Physics2d_GetColliderContacts(ulong e, uint* outIds, int cap, int strideWords)
+    {
+        var f = b->native_physics2d_get_collider_contacts;
+        return f != null ? f(e, (IntPtr)outIds, cap, strideWords) : 0;
+    }
+    internal static unsafe int Physics2d_ColliderDistance(ulong a, ulong entityB, float* outDist)
+    {
+        var f = b->native_physics2d_collider_distance;
+        return f != null ? f(a, entityB, (IntPtr)outDist) : 0;
+    }
+    internal static bool SpriteRendererComponent_Visible_Get(ulong entityId)
+    {
+        var f = b->native_spriterenderercomponent_visible_get;
+        return f != null && f(entityId);
+    }
+    internal static void SpriteRendererComponent_Visible_Set(ulong entityId, bool value)
+    {
+        var f = b->native_spriterenderercomponent_visible_set;
+        if (f != null) f(entityId, value);
     }
 }

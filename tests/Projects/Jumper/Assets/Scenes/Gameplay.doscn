@@ -1,0 +1,121 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "Primary Camera",
+            "m_native_components": [
+                {
+                    "m_component": "{\"tag\":\"PrimaryCamera\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.5,2.5],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"background\":[1.0,1.0,1.0,1.0],\"far_plane\":100.0,\"fov\":60.0,\"near_plane\":0.01,\"type\":2}",
+                    "m_type_name": "CameraComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 1001
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Player",
+            "m_native_components": [
+                {
+                    "m_component": "{\"tag\":\"Player\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.5,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.5,0.5],\"sprite\":{\"file_id\":{\"file_uuid\":0,\"path\":\"Pictures/grm.jpg\"},\"uuid\":0}}",
+                    "m_type_name": "SpriteRendererComponent"
+                },
+                {
+                    "m_component": "{\"type\":1,\"gravity_scale\":3.0,\"fixed_rotation\":true}",
+                    "m_type_name": "Rigidbody2dComponent"
+                },
+                {
+                    "m_component": "{\"density\":1.0,\"friction\":0.0,\"is_sensor\":false,\"layer\":1,\"mask\":4294967295,\"offset\":[0.0,0.0],\"restitution\":0.0,\"restitution_threshold\":0.5,\"size\":[1.0,1.5]}",
+                    "m_type_name": "BoxCollider2dComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 1002
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Ground",
+            "m_native_components": [
+                {
+                    "m_component": "{\"tag\":\"Ground\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,-3.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"type\":0}",
+                    "m_type_name": "Rigidbody2dComponent"
+                },
+                {
+                    "m_component": "{\"density\":1.0,\"friction\":0.5,\"is_sensor\":false,\"layer\":1,\"mask\":4294967295,\"offset\":[0.0,0.0],\"restitution\":0.0,\"restitution_threshold\":0.5,\"size\":[40.0,1.0]}",
+                    "m_type_name": "BoxCollider2dComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 1003
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Platform",
+            "m_native_components": [
+                {
+                    "m_component": "{\"tag\":\"Platform\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[4.0,1.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"type\":0}",
+                    "m_type_name": "Rigidbody2dComponent"
+                },
+                {
+                    "m_component": "{\"density\":1.0,\"friction\":0.5,\"is_sensor\":false,\"layer\":1,\"mask\":4294967295,\"offset\":[0.0,0.0],\"restitution\":0.0,\"restitution_threshold\":0.5,\"size\":[4.0,0.5]}",
+                    "m_type_name": "BoxCollider2dComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 1004
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Fill Light",
+            "m_native_components": [
+                {
+                    "m_component": "{\"tag\":\"FillLight\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[2.0,3.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,0.95,0.8,1.0],\"intensity\":2.0,\"radius\":0.0,\"range\":12.0}",
+                    "m_type_name": "PointLightComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 1005
+        }
+    ],
+    "m_name": "Gameplay"
+}

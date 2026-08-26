@@ -50,6 +50,8 @@ public:
     bool getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const override;
     bool listLogs(std::vector<BackendLogEntry>& entries) const override;
     bool clearLogs() override;
+    bool listToolActions(std::vector<std::string>& actions) const override;
+    bool invokeToolAction(const std::string& path) override;
     void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
     void setEditorSession(EditorSession* session) override;
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const override;

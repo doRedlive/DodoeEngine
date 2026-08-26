@@ -14,6 +14,7 @@
 namespace dodoe {
 
     Bool Only2DRenderer::initialize(const RendererCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("Only2DRenderer::initialize", "startup");
         Size_t worker_count = info.worker_count;
         if (worker_count == 0) {
             worker_count = std::thread::hardware_concurrency();
@@ -38,6 +39,7 @@ namespace dodoe {
     }
 
     void Only2DRenderer::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("Only2DRenderer::shutdown", "shutdown");
         clearFeatures();
         m_shared_render_service = nullptr;
         m_gfx_context = nullptr;
@@ -53,7 +55,9 @@ namespace dodoe {
                                  const UInt32 swapchain_image_index, DrawCommandList& out_commands,
                                  FrameStagingAllocator* frame_staging_allocator,
                                  RenderGraphTransientPool* transient_resource_pool) {
+        DO_PROFILE_SCOPE_CATEGORY("Only2DRenderer::render", "frame");
         initViews(scene, view_family);
+        DO_PROFILE_MARK("Only2DRenderer::render.buildOrderedPasses", "frame");
         buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,
             frame_staging_allocator, transient_resource_pool);
     }

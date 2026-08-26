@@ -14,6 +14,14 @@ namespace dodoe {
         return false;
     }
 
+    bool ScriptSystem::listToolActions(DynamicArray<String>& out_actions) {
+        return m_script_runtime && m_script_runtime->listToolActions(out_actions);
+    }
+
+    bool ScriptSystem::invokeToolAction(const String& action_name, String& out_error) {
+        return m_script_runtime && m_script_runtime->invokeToolAction(action_name, out_error);
+    }
+
     Bool ScriptSystem::reloadScripts() {
         DO_PROFILE_SCOPE_CATEGORY("ScriptSystem::reloadScripts", "script");
         if (!m_script_engine->onScriptSourcesChanged()) {

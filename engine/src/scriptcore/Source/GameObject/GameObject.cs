@@ -17,12 +17,16 @@ public class GameObject
         get
         {
             if (Entity == null) return "";
-            return Entity.GetComponent<IDComponent>().Name;
+            var id = Entity.GetComponent<TagComponent>();
+            return id != null ? id.Tag : "";
         }
         set
         {
             if (Entity != null)
-                Entity.GetComponent<IDComponent>().Name = value;
+            {
+                var id = Entity.GetComponent<TagComponent>();
+                if (id != null) id.Tag = value ?? "";
+            }
         }
     }
 
@@ -133,6 +137,46 @@ public class GameObject
             _userComponents.Remove(mb);
 
         ComponentManager.Remove<T>(Entity);
+    }
+
+    public T GetComponentInParent<T>() where T : CakeComponent
+    {
+        var cur = this;
+        while (cur != null)
+        {
+            var c = cur.GetComponent<T>();
+            if (c != null) return c;
+            cur = cur.Parent;
+        }
+        return null;
+    }
+
+    public T[] GetComponentsInChildren<T>(bool includeInactive = false) where T : CakeComponent
+    {
+        var list = new List<T>();
+        CollectComponents(this, list, includeInactive);
+        return list.ToArray();
+    }
+
+    public T[] GetComponents<T>() where T : CakeComponent
+    {
+        var list = new List<T>();
+        var direct = GetComponent<T>();
+        if (direct != null) list.Add(direct);
+        return list.ToArray();
+    }
+
+    private static void CollectComponents<T>(GameObject go, List<T> list, bool includeInactive) where T : CakeComponent
+    {
+        if (go == null) return;
+        if (!includeInactive && !go.ActiveInHierarchy) return;
+        var c = go.GetComponent<T>();
+        if (c != null) list.Add(c);
+        int n = go.ChildCount;
+        for (int i = 0; i < n; i++)
+        {
+            CollectComponents(go.GetChild(i), list, includeInactive);
+        }
     }
 
     internal IEnumerable<CakeBehaviour> GetBehaviours()

@@ -24,6 +24,9 @@ namespace dodoe {
 
         Bool reloadScripts();
 
+        bool listToolActions(DynamicArray<String>& out_actions);
+        bool invokeToolAction(const String& action_name, String& out_error);
+
         [[nodiscard]] Bool Execute(const FsPath& path);
 
     private:

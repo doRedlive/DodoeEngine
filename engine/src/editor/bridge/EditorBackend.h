@@ -159,6 +159,11 @@ public:
         return false;
     }
     virtual bool clearLogs() { return false; }
+    virtual bool listToolActions(std::vector<std::string>& actions) const {
+        actions.clear();
+        return false;
+    }
+    virtual bool invokeToolAction(const std::string& path) { return false; }
     virtual void setEditorSession(EditorSession* /*session*/) {}
     virtual bool queryTilemapState(const std::string& /*tilemapUuid*/, nlohmann::json& out) const {
         out = nullptr;

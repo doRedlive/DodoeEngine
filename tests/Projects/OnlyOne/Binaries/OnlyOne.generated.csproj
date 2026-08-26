@@ -34,6 +34,14 @@
     <Compile Include="../Assets/Scripts/PlayerController.cs" />
     <Compile Include="../Assets/Scripts/ProjectileController.cs" />
     <Compile Include="../Assets/Scripts/UI/UIManager.cs" />
+    <Compile Include="../Scripts/CheckpointTrigger.cs" />
+    <Compile Include="../Scripts/ControlTile.cs" />
+    <Compile Include="../Scripts/ControlSwitch.cs" />
+    <Compile Include="../Scripts/AbilityPickup.cs" />
+    <Compile Include="../Scripts/BrittleTile.cs" />
+    <Compile Include="../Scripts/PatrolMonster.cs" />
+    <Compile Include="../Scripts/BlackTilePhaseGroup.cs" />
+    <Compile Include="../Scripts/PlatformerPlayerController.cs" />
   </ItemGroup>
 
 </Project>

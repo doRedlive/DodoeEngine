@@ -135,6 +135,7 @@ namespace dodoe {
     Scene::Scene(World& world, const String& name) : m_world(world), m_name(name), m_reg(this) { }
 
     void Scene::save() {
+        DO_PROFILE_SCOPE_CATEGORY("Scene::save", "startup");
         const auto active_project = Project::ActiveProject();
         if (!active_project) {
             DO_ERROR("Cannot save scene '{}' without active project.", m_name);
@@ -177,6 +178,7 @@ namespace dodoe {
     }
 
     void Scene::onRuntimeUpdate(const float delta_time) {
+        DO_PROFILE_SCOPE_CATEGORY("Scene::onRuntimeUpdate", "frame");
         m_world.onRuntimeUpdate(m_reg, delta_time);
     }
 
@@ -193,10 +195,12 @@ namespace dodoe {
     }
 
     void Scene::onSimulationUpdate(const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("Scene::onSimulationUpdate", "frame");
         m_world.onSimulationUpdate(m_reg, dt);
     }
 
     SceneRes Scene::serialize() const {
+        DO_PROFILE_SCOPE_CATEGORY("Scene::serialize", "startup");
         SceneRes scene_res;
         scene_res.m_name = getName();
 
@@ -213,6 +217,7 @@ namespace dodoe {
     }
 
     void Scene::deserialize(const SceneRes& scene_res) {
+        DO_PROFILE_SCOPE_CATEGORY("Scene::deserialize", "startup");
         const DynamicArray<Entity> entities = getEntities();
         for (Entity entity : entities) {
             destroyEntity(entity);

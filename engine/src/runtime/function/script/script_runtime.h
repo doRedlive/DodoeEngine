@@ -40,6 +40,9 @@ namespace dodoe {
         void snapshotFields();
         void restoreFields();
 
+        bool listToolActions(DynamicArray<String>& out_actions);
+        bool invokeToolAction(const String& action_name, String& out_error);
+
         void loadEntityManagedComponentsFromManaged(uint64_t entity_uuid);
         bool getEntityManagedComponentFields(uint64_t entity_uuid,
                                               DynamicArray<Pair<String, Json>>& out_components);
@@ -53,6 +56,7 @@ namespace dodoe {
 
         void onRuntimeStart();
         void onRuntimeUpdate();
+        void onRuntimeFixedUpdate();
         void onRuntimeFinalize();
 
     private:

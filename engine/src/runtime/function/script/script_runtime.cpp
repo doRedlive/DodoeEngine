@@ -153,6 +153,52 @@ namespace dodoe {
         createSystemInstances();
     }
 
+    bool ScriptRuntime::listToolActions(DynamicArray<String>& out_actions) {
+        out_actions.clear();
+        if (!m_call) return false;
+
+        void* result = nullptr;
+        int rc = m_call("list_tool_actions", nullptr, &result);
+        if (rc != 1 || !result) return false;
+
+        String json_str((char*)result);
+        try {
+            json actions = json::parse(json_str);
+            if (!actions.is_array()) return false;
+            for (const auto& action : actions) {
+                if (!action.is_string()) continue;
+                out_actions.emplace_back(action.get<std::string>().c_str());
+            }
+            return true;
+        } catch (const std::exception& e) {
+            DO_ERROR("ScriptRuntime: failed to parse list_tool_actions JSON: {}", e.what());
+            return false;
+        }
+    }
+
+    bool ScriptRuntime::invokeToolAction(const String& action_name, String& out_error) {
+        out_error.clear();
+        if (!m_call) return false;
+
+        void* args[1] = { (void*)action_name.c_str() };
+        void* result = nullptr;
+        int rc = m_call("invoke_tool_action", args, &result);
+        if (rc != 1 || !result) return false;
+
+        String json_str((char*)result);
+        try {
+            json response = json::parse(json_str);
+            if (!response.value("ok", false)) {
+                out_error = String(response.value("error", "").c_str());
+                return false;
+            }
+            return true;
+        } catch (const std::exception& e) {
+            out_error = String(e.what());
+            return false;
+        }
+    }
+
     void ScriptRuntime::loadEntityManagedComponentsFromManaged(uint64_t entity_uuid) {
         if (!m_call) return;
 
@@ -221,18 +267,28 @@ namespace dodoe {
     }
 
     void ScriptRuntime::onRuntimeStart() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeStart", "script");
         if (m_call) {
             m_call("invoke_start", nullptr, nullptr);
         }
     }
 
     void ScriptRuntime::onRuntimeUpdate() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeUpdate", "script");
         if (m_call) {
             m_call("invoke_update", nullptr, nullptr);
         }
     }
 
+    void ScriptRuntime::onRuntimeFixedUpdate() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeFixedUpdate", "script");
+        if (m_call) {
+            m_call("invoke_fixed_update", nullptr, nullptr);
+        }
+    }
+
     void ScriptRuntime::onRuntimeFinalize() {
+        DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeFinalize", "script");
         if (m_call) {
             m_call("invoke_finalize", nullptr, nullptr);
         }

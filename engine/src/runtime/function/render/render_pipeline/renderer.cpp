@@ -35,6 +35,7 @@ namespace dodoe {
 	}
 
 	void BaseRenderer::bakePasses() {
+	    DO_PROFILE_SCOPE_CATEGORY("BaseRenderer::bakePasses", "startup");
 	    PassCollector collector;
 
 	    for (const auto& feature : m_features) {
@@ -67,11 +68,13 @@ namespace dodoe {
 	                                      DrawCommandList& out_commands,
 	                                      FrameStagingAllocator* frame_staging_allocator,
 	                                      RenderGraphTransientPool* transient_resource_pool) const {
+	    DO_PROFILE_SCOPE_CATEGORY("BaseRenderer::buildOrderedPasses", "frame");
 	    DO_ASSERT(transient_resource_pool != nullptr,
 	              "BaseRenderer requires a transient resource pool");
 	    DynamicArray<RenderGraphBuilder> graphs;
 	    graphs.reserve(view_family.getSize());
 
+	    DO_PROFILE_MARK("BaseRenderer::buildOrderedPasses.buildGraphs", "frame");
 	    for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
 	        const auto& view = view_family.getView(view_index);
 
@@ -92,6 +95,7 @@ namespace dodoe {
 	        graphs.push_back(std::move(graph));
 	    }
 
+	    DO_PROFILE_MARK("BaseRenderer::buildOrderedPasses.executeGraphs", "frame");
 	    for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
 	        RenderGraphExecuteContext context{};
 	        context.view_family           = &view_family;

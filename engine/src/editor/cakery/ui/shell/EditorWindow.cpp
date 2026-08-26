@@ -67,6 +67,7 @@
 #include <QToolButton>
 #include <QStandardPaths>
 #include <QUrl>
+#include <QStringList>
 #include <QVBoxLayout>
 #include <QWheelEvent>
 #include <QWidget>
@@ -76,6 +77,7 @@
 #include <cstdint>
 #include <array>
 #include <filesystem>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -682,6 +684,68 @@ void EditorWindow::createMenus()
     }
 
     m_settingsMenu = m_menuBar->addMenu(tr("Settings"));
+
+    createToolsMenu();
+}
+
+void EditorWindow::createToolsMenu()
+{
+    m_toolsMenu = m_menuBar->addMenu(tr("Tools"));
+    connect(m_toolsMenu, &QMenu::aboutToShow, this, [this]() { refreshToolsMenu(); });
+    refreshToolsMenu();
+}
+
+void EditorWindow::refreshToolsMenu()
+{
+    if (!m_toolsMenu) {
+        return;
+    }
+    m_toolsMenu->clear();
+
+    std::vector<std::string> paths;
+    if (!m_context.session().listToolActions(paths)) {
+        auto* unavailable = m_toolsMenu->addAction(tr("No script tools available"));
+        unavailable->setEnabled(false);
+        return;
+    }
+
+    struct Node {
+        std::map<QString, Node> children;
+        std::vector<QString> leaves;
+    };
+    Node root;
+    for (const std::string& rawPath : paths) {
+        const QString path = QString::fromStdString(rawPath);
+        const QStringList segments = path.split(QLatin1Char('/'));
+        Node* node = &root;
+        for (int i = 0; i + 1 < segments.size(); ++i) {
+            node = &node->children[segments.at(i)];
+        }
+        node->leaves.push_back(segments.constLast());
+    }
+
+    const auto buildMenu = [&](const auto& self, QMenu* parent, Node& node,
+                               const QString& prefix) -> void {
+        for (auto& [name, child] : node.children) {
+            const QString childPrefix = prefix.isEmpty() ? name : prefix + QLatin1Char('/') + name;
+            QMenu* submenu = parent->addMenu(name);
+            self(self, submenu, child, childPrefix);
+        }
+        for (const QString& leaf : node.leaves) {
+            const QString fullPath = prefix.isEmpty() ? leaf : prefix + QLatin1Char('/') + leaf;
+            auto* action = parent->addAction(leaf);
+            connect(action, &QAction::triggered, this, [this, fullPath]() {
+                if (!m_context.session().invokeToolAction(fullPath.toStdString())) {
+                    if (m_console) {
+                        m_console->append(ConsoleLogLevel::Error,
+                                          QStringLiteral("Tool action failed: %1").arg(fullPath),
+                                          QStringLiteral("Tools"));
+                    }
+                }
+            });
+        }
+    };
+    buildMenu(buildMenu, m_toolsMenu, root, QString());
 }
 
 void EditorWindow::createWindowMenu()

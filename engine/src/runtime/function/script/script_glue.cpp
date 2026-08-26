@@ -1,5 +1,7 @@
 #include "script_glue.h"
 
+#include <cstring>
+
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/input/input.h"
@@ -7,11 +9,14 @@
 #include "runtime/function/script/script_engine.h"
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/time/time_system.h"
+#include "runtime/function/physics/physics_system.h"
 #include "runtime/function/world/components.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/world/scene.h"
 #include "runtime/function/world/entity.h"
 #include "runtime/function/world/entity_requests.h"
+#include "runtime/function/world/systems/physics2d_system.h"
+#include "runtime/function/world/systems/physics3d_system.h"
 #include "runtime/function/render/pixel2d/tileset.h"
 #include "runtime/core/project/project.h"
 #include "runtime/function/render/pixel2d/sprite_manager.h"
@@ -478,6 +483,175 @@ namespace dodoe {
         static void native_Rigidbody2dComponent_ApplyImpulse(uint64_t u, float x, float y) {
             Entity e = TryGetEntityByUuid(u);
             if (e.valid()) applyImpulse2d(e, { x, y });
+        }
+
+        static int native_Rigidbody2dComponent_type_get(uint64_t u) {
+            auto* c = TryGetComponent<Rigidbody2dComponent>(u);
+            return c ? static_cast<int>(c->type) : 0;
+        }
+        static void native_Rigidbody2dComponent_type_set(uint64_t u, int v) {
+            auto* c = TryGetComponent<Rigidbody2dComponent>(u);
+            if (c && v >= 0 && v <= 2) c->type = static_cast<Rigidbody2dComponent::BodyType>(v);
+        }
+        static void native_Rigidbody2dComponent_position_get(uint64_t u, float* x, float* y) {
+            if (x) *x = 0; if (y) *y = 0;
+            Entity e = TryGetEntityByUuid(u);
+            if (!e.valid()) return;
+            Scene* s = GetCurrentScene(); if (!s) return;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return;
+            Vector2f p = ps->getBodyPosition(s->registry(), e);
+            if (x) *x = p.x;
+            if (y) *y = p.y;
+        }
+        static void native_Rigidbody2dComponent_move_position(uint64_t u, float x, float y) {
+            Entity e = TryGetEntityByUuid(u);
+            if (!e.valid()) return;
+            Scene* s = GetCurrentScene(); if (!s) return;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return;
+            ps->moveBodyPosition(s->registry(), e, { x, y });
+        }
+        static void native_Rigidbody2dComponent_velocity_get(uint64_t u, float* x, float* y) {
+            if (x) *x = 0; if (y) *y = 0;
+            Entity e = TryGetEntityByUuid(u);
+            if (!e.valid()) return;
+            Scene* s = GetCurrentScene(); if (!s) return;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return;
+            Vector2f v = ps->getBodyLinearVelocity(s->registry(), e);
+            if (x) *x = v.x;
+            if (y) *y = v.y;
+        }
+        static float native_time_get_fixed_delta_time() {
+            PhysicsSystem* physics_system = GetPhysicsSystem();
+            return physics_system ? physics_system->getFixedDt() : 1.0f / 60.0f;
+        }
+        static bool native_spriterenderercomponent_visible_get(uint64_t u) {
+            auto* c = TryGetComponent<SpriteRendererComponent>(u);
+            return c ? true : false;
+        }
+        static void native_spriterenderercomponent_visible_set(uint64_t u, bool v) {
+        }
+
+        static thread_local DynamicArray<Collision2dEvent> s_collision_pending{};
+
+        static int native_physics2d_poll_event_count() {
+            Scene* s = GetCurrentScene(); if (!s) return 0;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return 0;
+            DynamicArray<Collision2dEvent> ev;
+            ps->takeCollisionEvents(s->registry(), ev);
+            s_collision_pending = std::move(ev);
+            return static_cast<int>(s_collision_pending.size());
+        }
+        static int native_physics2d_get_event(int idx, void* outStruct) {
+            auto* p = static_cast<float*>(outStruct);
+            if (!p) return 0;
+            if (idx < 0 || idx >= static_cast<int>(s_collision_pending.size())) return 0;
+            const auto& e = s_collision_pending[static_cast<size_t>(idx)];
+            ui32 ea = e.entity_a, eb = e.entity_b;
+            std::memcpy(p + 0, &ea, sizeof(ea));
+            std::memcpy(p + 1, &eb, sizeof(eb));
+            p[2] = e.point.x;   p[3] = e.point.y;
+            p[4] = e.normal.x;  p[5] = e.normal.y;
+            p[6] = e.relative_speed;
+            p[7] = e.is_sensor ? 1.0f : 0.0f;
+            p[8] = static_cast<float>(static_cast<int>(e.phase));
+            return 1;
+        }
+        static int native_physics2d_raycast(float ox, float oy, float dx, float dy, float md,
+                                            uint32_t layer, uint32_t mask, float minFraction,
+                                            void* outHits, int capacity) {
+            Scene* s = GetCurrentScene(); if (!s) return 0;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return 0;
+            DynamicArray<RaycastHit2d> hits;
+            ps->raycast(s->registry(), { ox, oy }, { dx, dy }, md, Query2dFilter{ layer, mask }, hits);
+            if (minFraction > 0.0f) {
+                auto pend = std::remove_if(hits.begin(), hits.end(),
+                    [=](const RaycastHit2d& h) { return h.fraction < minFraction; });
+                hits.resize(static_cast<size_t>(pend - hits.begin()));
+            }
+            if (capacity <= 0 || !outHits) return static_cast<int>(hits.size());
+            auto* dst = static_cast<float*>(outHits);
+            int stride = 8;
+            int n = std::min<int>(static_cast<int>(hits.size()), capacity);
+            for (int i = 0; i < n; ++i) {
+                const auto& h = hits[static_cast<size_t>(i)];
+                float* base = dst + i * stride;
+                base[0] = [&]() { float f; ui32 ent = h.entity; std::memcpy(&f, &ent, sizeof(ent)); return f; }();
+                base[1] = h.point.x; base[2] = h.point.y;
+                base[3] = h.normal.x; base[4] = h.normal.y;
+                base[5] = h.fraction;
+                base[6] = static_cast<float>(layer);
+                base[7] = static_cast<float>(mask);
+            }
+            return n;
+        }
+        static int native_physics2d_boxcast(float cx, float cy, float hx, float hy,
+                                            float angle, float dx, float dy, float md,
+                                            uint32_t layer, uint32_t mask,
+                                            void* outHits, int capacity) {
+            Scene* s = GetCurrentScene(); if (!s) return 0;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return 0;
+            DynamicArray<RaycastHit2d> hits;
+            ps->boxCast(s->registry(), { cx, cy }, { hx, hy }, angle, { dx, dy }, md,
+                        Query2dFilter{ layer, mask }, hits);
+            if (capacity <= 0 || !outHits) return static_cast<int>(hits.size());
+            auto* dst = static_cast<float*>(outHits);
+            int stride = 8;
+            int n = std::min<int>(static_cast<int>(hits.size()), capacity);
+            for (int i = 0; i < n; ++i) {
+                const auto& h = hits[static_cast<size_t>(i)];
+                float* base = dst + i * stride;
+                base[0] = [&]() { float f; ui32 ent = h.entity; std::memcpy(&f, &ent, sizeof(ent)); return f; }();
+                base[1] = h.point.x; base[2] = h.point.y;
+                base[3] = h.normal.x; base[4] = h.normal.y;
+                base[5] = h.fraction;
+                base[6] = static_cast<float>(layer);
+                base[7] = static_cast<float>(mask);
+            }
+            return n;
+        }
+        static int native_physics2d_overlap_aabb(float cx, float cy, float hx, float hy,
+                                                 uint32_t layer, uint32_t mask,
+                                                 void* outEntityIds, int capacity, int outStrideWords) {
+            Scene* s = GetCurrentScene(); if (!s) return 0;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return 0;
+            DynamicArray<uint32_t> ents;
+            ps->overlapAABB(s->registry(), { cx, cy }, { hx, hy }, Query2dFilter{ layer, mask }, ents);
+            if (capacity <= 0 || !outEntityIds) return static_cast<int>(ents.size());
+            auto* dst = static_cast<uint32_t*>(outEntityIds);
+            int stride = std::max<int>(1, outStrideWords);
+            int n = std::min<int>(static_cast<int>(ents.size()), capacity);
+            for (int i = 0; i < n; ++i) dst[i * stride] = ents[static_cast<size_t>(i)];
+            return n;
+        }
+        static void native_physics2d_ignore_collision(uint64_t a, uint64_t b, bool ignore) {
+            Entity ea = TryGetEntityByUuid(a), eb = TryGetEntityByUuid(b);
+            if (!ea.valid() || !eb.valid()) return;
+            Scene* s = GetCurrentScene(); if (!s) return;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return;
+            ps->ignoreCollision(s->registry(), ea, eb, ignore);
+        }
+        static int native_physics2d_get_collider_contacts(uint64_t u, void* outEntityIds, int capacity, int outStrideWords) {
+            Entity e = TryGetEntityByUuid(u); if (!e.valid()) return 0;
+            Scene* s = GetCurrentScene(); if (!s) return 0;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return 0;
+            DynamicArray<ui32> ents;
+            ps->getColliderContacts(s->registry(), e, ents);
+            auto* dst = static_cast<ui32*>(outEntityIds);
+            if (!dst || capacity <= 0) return static_cast<int>(ents.size());
+            int stride = std::max<int>(1, outStrideWords);
+            int n = std::min<int>(static_cast<int>(ents.size()), capacity);
+            for (int i = 0; i < n; ++i) dst[i * stride] = ents[static_cast<size_t>(i)];
+            return n;
+        }
+        static int native_physics2d_collider_distance(uint64_t a, uint64_t b, void* outDist) {
+            Entity ea = TryGetEntityByUuid(a), eb = TryGetEntityByUuid(b);
+            if (!ea.valid() || !eb.valid()) return 0;
+            Scene* s = GetCurrentScene(); if (!s) return 0;
+            Physics2dSystem* ps = GetWorld()->findRuntimeSystem<Physics2dSystem>(); if (!ps) return 0;
+            float dist = 0.0f;
+            bool ok = ps->colliderDistance(s->registry(), ea, eb, dist);
+            if (outDist) *static_cast<float*>(outDist) = dist;
+            return ok ? 1 : 0;
         }
 
         static void native_RigidbodyComponent_SetVelocity(uint64_t u, float x, float y, float z) {
@@ -1048,6 +1222,22 @@ namespace dodoe {
     X(native_Rigidbody2dComponent_SetVelocity, void, (uint64_t e, float x, float y), e, x, y) \
     X(native_Rigidbody2dComponent_ApplyForce, void, (uint64_t e, float x, float y), e, x, y) \
     X(native_Rigidbody2dComponent_ApplyImpulse, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_Rigidbody2dComponent_type_get, int, (uint64_t e), e) \
+    X(native_Rigidbody2dComponent_type_set, void, (uint64_t e, int v), e, v) \
+    X(native_Rigidbody2dComponent_position_get, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_Rigidbody2dComponent_move_position, void, (uint64_t e, float x, float y), e, x, y) \
+    X(native_Rigidbody2dComponent_velocity_get, void, (uint64_t e, float* x, float* y), e, x, y) \
+    X(native_time_get_fixed_delta_time, float, (), ) \
+    X(native_spriterenderercomponent_visible_get, bool, (uint64_t e), e) \
+    X(native_spriterenderercomponent_visible_set, void, (uint64_t e, bool v), e, v) \
+    X(native_physics2d_poll_event_count, int, (), ) \
+    X(native_physics2d_get_event, int, (int idx, void* outStruct), idx, outStruct) \
+    X(native_physics2d_raycast, int, (float ox, float oy, float dx, float dy, float md, uint layer, uint mask, float minFrac, void* outHits, int cap), ox, oy, dx, dy, md, layer, mask, minFrac, outHits, cap) \
+    X(native_physics2d_boxcast, int, (float cx, float cy, float hx, float hy, float ang, float dx, float dy, float md, uint layer, uint mask, void* outHits, int cap), cx, cy, hx, hy, ang, dx, dy, md, layer, mask, outHits, cap) \
+    X(native_physics2d_overlap_aabb, int, (float cx, float cy, float hx, float hy, uint layer, uint mask, void* outIds, int cap, int stride), cx, cy, hx, hy, layer, mask, outIds, cap, stride) \
+    X(native_physics2d_ignore_collision, void, (uint64_t a, uint64_t b, bool ignore), a, b, ignore) \
+    X(native_physics2d_get_collider_contacts, int, (uint64_t e, void* outIds, int cap, int stride), e, outIds, cap, stride) \
+    X(native_physics2d_collider_distance, int, (uint64_t a, uint64_t b, void* outDist), a, b, outDist) \
     X(native_RigidbodyComponent_SetVelocity, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_RigidbodyComponent_ApplyForce, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_RigidbodyComponent_ApplyImpulse, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
@@ -1056,22 +1246,36 @@ namespace dodoe {
     X(native_AnimatorComponent_Stop, void, (uint64_t e), e) \
     X(native_AnimatorComponent_Resume, void, (uint64_t e), e) \
     /* === NATIVE_BINDINGS_GENERATED_START === */ \
-X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
+X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
+    X(native_Rigidbody2dComponent_gravity_scale_set, void, (uint64_t e, float v), e, v) \
+    X(native_Rigidbody2dComponent_fixed_rotation_get, bool, (uint64_t e), e) \
+    X(native_Rigidbody2dComponent_fixed_rotation_set, void, (uint64_t e, bool v), e, v) \
+    X(native_CameraComponent_zoom_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_zoom_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_fov_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_fov_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_near_plane_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_near_plane_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_far_plane_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_far_plane_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_aspect_ratio_get, float, (uint64_t e), e) \
+    X(native_CameraComponent_aspect_ratio_set, void, (uint64_t e, float v), e, v) \
+    X(native_CameraComponent_background_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_CameraComponent_background_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_AnimationDriveModeComponent_enabled_get, bool, (uint64_t e), e) \
+    X(native_AnimationDriveModeComponent_enabled_set, void, (uint64_t e, bool v), e, v) \
+    X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_AnimatorComponent_controller_set, void, (uint64_t e, int v), e, v) \
     X(native_AnimatorComponent_speed_get, float, (uint64_t e), e) \
     X(native_AnimatorComponent_speed_set, void, (uint64_t e, float v), e, v) \
     X(native_AnimatorComponent_play_on_awake_get, bool, (uint64_t e), e) \
     X(native_AnimatorComponent_play_on_awake_set, void, (uint64_t e, bool v), e, v) \
-    X(native_AnimationDriveModeComponent_enabled_get, bool, (uint64_t e), e) \
-    X(native_AnimationDriveModeComponent_enabled_set, void, (uint64_t e, bool v), e, v) \
     X(native_BoneAttachmentComponent_bone_name_get, const char*, (uint64_t e), e) \
     X(native_BoneAttachmentComponent_bone_name_set, void, (uint64_t e, const char* v), e, v) \
     X(native_BoneAttachmentComponent_local_offset_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_BoneAttachmentComponent_local_offset_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_BoneAttachmentComponent_follow_rotation_get, bool, (uint64_t e), e) \
     X(native_BoneAttachmentComponent_follow_rotation_set, void, (uint64_t e, bool v), e, v) \
-    X(native_SkyLightComponent_intensity_get, float, (uint64_t e), e) \
-    X(native_SkyLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
     X(native_BoxColliderComponent_offset_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_BoxColliderComponent_offset_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_BoxColliderComponent_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
@@ -1090,18 +1294,6 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_BoxColliderComponent_friction_set, void, (uint64_t e, float v), e, v) \
     X(native_BoxColliderComponent_restitution_get, float, (uint64_t e), e) \
     X(native_BoxColliderComponent_restitution_set, void, (uint64_t e, float v), e, v) \
-    X(native_CameraComponent_zoom_get, float, (uint64_t e), e) \
-    X(native_CameraComponent_zoom_set, void, (uint64_t e, float v), e, v) \
-    X(native_CameraComponent_fov_get, float, (uint64_t e), e) \
-    X(native_CameraComponent_fov_set, void, (uint64_t e, float v), e, v) \
-    X(native_CameraComponent_near_plane_get, float, (uint64_t e), e) \
-    X(native_CameraComponent_near_plane_set, void, (uint64_t e, float v), e, v) \
-    X(native_CameraComponent_far_plane_get, float, (uint64_t e), e) \
-    X(native_CameraComponent_far_plane_set, void, (uint64_t e, float v), e, v) \
-    X(native_CameraComponent_aspect_ratio_get, float, (uint64_t e), e) \
-    X(native_CameraComponent_aspect_ratio_set, void, (uint64_t e, float v), e, v) \
-    X(native_CameraComponent_background_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_CameraComponent_background_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
     X(native_CapsuleColliderComponent_offset_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_CapsuleColliderComponent_offset_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_CapsuleColliderComponent_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
@@ -1136,6 +1328,10 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_BoxCollider2dComponent_size_set, void, (uint64_t e, float x, float y), e, x, y) \
     X(native_BoxCollider2dComponent_is_sensor_get, bool, (uint64_t e), e) \
     X(native_BoxCollider2dComponent_is_sensor_set, void, (uint64_t e, bool v), e, v) \
+    X(native_BoxCollider2dComponent_layer_get, uint, (uint64_t e), e) \
+    X(native_BoxCollider2dComponent_layer_set, void, (uint64_t e, uint v), e, v) \
+    X(native_BoxCollider2dComponent_mask_get, uint, (uint64_t e), e) \
+    X(native_BoxCollider2dComponent_mask_set, void, (uint64_t e, uint v), e, v) \
     X(native_BoxCollider2dComponent_density_get, float, (uint64_t e), e) \
     X(native_BoxCollider2dComponent_density_set, void, (uint64_t e, float v), e, v) \
     X(native_BoxCollider2dComponent_friction_get, float, (uint64_t e), e) \
@@ -1150,6 +1346,10 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_CircleCollider2dComponent_radius_set, void, (uint64_t e, float v), e, v) \
     X(native_CircleCollider2dComponent_is_sensor_get, bool, (uint64_t e), e) \
     X(native_CircleCollider2dComponent_is_sensor_set, void, (uint64_t e, bool v), e, v) \
+    X(native_CircleCollider2dComponent_layer_get, uint, (uint64_t e), e) \
+    X(native_CircleCollider2dComponent_layer_set, void, (uint64_t e, uint v), e, v) \
+    X(native_CircleCollider2dComponent_mask_get, uint, (uint64_t e), e) \
+    X(native_CircleCollider2dComponent_mask_set, void, (uint64_t e, uint v), e, v) \
     X(native_CircleCollider2dComponent_density_get, float, (uint64_t e), e) \
     X(native_CircleCollider2dComponent_density_set, void, (uint64_t e, float v), e, v) \
     X(native_CircleCollider2dComponent_friction_get, float, (uint64_t e), e) \
@@ -1158,14 +1358,6 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_CircleCollider2dComponent_restitution_set, void, (uint64_t e, float v), e, v) \
     X(native_CircleCollider2dComponent_restitution_threshold_get, float, (uint64_t e), e) \
     X(native_CircleCollider2dComponent_restitution_threshold_set, void, (uint64_t e, float v), e, v) \
-    X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_map_width_set, void, (uint64_t e, uint v), e, v) \
-    X(native_TilemapComponent_map_height_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_map_height_set, void, (uint64_t e, uint v), e, v) \
-    X(native_TilemapComponent_tile_width_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_tile_width_set, void, (uint64_t e, uint v), e, v) \
-    X(native_TilemapComponent_tile_height_get, uint, (uint64_t e), e) \
-    X(native_TilemapComponent_tile_height_set, void, (uint64_t e, uint v), e, v) \
     X(native_FoliageRendererInstance_position_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_FoliageRendererInstance_position_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_FoliageRendererInstance_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
@@ -1216,10 +1408,6 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_RevoluteJoint2dComponent_motor_speed_set, void, (uint64_t e, float v), e, v) \
     X(native_RevoluteJoint2dComponent_max_motor_torque_get, float, (uint64_t e), e) \
     X(native_RevoluteJoint2dComponent_max_motor_torque_set, void, (uint64_t e, float v), e, v) \
-    X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
-    X(native_Rigidbody2dComponent_gravity_scale_set, void, (uint64_t e, float v), e, v) \
-    X(native_Rigidbody2dComponent_fixed_rotation_get, bool, (uint64_t e), e) \
-    X(native_Rigidbody2dComponent_fixed_rotation_set, void, (uint64_t e, bool v), e, v) \
     X(native_MeshRendererComponent_mesh_get, int, (uint64_t e), e) \
     X(native_MeshRendererComponent_mesh_set, void, (uint64_t e, int v), e, v) \
     X(native_MeshRendererComponent_section_index_get, int, (uint64_t e), e) \
@@ -1228,26 +1416,6 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_MeshRendererComponent_visible_set, void, (uint64_t e, bool v), e, v) \
     X(native_MeshRendererComponent_cast_shadow_get, bool, (uint64_t e), e) \
     X(native_MeshRendererComponent_cast_shadow_set, void, (uint64_t e, bool v), e, v) \
-    X(native_PointLightComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_PointLightComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
-    X(native_PointLightComponent_intensity_get, float, (uint64_t e), e) \
-    X(native_PointLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
-    X(native_PointLightComponent_radius_get, float, (uint64_t e), e) \
-    X(native_PointLightComponent_radius_set, void, (uint64_t e, float v), e, v) \
-    X(native_PointLightComponent_range_get, float, (uint64_t e), e) \
-    X(native_PointLightComponent_range_set, void, (uint64_t e, float v), e, v) \
-    X(native_SpotLightComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
-    X(native_SpotLightComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
-    X(native_SpotLightComponent_intensity_get, float, (uint64_t e), e) \
-    X(native_SpotLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
-    X(native_SpotLightComponent_radius_get, float, (uint64_t e), e) \
-    X(native_SpotLightComponent_radius_set, void, (uint64_t e, float v), e, v) \
-    X(native_SpotLightComponent_range_get, float, (uint64_t e), e) \
-    X(native_SpotLightComponent_range_set, void, (uint64_t e, float v), e, v) \
-    X(native_SpotLightComponent_inner_angle_get, float, (uint64_t e), e) \
-    X(native_SpotLightComponent_inner_angle_set, void, (uint64_t e, float v), e, v) \
-    X(native_SpotLightComponent_outer_angle_get, float, (uint64_t e), e) \
-    X(native_SpotLightComponent_outer_angle_set, void, (uint64_t e, float v), e, v) \
     X(native_RectRendererComponent_size_get, void, (uint64_t e, float* x, float* y), e, x, y) \
     X(native_RectRendererComponent_size_set, void, (uint64_t e, float x, float y), e, x, y) \
     X(native_RectRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
@@ -1286,6 +1454,28 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_SphereColliderComponent_friction_set, void, (uint64_t e, float v), e, v) \
     X(native_SphereColliderComponent_restitution_get, float, (uint64_t e), e) \
     X(native_SphereColliderComponent_restitution_set, void, (uint64_t e, float v), e, v) \
+    X(native_PointLightComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_PointLightComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_PointLightComponent_intensity_get, float, (uint64_t e), e) \
+    X(native_PointLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
+    X(native_PointLightComponent_radius_get, float, (uint64_t e), e) \
+    X(native_PointLightComponent_radius_set, void, (uint64_t e, float v), e, v) \
+    X(native_PointLightComponent_range_get, float, (uint64_t e), e) \
+    X(native_PointLightComponent_range_set, void, (uint64_t e, float v), e, v) \
+    X(native_SpotLightComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
+    X(native_SpotLightComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_SpotLightComponent_intensity_get, float, (uint64_t e), e) \
+    X(native_SpotLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
+    X(native_SpotLightComponent_radius_get, float, (uint64_t e), e) \
+    X(native_SpotLightComponent_radius_set, void, (uint64_t e, float v), e, v) \
+    X(native_SpotLightComponent_range_get, float, (uint64_t e), e) \
+    X(native_SpotLightComponent_range_set, void, (uint64_t e, float v), e, v) \
+    X(native_SpotLightComponent_inner_angle_get, float, (uint64_t e), e) \
+    X(native_SpotLightComponent_inner_angle_set, void, (uint64_t e, float v), e, v) \
+    X(native_SpotLightComponent_outer_angle_get, float, (uint64_t e), e) \
+    X(native_SpotLightComponent_outer_angle_set, void, (uint64_t e, float v), e, v) \
+    X(native_TagComponent_tag_get, const char*, (uint64_t e), e) \
+    X(native_TagComponent_tag_set, void, (uint64_t e, const char* v), e, v) \
     X(native_LineRendererComponent_direction_get, void, (uint64_t e, float* x, float* y), e, x, y) \
     X(native_LineRendererComponent_direction_set, void, (uint64_t e, float x, float y), e, x, y) \
     X(native_LineRendererComponent_length_get, float, (uint64_t e), e) \
@@ -1294,6 +1484,8 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_LineRendererComponent_thickness_set, void, (uint64_t e, float v), e, v) \
     X(native_LineRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
     X(native_LineRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_SkyLightComponent_intensity_get, float, (uint64_t e), e) \
+    X(native_SkyLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
     X(native_SpriteRendererComponent_sprite_get, int, (uint64_t e), e) \
     X(native_SpriteRendererComponent_sprite_set, void, (uint64_t e, int v), e, v) \
     X(native_SpriteRendererComponent_flip_get, bool, (uint64_t e), e) \
@@ -1304,8 +1496,6 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_SpriteRendererComponent_depth_set, void, (uint64_t e, float v), e, v) \
     X(native_SpriteRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
     X(native_SpriteRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
-    X(native_TagComponent_tag_get, const char*, (uint64_t e), e) \
-    X(native_TagComponent_tag_set, void, (uint64_t e, const char* v), e, v) \
     X(native_TransformComponent_position_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_TransformComponent_position_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_TransformComponent_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
@@ -1316,6 +1506,14 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_HierarchyComponent_parent_uuid_set, void, (uint64_t e, uint64_t v), e, v) \
     X(native_HierarchyComponent_child_count_get, int, (uint64_t e), e) \
     X(native_HierarchyComponent_child_count_set, void, (uint64_t e, int v), e, v) \
+    X(native_TilemapComponent_map_width_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_map_width_set, void, (uint64_t e, uint v), e, v) \
+    X(native_TilemapComponent_map_height_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_map_height_set, void, (uint64_t e, uint v), e, v) \
+    X(native_TilemapComponent_tile_width_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_tile_width_set, void, (uint64_t e, uint v), e, v) \
+    X(native_TilemapComponent_tile_height_get, uint, (uint64_t e), e) \
+    X(native_TilemapComponent_tile_height_set, void, (uint64_t e, uint v), e, v) \
     X(native_TileLayerComponent_layer_name_get, const char*, (uint64_t e), e) \
     X(native_TileLayerComponent_layer_name_set, void, (uint64_t e, const char* v), e, v) \
     X(native_TileLayerComponent_layer_width_get, uint, (uint64_t e), e) \

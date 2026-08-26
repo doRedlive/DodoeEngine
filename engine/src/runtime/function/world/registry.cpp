@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2026/3/12.
-//
+// do@Redlive
 
 #include "registry.h"
 #include "entity.h"

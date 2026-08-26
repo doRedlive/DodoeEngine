@@ -27,6 +27,7 @@ public static partial class ScriptHub
             "create_instance"       => CreateInstance(args, result),
             "invoke_start"          => InvokeSystemOnCreate(args),
             "invoke_update"         => InvokeSystemOnUpdate(args),
+            "invoke_fixed_update"   => InvokeSystemOnFixedUpdate(args),
             "invoke_finalize"       => InvokeSystemOnDestroy(args),
             "get_field"             => GetField(args, result),
             "set_field"             => SetField(args),
@@ -44,6 +45,8 @@ public static partial class ScriptHub
             "remove_entity"         => RemoveEntity(args),
             "register_natives"      => RegisterNatives(args),
             "input_action_event"    => DispatchInputEvent(args),
+            "list_tool_actions"     => ListToolActions(args, result),
+            "invoke_tool_action"    => InvokeToolAction(args, result),
             _ => -1
         };
     }

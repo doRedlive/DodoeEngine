@@ -86,6 +86,7 @@ namespace dodoe {
         const GfxBufferHandle& primitive_scene_buffer,
         DrawCommandList& command_list)
     {
+        DO_PROFILE_SCOPE_CATEGORY("SubmitMeshDrawCommands", "frame");
         if (instances.empty()) return;
 
         ShaderParameterBinder binder;

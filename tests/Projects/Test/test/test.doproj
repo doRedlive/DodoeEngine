@@ -1,8 +1,0 @@
-{
-    "Project": {
-        "AssetDirectory": "Assets",
-        "Name": "test",
-        "ProjectPath": "test.doproj",
-        "StartSceneName": "Main"
-    }
-}

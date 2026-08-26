@@ -1,0 +1,13 @@
+{
+    "name": "Jumper",
+    "app_mode": 2,
+    "width": 1280,
+    "height": 720,
+    "window_resizeable": true,
+    "render_settings": {
+        "api": 3,
+        "pipeline": 5,
+        "threading_mode": 1,
+        "present_mode": 1
+    }
+}

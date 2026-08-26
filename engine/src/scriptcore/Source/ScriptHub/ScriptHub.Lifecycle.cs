@@ -14,6 +14,12 @@ public static partial class ScriptHub
         return 1;
     }
 
+    private static unsafe int InvokeSystemOnFixedUpdate(void** args)
+    {
+        SystemDispatcher.OnFixedUpdate();
+        return 1;
+    }
+
     private static unsafe int InvokeSystemOnDestroy(void** args)
     {
         SystemDispatcher.OnDestroy();

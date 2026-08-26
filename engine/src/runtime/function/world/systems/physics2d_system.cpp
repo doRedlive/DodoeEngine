@@ -4,6 +4,9 @@
 
 #include "runtime/function/world/scene.h"
 
+#include <cmath>
+#include <limits>
+
 namespace dodoe {
 
     Physics2dSystem::~Physics2dSystem() = default;
@@ -23,6 +26,7 @@ namespace dodoe {
     }
 
     void Physics2dSystem::update(Registry& reg, const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("Physics2dSystem::update", "frame");
         ensureState(reg);
 
         auto& state = getRegistryState(reg.raw());
@@ -81,6 +85,44 @@ namespace dodoe {
         return b2_nullBodyId;
     }
 
+    Vector2f Physics2dSystem::getBodyPosition(Registry& reg, const Entity& entity) const {
+        if (!entity.valid()) return {};
+        const b2BodyId body_id = getBodyId(reg, entity);
+        if (B2_IS_NON_NULL(body_id)) {
+            const b2Vec2 p = b2Body_GetPosition(body_id);
+            return { p.x, p.y };
+        }
+        const entt::entity ent = entity.handle();
+        if (reg.raw().all_of<TransformComponent>(ent)) {
+            const auto& tc = reg.raw().get<TransformComponent>(ent);
+            return { tc.position.x, tc.position.y };
+        }
+        return {};
+    }
+
+    Vector2f Physics2dSystem::getBodyLinearVelocity(Registry& reg, const Entity& entity) const {
+        if (!entity.valid()) return {};
+        const b2BodyId body_id = getBodyId(reg, entity);
+        if (!B2_IS_NON_NULL(body_id)) return {};
+        const b2Vec2 v = b2Body_GetLinearVelocity(body_id);
+        return { v.x, v.y };
+    }
+
+    void Physics2dSystem::moveBodyPosition(Registry& reg, const Entity& entity, const Vector2f& position) {
+        if (!entity.valid()) return;
+        const entt::entity ent = entity.handle();
+        if (reg.raw().all_of<TransformComponent>(ent)) {
+            auto& tc = reg.raw().get<TransformComponent>(ent);
+            tc.position.x = position.x;
+            tc.position.y = position.y;
+        }
+        const b2BodyId body_id = getBodyId(reg, entity);
+        if (B2_IS_NON_NULL(body_id)) {
+            const b2Rot rot = b2Body_GetRotation(body_id);
+            b2Body_SetTransform(body_id, { position.x, position.y }, rot);
+        }
+    }
+
     void Physics2dSystem::takeCollisionEvents(Registry& reg, DynamicArray<Collision2dEvent>& out_events) {
         out_events.clear();
         const auto it = m_registry_state_umap.find(&reg.raw());
@@ -91,21 +133,29 @@ namespace dodoe {
     }
 
     void Physics2dSystem::raycast(Registry& reg, const Vector2f& origin, const Vector2f& direction, const float max_distance,
-                                  DynamicArray<RaycastHit2d>& out_hits) const {
+                                  const Query2dFilter& filter, DynamicArray<RaycastHit2d>& out_hits) const {
         out_hits.clear();
         const auto* world_2d = GetPhysicsSystem()->getWorld2d();
-        if (!world_2d) {
-            return;
-        }
+        if (!world_2d) return;
 
         DynamicArray<Raycast2dHit> raw_hits{};
-        world_2d->raycast(origin, direction, max_distance, {}, raw_hits);
+        world_2d->raycast(origin, direction, max_distance, filter, raw_hits);
 
+        auto& raw_reg = reg.raw();
         for (const auto& raw_hit : raw_hits) {
             const ui32 entity = ShapeToEntity(raw_hit.shape);
-            if (entity == 0) {
-                continue;
+            if (entity == 0) continue;
+            const entt::entity ent_key = static_cast<entt::entity>(entity);
+            ui32 layer = 1, mask = 0xFFFFFFFFu;
+            if (raw_reg.all_of<BoxCollider2dComponent>(ent_key)) {
+                const auto& c = raw_reg.get<BoxCollider2dComponent>(ent_key);
+                layer = c.layer; mask = c.mask;
+            } else if (raw_reg.all_of<CircleCollider2dComponent>(ent_key)) {
+                const auto& c = raw_reg.get<CircleCollider2dComponent>(ent_key);
+                layer = c.layer; mask = c.mask;
             }
+            if ((layer & filter.mask) == 0) continue;
+            if ((filter.layer & mask) == 0) continue;
             RaycastHit2d hit;
             hit.entity = entity;
             hit.point = raw_hit.point;
@@ -116,23 +166,149 @@ namespace dodoe {
     }
 
     void Physics2dSystem::overlapAABB(Registry& reg, const Vector2f& center, const Vector2f& half_size,
-                                      DynamicArray<ui32>& out_entities) const {
+                                      const Query2dFilter& filter, DynamicArray<ui32>& out_entities) const {
         out_entities.clear();
         const auto* world_2d = GetPhysicsSystem()->getWorld2d();
-        if (!world_2d) {
-            return;
-        }
+        if (!world_2d) return;
 
         DynamicArray<b2ShapeId> raw_shapes{};
-        world_2d->overlapAABB(center, half_size, {}, raw_shapes);
+        world_2d->overlapAABB(center, half_size, filter, raw_shapes);
 
+        auto& raw_reg = reg.raw();
         for (const auto& shape : raw_shapes) {
             const ui32 entity = ShapeToEntity(shape);
-            if (entity == 0) {
-                continue;
+            if (entity == 0) continue;
+            const entt::entity ent_key = static_cast<entt::entity>(entity);
+            ui32 layer = 1, mask = 0xFFFFFFFFu;
+            if (raw_reg.all_of<BoxCollider2dComponent>(ent_key)) {
+                const auto& c = raw_reg.get<BoxCollider2dComponent>(ent_key);
+                layer = c.layer; mask = c.mask;
+            } else if (raw_reg.all_of<CircleCollider2dComponent>(ent_key)) {
+                const auto& c = raw_reg.get<CircleCollider2dComponent>(ent_key);
+                layer = c.layer; mask = c.mask;
             }
+            if ((layer & filter.mask) == 0) continue;
+            if ((filter.layer & mask) == 0) continue;
             out_entities.push_back(entity);
         }
+    }
+
+    void Physics2dSystem::boxCast(Registry& reg, const Vector2f& center, const Vector2f& half_size, const float angle,
+                                  const Vector2f& direction, const float max_distance,
+                                  const Query2dFilter& filter, DynamicArray<RaycastHit2d>& out_hits) const {
+        out_hits.clear();
+        const auto* world_2d = GetPhysicsSystem()->getWorld2d();
+        if (!world_2d) return;
+        const b2WorldId world_id = world_2d->getWorldId();
+        if (!B2_IS_NON_NULL(world_id)) return;
+
+        const b2Rot rot = b2MakeRot(angle);
+        const float hx = half_size.x;
+        const float hy = half_size.y;
+        const b2Vec2 box_points[4] = { { -hx, -hy }, { hx, -hy }, { hx, hy }, { -hx, hy } };
+        const b2ShapeProxy proxy = b2MakeOffsetProxy(box_points, 4, 0.0f, { center.x, center.y }, rot);
+        const b2Vec2 translation = { direction.x * max_distance, direction.y * max_distance };
+        const b2QueryFilter qf = { filter.layer, filter.mask };
+
+        struct Context { const Registry* reg; const Query2dFilter* filter; DynamicArray<RaycastHit2d>* out; }
+            ctx{ &reg, &filter, &out_hits };
+        b2World_CastShape(world_id, &proxy, translation, qf,
+            [](b2ShapeId shape, b2Vec2 point, b2Vec2 normal, float fraction, void* user) -> float {
+                auto* c = static_cast<Context*>(user);
+                const ui32 ent = ShapeToEntity(shape);
+                if (ent == 0) return -1.0f;
+                auto& raw_reg = c->reg->raw();
+                const entt::entity ent_key = static_cast<entt::entity>(ent);
+                ui32 layer = 1, mask = 0xFFFFFFFFu;
+                if (raw_reg.all_of<BoxCollider2dComponent>(ent_key)) {
+                    const auto& cc = raw_reg.get<BoxCollider2dComponent>(ent_key);
+                    layer = cc.layer; mask = cc.mask;
+                } else if (raw_reg.all_of<CircleCollider2dComponent>(ent_key)) {
+                    const auto& cc = raw_reg.get<CircleCollider2dComponent>(ent_key);
+                    layer = cc.layer; mask = cc.mask;
+                }
+                if ((layer & c->filter->mask) == 0) return -1.0f;
+                if ((c->filter->layer & mask) == 0) return -1.0f;
+                RaycastHit2d h;
+                h.entity = ent;
+                h.point = { point.x, point.y };
+                h.normal = { normal.x, normal.y };
+                h.fraction = fraction;
+                c->out->push_back(h);
+                return -1.0f;
+            }, &ctx);
+    }
+
+    void Physics2dSystem::ignoreCollision(Registry& reg, const Entity& a, const Entity& b, const bool ignore) {
+        if (!a.valid() || !b.valid()) return;
+        b2BodyId ba = getBodyId(reg, a);
+        b2BodyId bb = getBodyId(reg, b);
+        if (!B2_IS_NON_NULL(ba) || !B2_IS_NON_NULL(bb)) return;
+
+        b2ShapeId shapes_a[8]{};
+        b2ShapeId shapes_b[8]{};
+        const int count_a = b2Body_GetShapes(ba, shapes_a, 8);
+        const int count_b = b2Body_GetShapes(bb, shapes_b, 8);
+        for (int i = 0; i < count_a; ++i) {
+            b2Filter filter = b2Shape_GetFilter(shapes_a[i]);
+            filter.groupIndex = ignore ? -1 : 0;
+            b2Shape_SetFilter(shapes_a[i], filter);
+        }
+        for (int j = 0; j < count_b; ++j) {
+            b2Filter filter = b2Shape_GetFilter(shapes_b[j]);
+            filter.groupIndex = ignore ? -1 : 0;
+            b2Shape_SetFilter(shapes_b[j], filter);
+        }
+    }
+
+    void Physics2dSystem::getColliderContacts(Registry& reg, const Entity& entity, DynamicArray<ui32>& out_entities) const {
+        out_entities.clear();
+        if (!entity.valid()) return;
+        b2BodyId body = getBodyId(reg, entity);
+        if (!B2_IS_NON_NULL(body)) return;
+
+        UnorderedSet<ui32> uniq{};
+        b2ShapeId shapes[8]{};
+        const int shape_count = b2Body_GetShapes(body, shapes, 8);
+        b2ContactData contacts[64]{};
+        for (int s = 0; s < shape_count; ++s) {
+            const int count = b2Shape_GetContactData(shapes[s], contacts, 64);
+            for (int i = 0; i < count; ++i) {
+                const ui32 ea = ShapeToEntity(contacts[i].shapeIdA);
+                const ui32 eb = ShapeToEntity(contacts[i].shapeIdB);
+                if (ea && ea != ShapeToEntity(shapes[s])) uniq.insert(ea);
+                if (eb && eb != ShapeToEntity(shapes[s])) uniq.insert(eb);
+            }
+        }
+        out_entities.reserve(uniq.size());
+        for (ui32 e : uniq) out_entities.push_back(e);
+    }
+
+    bool Physics2dSystem::colliderDistance(Registry& reg, const Entity& a, const Entity& b, float& out_distance) const {
+        out_distance = 0.0f;
+        if (!a.valid() || !b.valid()) return false;
+        b2BodyId ba = getBodyId(reg, a);
+        b2BodyId bb = getBodyId(reg, b);
+        if (!B2_IS_NON_NULL(ba) || !B2_IS_NON_NULL(bb)) return false;
+
+        float best = std::numeric_limits<float>::max();
+        bool ok = false;
+        b2ShapeId shapes_a[8]{};
+        b2ShapeId shapes_b[8]{};
+        const int count_a = b2Body_GetShapes(ba, shapes_a, 8);
+        const int count_b = b2Body_GetShapes(bb, shapes_b, 8);
+        for (int i = 0; i < count_a; ++i) {
+            const b2AABB aabb_a = b2Shape_GetAABB(shapes_a[i]);
+            for (int j = 0; j < count_b; ++j) {
+                const b2AABB aabb_b = b2Shape_GetAABB(shapes_b[j]);
+                const float dx = std::max(std::max(aabb_a.lowerBound.x - aabb_b.upperBound.x, aabb_b.lowerBound.x - aabb_a.upperBound.x), 0.0f);
+                const float dy = std::max(std::max(aabb_a.lowerBound.y - aabb_b.upperBound.y, aabb_b.lowerBound.y - aabb_a.upperBound.y), 0.0f);
+                const float dist = std::sqrt(dx * dx + dy * dy);
+                if (dist < best) { best = dist; ok = true; }
+            }
+        }
+        if (ok) out_distance = best;
+        return ok;
     }
 
     Physics2dSystem::RegistryState& Physics2dSystem::getRegistryState(entt::registry& registry) {

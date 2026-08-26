@@ -15,7 +15,16 @@ namespace dodoe {
     }
 
     void Physics2dWorld::step(const float dt) {
-        b2World_Step(m_world_id, dt, m_sub_step_count);
+        m_accumulator += dt;
+        m_last_step_count = 0;
+        while (m_accumulator >= m_fixed_dt && m_last_step_count < m_max_sub_steps) {
+            b2World_Step(m_world_id, m_fixed_dt, m_sub_step_count);
+            m_accumulator -= m_fixed_dt;
+            ++m_last_step_count;
+        }
+        if (m_last_step_count == m_max_sub_steps && m_accumulator >= m_fixed_dt) {
+            m_accumulator = std::fmod(m_accumulator, m_fixed_dt);
+        }
         collectContactEvents();
         b2World_Draw(m_world_id, &m_debug_draw);
         m_debugger->flush();
@@ -133,6 +142,8 @@ namespace dodoe {
         m_debug_draw.context = this;
 
         m_sub_step_count = create_info.sub_step_count;
+        m_fixed_dt = create_info.fixed_dt;
+        m_max_sub_steps = create_info.max_sub_steps;
         return m_debugger != nullptr;
     }
 

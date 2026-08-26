@@ -98,4 +98,28 @@ public static class TiledImporter
             tileset.Source = tsxPath;
         return tileset;
     }
+
+    [ToolMenuItem("Tiled/Import level1.tmj into Scene")]
+    public static void ImportLevel1IntoScene()
+    {
+        const string relativePath = "Maps/level1.tmj";
+        string fullPath = FilePath.Resolve(relativePath);
+        if (!File.Exists(fullPath))
+        {
+            Debug.LogError($"[TiledImporter] Map file not found: {fullPath}");
+            return;
+        }
+
+        try
+        {
+            Tilemap tilemap = ImportFromFile(fullPath);
+            tilemap.InstantiateToScene();
+            Debug.Log($"[TiledImporter] Imported '{fullPath}': {tilemap.MapWidth}x{tilemap.MapHeight}, " +
+                      $"{tilemap.Tilesets.Count} tileset(s), {tilemap.Layers.Count} layer(s).");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[TiledImporter] Import failed: {ex}");
+        }
+    }
 }

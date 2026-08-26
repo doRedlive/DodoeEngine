@@ -1,0 +1,8 @@
+{
+    "Project": {
+        "Name": "Jumper",
+        "ProjectPath": "Jumper.doproj",
+        "AssetDirectory": "Assets",
+        "StartSceneName": "Gameplay"
+    }
+}

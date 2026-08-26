@@ -25,6 +25,7 @@
 #include "runtime/function/render/render_view/camera_provider.h"
 #include "runtime/function/render/render_view/render_view_manager.h"
 #include "runtime/function/render/render_view/render_view_target.h"
+#include "runtime/function/script/script_system.h"
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/pixel2d/sprite.h"
@@ -701,6 +702,10 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
         return true;
     }
 
+    if (command.name == "script.tool_action") {
+        return !command.payload.empty() && invokeToolAction(command.payload);
+    }
+
     if (command.name == "asset.update_settings") {
         try {
             const dodoe::Json payload = dodoe::Json::parse(command.payload);
@@ -882,6 +887,38 @@ bool RuntimeEditorBackend::clearLogs()
 {
     dodoe::Log::ClearCoreLogs();
     dodoe::Log::ClearClientLogs();
+    return true;
+}
+
+bool RuntimeEditorBackend::listToolActions(std::vector<std::string>& actions) const
+{
+    actions.clear();
+    auto* scriptSystem = dodoe::GetScriptSystem();
+    if (!scriptSystem) {
+        return false;
+    }
+    dodoe::DynamicArray<dodoe::String> paths;
+    if (!scriptSystem->listToolActions(paths)) {
+        return false;
+    }
+    actions.reserve(paths.size());
+    for (const dodoe::String& path : paths) {
+        actions.push_back(path.c_str());
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::invokeToolAction(const std::string& path)
+{
+    auto* scriptSystem = dodoe::GetScriptSystem();
+    if (!scriptSystem) {
+        return false;
+    }
+    dodoe::String error;
+    if (!scriptSystem->invokeToolAction(dodoe::String(path.c_str()), error)) {
+        DO_ERROR("C# Tool Action '{}' failed: {}", path, error.c_str());
+        return false;
+    }
     return true;
 }
 

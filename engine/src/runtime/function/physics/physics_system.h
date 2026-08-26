@@ -1,9 +1,6 @@
-//
-// Created by GreenMuffin on 2026/2/20.
-//
+// do@Redlive
 
-#ifndef DODOE_PHYSICS2D_H
-#define DODOE_PHYSICS2D_H
+#pragma once
 
 #include "dopch.h"
 
@@ -15,6 +12,8 @@ namespace dodoe {
 	struct PhysicsSystemCreateInfo {
 		float gravity{-9.8f};
 		int sub_step_count{4};
+		float fixed_dt{1.0f / 60.0f};
+		int max_sub_steps{4};
 	};
 
 	class PhysicsSystem : public Managed<PhysicsSystem, PhysicsSystemCreateInfo> {
@@ -22,6 +21,11 @@ namespace dodoe {
 	public:
 
 		void step(float dt);
+
+		void setFixedUpdateCallback(std::function<void()> callback) { m_fixed_update_callback = std::move(callback); }
+
+		[[nodiscard]] float getFixedDt() const { return m_fixed_dt; }
+		[[nodiscard]] int getLastStepCount() const { return m_last_step_count; }
 
 		[[nodiscard]] Physics2dWorld* getWorld2d() { return m_world_2d.get(); }
 		[[nodiscard]] const Physics2dWorld* getWorld2d() const { return m_world_2d.get(); }
@@ -32,9 +36,13 @@ namespace dodoe {
 		Scope<Physics2dWorld> m_world_2d{nullptr};
 		Scope<PhysicsWorld> m_world_3d{nullptr};
 
+		std::function<void()> m_fixed_update_callback{nullptr};
+		float m_fixed_dt{1.0f / 60.0f};
+		int m_max_sub_steps{4};
+		float m_accumulator{0.0f};
+		int m_last_step_count{0};
+
 		bool initialize(const PhysicsSystemCreateInfo& create_info);
 		void shutdown();
 	};
-}
-
-#endif//!DODOE_PHYSICS2D_H
+} // dodoe

@@ -22,6 +22,7 @@
 namespace dodoe {
 
 	Bool DeferredRenderer::initialize(const RendererCreateInfo& info) {
+	    DO_PROFILE_SCOPE_CATEGORY("DeferredRenderer::initialize", "startup");
 	    Size_t worker_count = info.worker_count;
 	    if (worker_count == 0) {
 	        worker_count = std::thread::hardware_concurrency();
@@ -57,6 +58,7 @@ namespace dodoe {
 	}
 
 	void DeferredRenderer::shutdown() {
+	    DO_PROFILE_SCOPE_CATEGORY("DeferredRenderer::shutdown", "shutdown");
 	    GpuCulling::Destroy(m_gpu_culling);
 	    clearFeatures();
 	    m_shared_render_service = nullptr;
@@ -73,7 +75,9 @@ namespace dodoe {
 	                               const UInt32 swapchain_image_index, DrawCommandList& out_commands,
 	                               FrameStagingAllocator* frame_staging_allocator,
 	                               RenderGraphTransientPool* transient_resource_pool) {
+	    DO_PROFILE_SCOPE_CATEGORY("DeferredRenderer::render", "frame");
 	    initViews(scene, view_family);
+	    DO_PROFILE_MARK("DeferredRenderer::render.setupMeshPassContexts", "frame");
 
 	    auto* base_feature = getFeature<BaseSceneFeature>();
 	    DO_ASSERT(base_feature != nullptr, "DeferredRenderer BaseSceneFeature is null");
@@ -86,14 +90,17 @@ namespace dodoe {
 	    }
 
 	    if (culling_path == CullingPath::CpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
+	        DO_PROFILE_MARK("DeferredRenderer::render.buildMeshDrawCommands", "frame");
 	        base_feature->buildMeshDrawCommands(view_family, out_commands);
 	    }
 
+	    DO_PROFILE_MARK("DeferredRenderer::render.buildOrderedPasses", "frame");
 	    buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,
 	        frame_staging_allocator, transient_resource_pool);
 	}
 
 	void DeferredRenderer::executeGpuCulling(RenderViewFamily& view_family, RenderScene& scene, DrawCommandList& cmd_list) const {
+	    DO_PROFILE_SCOPE_CATEGORY("DeferredRenderer::executeGpuCulling", "frame");
 	    if (!m_gpu_culling || !m_gpu_culling->isEnabled()) {
 	        return;
 	    }
@@ -115,6 +122,7 @@ namespace dodoe {
 	}
 
 	void DeferredRenderer::buildGpuDrivenDrawCommands(const RenderScene& scene, RenderViewFamily& view_family, DrawCommandList& cmd_list) const {
+	    DO_PROFILE_SCOPE_CATEGORY("DeferredRenderer::buildGpuDrivenDrawCommands", "frame");
 	    if (!m_gpu_culling || !m_gpu_culling->isEnabled()) {
 	        return;
 	    }

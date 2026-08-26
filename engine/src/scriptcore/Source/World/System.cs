@@ -37,6 +37,7 @@ public class CakeSystem
 
     public virtual void OnCreate() { }
     public virtual void OnUpdate() { }
+    public virtual void OnFixedUpdate() { }
     public virtual void OnDestroy() { }
 
     public virtual CakeSystemAccess GetAccess() => default;

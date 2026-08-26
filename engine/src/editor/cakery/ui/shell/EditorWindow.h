@@ -56,6 +56,8 @@ private:
     void createTitleBar();
     void createToolbar();
     void createMenus();
+    void createToolsMenu();
+    void refreshToolsMenu();
     void createDocks();
     void createPanels();
     void createWindowMenu();
@@ -100,6 +102,7 @@ private:
     QMenuBar* m_menuBar = nullptr;
     QMenu* m_settingsMenu = nullptr;
     QMenu* m_windowMenu = nullptr;
+    QMenu* m_toolsMenu = nullptr;
     QAction* m_resetLayoutAction = nullptr;
     QToolButton* m_maxButton = nullptr;
     QAction* m_undoAction = nullptr;

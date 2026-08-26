@@ -25,6 +25,7 @@ namespace dodoe {
     }
 
     void Physics3dSystem::update(Registry& reg, const float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("Physics3dSystem::update", "frame");
         (void)dt;
         ensureState(reg);
 
@@ -84,6 +85,7 @@ namespace dodoe {
 
     void Physics3dSystem::raycast(Registry& reg, const Vector3f& origin, const Vector3f& direction, const float max_distance,
                                   DynamicArray<RaycastHit3d>& out_hits) const {
+        DO_PROFILE_SCOPE_CATEGORY("Physics3dSystem::raycast", "physics-query");
         out_hits.clear();
         const auto* world = GetPhysicsSystem()->getWorld3d();
         if (!world) {
@@ -111,6 +113,7 @@ namespace dodoe {
 
     void Physics3dSystem::overlapBox(Registry& reg, const Vector3f& center, const Vector3f& half_extents, const Quaternion& rotation,
                                      DynamicArray<ui32>& out_entities) const {
+        DO_PROFILE_SCOPE_CATEGORY("Physics3dSystem::overlapBox", "physics-query");
         out_entities.clear();
         const auto* world = GetPhysicsSystem()->getWorld3d();
         if (!world) {
@@ -150,6 +153,7 @@ namespace dodoe {
 
     void Physics3dSystem::overlapSphere(Registry& reg, const Vector3f& center, const float radius,
                                         DynamicArray<ui32>& out_entities) const {
+        DO_PROFILE_SCOPE_CATEGORY("Physics3dSystem::overlapSphere", "physics-query");
         out_entities.clear();
         const auto* world = GetPhysicsSystem()->getWorld3d();
         if (!world) {
