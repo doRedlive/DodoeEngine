@@ -15,6 +15,7 @@
 #include "runtime/function/animation/animator_controller.h"
 #include "runtime/function/render/pixel2d/tileset.h"
 #include "runtime/function/render/pixel2d/sprite_manager.h"
+#include "runtime/resource/asset/types/audio_clip_asset.h"
 
 namespace dodoe {
 
@@ -140,6 +141,15 @@ namespace dodoe {
             return nullptr;
         }
         return Mesh::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
+    }
+
+    AudioClip* ResourceManager::LoadAudioClip(const UUID& asset_id, UInt32 local_id) {
+        Asset* asset = m_assetManager->findAsset(asset_id);
+        if (!asset || asset->getType() != AssetType::Audio) {
+            return nullptr;
+        }
+        auto* clip_asset = static_cast<AudioClipAsset*>(asset);
+        return clip_asset->getClip();
     }
 
 } // dodoe

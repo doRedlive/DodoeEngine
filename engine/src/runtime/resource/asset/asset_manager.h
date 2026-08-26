@@ -14,6 +14,7 @@
 #include "types/anim2d_clip_asset.h"
 #include "types/scene_asset.h"
 #include "types/input_action_asset.h"
+#include "types/audio_clip_asset.h"
 
 #include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/core/async/task_scheduler.h"

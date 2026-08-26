@@ -14,6 +14,7 @@
 #include "runtime/core/async/task_scheduler.h"
 
 #include "systems/animator_system.h"
+#include "systems/audio_play_system.h"
 #include "systems/camera_system.h"
 #include "systems/foliage_renderer_system.h"
 #include "systems/light_system.h"
@@ -110,6 +111,8 @@ namespace dodoe {
             reg.ensurePoolExists<CircleRendererComponent>();
             reg.ensurePoolExists<AnimationPoseComponent>();
             reg.ensurePoolExists<AnimationDriveModeComponent>();
+            reg.ensurePoolExists<AudioSourceComponent>();
+            reg.ensurePoolExists<AudioListenerComponent>();
             reg.ensurePoolExists<BoneAttachmentComponent>();
             reg.ensurePoolExists<BoxCollider2dComponent>();
             reg.ensurePoolExists<CircleCollider2dComponent>();
@@ -251,6 +254,7 @@ namespace dodoe {
         auto sky_light = create_ref<SkyLightSystem>();
         auto physics2d = create_ref<Physics2dSystem>();
         auto physics3d = create_ref<Physics3dSystem>();
+        auto audio_play = create_ref<AudioPlaySystem>();
         auto foliage_renderer = create_ref<FoliageRendererSystem>();
         auto mesh_system = create_ref<MeshRendererSystem>();
         auto sprite_renderer = create_ref<SpriteRendererSystem>();
@@ -264,6 +268,7 @@ namespace dodoe {
         registerRuntimeSystem(sky_light);
         registerRuntimeSystem(physics2d);
         registerRuntimeSystem(physics3d);
+        registerRuntimeSystem(audio_play);
         registerRuntimeSystem(foliage_renderer);
         registerRuntimeSystem(mesh_system);
         registerRuntimeSystem(sprite_renderer);
@@ -276,6 +281,7 @@ namespace dodoe {
         registerSimulationSystem(light_system);
         registerSimulationSystem(physics2d);
         registerSimulationSystem(physics3d);
+        registerSimulationSystem(audio_play);
         registerSimulationSystem(foliage_renderer);
         registerSimulationSystem(mesh_system);
         registerSimulationSystem(sprite_renderer);

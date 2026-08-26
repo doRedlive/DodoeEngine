@@ -12,6 +12,8 @@ namespace dodoe {
 	std::atomic<UInt64> Memory::s_frame_epoch{0};
 	std::vector<ThreadAllocator*> Memory::s_thread_allocators{};
 	std::mutex Memory::s_thread_allocators_mutex{};
+	PoolAllocator* Memory::s_pools[static_cast<int>(AllocTag::Count)]{};
+	std::mutex Memory::s_pools_mutex{};
 
 	void TierStats::recordAlloc(Size_t size) {
 		alloc_count.fetch_add(1, std::memory_order_relaxed);
@@ -34,6 +36,11 @@ namespace dodoe {
 	}
 
 	void Memory::Shutdown() {
+		std::lock_guard<std::mutex> lock(s_pools_mutex);
+		for (auto*& pool : s_pools) {
+			delete pool;
+			pool = nullptr;
+		}
 	}
 
 	void Memory::RegisterThreadAllocator(ThreadAllocator* ta) {
@@ -75,7 +82,14 @@ namespace dodoe {
 
 		switch (tier) {
 		case AllocTier::Persistent:
-			p = s_fallback.allocate(size, align);
+			if (PoolAllocator* pool = s_pools[tag_idx]) {
+				p = pool->allocate(size, align);
+				if (!p) {
+					p = s_fallback.allocate(size, align);
+				}
+			} else {
+				p = s_fallback.allocate(size, align);
+			}
 			break;
 		case AllocTier::Frame:
 			p = threadAllocator().frame.allocate(size, align);
@@ -99,9 +113,20 @@ namespace dodoe {
 		int tag_idx = static_cast<int>(tag);
 
 		switch (tier) {
-		case AllocTier::Persistent:
-			s_fallback.deallocate(p, size);
+		case AllocTier::Persistent: {
+			bool released = false;
+			for (auto* pool : s_pools) {
+				if (pool && pool->owns(p)) {
+					pool->deallocate(p, size);
+					released = true;
+					break;
+				}
+			}
+			if (!released) {
+				s_fallback.deallocate(p, size);
+			}
 			break;
+		}
 		case AllocTier::Frame:
 		case AllocTier::Scratch:
 			break;
@@ -130,9 +155,13 @@ namespace dodoe {
 	}
 
 	void Memory::RegisterPool(AllocTag tag, Size_t block_size, Size_t block_align) {
-		(void)tag;
-		(void)block_size;
-		(void)block_align;
+		const int idx = static_cast<int>(tag);
+		std::lock_guard<std::mutex> lock(s_pools_mutex);
+		if (s_pools[idx]) {
+			DO_WARN("Memory::RegisterPool: pool already registered for tag {}", static_cast<int>(tag));
+			return;
+		}
+		s_pools[idx] = new PoolAllocator(block_size, block_align);
 	}
 
 	const TierStats& Memory::GetStats(AllocTier tier, AllocTag tag) {
@@ -210,6 +239,10 @@ namespace dodoe {
 	}
 
 	void Memory::ResetFrame() {
+		std::lock_guard<std::mutex> lock(s_thread_allocators_mutex);
+		for (auto* ta : s_thread_allocators) {
+			ta->frame.reset();
+		}
 		AdvanceFrameEpoch();
 	}
 

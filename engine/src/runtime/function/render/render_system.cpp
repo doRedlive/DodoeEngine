@@ -89,7 +89,7 @@ namespace dodoe {
 
     void RenderSystem::renderFrame(const ThreadingMode mode, DrawThread* draw_thread) {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrame", "frame");
-        Memory::AdvanceFrameEpoch();
+        Memory::ResetFrame();
 
         auto* gfx = m_gfx.get();
         auto* pipeline = m_render_pipeline.get();

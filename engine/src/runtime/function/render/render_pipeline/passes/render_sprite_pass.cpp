@@ -31,7 +31,7 @@ namespace dodoe {
         RenderGraphBufferHandle quad_vertex_buffer{};
         RenderGraphBufferHandle quad_index_buffer{};
         RenderGraphBufferHandle vp_buffer{};
-        DynamicArray<SpriteInstance> instances{};
+        FrameArray<SpriteInstance> instances{};
     };
 
     void SpritePass::build(RenderGraphBuilder& graph,

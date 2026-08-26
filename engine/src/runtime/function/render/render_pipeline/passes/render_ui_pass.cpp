@@ -30,7 +30,7 @@ namespace dodoe {
         RenderGraphBufferHandle quad_vertex_buffer{};
         RenderGraphBufferHandle quad_index_buffer{};
         RenderGraphBufferHandle vp_buffer{};
-        DynamicArray<UIInstance> instances{};
+        FrameArray<UIInstance> instances{};
     };
 
     void UIPass::build(RenderGraphBuilder& graph,

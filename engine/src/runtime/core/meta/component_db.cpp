@@ -178,6 +178,8 @@ namespace dodoe {
 
         registerComponent<AnimatorComponent>("AnimatorComponent");
         registerComponent<AnimationDriveModeComponent>("AnimationDriveModeComponent");
+        registerComponent<AudioSourceComponent>("AudioSourceComponent");
+        registerComponent<AudioListenerComponent>("AudioListenerComponent");
         registerComponent<BoneAttachmentComponent>("BoneAttachmentComponent");
         registerComponent<CameraComponent>("CameraComponent");
         registerComponent<BoxColliderComponent>("BoxColliderComponent");

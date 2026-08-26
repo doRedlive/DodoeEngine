@@ -10,6 +10,8 @@ obj/
 _generated/
 
 DodoeProfile.json
+CakeryProfile.json
+DodoeScripts.sln
 
 **./.DS_Store
 .DS_Store

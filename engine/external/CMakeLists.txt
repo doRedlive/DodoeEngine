@@ -150,6 +150,11 @@ if(NOT TARGET spirv-cross-core)
     include(spirv-cross.cmake)
 endif()
 
+if(NOT TARGET audio)
+    include(audio.cmake)
+    set_target_properties(audio PROPERTIES FOLDER ${external_folder}/audio)
+endif()
+
 if(NOT TARGET cutie)
     include(cutie-rhi.cmake)
     set_target_properties(cutie PROPERTIES FOLDER ${external_folder}/cutie-rhi)

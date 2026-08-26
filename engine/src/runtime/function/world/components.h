@@ -3,6 +3,8 @@
 #pragma once
 
 #include "runtime/function/world/components/animator_component.h"
+#include "runtime/function/world/components/audio_listener_component.h"
+#include "runtime/function/world/components/audio_source_component.h"
 #include "runtime/function/world/components/animation_drive_mode_component.h"
 #include "runtime/function/world/components/animation_pose_component.h"
 #include "runtime/function/world/components/bone_attachment_component.h"

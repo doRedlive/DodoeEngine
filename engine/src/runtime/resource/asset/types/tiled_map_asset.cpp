@@ -183,7 +183,7 @@ namespace dodoe {
             }
             std::stringstream buffer;
             buffer << file.rdbuf();
-            const String content = buffer.str();
+            const String content = String(buffer.str().c_str());
 
             const auto tilesetAttrs = ExtractXmlTagAttrs(content, "tileset");
             if (tilesetAttrs.empty()) {
@@ -292,8 +292,7 @@ namespace dodoe {
                     }
                     if (!data.image_path.empty()) {
                         const FsPath img = external_path.parent_path() / FsPath(data.image_path.c_str());
-                        data.image_path = String(std::filesystem::lexically_relative(img, base_dir)
-                                                     .generic_string().c_str());
+                        data.image_path = String(img.lexically_relative(base_dir).generic_string().c_str());
                     }
                 } else {
                     FillEmbeddedTileset(ts, data);

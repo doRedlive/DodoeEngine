@@ -13,6 +13,7 @@
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/physics/physics_system.h"
+#include "runtime/function/audio/audio_system.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/time/time_system.h"
@@ -36,6 +37,7 @@ namespace dodoe {
         Scope<PhysicsSystem> m_physics_system {nullptr};
         Scope<RenderSystem>  m_render_system  {nullptr};
         Scope<InputManager>  m_input_manager  {nullptr};
+        Scope<AudioSystem>   m_audio_system   {nullptr};
         Scope<ScriptSystem>  m_script_system  {nullptr};
         Scope<TimeSystem>    m_time_system    {nullptr};
         Scope<UIManager>     m_ui_manager     {nullptr};
@@ -51,6 +53,7 @@ namespace dodoe {
         [[nodiscard]] RenderSystem*  getRenderSystem()  const { return m_render_system.get(); }
         [[nodiscard]] PhysicsSystem* getPhysicsSystem() const { return m_physics_system.get(); }
         [[nodiscard]] InputManager*  getInputManager()  const { return m_input_manager.get(); }
+        [[nodiscard]] AudioSystem*   getAudioSystem()   const { return m_audio_system.get(); }
         [[nodiscard]] ScriptSystem*  getScriptSystem()  const { return m_script_system.get(); }
         [[nodiscard]] TimeSystem*    getTimeSystem()    const { return m_time_system.get(); }
         [[nodiscard]] UIManager*     getUIManager()     const { return m_ui_manager.get(); }
@@ -86,6 +89,7 @@ namespace dodoe {
     inline ScriptSystem*  GetScriptSystem()  { return Application::Self().context().getScriptSystem(); }
     inline PhysicsSystem* GetPhysicsSystem() { return Application::Self().context().getPhysicsSystem(); }
     inline InputManager*  GetInputManager()  { return Application::Self().context().getInputManager(); }
+    inline AudioSystem*   GetAudioSystem()   { return Application::Self().context().getAudioSystem(); }
     inline UIManager*     GetUIManager()     { return Application::Self().context().getUIManager(); }
     inline Debugger*      GetDebugger()      { return Application::Self().context().getDebugger(); }
 

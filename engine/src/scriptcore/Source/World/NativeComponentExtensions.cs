@@ -150,4 +150,34 @@ public static class NativeComponentExtensions
     public static void SetVisible(this SpriteRendererComponent c, bool v)
     {
     }
+
+    public static void Play(this AudioSourceComponent c)
+    {
+        if (c?.Entity == null) return;
+        NativeCalls.Native_AudioSource_Play(c.Entity.ID);
+    }
+
+    public static void Stop(this AudioSourceComponent c)
+    {
+        if (c?.Entity == null) return;
+        NativeCalls.Native_AudioSource_Stop(c.Entity.ID);
+    }
+
+    public static void Pause(this AudioSourceComponent c)
+    {
+        if (c?.Entity == null) return;
+        NativeCalls.Native_AudioSource_Pause(c.Entity.ID);
+    }
+
+    public static void UnPause(this AudioSourceComponent c)
+    {
+        if (c?.Entity == null) return;
+        NativeCalls.Native_AudioSource_UnPause(c.Entity.ID);
+    }
+
+    public static bool GetIsPlaying(this AudioSourceComponent c)
+    {
+        if (c?.Entity == null) return false;
+        return NativeCalls.Native_AudioSource_IsPlaying(c.Entity.ID);
+    }
 }

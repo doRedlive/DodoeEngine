@@ -50,6 +50,7 @@ namespace dodoe {
             IDComponent, TagComponent, TransformComponent,
             AnimatorComponent, CameraComponent, BoxCollider2dComponent,
             MeshRendererComponent, Rigidbody2dComponent, SpriteRendererComponent,
+            AudioSourceComponent, AudioListenerComponent,
             TilemapComponent, TileLayerComponent
         >;
 
@@ -689,6 +690,15 @@ namespace dodoe {
             if (e.valid()) animatorResume(e);
         }
 
+        static void native_AudioSourceComponent_Play(uint64_t u) { if (auto* c = TryGetComponent<AudioSourceComponent>(u)) c->play(); }
+        static void native_AudioSourceComponent_Stop(uint64_t u) { if (auto* c = TryGetComponent<AudioSourceComponent>(u)) c->stop(); }
+        static void native_AudioSourceComponent_Pause(uint64_t u) { if (auto* c = TryGetComponent<AudioSourceComponent>(u)) c->pause(); }
+        static void native_AudioSourceComponent_UnPause(uint64_t u) { if (auto* c = TryGetComponent<AudioSourceComponent>(u)) c->unPause(); }
+        static int native_AudioSourceComponent_IsPlaying(uint64_t u) {
+            auto* c = TryGetComponent<AudioSourceComponent>(u);
+            return c && c->isPlaying() ? 1 : 0;
+        }
+
         static void native_tilemap_set_data(uint64_t u, int w, int h, int tw, int th) {
             Entity e = TryGetEntityByUuid(u); if (!e.valid()) return;
             if (!e.hasComponent<TilemapComponent>()) e.addComponent<TilemapComponent>();
@@ -1245,6 +1255,11 @@ namespace dodoe {
     X(native_AnimatorComponent_Play, void, (uint64_t e, const char* name), e, name) \
     X(native_AnimatorComponent_Stop, void, (uint64_t e), e) \
     X(native_AnimatorComponent_Resume, void, (uint64_t e), e) \
+    X(native_AudioSourceComponent_Play, void, (uint64_t e), e) \
+    X(native_AudioSourceComponent_Stop, void, (uint64_t e), e) \
+    X(native_AudioSourceComponent_Pause, void, (uint64_t e), e) \
+    X(native_AudioSourceComponent_UnPause, void, (uint64_t e), e) \
+    X(native_AudioSourceComponent_IsPlaying, int, (uint64_t e), e) \
     /* === NATIVE_BINDINGS_GENERATED_START === */ \
 X(native_Rigidbody2dComponent_gravity_scale_get, float, (uint64_t e), e) \
     X(native_Rigidbody2dComponent_gravity_scale_set, void, (uint64_t e, float v), e, v) \

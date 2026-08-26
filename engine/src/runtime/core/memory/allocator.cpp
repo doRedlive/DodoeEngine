@@ -157,7 +157,7 @@ namespace dodoe {
 
     PoolAllocator::~PoolAllocator() {
         for (auto* chunk : m_chunks) {
-            delete[] chunk;
+            mi_free(chunk);
         }
         m_chunks.clear();
         m_free_list = nullptr;
@@ -179,7 +179,7 @@ namespace dodoe {
         if (this != &other) {
             std::lock_guard<std::mutex> lock_this(m_mutex);
             std::lock_guard<std::mutex> lock_other(other.m_mutex);
-            for (auto* chunk : m_chunks) { delete[] chunk; }
+            for (auto* chunk : m_chunks) { mi_free(chunk); }
             m_chunks.clear();
             m_block_size = other.m_block_size;
             m_block_align = other.m_block_align;
@@ -239,7 +239,7 @@ namespace dodoe {
         const Size_t nodes_per_chunk = m_chunk_size / node_size;
         if (nodes_per_chunk == 0) return;
 
-        auto* chunk = new UInt8[m_chunk_size];
+        auto* chunk = static_cast<UInt8*>(mi_malloc(m_chunk_size));
         m_chunks.push_back(chunk);
 
         char* base = reinterpret_cast<char*>(chunk);

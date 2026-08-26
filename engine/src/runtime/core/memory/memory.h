@@ -58,6 +58,8 @@ namespace dodoe {
 		static std::atomic<UInt64> s_frame_epoch;
 		static std::vector<ThreadAllocator*> s_thread_allocators;
 		static std::mutex s_thread_allocators_mutex;
+		static PoolAllocator* s_pools[static_cast<int>(AllocTag::Count)];
+		static std::mutex s_pools_mutex;
 
 	public:
 		static void Init();

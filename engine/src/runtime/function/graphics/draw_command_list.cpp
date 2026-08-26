@@ -12,6 +12,21 @@ namespace dodoe {
         m_immediate = true;
     }
 
+    GfxCommandListHandle DrawCommandList::acquireCommandList() {
+        std::lock_guard<std::mutex> lock(m_command_list_mutex);
+        if (!m_command_list_pool.empty()) {
+            GfxCommandListHandle command_list = std::move(m_command_list_pool.front());
+            m_command_list_pool.pop_front();
+            return command_list;
+        }
+        return m_device->createCommandList();
+    }
+
+    void DrawCommandList::releaseCommandList(GfxCommandListHandle& command_list) {
+        std::lock_guard<std::mutex> lock(m_command_list_mutex);
+        m_command_list_pool.push_back(std::move(command_list));
+    }
+
     void DrawCommandList::beginFrame() { reset(); }
     void DrawCommandList::endFrame() {}
 
@@ -31,44 +46,48 @@ namespace dodoe {
 
     void DrawCommandList::clearTextureFloat(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, const GfxColor& clear_color) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->clearTextureFloat(texture->getRHIHandle(), subresources, clear_color);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<ClearTextureFloatCommand>(texture, subresources, clear_color);
     }
     void DrawCommandList::clearTextureUInt(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, UInt32 clear_color) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->clearTextureUInt(texture->getRHIHandle(), subresources, clear_color);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<ClearTextureUIntCommand>(texture, subresources, clear_color);
     }
     void DrawCommandList::clearDepthStencilTexture(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, Bool clear_depth, Float depth, Bool clear_stencil, UInt8 stencil) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->clearDepthStencilTexture(texture->getRHIHandle(), subresources, clear_depth, depth, clear_stencil, stencil);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<ClearDepthStencilTextureCommand>(texture, subresources, clear_depth, depth, clear_stencil, stencil);
     }
     void DrawCommandList::copyBuffer(const GfxBufferHandle& destination, UInt64 destination_offset_bytes, const GfxBufferHandle& source, UInt64 source_offset_bytes, UInt64 data_size_bytes) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->copyBuffer(destination->getRHIHandle(), destination_offset_bytes, source->getRHIHandle(), source_offset_bytes, data_size_bytes);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<CopyBufferCommand>(destination, destination_offset_bytes, source, source_offset_bytes, data_size_bytes);
@@ -76,11 +95,12 @@ namespace dodoe {
 
     void DrawCommandList::writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->writeBuffer(buffer->getRHIHandle(), data, data_size, destination_offset_bytes);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         WriteBufferCommand::Create(*this, buffer, data, data_size, destination_offset_bytes);
@@ -89,11 +109,12 @@ namespace dodoe {
         DO_ASSERT(texture != nullptr, "writeTexture: texture is null");
         if (m_immediate) {
             const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->writeTexture(texture->getRHIHandle(), mip_level, array_slice, data, row_pitch);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
@@ -102,11 +123,12 @@ namespace dodoe {
 
     void DrawCommandList::setPushConstants(const void* data, Size_t byte_size) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->setPushConstants(data, byte_size);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         PushConstantsCommand::Create(*this, data, byte_size);
@@ -114,33 +136,36 @@ namespace dodoe {
 
     void DrawCommandList::setTextureState(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, GfxResourceStates state_bits) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->setTextureState(texture->getRHIHandle(), subresources, state_bits);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<SetTextureStateCommand>(texture, subresources, state_bits);
     }
     void DrawCommandList::setBufferState(const GfxBufferHandle& buffer, GfxResourceStates state_bits) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->setBufferState(buffer->getRHIHandle(), state_bits);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<SetBufferStateCommand>(buffer, state_bits);
     }
     void DrawCommandList::commitBarriers() {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->commitBarriers();
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<CommitBarriersCommand>();
@@ -155,33 +180,36 @@ namespace dodoe {
             for (auto& bs : binding_sets) { if (bs && bs->isRHIReady()) s.addBindingSet(bs->getRHIHandle()); }
             for (auto& vb : vertex_buffers) s.addVertexBuffer(vb);
             s.setIndexBuffer(index_buffer);
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->setGraphicsState(s);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer);
     }
     void DrawCommandList::setGraphicsState(const GfxGraphicsState& state) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->setGraphicsState(state);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<SetGraphicsStateByValueCommand>(state);
     }
     void DrawCommandList::setComputeState(const GfxComputeState& state) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->setComputeState(state);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<SetComputeStateCommand>(state);
@@ -189,66 +217,72 @@ namespace dodoe {
 
     void DrawCommandList::draw(const GfxDrawArguments& args) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->draw(args);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<DrawPrimitiveCommand>(args);
     }
     void DrawCommandList::drawIndexed(const GfxDrawArguments& args) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->drawIndexed(args);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<DrawIndexedPrimitiveCommand>(args);
     }
     void DrawCommandList::drawIndirect(UInt32 offset_bytes, UInt32 draw_count) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->drawIndirect(offset_bytes, draw_count);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<DrawIndirectCommand>(offset_bytes, draw_count);
     }
     void DrawCommandList::drawIndexedIndirect(UInt32 offset_bytes, UInt32 draw_count) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->drawIndexedIndirect(offset_bytes, draw_count);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<DrawIndexedIndirectCommand>(offset_bytes, draw_count);
     }
     void DrawCommandList::dispatch(UInt32 x, UInt32 y, UInt32 z) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->dispatch(x, y, z);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<DispatchCommand>(x, y, z);
     }
     void DrawCommandList::dispatchIndirect(UInt32 offset_bytes) {
         if (m_immediate) {
-            auto cmd = m_device->createCommandList();
+            auto cmd = acquireCommandList();
             cmd->open();
             cmd->dispatchIndirect(offset_bytes);
             cmd->close();
             m_device->executeCommandList(cmd);
+            releaseCommandList(cmd);
             return;
         }
         enqueue<DispatchIndirectCommand>(offset_bytes);

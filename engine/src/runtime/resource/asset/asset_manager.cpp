@@ -12,10 +12,12 @@
 #include "runtime/resource/asset/importer/sprite_importer.h"
 #include "runtime/resource/asset/importer/model_importer.h"
 #include "runtime/resource/asset/importer/tiled_map_importer.h"
+#include "runtime/resource/asset/importer/audio_importer.h"
 #include "runtime/resource/asset/types/animator_controller_asset.h"
 #include "runtime/resource/asset/types/tileset_asset.h"
 #include "runtime/resource/asset/types/input_action_asset.h"
 #include "runtime/resource/asset/types/tiled_map_asset.h"
+#include "runtime/resource/asset/types/audio_clip_asset.h"
 
 namespace dodoe {
 
@@ -30,6 +32,10 @@ namespace dodoe {
 
         const DynamicArray<String> kTiledMapExts = {
             ".tmj"
+        };
+
+        const DynamicArray<String> kAudioExts = {
+            ".wav", ".mp3", ".flac", ".ogg"
         };
 
         const String kSceneExt = ".doscn";
@@ -104,6 +110,7 @@ namespace dodoe {
             case AssetType::Tileset:         return create_scope<TilesetAsset>();
             case AssetType::InputAction:     return create_scope<InputActionAsset>();
             case AssetType::TiledMap:        return create_scope<TiledMapAsset>();
+            case AssetType::Audio:           return create_scope<AudioClipAsset>();
             default:                         return nullptr;
         }
     }
@@ -498,6 +505,9 @@ namespace dodoe {
         }
         for (const auto& ext : kTiledMapExts) {
             registry.registerImporter(ext, create_scope<TiledMapImporter>());
+        }
+        for (const auto& ext : kAudioExts) {
+            registry.registerImporter(ext, create_scope<AudioImporter>());
         }
         s_initialized = true;
     }

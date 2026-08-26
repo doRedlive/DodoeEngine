@@ -57,6 +57,7 @@ target_include_directories(${TARGET_NAME}
                 ${ENGINE_ROOT_DIR}/external/json/include
                 ${ENGINE_ROOT_DIR}/external/assimp/include
                 ${ENGINE_ROOT_DIR}/external/cutie-rhi/include
+                ${ENGINE_ROOT_DIR}/external/miniaudio
                 ${Vulkan_INCLUDE_DIRS}
         PRIVATE
                 ${ENGINE_ROOT_DIR}/src/runtime
@@ -91,6 +92,7 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC spirv-cross-core
         PUBLIC spirv-cross-glsl
         PUBLIC spirv-cross-reflect
+        PUBLIC audio
 )
 
 if(DODOE_PYTHON_ENABLED)

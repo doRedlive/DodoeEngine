@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <deque>
 #include <mutex>
 #include <new>
 #include <type_traits>
@@ -32,6 +33,11 @@ namespace dodoe {
     private:
         GfxDeviceHandle m_device{};
         Bool m_immediate{false};
+        std::deque<GfxCommandListHandle> m_command_list_pool{};
+        std::mutex m_command_list_mutex{};
+
+        [[nodiscard]] GfxCommandListHandle acquireCommandList();
+        void releaseCommandList(GfxCommandListHandle& command_list);
 
     public:
         void setImmediate(GfxDeviceHandle device) {

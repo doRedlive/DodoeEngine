@@ -288,7 +288,7 @@ namespace dodoe {
     } // namespace
 
     struct PhysicsWorld::Impl {
-        JPH::TempAllocatorMalloc allocator;
+        JPH::TempAllocatorImpl allocator;
         JPH::JobSystemThreadPool job_system;
         JPH::PhysicsSystem system;
         BroadPhaseLayerImpl broad_phase;
@@ -310,7 +310,8 @@ namespace dodoe {
         ui64 next_shape_handle{1};
 
         explicit Impl(const PhysicsWorldCreateInfo& info)
-            : job_system(512, 0, info.worker_threads > 0 ? info.worker_threads : -1),
+            : allocator(16 * 1024 * 1024),
+              job_system(512, 0, info.worker_threads > 0 ? info.worker_threads : -1),
               contact_listener(&contact_data) {
             fixed_dt = info.fixed_dt;
             max_sub_steps = info.max_sub_steps;

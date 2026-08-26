@@ -99,6 +99,11 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, byte*, void>                                    native_AnimatorComponent_Play;
         public delegate* unmanaged<ulong, void>                                           native_AnimatorComponent_Stop;
         public delegate* unmanaged<ulong, void>                                           native_AnimatorComponent_Resume;
+        public delegate* unmanaged<ulong, void>                                           native_AudioSourceComponent_Play;
+        public delegate* unmanaged<ulong, void>                                           native_AudioSourceComponent_Stop;
+        public delegate* unmanaged<ulong, void>                                           native_AudioSourceComponent_Pause;
+        public delegate* unmanaged<ulong, void>                                           native_AudioSourceComponent_UnPause;
+        public delegate* unmanaged<ulong, int>                                            native_AudioSourceComponent_IsPlaying;
         // === NATIVE_BINDINGS_GENERATED_START ===
 // === GENERATED BINDINGS START (do not edit manually) ===
         public delegate* unmanaged<ulong, float> native_Rigidbody2dComponent_gravity_scale_get;
@@ -971,6 +976,32 @@ internal static unsafe partial class NativeCalls
     internal static void Native_Animator_Stop(ulong entityId) => b->native_AnimatorComponent_Stop(entityId);
 
     internal static void Native_Animator_Resume(ulong entityId) => b->native_AnimatorComponent_Resume(entityId);
+
+    internal static void Native_AudioSource_Play(ulong entityId)
+    {
+        if (b->native_AudioSourceComponent_Play != null) b->native_AudioSourceComponent_Play(entityId);
+    }
+
+    internal static void Native_AudioSource_Stop(ulong entityId)
+    {
+        if (b->native_AudioSourceComponent_Stop != null) b->native_AudioSourceComponent_Stop(entityId);
+    }
+
+    internal static void Native_AudioSource_Pause(ulong entityId)
+    {
+        if (b->native_AudioSourceComponent_Pause != null) b->native_AudioSourceComponent_Pause(entityId);
+    }
+
+    internal static void Native_AudioSource_UnPause(ulong entityId)
+    {
+        if (b->native_AudioSourceComponent_UnPause != null) b->native_AudioSourceComponent_UnPause(entityId);
+    }
+
+    internal static bool Native_AudioSource_IsPlaying(ulong entityId)
+    {
+        return b->native_AudioSourceComponent_IsPlaying != null &&
+               b->native_AudioSourceComponent_IsPlaying(entityId) != 0;
+    }
 
     internal static void Native_TilemapSetData(ulong entityId, int w, int h, int tw, int th)
     {
