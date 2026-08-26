@@ -99,7 +99,7 @@ PrefabOverride
 - `engine/src/editor/framework/command/commands/InstantiatePrefabCommand.h/.cpp` — 可撤销实例化（execute 建实例，undo 销毁实例子树）。
 - `engine/src/editor/framework/console/builtin_commands.cpp` — 注册 `prefab.save`（用 `primarySelection`；注意 `executeStructured` 只填 `args.raw`，菜单 args 到不了 handler，故靠选中实体）、`prefab.sync`、`prefab.revert`、`prefab.unpack`。
 - `engine/src/editor/cakery/panels/HierarchyPanel.cpp` — `onCustomContextMenu`（:222-262）在有效选中分支加 "Prefab/Save As Prefab"；选中实体带 `PrefabInstanceComponent` 时再加 "Prefab/Revert / Sync / Unpack"。
-- `engine/res/editor/menus.json` — `GameObject/Prefab/Save As Prefab` → `prefab.save`。
+- `engine/res/editor/config/menus.json` — `GameObject/Prefab/Save As Prefab` → `prefab.save`。
 - 场景打开后 `Sync`：编辑器 `scene.open`/载入路径调 `PrefabService::Sync(scene)`（也可挂 prefab 资产重导入后）。
 
 ## 4. 实施顺序

@@ -13,3 +13,6 @@
 [submodule "engine/external/JoltPhysics"]
 	path = engine/external/JoltPhysics
 	url = https://github.com/jrouwe/JoltPhysics.git
+[submodule "engine/external/tracy"]
+	path = engine/external/tracy
+	url = https://github.com/wolfpld/tracy.git
