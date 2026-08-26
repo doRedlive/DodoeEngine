@@ -131,7 +131,7 @@ namespace dodoe {
             material.setNormalTexture(TexturePtr(props.normal_texture));
             material.setMetallicRoughnessTexture(TexturePtr(props.metallic_roughness_texture));
             material.setEmissiveTexture(TexturePtr(props.emissive_texture));
-            material.saveToJson(String(absolute_path.generic_string().c_str()));
+            (void)material.saveToJson(String(absolute_path.generic_string().c_str()));
         }
 
     } // namespace

@@ -9,6 +9,16 @@
 
 namespace dodoe {
 
+    namespace {
+        constexpr Identifier MakeIdentifier(const char* str) {
+            UInt32 hash = 2166136261u;
+            for (; *str != '\0'; ++str) {
+                hash = (hash ^ static_cast<UInt32>(static_cast<unsigned char>(*str))) * 16777619u;
+            }
+            return hash;
+        }
+    }
+
     RenderViewport::RenderViewport(Vector2f logical, Vector2i window, Vector2i pixel) {
         m_logical_size = Math::Max(Vector2f(1.0f, 1.0f), logical);
         m_window_size  = Math::Max(Vector2i(1, 1), window);
@@ -129,7 +139,7 @@ namespace dodoe {
         const Matrix4f& view_mat, const Matrix4f& proj_mat, Bool show_editor_primitives) const {
         RenderViewFamily family{};
         family.setFrameTime(time, delta);
-        auto& view = family.createView(Identifier("main_view"));
+        auto& view = family.createView(MakeIdentifier("main_view"));
         view.setMatrices(view_mat, proj_mat);
         view.setViewportRect(Vector4i(
             static_cast<int>(m_viewport.pos.x),

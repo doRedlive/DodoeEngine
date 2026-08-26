@@ -20,6 +20,16 @@ namespace dodoe {
             return len ? FsPath(buffer).parent_path() : FsPath();
         }
 
+        String WideToUtf8(const wchar_t* str) {
+            const int len = static_cast<int>(wcslen(str));
+            if (len <= 0) return {};
+            const int size = WideCharToMultiByte(CP_UTF8, 0, str, len, nullptr, 0, nullptr, nullptr);
+            if (size <= 0) return {};
+            String result(static_cast<size_t>(size), '\0');
+            WideCharToMultiByte(CP_UTF8, 0, str, len, result.data(), size, nullptr, nullptr);
+            return result;
+        }
+
         String GetHostFxrFileName() {
 #if defined(DO_PLATFORM_WINDOWS)
             return "hostfxr.dll";
@@ -86,7 +96,7 @@ namespace dodoe {
                 DWORD len = msg_len;
                 while (len > 0 && (sys_msg[len - 1] == L'\n' || sys_msg[len - 1] == L'\r' || sys_msg[len - 1] == L' '))
                     sys_msg[--len] = L'\0';
-                String result(sys_msg, sys_msg + len);
+                String result = WideToUtf8(sys_msg);
                 LocalFree(sys_msg);
                 return result;
             }
@@ -174,7 +184,7 @@ namespace dodoe {
         m_hostfxr_dll = LoadLibraryW(hostfxr_path);
         if (!m_hostfxr_dll) {
             DO_ERROR("NativeHost: failed to load hostfxr from '{}' (GetLastError={})",
-                String(hostfxr_path, hostfxr_path + wcslen(hostfxr_path)), GetLastError());
+                WideToUtf8(hostfxr_path), GetLastError());
             return HostError::HostFxrLoadFailed;
         }
 
@@ -204,7 +214,7 @@ namespace dodoe {
             GetProcAddress(m_hostfxr_dll, "hostfxr_set_error_writer"));
         if (set_error_writer_fn) {
             const auto prev_writer = set_error_writer_fn([](const HostFxrChar* msg) {
-                DO_ERROR("NativeHost: [hostfxr] {}", String(msg, msg + wcslen(msg)));
+                DO_ERROR("NativeHost: [hostfxr] {}", WideToUtf8(msg));
             });
             (void)prev_writer;
         }

@@ -35,22 +35,36 @@ namespace dodoe {
 		template<typename T, typename...Args>
 		T& addComponent(Args&&... args) {
 			DO_ASSERT(!hasComponent<T>(), "Entity already has the component!");
-			T& component = GetSceneRegitry_Help(scene_).emplace<T>(*this, std::forward<Args>(args)...);
-			OnComponentAdd_Help(scene_, *this, component);
-			return component;
+			if constexpr (std::is_empty_v<T>) {
+				GetSceneRegitry_Help(scene_).emplace<T>(*this, std::forward<Args>(args)...);
+				return EmptyComponentInstance<T>();
+			} else {
+				T& component = GetSceneRegitry_Help(scene_).emplace<T>(*this, std::forward<Args>(args)...);
+				OnComponentAdd_Help(scene_, *this, component);
+				return component;
+			}
 		}
 
 		template<typename T, typename...Args>
 		T& addOrReplaceComponent(Args&&... args) {
-			T& component = GetSceneRegitry_Help(scene_).emplace_or_replace<T>(*this, std::forward<Args>(args)...);
-			OnComponentAdd_Help(scene_, *this, component);
-			return component;
+			if constexpr (std::is_empty_v<T>) {
+				GetSceneRegitry_Help(scene_).emplace_or_replace<T>(*this, std::forward<Args>(args)...);
+				return EmptyComponentInstance<T>();
+			} else {
+				T& component = GetSceneRegitry_Help(scene_).emplace_or_replace<T>(*this, std::forward<Args>(args)...);
+				OnComponentAdd_Help(scene_, *this, component);
+				return component;
+			}
 		}
 
 		template<typename T>
 		T& getComponent() {
 			DO_ASSERT(hasComponent<T>(), "Entity does not have the component!");
-			return GetSceneRegitry_Help(scene_).get<T>(*this);
+			if constexpr (std::is_empty_v<T>) {
+				return EmptyComponentInstance<T>();
+			} else {
+				return GetSceneRegitry_Help(scene_).get<T>(*this);
+			}
 		}
 
 		template<typename T>
@@ -77,6 +91,12 @@ namespace dodoe {
 		operator ui32() const { return static_cast<ui32>(handle_); }
 
 	private:
+		template<typename T>
+		static T& EmptyComponentInstance() {
+			static T instance{};
+			return instance;
+		}
+
 		[[nodiscard]] static Entity from_handle(const entt::entity handle) {
 			Entity entity;
 			entity.handle_ = handle;

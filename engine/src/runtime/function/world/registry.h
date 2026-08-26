@@ -114,7 +114,7 @@ namespace dodoe {
 
 		template<typename T>
 		void ensurePoolExists() {
-			registry_.template view<T>();
+			(void)registry_.template view<T>();
 		}
 
 		void clear() {

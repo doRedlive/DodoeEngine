@@ -26,17 +26,16 @@ namespace dodoe {
         unload();
 
         ma_uint64 frame_count = 0;
-        ma_uint32 sample_rate = 0;
-        ma_uint32 channels = 0;
         void* pcm_data = nullptr;
-        if (ma_decode_file(absolute_path.c_str(), nullptr, &frame_count, &sample_rate, &channels, &pcm_data) != MA_SUCCESS) {
+        ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 0, 0);
+        if (ma_decode_file(absolute_path.c_str(), &config, &frame_count, &pcm_data) != MA_SUCCESS) {
             return false;
         }
 
         auto* impl = new Impl();
-        ma_audio_buffer_config config =
-            ma_audio_buffer_config_init(ma_format_f32, channels, frame_count, pcm_data, nullptr);
-        if (ma_audio_buffer_init_copy(&config, &impl->buffer) != MA_SUCCESS) {
+        ma_audio_buffer_config buffer_config =
+            ma_audio_buffer_config_init(ma_format_f32, config.channels, frame_count, pcm_data, nullptr);
+        if (ma_audio_buffer_init_copy(&buffer_config, &impl->buffer) != MA_SUCCESS) {
             ma_free(pcm_data, nullptr);
             delete impl;
             return false;
@@ -45,8 +44,8 @@ namespace dodoe {
         ma_free(pcm_data, nullptr);
 
         impl->frame_count = frame_count;
-        impl->sample_rate = sample_rate;
-        impl->channels = channels;
+        impl->sample_rate = config.sampleRate;
+        impl->channels = config.channels;
         m_impl = impl;
         return true;
     }
@@ -55,17 +54,16 @@ namespace dodoe {
         unload();
 
         ma_uint64 frame_count = 0;
-        ma_uint32 sample_rate = 0;
-        ma_uint32 channels = 0;
         void* pcm_data = nullptr;
-        if (ma_decode_memory(data, size, nullptr, &frame_count, &sample_rate, &channels, &pcm_data) != MA_SUCCESS) {
+        ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 0, 0);
+        if (ma_decode_memory(data, size, &config, &frame_count, &pcm_data) != MA_SUCCESS) {
             return false;
         }
 
         auto* impl = new Impl();
-        ma_audio_buffer_config config =
-            ma_audio_buffer_config_init(ma_format_f32, channels, frame_count, pcm_data, nullptr);
-        if (ma_audio_buffer_init_copy(&config, &impl->buffer) != MA_SUCCESS) {
+        ma_audio_buffer_config buffer_config =
+            ma_audio_buffer_config_init(ma_format_f32, config.channels, frame_count, pcm_data, nullptr);
+        if (ma_audio_buffer_init_copy(&buffer_config, &impl->buffer) != MA_SUCCESS) {
             ma_free(pcm_data, nullptr);
             delete impl;
             return false;
@@ -74,8 +72,8 @@ namespace dodoe {
         ma_free(pcm_data, nullptr);
 
         impl->frame_count = frame_count;
-        impl->sample_rate = sample_rate;
-        impl->channels = channels;
+        impl->sample_rate = config.sampleRate;
+        impl->channels = config.channels;
         m_impl = impl;
         return true;
     }

@@ -9,7 +9,7 @@ namespace dodoe {
     namespace {
 
         ma_positioning ToMiniaudioPositioning(Float blend) {
-            return blend > 0.0f ? ma_positioning_dynamic : ma_positioning_none;
+            return blend > 0.0f ? ma_positioning_absolute : ma_positioning_relative;
         }
 
     }

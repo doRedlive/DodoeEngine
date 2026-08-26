@@ -58,7 +58,7 @@ namespace dodoe {
             m_render_thread.reset();
         }
         m_draw_thread.reset();
-        acquireApplicationGraphicsContext();
+        (void)acquireApplicationGraphicsContext();
         m_game_command_queue.close();
         m_gfx->waitForIdle();
         RenderPipeline::Destroy(m_render_pipeline);

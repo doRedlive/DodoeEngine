@@ -41,6 +41,16 @@ namespace dodoe {
             return;
         }
 
+        const UInt32 fb_width = framebuffer && framebuffer->getRHI()
+            ? framebuffer->getRHI()->getFramebufferInfo().width : 0u;
+        const UInt32 fb_height = framebuffer && framebuffer->getRHI()
+            ? framebuffer->getRHI()->getFramebufferInfo().height : 0u;
+        const Float fb_size_x = static_cast<Float>(fb_width);
+        const Float fb_size_y = static_cast<Float>(fb_height);
+        if (fb_size_x <= 0.0f || fb_size_y <= 0.0f) {
+            return;
+        }
+
         UInt32 total_vertex_count = 0;
         UInt32 total_index_count = 0;
         for (const auto& list : packet.lists) {
@@ -165,16 +175,16 @@ namespace dodoe {
                     continue;
                 }
 
-                const Float clip_x = std::max(draw.clip_rect.x - packet.display_pos.x, 0.0f);
-                const Float clip_y = std::max(draw.clip_rect.y - packet.display_pos.y, 0.0f);
-                const Float clip_z = std::min(draw.clip_rect.z - packet.display_pos.x, packet.display_size.x);
-                const Float clip_w = std::min(draw.clip_rect.w - packet.display_pos.y, packet.display_size.y);
+                const Float clip_x = std::clamp(draw.clip_rect.x - packet.display_pos.x, 0.0f, fb_size_x);
+                const Float clip_y = std::clamp(draw.clip_rect.y - packet.display_pos.y, 0.0f, fb_size_y);
+                const Float clip_z = std::clamp(draw.clip_rect.z - packet.display_pos.x, 0.0f, fb_size_x);
+                const Float clip_w = std::clamp(draw.clip_rect.w - packet.display_pos.y, 0.0f, fb_size_y);
                 if (clip_z <= clip_x || clip_w <= clip_y) {
                     continue;
                 }
 
                 GfxViewportState viewport;
-                viewport.addViewport(GfxViewport(left, right, top, bottom, 0.0f, 1.0f));
+                viewport.addViewport(GfxViewport(0.0f, fb_size_x, 0.0f, fb_size_y, 0.0f, 1.0f));
                 viewport.addScissorRect(GfxRect(
                     static_cast<Int32>(clip_x), static_cast<Int32>(clip_z),
                     static_cast<Int32>(clip_y), static_cast<Int32>(clip_w)));

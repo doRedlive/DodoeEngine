@@ -340,7 +340,7 @@ namespace dodoe {
         const auto gbuffer_fb_info = MakeGBufferFramebufferInfo();
         const auto shadow_fb_info  = MakeShadowFramebufferInfo();
 
-        pso_cache->resolveGraphicsPipeline(
+        (void)pso_cache->resolveGraphicsPipeline(
             MeshPassType::GBuffer,
             MakeGBufferPipelineDesc(shader_library, gbuffer_input_layout,
                 m_gbuffer_processor->getGlobalBindingLayout(),
@@ -352,7 +352,7 @@ namespace dodoe {
             gbuffer_fb_info,
             cmd_list);
 
-        pso_cache->resolveGraphicsPipeline(
+        (void)pso_cache->resolveGraphicsPipeline(
             MeshPassType::DirectionalShadow,
             MakeShadowPipelineDesc(shader_library, shadow_input_layout,
                 m_shadow_processor->getGlobalBindingLayout(),
