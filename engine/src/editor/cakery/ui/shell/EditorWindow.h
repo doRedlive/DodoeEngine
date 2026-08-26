@@ -13,6 +13,7 @@ class QEvent;
 class QMenu;
 class QMenuBar;
 class QPoint;
+class QProgressDialog;
 class QShowEvent;
 class QTimer;
 class QToolBar;
@@ -65,6 +66,7 @@ private:
     void setupPanelToggle(ads::CDockWidget* dock);
     void setupFloatingDockWindow(ads::CFloatingDockContainer* floating);
     void startSafePointTimer();
+    void updateAssetImportProgress();
     void refreshUndoRedoActions();
     void resetLayout();
     void restoreLayoutState();
@@ -109,6 +111,8 @@ private:
     QAction* m_redoAction = nullptr;
     QAction* m_camera2DAction = nullptr;
     QTimer* m_safePointTimer = nullptr;
+    QTimer* m_assetImportTimer = nullptr;
+    QProgressDialog* m_assetImportDialog = nullptr;
     bool m_closed = false;
     QByteArray* m_defaultLayoutState = nullptr;
     QString m_layoutStatePath;

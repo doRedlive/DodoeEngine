@@ -531,6 +531,20 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
         tileEditModeChanged.fire(active);
         return;
     }
+    if (event.name == "asset_database_changed") {
+        assetDatabaseChanged.fire();
+        return;
+    }
+}
+
+bool EditorSession::isAssetRefreshPending() const
+{
+    return m_backend->assetRefreshPending();
+}
+
+void EditorSession::assetRefreshProgress(std::size_t& done, std::size_t& total) const
+{
+    m_backend->assetRefreshProgress(done, total);
 }
 
 void EditorSession::applyTransformChange(std::uint64_t uuid, const nlohmann::json& value)

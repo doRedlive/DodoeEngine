@@ -23,7 +23,6 @@ namespace dodoe {
                     const UInt32 swapchain_image_index, DrawCommandList& out_commands,
                     FrameStagingAllocator* frame_staging_allocator,
                     RenderGraphTransientPool* transient_resource_pool);
-
     private:
         Bool initialize(const RendererCreateInfo& info);
         void shutdown();

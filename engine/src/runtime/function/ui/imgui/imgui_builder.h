@@ -9,9 +9,13 @@
 #include "glfw/glfw3.h"
 #include "imgui/imgui.h"
 
+#include "imgui_draw_renderer.h"
+
 struct ImGuiContext;
 
 namespace dodoe {
+
+    class GfxContext;
 
     struct ImGuiRenderCmd {
         Vector4f        clip_rect;
@@ -41,15 +45,22 @@ namespace dodoe {
         static void RenderImGui();
         static void CleanupImGui();
 
+        static void InstallViewportRenderer(GfxContext& gfx, ImGuiDrawRenderer draw_renderer,
+                                            const PipelineStateCache* pipeline_cache,
+                                            const ShaderLibrary* shader_library);
+        static void UninstallViewportRenderer();
+        static void SerializeImGuiDrawData(const ImDrawData* draw_data, ImGuiRenderPacket& out_packet);
+
         static ImGuiContext* GetContext() { return s_context; }
         static const ImGuiRenderPacket& GetRenderPacket() { return s_packet; }
+        static Bool GetViewportsEnabled() { return s_viewports_enabled; }
 
     private:
-        static void SerializeImGuiDrawData(ImGuiRenderPacket& out_packet);
-
         static inline Bool s_glfwBackendInit = false;
         static inline ImGuiContext* s_context = nullptr;
         static inline ImGuiRenderPacket s_packet{};
+        static inline Bool s_viewports_enabled = false;
+        static inline Scope<ImGuiDrawRenderer> s_viewport_renderer{nullptr};
     };
 
 } // namespace dodoe

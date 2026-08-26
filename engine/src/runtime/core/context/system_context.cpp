@@ -12,7 +12,7 @@
 #ifdef DODOE_DEBUG_ENABLED
 #include "runtime/service/debug/debug_imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
-#endif
+#endif//DODOE_DEBUG_ENABLED
 #include "runtime/core/layer/layer.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/project/project.h"
@@ -68,47 +68,50 @@ namespace dodoe {
         ResourceManager::Self().initialize({});
         DO_INFO("ResourceManager initialized.");
 
-        WindowManagerCreateInfo window_manager_create_info;
-        window_manager_create_info.host_handle = m_init_info.spec.host_handle;
-        window_manager_create_info.prop.title = m_init_info.spec.name.c_str();
-        window_manager_create_info.prop.width = m_init_info.spec.width;
-        window_manager_create_info.prop.height = m_init_info.spec.height;
-        window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;
-        window_manager_create_info.host_pixel_size = Vector2i(
-            static_cast<Int32>(m_init_info.spec.pixel_width),
-            static_cast<Int32>(m_init_info.spec.pixel_height));
-        m_window_manager = WindowManager::Create(window_manager_create_info);
-        DO_INFO("WindowManager initialized.");
-
         RenderSettingsInitInfo render_settings_init_info;
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
         render_settings_init_info.pipeline = m_init_info.spec.render_settings.pipeline;
         render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
         render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
+        render_settings_init_info.windowless = m_init_info.spec.render_settings.windowless;
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
         DO_INFO("RenderSettings initialized.");
 
+        if (!RenderSettings::IsWindowless()) {
+            WindowManagerCreateInfo window_manager_create_info;
+            window_manager_create_info.host_handle = m_init_info.spec.host_handle;
+            window_manager_create_info.prop.title = m_init_info.spec.name.c_str();
+            window_manager_create_info.prop.width = m_init_info.spec.width;
+            window_manager_create_info.prop.height = m_init_info.spec.height;
+            window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;
+            window_manager_create_info.host_pixel_size = Vector2i(
+                static_cast<Int32>(m_init_info.spec.pixel_width),
+                static_cast<Int32>(m_init_info.spec.pixel_height));
+            m_window_manager = WindowManager::Create(window_manager_create_info);
+            DO_INFO("WindowManager initialized.");
+
 #ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
-#endif
+            ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
+#endif//DODOE_DEBUG_ENABLED
 
-        m_ui_manager = UIManager::Create({m_window_manager.get()});
-        DO_INFO("UIManager initialized.");
+            m_ui_manager = UIManager::Create({m_window_manager.get()});
+            DO_INFO("UIManager initialized.");
 
-        m_debugger      = Debugger::Create({});
-        DO_INFO("Debugger initialized.");
+            m_debugger      = Debugger::Create({});
+            DO_INFO("Debugger initialized.");
 #ifdef DODOE_DEBUG_ENABLED
-        DebugImGui::RegisterDebugPanel();
-#endif
-        m_render_system = RenderSystem::Create({m_window_manager.get()});
-        DO_ASSERT(m_render_system, "RenderSystem init failed");
-        DO_INFO("RenderSystem initialized.");
+            DebugImGui::RegisterDebugPanel();
+#endif//DODOE_DEBUG_ENABLED
+            m_render_system = RenderSystem::Create({m_window_manager.get()});
+            DO_ASSERT(m_render_system, "RenderSystem init failed");
+            DO_INFO("RenderSystem initialized.");
 
-        InputManagerInitInfo input_init_info;
-        input_init_info.native_window = m_window_manager->getWindow()->getNativeWindow();
-        input_init_info.host_mode = m_window_manager->getWindow()->isHostMode();
-        m_input_manager = InputManager::Create(input_init_info);
-        DO_INFO("InputManager initialized.");
+            InputManagerInitInfo input_init_info;
+            input_init_info.native_window = m_window_manager->getWindow()->getNativeWindow();
+            input_init_info.host_mode = m_window_manager->getWindow()->isHostMode();
+            m_input_manager = InputManager::Create(input_init_info);
+            DO_INFO("InputManager initialized.");
+        }
 
         m_script_system = ScriptSystem::Create({});
         DO_ASSERT(m_script_system, "ScriptSystem init failed");
@@ -121,52 +124,14 @@ namespace dodoe {
         DO_ASSERT(m_world, "World init failed");
         DO_INFO("World initialized.");
 
-        const auto threading_mode = RenderSettings::GetThreadingMode();
-        auto* gfx = m_render_system->getGfx();
-        auto device = gfx->getDevice();
-
-        switch (threading_mode) {
-        case ThreadingMode::TripleThread:
-            m_draw_thread = create_scope<DrawThread>();
-            m_draw_thread->start(device, gfx);
-
-            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
-                m_render_system->renderFrame(ThreadingMode::TripleThread, m_draw_thread.get());
-            }));
-            m_render_thread->start(threading_mode);
-            m_render_system->setRenderThread(m_render_thread.get());
-            DO_INFO("Triple-thread rendering initialized.");
-            break;
-
-        case ThreadingMode::DualThread:
-            m_render_system->releaseApplicationGraphicsContext();
-            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
-                m_render_system->renderFrameOnRenderThread(ThreadingMode::DualThread, nullptr);
-            }), RenderFrameTask([this] {
-                m_render_system->releaseApplicationGraphicsContext();
-            }));
-            m_render_thread->start(threading_mode);
-            m_render_system->setRenderThread(m_render_thread.get());
-            DO_INFO("Dual-thread rendering initialized.");
-            break;
-
-        case ThreadingMode::SingleThread:
-            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
-                m_render_system->renderFrame(ThreadingMode::SingleThread, nullptr);
-            }));
-            m_render_system->setRenderThread(m_render_thread.get());
-            DO_INFO("Single-thread rendering initialized.");
-            break;
-        }
-
         return true;
     }
 
     void SystemContext::startRuntime() {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::startRuntime", "startup");
         DO_PROFILE_MARK("SystemContext::startRuntime.acquireGraphicsContext", "startup");
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
-            DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
+        if (m_render_system) {
+            DO_ASSERT(m_render_system->beginMainThreadFrame(),
                 "SystemContext failed to acquire graphics context for startup.");
         }
 
@@ -192,8 +157,8 @@ namespace dodoe {
 
     void SystemContext::finalizeModules() {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::finalizeModules", "shutdown");
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
-            DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
+        if (m_render_system) {
+            DO_ASSERT(m_render_system->beginMainThreadFrame(),
                 "SystemContext failed to acquire graphics context for shutdown.");
         }
 
@@ -205,24 +170,18 @@ namespace dodoe {
 
         m_layer_stack.clearLayers();
 
-        m_render_thread->stop();
-        if (!m_render_system->acquireApplicationGraphicsContext()) {
-            DO_ERROR("SystemContext failed to acquire graphics context during shutdown.");
-        }
-        m_render_thread.reset();
-
-        m_draw_thread.reset();
-
         InputManager::Destroy(m_input_manager);
 
+#ifdef DODOE_DEBUG_ENABLED
+        ImGuiBuilder::CleanupImGui();
+#endif//DODOE_DEBUG_ENABLED
         ResourceManager::Self().shutdown();
         RenderSystem::Destroy(m_render_system);
         ServiceManager::Destroy(m_service_manager);
         UIManager::Destroy(m_ui_manager);
 #ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::CleanupImGui();
         DebugImGui::UnregisterDebugPanel();
-#endif
+#endif//DODOE_DEBUG_ENABLED
         Debugger::Destroy(m_debugger);
         WindowManager::Destroy(m_window_manager);
 
@@ -243,8 +202,8 @@ namespace dodoe {
 
     void SystemContext::updateTick(const float delta_time) {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::updateTick", "frame");
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
-            DO_ASSERT(m_render_system->acquireApplicationGraphicsContext(),
+        if (m_render_system) {
+            DO_ASSERT(m_render_system->beginMainThreadFrame(),
                 "SystemContext failed to acquire graphics context for update.");
         }
 
@@ -253,35 +212,22 @@ namespace dodoe {
         }
 
         m_world->update(delta_time);
-        m_ui_manager->update(delta_time);
+        if (m_ui_manager) { m_ui_manager->update(delta_time); }
     }
 
     void SystemContext::renderTick() {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::renderTick", "frame");
+        if (!m_render_system) { return; }
 #ifdef DODOE_DEBUG_ENABLED
         ImGuiBuilder::PrepareImGui();
-#endif
+#endif//DODOE_DEBUG_ENABLED
         if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
 #ifdef DODOE_DEBUG_ENABLED
         ImGuiBuilder::RenderImGui();
-#endif
+#endif//DODOE_DEBUG_ENABLED
 
-        if (m_render_thread->getMode() == ThreadingMode::DualThread) {
-            m_render_system->releaseApplicationGraphicsContext();
-        }
-
-        switch (m_render_thread->getMode()) {
-        case ThreadingMode::SingleThread:
-            m_render_thread->executeFrameOnce();
-            break;
-        case ThreadingMode::DualThread:
-            m_render_thread->submitAndWait();
-            break;
-        case ThreadingMode::TripleThread:
-            m_render_thread->submit();
-            break;
-        }
+        m_render_system->submitFrame();
     }
 
 } // dodoe

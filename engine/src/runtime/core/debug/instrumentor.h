@@ -3,6 +3,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstring>
 #include <cstdint>
 #include <fstream>
 #include <functional>
@@ -12,6 +13,10 @@
 #include <string>
 #include <string_view>
 #include <thread>
+
+#if defined(DODOE_TRACY_ENABLED) && DODOE_TRACY_ENABLED
+#include <tracy/Tracy.hpp>
+#endif
 
 namespace dodoe {
 
@@ -198,7 +203,61 @@ namespace dodoe {
 
 }
 
-#if defined(DODOE_PROFILE_ENABLED) && DODOE_PROFILE_ENABLED
+#if defined(DODOE_TRACY_ENABLED) && DODOE_TRACY_ENABLED
+    #define DODOE_PROFILE_CONCAT_INNER(left, right) left##right
+    #define DODOE_PROFILE_CONCAT(left, right) DODOE_PROFILE_CONCAT_INNER(left, right)
+    #if defined(_MSC_VER)
+        #define DODOE_PROFILE_FUNCTION_NAME __FUNCSIG__
+    #else
+        #define DODOE_PROFILE_FUNCTION_NAME __PRETTY_FUNCTION__
+    #endif
+    namespace dodoe {
+        inline void TracySetThreadName(std::string_view name) {
+            const std::string copy{name};
+            tracy::SetThreadName(copy.c_str());
+        }
+
+        inline void TracyWriteMessage(std::string_view name, std::string_view category) {
+            if (!name.empty()) {
+                tracy::Profiler::LogString(
+                    tracy::MessageSourceType::User,
+                    tracy::MessageSeverity::Info,
+                    0,
+                    TRACY_CALLSTACK,
+                    name.size(),
+                    name.data());
+            }
+            (void)category;
+        }
+
+        class TracyScope {
+        public:
+            TracyScope(std::string_view name, std::string_view category,
+                       uint32_t line, const char* file, const char* function)
+                : m_zone(line, file, std::strlen(file), function, std::strlen(function),
+                          nullptr, 0, TRACY_CALLSTACK, true) {
+                m_zone.Name(name.data(), name.size());
+                m_zone.Text(category.data(), category.size());
+            }
+
+            TracyScope(const TracyScope&) = delete;
+            TracyScope& operator=(const TracyScope&) = delete;
+
+        private:
+            tracy::ScopedZone m_zone;
+        };
+    }
+    #define DODOE_TRACY_SCOPE_IMPL(name, category, id) \
+        ::dodoe::TracyScope DODOE_PROFILE_CONCAT(dodoe_tracy_scope_, id)((name), (category), __LINE__, TracyFile, TracyFunction)
+    #define DO_PROFILE_BEGIN_SESSION(name, file_path)
+    #define DO_PROFILE_END_SESSION()
+    #define DO_PROFILE_THREAD_NAME(name) ::dodoe::TracySetThreadName((name))
+    #define DO_PROFILE_MARK(name, category) ::dodoe::TracyWriteMessage((name), (category))
+    #define DO_PROFILE_SCOPE_CATEGORY(name, category) DODOE_TRACY_SCOPE_IMPL((name), (category), __COUNTER__)
+    #define DO_PROFILE_SCOPE(name) DO_PROFILE_SCOPE_CATEGORY((name), "function")
+    #define DO_PROFILE_FUNCTION() DO_PROFILE_SCOPE(DODOE_PROFILE_FUNCTION_NAME)
+    #define DO_PROFILE_FRAME() FrameMark
+#elif defined(DODOE_PROFILE_ENABLED) && DODOE_PROFILE_ENABLED
     #define DODOE_PROFILE_CONCAT_INNER(left, right) left##right
     #define DODOE_PROFILE_CONCAT(left, right) DODOE_PROFILE_CONCAT_INNER(left, right)
     #if defined(_MSC_VER)
@@ -213,6 +272,7 @@ namespace dodoe {
     #define DO_PROFILE_SCOPE_CATEGORY(name, category) ::dodoe::InstrumentationTimer DODOE_PROFILE_CONCAT(dodoe_profile_timer_, __COUNTER__)((name), (category))
     #define DO_PROFILE_SCOPE(name) DO_PROFILE_SCOPE_CATEGORY((name), "function")
     #define DO_PROFILE_FUNCTION() DO_PROFILE_SCOPE(DODOE_PROFILE_FUNCTION_NAME)
+    #define DO_PROFILE_FRAME()
 #else
     #define DO_PROFILE_BEGIN_SESSION(name, file_path)
     #define DO_PROFILE_END_SESSION()
@@ -221,4 +281,5 @@ namespace dodoe {
     #define DO_PROFILE_SCOPE_CATEGORY(name, category)
     #define DO_PROFILE_SCOPE(name)
     #define DO_PROFILE_FUNCTION()
+    #define DO_PROFILE_FRAME()
 #endif

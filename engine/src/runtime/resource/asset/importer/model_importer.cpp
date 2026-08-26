@@ -17,23 +17,37 @@ namespace dodoe {
 
     namespace {
 
-        FileID ImportTexture(const FsPath& model_directory, const aiString& texture_path) {
-            if (texture_path.length == 0 || texture_path.C_Str()[0] == '*') {
-                return FileID();
-            }
-
+        FsPath ResolveTexturePath(const FsPath& model_directory, const aiString& texture_path, const FsPath& asset_dir) {
             FsPath resolved_path = FsPath(texture_path.C_Str());
             if (resolved_path.is_relative()) {
                 resolved_path = model_directory / resolved_path;
             }
             resolved_path = resolved_path.lexically_normal();
 
-            return FileID(String(resolved_path.string().c_str()));
+            if (!asset_dir.empty()) {
+                std::error_code ec;
+                const FsPath relative_path = std::filesystem::relative(resolved_path, asset_dir, ec);
+                const String relative_str = String(relative_path.generic_string().c_str());
+                if (!ec && !relative_path.empty() && !relative_str.starts_with("..")) {
+                    return relative_path;
+                }
+            }
+            return resolved_path;
+        }
+
+        FileID ImportTexture(const FsPath& model_directory, const aiString& texture_path, const FsPath& asset_dir) {
+            if (texture_path.length == 0 || texture_path.C_Str()[0] == '*') {
+                return FileID();
+            }
+
+            const FsPath resolved_path = ResolveTexturePath(model_directory, texture_path, asset_dir);
+            return FileID(String(resolved_path.generic_string().c_str()));
         }
 
         FileID LoadMaterialTexture(
             const aiMaterial* material,
             const FsPath& model_directory,
+            const FsPath& asset_dir,
             const aiTextureType primary_type,
             const aiTextureType fallback_type = aiTextureType_NONE) {
             if (!material) {
@@ -50,7 +64,7 @@ namespace dodoe {
                     continue;
                 }
 
-                const FileID texture_id = ImportTexture(model_directory, texture_path);
+                const FileID texture_id = ImportTexture(model_directory, texture_path, asset_dir);
                 if (texture_id.isValid()) {
                     return texture_id;
                 }
@@ -59,7 +73,7 @@ namespace dodoe {
             return FileID();
         }
 
-        MaterialProperties MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const FsPath& model_directory) {
+        MaterialProperties MakeMaterial(const aiScene* imported_scene, const aiMesh& source_mesh, const FsPath& model_directory, const FsPath& asset_dir) {
             MaterialProperties material{};
 
             if (!imported_scene || source_mesh.mMaterialIndex >= imported_scene->mNumMaterials) {
@@ -80,16 +94,19 @@ namespace dodoe {
             material.base_color_texture = LoadMaterialTexture(
                 source_material,
                 model_directory,
+                asset_dir,
                 aiTextureType_BASE_COLOR,
                 aiTextureType_DIFFUSE);
             material.normal_texture = LoadMaterialTexture(
                 source_material,
                 model_directory,
+                asset_dir,
                 aiTextureType_NORMALS,
                 aiTextureType_NORMAL_CAMERA);
             material.emissive_texture = LoadMaterialTexture(
                 source_material,
                 model_directory,
+                asset_dir,
                 aiTextureType_EMISSIVE);
 
             return material;
@@ -146,7 +163,8 @@ namespace dodoe {
 
         const FsPath model_directory = FsPath(ctx.absolute_source_path).parent_path();
         const String model_stem = FileSystem::PathToNameNoExt(ctx.source_path);
-        const FsPath materials_dir = asset_manager->getAssetDir() / "materials";
+        const FsPath asset_dir = asset_manager->getAssetDir();
+        const FsPath materials_dir = asset_dir / "materials";
 
         DynamicArray<MaterialProperties> baked_materials{};
 
@@ -156,7 +174,7 @@ namespace dodoe {
                 continue;
             }
 
-            const MaterialProperties props = MakeMaterial(imported_scene, *source_mesh, model_directory);
+            const MaterialProperties props = MakeMaterial(imported_scene, *source_mesh, model_directory, asset_dir);
             Size_t baked_index = baked_materials.size();
             for (Size_t i = 0; i < baked_materials.size(); ++i) {
                 if (baked_materials[i] == props) {

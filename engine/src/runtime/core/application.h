@@ -17,7 +17,8 @@ namespace dodoe {
     enum class AppMode {
         Game,
         Sandbox,
-        Editor
+        Editor,
+        Server
     };
 
     struct DODOE_API ApplicationCommandLineArgs {
@@ -80,6 +81,7 @@ namespace dodoe {
         [[nodiscard]] SystemContext& context();
         [[nodiscard]] const SystemContext& context() const;
         [[nodiscard]] const AppMode& getAppMode() const { return m_app_spec.app_mode; }
+        [[nodiscard]] Bool isServerMode() const { return m_app_spec.app_mode == AppMode::Server; }
 
         void run();
         void quit();

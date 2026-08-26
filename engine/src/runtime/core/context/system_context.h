@@ -8,8 +8,6 @@
 #include "runtime/core/debug/debugger.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/service/service_manager.h"
-#include "runtime/core/thread/render_thread.h"
-#include "runtime/core/thread/draw_thread.h"
 #include "runtime/function/world/world.h"
 #include "runtime/function/input/input_manager.h"
 #include "runtime/function/physics/physics_system.h"
@@ -27,9 +25,6 @@ namespace dodoe {
 
     class DODOE_API SystemContext : public Managed<SystemContext, SystemContextCreateInfo> {
         friend class Managed<SystemContext, SystemContextCreateInfo>;
-
-        Scope<RenderThread> m_render_thread{nullptr};
-        Scope<DrawThread> m_draw_thread{nullptr};
 
         SystemContextCreateInfo m_init_info{};
 

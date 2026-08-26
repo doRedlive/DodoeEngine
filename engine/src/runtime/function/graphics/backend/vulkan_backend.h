@@ -3,6 +3,8 @@
 
 #include "dopch.h"
 
+#include "gfx_backend.h"
+
 #ifndef GLFW_INCLUDE_VULKAN
 #define GLFW_INCLUDE_VULKAN
 #endif
@@ -11,16 +13,8 @@
 
 namespace dodoe {
 
-	struct VulkanBackendCreateInfo {
-        GLFWwindow* window_handle{nullptr};
-        void*       host_handle{nullptr};
-		bool        enable_validation{true};
-		uint32_t    width{0};
-		uint32_t    height{0};
-	};
-
-	class VulkanBackend : public Managed<VulkanBackend, VulkanBackendCreateInfo> {
-        friend class Managed<VulkanBackend, VulkanBackendCreateInfo>;
+	class VulkanBackend : public GfxBackend, public Managed<VulkanBackend, GfxBackendCreateInfo> {
+        friend class Managed<VulkanBackend, GfxBackendCreateInfo>;
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphics_family;
 			std::optional<uint32_t> present_family;
@@ -53,7 +47,6 @@ namespace dodoe {
 		VkDebugUtilsMessengerEXT debug_messenger_;
 		QueueFamilyIndices queue_family_indices_;
 		bool enable_validation_layers_{false};
-		void* host_handle_{nullptr};
 
 		const std::vector<const char*> validation_layers_{"VK_LAYER_KHRONOS_validation"};
 		std::vector<const char*> instance_extensions_{};
@@ -74,14 +67,17 @@ namespace dodoe {
 		[[nodiscard]] const std::vector<VkImageView>& getSwapchainImageViews() { return swapchain_imageviews_; }
 		[[nodiscard]] VkFormat getSwapchainImageFormat() { return swapchain_image_format_; }
 		[[nodiscard]] const std::vector<const char*>& getDeviceExtensions() { return device_extensions_; }
-		[[nodiscard]] Vector2i getSwapchainExtent2d() { return Vector2i(swapchain_extent_.width, swapchain_extent_.height); }
+		[[nodiscard]] Vector2i getSwapchainExtent2d() const override { return Vector2i(swapchain_extent_.width, swapchain_extent_.height); }
+		[[nodiscard]] Bool isValidationEnabled() const override { return enable_validation_layers_; }
+		[[nodiscard]] VkSwapchainKHR getSwapchain() { return swapchain_; }
+		[[nodiscard]] VkQueue getPresentQueue() { return present_queue_; }
 		[[nodiscard]] bool acquireNextImage(uint32_t& image_index, VkSemaphore signal_semaphore);
 		[[nodiscard]] bool presentImage(uint32_t image_index, VkSemaphore wait_semaphore);
 		[[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle, uint32_t width, uint32_t height);
 
 	private:
-		bool initialize(const VulkanBackendCreateInfo& info);
-		void shutdown();
+		bool initialize(const GfxBackendCreateInfo& info);
+		void shutdown() override;
 
 		bool checkValidationLayerSupport();
 		void createInstance(const char** extension, int extension_count);

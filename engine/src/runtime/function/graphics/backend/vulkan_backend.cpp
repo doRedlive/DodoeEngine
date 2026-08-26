@@ -18,10 +18,10 @@ namespace dodoe {
 		}
 	}
 
-	bool VulkanBackend::initialize(const VulkanBackendCreateInfo& info) {
+	bool VulkanBackend::initialize(const GfxBackendCreateInfo& info) {
 		OutputDebugStringA("[VK] initialize begin\n");
+		initCommonState(info);
 		enable_validation_layers_ = info.enable_validation && checkValidationLayerSupport();
-		host_handle_ = info.host_handle;
         instance_extensions_ = getRequiredExtensions();
 		OutputDebugStringA("[VK] creating instance...\n");
 		createInstance(instance_extensions_.data(), static_cast<int>(instance_extensions_.size()));

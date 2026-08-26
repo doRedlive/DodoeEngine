@@ -7,6 +7,7 @@
 #include "runtime/core/memory/memory.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/core/thread/draw_thread.h"
+#include "runtime/core/thread/render_thread.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/time/time_system.h"
 
@@ -45,11 +46,19 @@ namespace dodoe {
         });
         const Bool initialized = m_render_scene && m_shared_render_service && m_render_pipeline && m_frame_scheduler;
         DO_INFO("Initialization {}.", initialized ? "completed" : "failed");
-        return initialized;
+        if (!initialized) return false;
+        setupRenderThreading();
+        return true;
     }
 
     void RenderSystem::shutdown() {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::shutdown", "shutdown");
+        if (m_render_thread) {
+            m_render_thread->stop();
+            m_render_thread.reset();
+        }
+        m_draw_thread.reset();
+        acquireApplicationGraphicsContext();
         m_game_command_queue.close();
         m_gfx->waitForIdle();
         RenderPipeline::Destroy(m_render_pipeline);
@@ -73,6 +82,66 @@ namespace dodoe {
 
     void RenderSystem::releaseApplicationGraphicsContext() {
         m_gfx->releaseOpenGLContext();
+    }
+
+    Bool RenderSystem::beginMainThreadFrame() {
+        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
+            return acquireApplicationGraphicsContext();
+        }
+        return true;
+    }
+
+    void RenderSystem::submitFrame() {
+        if (!m_render_thread) return;
+        if (m_render_thread->getMode() == ThreadingMode::DualThread) {
+            releaseApplicationGraphicsContext();
+        }
+        switch (m_render_thread->getMode()) {
+        case ThreadingMode::SingleThread:
+            m_render_thread->executeFrameOnce();
+            break;
+        case ThreadingMode::DualThread:
+            m_render_thread->submitAndWait();
+            break;
+        case ThreadingMode::TripleThread:
+            m_render_thread->submit();
+            break;
+        }
+    }
+
+    void RenderSystem::setupRenderThreading() {
+        const auto threading_mode = RenderSettings::GetThreadingMode();
+        switch (threading_mode) {
+        case ThreadingMode::TripleThread:
+            m_draw_thread = create_scope<DrawThread>();
+            m_draw_thread->start(m_gfx->getDevice(), m_gfx.get());
+
+            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
+                renderFrame(ThreadingMode::TripleThread, m_draw_thread.get());
+            }));
+            m_render_thread->start(threading_mode);
+            DO_INFO("Triple-thread rendering initialized.");
+            break;
+
+        case ThreadingMode::DualThread:
+            releaseApplicationGraphicsContext();
+            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
+                renderFrameOnRenderThread(ThreadingMode::DualThread, nullptr);
+            }), RenderFrameTask([this] {
+                releaseApplicationGraphicsContext();
+            }));
+            m_render_thread->start(threading_mode);
+            DO_INFO("Dual-thread rendering initialized.");
+            break;
+
+        case ThreadingMode::SingleThread:
+            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
+                renderFrame(ThreadingMode::SingleThread, nullptr);
+            }));
+            m_render_thread->start(threading_mode);
+            DO_INFO("Single-thread rendering initialized.");
+            break;
+        }
     }
 
     void RenderSystem::renderFrameOnRenderThread(const ThreadingMode mode, DrawThread* draw_thread) {

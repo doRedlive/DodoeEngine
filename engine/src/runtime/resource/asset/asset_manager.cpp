@@ -656,15 +656,45 @@ namespace dodoe {
         return true;
     }
 
-    Bool AssetManager::refreshAssets() {
+    Bool AssetManager::refreshAssets(RefreshProgressFn progress) {
         if (m_asset_dir.empty()) {
             return false;
         }
 
         EnsureBuiltinImporters();
+        m_refresh_cancelled.store(false, std::memory_order_relaxed);
 
+        const auto is_importable = [](const String& ext) {
+            return std::ranges::find(kImageExts, ext) != kImageExts.end()
+                || std::ranges::find(kModelExts, ext) != kModelExts.end()
+                || std::ranges::find(kTiledMapExts, ext) != kTiledMapExts.end();
+        };
+
+        std::size_t total = 0;
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
+                if (!entry.is_regular_file()) {
+                    continue;
+                }
+                String ext = String(entry.path().extension().string().c_str());
+                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+                if (ext == ".meta" || !is_importable(ext)) {
+                    continue;
+                }
+                ++total;
+            }
+        }
+        catch (const std::filesystem::filesystem_error& err) {
+            DO_ERROR("Refresh {} error: {}", m_asset_dir.string(), err.what());
+            return false;
+        }
+
+        std::size_t done = 0;
+        try {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
+                if (m_refresh_cancelled.load(std::memory_order_relaxed)) {
+                    return false;
+                }
                 if (!entry.is_regular_file()) {
                     continue;
                 }
@@ -672,19 +702,17 @@ namespace dodoe {
                 String ext = String(entry.path().extension().string().c_str());
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-                if (ext == ".meta") {
-                    continue;
-                }
-
-                if (std::ranges::find(kImageExts, ext) == kImageExts.end()
-                    && std::ranges::find(kModelExts, ext) == kModelExts.end()
-                    && std::ranges::find(kTiledMapExts, ext) == kTiledMapExts.end()) {
+                if (ext == ".meta" || !is_importable(ext)) {
                     continue;
                 }
 
                 FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
                 String source_path = String(rel_path.generic_string().c_str());
                 importSourceFile(entry.path(), source_path, ext);
+                ++done;
+                if (progress && (done % 8 == 0 || done == total)) {
+                    progress(done, total);
+                }
             }
         }
         catch (const std::filesystem::filesystem_error& err) {

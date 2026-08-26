@@ -3,6 +3,8 @@
 
 #include "dopch.h"
 
+#include "gfx_backend.h"
+
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -17,16 +19,8 @@ namespace dodoe {
 
     using Microsoft::WRL::ComPtr;
 
-    struct D3D12BackendCreateInfo {
-        GLFWwindow* window_handle{nullptr};
-        void*       host_handle{nullptr};
-        bool        enable_validation{true};
-        UInt32      width{0};
-        UInt32      height{0};
-    };
-
-    class D3D12Backend : public Managed<D3D12Backend, D3D12BackendCreateInfo> {
-        friend class Managed<D3D12Backend, D3D12BackendCreateInfo>;
+    class D3D12Backend : public GfxBackend, public Managed<D3D12Backend, GfxBackendCreateInfo> {
+        friend class Managed<D3D12Backend, GfxBackendCreateInfo>;
 
         // DXGI
         ComPtr<IDXGIFactory7> m_factory{};
@@ -39,31 +33,10 @@ namespace dodoe {
         ComPtr<ID3D12CommandQueue> m_compute_queue{};
         ComPtr<ID3D12CommandQueue> m_copy_queue{};
 
-        // Swapchain
-        ComPtr<IDXGISwapChain4> m_swapchain{};
-        std::vector<ID3D12Resource*> m_backbuffers{};
-        ComPtr<ID3D12DescriptorHeap> m_rtv_heap{};
-        UINT m_rtv_descriptor_size{0};
-        DXGI_FORMAT m_backbuffer_format{DXGI_FORMAT_R8G8B8A8_UNORM};
-        UINT m_swapchain_width{0};
-        UINT m_swapchain_height{0};
-        static constexpr UINT kBackbufferCount = 3;
-
-        // Frame synchronization
-        ComPtr<ID3D12Fence> m_fence{};
-        UINT64 m_fence_value{0};
-        HANDLE m_fence_event{nullptr};
-        UINT64 m_frame_fence_values[kBackbufferCount]{};
-
-        // Window handle
-        void* m_host_handle{nullptr};
-        HWND m_hwnd{nullptr};
-
         // Validation
         ComPtr<ID3D12Debug6> m_debug_controller{};
         ComPtr<ID3D12InfoQueue1> m_info_queue{};
         DWORD m_message_callback_cookie{0};
-        bool m_enable_validation{true};
 
     public:
         [[nodiscard]] ID3D12Device9* getDevice() const { return m_device.Get(); }
@@ -72,32 +45,16 @@ namespace dodoe {
         [[nodiscard]] ID3D12CommandQueue* getCopyQueue() const { return m_copy_queue.Get(); }
         [[nodiscard]] IDXGIFactory7* getFactory() const { return m_factory.Get(); }
 
-        [[nodiscard]] const std::vector<ID3D12Resource*>& getBackbuffers() const { return m_backbuffers; }
-        [[nodiscard]] DXGI_FORMAT getBackbufferFormat() const { return m_backbuffer_format; }
-        [[nodiscard]] Vector2i getSwapchainExtent2d() const { return Vector2i(static_cast<Int32>(m_swapchain_width), static_cast<Int32>(m_swapchain_height)); }
-        [[nodiscard]] UINT getBackbufferCount() const { return kBackbufferCount; }
-
-        [[nodiscard]] bool acquireNextImage(UINT& backbuffer_index);
-        [[nodiscard]] bool presentImage(UINT backbuffer_index);
-        [[nodiscard]] bool recreateSwapchain(GLFWwindow* window_handle, UInt32 width, UInt32 height);
-
     private:
-        bool initialize(const D3D12BackendCreateInfo& info);
-        void shutdown();
+        bool initialize(const GfxBackendCreateInfo& info);
+        void shutdown() override;
 
         void createFactory();
         void enableDebugLayer();
         void setupInfoQueue();
         void createDevice();
         void createCommandQueues();
-        void createSwapchain(GLFWwindow* window_handle, UInt32 width, UInt32 height);
-        static UINT GetSwapchainFlags();
-        void releaseBackbufferResources();
-        void createRTVHeap();
-        void createBackbufferRTVs();
-        void createFence();
 
-        void waitForGpu();
         void selectAdapter(ComPtr<IDXGIAdapter4>& out_adapter);
     };
 

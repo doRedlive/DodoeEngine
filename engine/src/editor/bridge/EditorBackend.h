@@ -176,6 +176,11 @@ public:
         return false;
     }
     virtual void setEventCallback(std::function<void(const BackendEventMessage&)> callback) = 0;
+    virtual bool assetRefreshPending() const { return false; }
+    virtual void assetRefreshProgress(std::size_t& done, std::size_t& total) const {
+        done = 0;
+        total = 0;
+    }
     virtual bool attachSceneSurface(const SceneSurfaceDescriptor& surface) = 0;
     virtual void requestSceneSurfaceResize(const ViewportMetrics& metrics) = 0;
     virtual bool detachSceneSurface() = 0;

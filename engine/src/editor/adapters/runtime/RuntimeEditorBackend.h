@@ -54,6 +54,8 @@ public:
     bool invokeToolAction(const std::string& path) override;
     void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
     void setEditorSession(EditorSession* session) override;
+    bool assetRefreshPending() const override;
+    void assetRefreshProgress(std::size_t& done, std::size_t& total) const override;
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const override;
     bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const override;
     bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;

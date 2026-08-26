@@ -242,6 +242,22 @@ bool RuntimeEditorBackend::listAssets(std::vector<AssetBrowserEntry>& entries) c
     return true;
 }
 
+bool RuntimeEditorBackend::assetRefreshPending() const
+{
+    return m_assetDatabase && m_assetDatabase->refreshPending();
+}
+
+void RuntimeEditorBackend::assetRefreshProgress(std::size_t& done, std::size_t& total) const
+{
+    done = 0;
+    total = 0;
+    if (m_assetDatabase) {
+        const auto progress = m_assetDatabase->progress();
+        done = progress.first;
+        total = progress.second;
+    }
+}
+
 bool RuntimeEditorBackend::getAssetImportSettings(const std::string& path,
                                                   AssetImportSettings& settings) const
 {
@@ -811,6 +827,14 @@ void RuntimeEditorBackend::tickAtSafePoint()
         applyPendingMetrics();
     }
 
+    if (m_assetDatabase && m_assetDatabase->refreshPending() && m_assetDatabase->refreshFinished()) {
+        m_assetDatabase->finalize();
+        DO_INFO("Cakery backend: asset database refreshed");
+        if (m_eventCallback) {
+            m_eventCallback(BackendEventMessage{"asset_database_changed", ""});
+        }
+    }
+
     const auto now = std::chrono::steady_clock::now();
     const float dt = std::min(0.05f, std::chrono::duration<float>(now - m_lastTick).count());
     m_lastTick = now;
@@ -837,6 +861,9 @@ void RuntimeEditorBackend::shutdown()
 {
     if (!m_booted && !m_app) {
         return;
+    }
+    if (m_assetDatabase) {
+        m_assetDatabase->cancelAndWait();
     }
     if (m_booted && m_app) {
         SystemContext& ctx = m_app->context();
@@ -962,9 +989,12 @@ bool RuntimeEditorBackend::bootRuntime()
     ctx.getLayerStack().attach();
     DO_INFO("Cakery backend: layer stack attached");
 
+    if (m_assetDatabase) {
+        m_assetDatabase->cancelAndWait();
+    }
     m_assetDatabase = std::make_unique<AssetDatabase>();
     m_assetDatabase->refresh();
-    DO_INFO("Cakery backend: asset database refreshed");
+    DO_INFO("Cakery backend: asset database refresh started");
 
     m_camera = std::make_unique<EditorCamera>();
     m_cameraProvider = std::make_unique<dodoe::EditorCameraProvider>();

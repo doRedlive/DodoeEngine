@@ -225,7 +225,8 @@ namespace dodoe {
     Bool World::initialize(const WorldCreateInfo& create_info) {
         DO_PROFILE_SCOPE_CATEGORY("World::initialize", "startup");
         m_name = create_info.name;
-        if (Application::Self().getAppMode() != AppMode::Game) {
+        const auto app_mode = Application::Self().getAppMode();
+        if (app_mode != AppMode::Game && app_mode != AppMode::Server) {
             m_state = WorldState::Simulation;
         }
         if (!setupSystems()) return false;

@@ -12,6 +12,7 @@ namespace dodoe {
         m_pipeline = info.pipeline;
         m_threading_mode = info.threading_mode;
         m_present_mode = info.present_mode;
+        m_windowless = info.windowless;
 
         if (m_api == RenderBackendApiType::OpenGL && m_threading_mode == ThreadingMode::TripleThread) {
             m_threading_mode = ThreadingMode::DualThread;

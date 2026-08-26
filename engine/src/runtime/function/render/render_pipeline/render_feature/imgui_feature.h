@@ -24,10 +24,10 @@ namespace dodoe {
 
 	    void collectPasses(PassCollector& collector) override;
 
-	    [[nodiscard]] GfxTextureHandle getFontTexture() const { return m_font_texture; }
-	    [[nodiscard]] GfxBindingLayoutHandle getBindingLayout() const { return m_binding_layout; }
-	    [[nodiscard]] GfxBindingSetHandle getFontBindingSet() const { return m_font_binding_set; }
-	    [[nodiscard]] GfxInputLayoutHandle getInputLayout() const { return m_input_layout; }
+	private:
+#ifdef DODOE_DEBUG_ENABLED
+	    void setupViewports(SharedRenderService& resources);
+#endif
 	};
 
 } // namespace dodoe

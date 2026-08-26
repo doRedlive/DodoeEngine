@@ -65,6 +65,9 @@ target_include_directories(${TARGET_NAME}
 
 target_compile_definitions(${TARGET_NAME} PUBLIC $<$<CONFIG:Debug>:DODOE_DEBUG_ENABLED>)
 target_compile_definitions(${TARGET_NAME} PUBLIC $<$<BOOL:${DODOE_ENABLE_PROFILING}>:DODOE_PROFILE_ENABLED=1>)
+if(TARGET DodoeProfiling)
+    target_link_libraries(${TARGET_NAME} PUBLIC DodoeProfiling)
+endif()
 if(DODOE_EDITOR)
     target_compile_definitions(${TARGET_NAME} PUBLIC DODOE_EDITOR_ENABLED)
 endif()

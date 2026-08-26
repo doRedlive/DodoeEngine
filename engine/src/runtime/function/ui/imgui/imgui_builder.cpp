@@ -5,6 +5,7 @@
 #include "imgui_builder.h"
 
 #include "imgui_style.h"
+#include "imgui_viewport_renderer.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
@@ -69,11 +70,47 @@ namespace dodoe {
             return;
         }
         ImGui::Render();
-        SerializeImGuiDrawData(s_packet);
+        SerializeImGuiDrawData(ImGui::GetDrawData(), s_packet);
+        if (s_viewports_enabled) {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            if (RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
+                auto* main_viewport = ImGui::GetMainViewport();
+                if (main_viewport && main_viewport->PlatformHandle) {
+                    glfwMakeContextCurrent(static_cast<GLFWwindow*>(main_viewport->PlatformHandle));
+                }
+            }
+        }
     }
 
-    void ImGuiBuilder::SerializeImGuiDrawData(ImGuiRenderPacket& out_packet) {
-        const auto* draw_data = ImGui::GetDrawData();
+    void ImGuiBuilder::InstallViewportRenderer(GfxContext& gfx, ImGuiDrawRenderer draw_renderer,
+                                               const PipelineStateCache* pipeline_cache,
+                                               const ShaderLibrary* shader_library) {
+        if (!ImGui::GetCurrentContext()) {
+            return;
+        }
+        if (s_viewport_renderer) {
+            ImGuiViewportRenderer::Uninstall();
+            s_viewport_renderer.reset();
+        }
+        s_viewport_renderer = create_scope<ImGuiDrawRenderer>(std::move(draw_renderer));
+        ImGuiViewportRenderer::Install(gfx, *s_viewport_renderer, pipeline_cache, shader_library);
+        s_viewports_enabled = true;
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    }
+
+    void ImGuiBuilder::UninstallViewportRenderer() {
+        if (s_viewport_renderer) {
+            ImGuiViewportRenderer::Uninstall();
+            s_viewport_renderer.reset();
+        }
+        s_viewports_enabled = false;
+        if (ImGui::GetCurrentContext()) {
+            ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+        }
+    }
+
+    void ImGuiBuilder::SerializeImGuiDrawData(const ImDrawData* draw_data, ImGuiRenderPacket& out_packet) {
         out_packet.lists.clear();
         if (!draw_data || draw_data->CmdListsCount <= 0) {
             out_packet.display_pos = Vector2f(0.0f, 0.0f);
@@ -116,6 +153,7 @@ namespace dodoe {
 
     void ImGuiBuilder::CleanupImGui() {
         if (!ImGui::GetCurrentContext()) return;
+        UninstallViewportRenderer();
         if (s_glfwBackendInit) {
             ImGui_ImplGlfw_Shutdown();
             s_glfwBackendInit = false;

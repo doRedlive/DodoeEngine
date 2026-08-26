@@ -1,5 +1,6 @@
 #include "AssetDatabase.h"
 
+#include "runtime/core/async/task_scheduler.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/asset/asset_manager.h"
 
@@ -30,11 +31,75 @@ std::string NormalizePath(const std::string& path)
 } // namespace
 
 void AssetDatabase::refresh() {
+    if (m_refreshing.exchange(true, std::memory_order_acq_rel)) {
+        return;
+    }
+    m_progress_done.store(0, std::memory_order_relaxed);
+    m_progress_total.store(0, std::memory_order_relaxed);
+
+    auto* am = dodoe::ResourceManager::Self().getAssetManager();
+    if (!am) {
+        m_refreshing.store(false, std::memory_order_release);
+        return;
+    }
+
+    dodoe::RefreshProgressFn progress = [this](std::size_t done, std::size_t total) {
+        m_progress_done.store(done, std::memory_order_relaxed);
+        m_progress_total.store(total, std::memory_order_relaxed);
+    };
+
+    m_refresh_future = dodoe::TaskScheduler::Self().async(
+        [this, am](dodoe::RefreshProgressFn report) {
+            return am->refreshAssets(std::move(report));
+        },
+        std::move(progress));
+}
+
+void AssetDatabase::finalize() {
+    if (!m_refreshing.exchange(false, std::memory_order_acq_rel)) {
+        return;
+    }
+    if (m_refresh_future.valid()) {
+        m_refresh_future.wait();
+        m_refresh_future.get();
+    }
+    buildFromDatabase();
+    changed.fire();
+}
+
+void AssetDatabase::cancelAndWait() {
+    if (!m_refreshing.exchange(false, std::memory_order_acq_rel)) {
+        return;
+    }
+    if (auto* am = dodoe::ResourceManager::Self().getAssetManager()) {
+        am->cancelRefresh();
+    }
+    if (m_refresh_future.valid()) {
+        m_refresh_future.wait();
+        m_refresh_future.get();
+    }
+}
+
+bool AssetDatabase::refreshFinished() const {
+    if (!m_refreshing.load(std::memory_order_acquire)) {
+        return false;
+    }
+    if (!m_refresh_future.valid()) {
+        return false;
+    }
+    return m_refresh_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
+
+std::pair<std::size_t, std::size_t> AssetDatabase::progress() const {
+    return { m_progress_done.load(std::memory_order_relaxed),
+             m_progress_total.load(std::memory_order_relaxed) };
+}
+
+void AssetDatabase::buildFromDatabase() {
     m_assets.clear();
 
     auto* am = dodoe::ResourceManager::Self().getAssetManager();
     if (!am) return;
-    if (!am->refreshAssets()) return;
     auto* db = am->getDatabase();
     if (!db) return;
 
@@ -64,8 +129,6 @@ void AssetDatabase::refresh() {
         }
         m_assets.push_back(info);
     }
-
-    changed.fire();
 }
 
 std::vector<AssetDatabase::AssetInfo> AssetDatabase::list(const std::string& filter) const {

@@ -834,8 +834,7 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const std::string& path,
             owner->valueAt(path) = nlohmann::json{{"asset_id", 0}, {"sub_object_id", 0}};
             setPresentation(nullptr);
         } else if (IsAssetCompatible(*asset, targetType)) {
-            owner->valueAt(path) = nlohmann::json{{"asset_id", assetId}, {"sub_object_id", 0},
-                                                   {"legacy_path", assetPath.toStdString()}};
+            owner->valueAt(path) = nlohmann::json{{"asset_id", assetId}, {"sub_object_id", 0}};
             setPresentation(asset);
         } else {
             return;

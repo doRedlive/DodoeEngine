@@ -15,6 +15,9 @@
 
 #ifdef DODOE_DEBUG_ENABLED
 #include "imgui/imgui.h"
+#include "runtime/function/ui/imgui/imgui_builder.h"
+#include "runtime/function/ui/imgui/imgui_draw_renderer.h"
+#include "runtime/function/render/render_settings.h"
 #endif
 
 namespace dodoe {
@@ -80,8 +83,35 @@ namespace dodoe {
 	        m_input_layout = input_layout_cache->getOrCreate(
 	            attributes, resources.getShaderLibrary()->getImGuiVertexShader());
 	    }
+	    setupViewports(resources);
 #endif
 	}
+
+#ifdef DODOE_DEBUG_ENABLED
+	void ImGuiFeature::setupViewports(SharedRenderService& resources) {
+	    const auto viewport_api = RenderSettings::GetRenderBackendApiType();
+	    const auto viewport_threading = RenderSettings::GetThreadingMode();
+	    Bool viewports_supported = viewport_api == RenderBackendApiType::D3D12;
+	    if (viewport_api == RenderBackendApiType::Vulkan) {
+	        viewports_supported = viewport_threading != ThreadingMode::TripleThread;
+	    } else if (viewport_api == RenderBackendApiType::OpenGL) {
+	        viewports_supported = viewport_threading == ThreadingMode::SingleThread;
+	    }
+	    if (!viewports_supported) {
+	        DO_WARN("ImGui multi-viewport disabled for this backend/threading combination");
+	        return;
+	    }
+
+	    auto* gfx = resources.getGfxContext();
+	    if (!gfx || !m_binding_layout || !m_input_layout || !m_font_texture) {
+	        return;
+	    }
+	    ImGuiDrawRenderer draw_renderer(m_binding_layout, m_font_binding_set, m_input_layout, m_font_texture, m_imgui_cb);
+	    ImGuiBuilder::InstallViewportRenderer(*gfx, std::move(draw_renderer),
+	                                          resources.getPipelineStateCache(),
+	                                          resources.getShaderLibrary());
+	}
+#endif
 
 	void ImGuiFeature::shutdown() {
 #ifdef DODOE_DEBUG_ENABLED
@@ -107,7 +137,9 @@ namespace dodoe {
 	}
 
 	void ImGuiFeature::collectPasses(PassCollector& collector) {
-	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_input_layout);
+#ifdef DODOE_DEBUG_ENABLED
+	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_input_layout, m_font_texture, m_imgui_cb);
+#endif
 	}
 
 } // namespace dodoe

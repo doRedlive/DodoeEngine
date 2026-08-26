@@ -21,11 +21,14 @@
 #include "runtime/core/object/object_id.h"
 #include "runtime/resource/file/file_id.h"
 
+#include <atomic>
 #include <shared_mutex>
 
 namespace dodoe {
 
     struct AssetManagerCreateInfo {};
+
+    using RefreshProgressFn = std::function<void(std::size_t done, std::size_t total)>;
 
     class AssetManager : public Managed<AssetManager, AssetManagerCreateInfo> {
         friend class Managed<AssetManager, AssetManagerCreateInfo>;
@@ -36,6 +39,7 @@ namespace dodoe {
         DynamicArray<UUID> m_assets_by_type[static_cast<Size_t>(AssetType::Count)];
         FsPath m_asset_dir;
         mutable std::shared_mutex m_mutex;
+        std::atomic<bool> m_refresh_cancelled{false};
 
         Bool initialize(const AssetManagerCreateInfo& info);
         void shutdown();
@@ -53,7 +57,7 @@ namespace dodoe {
         Scope<Asset> createAssetInstance(AssetType type);
         void registerMaterialAsset(Scope<MaterialAsset> asset);
 
-        [[nodiscard]] Asset* findAsset(const UUID& asset_id) const;
+        [[nodiscard]] DODOE_API Asset* findAsset(const UUID& asset_id) const;
 
         template<typename T>
         [[nodiscard]] T* findAsset(const UUID& asset_id) const {
@@ -67,7 +71,7 @@ namespace dodoe {
         [[nodiscard]] Asset* findAssetByPath(const String& source_path) const;
 
         [[nodiscard]] ObjectID DODOE_API resolvePathToRef(const FileID& file_id) const;
-        [[nodiscard]] ObjectID resolveSubObjectRef(const FileID& file_id, UInt32 local_id) const;
+        [[nodiscard]] ObjectID DODOE_API resolveSubObjectRef(const FileID& file_id, UInt32 local_id) const;
 
         [[nodiscard]] ObjectID DODOE_API ensureImported(const String& absolute_path);
         [[nodiscard]] ObjectID DODOE_API ensureTilesetImported(const String& absolute_path);
@@ -126,7 +130,8 @@ namespace dodoe {
 
         [[nodiscard]] Bool DODOE_API isAssetDirty(const UUID& asset_id) const;
         Bool DODOE_API reimportAsset(const UUID& asset_id);
-        Bool DODOE_API refreshAssets();
+        Bool DODOE_API refreshAssets(RefreshProgressFn progress = {});
+        void cancelRefresh() { m_refresh_cancelled.store(true, std::memory_order_relaxed); }
 
         template<typename T>
         [[nodiscard]] DynamicArray<AssetHandle<T>> getAssets() const {

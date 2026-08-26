@@ -1,6 +1,12 @@
 {
   "cmake.configurePreset": "msvc-debug",
   "cmake.buildPreset": "msvc-debug-cakery",
+  // C# scripts are compiled by Dodoe into this generated project. Point the
+  // language service at it so IntelliSense can resolve GreenCake types.
+  "dotnet.defaultSolution": "${workspaceFolder}/DodoeScripts.sln",
+  "files.exclude": {
+    "**/obj": true
+  },
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "C_Cpp.default.includePath": [
     "${workspaceFolder}/engine/src",

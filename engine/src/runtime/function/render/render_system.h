@@ -15,11 +15,10 @@
 
 #include "runtime/function/window/window_manager.h"
 #include "runtime/core/container/spsc_queue.h"
+#include "runtime/core/thread/render_thread.h"
+#include "runtime/core/thread/draw_thread.h"
 
 namespace dodoe {
-
-    class RenderThread;
-    class DrawThread;
 
     struct RenderSystemCreateInfo {
         WindowManager* window_manager;
@@ -34,7 +33,8 @@ namespace dodoe {
         Scope<RenderPipeline> m_render_pipeline{nullptr};
         Scope<RenderViewManager> m_view_manager{nullptr};
         Scope<SharedRenderService> m_shared_render_service{nullptr};
-        RenderThread* m_render_thread{nullptr};
+        Scope<RenderThread> m_render_thread{nullptr};
+        Scope<DrawThread> m_draw_thread{nullptr};
 
         WindowManager* m_window_manager{nullptr};
 
@@ -47,19 +47,21 @@ namespace dodoe {
         [[nodiscard]] RenderPipeline* getRenderingPipeline() const { return m_render_pipeline.get(); }
         [[nodiscard]] RenderScene* getRenderScene() const { return m_render_scene.get(); }
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_shared_render_service.get(); }
-        [[nodiscard]] RenderThread& getRenderThread() const { return *m_render_thread; }
-        void setRenderThread(RenderThread* rt) { m_render_thread = rt; }
 
         void enqueueRenderCommand(RenderCommand&& cmd);
-        [[nodiscard]] Bool acquireApplicationGraphicsContext();
-        void releaseApplicationGraphicsContext();
-        void renderFrameOnRenderThread(ThreadingMode mode, DrawThread* draw_thread);
-        void renderFrame(ThreadingMode mode, DrawThread* draw_thread);
+        [[nodiscard]] Bool beginMainThreadFrame();
+        void submitFrame();
 
     private:
         Bool initialize(const RenderSystemCreateInfo& info);
         void shutdown();
         void applyRenderCommand(RenderScene& scene, RenderCommand& cmd);
+        void setupRenderThreading();
+
+        [[nodiscard]] Bool acquireApplicationGraphicsContext();
+        void releaseApplicationGraphicsContext();
+        void renderFrameOnRenderThread(ThreadingMode mode, DrawThread* draw_thread);
+        void renderFrame(ThreadingMode mode, DrawThread* draw_thread);
     };
 
 } // namespace dodoe

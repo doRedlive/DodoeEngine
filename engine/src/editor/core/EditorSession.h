@@ -87,6 +87,9 @@ public:
     const std::string& cameraMode() const { return m_cameraMode; }
     Signal<std::string> cameraModeChanged;
     Signal<bool> tileEditModeChanged;
+    Signal<> assetDatabaseChanged;
+    bool isAssetRefreshPending() const;
+    void assetRefreshProgress(std::size_t& done, std::size_t& total) const;
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const;
     bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const;
 

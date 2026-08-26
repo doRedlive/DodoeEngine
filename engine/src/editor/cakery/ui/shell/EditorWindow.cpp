@@ -58,6 +58,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPixmap>
+#include <QProgressDialog>
 #include <QResizeEvent>
 #include <QRegularExpression>
 #include <QStyle>
@@ -73,6 +74,7 @@
 #include <QWidget>
 #include <QWindow>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <array>
@@ -594,6 +596,11 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     restoreLayoutState();
     startSafePointTimer();
 
+    m_assetImportTimer = new QTimer(this);
+    m_assetImportTimer->setInterval(100);
+    connect(m_assetImportTimer, &QTimer::timeout, this, &EditorWindow::updateAssetImportProgress);
+    m_assetImportTimer->start();
+
     m_historySubscription = m_context.session().history().subscribe([this]() { refreshUndoRedoActions(); });
     refreshUndoRedoActions();
 
@@ -692,7 +699,6 @@ void EditorWindow::createToolsMenu()
 {
     m_toolsMenu = m_menuBar->addMenu(tr("Tools"));
     connect(m_toolsMenu, &QMenu::aboutToShow, this, [this]() { refreshToolsMenu(); });
-    refreshToolsMenu();
 }
 
 void EditorWindow::refreshToolsMenu()
@@ -1297,6 +1303,38 @@ void EditorWindow::refreshUndoRedoActions()
 {
     if (m_undoAction) m_undoAction->setEnabled(m_context.session().history().canUndo());
     if (m_redoAction) m_redoAction->setEnabled(m_context.session().history().canRedo());
+}
+
+void EditorWindow::updateAssetImportProgress()
+{
+    const bool pending = m_context.session().isAssetRefreshPending();
+    std::size_t done = 0;
+    std::size_t total = 0;
+    m_context.session().assetRefreshProgress(done, total);
+
+    if (!pending) {
+        if (m_assetImportDialog) {
+            m_assetImportDialog->close();
+            m_assetImportDialog->deleteLater();
+            m_assetImportDialog = nullptr;
+        }
+        return;
+    }
+
+    if (!m_assetImportDialog) {
+        m_assetImportDialog = new QProgressDialog(tr("Importing assets..."), QString(), 0, 100, this);
+        m_assetImportDialog->setWindowModality(Qt::WindowModal);
+        m_assetImportDialog->setWindowTitle(tr("Importing Assets"));
+        m_assetImportDialog->setCancelButton(nullptr);
+        m_assetImportDialog->setAutoClose(false);
+        m_assetImportDialog->setAutoReset(false);
+        m_assetImportDialog->setMinimumDuration(400);
+        m_assetImportDialog->setMinimumWidth(320);
+    }
+    if (total > 0) {
+        m_assetImportDialog->setMaximum(static_cast<int>(total));
+        m_assetImportDialog->setValue(static_cast<int>(std::min(done, total)));
+    }
 }
 
 bool EditorWindow::enterWorkspace(const QString& projectPath)

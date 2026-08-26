@@ -13,6 +13,8 @@
 
 #include <filesystem>
 #include <fstream>
+#include <thread>
+#include <chrono>
 
 namespace dodoe {
 
@@ -114,6 +116,9 @@ namespace dodoe {
         DO_PROFILE_SCOPE_CATEGORY("Application::Application", "startup");
         m_app_spec = spec;
         loadConfigFile();
+        if (m_app_spec.app_mode == AppMode::Server) {
+            m_app_spec.render_settings.windowless = true;
+        }
         m_context = SystemContext::Create({m_app_spec});
         m_instance = this;
         m_running = true;
@@ -150,12 +155,20 @@ namespace dodoe {
 
         while (m_running) {
             EventSystem::Publish<BeforeOneTickEvent>();
-            m_context->getInputManager()->beginFrame();
+            if (auto* input_manager = m_context->getInputManager()) {
+                input_manager->beginFrame();
+            }
             EventSystem::Poll();
             EventSystem::Handle();
-            m_context->getInputManager()->update(m_context->getTimeSystem()->getDeltaTime());
+            if (auto* input_manager = m_context->getInputManager()) {
+                input_manager->update(m_context->getTimeSystem()->getDeltaTime());
+            }
             m_context->tickOneFrame();
+            DO_PROFILE_FRAME();
             EventSystem::Publish<AfterOneTickEvent>();
+            if (isServerMode()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            }
         }
 
         m_context->getLayerStack().detach();

@@ -5,6 +5,7 @@
 #include <QWidget>
 
 #include "bridge/EditorBackend.h"
+#include "core/Signal.h"
 
 #include <filesystem>
 #include <vector>
@@ -40,6 +41,7 @@ signals:
     void assetSelectionCleared();
 
 private:
+    void reloadAssets();
     void addDirectory(QTreeWidgetItem* parentItem, const std::filesystem::path& directory);
     bool filterTreeItem(QTreeWidgetItem* item, const QString& filter);
     std::filesystem::path selectedDirectory() const;
@@ -66,6 +68,7 @@ private:
     QComboBox* m_typeFilter = nullptr;
     QFileSystemWatcher* m_watcher = nullptr;
     bool m_refreshPending = false;
+    ScopedConnection m_assetDbSubscription;
     std::filesystem::path m_root;
     std::vector<AssetBrowserEntry> m_assets;
     QHash<QString, QPair<qint64, QPixmap>> m_thumbnailCache;

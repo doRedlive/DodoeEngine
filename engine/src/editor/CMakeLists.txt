@@ -148,6 +148,9 @@ set_source_files_properties(
 add_library(EditorUI STATIC ${EDITOR_UI_SOURCES})
 target_link_libraries(EditorUI PUBLIC EditorCore EditorServices Qt6::Widgets qtadvanceddocking-qt6)
 target_compile_definitions(EditorUI PUBLIC $<$<BOOL:${DODOE_ENABLE_PROFILING}>:DODOE_PROFILE_ENABLED=1>)
+if(TARGET DodoeProfiling)
+    target_link_libraries(EditorUI PUBLIC DodoeProfiling)
+endif()
 target_include_directories(EditorUI PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ENGINE_ROOT_DIR}/src

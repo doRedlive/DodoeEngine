@@ -25,6 +25,9 @@ namespace dodoe {
 
     using GfxDeviceHandle = cutie::DeviceHandle;
     using GfxCommandListHandle = cutie::CommandListHandle;
+    using GfxCommandListLifetimeTracker = cutie::ICommandListLifetimeTracker;
+    using GfxCommandListLifetimeTrackerHandle = cutie::CommandListLifetimeTrackerHandle;
+    using GfxCommandListParameters = cutie::CommandListParameters;
     using GfxShaderHandle = cutie::ShaderHandle;
     using GfxSamplerHandle = cutie::SamplerHandle;
     using GfxInputLayoutHandle = cutie::InputLayoutHandle;

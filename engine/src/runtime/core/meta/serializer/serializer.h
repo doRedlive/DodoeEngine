@@ -160,6 +160,9 @@ namespace dodoe {
                     if (json_context.contains("sub_object_id")) {
                         read(json_context.at("sub_object_id"), id.local_id);
                     }
+                    if (legacy_path.empty() && json_context.contains("legacy_path") && json_context["legacy_path"].is_string()) {
+                        read(json_context.at("legacy_path"), legacy_path);
+                    }
                     instance = T(id);
                     instance.setLegacyPath(legacy_path);
                 }

@@ -3,6 +3,8 @@
 
 #include "dopch.h"
 
+#include "gfx_backend.h"
+
 #include "GLFW/glfw3.h"
 
 #include <mutex>
@@ -10,31 +12,24 @@
 
 namespace dodoe {
 
-    struct OpenGLBackendCreateInfo {
-        GLFWwindow* window_handle{nullptr};
-        UInt32      width{0};
-        UInt32      height{0};
-    };
+    class OpenGLBackend : public GfxBackend, public Managed<OpenGLBackend, GfxBackendCreateInfo> {
+        friend class Managed<OpenGLBackend, GfxBackendCreateInfo>;
 
-    class OpenGLBackend : public Managed<OpenGLBackend, OpenGLBackendCreateInfo> {
-        friend class Managed<OpenGLBackend, OpenGLBackendCreateInfo>;
-
-        GLFWwindow* m_window_handle{nullptr};
         Int32 m_fb_width{0};
         Int32 m_fb_height{0};
         std::thread::id m_context_owner{};
         std::mutex m_context_mutex{};
 
     public:
-        [[nodiscard]] Vector2i getSwapchainExtent2d() const { return Vector2i(m_fb_width, m_fb_height); }
-        [[nodiscard]] GLFWwindow* getWindow() const { return m_window_handle; }
+        [[nodiscard]] Vector2i getSwapchainExtent2d() const override { return Vector2i(m_fb_width, m_fb_height); }
+        [[nodiscard]] Bool isValidationEnabled() const override { return false; }
         Bool acquireContext();
         void releaseContext();
         void updateFramebufferSize();
 
     private:
-        Bool initialize(const OpenGLBackendCreateInfo& info);
-        void shutdown();
+        Bool initialize(const GfxBackendCreateInfo& info);
+        void shutdown() override;
     };
 
 } // dodoe

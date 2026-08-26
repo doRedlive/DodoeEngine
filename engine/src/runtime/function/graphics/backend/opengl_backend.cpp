@@ -8,13 +8,13 @@
 
 namespace dodoe {
 
-    Bool OpenGLBackend::initialize(const OpenGLBackendCreateInfo& info) {
-        m_window_handle = info.window_handle;
-        if (!m_window_handle) {
+    Bool OpenGLBackend::initialize(const GfxBackendCreateInfo& info) {
+        initCommonState(info);
+        if (!window_handle_) {
             return false;
         }
 
-        glfwMakeContextCurrent(m_window_handle);
+        glfwMakeContextCurrent(window_handle_);
         m_context_owner = std::this_thread::get_id();
 
         switch (RenderSettings::GetPresentMode()) {
@@ -44,30 +44,30 @@ namespace dodoe {
 
     void OpenGLBackend::shutdown() {
         releaseContext();
-        m_window_handle = nullptr;
+        window_handle_ = nullptr;
     }
 
     Bool OpenGLBackend::acquireContext() {
         std::lock_guard<std::mutex> lock(m_context_mutex);
-        if (!m_window_handle) return false;
+        if (!window_handle_) return false;
         const auto current_thread = std::this_thread::get_id();
         if (m_context_owner != std::thread::id{} && m_context_owner != current_thread) return false;
-        glfwMakeContextCurrent(m_window_handle);
-        if (glfwGetCurrentContext() != m_window_handle) return false;
+        glfwMakeContextCurrent(window_handle_);
+        if (glfwGetCurrentContext() != window_handle_) return false;
         m_context_owner = current_thread;
         return true;
     }
 
     void OpenGLBackend::releaseContext() {
         std::lock_guard<std::mutex> lock(m_context_mutex);
-        if (!m_window_handle || m_context_owner != std::this_thread::get_id()) return;
+        if (!window_handle_ || m_context_owner != std::this_thread::get_id()) return;
         glfwMakeContextCurrent(nullptr);
         m_context_owner = {};
     }
 
     void OpenGLBackend::updateFramebufferSize() {
-        if (m_window_handle) {
-            glfwGetFramebufferSize(m_window_handle, &m_fb_width, &m_fb_height);
+        if (window_handle_) {
+            glfwGetFramebufferSize(window_handle_, &m_fb_width, &m_fb_height);
         }
     }
 

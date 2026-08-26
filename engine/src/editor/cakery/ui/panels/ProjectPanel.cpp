@@ -463,6 +463,9 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
             filterTreeItem(m_tree->topLevelItem(0), m_filter ? m_filter->text() : QString());
         }
     });
+    m_assetDbSubscription = ScopedConnection(
+        m_context.session().assetDatabaseChanged,
+        m_context.session().assetDatabaseChanged.connect([this]() { reloadAssets(); }));
     refresh();
 }
 
@@ -470,6 +473,11 @@ void ProjectPanel::refresh()
 {
     m_refreshPending = false;
     m_context.session().execute(EditorCommandMessage{"asset.refresh", {}});
+    reloadAssets();
+}
+
+void ProjectPanel::reloadAssets()
+{
     m_tree->clear();
     if (m_watcher) {
         const QStringList watched = m_watcher->directories();
@@ -890,7 +898,7 @@ QPixmap ProjectPanel::loadThumbnail(const AssetBrowserEntry& asset)
 {
     const QString path = QString::fromStdString(asset.path);
     const QString key = QString::fromStdString(normalizedPath(std::filesystem::path(asset.path)));
-    const qint64 mtime = QFileInfo(path).lastModified().msSinceEpoch();
+    const qint64 mtime = QFileInfo(path).lastModified().toMSecsSinceEpoch();
     const auto it = m_thumbnailCache.constFind(key);
     if (it != m_thumbnailCache.constEnd() && it->first == mtime) {
         return it->second;

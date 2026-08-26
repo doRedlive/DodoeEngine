@@ -95,7 +95,7 @@ namespace dodoe {
         auto tileset = create_scope<Tileset>(id);
         Tileset* raw = tileset.get();
         if (!path.empty()) {
-            raw->loadFromJson(path);
+            (void)raw->loadFromJson(path);
         }
         s_tileset_cache.emplace(raw->getInstanceID(), std::move(tileset));
         return raw;
