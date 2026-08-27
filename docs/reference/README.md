@@ -8,6 +8,7 @@
 | World | [world.md](world.md) |
 | Resource | [resource.md](resource.md) |
 | Scripting | [scripting.md](scripting.md) |
+| C# Scripting | [csharp-scripting.md](csharp-scripting.md) |
 | UI、Input、Window | [ui-input-window.md](ui-input-window.md) |
 | Physics、Animation、Time | [simulation.md](simulation.md) |
 | Editor | [editor.md](editor.md) |

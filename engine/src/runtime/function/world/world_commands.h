@@ -9,8 +9,6 @@
 #include "scene.h"
 #include "runtime/core/container/command_list.h"
 
-#include <functional>
-
 namespace dodoe {
 
     struct CommandContext {
