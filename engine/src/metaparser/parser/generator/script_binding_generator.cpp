@@ -199,6 +199,27 @@ namespace Generator
             }
         }
 
+        static std::string paramNames(const std::string& params) {
+            std::string out;
+            std::string cur;
+            for (char ch : params) {
+                if (ch == ',') {
+                    std::size_t p = cur.find_last_of(' ');
+                    if (!out.empty()) out += ", ";
+                    out += (p == std::string::npos) ? cur : cur.substr(p + 1);
+                    cur.clear();
+                } else {
+                    cur += ch;
+                }
+            }
+            if (!cur.empty()) {
+                std::size_t p = cur.find_last_of(' ');
+                if (!out.empty()) out += ", ";
+                out += (p == std::string::npos) ? cur : cur.substr(p + 1);
+            }
+            return out;
+        }
+
         static void buildCppBodies(const std::string& compName, const std::string& fieldName, const std::string& fieldNameCs, const std::string& csType, FieldBindingInfo& info, bool hasGetter = false, bool hasSetter = false, bool markDirty = false)
         {
             std::string fnGet = cppFuncName(compName, fieldName, "get");
@@ -369,6 +390,20 @@ namespace Generator
                     info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) c->set" + fieldNameCs + "(v);";
                 else
                     info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) c->" + fieldName + " = v;";
+            }
+
+            if (!info.cpp_setter_body.empty() && !info.cpp_set_params.empty()) {
+                std::string names = paramNames(info.cpp_set_params);
+                std::string capture;
+                if (info.cpp_set_params.find("const char*") != std::string::npos) {
+                    capture = "uuid, _v = std::string(v ? v : \"\")";
+                    names = "_v.c_str()";
+                } else {
+                    capture = "uuid, " + names;
+                }
+                info.cpp_setter_body +=
+                    " else if (TryBufferComponentWrite([" + capture + "] { " +
+                    info.cpp_func_set + "(uuid" + (names.empty() ? "" : ", " + names) + "); })) {}";
             }
         }
 

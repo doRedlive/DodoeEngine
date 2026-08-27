@@ -1,6 +1,4 @@
-//
-// Created by GreenMuffin on 2025/11/15.
-//
+// do@Redlive
 
 #include "scene.h"
 

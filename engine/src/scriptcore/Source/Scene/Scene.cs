@@ -46,6 +46,11 @@ public class Scene
         return go;
     }
 
+    public bool Save()
+    {
+        return NativeCalls.Native_WorldSaveActiveScene();
+    }
+
     internal GameObject RegisterEntity(ulong id)
     {
         if (_gameObjects.TryGetValue(id, out var existing))

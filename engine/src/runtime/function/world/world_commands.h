@@ -47,9 +47,35 @@ namespace dodoe {
         void addManagedComponent(const UUID& uuid, const String& type_name);
         void removeManagedComponent(const UUID& uuid, const String& type_name);
 
-        void apply(CommandContext context) { execute(context); }
+        void apply(CommandContext context) {
+            execute(context);
+            replayPendingWrites();
+        }
+
+        bool bufferComponentWrite(std::function<void()> write) {
+            if (!write || m_replaying) return false;
+            std::lock_guard<std::mutex> lock(*m_writes_mutex);
+            m_pending_writes.push_back(std::move(write));
+            return true;
+        }
 
     private:
+        Scope<std::mutex> m_writes_mutex{ create_scope<std::mutex>() };
+        DynamicArray<std::function<void()>> m_pending_writes;
+        bool m_replaying{ false };
+
+        void replayPendingWrites() {
+            if (m_replaying) return;
+            m_replaying = true;
+            DynamicArray<std::function<void()>> writes;
+            {
+                std::lock_guard<std::mutex> lock(*m_writes_mutex);
+                writes.swap(m_pending_writes);
+            }
+            for (auto& write : writes) write();
+            m_replaying = false;
+        }
+
         struct DestroyCmd : CommandImpl<DestroyCmd> {
             UUID uuid;
             explicit DestroyCmd(UUID u) : uuid(u) {}

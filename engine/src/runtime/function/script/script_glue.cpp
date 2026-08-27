@@ -101,6 +101,15 @@ namespace dodoe {
             return &e.getComponent<TC>();
         }
 
+        static bool TryBufferComponentWrite(std::function<void()> write) {
+            if (!write) return false;
+            auto* world = GetWorld();
+            auto* scene = world->getActiveScene();
+            if (!scene) return false;
+            world->getCommandBuffer().bufferComponentWrite(std::move(write));
+            return true;
+        }
+
 #define DEF_STR_RET(id) thread_local static String _s_##id
 
         template <typename T>
@@ -856,6 +865,15 @@ namespace dodoe {
             return _s_world_entities.c_str();
         }
 
+        static int native_world_save_active_scene() {
+            auto* world = GetWorld();
+            auto* scene = world->getActiveScene();
+            if (!scene) return 0;
+            world->flushCommandBuffer();
+            scene->save();
+            return 1;
+        }
+
         static void native_world_unload_scene(const char* name) {
             if (!name) return;
             auto* world = GetWorld();
@@ -1580,6 +1598,7 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_world_unload_scene, void, (const char* name), name) \
     X(native_world_load_scene_async, int, (const char* name, int mode), name, mode) \
     X(native_world_is_load_complete, int, (int token), token) \
+    X(native_world_save_active_scene, int, (), ) \
     X(native_ui_load_layout, int, (const char* path), path) \
     X(native_ui_clear_all, void, (), ) \
     X(native_ui_find_element, uint32_t, (const char* id_str, const char* type_name), id_str, type_name) \

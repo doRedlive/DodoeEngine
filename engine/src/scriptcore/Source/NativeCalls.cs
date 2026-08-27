@@ -421,6 +421,7 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<byte*, void>                                          native_world_unload_scene;
         public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene_async;
         public delegate* unmanaged<int, int>                                             native_world_is_load_complete;
+        public delegate* unmanaged<int>                                                  native_world_save_active_scene;
         // === UI Bindings ===
         public delegate* unmanaged<byte*, int>                                            native_ui_load_layout;
         public delegate* unmanaged<void>                                                  native_ui_clear_all;
@@ -919,6 +920,8 @@ internal static unsafe partial class NativeCalls
     {
         return b->native_world_is_load_complete(token) != 0;
     }
+
+    internal static bool Native_WorldSaveActiveScene() => b->native_world_save_active_scene() != 0;
 
     internal static void Native_WorldUnloadScene(string name)
     {

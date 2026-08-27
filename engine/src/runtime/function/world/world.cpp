@@ -617,6 +617,13 @@ namespace dodoe {
         ExecuteSystemsParallel(m_runtime_task_graph, m_runtime_systems, reg, dt, m_command_buffer);
     }
 
+    void World::flushCommandBuffer() {
+        Scene* scene = getActiveScene();
+        if (!scene) return;
+        m_command_buffer.apply(MakeCommandContext(scene->registry()));
+        m_command_buffer.reset();
+    }
+
     void World::onRuntimeFinalize(Registry& reg) {
         DO_PROFILE_SCOPE_CATEGORY("World::onRuntimeFinalize", "shutdown");
         for (auto& sys : m_gameplay_systems) {

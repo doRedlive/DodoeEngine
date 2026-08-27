@@ -123,6 +123,7 @@ namespace dodoe {
         }
 
         [[nodiscard]] WorldCommands& getCommandBuffer() { return m_command_buffer; }
+        void flushCommandBuffer();
 
         static void SetForceSequential(bool v) { s_force_sequential = v; }
         [[nodiscard]] static bool IsForceSequential() { return s_force_sequential; }
