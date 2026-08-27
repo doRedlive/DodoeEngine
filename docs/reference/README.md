@@ -11,5 +11,7 @@
 | UI、Input、Window | [ui-input-window.md](ui-input-window.md) |
 | Physics、Animation、Time | [simulation.md](simulation.md) |
 | Editor | [editor.md](editor.md) |
+| Cakery Qt 架构 | [cakery-qt-architecture.md](cakery-qt-architecture.md) |
+| Qt 基础用法 | [qt-basics.md](qt-basics.md) |
 | Parser、Generated、Sandbox | [tooling.md](tooling.md) |
 | C++ Code Style | [code-style.md](code-style.md) |

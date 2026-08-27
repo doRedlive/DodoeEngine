@@ -1,5 +1,7 @@
 # Editor
 
+Qt 外壳、对象生命周期、事件流和排查方法见：[Cakery Qt 架构说明](cakery-qt-architecture.md)。
+
 ## 目录
 
 | 目录 | 关键类型 |
