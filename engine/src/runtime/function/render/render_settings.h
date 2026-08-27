@@ -26,6 +26,7 @@ namespace dodoe {
         Deferred,
         DeferredPlus,
         Only2D,
+        OnlyGUI,
     };
 
     enum class ThreadingMode {

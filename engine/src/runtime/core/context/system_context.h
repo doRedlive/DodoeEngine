@@ -19,6 +19,7 @@
 #include "runtime/function/window/window_manager.h"
 
 namespace dodoe {
+    
     struct DODOE_API SystemContextCreateInfo {
         ApplicationSpecification spec{};
     };

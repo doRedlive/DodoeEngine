@@ -14,6 +14,7 @@ namespace dodoe {
 		int sub_step_count{4};
 		float fixed_dt{1.0f / 60.0f};
 		int max_sub_steps{4};
+		bool enable_3d{true};
 	};
 
 	class PhysicsSystem : public Managed<PhysicsSystem, PhysicsSystemCreateInfo> {

@@ -964,6 +964,7 @@ bool RuntimeEditorBackend::bootRuntime()
     ApplicationSpecification spec;
     spec.name = "Cakery";
     spec.app_mode = AppMode::Editor;
+    spec.engine_mode = EngineMode::Full;
     spec.window_resizeable = true;
     spec.width = static_cast<UInt32>(bootW);
     spec.height = static_cast<UInt32>(bootH);

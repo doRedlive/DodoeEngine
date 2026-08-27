@@ -38,8 +38,12 @@ namespace dodoe {
 		m_fixed_dt = create_info.fixed_dt;
 		m_max_sub_steps = create_info.max_sub_steps;
 		m_world_2d = Physics2dWorld::Create(world_create_info);
-		m_world_3d = PhysicsWorld::Create({});
-		return m_world_2d != nullptr && m_world_3d != nullptr;
+		if (!m_world_2d) return false;
+		if (create_info.enable_3d) {
+			m_world_3d = PhysicsWorld::Create({});
+			if (!m_world_3d) return false;
+		}
+		return true;
 	}
 
 	void PhysicsSystem::shutdown() {

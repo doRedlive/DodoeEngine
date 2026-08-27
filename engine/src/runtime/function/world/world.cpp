@@ -248,20 +248,23 @@ namespace dodoe {
 
     bool World::setupSystems() {
         DO_PROFILE_SCOPE_CATEGORY("World::setupSystems", "startup");
-        auto mono = create_ref<MonoSystem>();
-        auto animator = create_ref<AnimatorSystem>();
-        auto camera_system = create_ref<CameraSystem>();
-        auto light_system = create_ref<LightSystem>();
-        auto sky_light = create_ref<SkyLightSystem>();
-        auto physics2d = create_ref<Physics2dSystem>();
-        auto physics3d = create_ref<Physics3dSystem>();
-        auto audio_play = create_ref<AudioPlaySystem>();
-        auto foliage_renderer = create_ref<FoliageRendererSystem>();
-        auto mesh_system = create_ref<MeshRendererSystem>();
-        auto sprite_renderer = create_ref<SpriteRendererSystem>();
-        auto tilemap_renderer = create_ref<TilemapRendererSystem>();
-        auto rect_renderer = create_ref<RectRendererSystem>();
-        auto line_renderer = create_ref<LineRendererSystem>();
+        const bool is_2d_only = Application::Self().getEngineMode() == EngineMode::TwoD;
+
+        Ref<System> mono = create_ref<MonoSystem>();
+        Ref<System> animator = create_ref<AnimatorSystem>();
+        Ref<System> camera_system = create_ref<CameraSystem>();
+        Ref<System> light_system = create_ref<LightSystem>();
+        Ref<System> sky_light = is_2d_only ? nullptr : create_ref<SkyLightSystem>();
+        Ref<System> physics2d = create_ref<Physics2dSystem>();
+        Ref<System> physics3d = is_2d_only ? nullptr : create_ref<Physics3dSystem>();
+        Ref<System> audio_play = create_ref<AudioPlaySystem>();
+        Ref<System> foliage_renderer = is_2d_only ? nullptr : create_ref<FoliageRendererSystem>();
+        Ref<System> mesh_system = is_2d_only ? nullptr : create_ref<MeshRendererSystem>();
+        Ref<System> sprite_renderer = create_ref<SpriteRendererSystem>();
+        Ref<System> tilemap_renderer = create_ref<TilemapRendererSystem>();
+        Ref<System> rect_renderer = create_ref<RectRendererSystem>();
+        Ref<System> line_renderer = create_ref<LineRendererSystem>();
+
         registerGameplaySystem(mono);
         registerRuntimeSystem(animator);
         registerRuntimeSystem(camera_system);

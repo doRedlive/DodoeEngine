@@ -4,6 +4,7 @@
 
 #include "deferred_renderer.h"
 #include "only_2d_renderer.h"
+#include "only_gui_renderer.h"
 #include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
@@ -23,6 +24,14 @@ namespace dodoe {
         }
         case RenderingPipelineType::Only2D: {
             auto renderer = create_scope<Only2DRenderer>();
+            if (!renderer->initialize(info)) {
+                return false;
+            }
+            m_active_renderer = std::move(renderer);
+            return true;
+        }
+        case RenderingPipelineType::OnlyGUI: {
+            auto renderer = create_scope<OnlyGUIRenderer>();
             if (!renderer->initialize(info)) {
                 return false;
             }

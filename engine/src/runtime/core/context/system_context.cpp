@@ -60,6 +60,7 @@ namespace dodoe {
 
     Bool SystemContext::initializeModules() {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::initializeModules", "startup");
+        const auto engine_mode = m_init_info.spec.engine_mode;
         m_service_manager = ServiceManager::Create({});
         DO_INFO("ServiceManager initialized.");
 
@@ -75,6 +76,11 @@ namespace dodoe {
         render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
         render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
         render_settings_init_info.windowless = m_init_info.spec.render_settings.windowless;
+        if (engine_mode == EngineMode::TwoD) {
+            render_settings_init_info.pipeline = RenderingPipelineType::Only2D;
+        } else if (engine_mode == EngineMode::GUI) {
+            render_settings_init_info.pipeline = RenderingPipelineType::OnlyGUI;
+        }
         DO_ASSERT(RenderSettings::Initialize(render_settings_init_info), "RenderSettings init failed");
         DO_INFO("RenderSettings initialized.");
 
@@ -101,7 +107,9 @@ namespace dodoe {
             m_debugger      = Debugger::Create({});
             DO_INFO("Debugger initialized.");
 #ifdef DODOE_DEBUG_ENABLED
-            DebugImGui::RegisterDebugPanel();
+            if (engine_mode != EngineMode::GUI) {
+                DebugImGui::RegisterDebugPanel();
+            }
 #endif//DODOE_DEBUG_ENABLED
             m_render_system = RenderSystem::Create({m_window_manager.get()});
             DO_ASSERT(m_render_system, "RenderSystem init failed");
@@ -113,21 +121,28 @@ namespace dodoe {
             m_input_manager = InputManager::Create(input_init_info);
             DO_INFO("InputManager initialized.");
 
-            m_audio_system = AudioSystem::Create({});
-            DO_ASSERT(m_audio_system, "AudioSystem init failed");
-            DO_INFO("AudioSystem initialized.");
+            if (engine_mode != EngineMode::GUI) {
+                m_audio_system = AudioSystem::Create({});
+                DO_ASSERT(m_audio_system, "AudioSystem init failed");
+                DO_INFO("AudioSystem initialized.");
+            }
         }
 
-        m_script_system = ScriptSystem::Create({});
-        DO_ASSERT(m_script_system, "ScriptSystem init failed");
-        DO_INFO("ScriptSystem initialized.");
-        m_physics_system = PhysicsSystem::Create({});
-        DO_ASSERT(m_physics_system, "PhysicsSystem init failed");
-        DO_INFO("PhysicsSystem initialized.");
+        if (engine_mode != EngineMode::GUI) {
+            m_script_system = ScriptSystem::Create({});
+            DO_ASSERT(m_script_system, "ScriptSystem init failed");
+            DO_INFO("ScriptSystem initialized.");
 
-        m_world = World::Create({"Main"});
-        DO_ASSERT(m_world, "World init failed");
-        DO_INFO("World initialized.");
+            PhysicsSystemCreateInfo physics_create_info;
+            physics_create_info.enable_3d = (engine_mode == EngineMode::Full);
+            m_physics_system = PhysicsSystem::Create(physics_create_info);
+            DO_ASSERT(m_physics_system, "PhysicsSystem init failed");
+            DO_INFO("PhysicsSystem initialized.");
+
+            m_world = World::Create({"Main"});
+            DO_ASSERT(m_world, "World init failed");
+            DO_INFO("World initialized.");
+        }
 
         return true;
     }
@@ -138,6 +153,11 @@ namespace dodoe {
         if (m_render_system) {
             DO_ASSERT(m_render_system->beginMainThreadFrame(),
                 "SystemContext failed to acquire graphics context for startup.");
+        }
+
+        if (m_init_info.spec.engine_mode == EngineMode::GUI) {
+            DO_INFO("Runtime startup completed (GUI mode, no world).");
+            return;
         }
 
         DO_ASSERT(ResourceManager::Self().loadAssets(), "Failed to load asset database");
@@ -167,7 +187,9 @@ namespace dodoe {
                 "SystemContext failed to acquire graphics context for shutdown.");
         }
 
-        m_world->finalize();
+        if (m_world) {
+            m_world->finalize();
+        }
 
         World::Destroy(m_world);
         ScriptSystem::Destroy(m_script_system);
@@ -217,9 +239,9 @@ namespace dodoe {
             layer->updateTick(delta_time);
         }
 
-        m_world->update(delta_time);
+        if (m_world) { m_world->update(delta_time); }
         if (m_ui_manager) { m_ui_manager->update(delta_time); }
-        m_audio_system->update(delta_time);
+        if (m_audio_system) { m_audio_system->update(delta_time); }
     }
 
     void SystemContext::renderTick() {

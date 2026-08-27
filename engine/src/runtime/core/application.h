@@ -21,6 +21,12 @@ namespace dodoe {
         Server
     };
 
+    enum class EngineMode {
+        Full,
+        TwoD,
+        GUI
+    };
+
     struct DODOE_API ApplicationCommandLineArgs {
         int argc{ 0 };
         char** args{ nullptr };
@@ -34,6 +40,9 @@ namespace dodoe {
 
         META(Enable)
         AppMode app_mode{ AppMode::Game };
+
+        META(Enable)
+        EngineMode engine_mode{ EngineMode::Full };
 
         META(Enable)
         UInt32 width{ 1920 };
@@ -82,6 +91,7 @@ namespace dodoe {
         [[nodiscard]] const SystemContext& context() const;
         [[nodiscard]] const AppMode& getAppMode() const { return m_app_spec.app_mode; }
         [[nodiscard]] Bool isServerMode() const { return m_app_spec.app_mode == AppMode::Server; }
+        [[nodiscard]] const EngineMode& getEngineMode() const { return m_app_spec.engine_mode; }
 
         void run();
         void quit();
