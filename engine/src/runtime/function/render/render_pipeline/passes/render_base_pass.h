@@ -9,18 +9,18 @@
 
 namespace dodoe {
 
-	class GBufferMeshProcessor;
-	class DirectionalShadowMeshProcessor;
+	class LitMeshProcessor;
+	class ShadowMeshProcessor;
 
 	class GBufferPass : public IRenderPass {
 	public:
 	    using Produces = TypeList<SceneTexturesKey>;
 	    using Consumes = TypeList<>;
 
-	    explicit GBufferPass(const GBufferMeshProcessor* processor = nullptr)
+	    explicit GBufferPass(const LitMeshProcessor* processor = nullptr)
 	        : m_mesh_processor(processor) {}
 
-	    RenderPhase getPhase() const override { return RenderPhase::GBuffer; }
+	    RenderPhase getPhase() const override { return RenderPhase::Opaque; }
 
 	    DynamicArray<Size_t> getProducedKeys() const override {
 	        return MakeKeyHashes(Produces{});
@@ -30,15 +30,15 @@ namespace dodoe {
 	               const RenderPassBuildContext& context) override;
 
 	private:
-	    const GBufferMeshProcessor* m_mesh_processor;
+	    const LitMeshProcessor* m_mesh_processor;
 	};
 
-	class DirectionalShadowPass : public IRenderPass {
+	class ShadowPass : public IRenderPass {
 	public:
 	    using Produces = TypeList<ShadowMapKey>;
 	    using Consumes = TypeList<SceneTexturesKey>;
 
-	    explicit DirectionalShadowPass(const DirectionalShadowMeshProcessor* processor = nullptr)
+	    explicit ShadowPass(const ShadowMeshProcessor* processor = nullptr)
 	        : m_mesh_processor(processor) {}
 
 	    RenderPhase getPhase() const override { return RenderPhase::Shadow; }
@@ -55,7 +55,7 @@ namespace dodoe {
 	               const RenderPassBuildContext& context) override;
 
 	private:
-	    const DirectionalShadowMeshProcessor* m_mesh_processor;
+	    const ShadowMeshProcessor* m_mesh_processor;
 	};
 
 } // namespace dodoe

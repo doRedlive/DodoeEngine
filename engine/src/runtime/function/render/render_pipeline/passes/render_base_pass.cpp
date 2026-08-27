@@ -12,13 +12,14 @@
 #include "../render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_settings.h"
 
-#include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
-#include "runtime/function/render/mesh_draw/directional_shadow_mesh_processor.h"
+#include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
+#include "runtime/function/render/mesh_draw/shadow_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_list.h"
 #include "runtime/function/render/mesh_draw/mesh_processor_base.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_service/render_target_handle.h"
-#include "runtime/function/render/render_pipeline/render_feature/base_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/opaque_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/shadow_scene_feature.h"
 #include "../render_graph_import_keys.h"
 
 namespace dodoe {
@@ -102,9 +103,9 @@ namespace dodoe {
                 const ViewMeshShaderData view_data{ctx.getView()->getViewProjectionMatrix()};
                 command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
 
-                auto* feature = static_cast<BaseSceneFeature*>(m_owning_feature);
+                auto* feature = static_cast<OpaqueSceneFeature*>(m_owning_feature);
                 DO_ASSERT(feature != nullptr, "GBufferPass owning feature is null");
-                const auto& draw_list = feature->getGBufferDrawLists()[ctx.getViewIndex()];
+                const auto& draw_list = feature->getLitDrawLists()[ctx.getViewIndex()];
 
                 const auto fb = ctx.getFramebuffer();
                 SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
@@ -123,21 +124,21 @@ namespace dodoe {
         RenderTargetHandle* shadow_rt{nullptr};
     };
 
-    void DirectionalShadowPass::build(RenderGraphBuilder& graph,
-                                       const RenderPassBuildContext& context) {
-        DO_ASSERT(m_mesh_processor != nullptr, "DirectionalShadowPass requires mesh processor");
+    void ShadowPass::build(RenderGraphBuilder& graph,
+                           const RenderPassBuildContext& context) {
+        DO_ASSERT(m_mesh_processor != nullptr, "ShadowPass requires mesh processor");
 
         graph.addPass<ShadowPassParameters>(
-            "DirectionalShadowPass",
+            "ShadowPass",
             RenderGraphPassFlags::Raster,
             [view = &context.view, imports = context.graph_imports]
             (RenderGraphPassBuilder& pass_builder, ShadowPassParameters& parameters) {
                 const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
-                DO_ASSERT(scene_textures, "DirectionalShadowPass scene textures are missing");
+                DO_ASSERT(scene_textures, "ShadowPass scene textures are missing");
 
-                DO_ASSERT(imports != nullptr, "DirectionalShadowPass graph imports are null");
+                DO_ASSERT(imports != nullptr, "ShadowPass graph imports are null");
                 parameters.shadow_rt = imports->require<ShadowMapRenderTargetKey>();
-                DO_ASSERT(parameters.shadow_rt != nullptr, "DirectionalShadowPass requires a ShadowMap RenderTargetHandle");
+                DO_ASSERT(parameters.shadow_rt != nullptr, "ShadowPass requires a ShadowMap RenderTargetHandle");
 
                 RenderGraphAttachmentInfo depth_attach{};
                 depth_attach.load_op = LoadOp::Clear;
@@ -148,7 +149,7 @@ namespace dodoe {
                 pass_builder.blackboard().set<ShadowMapKey>(parameters.shadow_map);
             },
             [this, processor = m_mesh_processor](const ShadowPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                DO_ASSERT(ctx.getView() != nullptr, "DirectionalShadowPass view is null");
+                DO_ASSERT(ctx.getView() != nullptr, "ShadowPass view is null");
 
                 const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
                 if (!mesh_ext) return;
@@ -162,7 +163,7 @@ namespace dodoe {
                 const ViewMeshShaderData view_data{mesh_ext->directional_shadow_view_projection};
                 command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
 
-                auto* feature = static_cast<BaseSceneFeature*>(m_owning_feature);
+                auto* feature = static_cast<ShadowSceneFeature*>(m_owning_feature);
                 const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];
 
                 const auto fb = ctx.getFramebuffer();

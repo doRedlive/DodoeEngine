@@ -22,7 +22,7 @@ namespace dodoe {
     };
 
     class MeshDrawCommand {
-        MeshPassType m_pass_type{MeshPassType::GBuffer};
+        MeshPassType m_pass_type{MeshPassType::Opaque};
         GfxGraphicsPipelineHandle m_pipeline{};
         StaticArray<GfxBindingSetHandle, ShaderParameterBinder::kShaderParameterSetCount> m_binding_sets{};
         DynamicArray<GfxVertexBufferBinding> m_vertex_bindings{};

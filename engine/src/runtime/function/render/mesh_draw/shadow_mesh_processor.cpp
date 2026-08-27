@@ -1,6 +1,6 @@
 // do@Redlive
 
-#include "directional_shadow_mesh_processor.h"
+#include "shadow_mesh_processor.h"
 
 #include "cached_mesh_draw_command.h"
 #include "../render_scene/primitive_render_object.h"
@@ -15,8 +15,8 @@ namespace dodoe {
         constexpr UInt32 kVolatileConstantBufferVersions = 4096;
     }
 
-    DirectionalShadowMeshProcessor::DirectionalShadowMeshProcessor(BindingLayoutCache& binding_layout_cache,
-                                                                     BindingSetCache& binding_set_cache) {
+    ShadowMeshProcessor::ShadowMeshProcessor(BindingLayoutCache& binding_layout_cache,
+                                             BindingSetCache& binding_set_cache) {
         m_global_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
@@ -37,14 +37,14 @@ namespace dodoe {
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("DirectionalShadowMeshProcessor Global ConstantBuffer"));
+                .setDebugName("ShadowMeshProcessor Global ConstantBuffer"));
         m_view_constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(ViewMeshShaderData)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("DirectionalShadowMeshProcessor View ConstantBuffer"));
+                .setDebugName("ShadowMeshProcessor View ConstantBuffer"));
         m_global_binding_set = binding_set_cache.getOrCreate(
             GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kGlobalBindingConstants, m_global_constant_buffer->getRHIHandle())),
             m_global_binding_layout,
@@ -57,7 +57,7 @@ namespace dodoe {
         );
     }
 
-    void DirectionalShadowMeshProcessor::reset() {
+    void ShadowMeshProcessor::reset() {
         m_global_constant_buffer = nullptr;
         m_view_constant_buffer = nullptr;
         m_global_binding_set = nullptr;
@@ -66,7 +66,7 @@ namespace dodoe {
         m_view_binding_layout = nullptr;
     }
 
-    void DirectionalShadowMeshProcessor::buildCachedCommands(
+    void ShadowMeshProcessor::buildCachedCommands(
         const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
         const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
         const DynamicArray<UInt32>& mesh_pass_primitive_indices,
@@ -81,7 +81,7 @@ namespace dodoe {
 
         UInt32 first_instance = 0;
         for (const UInt32 primitive_index : mesh_pass_primitive_indices) {
-            DO_ASSERT(primitive_index < visible_primitives.size(), "DirectionalShadowMeshProcessor primitive index out of range");
+            DO_ASSERT(primitive_index < visible_primitives.size(), "ShadowMeshProcessor primitive index out of range");
             const auto* primitive = visible_primitives[primitive_index];
             if (!primitive || !primitive->castsShadow() || primitive->getMobility() == PrimitiveMobility::Movable) {
                 if (primitive) {
@@ -92,7 +92,7 @@ namespace dodoe {
 
             const auto& batches = primitive->getMeshBatches();
             for (const auto& batch : batches) {
-                if (!batch.isValid() || !batch.isRelevant(MeshPassType::DirectionalShadow) || batch.elements.empty()) {
+                if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.elements.empty()) {
                     continue;
                 }
                 if (IsBatchFrustumCulled(batch, primitive, frustum_planes)) {
@@ -104,9 +104,9 @@ namespace dodoe {
                 }
 
                 const auto cache_key = CacheHashUtils::MakeCacheKey(
-                    element, batch.material_instance, MeshPassType::DirectionalShadow);
+                    element, batch.material_instance, MeshPassType::Shadow);
 
-                auto cmd = BuildDrawCommand(element, MeshPassType::DirectionalShadow, GfxBindingSetHandle{});
+                auto cmd = BuildDrawCommand(element, MeshPassType::Shadow, GfxBindingSetHandle{});
                 cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
                 cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
                 const UInt32 cmd_index = cache.findOrCreate(cache_key, std::move(cmd));
@@ -121,7 +121,7 @@ namespace dodoe {
         }
     }
 
-    void DirectionalShadowMeshProcessor::buildDynamicCommands(
+    void ShadowMeshProcessor::buildDynamicCommands(
         const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
         const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
         const DynamicArray<UInt32>& mesh_pass_primitive_indices,
@@ -140,7 +140,7 @@ namespace dodoe {
 
         UInt32 first_instance = 0;
         for (const UInt32 primitive_index : mesh_pass_primitive_indices) {
-            DO_ASSERT(primitive_index < visible_primitives.size(), "DirectionalShadowMeshProcessor primitive index out of range");
+            DO_ASSERT(primitive_index < visible_primitives.size(), "ShadowMeshProcessor primitive index out of range");
             const auto* primitive = visible_primitives[primitive_index];
             if (!primitive || !primitive->castsShadow() || primitive->getMobility() != PrimitiveMobility::Movable) {
                 if (primitive) {
@@ -151,7 +151,7 @@ namespace dodoe {
 
             const auto& batches = primitive->getMeshBatches();
             for (const auto& batch : batches) {
-                if (!batch.isValid() || !batch.isRelevant(MeshPassType::DirectionalShadow) || batch.elements.empty()) {
+                if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.elements.empty()) {
                     continue;
                 }
                 if (IsBatchFrustumCulled(batch, primitive, frustum_planes)) {
@@ -162,7 +162,7 @@ namespace dodoe {
                     continue;
                 }
 
-                auto cmd = BuildDrawCommand(element, MeshPassType::DirectionalShadow, GfxBindingSetHandle{});
+                auto cmd = BuildDrawCommand(element, MeshPassType::Shadow, GfxBindingSetHandle{});
                 cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
                 cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
                 const UInt32 cmd_index = static_cast<UInt32>(local_commands.size());

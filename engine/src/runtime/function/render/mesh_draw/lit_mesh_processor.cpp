@@ -1,6 +1,6 @@
 // do@Redlive
 
-#include "gbuffer_mesh_processor.h"
+#include "lit_mesh_processor.h"
 
 #include "mesh_draw_types.h"
 #include "mesh_draw_list.h"
@@ -19,10 +19,12 @@ namespace dodoe {
         constexpr UInt32 kVolatileConstantBufferVersions = 4096;
     }
 
-    GBufferMeshProcessor::GBufferMeshProcessor(GfxBindingSetHandle descriptor_binding_set,
-                                               BindingLayoutCache& binding_layout_cache,
-                                               BindingSetCache& binding_set_cache)
-        : m_descriptor_binding_set(std::move(descriptor_binding_set)) {
+    LitMeshProcessor::LitMeshProcessor(const MeshPassType pass_type,
+                                       GfxBindingSetHandle descriptor_binding_set,
+                                       BindingLayoutCache& binding_layout_cache,
+                                       BindingSetCache& binding_set_cache)
+        : m_pass_type(pass_type),
+          m_descriptor_binding_set(std::move(descriptor_binding_set)) {
         m_sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
         m_global_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
@@ -54,21 +56,21 @@ namespace dodoe {
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("GBufferMeshProcessor Global ConstantBuffer"));
+                .setDebugName("LitMeshProcessor Global ConstantBuffer"));
         m_view_constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(ViewMeshShaderData)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("GBufferMeshProcessor View ConstantBuffer"));
+                .setDebugName("LitMeshProcessor View ConstantBuffer"));
         m_primitive_constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(PrimitiveMeshDrawShaderData)))
                 .setIsConstantBuffer(true)
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
-                .setDebugName("GBufferMeshProcessor Primitive ConstantBuffer"));
+                .setDebugName("LitMeshProcessor Primitive ConstantBuffer"));
         m_global_binding_set = binding_set_cache.getOrCreate(
             GfxBindingSetDesc()
                 .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kGlobalBindingConstants, m_global_constant_buffer->getRHIHandle())),
@@ -91,7 +93,7 @@ namespace dodoe {
             binding_layout_cache.getLayoutGeneration(m_sampler_binding_layout));
     }
 
-    void GBufferMeshProcessor::reset() {
+    void LitMeshProcessor::reset() {
         m_global_constant_buffer = nullptr;
         m_view_constant_buffer = nullptr;
         m_primitive_constant_buffer = nullptr;
@@ -106,7 +108,7 @@ namespace dodoe {
         m_sampler = nullptr;
     }
 
-    void GBufferMeshProcessor::buildCachedCommands(
+    void LitMeshProcessor::buildCachedCommands(
         const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
         const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
         const DynamicArray<UInt32>& mesh_pass_primitive_indices,
@@ -125,14 +127,14 @@ namespace dodoe {
 
         UInt32 first_instance = 0;
         for (const UInt32 primitive_index : mesh_pass_primitive_indices) {
-            DO_ASSERT(primitive_index < visible_primitives.size(), "GBufferMeshProcessor primitive index out of range");
+            DO_ASSERT(primitive_index < visible_primitives.size(), "LitMeshProcessor primitive index out of range");
             const auto* primitive = visible_primitives[primitive_index];
             if (!primitive || primitive->getMobility() == PrimitiveMobility::Movable) {
                 continue;
             }
             const auto& batches = primitive->getMeshBatches();
             for (const auto& batch : batches) {
-                if (!batch.isValid() || !batch.isRelevant(MeshPassType::GBuffer) || batch.elements.empty()) {
+                if (!batch.isValid() || !batch.isRelevant(m_pass_type) || batch.elements.empty()) {
                     continue;
                 }
                 if (IsBatchFrustumCulled(batch, primitive, frustum_planes)) {
@@ -153,9 +155,9 @@ namespace dodoe {
                 out_shader_data.push_back(draw_shader_data);
 
                 const auto cache_key = CacheHashUtils::MakeCacheKey(
-                    element, batch.material_instance, MeshPassType::GBuffer);
+                    element, batch.material_instance, m_pass_type);
 
-                auto cmd = BuildDrawCommand(element, MeshPassType::GBuffer, m_primitive_binding_set);
+                auto cmd = BuildDrawCommand(element, m_pass_type, m_primitive_binding_set);
                 cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
                 cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
                 if (RenderSettings::IsBindlessActive()) {
@@ -177,7 +179,7 @@ namespace dodoe {
         }
     }
 
-    void GBufferMeshProcessor::buildDynamicCommands(
+    void LitMeshProcessor::buildDynamicCommands(
         const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
         const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
         const DynamicArray<UInt32>& mesh_pass_primitive_indices,
@@ -199,7 +201,7 @@ namespace dodoe {
 
         UInt32 first_instance = 0;
         for (const UInt32 primitive_index : mesh_pass_primitive_indices) {
-            DO_ASSERT(primitive_index < visible_primitives.size(), "GBufferMeshProcessor primitive index out of range");
+            DO_ASSERT(primitive_index < visible_primitives.size(), "LitMeshProcessor primitive index out of range");
             const auto* primitive = visible_primitives[primitive_index];
             if (!primitive || primitive->getMobility() != PrimitiveMobility::Movable) {
                 if (primitive) {
@@ -209,7 +211,7 @@ namespace dodoe {
             }
             const auto& batches = primitive->getMeshBatches();
             for (const auto& batch : batches) {
-                if (!batch.isValid() || !batch.isRelevant(MeshPassType::GBuffer) || batch.elements.empty()) {
+                if (!batch.isValid() || !batch.isRelevant(m_pass_type) || batch.elements.empty()) {
                     continue;
                 }
                 if (IsBatchFrustumCulled(batch, primitive, frustum_planes)) {
@@ -229,7 +231,7 @@ namespace dodoe {
                 const UInt32 shader_data_index = static_cast<UInt32>(out_shader_data.size());
                 out_shader_data.push_back(draw_shader_data);
 
-                auto cmd = BuildDrawCommand(element, MeshPassType::GBuffer, m_primitive_binding_set);
+                auto cmd = BuildDrawCommand(element, m_pass_type, m_primitive_binding_set);
                 cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
                 cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
                 if (RenderSettings::IsBindlessActive()) {

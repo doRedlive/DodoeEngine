@@ -150,8 +150,9 @@ namespace dodoe {
 
             MeshBatch batch{};
             batch.primitive_id = primitive_id;
-            batch.pass_mask.setRelevant(MeshPassType::GBuffer, m_visible);
-            batch.pass_mask.setRelevant(MeshPassType::DirectionalShadow, m_visible && m_cast_shadow);
+            batch.pass_mask.setRelevant(MeshPassType::Opaque, m_visible && !m_transparent);
+            batch.pass_mask.setRelevant(MeshPassType::Transparent, m_visible && m_transparent);
+            batch.pass_mask.setRelevant(MeshPassType::Shadow, m_visible && m_cast_shadow);
             batch.elements.push_back(element);
             mesh_batches.push_back(std::move(batch));
         }

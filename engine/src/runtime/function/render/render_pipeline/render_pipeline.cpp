@@ -3,6 +3,7 @@
 #include "render_pipeline.h"
 
 #include "deferred_renderer.h"
+#include "forward_renderer.h"
 #include "only_2d_renderer.h"
 #include "only_gui_renderer.h"
 #include "runtime/function/render/render_settings.h"
@@ -16,6 +17,14 @@ namespace dodoe {
         switch (pipeline_type) {
         case RenderingPipelineType::Deferred: {
             auto renderer = create_scope<DeferredRenderer>();
+            if (!renderer->initialize(info)) {
+                return false;
+            }
+            m_active_renderer = std::move(renderer);
+            return true;
+        }
+        case RenderingPipelineType::Forward: {
+            auto renderer = create_scope<ForwardRenderer>();
             if (!renderer->initialize(info)) {
                 return false;
             }

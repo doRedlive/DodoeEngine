@@ -2,15 +2,17 @@
 
 #include "deferred_renderer.h"
 
-#include "../render_graph/render_graph_builder.h"
 #include "render_pipeline_pass_utils.h"
-#include "render_feature/base_scene_feature.h"
+#include "render_feature/opaque_scene_feature.h"
+#include "render_feature/shadow_scene_feature.h"
+#include "render_feature/skybox_feature.h"
 #include "render_feature/lighting_feature.h"
 #include "render_feature/post_process_feature.h"
 #include "render_feature/present_feature.h"
 #include "render_feature/sprite_feature.h"
 #include "render_feature/ui_feature.h"
 #include "render_feature/imgui_feature.h"
+#include "runtime/function/render/render_graph/render_graph_builder.h"
 #ifdef DODOE_EDITOR_ENABLED
 #include "render_feature/gizmo_feature.h"
 #endif//DODOE_EDITOR_ENABLED
@@ -40,7 +42,9 @@ namespace dodoe {
 
 	    m_gpu_culling = GpuCulling::Create({m_gfx_context, const_cast<ShaderLibrary*>(shader_library)});
 
-	    addFeature<BaseSceneFeature>();
+	    addFeature<OpaqueSceneFeature>(OpaqueFillMode::GBuffer);
+	    addFeature<ShadowSceneFeature>();
+	    addFeature<SkyboxFeature>();
 
 	    addFeature<LightingFeature>();
 	    addFeature<PostProcessFeature>();
@@ -79,9 +83,9 @@ namespace dodoe {
 	    initViews(scene, view_family);
 	    DO_PROFILE_MARK("DeferredRenderer::render.setupMeshPassContexts", "frame");
 
-	    auto* base_feature = getFeature<BaseSceneFeature>();
-	    DO_ASSERT(base_feature != nullptr, "DeferredRenderer BaseSceneFeature is null");
-	    base_feature->setupMeshPassContexts(scene, view_family);
+	    auto* opaque_feature = getFeature<OpaqueSceneFeature>();
+	    DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer OpaqueSceneFeature is null");
+	    opaque_feature->setupMeshPassContexts(scene, view_family);
 
 	    const auto culling_path = RenderSettings::GetFeatureSettings().culling_path;
 	    if (culling_path == CullingPath::GpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
@@ -91,8 +95,13 @@ namespace dodoe {
 
 	    if (culling_path == CullingPath::CpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
 	        DO_PROFILE_MARK("DeferredRenderer::render.buildMeshDrawCommands", "frame");
-	        base_feature->buildMeshDrawCommands(view_family, out_commands);
+	        opaque_feature->buildMeshDrawCommands(view_family, out_commands);
 	    }
+
+	    DO_PROFILE_MARK("DeferredRenderer::render.buildShadowDrawCommands", "frame");
+	    auto* shadow_feature = getFeature<ShadowSceneFeature>();
+	    DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
+	    shadow_feature->buildShadowDrawCommands(view_family, out_commands);
 
 	    DO_PROFILE_MARK("DeferredRenderer::render.buildOrderedPasses", "frame");
 	    buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,
@@ -137,9 +146,11 @@ namespace dodoe {
 	        return;
 	    }
 
-	    auto* base_feature = getFeature<BaseSceneFeature>();
-	    DO_ASSERT(base_feature != nullptr, "DeferredRenderer BaseSceneFeature is null");
-	    const auto& mesh_draw_cache = base_feature->getMeshDrawCache();
+	    auto* opaque_feature = getFeature<OpaqueSceneFeature>();
+	    DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer OpaqueSceneFeature is null");
+	    auto* shadow_feature = getFeature<ShadowSceneFeature>();
+	    DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
+	    const auto& mesh_draw_cache = opaque_feature->getMeshDrawCache();
 
 	    const UInt32 object_count = gpu_scene->getObjectCount();
 
@@ -152,9 +163,9 @@ namespace dodoe {
                 static_cast<Float>(view.getViewportRect().z),
                 static_cast<Float>(view.getViewportRect().w)));
 
-	        for (Size_t pass_idx = 0; pass_idx < static_cast<Size_t>(MeshPassType::Count); pass_idx++) {
-                const auto& draw_lists = (pass_idx == static_cast<Size_t>(MeshPassType::GBuffer))
-                    ? base_feature->getGBufferDrawLists() : base_feature->getShadowDrawLists();
+	        for (Size_t pass_idx = 0; pass_idx < static_cast<Size_t>(MeshPassType::Shadow) + 1; pass_idx++) {
+                const auto& draw_lists = (pass_idx == static_cast<Size_t>(MeshPassType::Opaque))
+                    ? opaque_feature->getLitDrawLists() : shadow_feature->getShadowDrawLists();
 	            const auto& instances = draw_lists[view_index].cached_instances;
 	            if (instances.empty()) {
 	                continue;

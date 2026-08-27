@@ -44,6 +44,21 @@ namespace dodoe {
         const GfxFramebufferHandle& framebuffer,
         const GfxViewportState& viewport_state,
         const GfxBufferHandle& primitive_scene_buffer,
+        const GfxBindingSetHandle* pass_binding_set,
         DrawCommandList& command_list);
+
+    inline void SubmitMeshDrawCommands(
+        const DynamicArray<MeshDrawInstance>& instances,
+        const DynamicArray<MeshDrawCommand>& commands,
+        const DynamicArray<PrimitiveMeshDrawShaderData>& shader_data,
+        const GfxBufferHandle& primitive_cb,
+        const GfxFramebufferHandle& framebuffer,
+        const GfxViewportState& viewport_state,
+        const GfxBufferHandle& primitive_scene_buffer,
+        DrawCommandList& command_list)
+    {
+        SubmitMeshDrawCommands(instances, commands, shader_data, primitive_cb, framebuffer,
+            viewport_state, primitive_scene_buffer, nullptr, command_list);
+    }
 
 } // namespace dodoe

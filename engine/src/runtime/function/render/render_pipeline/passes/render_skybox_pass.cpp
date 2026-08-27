@@ -51,13 +51,19 @@ namespace dodoe {
                 DO_ASSERT(scene_textures, "SkyboxPass scene textures are missing");
 
                 parameters.depth = pass_builder.read(scene_textures->depth);
+                const auto* existing_hdr = pass_builder.blackboard().get<SceneHdrKey>();
                 RenderGraphAttachmentInfo hdr_attachment{};
-                hdr_attachment.load_op = LoadOp::Clear;
-                hdr_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
-                parameters.hdr_color = pass_builder.writeColor(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG MainCameraHdrColor"),
-                    "MainCameraHdrColor"), hdr_attachment);
-                pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
+                if (existing_hdr && existing_hdr->isValid()) {
+                    hdr_attachment.load_op = LoadOp::Load;
+                    parameters.hdr_color = pass_builder.writeColor(*existing_hdr, hdr_attachment);
+                } else {
+                    hdr_attachment.load_op = LoadOp::Clear;
+                    hdr_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
+                    parameters.hdr_color = pass_builder.writeColor(pass_builder.createTransientTexture(
+                        rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG MainCameraHdrColor"),
+                        "MainCameraHdrColor"), hdr_attachment);
+                    pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
+                }
 
                 DO_ASSERT(context.graph_imports != nullptr, "SkyboxPass graph imports are null");
                 parameters.skybox_cb = pass_builder.write(pass_builder.importBuffer(

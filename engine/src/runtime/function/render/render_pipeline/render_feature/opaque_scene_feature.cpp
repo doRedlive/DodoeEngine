@@ -1,15 +1,14 @@
 // do@Redlive
 
-#include "base_scene_feature.h"
+#include "opaque_scene_feature.h"
 
 #include "runtime/function/render/render_pipeline/passes/render_base_pass.h"
-#include "runtime/function/render/render_pipeline/passes/render_skybox_pass.h"
+#include "runtime/function/render/render_pipeline/passes/render_opaque_pass.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
-#include "runtime/function/render/mesh_draw/gbuffer_mesh_processor.h"
-#include "runtime/function/render/mesh_draw/directional_shadow_mesh_processor.h"
+#include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_command.h"
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
@@ -63,21 +62,6 @@ namespace dodoe {
         return desc;
     }
 
-    static RenderTargetDesc BuildShadowMapDesc() {
-        RenderTargetDesc desc{};
-        desc.name = "ShadowMap";
-        desc.scale_policy = RenderTargetScalePolicy::Relative;
-        desc.scale_x = 1.0f;
-        desc.scale_y = 1.0f;
-
-        desc.has_depth = true;
-        desc.depth_format = GfxFormat::D32;
-        desc.depth_debug_name = "ShadowMapDepth";
-        desc.clear_depth = 1.0f;
-
-        return desc;
-    }
-
     static GfxFramebufferInfo MakeGBufferFramebufferInfo() {
         GfxFramebufferInfo framebuffer_info{};
         framebuffer_info
@@ -89,24 +73,28 @@ namespace dodoe {
         return framebuffer_info;
     }
 
-    static GfxFramebufferInfo MakeShadowFramebufferInfo() {
+    static GfxFramebufferInfo MakeOpaqueFramebufferInfo() {
         GfxFramebufferInfo framebuffer_info{};
-        framebuffer_info.setDepthFormat(GfxFormat::D32);
+        framebuffer_info
+            .addColorFormat(GfxFormat::RGBA16_FLOAT)
+            .setDepthFormat(GfxFormat::D32);
         return framebuffer_info;
     }
 
-    static GfxGraphicsPipelineDesc MakeGBufferPipelineDesc(const ShaderLibrary& shader_library,
-                                                            GfxInputLayoutHandle gbuffer_input_layout,
-                                                            const GfxBindingLayoutHandle& global_binding_layout,
-                                                            const GfxBindingLayoutHandle& view_binding_layout,
-                                                            const GfxBindingLayoutHandle& primitive_binding_layout,
-                                                            const GfxBindingLayoutHandle& sampler_binding_layout,
-                                                            DescriptorTableManager* descriptor_table,
-                                                            BindingLayoutCache* binding_layout_cache) {
+    static GfxGraphicsPipelineDesc MakeLitPipelineDesc(const ShaderLibrary& shader_library,
+                                                       const GfxShaderHandle& pixel_shader,
+                                                       GfxInputLayoutHandle mesh_input_layout,
+                                                       const GfxBindingLayoutHandle& global_binding_layout,
+                                                       const GfxBindingLayoutHandle& view_binding_layout,
+                                                       const GfxBindingLayoutHandle& primitive_binding_layout,
+                                                       const GfxBindingLayoutHandle& sampler_binding_layout,
+                                                       const GfxBindingLayoutHandle& pass_binding_layout,
+                                                       DescriptorTableManager* descriptor_table,
+                                                       BindingLayoutCache* binding_layout_cache) {
         auto pipeline_desc = GfxGraphicsPipelineDesc()
             .setVertexShader(shader_library.getGBufferVertexShader())
-            .setPixelShader(shader_library.getGBufferPixelShader())
-            .setInputLayout(gbuffer_input_layout)
+            .setPixelShader(pixel_shader)
+            .setInputLayout(mesh_input_layout)
             .addBindingLayout(global_binding_layout)
             .addBindingLayout(view_binding_layout)
             .setPrimType(GfxPrimitiveType::TriangleList);
@@ -123,6 +111,9 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
             pipeline_desc.addBindingLayout(material_layout);
         }
+        if (pass_binding_layout) {
+            pipeline_desc.addBindingLayout(pass_binding_layout);
+        }
         pipeline_desc.addBindingLayout(primitive_binding_layout);
         if (RenderSettings::IsBindlessActive() && descriptor_table && descriptor_table->getDescriptorTable()) {
             pipeline_desc.addBindingLayout(descriptor_table->getDescriptorTable()->getLayout());
@@ -131,28 +122,6 @@ namespace dodoe {
         depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
         GfxRenderState render_state;
         render_state.setDepthStencilState(depth_stencil_state);
-        pipeline_desc.setRenderState(render_state);
-        return pipeline_desc;
-    }
-
-    static GfxGraphicsPipelineDesc MakeShadowPipelineDesc(const ShaderLibrary& shader_library,
-                                                           GfxInputLayoutHandle shadow_input_layout,
-                                                           const GfxBindingLayoutHandle& global_binding_layout,
-                                                           const GfxBindingLayoutHandle& view_binding_layout) {
-        auto pipeline_desc = GfxGraphicsPipelineDesc()
-            .setVertexShader(shader_library.getShadowVertexShader())
-            .setPixelShader(shader_library.getShadowPixelShader())
-            .setInputLayout(shadow_input_layout)
-            .addBindingLayout(global_binding_layout)
-            .addBindingLayout(view_binding_layout)
-            .setPrimType(GfxPrimitiveType::TriangleList);
-        GfxDepthStencilState depth_stencil_state;
-        depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
-        GfxRasterState raster_state;
-        raster_state.setCullBack().setDepthBiasClamp(0.0f).setDepthBias(6).setSlopeScaleDepthBias(1.5f);
-        GfxRenderState render_state;
-        render_state.setDepthStencilState(depth_stencil_state);
-        render_state.setRasterState(raster_state);
         pipeline_desc.setRenderState(render_state);
         return pipeline_desc;
     }
@@ -170,18 +139,17 @@ namespace dodoe {
         return relevance;
     }
 
-    void BaseSceneFeature::initialize(SharedRenderService& resources) {
+    void OpaqueSceneFeature::initialize(SharedRenderService& resources) {
         auto* gfx = resources.getGfxContext();
         auto* deletion_queue = resources.getRenderTargetSystem()
             ? resources.getRenderTargetSystem()->getDeletionQueue()
             : nullptr;
         m_shared_render_service = &resources;
 
-        m_gbuffer = create_scope<RenderTargetHandle>();
-        m_gbuffer->initialize(BuildGBufferDesc(), *gfx, deletion_queue);
-
-        m_shadow_map = create_scope<RenderTargetHandle>();
-        m_shadow_map->initialize(BuildShadowMapDesc(), *gfx, deletion_queue);
+        if (m_fill_mode == OpaqueFillMode::GBuffer) {
+            m_gbuffer = create_scope<RenderTargetHandle>();
+            m_gbuffer->initialize(BuildGBufferDesc(), *gfx, deletion_queue);
+        }
 
         GfxBindingSetHandle descriptor_binding_set{};
         auto* descriptor_table = resources.getDescriptorTable();
@@ -191,77 +159,51 @@ namespace dodoe {
         }
         auto* binding_layout_cache = resources.getBindingLayoutCache();
         auto* binding_set_cache = resources.getBindingSetCache();
-        DO_ASSERT(binding_layout_cache != nullptr, "BaseSceneFeature binding layout cache is null");
-        DO_ASSERT(binding_set_cache != nullptr, "BaseSceneFeature binding set cache is null");
-        m_gbuffer_processor = create_scope<GBufferMeshProcessor>(
-            descriptor_binding_set, *binding_layout_cache, *binding_set_cache);
-	    m_shadow_processor = create_scope<DirectionalShadowMeshProcessor>(
-            *binding_layout_cache, *binding_set_cache);
-
-        m_skybox_cb = create_ref<GfxBuffer>(
-            GfxBufferDesc()
-                .setByteSize(sizeof(Matrix4f))
-                .setIsConstantBuffer(true)
-                .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
-                .setDebugName("SkyboxCB"));
-        m_skybox_cb->initializeRHI(gfx->getDevice());
+        DO_ASSERT(binding_layout_cache != nullptr, "OpaqueSceneFeature binding layout cache is null");
+        DO_ASSERT(binding_set_cache != nullptr, "OpaqueSceneFeature binding set cache is null");
+        m_lit_processor = create_scope<LitMeshProcessor>(
+            MeshPassType::Opaque, descriptor_binding_set, *binding_layout_cache, *binding_set_cache);
     }
 
-    void BaseSceneFeature::onResize(const UInt32 width, const UInt32 height) {
+    void OpaqueSceneFeature::onResize(const UInt32 width, const UInt32 height) {
         auto* gfx = m_shared_render_service ? m_shared_render_service->getGfxContext() : nullptr;
-        DO_ASSERT(gfx != nullptr, "BaseSceneFeature onResize requires valid GfxContext");
+        DO_ASSERT(gfx != nullptr, "OpaqueSceneFeature onResize requires valid GfxContext");
 
         if (m_gbuffer) {
             m_gbuffer->resolve(width, height, *gfx, 0);
         }
-        if (m_shadow_map) {
-            m_shadow_map->resolve(width, height, *gfx, 0);
-        }
     }
 
-    void BaseSceneFeature::shutdown() {
+    void OpaqueSceneFeature::shutdown() {
         if (m_gbuffer) {
             m_gbuffer->shutdown();
             m_gbuffer.reset();
         }
-        if (m_shadow_map) {
-            m_shadow_map->shutdown();
-            m_shadow_map.reset();
+        if (m_lit_processor) {
+            m_lit_processor->reset();
+            m_lit_processor.reset();
         }
-        if (m_gbuffer_processor) {
-            m_gbuffer_processor->reset();
-            m_gbuffer_processor.reset();
-        }
-        if (m_shadow_processor) {
-            m_shadow_processor->reset();
-            m_shadow_processor.reset();
-        }
-        m_skybox_cb.reset();
     }
 
-    void BaseSceneFeature::registerGraphImports(RenderGraphImportRegistry& imports,
-                                                const RenderView& view) {
-        if (m_gbuffer) {
+    void OpaqueSceneFeature::registerGraphImports(RenderGraphImportRegistry& imports,
+                                                  const RenderView& view) {
+        (void)view;
+        if (m_fill_mode == OpaqueFillMode::GBuffer && m_gbuffer) {
             imports.publish<GBufferRenderTargetKey>(m_gbuffer.get());
         }
-        if (m_shadow_map) {
-            imports.publish<ShadowMapRenderTargetKey>(m_shadow_map.get());
-        }
-        if (m_skybox_cb) {
-            imports.publish<SkyboxConstantBufferKey>(m_skybox_cb);
+    }
+
+    void OpaqueSceneFeature::collectPasses(PassCollector& collector) {
+        DO_ASSERT(m_lit_processor != nullptr, "OpaqueSceneFeature lit processor is null");
+        if (m_fill_mode == OpaqueFillMode::GBuffer) {
+            collector.addPass<GBufferPass>(m_lit_processor.get());
+        } else {
+            collector.addPass<OpaquePass>(m_lit_processor.get());
         }
     }
 
-    void BaseSceneFeature::collectPasses(PassCollector& collector) {
-	    DO_ASSERT(m_gbuffer_processor != nullptr, "BaseSceneFeature GBuffer processor is null");
-	    DO_ASSERT(m_shadow_processor != nullptr, "BaseSceneFeature shadow processor is null");
-        collector.addPass<GBufferPass>(m_gbuffer_processor.get());
-        collector.addPass<DirectionalShadowPass>(m_shadow_processor.get());
-        collector.addPass<SkyboxPass>();
-    }
-
-    void BaseSceneFeature::setupMeshPassContexts(const RenderScene& scene,
-                                                  RenderViewFamily& view_family) const {
+    void OpaqueSceneFeature::setupMeshPassContexts(const RenderScene& scene,
+                                                   RenderViewFamily& view_family) const {
         Vector3f light_direction(0.3f, -0.8f, -0.5f);
         for (const auto& info : scene.getLightSceneInfos()) {
             if (info.getLightType() == LightType::Directional && info.isEnabled()) {
@@ -297,18 +239,18 @@ namespace dodoe {
             ext.primitive_mesh_pass_relevance.clear();
             ext.primitive_mesh_pass_relevance.reserve(mesh_ext.visible_primitives.size());
             for (const auto* primitive : ext.visible_primitives) {
-                DO_ASSERT(primitive != nullptr, "BaseSceneFeature visible primitive is null");
+                DO_ASSERT(primitive != nullptr, "OpaqueSceneFeature visible primitive is null");
                 ext.primitive_mesh_pass_relevance.push_back(BuildPrimitiveMeshPassRelevance(*primitive));
             }
             ext.buildMeshPassPrimitiveIndices();
         }
     }
 
-    void BaseSceneFeature::buildMeshDrawCommands(RenderViewFamily& view_family,
+    void OpaqueSceneFeature::buildMeshDrawCommands(RenderViewFamily& view_family,
                                                    DrawCommandList& cmd_list) {
-        DO_ASSERT(m_shared_render_service != nullptr, "BaseSceneFeature shared render service is null");
-        DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "BaseSceneFeature shader library is null");
-        DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "BaseSceneFeature pipeline cache is null");
+        DO_ASSERT(m_shared_render_service != nullptr, "OpaqueSceneFeature shared render service is null");
+        DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "OpaqueSceneFeature shader library is null");
+        DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "OpaqueSceneFeature pipeline cache is null");
 
         const auto& shader_library = *m_shared_render_service->getShaderLibrary();
 
@@ -327,89 +269,78 @@ namespace dodoe {
         };
 
         auto* input_layout_cache = m_shared_render_service->getInputLayoutCache();
-        const auto gbuffer_input_layout = input_layout_cache
+        const auto mesh_input_layout = input_layout_cache
             ? input_layout_cache->getOrCreate(mesh_vertex_attributes, shader_library.getGBufferVertexShader())
-            : GfxInputLayoutHandle{};
-        const auto shadow_input_layout = input_layout_cache
-            ? input_layout_cache->getOrCreate(mesh_vertex_attributes, shader_library.getShadowVertexShader())
             : GfxInputLayoutHandle{};
 
         auto* pso_cache = m_shared_render_service->getPipelineStateCache();
-        DO_ASSERT(pso_cache != nullptr, "BaseSceneFeature PSO cache is null");
+        DO_ASSERT(pso_cache != nullptr, "OpaqueSceneFeature PSO cache is null");
 
-        const auto gbuffer_fb_info = MakeGBufferFramebufferInfo();
-        const auto shadow_fb_info  = MakeShadowFramebufferInfo();
+        auto* binding_layout_cache = m_shared_render_service->getBindingLayoutCache();
+        auto* descriptor_table = m_shared_render_service->getDescriptorTable();
+
+        GfxBindingLayoutHandle pass_binding_layout{};
+        if (m_fill_mode == OpaqueFillMode::SceneColor) {
+            pass_binding_layout = binding_layout_cache->getOrCreate(
+                GfxBindingLayoutDesc()
+                    .setVisibility(GfxShaderType::Pixel)
+                    .setRegisterSpaceIsDescriptorSet(true)
+                    .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                    .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(1))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+                    .addItem(GfxBindingLayoutItem::Sampler(9)));
+        }
+
+        const auto pixel_shader = m_fill_mode == OpaqueFillMode::GBuffer
+            ? shader_library.getGBufferPixelShader()
+            : shader_library.getOpaquePixelShader();
+        const auto fb_info = m_fill_mode == OpaqueFillMode::GBuffer
+            ? MakeGBufferFramebufferInfo()
+            : MakeOpaqueFramebufferInfo();
 
         (void)pso_cache->resolveGraphicsPipeline(
-            MeshPassType::GBuffer,
-            MakeGBufferPipelineDesc(shader_library, gbuffer_input_layout,
-                m_gbuffer_processor->getGlobalBindingLayout(),
-                m_gbuffer_processor->getViewBindingLayout(),
-                m_gbuffer_processor->getPrimitiveBindingLayout(),
-                m_gbuffer_processor->getSamplerBindingLayout(),
-                m_shared_render_service->getDescriptorTable(),
-                m_shared_render_service->getBindingLayoutCache()),
-            gbuffer_fb_info,
+            MeshPassType::Opaque,
+            MakeLitPipelineDesc(shader_library, pixel_shader, mesh_input_layout,
+                m_lit_processor->getGlobalBindingLayout(),
+                m_lit_processor->getViewBindingLayout(),
+                m_lit_processor->getPrimitiveBindingLayout(),
+                m_lit_processor->getSamplerBindingLayout(),
+                pass_binding_layout,
+                descriptor_table,
+                binding_layout_cache),
+            fb_info,
             cmd_list);
 
-        (void)pso_cache->resolveGraphicsPipeline(
-            MeshPassType::DirectionalShadow,
-            MakeShadowPipelineDesc(shader_library, shadow_input_layout,
-                m_shadow_processor->getGlobalBindingLayout(),
-                m_shadow_processor->getViewBindingLayout()),
-            shadow_fb_info,
-            cmd_list);
-
-        m_gbuffer_draw_lists.resize(view_family.getSize());
-        m_shadow_draw_lists.resize(view_family.getSize());
+        m_lit_draw_lists.resize(view_family.getSize());
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
 
-            auto& gbuffer_list = m_gbuffer_draw_lists[view_index];
-            gbuffer_list.reset();
-            gbuffer_list.cached_commands = &m_mesh_draw_cache.getCommands();
+            auto& lit_list = m_lit_draw_lists[view_index];
+            lit_list.reset();
+            lit_list.cached_commands = &m_mesh_draw_cache.getCommands();
 
-            auto& shadow_list = m_shadow_draw_lists[view_index];
-            shadow_list.reset();
-            shadow_list.cached_commands = &m_mesh_draw_cache.getCommands();
-
-            m_gbuffer_processor->buildCachedCommands(
+            m_lit_processor->buildCachedCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::GBuffer)],
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Opaque)],
                 view.getViewProjectionMatrix(),
                 m_mesh_draw_cache,
-                gbuffer_list.cached_instances,
-                gbuffer_list.cached_shader_data
+                lit_list.cached_instances,
+                lit_list.cached_shader_data
             );
-            m_gbuffer_processor->buildDynamicCommands(
+            m_lit_processor->buildDynamicCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::GBuffer)],
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Opaque)],
                 view.getViewProjectionMatrix(),
-                gbuffer_list.frame_commands,
-                gbuffer_list.dynamic_instances,
-                gbuffer_list.dynamic_shader_data
-            );
-            m_shadow_processor->buildCachedCommands(
-                mesh_ext.visible_primitives,
-                mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::DirectionalShadow)],
-                mesh_ext.directional_shadow_view_projection,
-                m_mesh_draw_cache,
-                shadow_list.cached_instances
-            );
-            m_shadow_processor->buildDynamicCommands(
-                mesh_ext.visible_primitives,
-                mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::DirectionalShadow)],
-                mesh_ext.directional_shadow_view_projection,
-                shadow_list.frame_commands,
-                shadow_list.dynamic_instances
+                lit_list.frame_commands,
+                lit_list.dynamic_instances,
+                lit_list.dynamic_shader_data
             );
         }
     }
 
-} // dodoe
+} // namespace dodoe

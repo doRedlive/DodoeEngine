@@ -7,12 +7,12 @@
 namespace dodoe {
 
 	enum class RenderPhase : UInt8 {
-	    GBuffer,
+	    Opaque,
 	    Shadow,
 	    Skybox,
-	    DeferredLighting,
+	    Lighting,
 	    Decals,
-	    Forward,
+	    Transparent,
 	    Sprite,
 	    PostProcess,
 	    UI,

@@ -84,6 +84,7 @@ namespace dodoe {
         const GfxFramebufferHandle& framebuffer,
         const GfxViewportState& viewport_state,
         const GfxBufferHandle& primitive_scene_buffer,
+        const GfxBindingSetHandle* pass_binding_set,
         DrawCommandList& command_list)
     {
         DO_PROFILE_SCOPE_CATEGORY("SubmitMeshDrawCommands", "frame");
@@ -108,7 +109,12 @@ namespace dodoe {
                 .setViewport(viewport_state)
                 .setPipeline(cmd.getPipeline()->getRHIHandle());
 
-            binder.bind(graphics_state, cmd.getBindingSets());
+            auto binding_sets = cmd.getBindingSets();
+            if (pass_binding_set && *pass_binding_set) {
+                binding_sets[static_cast<Size_t>(ShaderParameterSet::Pass)] = *pass_binding_set;
+            }
+
+            binder.bind(graphics_state, binding_sets);
 
             for (const auto& vertex_binding : cmd.getVertexBindings()) {
                 graphics_state.addVertexBuffer(vertex_binding);

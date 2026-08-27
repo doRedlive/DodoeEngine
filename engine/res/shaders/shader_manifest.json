@@ -3,6 +3,7 @@
     { "name": "GBufferVS",             "source": "main_camera_pass",              "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "GBufferPS",             "source": "main_camera_pass",              "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "GBufferNoBindlessPS",   "source": "main_camera_pass_nobindless",  "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
+    { "name": "OpaquePS",              "source": "main_camera_opaque_pass",      "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "ShadowVS",              "source": "directional_light_shadow_pass", "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "ShadowPS",              "source": "directional_light_shadow_pass", "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "FullscreenVS",          "source": "fullscreen",                    "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },

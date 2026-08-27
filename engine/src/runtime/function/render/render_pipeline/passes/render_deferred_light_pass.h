@@ -15,7 +15,7 @@ namespace dodoe {
 	    using Produces = TypeList<>;
 	    using Consumes = TypeList<SceneTexturesKey, ShadowMapKey, SceneHdrKey>;
 
-	    RenderPhase getPhase() const override { return RenderPhase::DeferredLighting; }
+	    RenderPhase getPhase() const override { return RenderPhase::Lighting; }
 
 	    DynamicArray<Size_t> getConsumedKeys() const override {
 	        return MakeKeyHashes(Consumes{});

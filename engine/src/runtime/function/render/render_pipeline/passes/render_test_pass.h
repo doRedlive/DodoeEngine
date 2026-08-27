@@ -13,7 +13,7 @@ namespace dodoe {
 	    using Produces = TypeList<>;
 	    using Consumes = TypeList<>;
 
-	    RenderPhase getPhase() const override { return RenderPhase::Forward; }
+	    RenderPhase getPhase() const override { return RenderPhase::DebugUI; }
 
 	    void build(RenderGraphBuilder& graph,
 	               const RenderPassBuildContext& context) override;

@@ -10,7 +10,7 @@
 namespace dodoe {
 
     struct GraphicsPipelineCacheKey {
-        MeshPassType pass_type{MeshPassType::GBuffer};
+        MeshPassType pass_type{MeshPassType::Opaque};
         GfxPrimitiveType primitive_type{GfxPrimitiveType::TriangleList};
         UInt32 patch_control_points{0};
         GfxInputLayout* input_layout{nullptr};

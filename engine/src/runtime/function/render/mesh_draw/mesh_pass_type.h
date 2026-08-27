@@ -7,8 +7,9 @@
 namespace dodoe {
 
     enum class MeshPassType : UInt8 {
-        GBuffer = 0,
-        DirectionalShadow,
+        Opaque = 0,
+        Shadow,
+        Transparent,
         Count
     };
 

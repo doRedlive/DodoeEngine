@@ -39,6 +39,7 @@ namespace dodoe {
         GfxShaderHandle getShadowPixelShader() const { return findShaderValue("ShadowPS"); }
         GfxShaderHandle getFullscreenVertexShader() const { return findShaderValue("FullscreenVS"); }
         GfxShaderHandle getSkyboxPixelShader() const { return findShaderValue("SkyboxPS"); }
+        GfxShaderHandle getOpaquePixelShader() const { return findShaderValue("OpaquePS"); }
         GfxShaderHandle getDeferredLightPixelShader() const { return findShaderValue("DeferredLightPS"); }
         GfxShaderHandle getToneMappingPixelShader() const { return findShaderValue("ToneMappingPS"); }
         GfxShaderHandle getColorGradingPixelShader() const { return findShaderValue("ColorGradingPS"); }
