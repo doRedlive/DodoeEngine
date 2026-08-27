@@ -27,7 +27,7 @@ namespace dodoe {
 	private:
 #ifdef DODOE_DEBUG_ENABLED
 	    void setupViewports(SharedRenderService& resources);
-#endif
+#endif//DODOE_DEBUG_ENABLED
 	};
 
 } // namespace dodoe

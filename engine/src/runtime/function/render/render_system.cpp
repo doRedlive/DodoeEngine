@@ -23,11 +23,11 @@ namespace dodoe {
         m_view_manager = RenderViewManager::Create({m_window_manager});
 
         const bool enable_validation =
-#ifdef DO_DEBUG
+#ifdef DODOE_DEBUG_ENABLED
             true;
 #else
             false;
-#endif
+#endif//DODOE_DEBUG_ENABLED
         Vector2i init_pixel = window->getPixelSize();
         if (window->isHostMode()) {
             init_pixel.x = std::max(init_pixel.x, 1);

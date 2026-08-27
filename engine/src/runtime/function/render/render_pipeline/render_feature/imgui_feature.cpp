@@ -84,7 +84,7 @@ namespace dodoe {
 	            attributes, resources.getShaderLibrary()->getImGuiVertexShader());
 	    }
 	    setupViewports(resources);
-#endif
+#endif//DODOE_DEBUG_ENABLED
 	}
 
 #ifdef DODOE_DEBUG_ENABLED
@@ -111,14 +111,14 @@ namespace dodoe {
 	                                          resources.getPipelineStateCache(),
 	                                          resources.getShaderLibrary());
 	}
-#endif
+#endif//DODOE_DEBUG_ENABLED
 
 	void ImGuiFeature::shutdown() {
 #ifdef DODOE_DEBUG_ENABLED
 	    if (ImGui::GetCurrentContext()) {
 	        ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
 	    }
-#endif
+#endif//DOODE_DEBUG_ENABLED
 	    m_font_texture = nullptr;
 	    m_font_binding_set = nullptr;
 	    m_input_layout = nullptr;
@@ -139,7 +139,7 @@ namespace dodoe {
 	void ImGuiFeature::collectPasses(PassCollector& collector) {
 #ifdef DODOE_DEBUG_ENABLED
 	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_input_layout, m_font_texture, m_imgui_cb);
-#endif
+#endif//DODOE_DEBUG_ENABLED
 	}
 
 } // namespace dodoe
