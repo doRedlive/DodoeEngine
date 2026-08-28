@@ -108,10 +108,17 @@ namespace dodoe {
                 continue;
             }
 
-            const Vector2f position = sprite_info.getPosition();
-            const Vector2f scale = sprite_info.getScale();
-            const Vector3f world_center(position.x, position.y, 0.0f);
-            const Vector3f world_extents(scale.x * 0.5f, scale.y * 0.5f, 0.01f);
+            Vector3f world_center{0.0f};
+            Vector3f world_extents{0.0f};
+            if (sprite_info.hasInstances()) {
+                world_center = sprite_info.getBoundsCenter();
+                world_extents = sprite_info.getBoundsExtents();
+            } else {
+                const Vector2f position = sprite_info.getPosition();
+                const Vector2f scale = sprite_info.getScale();
+                world_center = Vector3f(position.x, position.y, 0.0f);
+                world_extents = Vector3f(scale.x * 0.5f, scale.y * 0.5f, 0.01f);
+            }
 
             if (IntersectsFrustum(frustum_planes, world_center, world_extents)) {
                 sprite_ext.visible_sprites.push_back(&sprite_info);

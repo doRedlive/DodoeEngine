@@ -140,6 +140,12 @@ namespace dodoe {
 
         const UUID id = sprite->getUUID();
         SpriteUpdateType update_type = SpriteUpdateType::Added;
+        if (sprite->isBatch()) {
+            m_sprite_objects[id] = std::move(sprite);
+            markSpriteDirty(id, SpriteUpdateType::Added);
+            return;
+        }
+
         const auto existing_it = m_sprite_objects.find(id);
         if (existing_it != m_sprite_objects.end()) {
             update_type = SpriteUpdateType::None;
@@ -390,27 +396,34 @@ namespace dodoe {
             return;
         }
 
-        const Matrix4f& transform = sprite->getWorldTransform();
-        const Vector3f translation = Vector3f(transform[3]);
-        const Vector3f scale = Vector3f(
-            Math::Length(Vector3f(transform[0])),
-            Math::Length(Vector3f(transform[1])),
-            Math::Length(Vector3f(transform[2]))
-        );
-
         SpriteSceneInfo info(static_cast<Identifier>(static_cast<UInt64>(id)));
         info.setRenderObject(sprite);
-        info.setWorldTransform(transform);
-        info.setPosition(Vector2f(translation.x, translation.y));
-        info.setScale(Vector2f(scale.x, scale.y));
-        info.setRotation(0.0f);
-        info.setSprite(sprite->getSprite());
-        info.setAtlasIndex(sprite->getAtlasIndex());
-        info.setUVRect(sprite->getUVMinX(), sprite->getUVMinY(), sprite->getUVMaxX(), sprite->getUVMaxY());
-        info.setColor(sprite->getColor());
-        info.setSortingKey(0);
-        info.setMaterialId(sprite->getMaterialId());
-        info.setFlags(sprite->getFlags());
+        info.setVisible(sprite->isVisible());
+        info.setSortingKey(sprite->getSortingKey());
+
+        if (sprite->isBatch()) {
+            info.setBatchInstances(sprite->getBatchInstances());
+            info.setBounds(sprite->getBoundsCenter(), sprite->getBoundsExtents());
+        } else {
+            const Matrix4f& transform = sprite->getWorldTransform();
+            const Vector3f translation = Vector3f(transform[3]);
+            const Vector3f scale = Vector3f(
+                Math::Length(Vector3f(transform[0])),
+                Math::Length(Vector3f(transform[1])),
+                Math::Length(Vector3f(transform[2]))
+            );
+
+            info.setWorldTransform(transform);
+            info.setPosition(Vector2f(translation.x, translation.y));
+            info.setScale(Vector2f(scale.x, scale.y));
+            info.setRotation(0.0f);
+            info.setSprite(sprite->getSprite());
+            info.setAtlasIndex(sprite->getAtlasIndex());
+            info.setUVRect(sprite->getUVMinX(), sprite->getUVMinY(), sprite->getUVMaxX(), sprite->getUVMaxY());
+            info.setColor(sprite->getColor());
+            info.setMaterialId(sprite->getMaterialId());
+            info.setFlags(sprite->getFlags());
+        }
 
         const auto it = m_sprite_scene_info_indices.find(id);
         if (it != m_sprite_scene_info_indices.end()) {
@@ -430,6 +443,11 @@ namespace dodoe {
         }
         const auto* sprite = findSprite(id);
         if (sprite) {
+            SpriteSceneInfo& info = m_sprite_scene_infos[it->second];
+            if (info.hasInstances()) {
+                info.setWorldTransform(sprite->getWorldTransform());
+                return;
+            }
             const Matrix4f& transform = sprite->getWorldTransform();
             const Vector3f translation = Vector3f(transform[3]);
             const Vector3f scale = Vector3f(
@@ -437,7 +455,6 @@ namespace dodoe {
                 Math::Length(Vector3f(transform[1])),
                 Math::Length(Vector3f(transform[2]))
             );
-            SpriteSceneInfo& info = m_sprite_scene_infos[it->second];
             info.setWorldTransform(transform);
             info.setPosition(Vector2f(translation.x, translation.y));
             info.setScale(Vector2f(scale.x, scale.y));
@@ -578,6 +595,12 @@ namespace dodoe {
                 continue;
             }
 
+            const auto* info = findSpriteSceneInfo(id);
+            if (!info) continue;
+            if (info->hasInstances()) {
+                continue;
+            }
+
             GpuObjectHandle handle;
             auto it = m_cpu_to_gpu_map.find(id);
             if (it == m_cpu_to_gpu_map.end()) {
@@ -592,9 +615,6 @@ namespace dodoe {
             } else {
                 handle = it->second;
             }
-
-            const auto* info = findSpriteSceneInfo(id);
-            if (!info) continue;
 
             if (HasAnyFlags(update_type, SpriteUpdateType::TransformChanged)) {
                 const Matrix4f& transform = info->getWorldTransform();

@@ -35,7 +35,12 @@ void main()
     mat2 rotationMatrix = mat2(c, -s, s, c);
     vec2 worldPosition = rotationMatrix * (a_Position.xy * scale) + position;
 
-    v_UV = mix(uvMin, uvMax, a_UV);
+    vec2 uv = a_UV;
+    const uint flags = floatBitsToUint(i_ColorData.w);
+    if ((flags & 1u) != 0u) { uv.x = 1.0 - uv.x; }  // kSpriteFlagFlipX
+    if ((flags & 2u) != 0u) { uv.y = 1.0 - uv.y; }  // kSpriteFlagFlipY
+
+    v_UV = mix(uvMin, uvMax, uv);
     v_Color = vec4(
         float((packedColor >> 0u) & 0xFFu) / 255.0,
         float((packedColor >> 8u) & 0xFFu) / 255.0,

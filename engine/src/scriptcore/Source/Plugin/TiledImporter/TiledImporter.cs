@@ -7,6 +7,8 @@ using GreenCake.Tilemap;
 
 public static class TiledImporter
 {
+    private static Entity? s_level1Tilemap;
+
     public static Tilemap ImportFromFile(string jsonFilePath)
     {
         string fullPath = FilePath.Resolve(jsonFilePath);
@@ -102,6 +104,12 @@ public static class TiledImporter
     [ToolMenuItem("Tiled/Import level1.tmj into Scene")]
     public static void ImportLevel1IntoScene()
     {
+        if (s_level1Tilemap != null && s_level1Tilemap.HasComponent<TilemapComponent>())
+        {
+            Debug.Log("[TiledImporter] level1.tmj is already imported in the active scene.");
+            return;
+        }
+
         const string relativePath = "Maps/level1.tmj";
         string fullPath = FilePath.Resolve(relativePath);
         if (!File.Exists(fullPath))
@@ -113,7 +121,7 @@ public static class TiledImporter
         try
         {
             Tilemap tilemap = ImportFromFile(fullPath);
-            tilemap.InstantiateToScene();
+            s_level1Tilemap = tilemap.InstantiateToScene();
             Debug.Log($"[TiledImporter] Imported '{fullPath}': {tilemap.MapWidth}x{tilemap.MapHeight}, " +
                       $"{tilemap.Tilesets.Count} tileset(s), {tilemap.Layers.Count} layer(s).");
         }

@@ -74,6 +74,14 @@ namespace dodoe {
         void setFlags(UInt32 flags) { m_flags = flags; }
         void setVisible(Bool visible) { m_visible = visible; }
 
+        void setBatchInstances(DynamicArray<SpriteInstance> instances) {
+            m_instances = create_scope<DynamicArray<SpriteInstance>>(std::move(instances));
+        }
+        void setBounds(const Vector3f& center, const Vector3f& extents) {
+            m_bounds_center = center;
+            m_bounds_extents = extents;
+        }
+
         void setSprite(const PPtr<Sprite>& sprite);
         void setAtlasIndex(UInt32 index) { m_atlas_index = index; }
         void setUVRect(Float min_x, Float min_y, Float max_x, Float max_y);
@@ -96,6 +104,11 @@ namespace dodoe {
         [[nodiscard]] Float getUVMaxY() const { return m_uv_max_y; }
         [[nodiscard]] Bool isVisible() const { return m_visible; }
 
+        [[nodiscard]] Bool hasInstances() const { return m_instances != nullptr; }
+        [[nodiscard]] const DynamicArray<SpriteInstance>& getInstances() const { return *m_instances; }
+        [[nodiscard]] const Vector3f& getBoundsCenter() const { return m_bounds_center; }
+        [[nodiscard]] const Vector3f& getBoundsExtents() const { return m_bounds_extents; }
+
         [[nodiscard]] SpriteInstance toInstance() const;
 
     private:
@@ -116,6 +129,11 @@ namespace dodoe {
         Float m_uv_max_y{1.0f};
         UInt32 m_atlas_index{0};
         Bool m_visible{true};
+
+        // 批量模式数据（Scope 间接持有，单 sprite 场景零开销）
+        Scope<DynamicArray<SpriteInstance>> m_instances{};
+        Vector3f m_bounds_center{0.0f};
+        Vector3f m_bounds_extents{0.0f};
     };
 
 } // namespace dodoe

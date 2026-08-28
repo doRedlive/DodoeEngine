@@ -71,12 +71,30 @@ namespace dodoe {
                 }
 
                 if (const auto* sprite_extension = context.view.getExtension<SpriteViewExtension>()) {
-                    parameters.instances.reserve(sprite_extension->visible_sprites.size());
+                    Size_t instance_count = 0;
                     for (const auto* sprite : sprite_extension->visible_sprites) {
-                        if (sprite) {
+                        if (!sprite) continue;
+                        instance_count += sprite->hasInstances() ? sprite->getInstances().size() : 1;
+                    }
+                    parameters.instances.reserve(instance_count);
+                    for (const auto* sprite : sprite_extension->visible_sprites) {
+                        if (!sprite) continue;
+                        if (sprite->hasInstances()) {
+                            const auto& instances = sprite->getInstances();
+                            parameters.instances.insert(parameters.instances.end(), instances.begin(), instances.end());
+                        } else {
                             parameters.instances.push_back(sprite->toInstance());
                         }
                     }
+                    // 层级排序：sorting_key 升序（稳定），同 key 内按 atlas 聚合；
+                    // 传统路径依赖 atlas 连续分段绘制，绑定无路径则仅受 sorting_key 影响
+                    std::stable_sort(parameters.instances.begin(), parameters.instances.end(),
+                        [](const SpriteInstance& a, const SpriteInstance& b) {
+                            if (a.sorting_key != b.sorting_key) {
+                                return a.sorting_key < b.sorting_key;
+                            }
+                            return a.atlas_index < b.atlas_index;
+                        });
                 }
 
                 RenderGraphBufferDesc instance_desc{};
@@ -241,19 +259,8 @@ namespace dodoe {
                         return;
                     }
 
-                    auto sorted_instances = parameters.instances;
-                    std::sort(sorted_instances.begin(), sorted_instances.end(),
-                        [](const SpriteInstance& a, const SpriteInstance& b) {
-                            return a.atlas_index < b.atlas_index;
-                        });
-
-                    // Re-upload sorted instance data
-                    command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
-                    command_list.commitBarriers();
-                    command_list.writeBuffer(instance_buffer, sorted_instances.data(),
-                                             sorted_instances.size() * sizeof(SpriteInstance));
-                    command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
-                    command_list.commitBarriers();
+                    // 实例数据已在 build 阶段按 (sorting_key, atlas_index) 排序并写入缓冲区
+                    const auto& sorted_instances = parameters.instances;
 
                     GfxDepthStencilState depth_stencil;
                     if (parameters.depth_occlusion) {
