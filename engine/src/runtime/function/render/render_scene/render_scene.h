@@ -20,6 +20,8 @@ namespace dodoe {
 
     struct RenderSceneCreateInfo {
         class SharedRenderService* shared_render_service{nullptr};
+        UInt32 max_primitive_upserts_per_frame{16};
+        UInt32 max_sprite_upserts_per_frame{64};
     };
 
     enum class PrimitiveUpdateType : UInt32 {
@@ -103,6 +105,11 @@ namespace dodoe {
         UnorderedMap<UUID, PrimitiveUpdateType> m_pending_primitive_updates{};
         UnorderedMap<UUID, SpriteUpdateType> m_pending_sprite_updates{};
         UnorderedMap<UUID, LightUpdateType> m_pending_light_updates{};
+        DynamicArray<UUID> m_pending_primitive_order{};
+        DynamicArray<UUID> m_pending_sprite_order{};
+        UInt32 m_max_primitive_upserts_per_frame{16};
+        UInt32 m_max_sprite_upserts_per_frame{64};
+        RenderSceneDelta::FrameNumber m_frame_number{0};
 
         DynamicArray<PrimitiveSceneInfo> m_primitive_scene_infos{};
         DynamicArray<SpriteSceneInfo> m_sprite_scene_infos{};
@@ -158,6 +165,11 @@ namespace dodoe {
         void markPrimitiveDirty(UUID id, PrimitiveUpdateType update_type);
         void markSpriteDirty(UUID id, SpriteUpdateType update_type);
         void markLightDirty(UUID id, LightUpdateType update_type);
+        void processPendingPrimitiveUpdates(RenderSceneDelta& delta);
+        void processPendingSpriteUpdates(RenderSceneDelta& delta);
+        void processPendingLightUpdates(RenderSceneDelta& delta);
+        void applyPrimitiveUpdate(UUID id, PrimitiveUpdateType update_type);
+        void applySpriteUpdate(UUID id, SpriteUpdateType update_type);
         void upsertSpriteSceneInfo(UUID id);
         void removeSpriteSceneInfo(UUID id);
         void applySpriteTransform(UUID id);

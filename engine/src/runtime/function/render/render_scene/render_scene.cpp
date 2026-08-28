@@ -13,8 +13,24 @@
 
 namespace dodoe {
 
+    namespace {
+        Bool primitiveUpdateRequiresUpsert(const PrimitiveUpdateType update_type) {
+            return HasAnyFlags(
+                update_type,
+                PrimitiveUpdateType::Added | PrimitiveUpdateType::MeshChanged | PrimitiveUpdateType::MaterialChanged | PrimitiveUpdateType::ProxyChanged);
+        }
+
+        Bool spriteUpdateRequiresUpsert(const SpriteUpdateType update_type) {
+            return HasAnyFlags(
+                update_type,
+                SpriteUpdateType::Added | SpriteUpdateType::TextureChanged | SpriteUpdateType::MaterialChanged | SpriteUpdateType::StateChanged);
+        }
+    }
+
     Bool RenderScene::initialize(const RenderSceneCreateInfo& info) {
         m_shared_render_service = info.shared_render_service;
+        m_max_primitive_upserts_per_frame = info.max_primitive_upserts_per_frame > 0 ? info.max_primitive_upserts_per_frame : 1;
+        m_max_sprite_upserts_per_frame = info.max_sprite_upserts_per_frame > 0 ? info.max_sprite_upserts_per_frame : 1;
         reset();
         m_gpu_scene = GpuScene::Create({});
         return m_gpu_scene != nullptr;
@@ -34,6 +50,9 @@ namespace dodoe {
         m_pending_primitive_updates.clear();
         m_pending_sprite_updates.clear();
         m_pending_light_updates.clear();
+        m_pending_primitive_order.clear();
+        m_pending_sprite_order.clear();
+        m_frame_number = 0;
         m_primitive_scene_infos.clear();
         m_light_scene_infos.clear();
         m_sprite_scene_infos.clear();
@@ -198,6 +217,7 @@ namespace dodoe {
         if (!m_scene_data_dirty && m_pending_primitive_updates.empty() && m_pending_sprite_updates.empty() && m_pending_light_updates.empty()) {
             return;
         }
+        m_frame_number++;
         rebuildPipelineSceneData(cmd_list);
     }
 
@@ -232,12 +252,20 @@ namespace dodoe {
     }
 
     void RenderScene::markPrimitiveDirty(const UUID id, const PrimitiveUpdateType update_type) {
-        m_pending_primitive_updates[id] |= update_type;
+        const auto [it, inserted] = m_pending_primitive_updates.try_emplace(id, PrimitiveUpdateType::None);
+        it->second |= update_type;
+        if (inserted) {
+            m_pending_primitive_order.push_back(id);
+        }
         m_scene_data_dirty = true;
     }
 
     void RenderScene::markSpriteDirty(const UUID id, const SpriteUpdateType update_type) {
-        m_pending_sprite_updates[id] |= update_type;
+        const auto [it, inserted] = m_pending_sprite_updates.try_emplace(id, SpriteUpdateType::None);
+        it->second |= update_type;
+        if (inserted) {
+            m_pending_sprite_order.push_back(id);
+        }
         m_scene_data_dirty = true;
     }
 
@@ -480,53 +508,124 @@ namespace dodoe {
     }
 
     void RenderScene::rebuildPipelineSceneData(DrawCommandList& cmd_list) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderScene::rebuildPipelineSceneData", "frame");
         RenderSceneDelta delta;
-        delta.source_frame = 0;
-        delta.primitive_updates = std::move(m_pending_primitive_updates);
-        delta.sprite_updates = std::move(m_pending_sprite_updates);
-        delta.light_updates = std::move(m_pending_light_updates);
-        m_scene_data_dirty = false;
+        delta.source_frame = m_frame_number;
 
-        for (const auto& [id, update_type] : delta.primitive_updates) {
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::Removed) && m_primitive_objects.find(id) == m_primitive_objects.end()) {
-                removePrimitiveSceneInfo(id);
-                continue;
-            }
+        processPendingPrimitiveUpdates(delta);
+        processPendingSpriteUpdates(delta);
+        processPendingLightUpdates(delta);
 
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::Added | PrimitiveUpdateType::MeshChanged | PrimitiveUpdateType::ProxyChanged)) {
-                upsertPrimitiveSceneInfo(id);
-                continue;
-            }
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::TransformChanged)) {
-                applyPrimitiveTransform(id);
-            }
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::MaterialChanged)) {
-                updatePrimitiveMaterials(id);
-            }
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::StateChanged)) {
-                updatePrimitiveState(id);
-            }
-        }
-
-        for (const auto& [id, update_type] : delta.sprite_updates) {
-            if (HasAnyFlags(update_type, SpriteUpdateType::Removed) && m_sprite_objects.find(id) == m_sprite_objects.end()) {
-                removeSpriteSceneInfo(id);
-                continue;
-            }
-            if (HasAnyFlags(update_type, SpriteUpdateType::Added | SpriteUpdateType::TextureChanged | SpriteUpdateType::MaterialChanged | SpriteUpdateType::StateChanged)) {
-                upsertSpriteSceneInfo(id);
-                continue;
-            }
-            if (HasAnyFlags(update_type, SpriteUpdateType::TransformChanged)) {
-                applySpriteTransform(id);
-            }
-        }
+        m_scene_data_dirty = !m_pending_primitive_updates.empty() || !m_pending_sprite_updates.empty() || !m_pending_light_updates.empty();
 
         if (m_gpu_scene) {
             syncPrimitiveGpuScene(delta);
             syncSpriteGpuScene(delta);
             syncLightGpuScene(delta);
             m_gpu_scene->flushUpdates(cmd_list);
+        }
+    }
+
+    void RenderScene::processPendingPrimitiveUpdates(RenderSceneDelta& delta) {
+        if (m_pending_primitive_updates.empty()) {
+            m_pending_primitive_order.clear();
+            return;
+        }
+
+        UInt32 upsert_budget = m_max_primitive_upserts_per_frame;
+        DynamicArray<UUID> remaining;
+        remaining.reserve(m_pending_primitive_order.size());
+
+        for (const UUID id : m_pending_primitive_order) {
+            const auto it = m_pending_primitive_updates.find(id);
+            if (it == m_pending_primitive_updates.end()) {
+                continue;
+            }
+
+            if (primitiveUpdateRequiresUpsert(it->second)) {
+                if (upsert_budget == 0) {
+                    remaining.push_back(id);
+                    continue;
+                }
+                upsert_budget--;
+            }
+
+            applyPrimitiveUpdate(id, it->second);
+            delta.primitive_updates[id] = it->second;
+            m_pending_primitive_updates.erase(it);
+        }
+        m_pending_primitive_order = std::move(remaining);
+    }
+
+    void RenderScene::processPendingSpriteUpdates(RenderSceneDelta& delta) {
+        if (m_pending_sprite_updates.empty()) {
+            m_pending_sprite_order.clear();
+            return;
+        }
+
+        UInt32 upsert_budget = m_max_sprite_upserts_per_frame;
+        DynamicArray<UUID> remaining;
+        remaining.reserve(m_pending_sprite_order.size());
+
+        for (const UUID id : m_pending_sprite_order) {
+            const auto it = m_pending_sprite_updates.find(id);
+            if (it == m_pending_sprite_updates.end()) {
+                continue;
+            }
+
+            if (spriteUpdateRequiresUpsert(it->second)) {
+                if (upsert_budget == 0) {
+                    remaining.push_back(id);
+                    continue;
+                }
+                upsert_budget--;
+            }
+
+            applySpriteUpdate(id, it->second);
+            delta.sprite_updates[id] = it->second;
+            m_pending_sprite_updates.erase(it);
+        }
+        m_pending_sprite_order = std::move(remaining);
+    }
+
+    void RenderScene::processPendingLightUpdates(RenderSceneDelta& delta) {
+        delta.light_updates = std::move(m_pending_light_updates);
+        m_pending_light_updates.clear();
+    }
+
+    void RenderScene::applyPrimitiveUpdate(const UUID id, const PrimitiveUpdateType update_type) {
+        if (HasAnyFlags(update_type, PrimitiveUpdateType::Removed) && m_primitive_objects.find(id) == m_primitive_objects.end()) {
+            removePrimitiveSceneInfo(id);
+            return;
+        }
+
+        if (HasAnyFlags(update_type, PrimitiveUpdateType::Added | PrimitiveUpdateType::MeshChanged | PrimitiveUpdateType::ProxyChanged)) {
+            upsertPrimitiveSceneInfo(id);
+            return;
+        }
+        if (HasAnyFlags(update_type, PrimitiveUpdateType::TransformChanged)) {
+            applyPrimitiveTransform(id);
+        }
+        if (HasAnyFlags(update_type, PrimitiveUpdateType::MaterialChanged)) {
+            updatePrimitiveMaterials(id);
+        }
+        if (HasAnyFlags(update_type, PrimitiveUpdateType::StateChanged)) {
+            updatePrimitiveState(id);
+        }
+    }
+
+    void RenderScene::applySpriteUpdate(const UUID id, const SpriteUpdateType update_type) {
+        if (HasAnyFlags(update_type, SpriteUpdateType::Removed) && m_sprite_objects.find(id) == m_sprite_objects.end()) {
+            removeSpriteSceneInfo(id);
+            return;
+        }
+
+        if (HasAnyFlags(update_type, SpriteUpdateType::Added | SpriteUpdateType::TextureChanged | SpriteUpdateType::MaterialChanged | SpriteUpdateType::StateChanged)) {
+            upsertSpriteSceneInfo(id);
+            return;
+        }
+        if (HasAnyFlags(update_type, SpriteUpdateType::TransformChanged)) {
+            applySpriteTransform(id);
         }
     }
 
