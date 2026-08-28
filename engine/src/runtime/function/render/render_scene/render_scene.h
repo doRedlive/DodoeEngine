@@ -109,7 +109,7 @@ namespace dodoe {
         DynamicArray<UUID> m_pending_sprite_order{};
         UInt32 m_max_primitive_upserts_per_frame{16};
         UInt32 m_max_sprite_upserts_per_frame{64};
-        RenderSceneDelta::FrameNumber m_frame_number{0};
+        FrameNumber m_frame_number{0};
 
         DynamicArray<PrimitiveSceneInfo> m_primitive_scene_infos{};
         DynamicArray<SpriteSceneInfo> m_sprite_scene_infos{};

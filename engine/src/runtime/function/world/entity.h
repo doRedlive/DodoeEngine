@@ -68,7 +68,17 @@ namespace dodoe {
 		}
 
 		template<typename T>
-		bool hasComponent() {
+		const T& getComponent() const {
+			DO_ASSERT(hasComponent<T>(), "Entity does not have the component!");
+			if constexpr (std::is_empty_v<T>) {
+				return EmptyComponentInstance<T>();
+			} else {
+				return GetSceneRegitry_Help(scene_).get<T>(*this);
+			}
+		}
+
+		template<typename T>
+		bool hasComponent() const {
 			return GetSceneRegitry_Help(scene_).all_of<T>(*this);
 		}
 
