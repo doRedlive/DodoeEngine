@@ -4,7 +4,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 if(CMAKE_CONFIGURATION_TYPES OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
     set(TRACY_STATIC OFF CACHE BOOL "" FORCE)
-    set(TRACY_ON_DEMAND OFF CACHE BOOL "" FORCE)
+    set(TRACY_ON_DEMAND ON CACHE BOOL "" FORCE)
     add_subdirectory(tracy EXCLUDE_FROM_ALL)
     set_target_properties(TracyClient PROPERTIES
         FOLDER "${external_folder}/tracy"

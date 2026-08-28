@@ -32,9 +32,14 @@ namespace dodoe {
     GfxFramebufferHandle FramebufferCache::getOrCreate(const FramebufferCacheKey& key,
                                                          const GfxFramebufferDesc& desc) {
         const auto hash = key.computeHash();
-        for (const auto& entry : m_entries) {
+        for (auto& entry : m_entries) {
             if (entry.key == key) {
-                return entry.framebuffer;
+                if (entry.framebuffer->isRHIReady()) {
+                    return entry.framebuffer;
+                }
+                auto framebuffer = GDrawCommandList.createFramebuffer(desc);
+                entry.framebuffer = framebuffer;
+                return framebuffer;
             }
         }
 

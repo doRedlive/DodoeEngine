@@ -12,6 +12,8 @@ namespace dodoe {
 
     namespace {
 
+        thread_local Bool t_in_render_scope{false};
+
         class RhiMessageCallback : public GfxMessageCallback {
         public:
             void message(GfxMessageSeverity severity, const char* message_text) override {
@@ -21,6 +23,11 @@ namespace dodoe {
         };
 
     }
+
+    GfxRenderScope::GfxRenderScope() { t_in_render_scope = true; }
+    GfxRenderScope::~GfxRenderScope() { t_in_render_scope = false; }
+
+    Bool GfxContext::inRenderScope() { return t_in_render_scope; }
 
     Scope<GfxContext> GfxContext::Create(const GfxContextCreateInfo& create_info) {
         auto context = create_scope<GfxContext>();

@@ -19,6 +19,14 @@ namespace dodoe {
 
     enum class RenderBackendApiType;
 
+    class GfxRenderScope {
+    public:
+        GfxRenderScope();
+        ~GfxRenderScope();
+        GfxRenderScope(const GfxRenderScope&) = delete;
+        GfxRenderScope& operator=(const GfxRenderScope&) = delete;
+    };
+
     struct GfxContextCreateInfo {
         GLFWwindow* window_handle{nullptr};
         RenderBackendApiType api_type{};
@@ -55,6 +63,7 @@ namespace dodoe {
         [[nodiscard]] Bool recreateSwapchain(UInt32 width, UInt32 height);
         [[nodiscard]] Bool acquireOpenGLContext();
         void releaseOpenGLContext();
+        [[nodiscard]] static Bool inRenderScope();
         [[nodiscard]] const GfxCommandListHandle& getCommandList() { return cmd_; }
 
         [[nodiscard]] Bool isGpuDrivenSupported() const { return m_gpu_driven_supported; }

@@ -35,6 +35,7 @@ namespace dodoe {
         Bool m_immediate{false};
         std::deque<GfxCommandListHandle> m_command_list_pool{};
         std::mutex m_command_list_mutex{};
+        std::mutex m_record_mutex{};
 
         [[nodiscard]] GfxCommandListHandle acquireCommandList();
         void releaseCommandList(GfxCommandListHandle& command_list);
@@ -53,6 +54,13 @@ namespace dodoe {
         void setDevice(class GfxContext& gfx);
         [[nodiscard]] GfxDeviceHandle getDevice() const { return m_device; }
 
+        template <typename TCommand, typename... TArgs>
+        TCommand& recordCommand(TArgs&&... args) {
+            std::lock_guard<std::mutex> lock(m_record_mutex);
+            return enqueue<TCommand>(std::forward<TArgs>(args)...);
+        }
+
+        CommandList<GfxCommandList> detachRecordedCommands();
         void beginFrame();
         void endFrame();
 
@@ -139,6 +147,7 @@ namespace dodoe {
             static Size_t CalcSize(Size_t s) { return alignUp(sizeof(TDerived) + s, alignof(TDerived)); }
             template <typename... A>
             static TDerived& Create(DrawCommandList& cl, Size_t ds, const void* d, A&&... a) {
+                std::lock_guard<std::mutex> lock(cl.m_record_mutex);
                 void* m = cl.allocate(CalcSize(ds), alignof(TDerived));
                 auto* c = new (m) TDerived(std::forward<A>(a)..., ds);
                 if (d && ds > 0) std::memcpy(c->mutableData(), d, ds);
@@ -160,20 +169,45 @@ namespace dodoe {
         GFX_DRAW_CMD(ClearDepthStencilTextureCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; Float m_depth{1}; Bool m_clear_depth{true}, m_clear_stencil{false}; UInt8 m_stencil{0}; ClearDepthStencilTextureCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, Bool cd, Float d, Bool cs, UInt8 st) : m_texture(t), m_subresources(s), m_depth(d), m_clear_depth(cd), m_clear_stencil(cs), m_stencil(st) {} void execute(GfxCommandList&) const; };
         GFX_DRAW_CMD(CopyBufferCommand) { GfxBufferHandle m_dst{}, m_src{}; UInt64 m_dst_off{0}, m_src_off{0}, m_size{0}; CopyBufferCommand(const GfxBufferHandle& d, UInt64 doff, const GfxBufferHandle& s, UInt64 soff, UInt64 sz) : m_dst(d), m_src(s), m_dst_off(doff), m_src_off(soff), m_size(sz) {} void execute(GfxCommandList&) const; };
 
+        struct CreateTextureCommand final : VarCmd<CreateTextureCommand> {
+            GfxDeviceHandle m_device{}; GfxTextureHandle m_t{}; UInt32 m_pitch{0}; Size_t m_ds{0};
+            CreateTextureCommand(GfxDeviceHandle device, const GfxTextureHandle& t, UInt32 pitch, Size_t sz) : VarCmd(CalcSize(sz)), m_device(device), m_t(t), m_pitch(pitch), m_ds(sz) {}
+            static CreateTextureCommand& Create(DrawCommandList& cl, const GfxDeviceHandle& dev, const GfxTextureHandle& t, const void* d, Size_t sz, UInt32 pitch) {
+                auto& c = VarCmd::Create(cl, sz, d, dev, t, pitch); return c;
+            }
+            void execute(GfxCommandList& c) const {
+                m_t->initializeRHI(m_device);
+                if (m_ds > 0 && m_t->isRHIReady()) c.writeTexture(m_t->getRHIHandle(), 0, 0, data(), m_pitch);
+            }
+        };
+
+        struct CreateBufferCommand final : VarCmd<CreateBufferCommand> {
+            GfxDeviceHandle m_device{}; GfxBufferHandle m_b{}; Size_t m_ds{0};
+            CreateBufferCommand(GfxDeviceHandle device, const GfxBufferHandle& b, Size_t sz) : VarCmd(CalcSize(sz)), m_device(device), m_b(b), m_ds(sz) {}
+            static CreateBufferCommand& Create(DrawCommandList& cl, const GfxDeviceHandle& dev, const GfxBufferHandle& b, const void* d, Size_t sz) {
+                auto& c = VarCmd::Create(cl, sz, d, dev, b); return c;
+            }
+            void execute(GfxCommandList& c) const {
+                m_b->initializeRHI(m_device);
+                if (m_ds > 0 && m_b->isRHIReady()) c.writeBuffer(m_b->getRHIHandle(), data(), m_ds, 0);
+            }
+        };
+
+
         struct WriteBufferCommand final : VarCmd<WriteBufferCommand> {
             GfxBufferHandle m_b{}; UInt64 m_off{0}; Size_t m_sz{0};
             WriteBufferCommand(const GfxBufferHandle& b, UInt64 o, Size_t s) : VarCmd(CalcSize(s)), m_b(b), m_off(o), m_sz(s) {}
             static WriteBufferCommand& Create(DrawCommandList& cl, const GfxBufferHandle& b, const void* d, Size_t s, UInt64 o) {
                 auto& c = VarCmd::Create(cl, s, d, b, o); return c;
             }
-            void execute(GfxCommandList& c) const { c.writeBuffer(m_b->getRHIHandle(), data(), m_sz, m_off); }
+            void execute(GfxCommandList& c) const { if (m_b->isRHIReady()) c.writeBuffer(m_b->getRHIHandle(), data(), m_sz, m_off); }
         };
 
         struct WriteTextureCommand final : VarCmd<WriteTextureCommand> {
             GfxTextureHandle m_t{}; UInt32 m_m{0}, m_s{0}; Size_t m_p{0}, m_ds{0};
             WriteTextureCommand(const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, Size_t pi, Size_t sz) : VarCmd(CalcSize(sz)), m_t(tx), m_m(mi), m_s(sl), m_p(pi), m_ds(sz) {}
             static WriteTextureCommand& Create(DrawCommandList& cl, const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, const void* d, Size_t pi, Size_t sz) { auto& c=VarCmd::Create(cl,sz,d,tx,mi,sl,pi); return c; }
-            void execute(GfxCommandList& c) const { c.writeTexture(m_t->getRHIHandle(), m_m, m_s, data(), m_p); }
+            void execute(GfxCommandList& c) const { if (m_t->isRHIReady()) c.writeTexture(m_t->getRHIHandle(), m_m, m_s, data(), m_p); }
         };
 
         struct PushConstantsCommand final : VarCmd<PushConstantsCommand> {

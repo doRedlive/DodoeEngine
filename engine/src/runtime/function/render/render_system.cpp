@@ -158,6 +158,7 @@ namespace dodoe {
 
     void RenderSystem::renderFrame(const ThreadingMode mode, DrawThread* draw_thread) {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrame", "frame");
+        GfxRenderScope render_scope;
         Memory::ResetFrame();
 
         auto* gfx = m_gfx.get();
@@ -170,6 +171,18 @@ namespace dodoe {
 
         if (cur_pixel.x <= 0 || cur_pixel.y <= 0) {
             return;
+        }
+
+        {
+            auto pending = GDrawCommandList.detachRecordedCommands();
+            if (!pending.isEmpty()) {
+                DO_INFO("RenderSystem: realizing {} deferred resource commands", pending.commandCount());
+                auto& gfx_cmd = m_gfx->getCommandList();
+                gfx_cmd->open();
+                pending.execute(*gfx_cmd);
+                gfx_cmd->close();
+                m_gfx->getDevice()->executeCommandList(gfx_cmd);
+            }
         }
 
         Bool any_window_dirty = false;
@@ -257,7 +270,8 @@ namespace dodoe {
             }
 
             {
-                auto gfx_cmd = m_gfx->getDevice()->createCommandList();
+                // LEAK_TEST: reuse persistent command list instead of per-frame create/destroy
+                auto& gfx_cmd = m_gfx->getCommandList();
                 gfx_cmd->open();
                 frame_ctx.command_list->execute(gfx_cmd);
                 gfx_cmd->close();

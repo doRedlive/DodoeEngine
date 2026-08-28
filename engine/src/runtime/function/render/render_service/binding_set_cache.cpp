@@ -37,7 +37,7 @@ namespace dodoe {
         }
 
         auto it = m_cache.find(h);
-        if (it != m_cache.end()) {
+        if (it != m_cache.end() && it->second->isRHIReady()) {
             return it->second;
         }
 

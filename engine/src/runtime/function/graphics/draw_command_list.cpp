@@ -7,6 +7,41 @@ namespace dodoe {
 
     DrawCommandList GDrawCommandList;
 
+    namespace {
+
+        Bool framebufferAttachmentsReady(const GfxFramebufferDesc& desc) {
+            for (const auto& color : desc.colors()) {
+                if (!color || !color->isRHIReady()) return false;
+            }
+            const GfxTextureHandle& depth = desc.depth();
+            if (depth && !depth->isRHIReady()) return false;
+            return true;
+        }
+
+        Bool bindingSetResourcesReady(const GfxBindingSetDesc& desc) {
+            for (const auto& item : desc.bindings) {
+                switch (item.type) {
+                case cutie::ResourceType::Texture_SRV:
+                case cutie::ResourceType::Texture_UAV:
+                case cutie::ResourceType::TypedBuffer_SRV:
+                case cutie::ResourceType::TypedBuffer_UAV:
+                case cutie::ResourceType::StructuredBuffer_SRV:
+                case cutie::ResourceType::StructuredBuffer_UAV:
+                case cutie::ResourceType::RawBuffer_SRV:
+                case cutie::ResourceType::RawBuffer_UAV:
+                case cutie::ResourceType::ConstantBuffer:
+                case cutie::ResourceType::VolatileConstantBuffer:
+                    if (item.resourceHandle == nullptr) return false;
+                    break;
+                default:
+                    break;
+                }
+            }
+            return true;
+        }
+
+    }
+
     void DrawCommandList::setDevice(GfxContext& gfx) {
         m_device = gfx.getDevice();
         m_immediate = true;
@@ -30,22 +65,27 @@ namespace dodoe {
     void DrawCommandList::beginFrame() { reset(); }
     void DrawCommandList::endFrame() {}
 
+    CommandList<GfxCommandList> DrawCommandList::detachRecordedCommands() {
+        std::lock_guard<std::mutex> lock(m_record_mutex);
+        return CommandList<GfxCommandList>(std::move(*this));
+    }
+
     void DrawCommandList::execute(const GfxCommandListHandle& command_list) const {
         DO_ASSERT(command_list != nullptr, "DrawCommandList command list is null");
         CommandList::execute(*command_list);
     }
 
-    void DrawCommandList::open()  { enqueue<OpenCommand>(); }
-    void DrawCommandList::close() { enqueue<CloseCommand>(); }
-    void DrawCommandList::clearState() { enqueue<ClearStateCommand>(); }
+    void DrawCommandList::open()  { recordCommand<OpenCommand>(); }
+    void DrawCommandList::close() { recordCommand<CloseCommand>(); }
+    void DrawCommandList::clearState() { recordCommand<ClearStateCommand>(); }
 
     void DrawCommandList::beginMarker(const char* name) {
         BeginMarkerCommand::Create(*this, name);
     }
-    void DrawCommandList::endMarker() { enqueue<EndMarkerCommand>(); }
+    void DrawCommandList::endMarker() { recordCommand<EndMarkerCommand>(); }
 
     void DrawCommandList::clearTextureFloat(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, const GfxColor& clear_color) {
-        if (m_immediate) {
+        if (m_immediate && texture->isRHIReady()) {
             auto cmd = acquireCommandList();
             cmd->open();
             cmd->clearTextureFloat(texture->getRHIHandle(), subresources, clear_color);
@@ -54,10 +94,10 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<ClearTextureFloatCommand>(texture, subresources, clear_color);
+        recordCommand<ClearTextureFloatCommand>(texture, subresources, clear_color);
     }
     void DrawCommandList::clearTextureUInt(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, UInt32 clear_color) {
-        if (m_immediate) {
+        if (m_immediate && texture->isRHIReady()) {
             auto cmd = acquireCommandList();
             cmd->open();
             cmd->clearTextureUInt(texture->getRHIHandle(), subresources, clear_color);
@@ -66,10 +106,10 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<ClearTextureUIntCommand>(texture, subresources, clear_color);
+        recordCommand<ClearTextureUIntCommand>(texture, subresources, clear_color);
     }
     void DrawCommandList::clearDepthStencilTexture(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, Bool clear_depth, Float depth, Bool clear_stencil, UInt8 stencil) {
-        if (m_immediate) {
+        if (m_immediate && texture->isRHIReady()) {
             auto cmd = acquireCommandList();
             cmd->open();
             cmd->clearDepthStencilTexture(texture->getRHIHandle(), subresources, clear_depth, depth, clear_stencil, stencil);
@@ -78,10 +118,10 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<ClearDepthStencilTextureCommand>(texture, subresources, clear_depth, depth, clear_stencil, stencil);
+        recordCommand<ClearDepthStencilTextureCommand>(texture, subresources, clear_depth, depth, clear_stencil, stencil);
     }
     void DrawCommandList::copyBuffer(const GfxBufferHandle& destination, UInt64 destination_offset_bytes, const GfxBufferHandle& source, UInt64 source_offset_bytes, UInt64 data_size_bytes) {
-        if (m_immediate) {
+        if (m_immediate && destination->isRHIReady() && source->isRHIReady()) {
             auto cmd = acquireCommandList();
             cmd->open();
             cmd->copyBuffer(destination->getRHIHandle(), destination_offset_bytes, source->getRHIHandle(), source_offset_bytes, data_size_bytes);
@@ -90,11 +130,11 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<CopyBufferCommand>(destination, destination_offset_bytes, source, source_offset_bytes, data_size_bytes);
+        recordCommand<CopyBufferCommand>(destination, destination_offset_bytes, source, source_offset_bytes, data_size_bytes);
     }
 
     void DrawCommandList::writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes) {
-        if (m_immediate) {
+        if (m_immediate && buffer->isRHIReady()) {
             auto cmd = acquireCommandList();
             cmd->open();
             cmd->writeBuffer(buffer->getRHIHandle(), data, data_size, destination_offset_bytes);
@@ -107,7 +147,7 @@ namespace dodoe {
     }
     void DrawCommandList::writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch) {
         DO_ASSERT(texture != nullptr, "writeTexture: texture is null");
-        if (m_immediate) {
+        if (m_immediate && texture->isRHIReady()) {
             const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
             auto cmd = acquireCommandList();
             cmd->open();
@@ -135,7 +175,7 @@ namespace dodoe {
     }
 
     void DrawCommandList::setTextureState(const GfxTextureHandle& texture, const GfxTextureSubresourceSet& subresources, GfxResourceStates state_bits) {
-        if (m_immediate) {
+        if (m_immediate && texture->isRHIReady()) {
             auto cmd = acquireCommandList();
             cmd->open();
             cmd->setTextureState(texture->getRHIHandle(), subresources, state_bits);
@@ -144,10 +184,10 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<SetTextureStateCommand>(texture, subresources, state_bits);
+        recordCommand<SetTextureStateCommand>(texture, subresources, state_bits);
     }
     void DrawCommandList::setBufferState(const GfxBufferHandle& buffer, GfxResourceStates state_bits) {
-        if (m_immediate) {
+        if (m_immediate && buffer->isRHIReady()) {
             auto cmd = acquireCommandList();
             cmd->open();
             cmd->setBufferState(buffer->getRHIHandle(), state_bits);
@@ -156,7 +196,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<SetBufferStateCommand>(buffer, state_bits);
+        recordCommand<SetBufferStateCommand>(buffer, state_bits);
     }
     void DrawCommandList::commitBarriers() {
         if (m_immediate) {
@@ -168,7 +208,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<CommitBarriersCommand>();
+        recordCommand<CommitBarriersCommand>();
     }
 
     void DrawCommandList::setGraphicsState(const GfxFramebufferHandle& framebuffer, const GfxGraphicsPipelineHandle& pipeline, const DynamicArray<GfxBindingSetHandle>& binding_sets, const GfxViewportState& viewport, const DynamicArray<GfxVertexBufferBinding>& vertex_buffers, const GfxIndexBufferBinding& index_buffer) {
@@ -188,7 +228,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer);
+        recordCommand<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer);
     }
     void DrawCommandList::setGraphicsState(const GfxGraphicsState& state) {
         if (m_immediate) {
@@ -200,7 +240,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<SetGraphicsStateByValueCommand>(state);
+        recordCommand<SetGraphicsStateByValueCommand>(state);
     }
     void DrawCommandList::setComputeState(const GfxComputeState& state) {
         if (m_immediate) {
@@ -212,7 +252,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<SetComputeStateCommand>(state);
+        recordCommand<SetComputeStateCommand>(state);
     }
 
     void DrawCommandList::draw(const GfxDrawArguments& args) {
@@ -225,7 +265,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<DrawPrimitiveCommand>(args);
+        recordCommand<DrawPrimitiveCommand>(args);
     }
     void DrawCommandList::drawIndexed(const GfxDrawArguments& args) {
         if (m_immediate) {
@@ -237,7 +277,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<DrawIndexedPrimitiveCommand>(args);
+        recordCommand<DrawIndexedPrimitiveCommand>(args);
     }
     void DrawCommandList::drawIndirect(UInt32 offset_bytes, UInt32 draw_count) {
         if (m_immediate) {
@@ -249,7 +289,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<DrawIndirectCommand>(offset_bytes, draw_count);
+        recordCommand<DrawIndirectCommand>(offset_bytes, draw_count);
     }
     void DrawCommandList::drawIndexedIndirect(UInt32 offset_bytes, UInt32 draw_count) {
         if (m_immediate) {
@@ -261,7 +301,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<DrawIndexedIndirectCommand>(offset_bytes, draw_count);
+        recordCommand<DrawIndexedIndirectCommand>(offset_bytes, draw_count);
     }
     void DrawCommandList::dispatch(UInt32 x, UInt32 y, UInt32 z) {
         if (m_immediate) {
@@ -273,7 +313,7 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<DispatchCommand>(x, y, z);
+        recordCommand<DispatchCommand>(x, y, z);
     }
     void DrawCommandList::dispatchIndirect(UInt32 offset_bytes) {
         if (m_immediate) {
@@ -285,35 +325,47 @@ namespace dodoe {
             releaseCommandList(cmd);
             return;
         }
-        enqueue<DispatchIndirectCommand>(offset_bytes);
+        recordCommand<DispatchIndirectCommand>(offset_bytes);
     }
 
     GfxTextureHandle DrawCommandList::createTexture(const GfxTextureDesc& desc, const void* data, Size_t data_size) {
         auto texture = create_ref<GfxTexture>(desc);
-        texture->initializeRHI(m_device);
-        if (data && data_size > 0) {
-            const UInt32 bpp = desc.format == GfxFormat::RGBA32_FLOAT ? 16u : 4u;
-            const Size_t row_pitch = static_cast<Size_t>(desc.width) * bpp;
-            writeTexture(texture, 0, 0, data, row_pitch);
+        const UInt32 bpp = desc.format == GfxFormat::RGBA32_FLOAT ? 16u : 4u;
+        const UInt32 pitch = desc.width * bpp;
+        if (GfxContext::inRenderScope()) {
+            texture->initializeRHI(m_device);
+            if (data && data_size > 0) {
+                writeTexture(texture, 0, 0, data, pitch);
+            }
+            return texture;
         }
+        CreateTextureCommand::Create(*this, m_device, texture, data, data_size, pitch);
         return texture;
     }
     GfxBufferHandle DrawCommandList::createBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
         auto buffer = create_ref<GfxBuffer>(desc);
-        buffer->initializeRHI(m_device);
-        if (data && data_size > 0) {
-            writeBuffer(buffer, data, data_size, 0);
+        if (GfxContext::inRenderScope()) {
+            buffer->initializeRHI(m_device);
+            if (data && data_size > 0) {
+                writeBuffer(buffer, data, data_size, 0);
+            }
+            return buffer;
         }
+        CreateBufferCommand::Create(*this, m_device, buffer, data, data_size);
         return buffer;
     }
     GfxFramebufferHandle DrawCommandList::createFramebuffer(const GfxFramebufferDesc& desc) {
         auto fb = create_ref<GfxFramebuffer>(desc);
-        fb->initializeRHI(m_device);
+        if (GfxContext::inRenderScope() && framebufferAttachmentsReady(desc)) {
+            fb->initializeRHI(m_device);
+        }
         return fb;
     }
     GfxBindingSetHandle DrawCommandList::createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
         auto bs = create_ref<GfxBindingSet>();
-        bs->initializeRHI(m_device, desc, layout);
+        if (GfxContext::inRenderScope() && bindingSetResourcesReady(desc)) {
+            bs->initializeRHI(m_device, desc, layout);
+        }
         return bs;
     }
     GfxGraphicsPipelineHandle DrawCommandList::createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
@@ -349,19 +401,23 @@ namespace dodoe {
     void DrawCommandList::DrawIndexedIndirectCommand::execute(GfxCommandList& c) const { c.drawIndexedIndirect(m_off, m_cnt); }
     void DrawCommandList::DispatchIndirectCommand::execute(GfxCommandList& c) const { c.dispatchIndirect(m_off); }
 
-    void DrawCommandList::ClearTextureFloatCommand::execute(GfxCommandList& c) const { c.clearTextureFloat(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
-    void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& c) const { c.clearTextureUInt(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
-    void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& c) const { c.clearDepthStencilTexture(m_texture->getRHIHandle(), m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil); }
-    void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& c) const { c.copyBuffer(m_dst->getRHIHandle(), m_dst_off, m_src->getRHIHandle(), m_src_off, m_size); }
-    void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& c) const { c.setTextureState(m_t->getRHIHandle(), m_s, m_st); }
-    void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& c) const { c.setBufferState(m_b->getRHIHandle(), m_st); }
+    void DrawCommandList::ClearTextureFloatCommand::execute(GfxCommandList& c) const { if (m_texture->isRHIReady()) c.clearTextureFloat(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
+    void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& c) const { if (m_texture->isRHIReady()) c.clearTextureUInt(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
+    void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& c) const { if (m_texture->isRHIReady()) c.clearDepthStencilTexture(m_texture->getRHIHandle(), m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil); }
+    void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& c) const { if (m_dst->isRHIReady() && m_src->isRHIReady()) c.copyBuffer(m_dst->getRHIHandle(), m_dst_off, m_src->getRHIHandle(), m_src_off, m_size); }
+    void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& c) const { if (m_t->isRHIReady()) c.setTextureState(m_t->getRHIHandle(), m_s, m_st); else DO_WARN("SetTextureState: texture not realized"); }
+    void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& c) const { if (m_b->isRHIReady()) c.setBufferState(m_b->getRHIHandle(), m_st); else DO_WARN("SetBufferState: buffer not realized"); }
 
     void DrawCommandList::SetGraphicsStateCommand::execute(GfxCommandList& cm) const {
         GfxGraphicsState s;
         s.setViewport(m_vp);
         if (m_pso && m_pso->isRHIReady()) s.setPipeline(m_pso->getRHIHandle());
         if (m_fb && m_fb->isRHIReady()) s.setFramebuffer(m_fb->getRHIHandle());
-        for (auto& bs : m_bs) { if (bs && bs->isRHIReady()) s.addBindingSet(bs->getRHIHandle()); }
+        else if (m_fb) DO_WARN("SetGraphicsState: framebuffer skipped, rhi_ready={}", m_fb->isRHIReady());
+        for (auto& bs : m_bs) {
+            if (bs && bs->isRHIReady()) s.addBindingSet(bs->getRHIHandle());
+            else if (bs) DO_WARN("SetGraphicsState: binding set skipped, rhi_ready={}", bs->isRHIReady());
+        }
         for (auto& vb : m_vb) s.addVertexBuffer(vb);
         s.setIndexBuffer(m_ib);
         cm.setGraphicsState(s);

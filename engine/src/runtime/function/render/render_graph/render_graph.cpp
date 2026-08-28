@@ -2,6 +2,7 @@
 
 #include "render_graph.h"
 
+#include "runtime/function/graphics/gfx_context.h"
 #include "runtime/core/thread/wait_group.h"
 
 #include <cstdio>
@@ -503,6 +504,7 @@ namespace dodoe {
                     auto* cmd_list = &pass_command_lists[i];
 
                     pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list, &setupPassAttachments] {
+                        GfxRenderScope render_scope;
                         DO_PROFILE_SCOPE_CATEGORY(pass->getName().c_str(), "render-pass");
                         RenderGraphPassContext pass_context(context, resource_resolver);
                         for (const auto& barrier : pass->getPreBarriers()) {
