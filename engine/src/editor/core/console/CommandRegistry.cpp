@@ -3,10 +3,78 @@
 #include "CommandRegistry.h"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdint>
 #include <sstream>
 #include <utility>
 
 namespace cakery {
+
+namespace {
+
+bool IsUuidValue(const nlohmann::json& value)
+{
+    if (value.is_number_unsigned()) {
+        return value.get<std::uint64_t>() != 0;
+    }
+    if (value.is_number_integer()) {
+        return value.get<std::int64_t>() > 0;
+    }
+    if (!value.is_string() || value.get<std::string>().empty()) {
+        return false;
+    }
+    const std::string text = value.get<std::string>();
+    return std::all_of(text.begin(), text.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
+}
+
+bool IsParamType(const nlohmann::json& value, const std::string& type)
+{
+    if (type == "string") return value.is_string();
+    if (type == "boolean" || type == "bool") return value.is_boolean();
+    if (type == "integer" || type == "int") return value.is_number_integer() || value.is_number_unsigned();
+    if (type == "number" || type == "float" || type == "double") return value.is_number();
+    if (type == "object") return value.is_object();
+    if (type == "array") return value.is_array();
+    if (type == "uuid") return IsUuidValue(value);
+    return true;
+}
+
+CommandResult ValidateStructuredArgs(const CommandSpec& spec, const nlohmann::json& args)
+{
+    if (!args.is_object()) {
+        return CommandResult::Err("Arguments for " + spec.name + " must be an object");
+    }
+    for (const auto& param : spec.params) {
+        const auto it = args.find(param.name);
+        if (it == args.end() || it->is_null()) {
+            if (param.required) {
+                return CommandResult::Err("Missing required parameter: " + param.name);
+            }
+            continue;
+        }
+        if (!IsParamType(*it, param.type)) {
+            return CommandResult::Err("Invalid type for parameter '" + param.name + "' (expected " +
+                                      param.type + ")");
+        }
+    }
+    return CommandResult::Ok();
+}
+
+std::string StructuredToken(const nlohmann::json& value)
+{
+    if (value.is_string()) {
+        return value.get<std::string>();
+    }
+    if (value.is_boolean()) {
+        return value.get<bool>() ? "true" : "false";
+    }
+    if (value.is_number()) {
+        return value.dump();
+    }
+    return value.dump();
+}
+
+} // namespace
 
 CommandRegistry& CommandRegistry::self() {
     static CommandRegistry instance;
@@ -57,7 +125,11 @@ CommandResult CommandRegistry::execute(EditorSession& session, const std::string
     if (!spec->handler) {
         return CommandResult::Err("Command has no handler: " + name);
     }
-    return spec->handler(session, args);
+    try {
+        return spec->handler(session, args);
+    } catch (const nlohmann::json::exception& error) {
+        return CommandResult::Err("Invalid arguments for " + name + ": " + std::string(error.what()));
+    }
 }
 
 CommandResult CommandRegistry::executeStructured(EditorSession& session, const std::string& name, const nlohmann::json& args) {
@@ -68,12 +140,26 @@ CommandResult CommandRegistry::executeStructured(EditorSession& session, const s
     if (!spec->handler) {
         return CommandResult::Err("Command has no handler: " + name);
     }
-    CommandArgs cargs;
-    if (args.is_object()) {
-        cargs.named = args;
+    const CommandResult validation = ValidateStructuredArgs(*spec, args);
+    if (!validation.ok) {
+        return validation;
     }
+    CommandArgs cargs;
+    cargs.named = args;
     cargs.raw = args;
-    return spec->handler(session, cargs);
+    // A few legacy handlers consume positional arguments. Preserve that
+    // interface for structured callers using the declared parameter order.
+    for (const auto& param : spec->params) {
+        const auto it = args.find(param.name);
+        if (it != args.end() && !it->is_null()) {
+            cargs.positional.push_back(StructuredToken(*it));
+        }
+    }
+    try {
+        return spec->handler(session, cargs);
+    } catch (const nlohmann::json::exception& error) {
+        return CommandResult::Err("Invalid arguments for " + name + ": " + std::string(error.what()));
+    }
 }
 
 std::vector<CommandSpec> CommandRegistry::list() const {
@@ -89,11 +175,21 @@ nlohmann::json CommandRegistry::toolSchema() const {
         nlohmann::json props = nlohmann::json::object();
         for (auto& p : s.params) {
             nlohmann::json prop;
-            prop["type"] = p.type;
+            // UUID is an editor-level alias; expose a standard JSON Schema type.
+            prop["type"] = p.type == "uuid" ? "string" : p.type;
             prop["description"] = p.help;
             props[p.name] = prop;
         }
-        t["parameters"] = props;
+        t["parameters"] = nlohmann::json{{"type", "object"}, {"properties", props}};
+        nlohmann::json required = nlohmann::json::array();
+        for (const auto& p : s.params) {
+            if (p.required) {
+                required.push_back(p.name);
+            }
+        }
+        if (!required.empty()) {
+            t["parameters"]["required"] = std::move(required);
+        }
         t["mutating"] = s.mutating;
         tools.push_back(t);
     }

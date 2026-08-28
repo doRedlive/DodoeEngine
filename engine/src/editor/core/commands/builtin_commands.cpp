@@ -18,7 +18,10 @@ namespace {
 
 std::uint64_t ParseUuid(const std::string& text) {
     if (text.empty()) return 0;
-    return static_cast<std::uint64_t>(std::strtoull(text.c_str(), nullptr, 10));
+    char* end = nullptr;
+    const unsigned long long value = std::strtoull(text.c_str(), &end, 10);
+    if (!end || *end != '\0' || value == 0) return 0;
+    return static_cast<std::uint64_t>(value);
 }
 
 std::uint64_t primarySelection(EditorSession& session) {
@@ -107,11 +110,10 @@ void RegisterBuiltinCommands() {
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  std::string name = args.named.value("name", args.named.value("preset", "GameObject"));
-                 auto cmd = std::make_unique<CreateEntityCommand>(name);
-                 std::string label = cmd->label();
-                 session.history().execute(std::move(cmd), session.documentModel());
-                 session.notifyDocumentChanged();
-                 return CommandResult::Ok(label);
+                 if (session.createEntity(name) == 0) {
+                     return CommandResult::Err("Failed to create GameObject");
+                 }
+                 return CommandResult::Ok("Create GameObject");
              }});
 
     reg.add({"entity.delete", "Delete a GameObject and its children",
@@ -124,12 +126,12 @@ void RegisterBuiltinCommands() {
                      uuid = ParseUuid(args.positional[0]);
                  } else {
                      uuid = primarySelection(session);
-                 }
-                 if (uuid == 0) return CommandResult::Err("No GameObject specified");
-                 session.history().execute(std::make_unique<DeleteEntityCommand>(uuid), session.documentModel());
-                 session.selection().remove(uuid);
-                 session.notifyDocumentChanged();
-                 return CommandResult::Ok("GameObject deleted");
+                  }
+                  if (uuid == 0) return CommandResult::Err("No GameObject specified");
+                  if (!session.deleteEntity(uuid)) {
+                      return CommandResult::Err("GameObject not found");
+                  }
+                  return CommandResult::Ok("GameObject deleted");
              }});
 
     reg.add({"entity.rename", "Rename a GameObject",
@@ -152,8 +154,9 @@ void RegisterBuiltinCommands() {
                  if (uuid == 0) return CommandResult::Err("No GameObject specified");
                  const EditorEntity* entity = session.documentModel().findEntity(uuid);
                  if (!entity) return CommandResult::Err("GameObject not found");
-                 session.history().execute(std::make_unique<RenameEntityCommand>(uuid, newName), session.documentModel());
-                 session.notifyDocumentChanged();
+                  if (!session.renameEntity(uuid, newName)) {
+                      return CommandResult::Err("Failed to rename GameObject");
+                  }
                  return CommandResult::Ok("Renamed to: " + newName);
              }});
 
@@ -189,13 +192,12 @@ void RegisterBuiltinCommands() {
                      compType = args.positional[0];
                  } else {
                      return CommandResult::Err("Usage: component.add <uuid> <Type>");
-                 }
-                 if (uuid == 0) return CommandResult::Err("Invalid UUID");
-                 session.history().execute(
-                     std::make_unique<AddComponentCommand>(uuid, EditorComponent{compType, nlohmann::json::object()}),
-                     session.documentModel());
-                 session.notifyDocumentChanged();
-                 return CommandResult::Ok("Added " + compType);
+                  }
+                  if (uuid == 0) return CommandResult::Err("Invalid UUID");
+                  if (!session.addComponent(uuid, EditorComponent{compType, nlohmann::json::object()})) {
+                      return CommandResult::Err("GameObject not found");
+                  }
+                  return CommandResult::Ok("Added " + compType);
              }});
 
     reg.add({"component.remove", "Remove a component from a GameObject",
@@ -220,8 +222,9 @@ void RegisterBuiltinCommands() {
                  if (idx == static_cast<std::size_t>(-1)) {
                      return CommandResult::Err("Component not found: " + compType);
                  }
-                 session.history().execute(std::make_unique<RemoveComponentCommand>(uuid, idx), session.documentModel());
-                 session.notifyDocumentChanged();
+                  if (!session.removeComponent(uuid, idx)) {
+                      return CommandResult::Err("Failed to remove component: " + compType);
+                  }
                  return CommandResult::Ok("Removed " + compType);
              }});
 
@@ -260,10 +263,12 @@ void RegisterBuiltinCommands() {
                  if (newVal.is_null()) {
                      return CommandResult::Err("Cannot parse '" + value + "' for field " + field);
                  }
-                 session.history().execute(
-                     std::make_unique<SetFieldValueCommand>(uuid, idx, field, newVal),
-                     session.documentModel());
-                 session.notifyDocumentChanged();
+                  if (!session.history().execute(
+                          std::make_unique<SetFieldValueCommand>(uuid, idx, field, newVal),
+                          session.documentModel())) {
+                      return CommandResult::Err("Value is unchanged or the update failed");
+                  }
+                  session.notifyDocumentChanged();
                  return CommandResult::Ok("Set " + compField + " = " + value);
              }});
 
@@ -318,7 +323,9 @@ void RegisterBuiltinCommands() {
              {},
              true,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 session.execute({"asset.save_all", ""});
+                  if (!session.execute({"asset.save_all", ""})) {
+                      return CommandResult::Err("Asset save request failed");
+                  }
                  return CommandResult::Ok("Save requested");
              }});
 

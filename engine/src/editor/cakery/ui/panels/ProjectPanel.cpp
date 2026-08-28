@@ -32,6 +32,7 @@
 #include <QSplitter>
 #include <QFrame>
 #include <QDesktopServices>
+#include <QDebug>
 #include <QUrl>
 #include <QTreeWidget>
 #include <QScrollArea>
@@ -425,12 +426,14 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
             [this](QTreeWidgetItem* current, QTreeWidgetItem*) {
         updatePreview(current);
         if (!current || current->data(0, Qt::UserRole + 1).toBool()) {
+            m_context.session().selection().clear();
             emit assetSelectionCleared();
             return;
         }
         const std::uint64_t guid = current->data(0, Qt::UserRole + 3).toULongLong();
         for (const auto& asset : m_assets) {
             if (asset.uuid == guid) {
+                m_context.session().selection().setAsset(asset.uuid);
                 emit assetSelected(asset);
                 return;
             }
@@ -516,15 +519,19 @@ void ProjectPanel::reloadAssets()
     if (m_watcher) {
         QStringList directories;
         std::error_code watcherEc;
+        constexpr std::size_t kMaxWatchedDirectories = 2048;
         for (std::filesystem::recursive_directory_iterator it(m_root, watcherEc), end;
-             it != end; it.increment(watcherEc)) {
+             it != end && directories.size() < kMaxWatchedDirectories; it.increment(watcherEc)) {
             if (!watcherEc && it->is_directory(watcherEc)) {
                 directories.push_back(QString::fromStdString(it->path().string()));
             }
             watcherEc.clear();
         }
         directories.push_back(QString::fromStdString(m_root.string()));
-        m_watcher->addPaths(directories);
+        const QStringList failed = m_watcher->addPaths(directories);
+        if (!failed.isEmpty()) {
+            qWarning() << "Cakery: failed to watch" << failed.size() << "asset directories";
+        }
     }
 
     auto* rootItem = new QTreeWidgetItem(m_tree);

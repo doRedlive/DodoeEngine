@@ -761,7 +761,7 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
         }
     }
 
-    return true;
+    return false;
 }
 
 void RuntimeEditorBackend::setEventCallback(std::function<void(const BackendEventMessage&)> callback)

@@ -291,7 +291,7 @@ bool RuntimeEditorBackend::executeTilemapCommand(const EditorCommandMessage& com
         return true;
     }
 
-    return true;
+    return false;
 }
 
 bool RuntimeEditorBackend::queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const

@@ -8,6 +8,7 @@
 #include "core/document/EditorDocumentModel.h"
 
 #include <QAction>
+#include <QAbstractButton>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QGroupBox>
@@ -339,10 +340,32 @@ void InspectorPanel::refresh()
     m_managedComponentExpanded.resize(entity->managedComponents.size(), true);
 
     connect(filter, &QLineEdit::textChanged, this, [componentSections](const QString& text) {
+        const QString needle = text.trimmed();
         for (QWidget* section : componentSections) {
-            section->setVisible(text.isEmpty()
-                || section->findChild<QPushButton*>(QStringLiteral("inspectorSectionHeader"))->text()
-                    .contains(text, Qt::CaseInsensitive));
+            if (needle.isEmpty()) {
+                section->setVisible(true);
+                continue;
+            }
+            const auto* header = section->findChild<QPushButton*>(
+                QStringLiteral("inspectorSectionHeader"));
+            bool matches = header && header->text().contains(needle, Qt::CaseInsensitive);
+            const auto widgets = section->findChildren<QWidget*>();
+            for (QWidget* widget : widgets) {
+                if (const auto* label = qobject_cast<QLabel*>(widget)) {
+                    matches = matches || label->text().contains(needle, Qt::CaseInsensitive) ||
+                        label->toolTip().contains(needle, Qt::CaseInsensitive);
+                } else if (const auto* button = qobject_cast<QAbstractButton*>(widget)) {
+                    matches = matches || button->text().contains(needle, Qt::CaseInsensitive) ||
+                        button->toolTip().contains(needle, Qt::CaseInsensitive);
+                } else if (const auto* edit = qobject_cast<QLineEdit*>(widget)) {
+                    matches = matches || edit->text().contains(needle, Qt::CaseInsensitive) ||
+                        edit->toolTip().contains(needle, Qt::CaseInsensitive);
+                }
+                if (matches) {
+                    break;
+                }
+            }
+            section->setVisible(matches);
         }
     });
 

@@ -25,10 +25,12 @@ EditorSession::EditorSession(std::unique_ptr<IEditorBackend> backend)
         notifyDocumentChanged();
     });
     m_selectionSubscription = m_selection.subscribe([this]() {
-        if (!m_backend) {
+        if (!m_backend || (m_state != EditorSessionState::Ready &&
+                           m_state != EditorSessionState::Degraded)) {
             return;
         }
-        const std::uint64_t uuid = m_selection.selected();
+        const std::uint64_t uuid = m_selection.target() == EditorSelection::Target::Entity
+            ? m_selection.selected() : 0;
         m_backend->execute(EditorCommandMessage{
             "selection_changed",
             uuid == 0 ? std::string() : std::to_string(uuid)
@@ -62,7 +64,11 @@ bool EditorSession::openProject(ProjectDescriptor project)
         : EditorSessionState::Degraded;
     const std::string startScenePath = m_backend->startScenePath();
     if (!startScenePath.empty()) {
-        openDocument(startScenePath);
+        if (!openDocument(startScenePath)) {
+            m_backend->shutdown();
+            m_state = EditorSessionState::Failed;
+            return false;
+        }
     }
     return true;
 }
@@ -78,7 +84,12 @@ bool EditorSession::openDocument(const std::string& documentPath)
     }
     m_selection.clear();
     m_history.clear();
-    m_backend->openDocument(documentPath);
+    if (!m_backend->openDocument(documentPath)) {
+        m_documentModel.close();
+        m_selection.clear();
+        m_history.clear();
+        return false;
+    }
     return true;
 }
 
@@ -142,8 +153,8 @@ bool EditorSession::getAssetImportSettings(const std::string& path, AssetImportS
 
 bool EditorSession::attachSceneSurface(SceneSurfaceDescriptor surface)
 {
-    if (!m_backend || surface.nativeHandle == 0 || m_state == EditorSessionState::Closing ||
-        m_state == EditorSessionState::Closed) {
+    if (!m_backend || surface.nativeHandle == 0 ||
+        (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded)) {
         return false;
     }
     if (surface.logicalWidth > 0 && surface.logicalHeight > 0 &&

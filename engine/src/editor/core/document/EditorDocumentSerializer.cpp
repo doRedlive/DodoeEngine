@@ -2,7 +2,9 @@
 
 #include "EditorDocumentSerializer.h"
 
+#include <algorithm>
 #include <fstream>
+#include <unordered_set>
 #include <utility>
 
 namespace cakery {
@@ -39,7 +41,8 @@ std::uint64_t ParentFromHierarchyComponent(const std::vector<EditorComponent>& c
         }
         const auto it = component.value.find("parent_uuid");
         if (it != component.value.end() &&
-            (it->is_number_unsigned() || it->is_number_integer())) {
+            (it->is_number_unsigned() ||
+             (it->is_number_integer() && it->get<std::int64_t>() >= 0))) {
             return it->get<std::uint64_t>();
         }
     }
@@ -55,6 +58,28 @@ nlohmann::json WriteComponents(const std::vector<EditorComponent>& components) {
         array.push_back(std::move(item));
     }
     return array;
+}
+
+bool ValidComponents(const nlohmann::json& entityJson, const char* key)
+{
+    if (!entityJson.contains(key)) {
+        return true;
+    }
+    if (!entityJson[key].is_array()) {
+        return false;
+    }
+    for (const auto& item : entityJson[key]) {
+        if (!item.is_object() || !item.contains("m_type_name") ||
+            !item["m_type_name"].is_string() || item["m_type_name"].get<std::string>().empty() ||
+            !item.contains("m_component") || !item["m_component"].is_string()) {
+            return false;
+        }
+        const auto parsed = nlohmann::json::parse(item["m_component"].get<std::string>(), nullptr, false);
+        if (parsed.is_discarded()) {
+            return false;
+        }
+    }
+    return true;
 }
 
 } // namespace
@@ -80,15 +105,34 @@ nlohmann::json EditorDocumentSerializer::toJson(const EditorDocument& document)
 
 bool EditorDocumentSerializer::fromJson(const nlohmann::json& root, EditorDocument& outDocument)
 {
+    if (!root.is_object() || (root.contains("m_entities") && !root["m_entities"].is_array())) {
+        return false;
+    }
     EditorDocument document;
     if (root.contains("m_name") && root["m_name"].is_string()) {
         document.name = root["m_name"].get<std::string>();
     }
     if (root.contains("m_entities") && root["m_entities"].is_array()) {
         for (const auto& entityJson : root["m_entities"]) {
+            if (!entityJson.is_object() || !entityJson.contains("m_uuid") ||
+                !(entityJson["m_uuid"].is_number_unsigned() || entityJson["m_uuid"].is_number_integer())) {
+                return false;
+            }
+            if ((entityJson.contains("m_parent") &&
+                 !(entityJson["m_parent"].is_number_unsigned() || entityJson["m_parent"].is_number_integer())) ||
+                (entityJson.contains("m_parent") && entityJson["m_parent"].is_number_integer() &&
+                 entityJson["m_parent"].get<std::int64_t>() < 0) ||
+                !ValidComponents(entityJson, "m_native_components") ||
+                !ValidComponents(entityJson, "m_managed_components")) {
+                return false;
+            }
             EditorEntity entity;
-            if (entityJson.contains("m_uuid") && entityJson["m_uuid"].is_number_integer()) {
-                entity.uuid = entityJson["m_uuid"].get<std::uint64_t>();
+            if (entityJson["m_uuid"].is_number_integer() && entityJson["m_uuid"].get<std::int64_t>() <= 0) {
+                return false;
+            }
+            entity.uuid = entityJson["m_uuid"].get<std::uint64_t>();
+            if (entity.uuid == 0) {
+                return false;
             }
             const bool hasSerializedParent = entityJson.contains("m_parent") &&
                 (entityJson["m_parent"].is_number_unsigned() || entityJson["m_parent"].is_number_integer());
@@ -104,6 +148,32 @@ bool EditorDocumentSerializer::fromJson(const nlohmann::json& root, EditorDocume
                 entity.parent = ParentFromHierarchyComponent(entity.nativeComponents);
             }
             document.entities.push_back(std::move(entity));
+        }
+    }
+
+    std::unordered_set<std::uint64_t> uuids;
+    for (const auto& entity : document.entities) {
+        if (!uuids.insert(entity.uuid).second) {
+            return false;
+        }
+    }
+    for (const auto& entity : document.entities) {
+        if (entity.parent != 0 && !uuids.contains(entity.parent)) {
+            return false;
+        }
+        std::unordered_set<std::uint64_t> visited;
+        for (std::uint64_t ancestor = entity.uuid; ancestor != 0;) {
+            if (!visited.insert(ancestor).second) {
+                return false;
+            }
+            const auto it = std::find_if(document.entities.begin(), document.entities.end(),
+                                         [ancestor](const EditorEntity& candidate) {
+                                             return candidate.uuid == ancestor;
+                                         });
+            if (it == document.entities.end()) {
+                break;
+            }
+            ancestor = it->parent;
         }
     }
 
@@ -124,17 +194,56 @@ bool EditorDocumentSerializer::load(const std::filesystem::path& path, EditorDoc
         return false;
     }
 
-    return fromJson(root, outDocument);
+    try {
+        return fromJson(root, outDocument);
+    } catch (const nlohmann::json::exception&) {
+        return false;
+    }
 }
 
 bool EditorDocumentSerializer::save(const EditorDocument& document, const std::filesystem::path& path) {
+    if (path.empty()) {
+        return false;
+    }
     nlohmann::json root = toJson(document);
 
-    std::ofstream file(path);
+    const std::filesystem::path temporary = path.string() + ".tmp";
+    const std::filesystem::path backup = path.string() + ".bak";
+    std::error_code ec;
+    std::filesystem::remove(temporary, ec);
+    std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
         return false;
     }
     file << root.dump(4) << std::endl;
+    file.flush();
+    if (!file.good()) {
+        file.close();
+        std::filesystem::remove(temporary, ec);
+        return false;
+    }
+    file.close();
+
+    const bool hadOriginal = std::filesystem::exists(path, ec) && !ec;
+    if (hadOriginal) {
+        std::filesystem::remove(backup, ec);
+        ec.clear();
+        std::filesystem::rename(path, backup, ec);
+        if (ec) {
+            std::filesystem::remove(temporary, ec);
+            return false;
+        }
+    }
+    ec.clear();
+    std::filesystem::rename(temporary, path, ec);
+    if (ec) {
+        if (hadOriginal) {
+            std::error_code restoreEc;
+            std::filesystem::rename(backup, path, restoreEc);
+        }
+        std::filesystem::remove(temporary, ec);
+        return false;
+    }
     return true;
 }
 
