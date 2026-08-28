@@ -22,8 +22,12 @@ namespace sandbox {
     }
 
     void SandboxLayer::attach() {
-        auto world = dodoe::GetWorld();
-        auto cur_scene = world->getActiveScene();
+        // auto* world = dodoe::GetWorld();
+        // if (!world) {
+        //     return;
+        // }
+        // auto* cur_scene = world->getActiveScene();
+        // (void)cur_scene;
 
         // auto tex = dodoe::Texture2D::Load("engine/res/pictures/grm.jpg");
         // if (!tex) {

@@ -22,6 +22,7 @@ namespace dodoe {
 
     void MeshRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
+        if (!GetRenderSystem()) { return; }
 
         auto mesh_view = reg.view<IDComponent, TransformComponent, MeshRendererComponent>();
         UnorderedSet<UUID> active_renderers{};

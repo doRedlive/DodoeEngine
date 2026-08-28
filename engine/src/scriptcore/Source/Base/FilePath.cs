@@ -10,7 +10,6 @@ public static class FilePath
             return path;
 
         string assetDir = NativeCalls.Native_GetAssetDirectory();
-        Debug.Log($"[FilePath] Native_GetAssetDirectory() = '{assetDir}'");
 
         if (!string.IsNullOrEmpty(assetDir))
         {

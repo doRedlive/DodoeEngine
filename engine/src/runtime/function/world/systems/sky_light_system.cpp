@@ -20,6 +20,7 @@ namespace dodoe {
 
     void SkyLightSystem::update(Registry& reg, float dt) {
         (void)dt;
+        if (!GetRenderSystem()) { return; }
 
         auto view = reg.view<IDComponent, SkyLightComponent>();
         UnorderedSet<UUID> active{};

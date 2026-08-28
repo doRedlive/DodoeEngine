@@ -22,6 +22,7 @@ namespace dodoe {
 
     void FoliageRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
+        if (!GetRenderSystem()) { return; }
 
         auto foliage_view = reg.view<IDComponent, TransformComponent, FoliageRendererComponent>();
         UnorderedSet<UUID> active_objects{};

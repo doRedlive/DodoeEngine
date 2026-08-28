@@ -7,6 +7,7 @@ public static class Resources
 {
     public static T? Load<T>(string path) where T : Object
     {
+        Object.EnsureRegistered<T>();
         var typeName = Object.GetNativeTypeName(typeof(T));
         if (typeName is null) {
             throw new NotSupportedException(

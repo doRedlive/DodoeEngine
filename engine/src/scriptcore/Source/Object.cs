@@ -26,6 +26,11 @@ public class Object
         s_factories[nativeTypeName] = factory;
     }
 
+    public static void EnsureRegistered<T>() where T : Object
+    {
+        System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(T).TypeHandle);
+    }
+
     public static string? GetNativeTypeName(Type managedType)
     {
         s_managedToNative.TryGetValue(managedType, out var name);
@@ -46,6 +51,7 @@ public class Object
 
     public static T? FindObjectFromInstanceID<T>(int instanceID) where T : Object
     {
+        EnsureRegistered<T>();
         return GetOrCreate(instanceID) as T;
     }
 

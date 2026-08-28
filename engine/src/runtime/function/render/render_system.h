@@ -14,7 +14,7 @@
 #include "render_scene/render_scene.h"
 
 #include "runtime/function/window/window_manager.h"
-#include "runtime/core/container/spsc_queue.h"
+#include "runtime/core/container/mpmc_queue.h"
 #include "runtime/core/thread/render_thread.h"
 #include "runtime/core/thread/draw_thread.h"
 
@@ -38,7 +38,7 @@ namespace dodoe {
 
         WindowManager* m_window_manager{nullptr};
 
-        SpscQueue<RenderCommand, kGameCommandQueueCapacity> m_game_command_queue;
+        MpmcQueue<RenderCommand, kGameCommandQueueCapacity> m_game_command_queue;
 
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:

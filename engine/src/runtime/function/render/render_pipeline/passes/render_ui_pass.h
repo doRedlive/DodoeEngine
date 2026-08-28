@@ -18,7 +18,7 @@ namespace dodoe {
 
     public:
         using Produces = TypeList<SceneColorKey>;
-        using Consumes = TypeList<SceneColorKey>;
+        using Consumes = TypeList<>;
 
         UIPass() = default;
         UIPass(GfxBindingLayoutHandle view_binding_layout,

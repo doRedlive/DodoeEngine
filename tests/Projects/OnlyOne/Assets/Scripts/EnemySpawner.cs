@@ -56,7 +56,7 @@ public class EnemySpawner : CakeBehaviour
 
     private void SpawnOne(PlayerController player)
     {
-        if (_pool.Length == 0) return;
+        if (_pool == null || _pool.Length == 0) return;
 
         float x = 0f, y = 0f;
         int edge = _rng.Next(4);

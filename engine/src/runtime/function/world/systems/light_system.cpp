@@ -19,6 +19,7 @@ namespace dodoe {
 
     void LightSystem::update(Registry& reg, float dt) {
         (void)dt;
+        if (!GetRenderSystem()) { return; }
 
         UnorderedSet<UUID> active_lights{};
 
