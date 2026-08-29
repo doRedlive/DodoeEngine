@@ -67,7 +67,7 @@ namespace dodoe {
 		[[nodiscard]] const std::vector<VkImageView>& getSwapchainImageViews() { return swapchain_imageviews_; }
 		[[nodiscard]] VkFormat getSwapchainImageFormat() { return swapchain_image_format_; }
 		[[nodiscard]] const std::vector<const char*>& getDeviceExtensions() { return device_extensions_; }
-		[[nodiscard]] Vector2i getSwapchainExtent2d() const override { return Vector2i(swapchain_extent_.width, swapchain_extent_.height); }
+		[[nodiscard]] Vector2i getSwapchainExtent2D() const override { return Vector2i(swapchain_extent_.width, swapchain_extent_.height); }
 		[[nodiscard]] Bool isValidationEnabled() const override { return enable_validation_layers_; }
 		[[nodiscard]] VkSwapchainKHR getSwapchain() { return swapchain_; }
 		[[nodiscard]] VkQueue getPresentQueue() { return present_queue_; }

@@ -4,4 +4,8 @@
 
 namespace dodoe {
 
+    void TestFeature::collectPasses(PassCollector& collector) {
+        collector.addPass<TestPass>();
+    }
+
 } // namespace dodoe

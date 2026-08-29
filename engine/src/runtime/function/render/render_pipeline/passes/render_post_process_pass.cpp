@@ -37,7 +37,7 @@ namespace dodoe {
             "PostProcessPass",
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, PostProcessPassParameters& parameters) {
-                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 const auto* hdr = pass_builder.blackboard().get<SceneHdrKey>();
                 DO_ASSERT(hdr, "PostProcessPass hdr input is missing");
                 parameters.input = pass_builder.read(*hdr);
@@ -82,7 +82,7 @@ namespace dodoe {
                     return;
                 }
 
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
 
                 command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));

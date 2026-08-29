@@ -1,4 +1,5 @@
 // do@Redlive
+
 #pragma once
 
 #include "dopch.h"
@@ -38,49 +39,49 @@ namespace dodoe {
     };
 
     class GfxContext {
-        GfxDeviceHandle device_{};
-        GfxCommandListHandle cmd_{};
+        GfxDeviceHandle m_device{};
+        GfxCommandListHandle m_cmd{};
 
-        Scope<GfxViewportSurface> m_main_surface_{nullptr};
-        DynamicArray<Scope<GfxViewportSurface>> m_secondary_surfaces_{};
+        Scope<GfxViewportSurface> m_main_surface{nullptr};
+        DynamicArray<Scope<GfxViewportSurface>> m_secondary_surfaces{};
 
-        Scope<GfxBackend> backend_{nullptr};
-        GLFWwindow* window_handle_{nullptr};
-        void* host_handle_{nullptr};
-        RenderBackendApiType m_api_type_{};
+        Scope<GfxBackend> m_backend{nullptr};
+        GLFWwindow* m_window_handle{nullptr};
+        void* m_host_handle{nullptr};
+        RenderBackendApiType m_api_type{};
         Bool m_gpu_driven_supported{false};
 
     public:
         static Scope<GfxContext> Create(const GfxContextCreateInfo& create_info);
         static void Destroy(Scope<GfxContext>& backend);
 
-        [[nodiscard]] GfxDeviceHandle getDevice() const { return device_; }
+        [[nodiscard]] GfxDeviceHandle getDevice() const { return m_device; }
         [[nodiscard]] const DynamicArray<GfxTextureHandle>& getSwapchainTextures() const;
         [[nodiscard]] GfxFramebufferHandle getSwapchainFramebuffer(UInt32 image_index) const;
-        [[nodiscard]] Vector2i getSwapchainExtent2d() const;
+        [[nodiscard]] Vector2i getSwapchainExtent2D() const;
         [[nodiscard]] Bool acquireNextSwapchainImage(UInt32& image_index);
         [[nodiscard]] Bool presentSwapchainImage(UInt32 image_index);
         [[nodiscard]] Bool recreateSwapchain(UInt32 width, UInt32 height);
         [[nodiscard]] Bool acquireOpenGLContext();
         void releaseOpenGLContext();
-        [[nodiscard]] static Bool inRenderScope();
-        [[nodiscard]] const GfxCommandListHandle& getCommandList() { return cmd_; }
+        [[nodiscard]] static Bool IsInRenderScope();
+        [[nodiscard]] const GfxCommandListHandle& getCommandList() { return m_cmd; }
 
         [[nodiscard]] Bool isGpuDrivenSupported() const { return m_gpu_driven_supported; }
         [[nodiscard]] VulkanBackend* getVulkanBackend() const {
-            return backend_ && m_api_type_ == RenderBackendApiType::Vulkan ? static_cast<VulkanBackend*>(backend_.get()) : nullptr;
+            return m_backend && m_api_type == RenderBackendApiType::Vulkan ? static_cast<VulkanBackend*>(m_backend.get()) : nullptr;
         }
         [[nodiscard]] OpenGLBackend* getOpenGLBackend() const {
-            return backend_ && m_api_type_ == RenderBackendApiType::OpenGL ? static_cast<OpenGLBackend*>(backend_.get()) : nullptr;
+            return m_backend && m_api_type == RenderBackendApiType::OpenGL ? static_cast<OpenGLBackend*>(m_backend.get()) : nullptr;
         }
         [[nodiscard]] D3D12Backend* getD3D12Backend() const {
-            return backend_ && m_api_type_ == RenderBackendApiType::D3D12 ? static_cast<D3D12Backend*>(backend_.get()) : nullptr;
+            return m_backend && m_api_type == RenderBackendApiType::D3D12 ? static_cast<D3D12Backend*>(m_backend.get()) : nullptr;
         }
-        [[nodiscard]] GfxBackend* getBackend() const { return backend_.get(); }
+        [[nodiscard]] GfxBackend* getBackend() const { return m_backend.get(); }
 
         [[nodiscard]] GfxViewportSurface* createViewportSurface(GLFWwindow* window, UInt32 w, UInt32 h);
         void destroyViewportSurface(GfxViewportSurface* surface);
-        [[nodiscard]] UInt32 getSecondarySurfaceCount() const { return static_cast<UInt32>(m_secondary_surfaces_.size()); }
+        [[nodiscard]] UInt32 getSecondarySurfaceCount() const { return static_cast<UInt32>(m_secondary_surfaces.size()); }
 
         void waitForIdle();
         void clearGarbage();

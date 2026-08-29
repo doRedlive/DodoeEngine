@@ -90,6 +90,10 @@ namespace dodoe {
     namespace d3d12 = cutie::d3d12;
 
     class GfxTexture {
+        cutie::TextureHandle m_rhi{};
+        GfxTextureDesc m_desc{};
+        String m_debug_name{};
+        bool m_rhi_ready{false};
     public:
         GfxTexture() = default;
         explicit GfxTexture(const GfxTextureDesc& desc, const String& debug_name = "")
@@ -107,15 +111,14 @@ namespace dodoe {
         [[nodiscard]] const GfxTextureDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const String& getDebugName() const { return m_debug_name; }
         [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
-    private:
-        cutie::TextureHandle m_rhi{};
-        GfxTextureDesc m_desc{};
-        String m_debug_name{};
-        bool m_rhi_ready{false};
     };
     using GfxTextureHandle = Ref<GfxTexture>;
 
     class GfxBuffer {
+        cutie::BufferHandle m_rhi{};
+        GfxBufferDesc m_desc{};
+        String m_debug_name{};
+        bool m_rhi_ready{false};
     public:
         GfxBuffer() = default;
         explicit GfxBuffer(const GfxBufferDesc& desc, const String& debug_name = "")
@@ -131,11 +134,6 @@ namespace dodoe {
         [[nodiscard]] const GfxBufferDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const String& getDebugName() const { return m_debug_name; }
         [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
-    private:
-        cutie::BufferHandle m_rhi{};
-        GfxBufferDesc m_desc{};
-        String m_debug_name{};
-        bool m_rhi_ready{false};
     };
     using GfxBufferHandle = Ref<GfxBuffer>;
 
@@ -169,6 +167,10 @@ namespace dodoe {
     };
 
     class GfxFramebuffer {
+        cutie::FramebufferHandle m_rhi{};
+        GfxFramebufferDesc m_desc{};
+        GfxFramebufferInfo m_info{};
+        bool m_rhi_ready{false};
     public:
         GfxFramebuffer() = default;
         GfxFramebuffer(const cutie::FramebufferHandle& handle, const GfxFramebufferInfo& info)
@@ -188,15 +190,14 @@ namespace dodoe {
         [[nodiscard]] const GfxFramebufferInfo& getInfo() const { return m_info; }
         [[nodiscard]] const GfxFramebufferInfo& getFramebufferInfo() const { return m_info; }
         [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
-    private:
-        cutie::FramebufferHandle m_rhi{};
-        GfxFramebufferDesc m_desc{};
-        GfxFramebufferInfo m_info{};
-        bool m_rhi_ready{false};
     };
     using GfxFramebufferHandle = Ref<GfxFramebuffer>;
 
     class GfxGraphicsPipeline {
+        cutie::GraphicsPipelineHandle m_rhi{};
+        GfxGraphicsPipelineDesc m_desc{};
+        GfxFramebufferInfo m_framebuffer_info{};
+        bool m_rhi_ready{false};
     public:
         GfxGraphicsPipeline() = default;
         void initializeRHI(GfxDeviceHandle device, const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
@@ -212,15 +213,14 @@ namespace dodoe {
         [[nodiscard]] const GfxGraphicsPipelineDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const GfxFramebufferInfo& getFramebufferInfo() const { return m_framebuffer_info; }
         [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
-    private:
-        cutie::GraphicsPipelineHandle m_rhi{};
-        GfxGraphicsPipelineDesc m_desc{};
-        GfxFramebufferInfo m_framebuffer_info{};
-        bool m_rhi_ready{false};
     };
     using GfxGraphicsPipelineHandle = Ref<GfxGraphicsPipeline>;
 
     class GfxBindingSet {
+        cutie::BindingSetHandle m_rhi{};
+        GfxBindingSetDesc m_desc{};
+        GfxBindingLayoutHandle m_layout{};
+        bool m_rhi_ready{false};
     public:
         GfxBindingSet() = default;
         void initializeRHI(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
@@ -232,11 +232,6 @@ namespace dodoe {
         [[nodiscard]] const GfxBindingSetDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const GfxBindingLayoutHandle& getLayout() const { return m_layout; }
         [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
-    private:
-        cutie::BindingSetHandle m_rhi{};
-        GfxBindingSetDesc m_desc{};
-        GfxBindingLayoutHandle m_layout{};
-        bool m_rhi_ready{false};
     };
     using GfxBindingSetHandle = Ref<GfxBindingSet>;
 

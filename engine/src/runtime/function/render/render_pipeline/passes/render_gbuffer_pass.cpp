@@ -1,26 +1,24 @@
 // do@Redlive
 
-#include "render_base_pass.h"
+#include "runtime/function/render/render_pipeline/passes/render_gbuffer_pass.h"
 
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
 
-#include "render_pass_blackboard_keys.h"
+#include "runtime/function/render/render_pipeline/passes/render_pass_blackboard_keys.h"
 
-#include "../../render_view/render_view.h"
-#include "../../render_view/mesh_view_extension.h"
-#include "../render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_settings.h"
 
 #include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
-#include "runtime/function/render/mesh_draw/shadow_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_list.h"
 #include "runtime/function/render/mesh_draw/mesh_processor_base.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_service/render_target_handle.h"
-#include "runtime/function/render/render_pipeline/render_feature/opaque_scene_feature.h"
-#include "runtime/function/render/render_pipeline/render_feature/shadow_scene_feature.h"
-#include "../render_graph_import_keys.h"
+#include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 
 namespace dodoe {
 
@@ -53,28 +51,28 @@ namespace dodoe {
                 RenderGraphAttachmentInfo color_attach{};
                 color_attach.load_op = LoadOp::Clear;
                 color_attach.clear_color = GfxColor(0.08f, 0.09f, 0.11f, 1.0f);
-                p.albedo = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(0), "BaseAlbedo"), color_attach);
+                p.albedo = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(0), "GBufferAlbedo"), color_attach);
 
                 color_attach.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
-                p.normal = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(1), "BaseNormal"), color_attach);
+                p.normal = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(1), "GBufferNormal"), color_attach);
 
                 color_attach.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
-                p.position = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(2), "BasePosition"), color_attach);
+                p.position = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(2), "GBufferPosition"), color_attach);
 
                 color_attach.clear_color = GfxColor(0.0f, 1.0f, 1.0f, 1.0f);
-                p.material = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(3), "BaseMaterial"), color_attach);
+                p.material = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(3), "GBufferMaterial"), color_attach);
 
                 RenderGraphAttachmentInfo depth_attach{};
                 depth_attach.load_op = LoadOp::Clear;
-                p.depth = b.writeDepth(b.importTexture(p.gbuffer_rt->getDepthTexture(), "BaseDepth"), depth_attach);
+                p.depth = b.writeDepth(b.importTexture(p.gbuffer_rt->getDepthTexture(), "GBufferDepth"), depth_attach);
 
                 RenderGraphBufferDesc primitive_scene_buffer_desc{};
                 primitive_scene_buffer_desc.desc = GfxBufferDesc()
                     .setByteSize(static_cast<UInt32>(std::max<Size_t>(visible_instance_count, 1) * sizeof(InstanceSceneData)))
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
-                    .setDebugName("RDG BasePass PrimitiveSceneBuffer");
-                p.primitive_scene_buffer = b.write(b.createTransientBuffer(primitive_scene_buffer_desc, "BasePrimitiveSceneBuffer"));
+                    .setDebugName("RDG GBufferPass PrimitiveSceneBuffer");
+                p.primitive_scene_buffer = b.write(b.createTransientBuffer(primitive_scene_buffer_desc, "GBufferPrimitiveSceneBuffer"));
 
                 SceneTextures gbuffer;
                 gbuffer.albedo   = p.albedo;
@@ -86,9 +84,9 @@ namespace dodoe {
                 b.blackboard().set<SceneTexturesKey>(gbuffer);
             },
             [this, processor = m_mesh_processor](const GBufferPassParameters& p, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                DO_ASSERT(ctx.getView() != nullptr, "BasePass view is null");
+                DO_ASSERT(ctx.getView() != nullptr, "GBufferPass view is null");
 
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
 
                 const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
                 const auto& instance_data = mesh_ext->instance_scene_data;
@@ -103,7 +101,7 @@ namespace dodoe {
                 const ViewMeshShaderData view_data{ctx.getView()->getViewProjectionMatrix()};
                 command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
 
-                auto* feature = static_cast<OpaqueSceneFeature*>(m_owning_feature);
+                auto* feature = static_cast<LitSceneFeature*>(m_owning_feature);
                 DO_ASSERT(feature != nullptr, "GBufferPass owning feature is null");
                 const auto& draw_list = feature->getLitDrawLists()[ctx.getViewIndex()];
 
@@ -114,63 +112,6 @@ namespace dodoe {
                 SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
                     draw_list.dynamic_shader_data, processor->getPrimitiveConstantBuffer(),
                     fb, viewport_state, resolved_psb, command_list);
-            }
-        );
-    }
-
-    struct ShadowPassParameters {
-        RenderGraphTextureHandle shadow_map{};
-        RenderGraphBufferHandle primitive_scene_buffer{};
-        RenderTargetHandle* shadow_rt{nullptr};
-    };
-
-    void ShadowPass::build(RenderGraphBuilder& graph,
-                           const RenderPassBuildContext& context) {
-        DO_ASSERT(m_mesh_processor != nullptr, "ShadowPass requires mesh processor");
-
-        graph.addPass<ShadowPassParameters>(
-            "ShadowPass",
-            RenderGraphPassFlags::Raster,
-            [view = &context.view, imports = context.graph_imports]
-            (RenderGraphPassBuilder& pass_builder, ShadowPassParameters& parameters) {
-                const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
-                DO_ASSERT(scene_textures, "ShadowPass scene textures are missing");
-
-                DO_ASSERT(imports != nullptr, "ShadowPass graph imports are null");
-                parameters.shadow_rt = imports->require<ShadowMapRenderTargetKey>();
-                DO_ASSERT(parameters.shadow_rt != nullptr, "ShadowPass requires a ShadowMap RenderTargetHandle");
-
-                RenderGraphAttachmentInfo depth_attach{};
-                depth_attach.load_op = LoadOp::Clear;
-                parameters.shadow_map = pass_builder.writeDepth(pass_builder.importTexture(
-                    parameters.shadow_rt->getDepthTexture(), "ShadowMap"), depth_attach);
-                parameters.primitive_scene_buffer = pass_builder.read(scene_textures->instance_scene_data);
-
-                pass_builder.blackboard().set<ShadowMapKey>(parameters.shadow_map);
-            },
-            [this, processor = m_mesh_processor](const ShadowPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
-                DO_ASSERT(ctx.getView() != nullptr, "ShadowPass view is null");
-
-                const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
-                if (!mesh_ext) return;
-
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
-
-                const auto resolved_psb = ctx.resolveBuffer(parameters.primitive_scene_buffer);
-
-                const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
-                command_list.writeBuffer(processor->getGlobalConstantBuffer(), &global_data, sizeof(global_data));
-                const ViewMeshShaderData view_data{mesh_ext->directional_shadow_view_projection};
-                command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
-
-                auto* feature = static_cast<ShadowSceneFeature*>(m_owning_feature);
-                const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];
-
-                const auto fb = ctx.getFramebuffer();
-                SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    {}, {}, fb, viewport_state, resolved_psb, command_list);
-                SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    {}, {}, fb, viewport_state, resolved_psb, command_list);
             }
         );
     }

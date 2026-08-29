@@ -21,7 +21,7 @@ namespace dodoe {
         std::mutex m_context_mutex{};
 
     public:
-        [[nodiscard]] Vector2i getSwapchainExtent2d() const override { return Vector2i(m_fb_width, m_fb_height); }
+        [[nodiscard]] Vector2i getSwapchainExtent2D() const override { return Vector2i(m_fb_width, m_fb_height); }
         [[nodiscard]] Bool isValidationEnabled() const override { return false; }
         Bool acquireContext();
         void releaseContext();

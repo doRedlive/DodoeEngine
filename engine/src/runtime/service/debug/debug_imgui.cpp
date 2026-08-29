@@ -252,9 +252,9 @@ namespace dodoe {
 
             TimeSystem* time_system = GetTimeSystem();
             if (time_system) {
-                float time_scale = time_system->get_time_scale();
+                float time_scale = time_system->getTimeScale();
                 if (ImGui::SliderFloat("Time Scale", &time_scale, 0.0f, 2.0f, "%.2fx")) {
-                    time_system->set_time_scale(time_scale);
+                    time_system->setTimeScale(time_scale);
                 }
             }
         }
@@ -582,10 +582,10 @@ namespace dodoe {
 
     void DebugImGui::OnImGuiRender() {
 #ifndef DODOE_EDITOR_ENABLED
-        RenderHierarchyPanel();
-        RenderInspectorPanel();
-        RenderMemoryPanel();
-        RenderDebuggerPanel();
+        // RenderHierarchyPanel();
+        // RenderInspectorPanel();
+        // RenderMemoryPanel();
+        // RenderDebuggerPanel();
 #endif//DODOE_EDITOR_ENABLED;
     }
 

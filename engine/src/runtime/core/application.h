@@ -15,16 +15,16 @@ namespace dodoe {
     class SystemContext;
 
     enum class AppMode {
-        Game,
-        Sandbox,
-        Editor,
-        Server
+        Game, // 0
+        Sandbox, // 1
+        Editor, // 2
+        Server // 3
     };
 
     enum class EngineMode {
-        Full,
-        TwoD,
-        GUI
+        Full, // 0
+        TwoD, // 1
+        GUI // 2
     };
 
     struct DODOE_API ApplicationCommandLineArgs {

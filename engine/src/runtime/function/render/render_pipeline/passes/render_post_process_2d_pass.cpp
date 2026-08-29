@@ -37,7 +37,7 @@ namespace dodoe {
             "PostProcess2DPass",
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, PostProcess2DPassParameters& parameters) {
-                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 DO_ASSERT(scene_color, "PostProcess2DPass scene color is missing");
                 parameters.input = pass_builder.read(*scene_color);
@@ -82,7 +82,7 @@ namespace dodoe {
                     return;
                 }
 
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
 
                 command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));

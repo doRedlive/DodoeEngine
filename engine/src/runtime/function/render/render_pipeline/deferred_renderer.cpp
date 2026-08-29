@@ -2,21 +2,25 @@
 
 #include "deferred_renderer.h"
 
-#include "render_pipeline_pass_utils.h"
-#include "render_feature/opaque_scene_feature.h"
-#include "render_feature/shadow_scene_feature.h"
-#include "render_feature/skybox_feature.h"
-#include "render_feature/lighting_feature.h"
-#include "render_feature/post_process_feature.h"
-#include "render_feature/present_feature.h"
-#include "render_feature/sprite_feature.h"
-#include "render_feature/ui_feature.h"
-#include "render_feature/imgui_feature.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+// 仅保留 TestFeature + PresentFeature
+//#include "runtime/function/render/render_pipeline/render_feature/gbuffer_scene_feature.h"
+//#include "runtime/function/render/render_pipeline/render_feature/shadow_scene_feature.h"
+//#include "runtime/function/render/render_pipeline/render_feature/skybox_feature.h"
+//#include "runtime/function/render/render_pipeline/render_feature/lighting_feature.h"
+//#include "runtime/function/render/render_pipeline/render_feature/post_process_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/present_feature.h"
+//#include "runtime/function/render/render_pipeline/render_feature/sprite_feature.h"
+//#include "runtime/function/render/render_pipeline/render_feature/ui_feature.h"
+//#include "runtime/function/render/render_pipeline/render_feature/imgui_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/test_feature.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #ifdef DODOE_EDITOR_ENABLED
-#include "render_feature/gizmo_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/gizmo_feature.h"
 #endif//DODOE_EDITOR_ENABLED
 #include "runtime/function/render/render_scene/render_object.h"
+#include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_view/render_view_family.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/utils/common.h"
@@ -40,20 +44,22 @@ namespace dodoe {
 
 	    const auto* shader_library = m_shared_render_service->getShaderLibrary();
 
-	    m_gpu_culling = GpuCulling::Create({m_gfx_context, const_cast<ShaderLibrary*>(shader_library)});
+	    //m_gpu_culling = GpuCulling::Create({m_gfx_context, const_cast<ShaderLibrary*>(shader_library)});
 
-	    addFeature<OpaqueSceneFeature>(OpaqueFillMode::GBuffer);
-	    addFeature<ShadowSceneFeature>();
-	    addFeature<SkyboxFeature>();
+	    addFeature<TestFeature>();
 
-	    addFeature<LightingFeature>();
-	    addFeature<PostProcessFeature>();
-	    addFeature<SpriteFeature>();
-	    addFeature<UIFeature>();
+	    //addFeature<GBufferSceneFeature>();
+	    //addFeature<ShadowSceneFeature>();
+	    //addFeature<SkyboxFeature>();
+
+	    //addFeature<LightingFeature>();
+	    //addFeature<PostProcessFeature>();
+	    //addFeature<SpriteFeature>();
+	    //addFeature<UIFeature>();
 #ifdef DODOE_EDITOR_ENABLED
-	    addFeature<GizmoFeature>();
+	    //addFeature<GizmoFeature>();
 #endif//DODOE_EDITOR_ENABLED
-	    addFeature<ImGuiFeature>();
+	    //addFeature<ImGuiFeature>();
 	    addFeature<PresentFeature>();
 
 	    bakePasses();
@@ -83,31 +89,32 @@ namespace dodoe {
 	    initViews(scene, view_family);
 	    DO_PROFILE_MARK("DeferredRenderer::render.setupMeshPassContexts", "frame");
 
-	    auto* opaque_feature = getFeature<OpaqueSceneFeature>();
-	    DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer OpaqueSceneFeature is null");
-	    opaque_feature->setupMeshPassContexts(scene, view_family);
+	    //auto* opaque_feature = getFeature<GBufferSceneFeature>();
+	    //DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer GBufferSceneFeature is null");
+	    //opaque_feature->setupMeshPassContexts(scene, view_family);
 
-	    const auto culling_path = RenderSettings::GetFeatureSettings().culling_path;
-	    if (culling_path == CullingPath::GpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
-	        executeGpuCulling(view_family, scene, out_commands);
-	        buildGpuDrivenDrawCommands(scene, view_family, out_commands);
-	    }
+	    //const auto culling_path = RenderSettings::GetFeatureSettings().culling_path;
+	    //if (culling_path == CullingPath::GpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
+	    //    executeGpuCulling(view_family, scene, out_commands);
+	    //    buildGpuDrivenDrawCommands(scene, view_family, out_commands);
+	    //}
 
-	    if (culling_path == CullingPath::CpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
-	        DO_PROFILE_MARK("DeferredRenderer::render.buildMeshDrawCommands", "frame");
-	        opaque_feature->buildMeshDrawCommands(view_family, out_commands);
-	    }
+	    //if (culling_path == CullingPath::CpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
+	    //    DO_PROFILE_MARK("DeferredRenderer::render.buildMeshDrawCommands", "frame");
+	    //    opaque_feature->buildMeshDrawCommands(view_family, out_commands);
+	    //}
 
-	    DO_PROFILE_MARK("DeferredRenderer::render.buildShadowDrawCommands", "frame");
-	    auto* shadow_feature = getFeature<ShadowSceneFeature>();
-	    DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
-	    shadow_feature->buildShadowDrawCommands(view_family, out_commands);
+	    //DO_PROFILE_MARK("DeferredRenderer::render.buildShadowDrawCommands", "frame");
+	    //auto* shadow_feature = getFeature<ShadowSceneFeature>();
+	    //DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
+	    //shadow_feature->buildShadowDrawCommands(view_family, out_commands);
 
 	    DO_PROFILE_MARK("DeferredRenderer::render.buildOrderedPasses", "frame");
 	    buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,
 	        frame_staging_allocator, transient_resource_pool);
 	}
 
+#if 0
 	void DeferredRenderer::executeGpuCulling(RenderViewFamily& view_family, RenderScene& scene, DrawCommandList& cmd_list) const {
 	    DO_PROFILE_SCOPE_CATEGORY("DeferredRenderer::executeGpuCulling", "frame");
 	    if (!m_gpu_culling || !m_gpu_culling->isEnabled()) {
@@ -146,8 +153,8 @@ namespace dodoe {
 	        return;
 	    }
 
-	    auto* opaque_feature = getFeature<OpaqueSceneFeature>();
-	    DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer OpaqueSceneFeature is null");
+	    auto* opaque_feature = getFeature<GBufferSceneFeature>();
+	    DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer GBufferSceneFeature is null");
 	    auto* shadow_feature = getFeature<ShadowSceneFeature>();
 	    DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
 	    const auto& mesh_draw_cache = opaque_feature->getMeshDrawCache();
@@ -203,5 +210,6 @@ namespace dodoe {
 	        }
 	    }
 	}
+#endif
 
 } // dodoe

@@ -39,7 +39,7 @@ namespace dodoe {
             "UIPass",
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, UIPassParameters& parameters) {
-                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 if (scene_color) {
                     parameters.color_target = pass_builder.writeColor(*scene_color);
@@ -134,7 +134,7 @@ namespace dodoe {
                                          parameters.instances.size() * sizeof(UIInstance));
 
                 // Build orthographic projection for screen-space rendering
-                const auto extent = ctx.getGfxContext()->getSwapchainExtent2d();
+                const auto extent = ctx.getGfxContext()->getSwapchainExtent2D();
                 Matrix4f ui_view_projection = Math::OrthoRH_ZO(
                     0.0f, static_cast<Float>(extent.x),
                     static_cast<Float>(extent.y), 0.0f,   // top-down Y
@@ -217,7 +217,7 @@ namespace dodoe {
                         GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
                         GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
-                        *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                        *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                     command_list.setGraphicsState(
                         ctx.getFramebuffer(), pipeline, binding_sets,
                         viewport_state, vertex_buffers,
@@ -317,7 +317,7 @@ namespace dodoe {
                             GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
 
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
-                            *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                            *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                         command_list.setGraphicsState(
                             ctx.getFramebuffer(), pipeline, binding_sets,
                             viewport_state, vertex_buffers,

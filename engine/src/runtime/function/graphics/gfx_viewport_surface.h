@@ -18,48 +18,50 @@ struct GLFWwindow;
 namespace dodoe {
 
     class GfxViewportSurface {
-        GfxDeviceHandle device_{};
-        GLFWwindow* window_{nullptr};
-        void* host_handle_{nullptr};
-        RenderBackendApiType api_type_{RenderBackendApiType::None};
+        GfxDeviceHandle m_device{};
+        GLFWwindow* m_window{nullptr};
+        void* m_host_handle{nullptr};
+        RenderBackendApiType m_api_type{RenderBackendApiType::None};
 
-        GfxBackend* backend_{nullptr};
+        GfxBackend* m_backend{nullptr};
         Bool m_owns_swapchain{false};
 
-        DynamicArray<GfxTextureHandle> textures_{};
-        DynamicArray<GfxFramebufferHandle> framebuffers_{};
+        DynamicArray<GfxTextureHandle> m_textures{};
+        DynamicArray<GfxFramebufferHandle> m_framebuffers{};
 
         // Vulkan owned state
-        VkSurfaceKHR vk_surface_{VK_NULL_HANDLE};
-        VkSwapchainKHR vk_swapchain_{VK_NULL_HANDLE};
-        VkQueue vk_present_queue_{VK_NULL_HANDLE};
-        Bool vk_owns_surface_{false};
-        std::vector<VkImage> vk_images_{};
-        std::vector<VkImageView> vk_imageviews_{};
-        VkFormat vk_format_{VK_FORMAT_UNDEFINED};
-        VkExtent2D vk_extent_{};
-        DynamicArray<VkSemaphore> vk_acquire_semaphores_{};
-        DynamicArray<VkSemaphore> vk_present_semaphores_{};
-        DynamicArray<VkFence> vk_frame_fences_{};
-        Size_t vk_current_frame_slot_{0};
-        Size_t vk_active_frame_slot_{(std::numeric_limits<Size_t>::max)()};
+        VkSurfaceKHR m_vk_surface{VK_NULL_HANDLE};
+        VkSwapchainKHR m_vk_swapchain{VK_NULL_HANDLE};
+        VkQueue m_vk_present_queue{VK_NULL_HANDLE};
+        Bool m_vk_owns_surface{false};
+        DynamicArray<VkImage> m_vk_images{};
+        DynamicArray<VkImageView> m_vk_imageviews{};
+        VkFormat m_vk_format{VK_FORMAT_UNDEFINED};
+        VkExtent2D m_vk_extent{};
+        DynamicArray<VkSemaphore> m_vk_acquire_semaphores{};
+        DynamicArray<VkSemaphore> m_vk_present_semaphores{};
+        DynamicArray<VkFence> m_vk_frame_fences{};
+        Size_t m_vk_current_frame_slot{0};
+        Size_t m_vk_active_frame_slot{(std::numeric_limits<Size_t>::max)()};
 
         // D3D12 owned state
-        ComPtr<IDXGISwapChain4> dx_swapchain_{};
-        std::vector<ID3D12Resource*> dx_backbuffers_{};
-        ComPtr<ID3D12DescriptorHeap> dx_rtv_heap_{};
-        UINT dx_rtv_descriptor_size_{0};
-        DXGI_FORMAT dx_format_{DXGI_FORMAT_R8G8B8A8_UNORM};
-        UINT dx_width_{0};
-        UINT dx_height_{0};
-        Int32 m_gl_fb_width{0};
-        Int32 m_gl_fb_height{0};
+        ComPtr<IDXGISwapChain4> m_dx_swapchain{};
+        DynamicArray<ID3D12Resource*> m_dx_backbuffers{};
+        ComPtr<ID3D12DescriptorHeap> m_dx_rtv_heap{};
+        UINT m_dx_rtv_descriptor_size{0};
+        DXGI_FORMAT m_dx_format{DXGI_FORMAT_R8G8B8A8_UNORM};
+        UINT m_dx_width{0};
+        UINT m_dx_height{0};
         static constexpr UINT kBackbufferCount = 3;
 
-        ComPtr<ID3D12Fence> dx_fence_{};
-        UINT64 dx_fence_value_{0};
-        HANDLE dx_fence_event_{nullptr};
-        UINT64 dx_frame_fence_values_[kBackbufferCount]{};
+        ComPtr<ID3D12Fence> m_dx_fence{};
+        UINT64 m_dx_fence_value{0};
+        HANDLE m_dx_fence_event{nullptr};
+        UINT64 m_dx_frame_fence_values[kBackbufferCount]{};
+
+        // OpenGL owned state
+        Int32 m_gl_fb_width{0};
+        Int32 m_gl_fb_height{0};
 
     public:
 
@@ -73,18 +75,18 @@ namespace dodoe {
         Bool acquire(UInt32& image_index);
         Bool present(UInt32 image_index);
         [[nodiscard]] Vector2i extent() const;
-        [[nodiscard]] const DynamicArray<GfxTextureHandle>& getTextures() const { return textures_; }
+        [[nodiscard]] const DynamicArray<GfxTextureHandle>& getTextures() const { return m_textures; }
         [[nodiscard]] GfxFramebufferHandle getFramebuffer(UInt32 image_index) const {
-            return image_index < framebuffers_.size() ? framebuffers_[image_index] : nullptr;
+            return image_index < m_framebuffers.size() ? m_framebuffers[image_index] : nullptr;
         }
-        [[nodiscard]] GLFWwindow* getNativeWindow() const { return window_; }
-        [[nodiscard]] RenderBackendApiType getApiType() const { return api_type_; }
-        [[nodiscard]] Bool isOpenGL() const { return api_type_ == RenderBackendApiType::OpenGL; }
+        [[nodiscard]] GLFWwindow* getNativeWindow() const { return m_window; }
+        [[nodiscard]] RenderBackendApiType getApiType() const { return m_api_type; }
+        [[nodiscard]] Bool isOpenGL() const { return m_api_type == RenderBackendApiType::OpenGL; }
 
     private:
-        [[nodiscard]] VulkanBackend* getVulkanBackend() const { return static_cast<VulkanBackend*>(backend_); }
-        [[nodiscard]] OpenGLBackend* getOpenGLBackend() const { return static_cast<OpenGLBackend*>(backend_); }
-        [[nodiscard]] D3D12Backend* getD3D12Backend() const { return static_cast<D3D12Backend*>(backend_); }
+        [[nodiscard]] VulkanBackend* getVulkanBackend() const { return static_cast<VulkanBackend*>(m_backend); }
+        [[nodiscard]] OpenGLBackend* getOpenGLBackend() const { return static_cast<OpenGLBackend*>(m_backend); }
+        [[nodiscard]] D3D12Backend* getD3D12Backend() const { return static_cast<D3D12Backend*>(m_backend); }
 
         Bool initializeVulkan(GfxDeviceHandle device, GLFWwindow* window, void* host_handle,
                               UInt32 w, UInt32 h, Bool is_primary);

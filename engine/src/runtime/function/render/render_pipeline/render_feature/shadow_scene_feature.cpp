@@ -2,7 +2,7 @@
 
 #include "shadow_scene_feature.h"
 
-#include "runtime/function/render/render_pipeline/passes/render_base_pass.h"
+#include "runtime/function/render/render_pipeline/passes/render_shadow_pass.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
@@ -12,6 +12,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_view/render_view_family.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"

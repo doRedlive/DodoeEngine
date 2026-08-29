@@ -30,9 +30,11 @@ namespace dodoe {
     };
 
     enum class ThreadingMode {
-        TripleThread,
-        DualThread,
+        None = 0,
+
         SingleThread,
+        DualThread,
+        TripleThread
     };
 
     enum class PresentMode {

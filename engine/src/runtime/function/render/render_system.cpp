@@ -176,7 +176,7 @@ namespace dodoe {
         {
             auto pending = GDrawCommandList.detachRecordedCommands();
             if (!pending.isEmpty()) {
-                DO_INFO("RenderSystem: realizing {} deferred resource commands", pending.commandCount());
+                DO_INFO("RenderSystem: executing {} deferred render commands", pending.commandCount());
                 auto& gfx_cmd = m_gfx->getCommandList();
                 gfx_cmd->open();
                 pending.execute(*gfx_cmd);
@@ -228,7 +228,7 @@ namespace dodoe {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
 
         auto* time_sys = GetTimeSystem();
-        const Float frame_time = time_sys->current_time();
+        const Float frame_time = time_sys->getCurrentTime();
         const Float frame_delta = time_sys->getDeltaTime();
 
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
@@ -243,7 +243,7 @@ namespace dodoe {
                 Bool show_editor = false;
 #ifdef DODOE_EDITOR_ENABLED
                 show_editor = cam && cam->isEditorCamera();
-#endif
+#endif//DODOE_EDITOR_ENABLED
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
                 pipeline->render(
                     family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
@@ -262,7 +262,7 @@ namespace dodoe {
                 Bool show_editor = false;
 #ifdef DODOE_EDITOR_ENABLED
                 show_editor = cam && cam->isEditorCamera();
-#endif
+#endif//DODOE_EDITOR_ENABLED
                 auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
                 pipeline->render(
                     family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
@@ -270,7 +270,6 @@ namespace dodoe {
             }
 
             {
-                // LEAK_TEST: reuse persistent command list instead of per-frame create/destroy
                 auto& gfx_cmd = m_gfx->getCommandList();
                 gfx_cmd->open();
                 frame_ctx.command_list->execute(gfx_cmd);

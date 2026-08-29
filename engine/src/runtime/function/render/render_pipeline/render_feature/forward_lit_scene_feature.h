@@ -8,16 +8,14 @@
 
 namespace dodoe {
 
-    class TransparentSceneFeature final : public LitSceneFeature {
+    class ForwardLitSceneFeature final : public LitSceneFeature {
     public:
         void collectPasses(PassCollector& collector) override;
 
     protected:
-        [[nodiscard]] MeshPassType getMeshPassType() const override { return MeshPassType::Transparent; }
         [[nodiscard]] GfxShaderHandle getPixelShader(const ShaderLibrary& shader_library) const override;
         [[nodiscard]] GfxFramebufferInfo getFramebufferInfo() const override;
         [[nodiscard]] bool usesPassBindingLayout() const override { return true; }
-        void modifyPipelineDesc(GfxGraphicsPipelineDesc& pipeline_desc) const override;
     };
 
 } // namespace dodoe

@@ -28,7 +28,7 @@ namespace dodoe {
         const ShaderReflectionData* getReflection(const String& name) const;
         const ShaderManifest& getManifest() const { return m_manifest; }
 
-        GfxShaderHandle getGBufferVertexShader() const { return findShaderValue("GBufferVS"); }
+        GfxShaderHandle getLitVertexShader() const { return findShaderValue("LitVS"); }
         GfxShaderHandle getGBufferPixelShader() const {
             if (RenderSettings::IsBindlessActive()) {
                 return findShaderValue("GBufferPS");
@@ -39,7 +39,12 @@ namespace dodoe {
         GfxShaderHandle getShadowPixelShader() const { return findShaderValue("ShadowPS"); }
         GfxShaderHandle getFullscreenVertexShader() const { return findShaderValue("FullscreenVS"); }
         GfxShaderHandle getSkyboxPixelShader() const { return findShaderValue("SkyboxPS"); }
-        GfxShaderHandle getOpaquePixelShader() const { return findShaderValue("OpaquePS"); }
+        GfxShaderHandle getForwardLitPixelShader() const {
+            if (RenderSettings::IsBindlessActive()) {
+                return findShaderValue("ForwardLitPS");
+            }
+            return findShaderValue("ForwardLitNoBindlessPS");
+        }
         GfxShaderHandle getDeferredLightPixelShader() const { return findShaderValue("DeferredLightPS"); }
         GfxShaderHandle getToneMappingPixelShader() const { return findShaderValue("ToneMappingPS"); }
         GfxShaderHandle getColorGradingPixelShader() const { return findShaderValue("ColorGradingPS"); }

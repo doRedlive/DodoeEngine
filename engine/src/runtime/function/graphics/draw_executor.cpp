@@ -12,9 +12,9 @@ namespace dodoe {
         }
 
         gfx_cmd->open();
-
         frame_ctx.command_list->execute(gfx_cmd);
         gfx_cmd->close();
+        
         device->executeCommandList(gfx_cmd);
 
         device->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);

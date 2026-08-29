@@ -38,6 +38,9 @@ namespace dodoe {
 	template <typename T1, typename T2>
 	using Pair = std::pair<T1, T2>;
 
+	template <typename T>
+	using Deque = std::deque<T>;
+
 } // namespace dodoe
 
 template <>

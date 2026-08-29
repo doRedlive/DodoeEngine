@@ -27,7 +27,7 @@ namespace dodoe {
 
         [[nodiscard]] RenderBackendApiType getApiType() const { return api_type_; }
         [[nodiscard]] virtual Bool isValidationEnabled() const { return enable_validation_; }
-        [[nodiscard]] virtual Vector2i getSwapchainExtent2d() const {
+        [[nodiscard]] virtual Vector2i getSwapchainExtent2D() const {
             return Vector2i(static_cast<Int32>(width_), static_cast<Int32>(height_));
         }
         [[nodiscard]] GLFWwindow* getNativeWindow() const { return window_handle_; }

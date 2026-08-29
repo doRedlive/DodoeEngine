@@ -56,7 +56,7 @@ namespace dodoe {
             },
             [this](const PresentPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto viewport_rect = ctx.getView()->getViewportRect();
-                const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2d();
+                const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2D();
 
                 PresentViewportCB viewport_data;
                 viewport_data.viewport_pos[0] = static_cast<float>(viewport_rect.x);

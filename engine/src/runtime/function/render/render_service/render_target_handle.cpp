@@ -17,7 +17,7 @@ namespace dodoe {
         UInt32 width = desc.fixed_width;
         UInt32 height = desc.fixed_height;
         if (desc.scale_policy == RenderTargetScalePolicy::Relative) {
-            const auto extent = gfx.getSwapchainExtent2d();
+            const auto extent = gfx.getSwapchainExtent2D();
             width  = static_cast<UInt32>(static_cast<Float>(extent.x) * desc.scale_x);
             height = static_cast<UInt32>(static_cast<Float>(extent.y) * desc.scale_y);
         }

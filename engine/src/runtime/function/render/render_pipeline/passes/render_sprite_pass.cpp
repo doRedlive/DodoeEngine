@@ -40,7 +40,7 @@ namespace dodoe {
             "SpritePass",
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, SpritePassParameters& parameters) {
-                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 const auto* hdr = pass_builder.blackboard().get<SceneHdrKey>();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
                 RenderGraphAttachmentInfo color_attachment{};
@@ -244,7 +244,7 @@ namespace dodoe {
                         GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
                     command_list.setGraphicsState(
                         ctx.getFramebuffer(), pipeline, binding_sets,
-                        rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()),
+                        rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D()),
                         vertex_buffers,
                         GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
                     command_list.drawIndexed(GfxDrawArguments()
@@ -335,7 +335,7 @@ namespace dodoe {
                             GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
 
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
-                            *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                            *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                         command_list.setGraphicsState(
                             ctx.getFramebuffer(), pipeline, binding_sets,
                             viewport_state, vertex_buffers,

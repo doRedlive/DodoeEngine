@@ -6,7 +6,7 @@
 
 #include "render_feature.h"
 #include "runtime/function/render/render_service/render_target_handle.h"
-#include "runtime/function/render/render_pipeline/passes/render_base_pass.h"
+#include "runtime/function/render/render_pipeline/passes/render_shadow_pass.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_list.h"
 #include "runtime/function/render/mesh_draw/cached_mesh_draw_command.h"
 #include "runtime/function/render/mesh_draw/shadow_mesh_processor.h"

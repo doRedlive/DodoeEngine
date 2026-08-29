@@ -405,7 +405,7 @@ namespace dodoe {
             m_resources, *context.gfx_context, context.swapchain_image_index,
             out_commands, context.transient_resource_pool);
 
-        const bool direct_mode = out_commands.isImmediate() || context.gfx_context->getOpenGLBackend() != nullptr;
+        const bool direct_mode = context.gfx_context->getOpenGLBackend() != nullptr;
 
         auto setupPassAttachments = [&](const Ref<RenderGraphPass>& pass, RenderGraphPassContext& pass_context, DrawCommandList& cmd) {
             if (!pass->hasRenderTargetSlots()) return;

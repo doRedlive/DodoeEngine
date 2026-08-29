@@ -30,7 +30,7 @@ namespace dodoe {
             "ImGuiPass",
             RenderGraphPassFlags::Raster | RenderGraphPassFlags::NeverCull,
             [&context](RenderGraphPassBuilder& pass_builder, ImGuiPassParameters& parameters) {
-                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 RenderGraphTextureDesc color_desc{};
                 color_desc.desc = GfxTextureDesc()
                     .setWidth(swapchain_extent.x).setHeight(swapchain_extent.y).setDepth(1)

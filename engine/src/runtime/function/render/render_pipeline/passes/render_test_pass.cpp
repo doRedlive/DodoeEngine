@@ -63,7 +63,7 @@ namespace dodoe {
                 if (scene_color) {
                     parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
-                    const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                    const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                     parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG TestColor"),
                         "TestColor"), color_attachment);
@@ -171,7 +171,7 @@ namespace dodoe {
                     return;
                 }
 
-                const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2d();
+                const auto swapchain_extent = ctx.getGfxContext()->getSwapchainExtent2D();
                 auto vp = GfxViewportState().addViewportAndScissorRect(GfxViewport(
                     0, static_cast<float>(swapchain_extent.x),
                     0, static_cast<float>(swapchain_extent.y),

@@ -60,8 +60,9 @@ namespace dodoe {
                 if (!supported) continue;
             }
 
-            if (api == RenderBackendApiType::OpenGL &&
-                (entry.name == "GBufferPS" || entry.name == "SpritePS" || entry.name == "UIPS")) {
+            if (!RenderSettings::IsBindlessActive() &&
+                (entry.name == "GBufferPS" || entry.name == "SpritePS" || entry.name == "UIPS" ||
+                 entry.name == "ForwardLitPS")) {
                 continue;
             }
 

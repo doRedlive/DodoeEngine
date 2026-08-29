@@ -1,20 +1,22 @@
-#include "forward_renderer.h"
+#include "runtime/function/render/render_pipeline/forward_renderer.h"
 
-#include "render_pipeline_pass_utils.h"
-#include "render_feature/opaque_scene_feature.h"
-#include "render_feature/transparent_scene_feature.h"
-#include "render_feature/shadow_scene_feature.h"
-#include "render_feature/skybox_feature.h"
-#include "render_feature/post_process_feature.h"
-#include "render_feature/present_feature.h"
-#include "render_feature/sprite_feature.h"
-#include "render_feature/ui_feature.h"
-#include "render_feature/imgui_feature.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_pipeline/render_feature/forward_lit_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/transparent_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/shadow_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/skybox_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/post_process_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/present_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/sprite_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/ui_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/imgui_feature.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #ifdef DODOE_EDITOR_ENABLED
-#include "render_feature/gizmo_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/gizmo_feature.h"
 #endif//DODOE_EDITOR_ENABLED
 #include "runtime/function/render/render_scene/render_object.h"
+#include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_view/render_view_family.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/utils/common.h"
@@ -36,7 +38,7 @@ namespace dodoe {
         DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "ForwardRenderer requires shader library");
         DO_ASSERT(m_shared_render_service->getTextureManager() != nullptr, "ForwardRenderer requires texture manager");
 
-        addFeature<OpaqueSceneFeature>(OpaqueFillMode::SceneColor);
+        addFeature<ForwardLitSceneFeature>();
         addFeature<TransparentSceneFeature>();
         addFeature<ShadowSceneFeature>();
         addFeature<SkyboxFeature>();
@@ -76,17 +78,17 @@ namespace dodoe {
         initViews(scene, view_family);
 
         DO_PROFILE_MARK("ForwardRenderer::render.setupMeshPassContexts", "frame");
-        auto* opaque_feature = getFeature<OpaqueSceneFeature>();
-        DO_ASSERT(opaque_feature != nullptr, "ForwardRenderer OpaqueSceneFeature is null");
+        auto* opaque_feature = getFeature<ForwardLitSceneFeature>();
+        DO_ASSERT(opaque_feature != nullptr, "ForwardRenderer ForwardLitSceneFeature is null");
         opaque_feature->setupMeshPassContexts(scene, view_family);
 
         DO_PROFILE_MARK("ForwardRenderer::render.buildMeshDrawCommands", "frame");
         opaque_feature->buildMeshDrawCommands(view_family, out_commands);
 
-        DO_PROFILE_MARK("ForwardRenderer::render.buildTransparentDrawCommands", "frame");
+        DO_PROFILE_MARK("ForwardRenderer::render.buildTransparentMeshDrawCommands", "frame");
         auto* transparent_feature = getFeature<TransparentSceneFeature>();
         DO_ASSERT(transparent_feature != nullptr, "ForwardRenderer TransparentSceneFeature is null");
-        transparent_feature->buildTransparentDrawCommands(view_family, out_commands);
+        transparent_feature->buildMeshDrawCommands(view_family, out_commands);
 
         DO_PROFILE_MARK("ForwardRenderer::render.buildShadowDrawCommands", "frame");
         auto* shadow_feature = getFeature<ShadowSceneFeature>();

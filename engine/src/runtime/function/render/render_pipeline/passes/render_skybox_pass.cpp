@@ -46,7 +46,7 @@ namespace dodoe {
             "SkyboxPass",
             RenderGraphPassFlags::Raster,
             [&context](RenderGraphPassBuilder& pass_builder, SkyboxPassParameters& parameters) {
-                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2d();
+                const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
                 DO_ASSERT(scene_textures, "SkyboxPass scene textures are missing");
 
@@ -60,8 +60,8 @@ namespace dodoe {
                     hdr_attachment.load_op = LoadOp::Clear;
                     hdr_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
                     parameters.hdr_color = pass_builder.writeColor(pass_builder.createTransientTexture(
-                        rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG MainCameraHdrColor"),
-                        "MainCameraHdrColor"), hdr_attachment);
+                        rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG SceneHdrColor"),
+                        "SceneHdrColor"), hdr_attachment);
                     pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
                 }
 
@@ -138,7 +138,7 @@ namespace dodoe {
                     return;
                 }
 
-                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d()));
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D()));
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             }
         );

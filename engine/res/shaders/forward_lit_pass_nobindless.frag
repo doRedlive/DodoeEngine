@@ -1,5 +1,7 @@
 #version 450 core
 
+// Non-bindless forward lit pixel shader — fixed texture slots
+
 #include "shader_parameter_sets.glsl"
 
 layout(location = 0) out vec4 o_Color;
@@ -34,9 +36,9 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) uniform texture2D 
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) uniform textureCube u_SkyboxTexture;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_SAMPLER) uniform sampler u_Sampler;
 
-const uint kMaxTextures = 1024u;
 layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_SAMPLER) uniform sampler u_TextureSampler;
-layout(set = DOE_SET_BINDLESS, binding = DOE_BINDLESS_BINDING_TEXTURES) uniform texture2D u_Textures[kMaxTextures];
+layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_BASE_COLOR) uniform texture2D u_BaseColorTexture;
+layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_METALLIC_ROUGH) uniform texture2D u_MetallicRoughnessTexture;
 
 const vec2 poissonDisk[16] = vec2[](
     vec2( -0.94201624, -0.39906216 ),
@@ -258,13 +260,13 @@ vec3 evaluateIBL(vec3 albedo, vec3 N, vec3 V, float metallic, float roughness, f
 
 void main()
 {
-    vec3 albedo = texture(sampler2D(u_Textures[v_TexIndex], u_TextureSampler), v_UV).rgb;
-    albedo *= v_ColorTint.rgb;
+    vec4 albedo_sample = texture(sampler2D(u_BaseColorTexture, u_TextureSampler), v_UV);
+    vec3 albedo = albedo_sample.rgb * v_ColorTint.rgb;
     float metallic = clamp(u_MaterialData.x, 0.0, 1.0);
     float roughness = clamp(u_MaterialData.y, 0.04, 1.0);
     float ao = clamp(u_MaterialData.z, 0.0, 1.0);
     if (u_DrawData.z != 0) {
-        vec4 mr_ao = texture(sampler2D(u_Textures[uint(u_DrawData.y)], u_TextureSampler), v_UV);
+        vec4 mr_ao = texture(sampler2D(u_MetallicRoughnessTexture, u_TextureSampler), v_UV);
         metallic = clamp(metallic * mr_ao.b, 0.0, 1.0);
         roughness = clamp(roughness * mr_ao.g, 0.04, 1.0);
         ao = clamp(ao * mr_ao.r, 0.0, 1.0);
@@ -283,5 +285,5 @@ void main()
         color += applyPointLight(albedo, v_Normal, v_WorldPosition, metallic, roughness, i);
     }
 
-    o_Color = vec4(color, albedo.a);
+    o_Color = vec4(color, albedo_sample.a * v_ColorTint.a);
 }

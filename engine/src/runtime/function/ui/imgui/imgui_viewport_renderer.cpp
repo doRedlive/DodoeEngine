@@ -114,7 +114,7 @@ namespace dodoe {
         data->constant_buffer->initializeRHI(s_device);
 
         data->tracker = s_device->createCommandListLifetimeTracker(GfxCommandQueue::Graphics);
-        data->recorder.setDeferred(s_device);
+        data->recorder.setDevice(s_device);
 
         viewport->RendererUserData = data;
     }

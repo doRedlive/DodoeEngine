@@ -214,7 +214,8 @@ namespace dodoe {
 
     void RenderScene::flushUpdates(DrawCommandList& cmd_list) {
         DO_PROFILE_SCOPE_CATEGORY("RenderScene::flushUpdates", "frame");
-        if (!m_scene_data_dirty && m_pending_primitive_updates.empty() && m_pending_sprite_updates.empty() && m_pending_light_updates.empty()) {
+        if (!m_scene_data_dirty && m_pending_primitive_updates.empty() && 
+            m_pending_sprite_updates.empty() && m_pending_light_updates.empty()) {
             return;
         }
         m_frame_number++;

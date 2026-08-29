@@ -152,7 +152,7 @@ namespace dodoe {
                 }
 
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
-                    *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2d());
+                    *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                 const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView());
 
                 for (const auto& light_info : light_infos) {

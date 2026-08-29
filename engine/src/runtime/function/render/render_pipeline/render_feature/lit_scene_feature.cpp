@@ -1,20 +1,16 @@
 // do@Redlive
 
-#include "opaque_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
 
-#include "runtime/function/render/render_pipeline/passes/render_base_pass.h"
-#include "runtime/function/render/render_pipeline/passes/render_opaque_pass.h"
-#include "runtime/function/render/render_graph/render_graph_builder.h"
-#include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
-#include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_command.h"
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/render_view/render_view.h"
+#include "runtime/function/render/render_view/render_view_family.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"
@@ -22,66 +18,31 @@
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
-#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
-#include "runtime/function/render/texture/texture_manager.h"
-#include "runtime/function/render/texture/texture.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
-#include "runtime/function/render/material/material_system.h"
-#include "runtime/resource/file/file_id.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
 
-    static RenderTargetDesc BuildGBufferDesc() {
-        RenderTargetDesc desc{};
-        desc.name = "GBuffer";
-        desc.scale_policy = RenderTargetScalePolicy::Relative;
-        desc.scale_x = 1.0f;
-        desc.scale_y = 1.0f;
-
-        desc.color_attachments.push_back({
-            GfxFormat::RGBA8_UNORM, "GBufferAlbedo", GfxColor(0.08f, 0.09f, 0.11f, 1.0f)
-        });
-        desc.color_attachments.push_back({
-            GfxFormat::RGBA16_FLOAT, "GBufferNormal", GfxColor(0.0f, 0.0f, 0.0f, 1.0f)
-        });
-        desc.color_attachments.push_back({
-            GfxFormat::RGBA32_FLOAT, "GBufferPosition", GfxColor(0.0f, 0.0f, 0.0f, 1.0f)
-        });
-        desc.color_attachments.push_back({
-            GfxFormat::RGBA8_UNORM, "GBufferMaterial", GfxColor(0.0f, 1.0f, 1.0f, 1.0f)
-        });
-
-        desc.has_depth = true;
-        desc.depth_format = GfxFormat::D32;
-        desc.depth_debug_name = "GBufferDepth";
-        desc.clear_depth = 1.0f;
-
-        return desc;
+    static DynamicArray<GfxVertexAttributeDesc> BuildMeshVertexAttributes() {
+        constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
+        constexpr Size_t kInstanceStride = sizeof(InstanceSceneData);
+        return {
+            GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
+            GfxVertexAttributeDesc().setName("a_Normal").setFormat(GfxFormat::RGBA8_SNORM).setOffset(sizeof(Vector3f)).setElementStride(kVertexStride),
+            GfxVertexAttributeDesc().setName("a_UV").setFormat(GfxFormat::RG32_FLOAT).setOffset(sizeof(Vector3f) + sizeof(UInt32)).setElementStride(kVertexStride),
+            GfxVertexAttributeDesc().setName("TEXCOORD3").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(0).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD4").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD5").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("a_InstanceColorTint").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("a_InstanceParams").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+        };
     }
 
-    static GfxFramebufferInfo MakeGBufferFramebufferInfo() {
-        GfxFramebufferInfo framebuffer_info{};
-        framebuffer_info
-            .addColorFormat(GfxFormat::RGBA8_UNORM)
-            .addColorFormat(GfxFormat::RGBA16_FLOAT)
-            .addColorFormat(GfxFormat::RGBA32_FLOAT)
-            .addColorFormat(GfxFormat::RGBA8_UNORM)
-            .setDepthFormat(GfxFormat::D32);
-        return framebuffer_info;
-    }
-
-    static GfxFramebufferInfo MakeOpaqueFramebufferInfo() {
-        GfxFramebufferInfo framebuffer_info{};
-        framebuffer_info
-            .addColorFormat(GfxFormat::RGBA16_FLOAT)
-            .setDepthFormat(GfxFormat::D32);
-        return framebuffer_info;
-    }
-
-    static GfxGraphicsPipelineDesc MakeLitPipelineDesc(const ShaderLibrary& shader_library,
+    static GfxGraphicsPipelineDesc MakeLitPipelineDesc(const GfxShaderHandle& vertex_shader,
                                                        const GfxShaderHandle& pixel_shader,
                                                        GfxInputLayoutHandle mesh_input_layout,
                                                        const GfxBindingLayoutHandle& global_binding_layout,
@@ -92,7 +53,7 @@ namespace dodoe {
                                                        DescriptorTableManager* descriptor_table,
                                                        BindingLayoutCache* binding_layout_cache) {
         auto pipeline_desc = GfxGraphicsPipelineDesc()
-            .setVertexShader(shader_library.getGBufferVertexShader())
+            .setVertexShader(vertex_shader)
             .setPixelShader(pixel_shader)
             .setInputLayout(mesh_input_layout)
             .addBindingLayout(global_binding_layout)
@@ -139,17 +100,8 @@ namespace dodoe {
         return relevance;
     }
 
-    void OpaqueSceneFeature::initialize(SharedRenderService& resources) {
-        auto* gfx = resources.getGfxContext();
-        auto* deletion_queue = resources.getRenderTargetSystem()
-            ? resources.getRenderTargetSystem()->getDeletionQueue()
-            : nullptr;
+    void LitSceneFeature::initialize(SharedRenderService& resources) {
         m_shared_render_service = &resources;
-
-        if (m_fill_mode == OpaqueFillMode::GBuffer) {
-            m_gbuffer = create_scope<RenderTargetHandle>();
-            m_gbuffer->initialize(BuildGBufferDesc(), *gfx, deletion_queue);
-        }
 
         GfxBindingSetHandle descriptor_binding_set{};
         auto* descriptor_table = resources.getDescriptorTable();
@@ -159,51 +111,21 @@ namespace dodoe {
         }
         auto* binding_layout_cache = resources.getBindingLayoutCache();
         auto* binding_set_cache = resources.getBindingSetCache();
-        DO_ASSERT(binding_layout_cache != nullptr, "OpaqueSceneFeature binding layout cache is null");
-        DO_ASSERT(binding_set_cache != nullptr, "OpaqueSceneFeature binding set cache is null");
+        DO_ASSERT(binding_layout_cache != nullptr, "LitSceneFeature binding layout cache is null");
+        DO_ASSERT(binding_set_cache != nullptr, "LitSceneFeature binding set cache is null");
         m_lit_processor = create_scope<LitMeshProcessor>(
-            MeshPassType::Opaque, descriptor_binding_set, *binding_layout_cache, *binding_set_cache);
+            getMeshPassType(), descriptor_binding_set, *binding_layout_cache, *binding_set_cache);
     }
 
-    void OpaqueSceneFeature::onResize(const UInt32 width, const UInt32 height) {
-        auto* gfx = m_shared_render_service ? m_shared_render_service->getGfxContext() : nullptr;
-        DO_ASSERT(gfx != nullptr, "OpaqueSceneFeature onResize requires valid GfxContext");
-
-        if (m_gbuffer) {
-            m_gbuffer->resolve(width, height, *gfx, 0);
-        }
-    }
-
-    void OpaqueSceneFeature::shutdown() {
-        if (m_gbuffer) {
-            m_gbuffer->shutdown();
-            m_gbuffer.reset();
-        }
+    void LitSceneFeature::shutdown() {
         if (m_lit_processor) {
             m_lit_processor->reset();
             m_lit_processor.reset();
         }
     }
 
-    void OpaqueSceneFeature::registerGraphImports(RenderGraphImportRegistry& imports,
-                                                  const RenderView& view) {
-        (void)view;
-        if (m_fill_mode == OpaqueFillMode::GBuffer && m_gbuffer) {
-            imports.publish<GBufferRenderTargetKey>(m_gbuffer.get());
-        }
-    }
-
-    void OpaqueSceneFeature::collectPasses(PassCollector& collector) {
-        DO_ASSERT(m_lit_processor != nullptr, "OpaqueSceneFeature lit processor is null");
-        if (m_fill_mode == OpaqueFillMode::GBuffer) {
-            collector.addPass<GBufferPass>(m_lit_processor.get());
-        } else {
-            collector.addPass<OpaquePass>(m_lit_processor.get());
-        }
-    }
-
-    void OpaqueSceneFeature::setupMeshPassContexts(const RenderScene& scene,
-                                                   RenderViewFamily& view_family) const {
+    void LitSceneFeature::setupMeshPassContexts(const RenderScene& scene,
+                                                RenderViewFamily& view_family) const {
         Vector3f light_direction(0.3f, -0.8f, -0.5f);
         for (const auto& info : scene.getLightSceneInfos()) {
             if (info.getLightType() == LightType::Directional && info.isEnabled()) {
@@ -239,48 +161,36 @@ namespace dodoe {
             ext.primitive_mesh_pass_relevance.clear();
             ext.primitive_mesh_pass_relevance.reserve(mesh_ext.visible_primitives.size());
             for (const auto* primitive : ext.visible_primitives) {
-                DO_ASSERT(primitive != nullptr, "OpaqueSceneFeature visible primitive is null");
+                DO_ASSERT(primitive != nullptr, "LitSceneFeature visible primitive is null");
                 ext.primitive_mesh_pass_relevance.push_back(BuildPrimitiveMeshPassRelevance(*primitive));
             }
             ext.buildMeshPassPrimitiveIndices();
         }
     }
 
-    void OpaqueSceneFeature::buildMeshDrawCommands(RenderViewFamily& view_family,
-                                                   DrawCommandList& cmd_list) {
-        DO_ASSERT(m_shared_render_service != nullptr, "OpaqueSceneFeature shared render service is null");
-        DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "OpaqueSceneFeature shader library is null");
-        DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "OpaqueSceneFeature pipeline cache is null");
+    void LitSceneFeature::buildMeshDrawCommands(RenderViewFamily& view_family,
+                                                DrawCommandList& cmd_list) {
+        DO_ASSERT(m_shared_render_service != nullptr, "LitSceneFeature shared render service is null");
+        DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "LitSceneFeature shader library is null");
+        DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "LitSceneFeature pipeline cache is null");
 
         const auto& shader_library = *m_shared_render_service->getShaderLibrary();
 
-        constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
-        constexpr Size_t kInstanceStride = sizeof(InstanceSceneData);
-        const DynamicArray<GfxVertexAttributeDesc> mesh_vertex_attributes = {
-            GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
-            GfxVertexAttributeDesc().setName("a_Normal").setFormat(GfxFormat::RGBA8_SNORM).setOffset(sizeof(Vector3f)).setElementStride(kVertexStride),
-            GfxVertexAttributeDesc().setName("a_UV").setFormat(GfxFormat::RG32_FLOAT).setOffset(sizeof(Vector3f) + sizeof(UInt32)).setElementStride(kVertexStride),
-            GfxVertexAttributeDesc().setName("TEXCOORD3").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(0).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD4").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD5").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("a_InstanceColorTint").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f)).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("a_InstanceParams").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
-        };
+        const auto mesh_vertex_attributes = BuildMeshVertexAttributes();
 
         auto* input_layout_cache = m_shared_render_service->getInputLayoutCache();
         const auto mesh_input_layout = input_layout_cache
-            ? input_layout_cache->getOrCreate(mesh_vertex_attributes, shader_library.getGBufferVertexShader())
+            ? input_layout_cache->getOrCreate(mesh_vertex_attributes, shader_library.getLitVertexShader())
             : GfxInputLayoutHandle{};
 
         auto* pso_cache = m_shared_render_service->getPipelineStateCache();
-        DO_ASSERT(pso_cache != nullptr, "OpaqueSceneFeature PSO cache is null");
+        DO_ASSERT(pso_cache != nullptr, "LitSceneFeature PSO cache is null");
 
         auto* binding_layout_cache = m_shared_render_service->getBindingLayoutCache();
         auto* descriptor_table = m_shared_render_service->getDescriptorTable();
 
         GfxBindingLayoutHandle pass_binding_layout{};
-        if (m_fill_mode == OpaqueFillMode::SceneColor) {
+        if (usesPassBindingLayout()) {
             pass_binding_layout = binding_layout_cache->getOrCreate(
                 GfxBindingLayoutDesc()
                     .setVisibility(GfxShaderType::Pixel)
@@ -292,53 +202,52 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::Sampler(9)));
         }
 
-        const auto pixel_shader = m_fill_mode == OpaqueFillMode::GBuffer
-            ? shader_library.getGBufferPixelShader()
-            : shader_library.getOpaquePixelShader();
-        const auto fb_info = m_fill_mode == OpaqueFillMode::GBuffer
-            ? MakeGBufferFramebufferInfo()
-            : MakeOpaqueFramebufferInfo();
+        auto pipeline_desc = MakeLitPipelineDesc(
+            shader_library.getLitVertexShader(),
+            getPixelShader(shader_library),
+            mesh_input_layout,
+            m_lit_processor->getGlobalBindingLayout(),
+            m_lit_processor->getViewBindingLayout(),
+            m_lit_processor->getPrimitiveBindingLayout(),
+            m_lit_processor->getSamplerBindingLayout(),
+            pass_binding_layout,
+            descriptor_table,
+            binding_layout_cache);
+        modifyPipelineDesc(pipeline_desc);
 
         (void)pso_cache->resolveGraphicsPipeline(
-            MeshPassType::Opaque,
-            MakeLitPipelineDesc(shader_library, pixel_shader, mesh_input_layout,
-                m_lit_processor->getGlobalBindingLayout(),
-                m_lit_processor->getViewBindingLayout(),
-                m_lit_processor->getPrimitiveBindingLayout(),
-                m_lit_processor->getSamplerBindingLayout(),
-                pass_binding_layout,
-                descriptor_table,
-                binding_layout_cache),
-            fb_info,
+            getMeshPassType(),
+            pipeline_desc,
+            getFramebufferInfo(),
             cmd_list);
-
-        m_lit_draw_lists.resize(view_family.getSize());
+        m_draw_lists.resize(view_family.getSize());
+        const auto pass_type = getMeshPassType();
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
 
-            auto& lit_list = m_lit_draw_lists[view_index];
-            lit_list.reset();
-            lit_list.cached_commands = &m_mesh_draw_cache.getCommands();
+            auto& draw_list = m_draw_lists[view_index];
+            draw_list.reset();
+            draw_list.cached_commands = &m_mesh_draw_cache.getCommands();
 
             m_lit_processor->buildCachedCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Opaque)],
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(pass_type)],
                 view.getViewProjectionMatrix(),
                 m_mesh_draw_cache,
-                lit_list.cached_instances,
-                lit_list.cached_shader_data
+                draw_list.cached_instances,
+                draw_list.cached_shader_data
             );
             m_lit_processor->buildDynamicCommands(
                 mesh_ext.visible_primitives,
                 mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Opaque)],
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(pass_type)],
                 view.getViewProjectionMatrix(),
-                lit_list.frame_commands,
-                lit_list.dynamic_instances,
-                lit_list.dynamic_shader_data
+                draw_list.frame_commands,
+                draw_list.dynamic_instances,
+                draw_list.dynamic_shader_data
             );
         }
     }
