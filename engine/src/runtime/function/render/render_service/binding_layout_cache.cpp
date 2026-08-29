@@ -28,17 +28,24 @@ namespace dodoe {
     } // anonymous namespace
 
     Bool BindingLayoutCache::initialize(const BindingLayoutCacheCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("BindingLayoutCache::initialize", "startup");
         m_gfx_context = info.gfx_context;
         DO_ASSERT(m_gfx_context != nullptr, "BindingLayoutCache requires gfx_context");
-        return true;
+        if (!m_gfx_context) {
+            DO_ERROR("BindingLayoutCache::initialize: graphics context is unavailable");
+        }
+        return m_gfx_context != nullptr;
     }
 
     void BindingLayoutCache::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("BindingLayoutCache::shutdown", "shutdown");
+        DO_INFO("BindingLayoutCache: releasing {} cached binding layout(s)", m_cache.size());
         m_cache.clear();
         m_gfx_context = nullptr;
     }
 
     GfxBindingLayoutHandle BindingLayoutCache::getOrCreate(const GfxBindingLayoutDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("BindingLayoutCache::getOrCreate", "resource-cache");
         const auto hash = HashBindingLayoutDesc(desc);
         auto it = m_cache.find(hash);
         if (it != m_cache.end()) {
@@ -47,6 +54,8 @@ namespace dodoe {
 
         auto layout = GDrawCommandList.createBindingLayout(desc);
         m_cache[hash] = {layout, m_next_generation++};
+        DO_DEBUG("BindingLayoutCache: created binding layout (bindings={}, generation={})",
+            desc.bindings.size(), m_cache[hash].generation);
         return layout;
     }
 
@@ -60,6 +69,7 @@ namespace dodoe {
     }
 
     void BindingLayoutCache::clear() {
+        DO_PROFILE_SCOPE_CATEGORY("BindingLayoutCache::clear", "resource-cache");
         m_cache.clear();
         m_next_generation = 1;
     }

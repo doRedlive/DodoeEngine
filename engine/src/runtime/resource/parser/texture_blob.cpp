@@ -21,6 +21,7 @@ namespace dodoe {
     }
 
     void TextureBlob::load(const String& path, bool flip_vertical) {
+        DO_PROFILE_SCOPE_CATEGORY("TextureBlob::load", "asset");
         stbi_set_flip_vertically_on_load(flip_vertical);
         is_hdr = stbi_is_hdr(path.c_str()) != 0;
         if (is_hdr) {
@@ -35,6 +36,9 @@ namespace dodoe {
 
         if (!pixels) {
             DO_ERROR("Load texture {} error!", path);
+        } else {
+            DO_DEBUG("TextureBlob: loaded '{}' ({}x{}, channels={}, hdr={})",
+                path, width, height, channels, is_hdr);
         }
     }
 

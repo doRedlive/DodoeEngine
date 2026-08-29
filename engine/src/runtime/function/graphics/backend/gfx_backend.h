@@ -9,6 +9,13 @@ namespace dodoe {
 
     enum class RenderBackendApiType;
 
+    enum class GfxNativeMessageSeverity {
+        Info,
+        Warning,
+        Error,
+        Fatal,
+    };
+
     struct GfxBackendCreateInfo {
         GLFWwindow* window_handle{nullptr};
         void*       host_handle{nullptr};
@@ -32,6 +39,8 @@ namespace dodoe {
         }
         [[nodiscard]] GLFWwindow* getNativeWindow() const { return window_handle_; }
         [[nodiscard]] void* getHostHandle() const { return host_handle_; }
+
+        void reportNativeMessage(GfxNativeMessageSeverity severity, const char* message_text) const;
 
         virtual void shutdown() {}
 

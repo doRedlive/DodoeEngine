@@ -11,6 +11,7 @@ namespace dodoe {
 
     void RenderTargetHandle::initialize(const RenderTargetDesc& desc, GfxContext& gfx,
                                          DeferredDeletionQueue* deletion_queue) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::initialize", "startup");
         m_desc = desc;
         m_deletion_queue = deletion_queue;
 
@@ -27,10 +28,13 @@ namespace dodoe {
         m_current_height = height;
 
         createAllTextures(gfx);
+        DO_INFO("RenderTargetHandle: initialized ({}x{}, color attachments={}, depth={}, samples={})",
+            m_current_width, m_current_height, m_desc.color_attachments.size(), m_desc.has_depth, m_desc.sample_count);
     }
 
     Bool RenderTargetHandle::resolve(const UInt32 reference_width, const UInt32 reference_height,
         GfxContext& gfx, const UInt64 current_frame) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::resolve", "swapchain");
         UInt32 target_width  = reference_width;
         UInt32 target_height = reference_height;
 
@@ -69,10 +73,12 @@ namespace dodoe {
         ++m_revision;
 
         createAllTextures(gfx);
+        DO_DEBUG("RenderTargetHandle: resized to {}x{} (revision={})", m_current_width, m_current_height, m_revision);
         return true;
     }
 
     void RenderTargetHandle::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::shutdown", "shutdown");
         destroyAllTextures();
         m_framebuffer.reset();
         m_revision = 0;
@@ -91,6 +97,7 @@ namespace dodoe {
     }
 
     GfxFramebufferHandle RenderTargetHandle::getFramebuffer(DrawCommandList& cmd) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::getFramebuffer", "resource");
         if (m_framebuffer) {
             return m_framebuffer;
         }
@@ -106,11 +113,19 @@ namespace dodoe {
         }
 
         m_framebuffer = cmd.createFramebuffer(fb_desc);
+        if (!m_framebuffer) {
+            DO_ERROR("RenderTargetHandle::getFramebuffer: failed to create framebuffer");
+        }
         return m_framebuffer;
     }
 
     void RenderTargetHandle::createAllTextures(GfxContext& gfx) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::createAllTextures", "resource");
         const auto device = gfx.getDevice();
+        if (!device) {
+            DO_ERROR("RenderTargetHandle::createAllTextures: graphics device is unavailable");
+            return;
+        }
 
         for (const auto& ca : m_desc.color_attachments) {
             GfxTextureDesc tex_desc{};
@@ -146,9 +161,12 @@ namespace dodoe {
             m_depth_texture = create_ref<GfxTexture>(depth_desc, m_desc.depth_debug_name);
             m_depth_texture->initializeGpu(device);
         }
+        DO_DEBUG("RenderTargetHandle: created {} color texture(s){}",
+            m_color_textures.size(), m_depth_texture ? " and depth texture" : "");
     }
 
     void RenderTargetHandle::destroyAllTextures() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::destroyAllTextures", "shutdown");
         m_color_textures.clear();
         m_depth_texture.reset();
         m_framebuffer.reset();

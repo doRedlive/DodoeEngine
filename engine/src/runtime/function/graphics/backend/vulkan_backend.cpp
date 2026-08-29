@@ -9,19 +9,45 @@
 namespace dodoe {
 
 	namespace {
-		static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT,
-                                                        VkDebugUtilsMessageTypeFlagsEXT,
+		static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+                                                        VkDebugUtilsMessageTypeFlagsEXT types,
                                                         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                                        void*) {
-			DO_ERROR("Validation layer: {}.", pCallbackData->pMessage);
+                                                        void* pUserData) {
+			auto* backend = static_cast<VulkanBackend*>(pUserData);
+			if (!backend || !pCallbackData || !pCallbackData->pMessage) {
+				return VK_FALSE;
+			}
+
+			GfxNativeMessageSeverity mapped = GfxNativeMessageSeverity::Info;
+			if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+				mapped = GfxNativeMessageSeverity::Error;
+			}
+			else if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+				mapped = GfxNativeMessageSeverity::Warning;
+			}
+
+			const char* type_name = "general";
+			if (types & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+				type_name = "validation";
+			}
+			else if (types & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+				type_name = "performance";
+			}
+
+			std::string text = std::string(type_name) + ": " + pCallbackData->pMessage;
+			backend->reportNativeMessage(mapped, text.c_str());
 			return VK_FALSE;
 		}
 	}
 
 	bool VulkanBackend::initialize(const GfxBackendCreateInfo& info) {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::initialize", "startup");
 		OutputDebugStringA("[VK] initialize begin\n");
 		initCommonState(info);
 		enable_validation_layers_ = info.enable_validation && checkValidationLayerSupport();
+		if (info.enable_validation && !enable_validation_layers_) {
+			DO_WARN("VulkanBackend: validation requested but VK_LAYER_KHRONOS_validation is unavailable");
+		}
         instance_extensions_ = getRequiredExtensions();
 		OutputDebugStringA("[VK] creating instance...\n");
 		createInstance(instance_extensions_.data(), static_cast<int>(instance_extensions_.size()));
@@ -47,10 +73,13 @@ namespace dodoe {
 		OutputDebugStringA("[VK] commandPool ok\n");
 		createSwapchainImageViews();
 		OutputDebugStringA("[VK] imageViews ok, initialize done\n");
+		DO_INFO("VulkanBackend: initialized ({} swapchain images, {}x{})",
+			swapchain_images_.size(), swapchain_extent_.width, swapchain_extent_.height);
 		return true;
 	}
 
 	void VulkanBackend::shutdown() {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::shutdown", "shutdown");
 		if (device_ != VK_NULL_HANDLE) {
 			vkDeviceWaitIdle(device_);
 
@@ -96,6 +125,7 @@ namespace dodoe {
 	}
 
 	bool VulkanBackend::checkValidationLayerSupport() {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::checkValidationLayerSupport", "startup");
 		uint32_t count;
 		vkEnumerateInstanceLayerProperties(&count, nullptr);
 
@@ -119,6 +149,7 @@ namespace dodoe {
 	}
 
 	void VulkanBackend::createInstance(const char** extensions, int extension_count) {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::createInstance", "startup");
 		VkApplicationInfo app_info{};
 		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		app_info.pNext = nullptr;
@@ -139,6 +170,7 @@ namespace dodoe {
 		debug_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 		debug_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 		debug_info.pfnUserCallback = VulkanDebugCallback;
+		debug_info.pUserData = this;
 
 		if (enable_validation_layers_) {
 			create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers_.size());
@@ -156,6 +188,7 @@ namespace dodoe {
 	}
 
 	void VulkanBackend::createSurface(GLFWwindow* window_handle, void* host_handle) {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::createSurface", "startup");
 		if (host_handle != nullptr) {
 #if defined(DO_PLATFORM_WINDOWS)
 			VkWin32SurfaceCreateInfoKHR surfaceInfo{};
@@ -176,6 +209,7 @@ namespace dodoe {
 
 	}
 	void VulkanBackend::pickPhysicalDevice() {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::pickPhysicalDevice", "startup");
 		OutputDebugStringA("[VK] pickPhysicalDevice: enumerate...\n");
 		uint32_t gpu_count;
 		vkEnumeratePhysicalDevices(m_instance, &gpu_count, nullptr);
@@ -203,6 +237,7 @@ namespace dodoe {
 	}
 
 	void VulkanBackend::createLogicalDevice() {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::createLogicalDevice", "startup");
 		queue_family_indices_ = findQueueFamilies(physical_device_);
 
 		std::vector<VkDeviceQueueCreateInfo> queue_infos;
@@ -290,6 +325,7 @@ namespace dodoe {
 	}
 
 	void VulkanBackend::createSwapchain(::GLFWwindow* window_handle, uint32_t width, uint32_t height) {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::createSwapchain", "swapchain");
 		VulkanBackend::SwapchainSupportDetails swapchain_details = querySwapchainSupport(physical_device_);
 		VkSurfaceFormatKHR chosen_surface_format;
 		{
@@ -406,6 +442,7 @@ namespace dodoe {
 	}
 
 	void VulkanBackend::createSwapchainImageViews() {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::createSwapchainImageViews", "swapchain");
 		swapchain_imageviews_.clear();
 		swapchain_imageviews_.reserve(swapchain_images_.size());
 		for (const auto swapchain_image : swapchain_images_) {
@@ -432,6 +469,7 @@ namespace dodoe {
 	}
 
 	void VulkanBackend::createCommandPool() {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::createCommandPool", "startup");
 		VkCommandPoolCreateInfo cmd_pool_info{};
 		cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		cmd_pool_info.pNext = nullptr;
@@ -442,6 +480,7 @@ namespace dodoe {
 	}
 
 	bool VulkanBackend::acquireNextImage(uint32_t& image_index, VkSemaphore signal_semaphore) {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::acquireNextImage", "swapchain");
 		if (device_ == VK_NULL_HANDLE || swapchain_ == VK_NULL_HANDLE) {
 			return false;
 		}
@@ -456,6 +495,7 @@ namespace dodoe {
 	}
 
 	bool VulkanBackend::presentImage(uint32_t image_index, VkSemaphore wait_semaphore) {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::presentImage", "swapchain");
 		if (swapchain_ == VK_NULL_HANDLE || present_queue_ == VK_NULL_HANDLE) {
 			return false;
 		}
@@ -484,6 +524,7 @@ namespace dodoe {
 	}
 
 	bool VulkanBackend::recreateSwapchain(GLFWwindow* window_handle, uint32_t width, uint32_t height) {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::recreateSwapchain", "swapchain");
 		if (width == 0 || height == 0) {
 			return false;
 		}
@@ -529,11 +570,13 @@ namespace dodoe {
     }
 
 	void VulkanBackend::initializeDebugMessenger() {
+		DO_PROFILE_SCOPE_CATEGORY("VulkanBackend::initializeDebugMessenger", "startup");
 		VkDebugUtilsMessengerCreateInfoEXT create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 		create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 		create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 		create_info.pfnUserCallback = VulkanDebugCallback;
+		create_info.pUserData = this;
 
 		auto fun = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
 		if (fun) {

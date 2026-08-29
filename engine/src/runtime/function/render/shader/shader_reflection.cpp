@@ -34,7 +34,9 @@ namespace dodoe {
     }
 
     ShaderReflectionData ShaderReflector::Reflect(const GfxShaderHandle& shader, const String& name) {
+        DO_PROFILE_SCOPE_CATEGORY("ShaderReflector::Reflect", "shader");
         if (!shader) {
+            DO_ERROR("ShaderReflector::Reflect: shader '{}' is unavailable", name);
             return {};
         }
 
@@ -57,6 +59,7 @@ namespace dodoe {
     ShaderReflectionData ShaderReflector::ReflectBytecode(const DynamicArray<UInt8>& bytecode,
                                                           GfxShaderType stage,
                                                           const String& name) {
+        DO_PROFILE_SCOPE_CATEGORY("ShaderReflector::ReflectBytecode", "shader");
         if (IsSPIRV(bytecode)) {
             return ReflectSPIRV(bytecode, stage, name);
         }
@@ -68,6 +71,7 @@ namespace dodoe {
     ShaderReflectionData ShaderReflector::ReflectSPIRV(const DynamicArray<UInt8>& bytecode,
                                                        GfxShaderType stage,
                                                        const String& name) {
+        DO_PROFILE_SCOPE_CATEGORY("ShaderReflector::ReflectSPIRV", "shader");
         ShaderReflectionData result;
         result.shader_name = name;
         result.stage = stage;
@@ -190,12 +194,15 @@ namespace dodoe {
             result.vertex_inputs.push_back(vi);
         }
 
+        DO_DEBUG("ShaderReflector: '{}' reflected (constant buffers={}, resources={}, samplers={}, push constants={})",
+            name, result.constant_buffers.size(), result.textures.size(), result.samplers.size(), result.uses_push_constants);
         return result;
     }
 
     Bool ShaderReflector::ValidateAgainstLayout(const ShaderReflectionData& reflection,
                                                 const GfxBindingLayoutDesc& layout,
                                                 String& out_error) {
+        DO_PROFILE_SCOPE_CATEGORY("ShaderReflector::ValidateAgainstLayout", "shader");
         for (const auto& cb : reflection.constant_buffers) {
             Bool found = false;
             for (const auto& item : layout.bindings) {
@@ -210,6 +217,7 @@ namespace dodoe {
             }
             if (!found) {
                 out_error = String(("CBV at set " + std::to_string(cb.set) + " slot " + std::to_string(cb.slot) + " (" + cb.name.c_str() + ") not found in layout").c_str());
+                DO_ERROR("ShaderReflector: {}", out_error);
                 return false;
             }
         }
@@ -225,6 +233,7 @@ namespace dodoe {
             }
             if (!found) {
                 out_error = String(("Texture at set " + std::to_string(tex.set) + " slot " + std::to_string(tex.slot) + " (" + tex.name.c_str() + ") not found in layout").c_str());
+                DO_ERROR("ShaderReflector: {}", out_error);
                 return false;
             }
         }
@@ -241,6 +250,7 @@ namespace dodoe {
             }
             if (!found) {
                 out_error = String(("Sampler at set " + std::to_string(smp.set) + " slot " + std::to_string(smp.slot) + " (" + smp.name.c_str() + ") not found in layout").c_str());
+                DO_ERROR("ShaderReflector: {}", out_error);
                 return false;
             }
         }
@@ -255,6 +265,7 @@ namespace dodoe {
             }
             if (!found) {
                 out_error = "Push constants used by shader but not in layout";
+                DO_ERROR("ShaderReflector: {}", out_error);
                 return false;
             }
         }

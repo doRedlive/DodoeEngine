@@ -43,4 +43,20 @@ namespace dodoe {
         m_gpu_driven_supported = resolved.gpu_driven_active;
     }
 
+    String RenderSettings::GetRenderBackendApiTypeStr(){
+        switch (m_api)
+        {
+        case RenderBackendApiType::None:
+            return "Unknown";
+        case RenderBackendApiType::OpenGL:
+            return "OpenGL";
+        case RenderBackendApiType::Vulkan:
+            return "Vulkan";
+        case RenderBackendApiType::D3D12:
+            return "D3D12";
+        default:
+            return "Unknown";
+        }
+    }
+
 } // dodoe

@@ -2,6 +2,7 @@
 
 #include "shader_library.h"
 #include "runtime/function/graphics/draw_command_list.h"
+#include "shader_parameter.h"
 
 namespace dodoe {
 
@@ -28,7 +29,9 @@ namespace dodoe {
     }
 
     Bool ShaderLibrary::initialize(const ShaderLibraryCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("ShaderLibrary::initialize", "startup");
         if (!info.gfx_context) {
+            DO_ERROR("ShaderLibrary::initialize: graphics context is unavailable");
             return false;
         }
 
@@ -39,6 +42,8 @@ namespace dodoe {
 
         const auto api = RenderSettings::GetRenderBackendApiType();
         const char* backend_ext = (api == RenderBackendApiType::D3D12) ? ".dxil" : ".spv";
+        DO_INFO("ShaderLibrary: loading shaders for backend {} (bindless={})",
+            RenderSettings::GetRenderBackendApiTypeStr(), RenderSettings::IsBindlessActive());
 
         const char* platform_str = nullptr;
         switch (api) {
@@ -117,6 +122,10 @@ namespace dodoe {
     void ShaderLibrary::shutdown() { reset(); }
 
     void ShaderLibrary::reset() {
+        DO_PROFILE_SCOPE_CATEGORY("ShaderLibrary::reset", "shutdown");
+        DO_INFO("ShaderLibrary: releasing {} shader(s) and {} reflection(s)",
+            m_shaders.size(), m_reflections.size());
+        ClearStaticBindingLayoutCaches();
         m_shaders.clear();
         m_reflections.clear();
     }

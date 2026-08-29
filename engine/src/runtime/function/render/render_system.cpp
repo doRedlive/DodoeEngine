@@ -18,7 +18,7 @@ namespace dodoe {
 
         auto window = m_window_manager->getWindow();
         auto backend_api = RenderSettings::GetRenderBackendApiType();
-
+        DO_INFO("Render Backend API is {}.", RenderSettings::GetRenderBackendApiTypeStr());
         m_view_manager = RenderViewManager::Create({m_window_manager});
 
         const bool enable_validation =
@@ -52,11 +52,13 @@ namespace dodoe {
 
     void RenderSystem::shutdown() {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::shutdown", "shutdown");
+        DO_PROFILE_MARK("RenderSystem::shutdown.stopRenderThread", "shutdown");
         if (m_render_thread) {
             m_render_thread->stop();
             m_render_thread.reset();
         }
         (void)acquireApplicationGraphicsContext();
+        DO_PROFILE_MARK("RenderSystem::shutdown.releaseQueues", "shutdown");
         m_resource_command_queue.close();
         m_scene_command_queue.close();
         m_gfx->waitForIdle();
@@ -80,10 +82,12 @@ namespace dodoe {
     }
 
     Bool RenderSystem::acquireApplicationGraphicsContext() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::acquireApplicationGraphicsContext", "synchronization");
         return m_gfx->acquireOpenGLContext();
     }
 
     void RenderSystem::releaseApplicationGraphicsContext() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::releaseApplicationGraphicsContext", "synchronization");
         m_gfx->releaseOpenGLContext();
     }
 
@@ -92,6 +96,7 @@ namespace dodoe {
     }
 
     void RenderSystem::submitFrame() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::submitFrame", "frame");
         if (!m_render_thread) return;
         if (RenderSettings::IsSingleThread()) {
             m_render_thread->executeFrameOnce();
@@ -101,6 +106,7 @@ namespace dodoe {
     }
 
     void RenderSystem::setupRenderThreading() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::setupRenderThreading", "startup");
         if (RenderSettings::IsSingleThread()) {
             m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
                 renderFrame();
@@ -151,6 +157,7 @@ namespace dodoe {
         }
 
         {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::executeDeferredCommands", "render-command");
             auto pending = GDrawCommandList.detachRecordedCommands();
             if (!pending.isEmpty()) {
                 DO_INFO("RenderSystem: executing {} deferred render commands", pending.commandCount());
@@ -173,6 +180,7 @@ namespace dodoe {
         }
 
         if (any_window_dirty) {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::resizeTargets", "swapchain");
             m_gfx->waitForIdle();
             m_frame_scheduler->retireCompletedFrames();
             if (!m_gfx->recreateSwapchain(static_cast<UInt32>(cur_pixel.x),
@@ -210,6 +218,7 @@ namespace dodoe {
         if (!m_gfx->acquireNextSwapchainImage(image_index)) {
             return;
         }
+        DO_PROFILE_MARK("RenderSystem::renderFrame.swapchainAcquired", "swapchain");
 
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
@@ -220,7 +229,9 @@ namespace dodoe {
 
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
         scene->flushUpdates(*frame_ctx.command_list);
+        DO_PROFILE_MARK("RenderSystem::renderFrame.sceneFlushed", "frame");
 
+        DO_PROFILE_MARK("RenderSystem::renderFrame.renderViewTargets", "frame");
         for (auto& target : view_mgr->getTargets()) {
             auto* cam = target->getCamera();
             Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
@@ -243,7 +254,10 @@ namespace dodoe {
             m_gfx->getDevice()->executeCommandList(gfx_cmd);
         }
         gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
-        (void)m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
+        DO_PROFILE_MARK("RenderSystem::renderFrame.commandsSubmitted", "frame");
+        if (!m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index)) {
+            DO_ERROR("RenderSystem failed to present swapchain image {}", frame_ctx.swapchain_image_index);
+        }
         m_gfx->clearGarbage();
     }
 

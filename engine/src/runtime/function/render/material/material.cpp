@@ -21,8 +21,10 @@ namespace dodoe {
     }
 
     Bool Material::loadFromJson(const String& absolute_path) {
+        DO_PROFILE_SCOPE_CATEGORY("Material::loadFromJson", "asset");
         std::ifstream file(absolute_path.c_str());
         if (!file.is_open()) {
+            DO_ERROR("Material::loadFromJson: failed to open '{}'", absolute_path);
             return false;
         }
 
@@ -32,7 +34,8 @@ namespace dodoe {
         Json json;
         try {
             json = Json::parse(buffer.str());
-        } catch (const Json::exception&) {
+        } catch (const Json::exception& e) {
+            DO_ERROR("Material::loadFromJson: JSON parse failed for '{}': {}", absolute_path, e.what());
             return false;
         }
 
@@ -61,12 +64,15 @@ namespace dodoe {
             Serializer::read(json["emissive_texture"], m_emissive_texture);
         }
 
+        DO_DEBUG("Material: loaded '{}'", absolute_path);
         return true;
     }
 
     Bool Material::saveToJson(const String& absolute_path) const {
+        DO_PROFILE_SCOPE_CATEGORY("Material::saveToJson", "asset");
         std::ofstream file(absolute_path.c_str());
         if (!file.is_open()) {
+            DO_ERROR("Material::saveToJson: failed to open '{}'", absolute_path);
             return false;
         }
 
@@ -82,11 +88,14 @@ namespace dodoe {
 
         file << json.dump(4);
         file.flush();
+        DO_DEBUG("Material: saved '{}'", absolute_path);
         return true;
     }
 
     Material* Material::Create(const ObjectID& ref, const String& path) {
+        DO_PROFILE_SCOPE_CATEGORY("Material::Create", "asset");
         if (!ref.isValid() || path.empty()) {
+            DO_ERROR("Material::Create: invalid object reference or empty path");
             return nullptr;
         }
 
@@ -100,13 +109,18 @@ namespace dodoe {
         auto material = create_scope<Material>(ref);
         Material* raw = material.get();
         raw->setPath(absolute_path);
-        raw->loadFromJson(absolute_path);
+        if (!raw->loadFromJson(absolute_path)) {
+            DO_WARN("Material::Create: using defaults because '{}' could not be loaded", absolute_path);
+        }
         const InstanceID instance_id = raw->getInstanceID();
         s_material_cache.emplace(instance_id, std::move(material));
+        DO_INFO("Material: created '{}'", absolute_path);
         return raw;
     }
 
     void Material::Shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("Material::Shutdown", "shutdown");
+        DO_INFO("Material: releasing {} cached material(s)", s_material_cache.size());
         s_material_cache.clear();
     }
 

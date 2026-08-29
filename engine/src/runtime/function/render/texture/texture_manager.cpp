@@ -40,14 +40,31 @@ namespace dodoe {
     }
 
     Bool TextureManager::initialize(const TextureManagerCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("TextureManager::initialize", "startup");
         m_gfx = info.gfx;
         m_descriptor_table = info.descriptor_table;
+        if (!m_gfx) {
+            DO_ERROR("TextureManager::initialize: graphics context is unavailable");
+            return false;
+        }
         m_device = m_gfx->getDevice();
+        if (!m_device) {
+            DO_ERROR("TextureManager::initialize: graphics device is unavailable");
+            return false;
+        }
+        if (RenderSettings::IsBindlessActive() && !m_descriptor_table) {
+            DO_ERROR("TextureManager::initialize: bindless descriptor table is unavailable");
+            return false;
+        }
         createFallbackTexture();
-        return m_gfx != nullptr;
+        DO_INFO("TextureManager: initialized (bindless={})", RenderSettings::IsBindlessActive());
+        return true;
     }
 
     void TextureManager::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("TextureManager::shutdown", "shutdown");
+        DO_INFO("TextureManager: releasing {} 2D texture(s) and {} cubemap(s)",
+            m_texture2d_cache.size(), m_cubemap_cache.size());
         m_slot_lut.clear();
         m_texture2d_cache.clear();
         m_cubemap_cache.clear();
@@ -92,14 +109,28 @@ namespace dodoe {
     }
 
     void TextureManager::removeTexture(const InstanceID id) {
+        DO_PROFILE_SCOPE_CATEGORY("TextureManager::removeTexture", "texture");
         m_texture2d_cache.erase(id);
         m_cubemap_cache.erase(id);
+        DO_DEBUG("TextureManager: removed texture {}", static_cast<UInt64>(id));
     }
 
     void TextureManager::realizeTexture(ResourceCommand& cmd) {
         DO_PROFILE_SCOPE_CATEGORY("TextureManager::realizeTexture", "render-command");
         auto texture = std::move(cmd.texture_object);
-        if (!texture) { return; }
+        if (!texture) {
+            DO_WARN("TextureManager::realizeTexture: command has no texture object");
+            return;
+        }
+        const String texture_path = texture->getPath();
+        if (!m_device) {
+            DO_ERROR("TextureManager::realizeTexture: graphics device is unavailable for '{}'", texture_path);
+            return;
+        }
+        if (RenderSettings::IsBindlessActive() && !m_descriptor_table) {
+            DO_ERROR("TextureManager::realizeTexture: bindless descriptor table is unavailable for '{}'", texture_path);
+            return;
+        }
 
         const UInt32 width = static_cast<UInt32>(texture->getWidth());
         const UInt32 height = static_cast<UInt32>(texture->getHeight());
@@ -139,6 +170,9 @@ namespace dodoe {
 
         const InstanceID id = texture->getInstanceID();
         m_texture2d_cache.emplace(id, std::move(texture));
+        DO_INFO("TextureManager: realized texture '{}' ({}x{}, hdr={}, slot={})",
+            texture_path,
+            width, height, cmd.texture_is_hdr, slot);
     }
 
     UInt32 TextureManager::resolveAtlasIndex(const Texture2D* texture) const {
@@ -150,6 +184,7 @@ namespace dodoe {
     }
 
     void TextureManager::createFallbackTexture() {
+        DO_PROFILE_SCOPE_CATEGORY("TextureManager::createFallbackTexture", "startup");
         auto texture_desc = GfxTextureDesc()
             .setDimension(GfxTextureDimension::Texture2D)
             .setWidth(1)
@@ -214,6 +249,7 @@ namespace dodoe {
         cb_scope->setFaceSize(1);
         cb_scope->setGpuHandle(cube_handle);
         m_fallback_cubemap = std::move(cb_scope);
+        DO_INFO("TextureManager: fallback 2D texture and cubemap created");
     }
 
     TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths) {
@@ -221,13 +257,18 @@ namespace dodoe {
     }
 
     TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
-        if (face_paths.size() < 6) return nullptr;
+        DO_PROFILE_SCOPE_CATEGORY("TextureManager::loadCubemapTexture", "texture");
+        if (face_paths.size() < 6) {
+            DO_ERROR("TextureManager::loadCubemapTexture: expected 6 faces, got {}", face_paths.size());
+            return nullptr;
+        }
 
         const auto path_it = m_cubemap_by_path.find(face_paths[0]);
         if (path_it != m_cubemap_by_path.end()) {
             const InstanceID existing = path_it->second;
             const auto it = m_cubemap_cache.find(existing);
             if (it != m_cubemap_cache.end()) {
+                DO_DEBUG("TextureManager: reusing cubemap '{}'", face_paths[0]);
                 return it->second.get();
             }
         }
@@ -238,7 +279,16 @@ namespace dodoe {
         for (ui32 i = 0; i < kFaceCount; ++i) {
             auto fp = FileSystem::RelativeToAbsolute(face_paths[i], FileSystem::GetEngineResPath());
             faces[i].load(fp, false);
-            if (!faces[i].isValid() || faces[i].width != faces[i].height) return nullptr;
+            if (!faces[i].isValid()) {
+                DO_ERROR("TextureManager::loadCubemapTexture: failed to load face {} ('{}')", i, face_paths[i]);
+                return nullptr;
+            }
+            if (faces[i].width != faces[i].height ||
+                (i > 0 && (faces[i].width != faces[0].width || faces[i].height != faces[0].height))) {
+                DO_ERROR("TextureManager::loadCubemapTexture: face {} has incompatible dimensions ({}x{})",
+                    i, faces[i].width, faces[i].height);
+                return nullptr;
+            }
         }
 
         auto desc = GfxTextureDesc()
@@ -251,7 +301,10 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName("SkyLight Cubemap");
         auto cubemap = cmd_list.createTexture(desc);
-        if (!cubemap) return nullptr;
+        if (!cubemap) {
+            DO_ERROR("TextureManager::loadCubemapTexture: failed to create GPU cubemap");
+            return nullptr;
+        }
 
         DynamicArray<float> top, bottom;
         for (ui32 i = 0; i < kFaceCount; ++i) {
@@ -270,6 +323,7 @@ namespace dodoe {
         const InstanceID id = texture->getInstanceID();
         m_cubemap_cache.emplace(id, std::move(texture));
         m_cubemap_by_path[face_paths[0]] = id;
+        DO_INFO("TextureManager: loaded cubemap '{}' ({}x{})", face_paths[0], faces[0].width, faces[0].height);
         return texture_raw;
     }
 

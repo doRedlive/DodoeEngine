@@ -71,6 +71,7 @@ namespace dodoe {
     Bool GfxViewportSurface::initialize(GfxDeviceHandle device, GLFWwindow* window, void* host_handle,
                                         UInt32 w, UInt32 h, RenderBackendApiType api,
                                         GfxBackend* backend, Bool is_primary) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::initialize", "startup");
         m_device = device;
         m_window = window;
         m_host_handle = host_handle;
@@ -85,11 +86,16 @@ namespace dodoe {
         case RenderBackendApiType::OpenGL:
             return initializeOpenGL(device, window, w, h);
         default:
+            DO_ERROR("GfxViewportSurface::initialize: unsupported render backend API ({})", static_cast<int>(m_api_type));
             return false;
         }
     }
 
     void GfxViewportSurface::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::shutdown", "shutdown");
+        if (m_api_type != RenderBackendApiType::None) {
+            DO_PROFILE_MARK("GfxViewportSurface::shutdown.releaseResources", "shutdown");
+        }
         m_textures.clear();
         m_framebuffers.clear();
         if (m_device) {
@@ -139,6 +145,7 @@ namespace dodoe {
     }
 
     Bool GfxViewportSurface::acquire(UInt32& image_index) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::acquire", "swapchain");
         switch (m_api_type) {
         case RenderBackendApiType::OpenGL: {
             image_index = 0;
@@ -148,6 +155,7 @@ namespace dodoe {
 
         case RenderBackendApiType::D3D12: {
             if (!m_dx_swapchain) {
+                DO_ERROR("GfxViewportSurface::acquire: D3D12 swapchain is unavailable");
                 return false;
             }
             const UINT backbuffer_index = m_dx_swapchain->GetCurrentBackBufferIndex();
@@ -164,21 +172,12 @@ namespace dodoe {
 
         case RenderBackendApiType::Vulkan: {
             if (!m_device || m_vk_acquire_semaphores.empty() || m_vk_frame_fences.empty() || m_vk_swapchain == VK_NULL_HANDLE) {
+                DO_ERROR("GfxViewportSurface::acquire: Vulkan surface is not ready");
                 return false;
             }
 
             auto* vk_device = static_cast<vulkan::IDevice*>(
-                m_device->getNativeObject(GfxObjectTypes::VK_Device));
-            DO_ASSERT(vk_device != nullptr, "GfxViewportSurface::acquire: failed to get native cutie vulkan device.");
-
-            try {
-                auto test_ptr = reinterpret_cast<void**>(vk_device);
-                volatile void* vtable = test_ptr[0];
-                (void)vtable;
-            } catch (...) {
-                DO_ERROR("GfxViewportSurface::acquire: vk_device pointer is invalid!");
-                return false;
-            }
+                m_device->getNativeObject(GfxObjectTypes::Cutie_VK_Device));
 
             const Size_t frame_slot = m_vk_current_frame_slot % m_vk_acquire_semaphores.size();
             VkDevice vk_device_handle = getVulkanBackend()->getDevice();
@@ -208,14 +207,19 @@ namespace dodoe {
         }
 
         default:
+            DO_ERROR("GfxViewportSurface::acquire: surface has no active backend");
             return false;
         }
     }
 
     Bool GfxViewportSurface::present(UInt32 image_index) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::present", "swapchain");
         switch (m_api_type) {
         case RenderBackendApiType::OpenGL: {
-            if (!m_window || image_index >= m_framebuffers.size()) return false;
+            if (!m_window || image_index >= m_framebuffers.size()) {
+                DO_ERROR("GfxViewportSurface::present: OpenGL surface is not ready (image={})", image_index);
+                return false;
+            }
             if (m_gl_fb_width <= 0 || m_gl_fb_height <= 0) return true;
             glfwSwapBuffers(m_window);
             return true;
@@ -223,6 +227,11 @@ namespace dodoe {
 
         case RenderBackendApiType::D3D12: {
             if (!m_dx_swapchain || !getD3D12Backend()->getGraphicsQueue()) {
+                DO_ERROR("GfxViewportSurface::present: D3D12 swapchain or queue is unavailable");
+                return false;
+            }
+            if (image_index >= kBackbufferCount || image_index >= m_dx_backbuffers.size()) {
+                DO_ERROR("GfxViewportSurface::present: invalid D3D12 backbuffer index {}", image_index);
                 return false;
             }
 
@@ -244,6 +253,10 @@ namespace dodoe {
                 DO_ERROR("GfxViewportSurface::present: Device removed! HRESULT={:08X}", static_cast<UINT>(device_removed));
                 return false;
             }
+            if (FAILED(hr)) {
+                DO_ERROR("GfxViewportSurface::present: Present failed with HRESULT={:08X}", static_cast<UINT>(hr));
+                return false;
+            }
 
             ++m_dx_fence_value;
             m_dx_frame_fence_values[image_index] = m_dx_fence_value;
@@ -253,11 +266,12 @@ namespace dodoe {
                 return false;
             }
 
-            return SUCCEEDED(hr);
+            return true;
         }
 
         case RenderBackendApiType::Vulkan: {
             if (!m_device || m_vk_swapchain == VK_NULL_HANDLE || m_vk_present_queue == VK_NULL_HANDLE) {
+                DO_ERROR("GfxViewportSurface::present: Vulkan surface is not ready");
                 return false;
             }
 
@@ -292,15 +306,25 @@ namespace dodoe {
             const VkResult present_result = vkQueuePresentKHR(m_vk_present_queue, &present_info);
             m_vk_current_frame_slot = (m_vk_active_frame_slot + 1) % m_vk_acquire_semaphores.size();
             m_vk_active_frame_slot = (std::numeric_limits<Size_t>::max)();
-            return present_result == VK_SUCCESS || present_result == VK_SUBOPTIMAL_KHR;
+            if (present_result != VK_SUCCESS && present_result != VK_SUBOPTIMAL_KHR) {
+                DO_ERROR("GfxViewportSurface::present: vkQueuePresentKHR failed with VkResult={}", static_cast<int>(present_result));
+                return false;
+            }
+            if (present_result == VK_SUBOPTIMAL_KHR) {
+                DO_WARN("GfxViewportSurface::present: Vulkan swapchain is suboptimal");
+            }
+            return true;
         }
 
         default:
+            DO_ERROR("GfxViewportSurface::present: surface has no active backend");
             return false;
         }
     }
 
     Bool GfxViewportSurface::resize(UInt32 w, UInt32 h) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::resize", "swapchain");
+        DO_PROFILE_MARK("GfxViewportSurface::resize.releaseResources", "swapchain");
         switch (m_api_type) {
         case RenderBackendApiType::OpenGL: {
             updateOpenGLFramebufferSize();
@@ -403,13 +427,16 @@ namespace dodoe {
         }
 
         default:
+            DO_ERROR("GfxViewportSurface::resize: surface has no active backend");
             return false;
         }
     }
 
     Bool GfxViewportSurface::initializeVulkan(GfxDeviceHandle device, GLFWwindow* window, void* host_handle,
                                               UInt32 w, UInt32 h, Bool is_primary) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::initializeVulkan", "startup");
         if (!device || !getVulkanBackend()) {
+            DO_ERROR("GfxViewportSurface::initializeVulkan: device or backend is unavailable");
             return false;
         }
 
@@ -438,11 +465,15 @@ namespace dodoe {
 
         createVulkanSemaphores();
         createSwapchainTexturesVulkan();
+        DO_INFO("GfxViewportSurface: Vulkan {} surface initialized ({} images, {}x{})",
+            is_primary ? "primary" : "secondary", m_vk_images.size(), m_vk_extent.width, m_vk_extent.height);
         return !m_textures.empty();
     }
 
     Bool GfxViewportSurface::initializeD3D12(GfxDeviceHandle device, GLFWwindow* window, void* host_handle, UInt32 w, UInt32 h) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::initializeD3D12", "startup");
         if (!device || !getD3D12Backend()) {
+            DO_ERROR("GfxViewportSurface::initializeD3D12: device or backend is unavailable");
             return false;
         }
 
@@ -452,21 +483,27 @@ namespace dodoe {
         createD3D12BackbufferRTVs();
         createD3D12Fence();
         createSwapchainTexturesD3D12();
+        DO_INFO("GfxViewportSurface: D3D12 surface initialized ({} images, {}x{})",
+            m_dx_backbuffers.size(), m_dx_width, m_dx_height);
         return !m_textures.empty();
     }
 
     Bool GfxViewportSurface::initializeOpenGL(GfxDeviceHandle device, GLFWwindow* window, UInt32 w, UInt32 h) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::initializeOpenGL", "startup");
         if (!device || !getOpenGLBackend()) {
+            DO_ERROR("GfxViewportSurface::initializeOpenGL: device or backend is unavailable");
             return false;
         }
 
         m_owns_swapchain = false;
         updateOpenGLFramebufferSize();
         createSwapchainTexturesOpenGL();
+        DO_INFO("GfxViewportSurface: OpenGL surface initialized ({}x{})", m_gl_fb_width, m_gl_fb_height);
         return !m_framebuffers.empty();
     }
 
     Bool GfxViewportSurface::createVulkanSurface(GLFWwindow* window, void* host_handle) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createVulkanSurface", "startup");
         if (host_handle != nullptr) {
 #if defined(DO_PLATFORM_WINDOWS)
             VkWin32SurfaceCreateInfoKHR surface_info{};
@@ -491,6 +528,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createVulkanSwapchain(UInt32 w, UInt32 h) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createVulkanSwapchain", "swapchain");
         const auto swapchain_details = QueryVulkanSwapchainSupport(getVulkanBackend()->getPhysicalDevice(), m_vk_surface);
 
         VkSurfaceFormatKHR chosen_surface_format{};
@@ -604,9 +642,12 @@ namespace dodoe {
 
         m_vk_format = chosen_surface_format.format;
         m_vk_extent = chosen_extent;
+        DO_INFO("GfxViewportSurface: Vulkan swapchain created ({} images, {}x{})",
+            m_vk_images.size(), m_vk_extent.width, m_vk_extent.height);
     }
 
     void GfxViewportSurface::createVulkanImageViews() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createVulkanImageViews", "swapchain");
         m_vk_imageviews.clear();
         m_vk_imageviews.reserve(m_vk_images.size());
         for (const auto swapchain_image : m_vk_images) {
@@ -633,7 +674,9 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createVulkanSemaphores() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createVulkanSemaphores", "swapchain");
         if (!getVulkanBackend()) {
+            DO_ERROR("GfxViewportSurface::createVulkanSemaphores: backend is unavailable");
             return;
         }
 
@@ -675,6 +718,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::destroyVulkanSemaphores() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::destroyVulkanSemaphores", "shutdown");
         if (!getVulkanBackend()) {
             m_vk_acquire_semaphores.clear();
             m_vk_present_semaphores.clear();
@@ -710,6 +754,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::destroyVulkanOwnedState() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::destroyVulkanOwnedState", "shutdown");
         if (!getVulkanBackend()) {
             return;
         }
@@ -740,7 +785,9 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createSwapchainTexturesVulkan() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createSwapchainTexturesVulkan", "resource");
         if (!m_device || !getVulkanBackend()) {
+            DO_ERROR("GfxViewportSurface::createSwapchainTexturesVulkan: device or backend is unavailable");
             return;
         }
 
@@ -769,6 +816,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::updateOpenGLFramebufferSize() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::updateOpenGLFramebufferSize", "swapchain");
         if (m_window) {
             glfwGetFramebufferSize(m_window, &m_gl_fb_width, &m_gl_fb_height);
         } else {
@@ -778,7 +826,9 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createSwapchainTexturesOpenGL() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createSwapchainTexturesOpenGL", "resource");
         if (!m_device || !getOpenGLBackend()) {
+            DO_ERROR("GfxViewportSurface::createSwapchainTexturesOpenGL: device or backend is unavailable");
             return;
         }
 
@@ -796,7 +846,9 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createSwapchainTexturesD3D12() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createSwapchainTexturesD3D12", "resource");
         if (!m_device || !getD3D12Backend()) {
+            DO_ERROR("GfxViewportSurface::createSwapchainTexturesD3D12: device or backend is unavailable");
             return;
         }
 
@@ -825,6 +877,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createD3D12Swapchain(UInt32 w, UInt32 h) {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createD3D12Swapchain", "swapchain");
         HWND hwnd = m_host_handle != nullptr ? static_cast<HWND>(m_host_handle) : nullptr;
         if (hwnd == nullptr && m_window != nullptr) {
             hwnd = glfwGetWin32Window(m_window);
@@ -877,6 +930,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createD3D12RTVHeap() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createD3D12RTVHeap", "resource");
         D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
         heap_desc.NumDescriptors = kBackbufferCount;
         heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -890,6 +944,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createD3D12BackbufferRTVs() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createD3D12BackbufferRTVs", "resource");
         releaseD3D12Backbuffers();
 
         D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = m_dx_rtv_heap->GetCPUDescriptorHandleForHeapStart();
@@ -913,6 +968,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::createD3D12Fence() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::createD3D12Fence", "synchronization");
         HRESULT hr = getD3D12Backend()->getDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_dx_fence));
         DO_ASSERT(SUCCEEDED(hr), "GfxViewportSurface::createD3D12Fence failed with HRESULT={:08X}", static_cast<UINT>(hr));
 
@@ -926,6 +982,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::releaseD3D12Backbuffers() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::releaseD3D12Backbuffers", "shutdown");
         for (auto& bb : m_dx_backbuffers) {
             if (bb) {
                 bb->Release();
@@ -935,6 +992,7 @@ namespace dodoe {
     }
 
     void GfxViewportSurface::waitD3D12Gpu() {
+        DO_PROFILE_SCOPE_CATEGORY("GfxViewportSurface::waitD3D12Gpu", "synchronization");
         if (getD3D12Backend()->getGraphicsQueue() && m_dx_fence) {
             ++m_dx_fence_value;
             HRESULT hr = getD3D12Backend()->getGraphicsQueue()->Signal(m_dx_fence.Get(), m_dx_fence_value);

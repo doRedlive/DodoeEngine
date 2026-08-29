@@ -8,6 +8,7 @@ namespace dodoe {
 
     GfxTextureHandle RenderGraphTransientPool::acquireTexture(const GfxTextureDesc& desc,
                                                                 DrawCommandList& command_list) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderGraphTransientPool::acquireTexture", "resource-cache");
         for (Size_t i = 0; i < m_textures.size(); i++) {
             if (!m_texture_in_use[i]) {
                 const auto& pooled = m_textures[i].desc;
@@ -23,11 +24,14 @@ namespace dodoe {
         const auto texture = command_list.createTexture(desc);
         m_textures.push_back({texture, desc});
         m_texture_in_use.push_back(true);
+        DO_DEBUG("RenderGraphTransientPool: created texture slot {} ({}x{})",
+            m_textures.size() - 1, desc.width, desc.height);
         return texture;
     }
 
     GfxBufferHandle RenderGraphTransientPool::acquireBuffer(const GfxBufferDesc& desc,
                                                               DrawCommandList& command_list) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderGraphTransientPool::acquireBuffer", "resource-cache");
         for (Size_t i = 0; i < m_buffers.size(); i++) {
             if (!m_buffer_in_use[i]) {
                 const auto& pooled = m_buffers[i].desc;
@@ -50,10 +54,13 @@ namespace dodoe {
         const auto buffer = command_list.createBuffer(desc);
         m_buffers.push_back({buffer, desc});
         m_buffer_in_use.push_back(true);
+        DO_DEBUG("RenderGraphTransientPool: created buffer slot {} (size={})",
+            m_buffers.size() - 1, desc.byteSize);
         return buffer;
     }
 
     void RenderGraphTransientPool::releaseAll() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderGraphTransientPool::releaseAll", "resource-cache");
         for (auto& in_use : m_texture_in_use) {
             in_use = false;
         }
@@ -63,6 +70,9 @@ namespace dodoe {
     }
 
     void RenderGraphTransientPool::reset() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderGraphTransientPool::reset", "shutdown");
+        DO_INFO("RenderGraphTransientPool: releasing {} texture(s) and {} buffer(s)",
+            m_textures.size(), m_buffers.size());
         m_textures.clear();
         m_buffers.clear();
         m_texture_in_use.clear();

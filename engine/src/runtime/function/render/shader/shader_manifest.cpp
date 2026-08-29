@@ -9,6 +9,7 @@
 namespace dodoe {
 
     Bool ShaderManifest::loadFromFile(const String& manifest_path) {
+        DO_PROFILE_SCOPE_CATEGORY("ShaderManifest::loadFromFile", "startup");
         auto full_path = FileSystem::GetEngineResPath() / manifest_path;
         std::ifstream in(full_path);
         if (!in.is_open()) {
@@ -54,6 +55,8 @@ namespace dodoe {
             m_entries.push_back(std::move(e));
         }
 
+        DO_INFO("ShaderManifest: loaded {} shader entries from '{}'",
+            m_entries.size(), full_path.string());
         return true;
     }
 

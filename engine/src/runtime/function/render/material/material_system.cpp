@@ -28,18 +28,22 @@ namespace dodoe {
     }
 
     Bool MaterialSystem::initialize(const MaterialSystemCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::initialize", "startup");
         m_shader_library = info.shader_library;
         m_binding_layout_cache = info.binding_layout_cache;
         m_binding_set_cache = info.binding_set_cache;
         m_texture_manager = info.texture_manager;
         if (!m_shader_library || !m_binding_layout_cache || !m_binding_set_cache || !m_texture_manager) {
+            DO_ERROR("MaterialSystem::initialize: required shader, binding, or texture service is unavailable");
             return false;
         }
         registerBuiltinTemplates();
+        DO_INFO("MaterialSystem: initialized with {} builtin template(s)", m_templates.size());
         return true;
     }
 
     void MaterialSystem::registerBuiltinTemplates() {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::registerBuiltinTemplates", "startup");
         MaterialTemplateDesc gbuffer;
         gbuffer.name = "GBuffer";
         gbuffer.shader_name = "GBuffer";
@@ -51,6 +55,8 @@ namespace dodoe {
     }
 
     void MaterialSystem::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::shutdown", "shutdown");
+        DO_INFO("MaterialSystem: releasing {} instance(s) and {} template(s)", m_instances.size(), m_templates.size());
         m_instances.clear();
         m_templates.clear();
         m_shader_library = nullptr;
@@ -61,6 +67,7 @@ namespace dodoe {
     }
 
     Bool MaterialSystem::registerTemplate(const MaterialTemplateDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::registerTemplate", "material");
         if (desc.name.empty()) {
             DO_ERROR("MaterialSystem::registerTemplate empty name");
             return false;
@@ -74,6 +81,8 @@ namespace dodoe {
         tpl.desc = desc;
         m_templates[desc.name] = std::move(tpl);
         ++m_global_revision;
+        DO_INFO("MaterialSystem: registered template '{}' (shader='{}', parameters={})",
+            desc.name, desc.shader_name, desc.param_defs.size());
         return true;
     }
 
@@ -95,6 +104,7 @@ namespace dodoe {
     }
 
     Bool MaterialSystem::createInstance(const MaterialInstanceDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::createInstance", "material");
         if (desc.name.empty()) {
             DO_ERROR("MaterialSystem::createInstance empty name");
             return false;
@@ -113,6 +123,7 @@ namespace dodoe {
         inst.tpl = &m_templates[desc.template_name];
         m_instances[desc.name] = std::move(inst);
         ++m_global_revision;
+        DO_INFO("MaterialSystem: created instance '{}' from template '{}'", desc.name, desc.template_name);
         return true;
     }
 
@@ -127,6 +138,7 @@ namespace dodoe {
     void MaterialSystem::setInstanceParam(const String& instance_name,
                                           const String& param_name,
                                           MaterialParamValue value) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::setInstanceParam", "material");
         auto it = m_instances.find(instance_name);
         if (it == m_instances.end()) {
             DO_ERROR("MaterialSystem::setInstanceParam instance not found: {}", instance_name);
@@ -135,9 +147,11 @@ namespace dodoe {
         it->second.desc.param_overrides[param_name] = value;
         it->second.revision++;
         ++m_global_revision;
+        DO_DEBUG("MaterialSystem: updated parameter '{}' on instance '{}'", param_name, instance_name);
     }
 
     Bool MaterialSystem::resolveTemplate(const String& name) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::resolveTemplate", "material");
         auto it = m_templates.find(name);
         if (it == m_templates.end()) {
             DO_ERROR("MaterialSystem::resolveTemplate not found: {}", name);
@@ -225,10 +239,13 @@ namespace dodoe {
         tpl.resolved = true;
         ++tpl.revision;
         ++m_global_revision;
+        DO_INFO("MaterialSystem: resolved template '{}' (binding layout={})", name,
+            tpl.binding_layout ? "ready" : "none");
         return true;
     }
 
     Bool MaterialSystem::resolveInstance(const String& name) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::resolveInstance", "material");
         auto it = m_instances.find(name);
         if (it == m_instances.end()) {
             DO_ERROR("MaterialSystem::resolveInstance not found: {}", name);
@@ -292,22 +309,27 @@ namespace dodoe {
         inst.resolved = true;
         ++inst.revision;
         ++m_global_revision;
+        DO_INFO("MaterialSystem: resolved instance '{}' (textures={}, bindless={})",
+            name, inst.textures.size(), RenderSettings::IsBindlessActive());
         return true;
     }
 
     void MaterialSystem::resolveAll() {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::resolveAll", "material");
         for (auto& [name, tpl] : m_templates) {
             resolveTemplate(name);
         }
         for (auto& [name, inst] : m_instances) {
             resolveInstance(name);
         }
+        DO_INFO("MaterialSystem: resolved {} template(s) and {} instance(s)", m_templates.size(), m_instances.size());
     }
 
     Bool MaterialSystem::getResolvedMaterial(
         const String& instance_name,
         const UnorderedMap<String, UInt32>& permutation_overrides,
         ResolvedMaterial& out_material) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::getResolvedMaterial", "material");
 
         const auto* inst = findInstance(instance_name);
         if (!inst) {
@@ -365,6 +387,7 @@ namespace dodoe {
     Bool MaterialSystem::resolveTextureSlot(MaterialInstance& instance,
                                             const MaterialParamDef& def,
                                             MaterialParamValue value) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::resolveTextureSlot", "texture");
         if (!m_texture_manager) {
             return false;
         }
@@ -377,6 +400,10 @@ namespace dodoe {
                 desc_index = tex->getDescriptorIndex();
             }
             instance.texture_descriptor_indices.push_back(desc_index);
+            if (desc_index < 0) {
+                DO_WARN("MaterialSystem: texture parameter '{}' has no descriptor", def.name);
+            }
+            DO_DEBUG("MaterialSystem: resolved texture parameter '{}' to descriptor {}", def.name, desc_index);
             return true;
         }
 
@@ -390,6 +417,9 @@ namespace dodoe {
                 desc_index = fallback->getDescriptorIndex();
             }
             instance.texture_descriptor_indices.push_back(desc_index);
+            DO_DEBUG("MaterialSystem: using fallback texture for parameter '{}'", def.name);
+        } else {
+            DO_WARN("MaterialSystem: fallback texture unavailable for parameter '{}'", def.name);
         }
         return true;
     }
@@ -397,6 +427,7 @@ namespace dodoe {
     Bool MaterialSystem::buildConstantBufferData(const String& instance_name,
                                                   const ShaderCBReflection& cb_reflection,
                                                   DynamicArray<UInt8>& out_data) const {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::buildConstantBufferData", "material");
         UnorderedMap<String, MaterialParamValue> params;
         getResolvedParams(instance_name, params);
 
@@ -428,12 +459,15 @@ namespace dodoe {
         const String& name,
         const String& template_name,
         const UnorderedMap<String, MaterialParamValue>& param_overrides) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::getOrCreateInstance", "material");
         if (name.empty() || template_name.empty()) {
+            DO_ERROR("MaterialSystem::getOrCreateInstance: name and template name are required");
             return nullptr;
         }
 
         auto* existing = findInstance(name);
         if (existing) {
+            DO_DEBUG("MaterialSystem: reusing instance '{}'", name);
             return existing;
         }
 
@@ -454,6 +488,7 @@ namespace dodoe {
     }
 
     void MaterialSystem::invalidateForShader(const String& shader_name) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::invalidateForShader", "material");
         for (auto& [name, tpl] : m_templates) {
             if (tpl.desc.shader_name == shader_name) {
                 tpl.resolved = false;
@@ -472,9 +507,11 @@ namespace dodoe {
         }
 
         ++m_global_revision;
+        DO_INFO("MaterialSystem: invalidated materials for shader '{}'", shader_name);
     }
 
     void MaterialSystem::invalidateForTexture(const GfxTextureHandle& texture) {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::invalidateForTexture", "texture");
         for (auto& [name, inst] : m_instances) {
             for (const auto& tex : inst.textures) {
                 if (tex.get() == texture.get()) {
@@ -484,9 +521,11 @@ namespace dodoe {
             }
         }
         ++m_global_revision;
+        DO_DEBUG("MaterialSystem: invalidated materials for changed texture");
     }
 
     void MaterialSystem::invalidateAll() {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::invalidateAll", "material");
         for (auto& [name, tpl] : m_templates) {
             tpl.resolved = false;
         }
@@ -494,6 +533,7 @@ namespace dodoe {
             inst.resolved = false;
         }
         ++m_global_revision;
+        DO_INFO("MaterialSystem: invalidated all material templates and instances");
     }
 
     Texture2D* MaterialSystem::findTexture2DByHandle(GfxTextureHandle handle) const {

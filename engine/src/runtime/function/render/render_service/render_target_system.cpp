@@ -7,12 +7,18 @@
 namespace dodoe {
 
     Bool RenderTargetSystem::initialize(const RenderTargetSystemCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetSystem::initialize", "startup");
         m_gfx_context = info.gfx_context;
         m_deletion_queue = info.deletion_queue;
+        if (!m_gfx_context || !m_deletion_queue) {
+            DO_ERROR("RenderTargetSystem::initialize: graphics context or deletion queue is unavailable");
+        }
         return m_gfx_context != nullptr && m_deletion_queue != nullptr;
     }
 
     void RenderTargetSystem::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetSystem::shutdown", "shutdown");
+        DO_INFO("RenderTargetSystem: releasing {} render target(s)", m_handles.size());
         for (auto& [name, handle] : m_handles) {
             if (handle) {
                 handle->shutdown();
@@ -25,6 +31,7 @@ namespace dodoe {
 
     RenderTargetHandle* RenderTargetSystem::create(const String& name,
                                                      const RenderTargetDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetSystem::create", "resource");
         auto it = m_handles.find(name);
         if (it != m_handles.end()) {
             const auto& existing = it->second->getDesc();
@@ -55,6 +62,8 @@ namespace dodoe {
         handle->initialize(desc, *m_gfx_context, m_deletion_queue);
         auto* ptr = handle.get();
         m_handles[name] = std::move(handle);
+        DO_INFO("RenderTargetSystem: created target '{}' (attachments={}, depth={}, samples={})",
+            name, desc.color_attachments.size(), desc.has_depth, desc.sample_count);
         return ptr;
     }
 
@@ -76,6 +85,7 @@ namespace dodoe {
 
     void RenderTargetSystem::onResize(const UInt32 width, const UInt32 height,
                                        const UInt64 current_frame) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderTargetSystem::onResize", "swapchain");
         DO_ASSERT(m_gfx_context != nullptr, "RenderTargetSystem not initialized");
 
         for (auto& [name, handle] : m_handles) {

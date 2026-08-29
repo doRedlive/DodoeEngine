@@ -43,7 +43,20 @@ namespace dodoe {
     } // namesapce
 
     void DrawCommandList::setDevice(GfxContext& gfx) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::setDevice", "startup");
         m_device = gfx.getDevice();
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::setDevice: graphics device is unavailable");
+        }
+    }
+
+    void DrawCommandList::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::shutdown", "shutdown");
+        {
+            std::lock_guard<std::mutex> lock(m_upload_pool_mutex);
+            m_upload_list_pool.clear();
+        }
+        m_device = nullptr;
     }
 
     GfxCommandListHandle DrawCommandList::acquireUploadCommandList() {
@@ -97,6 +110,11 @@ namespace dodoe {
     }
 
     void DrawCommandList::writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::writeBuffer", "resource-upload");
+        if (!buffer || !m_device || !data || data_size == 0) {
+            DO_ERROR("DrawCommandList::writeBuffer: invalid buffer, device, data, or size");
+            return;
+        }
         if (buffer->isGpuReady()) {
             auto cmd = acquireUploadCommandList();
             cmd->open();
@@ -110,7 +128,12 @@ namespace dodoe {
         WriteBufferCommand::Create(*this, buffer, data, data_size, destination_offset_bytes);
     }
     void DrawCommandList::writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::writeTexture", "resource-upload");
         DO_ASSERT(texture != nullptr, "writeTexture: texture is null");
+        if (!texture || !m_device || !data || row_pitch == 0) {
+            DO_ERROR("DrawCommandList::writeTexture: invalid texture, device, data, or row pitch");
+            return;
+        }
         if (texture->isGpuReady()) {
             const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
             auto cmd = acquireUploadCommandList();
@@ -170,6 +193,11 @@ namespace dodoe {
     }
 
     GfxTextureHandle DrawCommandList::createTexture(const GfxTextureDesc& desc, const void* data, Size_t data_size) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createTexture", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createTexture: graphics device is unavailable");
+            return nullptr;
+        }
         auto texture = create_ref<GfxTexture>(desc);
         texture->initializeGpu(m_device);
         if (data && data_size > 0) {
@@ -177,31 +205,57 @@ namespace dodoe {
             const UInt32 pitch = desc.width * bpp;
             writeTexture(texture, 0, 0, data, pitch);
         }
+        DO_DEBUG("DrawCommandList: created texture ({}x{}, data={})", desc.width, desc.height, data_size > 0);
         return texture;
     }
     GfxBufferHandle DrawCommandList::createBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createBuffer", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createBuffer: graphics device is unavailable");
+            return nullptr;
+        }
         auto buffer = create_ref<GfxBuffer>(desc);
         buffer->initializeGpu(m_device);
         if (data && data_size > 0) {
             writeBuffer(buffer, data, data_size, 0);
         }
+        DO_DEBUG("DrawCommandList: created buffer (size={}, data={})", desc.byteSize, data_size > 0);
         return buffer;
     }
     GfxFramebufferHandle DrawCommandList::createFramebuffer(const GfxFramebufferDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createFramebuffer", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createFramebuffer: graphics device is unavailable");
+            return nullptr;
+        }
         auto fb = create_ref<GfxFramebuffer>(desc);
         if (IsFramebufferAttachmentsReady(desc)) {
             fb->initializeGpu(m_device);
+        } else {
+            DO_DEBUG("DrawCommandList: deferred framebuffer creation because attachments are not ready");
         }
         return fb;
     }
     GfxBindingSetHandle DrawCommandList::createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createBindingSet", "resource");
+        if (!m_device || !layout) {
+            DO_ERROR("DrawCommandList::createBindingSet: graphics device or layout is unavailable");
+            return nullptr;
+        }
         auto bs = create_ref<GfxBindingSet>();
         if (IsBindingSetResourcesReady(desc)) {
             bs->initializeGpu(m_device, desc, layout);
+        } else {
+            DO_DEBUG("DrawCommandList: deferred binding set creation because resources are not ready");
         }
         return bs;
     }
     GfxGraphicsPipelineHandle DrawCommandList::createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createGraphicsPipeline", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createGraphicsPipeline: graphics device is unavailable");
+            return nullptr;
+        }
         auto pso = create_ref<GfxGraphicsPipeline>();
         pso->initializeGpu(m_device, desc, info);
         return pso;
@@ -214,11 +268,41 @@ namespace dodoe {
         }
         return 0;
     }
-    GfxSamplerHandle DrawCommandList::createSampler(const GfxSamplerDesc& desc) { return m_device->createSampler(desc); }
-    GfxBindingLayoutHandle DrawCommandList::createBindingLayout(const GfxBindingLayoutDesc& desc) { return m_device->createBindingLayout(desc); }
-    GfxInputLayoutHandle DrawCommandList::createInputLayout(const GfxVertexAttributeDesc* a, UInt32 c, GfxShaderHandle sh) { return m_device->createInputLayout(a, c, sh); }
+    GfxSamplerHandle DrawCommandList::createSampler(const GfxSamplerDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createSampler", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createSampler: graphics device is unavailable");
+            return nullptr;
+        }
+        return m_device->createSampler(desc);
+    }
+    GfxBindingLayoutHandle DrawCommandList::createBindingLayout(const GfxBindingLayoutDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createBindingLayout", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createBindingLayout: graphics device is unavailable");
+            return nullptr;
+        }
+        return m_device->createBindingLayout(desc);
+    }
+    GfxInputLayoutHandle DrawCommandList::createInputLayout(const GfxVertexAttributeDesc* a, UInt32 c, GfxShaderHandle sh) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createInputLayout", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createInputLayout: graphics device is unavailable");
+            return nullptr;
+        }
+        return m_device->createInputLayout(a, c, sh);
+    }
     GfxShaderHandle DrawCommandList::createShader(const GfxShaderDesc& desc, const void* data, Size_t data_size) {
-        return m_device->createShader(desc, data, data_size);
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createShader", "shader");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createShader: graphics device is unavailable");
+            return nullptr;
+        }
+        auto shader = m_device->createShader(desc, data, data_size);
+        if (!shader) {
+            DO_ERROR("DrawCommandList::createShader: device failed to create shader");
+        }
+        return shader;
     }
 
     void DrawCommandList::OpenCommand::execute(GfxCommandList& c) const { c.open(); }

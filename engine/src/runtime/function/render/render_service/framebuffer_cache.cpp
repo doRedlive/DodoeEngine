@@ -25,12 +25,17 @@ namespace dodoe {
     }
 
     Bool FramebufferCache::initialize(const FramebufferCacheCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("FramebufferCache::initialize", "startup");
         m_gfx_context = info.gfx_context;
+        if (!m_gfx_context) {
+            DO_ERROR("FramebufferCache::initialize: graphics context is unavailable");
+        }
         return m_gfx_context != nullptr;
     }
 
     GfxFramebufferHandle FramebufferCache::getOrCreate(const FramebufferCacheKey& key,
                                                          const GfxFramebufferDesc& desc) {
+        DO_PROFILE_SCOPE_CATEGORY("FramebufferCache::getOrCreate", "resource-cache");
         const auto hash = key.computeHash();
         for (auto& entry : m_entries) {
             if (entry.key == key) {
@@ -45,10 +50,13 @@ namespace dodoe {
 
         auto framebuffer = GDrawCommandList.createFramebuffer(desc);
         m_entries.push_back({key, framebuffer});
+        DO_DEBUG("FramebufferCache: created framebuffer (cache size={})", m_entries.size());
         return framebuffer;
     }
 
     void FramebufferCache::invalidateTexture(const void* texture_ptr) {
+        DO_PROFILE_SCOPE_CATEGORY("FramebufferCache::invalidateTexture", "resource-cache");
+        const Size_t old_size = m_entries.size();
         Size_t write_index = 0;
         for (Size_t i = 0; i < m_entries.size(); ++i) {
             Bool references_texture = false;
@@ -67,6 +75,7 @@ namespace dodoe {
             }
         }
         m_entries.resize(write_index);
+        DO_DEBUG("FramebufferCache: invalidated {} framebuffer(s)", old_size - m_entries.size());
     }
 
     void FramebufferCache::endFrame() {
@@ -74,10 +83,13 @@ namespace dodoe {
     }
 
     void FramebufferCache::reset() {
+        DO_PROFILE_SCOPE_CATEGORY("FramebufferCache::reset", "shutdown");
         m_entries.clear();
     }
 
     void FramebufferCache::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("FramebufferCache::shutdown", "shutdown");
+        DO_INFO("FramebufferCache: releasing {} cached framebuffer(s)", m_entries.size());
         reset();
         m_gfx_context = nullptr;
     }

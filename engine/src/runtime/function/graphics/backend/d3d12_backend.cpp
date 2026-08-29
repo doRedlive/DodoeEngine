@@ -7,32 +7,44 @@ namespace dodoe {
     namespace {
         void __stdcall OnD3D12Message(
             D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY severity,
-            D3D12_MESSAGE_ID, LPCSTR p_description, void*) {
-            const char* text = p_description ? p_description : "";
+            D3D12_MESSAGE_ID, LPCSTR p_description, void* p_user_data) {
+            auto* backend = static_cast<D3D12Backend*>(p_user_data);
+            if (!backend) return;
+
+            GfxNativeMessageSeverity mapped = GfxNativeMessageSeverity::Info;
             switch (severity) {
             case D3D12_MESSAGE_SEVERITY_CORRUPTION:
+                mapped = GfxNativeMessageSeverity::Fatal;
+                break;
             case D3D12_MESSAGE_SEVERITY_ERROR:
-                DO_ERROR("[D3D12] {}", text);
+                mapped = GfxNativeMessageSeverity::Error;
                 break;
             case D3D12_MESSAGE_SEVERITY_WARNING:
-                DO_WARN("[D3D12] {}", text);
+                mapped = GfxNativeMessageSeverity::Warning;
                 break;
             default:
-                DO_INFO("[D3D12] {}", text);
                 break;
             }
+
+            backend->reportNativeMessage(mapped, p_description ? p_description : "");
         }
     }
 
     void D3D12Backend::enableDebugLayer() {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::enableDebugLayer", "startup");
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&m_debug_controller)))) {
             m_debug_controller->EnableDebugLayer();
+            DO_INFO("D3D12Backend: debug layer enabled");
             OutputDebugStringA("[D3D12] Debug layer enabled\n");
+        } else {
+            DO_WARN("D3D12Backend: debug layer requested but unavailable");
         }
     }
 
     void D3D12Backend::setupInfoQueue() {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::setupInfoQueue", "startup");
         if (FAILED(m_device.As(&m_info_queue))) {
+            DO_WARN("D3D12Backend: device does not expose ID3D12InfoQueue1");
             OutputDebugStringA("[D3D12] WARNING: device does not expose ID3D12InfoQueue1\n");
             return;
         }
@@ -49,12 +61,13 @@ namespace dodoe {
         filter.DenyList.pIDList = hide_ids;
         m_info_queue->AddStorageFilterEntries(&filter);
 
-        m_info_queue->RegisterMessageCallback(&OnD3D12Message, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &m_message_callback_cookie);
+        m_info_queue->RegisterMessageCallback(&OnD3D12Message, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &m_message_callback_cookie);
 
         OutputDebugStringA("[D3D12] Info queue configured (break on errors, message callback registered)\n");
     }
 
     bool D3D12Backend::initialize(const GfxBackendCreateInfo& info) {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::initialize", "startup");
         OutputDebugStringA("[D3D12] initialize begin\n");
 
         initCommonState(info);
@@ -79,10 +92,12 @@ namespace dodoe {
         createCommandQueues();
         OutputDebugStringA("[D3D12] queues ok, initialize done\n");
 
+        DO_INFO("D3D12Backend: initialized");
         return true;
     }
 
     void D3D12Backend::shutdown() {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::shutdown", "shutdown");
         m_copy_queue.Reset();
         m_compute_queue.Reset();
         m_graphics_queue.Reset();
@@ -103,6 +118,7 @@ namespace dodoe {
     }
 
     void D3D12Backend::createFactory() {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::createFactory", "startup");
         UINT dxgi_factory_flags = 0;
         if (enable_validation_) {
             dxgi_factory_flags |= DXGI_CREATE_FACTORY_DEBUG;
@@ -113,6 +129,7 @@ namespace dodoe {
     }
 
     void D3D12Backend::selectAdapter(ComPtr<IDXGIAdapter4>& out_adapter) {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::selectAdapter", "startup");
         ComPtr<IDXGIAdapter1> adapter;
         ComPtr<IDXGIAdapter1> fallback_adapter;
         SIZE_T max_vram = 0;
@@ -162,6 +179,7 @@ namespace dodoe {
     }
 
     void D3D12Backend::createDevice() {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::createDevice", "startup");
         ComPtr<IDXGIAdapter4> adapter;
         selectAdapter(adapter);
 
@@ -177,6 +195,7 @@ namespace dodoe {
     }
 
     void D3D12Backend::createCommandQueues() {
+        DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::createCommandQueues", "startup");
         D3D12_COMMAND_QUEUE_DESC queue_desc{};
         queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         queue_desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;

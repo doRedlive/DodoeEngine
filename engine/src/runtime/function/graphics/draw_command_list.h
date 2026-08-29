@@ -43,6 +43,7 @@ namespace dodoe {
     public:
         void setDevice(GfxDeviceHandle device) { m_device = device; }
         void setDevice(class GfxContext& gfx);
+        void shutdown();
         [[nodiscard]] GfxDeviceHandle getDevice() const { return m_device; }
 
         template <typename TCommand, typename... TArgs>

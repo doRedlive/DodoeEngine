@@ -202,6 +202,24 @@ namespace dodoe {
         } \
     };
 
+    namespace detail {
+        inline DynamicArray<DynamicArray<GfxBindingLayoutHandle>*>& GetBindingLayoutCaches() {
+            static DynamicArray<DynamicArray<GfxBindingLayoutHandle>*> caches;
+            return caches;
+        }
+    }
+
+    inline void RegisterStaticBindingLayoutCache(DynamicArray<GfxBindingLayoutHandle>* cache) {
+        detail::GetBindingLayoutCaches().push_back(cache);
+    }
+
+    inline void ClearStaticBindingLayoutCaches() {
+        for (auto* cache : detail::GetBindingLayoutCaches()) {
+            cache->clear();
+        }
+        detail::GetBindingLayoutCaches().clear();
+    }
+
     template <typename ShaderParamStruct>
     struct ShaderBindingReflector {
 
@@ -232,6 +250,11 @@ namespace dodoe {
                 }
                 return layouts;
             }();
+            static const Bool s_registered = [&s_layouts]() {
+                RegisterStaticBindingLayoutCache(&s_layouts);
+                return true;
+            }();
+            (void)s_registered;
             return s_layouts;
         }
 
