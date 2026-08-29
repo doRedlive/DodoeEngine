@@ -1,5 +1,7 @@
 # Graphics
 
+> 深入的架构讲解(RHI 接口体系、Proxy 资源、命令录制、线程模型)见 [rendering/README.md](rendering/README.md)。
+
 ## 目录
 
 `engine/src/runtime/function/graphics/`

@@ -5,6 +5,7 @@
 | Runtime Core | [core.md](core.md) |
 | Graphics | [graphics.md](graphics.md) |
 | Render | [render.md](render.md) |
+| **Rendering 架构体系(RHI / 线程 / 管线 / 资源)** | [rendering/README.md](rendering/README.md) |
 | World | [world.md](world.md) |
 | Resource | [resource.md](resource.md) |
 | Scripting | [scripting.md](scripting.md) |
