@@ -73,7 +73,7 @@ namespace dodoe {
         RenderSettingsInitInfo render_settings_init_info;
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
         render_settings_init_info.pipeline = m_init_info.spec.render_settings.pipeline;
-        render_settings_init_info.threading_mode = m_init_info.spec.render_settings.threading_mode;
+        render_settings_init_info.enable_single_thread = m_init_info.spec.render_settings.enable_single_thread;
         render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
         render_settings_init_info.windowless = m_init_info.spec.render_settings.windowless;
         if (engine_mode == EngineMode::TwoD) {

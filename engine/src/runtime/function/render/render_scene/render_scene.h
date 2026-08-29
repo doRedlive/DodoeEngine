@@ -152,6 +152,8 @@ namespace dodoe {
         [[nodiscard]] const SpriteSceneInfo* findSpriteSceneInfo(UUID id) const;
 
         [[nodiscard]] GpuScene* getGpuScene() const { return m_gpu_scene.get(); }
+        [[nodiscard]] class TextureManager* getTextureManager() const;
+        [[nodiscard]] UInt32 resolveSpriteAtlasIndex(const SpriteSceneInfo& info) const;
 
     private:
         Bool initialize(const RenderSceneCreateInfo& info);

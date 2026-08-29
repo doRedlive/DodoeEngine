@@ -16,7 +16,6 @@
 #include "runtime/function/window/window_manager.h"
 #include "runtime/core/container/mpmc_queue.h"
 #include "runtime/core/thread/render_thread.h"
-#include "runtime/core/thread/draw_thread.h"
 
 namespace dodoe {
 
@@ -34,11 +33,12 @@ namespace dodoe {
         Scope<RenderViewManager> m_view_manager{nullptr};
         Scope<SharedRenderService> m_shared_render_service{nullptr};
         Scope<RenderThread> m_render_thread{nullptr};
-        Scope<DrawThread> m_draw_thread{nullptr};
+        Bool m_context_acquired{false};
 
         WindowManager* m_window_manager{nullptr};
 
-        MpmcQueue<RenderCommand, kGameCommandQueueCapacity> m_game_command_queue;
+        MpmcQueue<ResourceCommand, kGameCommandQueueCapacity> m_resource_command_queue;
+        MpmcQueue<SceneCommand, kGameCommandQueueCapacity> m_scene_command_queue;
 
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:
@@ -48,20 +48,22 @@ namespace dodoe {
         [[nodiscard]] RenderScene* getRenderScene() const { return m_render_scene.get(); }
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_shared_render_service.get(); }
 
-        void enqueueRenderCommand(RenderCommand&& cmd);
+        void enqueueResourceCommand(ResourceCommand&& cmd);
+        void enqueueSceneCommand(SceneCommand&& cmd);
+        void realizeResourceCommand(ResourceCommand& cmd);
+        void applySceneCommand(RenderScene& scene, SceneCommand& cmd);
         [[nodiscard]] Bool beginMainThreadFrame();
         void submitFrame();
 
     private:
         Bool initialize(const RenderSystemCreateInfo& info);
         void shutdown();
-        void applyRenderCommand(RenderScene& scene, RenderCommand& cmd);
         void setupRenderThreading();
 
         [[nodiscard]] Bool acquireApplicationGraphicsContext();
         void releaseApplicationGraphicsContext();
-        void renderFrameOnRenderThread(ThreadingMode mode, DrawThread* draw_thread);
-        void renderFrame(ThreadingMode mode, DrawThread* draw_thread);
+        void renderFrameOnRenderThread();
+        void renderFrame();
     };
 
 } // namespace dodoe

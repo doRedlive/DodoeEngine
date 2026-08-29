@@ -29,14 +29,6 @@ namespace dodoe {
         OnlyGUI,
     };
 
-    enum class ThreadingMode {
-        None = 0,
-
-        SingleThread,
-        DualThread,
-        TripleThread
-    };
-
     enum class PresentMode {
         VSync = 0,
         Mailbox,
@@ -51,7 +43,7 @@ namespace dodoe {
         META(Enable)
         RenderingPipelineType pipeline{ RenderingPipelineType::Deferred };
         META(Enable)
-        ThreadingMode threading_mode{ ThreadingMode::TripleThread };
+        Bool enable_single_thread{ false };
         META(Enable)
         PresentMode present_mode{ PresentMode::Mailbox };
         META(Enable)
@@ -94,7 +86,7 @@ namespace dodoe {
             return m_api == RenderBackendApiType::D3D12 || m_api == RenderBackendApiType::Vulkan;
         }
         [[nodiscard]] static RenderingPipelineType GetRenderingPipelineType() { return m_pipeline; }
-        [[nodiscard]] static ThreadingMode GetThreadingMode() { return m_threading_mode; }
+        [[nodiscard]] static Bool IsSingleThread() { return false; }
         [[nodiscard]] static PresentMode GetPresentMode() { return m_present_mode; }
         [[nodiscard]] static Bool IsWindowless() { return m_windowless; }
 
@@ -115,7 +107,7 @@ namespace dodoe {
     private:
         inline static RenderBackendApiType m_api{ RenderBackendApiType::None };
         inline static RenderingPipelineType m_pipeline{ RenderingPipelineType::None };
-        inline static ThreadingMode m_threading_mode{ ThreadingMode::TripleThread };
+        inline static Bool m_enable_single_thread{ false };
         inline static PresentMode m_present_mode{ PresentMode::Mailbox };
         inline static Bool m_windowless{ false };
         inline static Bool m_gpu_driven_supported{ false };

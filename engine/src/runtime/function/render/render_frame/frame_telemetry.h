@@ -12,7 +12,6 @@ namespace dodoe {
 
         Float game_thread_ms{0.0f};
         Float render_thread_ms{0.0f};
-        Float draw_thread_ms{0.0f};
 
         Float gpu_frame_ms{0.0f};
 

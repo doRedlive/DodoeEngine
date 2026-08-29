@@ -6,7 +6,6 @@
 #include "render_settings.h"
 #include "runtime/core/memory/memory.h"
 #include "runtime/function/graphics/draw_command_list.h"
-#include "runtime/core/thread/draw_thread.h"
 #include "runtime/core/thread/render_thread.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/time/time_system.h"
@@ -57,9 +56,9 @@ namespace dodoe {
             m_render_thread->stop();
             m_render_thread.reset();
         }
-        m_draw_thread.reset();
         (void)acquireApplicationGraphicsContext();
-        m_game_command_queue.close();
+        m_resource_command_queue.close();
+        m_scene_command_queue.close();
         m_gfx->waitForIdle();
         RenderPipeline::Destroy(m_render_pipeline);
         RenderFrameScheduler::Destroy(m_frame_scheduler);
@@ -72,8 +71,12 @@ namespace dodoe {
         DO_INFO("Shutdown completed.");
     }
 
-    void RenderSystem::enqueueRenderCommand(RenderCommand&& cmd) {
-        m_game_command_queue.push(std::move(cmd));
+    void RenderSystem::enqueueResourceCommand(ResourceCommand&& cmd) {
+        m_resource_command_queue.push(std::move(cmd));
+    }
+
+    void RenderSystem::enqueueSceneCommand(SceneCommand&& cmd) {
+        m_scene_command_queue.push(std::move(cmd));
     }
 
     Bool RenderSystem::acquireApplicationGraphicsContext() {
@@ -85,78 +88,52 @@ namespace dodoe {
     }
 
     Bool RenderSystem::beginMainThreadFrame() {
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::DualThread) {
-            return acquireApplicationGraphicsContext();
-        }
         return true;
     }
 
     void RenderSystem::submitFrame() {
         if (!m_render_thread) return;
-        if (m_render_thread->getMode() == ThreadingMode::DualThread) {
-            releaseApplicationGraphicsContext();
-        }
-        switch (m_render_thread->getMode()) {
-        case ThreadingMode::SingleThread:
+        if (RenderSettings::IsSingleThread()) {
             m_render_thread->executeFrameOnce();
-            break;
-        case ThreadingMode::DualThread:
-            m_render_thread->submitAndWait();
-            break;
-        case ThreadingMode::TripleThread:
-            m_render_thread->submit();
-            break;
+            return;
         }
+        m_render_thread->submitAndWait();
     }
 
     void RenderSystem::setupRenderThreading() {
-        const auto threading_mode = RenderSettings::GetThreadingMode();
-        switch (threading_mode) {
-        case ThreadingMode::TripleThread:
-            m_draw_thread = create_scope<DrawThread>();
-            m_draw_thread->start(m_gfx->getDevice(), m_gfx.get());
-
+        if (RenderSettings::IsSingleThread()) {
             m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
-                renderFrame(ThreadingMode::TripleThread, m_draw_thread.get());
+                renderFrame();
             }));
-            m_render_thread->start(threading_mode);
-            DO_INFO("Triple-thread rendering initialized.");
-            break;
-
-        case ThreadingMode::DualThread:
-            releaseApplicationGraphicsContext();
-            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
-                renderFrameOnRenderThread(ThreadingMode::DualThread, nullptr);
-            }), RenderFrameTask([this] {
-                releaseApplicationGraphicsContext();
-            }));
-            m_render_thread->start(threading_mode);
-            DO_INFO("Dual-thread rendering initialized.");
-            break;
-
-        case ThreadingMode::SingleThread:
-            m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
-                renderFrame(ThreadingMode::SingleThread, nullptr);
-            }));
-            m_render_thread->start(threading_mode);
+            m_render_thread->start(false);
             DO_INFO("Single-thread rendering initialized.");
-            break;
-        }
-    }
-
-    void RenderSystem::renderFrameOnRenderThread(const ThreadingMode mode, DrawThread* draw_thread) {
-        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrameOnRenderThread", "frame");
-        if (mode == ThreadingMode::DualThread && !acquireApplicationGraphicsContext()) {
-            DO_ERROR("RenderSystem failed to acquire graphics context for render thread.");
             return;
         }
-        renderFrame(mode, draw_thread);
-        if (mode == ThreadingMode::DualThread) {
+
+        releaseApplicationGraphicsContext();
+        m_render_thread = create_scope<RenderThread>(RenderFrameTask([this] {
+            renderFrameOnRenderThread();
+        }), RenderFrameTask([this] {
             releaseApplicationGraphicsContext();
-        }
+            m_context_acquired = false;
+        }));
+        m_render_thread->start(true);
+        DO_INFO("Dual-thread rendering initialized.");
     }
 
-    void RenderSystem::renderFrame(const ThreadingMode mode, DrawThread* draw_thread) {
+    void RenderSystem::renderFrameOnRenderThread() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrameOnRenderThread", "frame");
+        if (!m_context_acquired) {
+            if (!acquireApplicationGraphicsContext()) {
+                DO_ERROR("RenderSystem failed to acquire graphics context for render thread.");
+                return;
+            }
+            m_context_acquired = true;
+        }
+        renderFrame();
+    }
+
+    void RenderSystem::renderFrame() {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrame", "frame");
         GfxRenderScope render_scope;
         Memory::ResetFrame();
@@ -213,10 +190,20 @@ namespace dodoe {
 
         auto* scene = m_render_scene.get();
 
-        RenderCommand cmd;
-        while (m_game_command_queue.tryPop(cmd)) {
-            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::applyRenderCommand", "render-command");
-            applyRenderCommand(*scene, cmd);
+        {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::realizeResourceCommands", "render-command");
+            ResourceCommand res_cmd;
+            while (m_resource_command_queue.tryPop(res_cmd)) {
+                realizeResourceCommand(res_cmd);
+            }
+        }
+
+        {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::applySceneCommands", "render-command");
+            SceneCommand scene_cmd;
+            while (m_scene_command_queue.tryPop(scene_cmd)) {
+                applySceneCommand(*scene, scene_cmd);
+            }
         }
 
         UInt32 image_index = 0;
@@ -234,86 +221,84 @@ namespace dodoe {
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
         scene->flushUpdates(*frame_ctx.command_list);
 
-        switch (mode) {
-        case ThreadingMode::TripleThread: {
-            for (auto& target : view_mgr->getTargets()) {
-                auto* cam = target->getCamera();
-                Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
-                Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
-                Bool show_editor = false;
+        for (auto& target : view_mgr->getTargets()) {
+            auto* cam = target->getCamera();
+            Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
+            Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
+            Bool show_editor = false;
 #ifdef DODOE_EDITOR_ENABLED
-                show_editor = cam && cam->isEditorCamera();
+            show_editor = cam && cam->isEditorCamera();
 #endif//DODOE_EDITOR_ENABLED
-                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
-                pipeline->render(
-                    family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
-                    frame_ctx.staging, frame_ctx.transient_resource_pool);
-            }
-            m_frame_scheduler->endFrame(frame_ctx);
-            draw_thread->submit(std::move(frame_ctx));
-            break;
+            auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
+            pipeline->render(
+                family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
+                frame_ctx.staging, frame_ctx.transient_resource_pool);
         }
-        case ThreadingMode::DualThread:
-        case ThreadingMode::SingleThread: {
-            for (auto& target : view_mgr->getTargets()) {
-                auto* cam = target->getCamera();
-                Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
-                Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
-                Bool show_editor = false;
-#ifdef DODOE_EDITOR_ENABLED
-                show_editor = cam && cam->isEditorCamera();
-#endif//DODOE_EDITOR_ENABLED
-                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
-                pipeline->render(
-                    family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
-                    frame_ctx.staging, frame_ctx.transient_resource_pool);
-            }
 
-            {
-                auto& gfx_cmd = m_gfx->getCommandList();
-                gfx_cmd->open();
-                frame_ctx.command_list->execute(gfx_cmd);
-                gfx_cmd->close();
-                m_gfx->getDevice()->executeCommandList(gfx_cmd);
-            }
-            gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
-            (void)m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
-            m_gfx->clearGarbage();
-            break;
+        {
+            auto& gfx_cmd = m_gfx->getCommandList();
+            gfx_cmd->open();
+            frame_ctx.command_list->execute(gfx_cmd);
+            gfx_cmd->close();
+            m_gfx->getDevice()->executeCommandList(gfx_cmd);
         }
+        gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
+        (void)m_gfx->presentSwapchainImage(frame_ctx.swapchain_image_index);
+        m_gfx->clearGarbage();
+    }
+
+    void RenderSystem::realizeResourceCommand(ResourceCommand& cmd) {
+        switch (cmd.type) {
+        case ResourceCommandType::CreateTexture:
+            if (cmd.texture_object) {
+                if (auto* texture_manager = m_shared_render_service->getTextureManager()) {
+                    texture_manager->realizeTexture(cmd);
+                }
+            }
+            break;
+        case ResourceCommandType::CreateBuffer:
+            if (cmd.buffer) {
+                cmd.buffer->initializeGpu(m_gfx->getDevice());
+                if (!cmd.resource_data.empty()) {
+                    GDrawCommandList.writeBuffer(cmd.buffer, cmd.resource_data.data(), cmd.resource_data.size(), 0);
+                }
+            }
+            break;
+        default:
+            break;
         }
     }
 
-    void RenderSystem::applyRenderCommand(RenderScene& scene, RenderCommand& cmd) {
+    void RenderSystem::applySceneCommand(RenderScene& scene, SceneCommand& cmd) {
         switch (cmd.type) {
-        case RenderCommandType::AddPrimitive:
+        case SceneCommandType::AddPrimitive:
             scene.addPrimitive(std::move(cmd.primitive));
             break;
-        case RenderCommandType::RemovePrimitive:
+        case SceneCommandType::RemovePrimitive:
             scene.removePrimitive(cmd.id);
             break;
-        case RenderCommandType::UpdatePrimitiveTransform:
+        case SceneCommandType::UpdatePrimitiveTransform:
             scene.updatePrimitiveTransform(cmd.id, cmd.transform);
             break;
-        case RenderCommandType::AddLight:
+        case SceneCommandType::AddLight:
             scene.addLightSceneInfo(std::move(cmd.light));
             break;
-        case RenderCommandType::RemoveLight:
+        case SceneCommandType::RemoveLight:
             scene.removeLightSceneInfo(cmd.id);
             break;
-        case RenderCommandType::UpdateLightTransform:
+        case SceneCommandType::UpdateLightTransform:
             scene.updateLightSceneInfoTransform(cmd.id, cmd.transform);
             break;
-        case RenderCommandType::AddSprite:
+        case SceneCommandType::AddSprite:
             scene.addSprite(std::move(cmd.sprite));
             break;
-        case RenderCommandType::RemoveSprite:
+        case SceneCommandType::RemoveSprite:
             scene.removeSprite(cmd.id);
             break;
-        case RenderCommandType::UpdateSpriteTransform:
+        case SceneCommandType::UpdateSpriteTransform:
             scene.updateSpriteTransform(cmd.id, cmd.transform);
             break;
-        case RenderCommandType::SubmitUIBatch:
+        case SceneCommandType::SubmitUIBatch:
             scene.submitUIInstances(std::move(cmd.ui_scene_infos));
             break;
         default:

@@ -432,6 +432,7 @@ namespace dodoe {
 
         if (sprite->isBatch()) {
             info.setBatchInstances(sprite->getBatchInstances());
+            info.setBatchAtlases(sprite->getBatchAtlases());
             info.setBounds(sprite->getBoundsCenter(), sprite->getBoundsExtents());
         } else {
             const Matrix4f& transform = sprite->getWorldTransform();
@@ -684,6 +685,18 @@ namespace dodoe {
         }
     }
 
+    TextureManager* RenderScene::getTextureManager() const {
+        return m_shared_render_service ? m_shared_render_service->getTextureManager() : nullptr;
+    }
+
+    UInt32 RenderScene::resolveSpriteAtlasIndex(const SpriteSceneInfo& info) const {
+        auto* texture_manager = getTextureManager();
+        if (!texture_manager) { return 0; }
+        const auto* sprite = info.getSprite().get();
+        if (!sprite) { return 0; }
+        return texture_manager->resolveAtlasIndex(sprite->getTexture().get());
+    }
+
     void RenderScene::syncSpriteGpuScene(const RenderSceneDelta& delta) {
         for (const auto& [id, update_type] : delta.sprite_updates) {
             if (HasAnyFlags(update_type, SpriteUpdateType::Removed) && m_sprite_objects.find(id) == m_sprite_objects.end()) {
@@ -735,7 +748,7 @@ namespace dodoe {
                 gpu_data.scale_x = info->getScale().x;
                 gpu_data.scale_y = info->getScale().y;
                 gpu_data.rotation = info->getRotation();
-                gpu_data.atlas_index = info->getAtlasIndex();
+                gpu_data.atlas_index = resolveSpriteAtlasIndex(*info);
                 gpu_data.uv_min_x = info->getUVMinX();
                 gpu_data.uv_min_y = info->getUVMinY();
                 gpu_data.uv_max_x = info->getUVMaxX();

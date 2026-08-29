@@ -29,6 +29,7 @@ namespace dodoe {
         Bool m_cast_shadow{false};
 
         DynamicArray<SpriteInstance> m_batch_instances{};
+        DynamicArray<PPtr<Texture2D>> m_batch_atlases{};
         Vector3f m_bounds_center{0.0f};
         Vector3f m_bounds_extents{0.0f};
 
@@ -46,6 +47,8 @@ namespace dodoe {
             }
         }
         void setAtlasIndex(UInt32 index) { m_atlas_index = index; }
+        void setBatchAtlases(DynamicArray<PPtr<Texture2D>> atlases) { m_batch_atlases = std::move(atlases); }
+        [[nodiscard]] const DynamicArray<PPtr<Texture2D>>& getBatchAtlases() const { return m_batch_atlases; }
         void setUVRect(Float min_x, Float min_y, Float max_x, Float max_y) {
             m_uv_min_x = min_x; m_uv_min_y = min_y;
             m_uv_max_x = max_x; m_uv_max_y = max_y;

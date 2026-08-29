@@ -1,4 +1,7 @@
+// do@Redlive
+
 #include "mesh.h"
+#include "runtime/function/render/render_command_queue.h"
 
 #include "runtime/core/math/math.h"
 #include "runtime/function/graphics/draw_command_list.h"
@@ -242,14 +245,14 @@ namespace dodoe {
             .setIsVertexBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
             .setDebugName(fmt::format("Vertex Buffer {}", mesh_name));
-        lod.buffers.vertex_buffer = GDrawCommandList.createBuffer(vertex_buffer_desc, vertex_bytes.data(), vertex_byte_size);
+        lod.buffers.vertex_buffer = RenderResourceQueue::CreateBuffer(vertex_buffer_desc, vertex_bytes.data(), vertex_byte_size);
 
         auto index_buffer_desc = GfxBufferDesc()
             .setByteSize(index_byte_size)
             .setIsIndexBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::IndexBuffer)
             .setDebugName(fmt::format("Index Buffer {}", mesh_name));
-        lod.buffers.index_buffer = GDrawCommandList.createBuffer(index_buffer_desc, build.upload_data.index_data.data(), index_byte_size);
+        lod.buffers.index_buffer = RenderResourceQueue::CreateBuffer(index_buffer_desc, build.upload_data.index_data.data(), index_byte_size);
 
         lod.sub_meshes = std::move(build.sub_meshes);
 

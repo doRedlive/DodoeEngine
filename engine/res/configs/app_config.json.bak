@@ -6,9 +6,8 @@
     "height": 900,
     "window_resizeable": true,
     "render_settings": {
-        "api": 2,
+        "api": 3,
         "pipeline": 3,
         "present_mode": 1
     }
 }
-

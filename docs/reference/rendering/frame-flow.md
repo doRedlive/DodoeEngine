@@ -8,18 +8,15 @@
 
 ```cpp
 tickOneFrame():
-    startRuntime()        → beginMainThreadFrame()   // DualThread 下主线程拿回 GL 上下文
+    startRuntime()        → beginMainThreadFrame()   // 双线程下主线程拿回 GL 上下文
     updateTick(dt)        → World 系统(可能 TaskScheduler 并行)+ 各引擎模块 update
     renderTick()          → RenderSystem::submitFrame()
 ```
 
 `RenderSystem::submitFrame()`(render_system.cpp:94):
 
-1. DualThread:先 `releaseApplicationGraphicsContext()`(交出 GL 上下文);
-2. 按模式分发:
-   - SingleThread → `m_render_thread->executeFrameOnce()`(主线程原地渲染);
-   - DualThread → `submitAndWait()`(渲染线程执行,主线程阻塞等完成);
-   - TripleThread → `submit()`(渲染线程构建,不等待)。
+1. 单线程(Debug 开关):主线程 `executeFrameOnce()` 原地渲染;
+2. 双线程(默认):先 `releaseApplicationGraphicsContext()`(交出 GL 上下文),再 `submitAndWait()`(渲染线程执行,主线程阻塞等完成)。
 
 ## 2. renderFrame 逐步时序(render_system.cpp:159)
 
@@ -34,14 +31,14 @@ tickOneFrame():
 ⑧ frame_scheduler->beginFrame(image_index) → FrameContext
 ⑨ scene->flushUpdates(*frame_ctx.command_list)
 ⑩ buildViewFamily + pipeline->render(每个 view target)
-⑪ 命令执行 + present(或移交 DrawThread)
+⑪ 命令执行 + present
 ```
 
 各步细节:
 
 **①② Scope 与帧内存**:标记当前线程为"RHI 提交线程"(资源创建走立即路径);重置帧线性分配器。
 
-**④ drain 延迟资源命令**(176-186):游戏线程/主线程 update 阶段经 `GDrawCommandList` 录制的 `CreateTextureCommand/CreateBufferCommand` 等在此被移出并在渲染线程执行(实体化 + 上传)。这是 worker 线程创建的资源变为 `isRHIReady()` 的时刻——保证本帧管线引用它们时已就绪。
+**④ drain 延迟资源命令**(176-186):游戏线程/主线程 update 阶段经 `GDrawCommandList` 录制的 `CreateTextureCommand/CreateBufferCommand` 等在此被移出并在渲染线程执行(实体化 + 上传)。这是 worker 线程创建的资源变为 `isGpuReady()` 的时刻——保证本帧管线引用它们时已就绪。
 
 **⑤ resize**(188-212):遍历 `RenderViewManager` 的 target,窗口/像素尺寸不符者 `target->resize()`;有 dirty 则 `waitForIdle` → `retireCompletedFrames`(强制回收 in-flight 帧)→ `recreateSwapchain` → `pipeline->onResize` → `clearGarbage`。
 
@@ -59,7 +56,7 @@ tickOneFrame():
 **⑪ 提交与上屏**(272-284):
 
 - TripleThread:`endFrame(frame_ctx)`(打 event query)→ `draw_thread->submit(std::move(frame_ctx))`——DrawThread 异步执行命令流并 present;
-- Dual/SingleThread:本线程执行——复用持久 gfx_cmd:`open → frame_ctx.command_list->execute(gfx_cmd) → close → executeCommandList` → `setEventQuery` → `presentSwapchainImage` → `clearGarbage`。
+- 本线程执行(主线程或渲染线程)——复用持久 gfx_cmd:`open → frame_ctx.command_list->execute(gfx_cmd) → close → executeCommandList` → `setEventQuery` → `presentSwapchainImage` → `clearGarbage`。
 
 ## 3. RenderFrameScheduler:帧槽与 in-flight(render_frame/)
 
@@ -84,21 +81,16 @@ tickOneFrame():
 
 **帧资源生命周期**:`beginFrame 复用槽位 → 帧内录制/执行 → GPU 完成(query)→ 延迟删除队列消化 → 槽位再次复用`。任何跨帧引用瞬态资源的代码都违反此契约。
 
-## 4. 三模式下的帧重叠
+## 4. 两模式下的帧重叠
 
 ```text
-SingleThread:  [update][renderFrame+submit+present][update][...]
-DualThread:    主线程 [update]      [等待]
-               渲染线程              [renderFrame+submit+present]
-               (锁步:每帧同步一次,无重叠)
-TripleThread:  主线程   [update N][update N+1][update N+2]
-               渲染线程     [构建 N ][构建 N+1]
-               DrawThread              [提交 N ][提交 N+1]   (in-flight = 2)
+单线程:         [update][renderFrame+submit+present][update][...]
+双线程(默认):   主线程 [update]      [等待]
+                渲染线程              [renderFrame+submit+present]
+                (锁步:每帧同步一次,无重叠)
 ```
 
-TripleThread 的流水线深度由两处上限共同决定:DrawThread 队列(2)与 RenderFrameScheduler 帧槽(3,query 等待兜底)。
-
-## 5. 帧内时间线示例(DualThread + worker 加载纹理)
+## 5. 帧内时间线示例(双线程 + worker 加载纹理)
 
 ```text
 t0  主线程 updateTick:SpriteRendererSystem(worker 线程)发现新实体引用未加载纹理
@@ -108,7 +100,7 @@ t2  worker:GDrawCommandList.createTexture(desc, pixels)
 t3  worker:RenderCommandQueue::AddSprite(...) → MPMC 队列
 t4  主线程 submitFrame → releaseContext → submitAndWait
 t5  渲染线程 acquireContext → renderFrame:
-      drain:t2 的命令执行,纹理实体化(isRHIReady = true)
+      drain:t2 的命令执行,纹理实体化(isGpuReady = true)
       场景消费:t3 的 Sprite 入 RenderScene
       flushUpdates → GpuScene 上传实例数据
       buildViewFamily(剔除)→ RenderGraph 构建/执行(pass 录制命令)

@@ -37,7 +37,7 @@ namespace dodoe {
         }
 
         auto it = m_cache.find(h);
-        if (it != m_cache.end() && it->second->isRHIReady()) {
+        if (it != m_cache.end() && it->second->isGpuReady()) {
             return it->second;
         }
 

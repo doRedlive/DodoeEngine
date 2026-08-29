@@ -209,7 +209,7 @@ GL 无命令缓冲概念:`createCommandList` 强制 `enableImmediateExecution=tr
 | 引擎概念 | cutie-rhi 对应 |
 |---|---|
 | `GfxContext::device_` | `cutie::DeviceHandle`(可被 validation 包裹) |
-| `Gfx*` Proxy(`m_rhi_ready`) | cutie `TextureHandle` 等 RefCountPtr 资源 |
+| `Gfx*` Proxy(`m_gpu_ready`) | cutie `TextureHandle` 等 RefCountPtr 资源 |
 | `DrawCommandList` 命令流 | 回放目标 = cutie `ICommandList`(`open→record→close→executeCommandList`) |
 | `commitBarriers` 语义 | lazy drain(见 §5.3)——引擎在 setTextureState 后显式调用即"此刻需要屏障生效" |
 | `GfxViewportSurface` 交换链 | 库不拥有交换链;D3D12/Vulkan 的 swapchain 由引擎 surface 层驱动,库只提供资源与提交 |

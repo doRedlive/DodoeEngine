@@ -34,7 +34,7 @@ namespace dodoe {
         const auto hash = key.computeHash();
         for (auto& entry : m_entries) {
             if (entry.key == key) {
-                if (entry.framebuffer->isRHIReady()) {
+                if (entry.framebuffer->isGpuReady()) {
                     return entry.framebuffer;
                 }
                 auto framebuffer = GDrawCommandList.createFramebuffer(desc);

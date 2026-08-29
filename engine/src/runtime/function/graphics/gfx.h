@@ -11,6 +11,8 @@
 #include "cutie/validation.h"
 #include "cutie/utils.h"
 
+#include <atomic>
+
 namespace dodoe {
 
     using GfxDevice = cutie::IDevice;
@@ -93,15 +95,15 @@ namespace dodoe {
         cutie::TextureHandle m_rhi{};
         GfxTextureDesc m_desc{};
         String m_debug_name{};
-        bool m_rhi_ready{false};
+        std::atomic<bool> m_gpu_ready{false};
     public:
         GfxTexture() = default;
         explicit GfxTexture(const GfxTextureDesc& desc, const String& debug_name = "")
             : m_desc(desc), m_debug_name(debug_name) {}
         explicit GfxTexture(const cutie::TextureHandle& handle, const GfxTextureDesc& desc, const String& debug_name = "")
-            : m_rhi(handle), m_desc(desc), m_debug_name(debug_name), m_rhi_ready(true) {}
-        void initializeRHI(GfxDeviceHandle device) {
-            if (!m_rhi_ready) { m_rhi = device->createTexture(m_desc); m_rhi_ready = true; }
+            : m_rhi(handle), m_desc(desc), m_debug_name(debug_name), m_gpu_ready(true) {}
+        void initializeGpu(GfxDeviceHandle device) {
+            if (!m_gpu_ready) { m_rhi = device->createTexture(m_desc); m_gpu_ready = true; }
         }
         [[nodiscard]] cutie::ITexture* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::TextureHandle& getRHIHandle() const { return m_rhi; }
@@ -110,7 +112,7 @@ namespace dodoe {
         [[nodiscard]] UInt32 getHeight() const { return m_desc.height; }
         [[nodiscard]] const GfxTextureDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const String& getDebugName() const { return m_debug_name; }
-        [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
+        [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
     };
     using GfxTextureHandle = Ref<GfxTexture>;
 
@@ -118,22 +120,22 @@ namespace dodoe {
         cutie::BufferHandle m_rhi{};
         GfxBufferDesc m_desc{};
         String m_debug_name{};
-        bool m_rhi_ready{false};
+        std::atomic<bool> m_gpu_ready{false};
     public:
         GfxBuffer() = default;
         explicit GfxBuffer(const GfxBufferDesc& desc, const String& debug_name = "")
             : m_desc(desc), m_debug_name(debug_name) {}
         explicit GfxBuffer(const cutie::BufferHandle& handle, const GfxBufferDesc& desc, const String& debug_name = "")
-            : m_rhi(handle), m_desc(desc), m_debug_name(debug_name), m_rhi_ready(true) {}
-        void initializeRHI(GfxDeviceHandle device) {
-            if (!m_rhi_ready) { m_rhi = device->createBuffer(m_desc); m_rhi_ready = true; }
+            : m_rhi(handle), m_desc(desc), m_debug_name(debug_name), m_gpu_ready(true) {}
+        void initializeGpu(GfxDeviceHandle device) {
+            if (!m_gpu_ready) { m_rhi = device->createBuffer(m_desc); m_gpu_ready = true; }
         }
         [[nodiscard]] cutie::IBuffer* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::BufferHandle& getRHIHandle() const { return m_rhi; }
         [[nodiscard]] UInt32 getByteSize() const { return m_desc.byteSize; }
         [[nodiscard]] const GfxBufferDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const String& getDebugName() const { return m_debug_name; }
-        [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
+        [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
     };
     using GfxBufferHandle = Ref<GfxBuffer>;
 
@@ -170,26 +172,26 @@ namespace dodoe {
         cutie::FramebufferHandle m_rhi{};
         GfxFramebufferDesc m_desc{};
         GfxFramebufferInfo m_info{};
-        bool m_rhi_ready{false};
+        std::atomic<bool> m_gpu_ready{false};
     public:
         GfxFramebuffer() = default;
         GfxFramebuffer(const cutie::FramebufferHandle& handle, const GfxFramebufferInfo& info)
-            : m_rhi(handle), m_info(info), m_rhi_ready(true) {}
+            : m_rhi(handle), m_info(info), m_gpu_ready(true) {}
         explicit GfxFramebuffer(const GfxFramebufferDesc& desc, const GfxFramebufferInfo& info)
             : m_desc(desc), m_info(info) {}
         explicit GfxFramebuffer(const GfxFramebufferDesc& desc)
             : m_desc(desc), m_info(desc) {}
-        void initializeRHI(GfxDeviceHandle device) {
-            if (!m_rhi_ready) {
+        void initializeGpu(GfxDeviceHandle device) {
+            if (!m_gpu_ready) {
                 m_rhi = device->createFramebuffer(m_desc.toRHI());
-                m_rhi_ready = true;
+                m_gpu_ready = true;
             }
         }
         [[nodiscard]] cutie::IFramebuffer* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::FramebufferHandle& getRHIHandle() const { return m_rhi; }
         [[nodiscard]] const GfxFramebufferInfo& getInfo() const { return m_info; }
         [[nodiscard]] const GfxFramebufferInfo& getFramebufferInfo() const { return m_info; }
-        [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
+        [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
     };
     using GfxFramebufferHandle = Ref<GfxFramebuffer>;
 
@@ -197,22 +199,22 @@ namespace dodoe {
         cutie::GraphicsPipelineHandle m_rhi{};
         GfxGraphicsPipelineDesc m_desc{};
         GfxFramebufferInfo m_framebuffer_info{};
-        bool m_rhi_ready{false};
+        std::atomic<bool> m_gpu_ready{false};
     public:
         GfxGraphicsPipeline() = default;
-        void initializeRHI(GfxDeviceHandle device, const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
-            if (!m_rhi_ready) {
+        void initializeGpu(GfxDeviceHandle device, const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
+            if (!m_gpu_ready) {
                 m_desc = desc;
                 m_framebuffer_info = info;
                 m_rhi = device->createGraphicsPipeline(desc, info.getRHI());
-                m_rhi_ready = true;
+                m_gpu_ready = true;
             }
         }
         [[nodiscard]] cutie::IGraphicsPipeline* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::GraphicsPipelineHandle& getRHIHandle() const { return m_rhi; }
         [[nodiscard]] const GfxGraphicsPipelineDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const GfxFramebufferInfo& getFramebufferInfo() const { return m_framebuffer_info; }
-        [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
+        [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
     };
     using GfxGraphicsPipelineHandle = Ref<GfxGraphicsPipeline>;
 
@@ -220,18 +222,18 @@ namespace dodoe {
         cutie::BindingSetHandle m_rhi{};
         GfxBindingSetDesc m_desc{};
         GfxBindingLayoutHandle m_layout{};
-        bool m_rhi_ready{false};
+        std::atomic<bool> m_gpu_ready{false};
     public:
         GfxBindingSet() = default;
-        void initializeRHI(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
-            if (!m_rhi_ready) { m_desc = desc; m_layout = layout; m_rhi = device->createBindingSet(desc, layout); m_rhi_ready = true; }
+        void initializeGpu(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
+            if (!m_gpu_ready) { m_desc = desc; m_layout = layout; m_rhi = device->createBindingSet(desc, layout); m_gpu_ready = true; }
         }
-        explicit GfxBindingSet(const cutie::BindingSetHandle& handle, const GfxBindingSetDesc& desc = {}, const GfxBindingLayoutHandle& layout = {}) : m_rhi(handle), m_desc(desc), m_layout(layout), m_rhi_ready(true) {}
+        explicit GfxBindingSet(const cutie::BindingSetHandle& handle, const GfxBindingSetDesc& desc = {}, const GfxBindingLayoutHandle& layout = {}) : m_rhi(handle), m_desc(desc), m_layout(layout), m_gpu_ready(true) {}
         [[nodiscard]] cutie::IBindingSet* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::BindingSetHandle& getRHIHandle() const { return m_rhi; }
         [[nodiscard]] const GfxBindingSetDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const GfxBindingLayoutHandle& getLayout() const { return m_layout; }
-        [[nodiscard]] bool isRHIReady() const { return m_rhi_ready; }
+        [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
     };
     using GfxBindingSetHandle = Ref<GfxBindingSet>;
 

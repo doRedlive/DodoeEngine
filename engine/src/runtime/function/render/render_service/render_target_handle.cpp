@@ -126,7 +126,7 @@ namespace dodoe {
             tex_desc.setClearValue(ca.clear_color);
 
             auto tex = create_ref<GfxTexture>(tex_desc, ca.debug_name);
-            tex->initializeRHI(device);
+            tex->initializeGpu(device);
             m_color_textures.push_back(tex);
         }
 
@@ -144,7 +144,7 @@ namespace dodoe {
             depth_desc.setClearValue(GfxColor(m_desc.clear_depth, 0.0f, 0.0f, 0.0f));
 
             m_depth_texture = create_ref<GfxTexture>(depth_desc, m_desc.depth_debug_name);
-            m_depth_texture->initializeRHI(device);
+            m_depth_texture->initializeGpu(device);
         }
     }
 

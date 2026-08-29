@@ -50,7 +50,7 @@ namespace dodoe {
 	            .setIsConstantBuffer(true)
 	            .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
 	            .setDebugName("ImGuiViewportCB"));
-	    m_imgui_cb->initializeRHI(gfx->getDevice());
+	    m_imgui_cb->initializeGpu(gfx->getDevice());
 
 	    auto* cache = resources.getBindingLayoutCache();
 	    m_binding_layout = cache->getOrCreate(
@@ -90,12 +90,10 @@ namespace dodoe {
 #ifdef DODOE_DEBUG_ENABLED
 	void ImGuiFeature::setupViewports(SharedRenderService& resources) {
 	    const auto viewport_api = RenderSettings::GetRenderBackendApiType();
-	    const auto viewport_threading = RenderSettings::GetThreadingMode();
-	    Bool viewports_supported = viewport_api == RenderBackendApiType::D3D12;
-	    if (viewport_api == RenderBackendApiType::Vulkan) {
-	        viewports_supported = viewport_threading != ThreadingMode::TripleThread;
-	    } else if (viewport_api == RenderBackendApiType::OpenGL) {
-	        viewports_supported = viewport_threading == ThreadingMode::SingleThread;
+	    Bool viewports_supported = viewport_api == RenderBackendApiType::D3D12 ||
+	                               viewport_api == RenderBackendApiType::Vulkan;
+	    if (viewport_api == RenderBackendApiType::OpenGL) {
+	        viewports_supported = RenderSettings::IsSingleThread();
 	    }
 	    if (!viewports_supported) {
 	        DO_WARN("ImGui multi-viewport disabled for this backend/threading combination");

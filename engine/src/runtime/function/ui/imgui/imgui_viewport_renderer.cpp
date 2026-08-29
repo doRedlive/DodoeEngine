@@ -97,21 +97,21 @@ namespace dodoe {
             .setIsVertexBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
             .setDebugName("Viewport ImGuiVertexBuffer"));
-        data->vertex_buffer->initializeRHI(s_device);
+        data->vertex_buffer->initializeGpu(s_device);
 
         data->index_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
             .setByteSize(kViewportIndexCapacity * sizeof(ImDrawIdx))
             .setIsIndexBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
             .setDebugName("Viewport ImGuiIndexBuffer"));
-        data->index_buffer->initializeRHI(s_device);
+        data->index_buffer->initializeGpu(s_device);
 
         data->constant_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
             .setByteSize(16)
             .setIsConstantBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
             .setDebugName("Viewport ImGuiConstantBuffer"));
-        data->constant_buffer->initializeRHI(s_device);
+        data->constant_buffer->initializeGpu(s_device);
 
         data->tracker = s_device->createCommandListLifetimeTracker(GfxCommandQueue::Graphics);
         data->recorder.setDevice(s_device);

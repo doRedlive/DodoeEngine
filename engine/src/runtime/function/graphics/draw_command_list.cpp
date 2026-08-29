@@ -11,10 +11,10 @@ namespace dodoe {
 
         Bool IsFramebufferAttachmentsReady(const GfxFramebufferDesc& desc) {
             for (const auto& color : desc.colors()) {
-                if (!color || !color->isRHIReady()) return false;
+                if (!color || !color->isGpuReady()) return false;
             }
             const GfxTextureHandle& depth = desc.depth();
-            if (depth && !depth->isRHIReady()) return false;
+            if (depth && !depth->isGpuReady()) return false;
             return true;
         }
 
@@ -97,7 +97,7 @@ namespace dodoe {
     }
 
     void DrawCommandList::writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes) {
-        if (buffer->isRHIReady()) {
+        if (buffer->isGpuReady()) {
             auto cmd = acquireUploadCommandList();
             cmd->open();
             cmd->writeBuffer(buffer->getRHIHandle(), data, data_size, destination_offset_bytes);
@@ -111,7 +111,7 @@ namespace dodoe {
     }
     void DrawCommandList::writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch) {
         DO_ASSERT(texture != nullptr, "writeTexture: texture is null");
-        if (texture->isRHIReady()) {
+        if (texture->isGpuReady()) {
             const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
             auto cmd = acquireUploadCommandList();
             cmd->open();
@@ -171,7 +171,7 @@ namespace dodoe {
 
     GfxTextureHandle DrawCommandList::createTexture(const GfxTextureDesc& desc, const void* data, Size_t data_size) {
         auto texture = create_ref<GfxTexture>(desc);
-        texture->initializeRHI(m_device);
+        texture->initializeGpu(m_device);
         if (data && data_size > 0) {
             const UInt32 bpp = desc.format == GfxFormat::RGBA32_FLOAT ? 16u : 4u;
             const UInt32 pitch = desc.width * bpp;
@@ -181,7 +181,7 @@ namespace dodoe {
     }
     GfxBufferHandle DrawCommandList::createBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
         auto buffer = create_ref<GfxBuffer>(desc);
-        buffer->initializeRHI(m_device);
+        buffer->initializeGpu(m_device);
         if (data && data_size > 0) {
             writeBuffer(buffer, data, data_size, 0);
         }
@@ -190,24 +190,24 @@ namespace dodoe {
     GfxFramebufferHandle DrawCommandList::createFramebuffer(const GfxFramebufferDesc& desc) {
         auto fb = create_ref<GfxFramebuffer>(desc);
         if (IsFramebufferAttachmentsReady(desc)) {
-            fb->initializeRHI(m_device);
+            fb->initializeGpu(m_device);
         }
         return fb;
     }
     GfxBindingSetHandle DrawCommandList::createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
         auto bs = create_ref<GfxBindingSet>();
         if (IsBindingSetResourcesReady(desc)) {
-            bs->initializeRHI(m_device, desc, layout);
+            bs->initializeGpu(m_device, desc, layout);
         }
         return bs;
     }
     GfxGraphicsPipelineHandle DrawCommandList::createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
         auto pso = create_ref<GfxGraphicsPipeline>();
-        pso->initializeRHI(m_device, desc, info);
+        pso->initializeGpu(m_device, desc, info);
         return pso;
     }
     DescriptorIndex DrawCommandList::createDescriptor(GfxDescriptorTableHandle table, GfxTextureHandle texture, UInt32 slot) {
-        if (texture && texture->isRHIReady()) {
+        if (texture && texture->isGpuReady()) {
             auto item = GfxBindingSetItem::Texture_SRV(0, texture->getRHIHandle());
             item.slot = slot;
             m_device->writeDescriptorTable(table, item);
@@ -234,22 +234,22 @@ namespace dodoe {
     void DrawCommandList::DrawIndexedIndirectCommand::execute(GfxCommandList& c) const { c.drawIndexedIndirect(m_off, m_cnt); }
     void DrawCommandList::DispatchIndirectCommand::execute(GfxCommandList& c) const { c.dispatchIndirect(m_off); }
 
-    void DrawCommandList::ClearTextureFloatCommand::execute(GfxCommandList& c) const { if (m_texture->isRHIReady()) c.clearTextureFloat(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
-    void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& c) const { if (m_texture->isRHIReady()) c.clearTextureUInt(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
-    void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& c) const { if (m_texture->isRHIReady()) c.clearDepthStencilTexture(m_texture->getRHIHandle(), m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil); }
-    void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& c) const { if (m_dst->isRHIReady() && m_src->isRHIReady()) c.copyBuffer(m_dst->getRHIHandle(), m_dst_off, m_src->getRHIHandle(), m_src_off, m_size); }
-    void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& c) const { if (m_t->isRHIReady()) c.setTextureState(m_t->getRHIHandle(), m_s, m_st); else DO_WARN("SetTextureState: texture not realized"); }
-    void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& c) const { if (m_b->isRHIReady()) c.setBufferState(m_b->getRHIHandle(), m_st); else DO_WARN("SetBufferState: buffer not realized"); }
+    void DrawCommandList::ClearTextureFloatCommand::execute(GfxCommandList& c) const { if (m_texture->isGpuReady()) c.clearTextureFloat(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
+    void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& c) const { if (m_texture->isGpuReady()) c.clearTextureUInt(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
+    void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& c) const { if (m_texture->isGpuReady()) c.clearDepthStencilTexture(m_texture->getRHIHandle(), m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil); }
+    void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& c) const { if (m_dst->isGpuReady() && m_src->isGpuReady()) c.copyBuffer(m_dst->getRHIHandle(), m_dst_off, m_src->getRHIHandle(), m_src_off, m_size); }
+    void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.setTextureState(m_t->getRHIHandle(), m_s, m_st); else DO_WARN("SetTextureState: texture not realized"); }
+    void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& c) const { if (m_b->isGpuReady()) c.setBufferState(m_b->getRHIHandle(), m_st); else DO_WARN("SetBufferState: buffer not realized"); }
 
     void DrawCommandList::SetGraphicsStateCommand::execute(GfxCommandList& cm) const {
         GfxGraphicsState s;
         s.setViewport(m_vp);
-        if (m_pso && m_pso->isRHIReady()) s.setPipeline(m_pso->getRHIHandle());
-        if (m_fb && m_fb->isRHIReady()) s.setFramebuffer(m_fb->getRHIHandle());
-        else if (m_fb) DO_WARN("SetGraphicsState: framebuffer skipped, rhi_ready={}", m_fb->isRHIReady());
+        if (m_pso && m_pso->isGpuReady()) s.setPipeline(m_pso->getRHIHandle());
+        if (m_fb && m_fb->isGpuReady()) s.setFramebuffer(m_fb->getRHIHandle());
+        else if (m_fb) DO_WARN("SetGraphicsState: framebuffer skipped, rhi_ready={}", m_fb->isGpuReady());
         for (auto& bs : m_bs) {
-            if (bs && bs->isRHIReady()) s.addBindingSet(bs->getRHIHandle());
-            else if (bs) DO_WARN("SetGraphicsState: binding set skipped, rhi_ready={}", bs->isRHIReady());
+            if (bs && bs->isGpuReady()) s.addBindingSet(bs->getRHIHandle());
+            else if (bs) DO_WARN("SetGraphicsState: binding set skipped, rhi_ready={}", bs->isGpuReady());
         }
         for (auto& vb : m_vb) s.addVertexBuffer(vb);
         s.setIndexBuffer(m_ib);

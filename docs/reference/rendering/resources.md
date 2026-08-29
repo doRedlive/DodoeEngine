@@ -88,7 +88,7 @@ Assimp 导入(Triangulate | Normals | Tangents | JoinIdenticalVertices)
 | `PipelineStateCache` | PSO 缓存:key = MeshPassType + PrimitiveType + VS/PS 指针 + binding layouts + RenderState + FramebufferInfo(pipeline_state/pso_key.h);未命中才创建;另有磁盘缓存 |
 | `GlobalSamplers` | point/bilinear/screen 三个静态采样器 |
 | `RenderTargetSystem` | 渲染目标管理 |
-| `FramebufferCache` | key = 附件纹理指针 + revision + mip/layer + sampleCount;**命中但 `!isRHIReady()` 时重建**(时序自愈);`invalidateTexture` 在渲染目标重建时失效旧条目 |
+| `FramebufferCache` | key = 附件纹理指针 + revision + mip/layer + sampleCount;**命中但 `!isGpuReady()` 时重建**(时序自愈);`invalidateTexture` 在渲染目标重建时失效旧条目 |
 | `BindingLayoutCache` / `BindingSetCache` | layout 按 desc 缓存 + generation 号;set 缓存 key 含 layout generation 与全部 item 字段;未就绪条目重建 |
 | `InputLayoutCache` | 顶点布局按 attributes + VS 缓存 |
 | `MaterialSystem` | 见 §5 |

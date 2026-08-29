@@ -973,7 +973,6 @@ bool RuntimeEditorBackend::bootRuntime()
     spec.host_handle = reinterpret_cast<void*>(m_surface.nativeHandle);
     spec.render_settings.api = RenderBackendApiType::D3D12;
     spec.render_settings.pipeline = RenderingPipelineType::Deferred;
-    spec.render_settings.threading_mode = ThreadingMode::DualThread;
 
     m_app = std::make_unique<Application>(spec);
     DO_ASSERT(m_app, "Cakery backend: Application failed to create");

@@ -85,10 +85,10 @@ class GfxTexture {
     cutie::TextureHandle m_rhi{};      // cutie 引用计数句柄,实体化后非空
     GfxTextureDesc       m_desc{};     // 创建参数,Proxy 阶段即可读取
     String               m_debug_name{};
-    bool                 m_rhi_ready{false};
+    bool                 m_gpu_ready{false};
 
-    void initializeRHI(GfxDeviceHandle device) {
-        if (!m_rhi_ready) { m_rhi = device->createTexture(m_desc); m_rhi_ready = true; }
+    void initializeGpu(GfxDeviceHandle device) {
+        if (!m_gpu_ready) { m_rhi = device->createTexture(m_desc); m_gpu_ready = true; }
     }
 };
 using GfxTextureHandle = Ref<GfxTexture>;   // 引擎自研侵入式智能指针
@@ -102,7 +102,7 @@ using GfxTextureHandle = Ref<GfxTexture>;   // 引擎自研侵入式智能指针
 |---|---|
 | 两套引用计数 | `Ref<T>`(引擎 ControlBlock 内联存储)管理 Proxy;`RefCountPtr` 管理 cutie RHI 资源。Proxy 销毁不直接销毁 GPU 对象,由 device 的 GC(`runGarbageCollection`)延迟回收 |
 | desc 先行 | `getWidth()/getFormat()` 等读 `m_desc`,**不依赖 RHI 就绪**——上层逻辑(如 sprite 自然尺寸计算)可在实体化前运行 |
-| `isRHIReady()` | 全链路就绪判定:命令执行时守卫、缓存重试、渲染跳过都依赖它 |
+| `isGpuReady()` | 全链路就绪判定:命令执行时守卫、缓存重试、渲染跳过都依赖它 |
 
 ### 2.4 DrawCommandList:双模式命令录制
 
@@ -123,12 +123,12 @@ using GfxTextureHandle = Ref<GfxTexture>;   // 引擎自研侵入式智能指针
 
 **资源创建的特殊规则**(跨线程安全的关键,详见 threading.md):
 
-- `createTexture/createBuffer`:在 `GfxRenderScope` 内立即 `initializeRHI`(渲染线程同帧可用);scope 外录制 `CreateTextureCommand/CreateBufferCommand`(携带 device + proxy + 变长数据),回放时实体化并上传。
-- `createFramebuffer/createBindingSet`:scope 内且依赖资源全部 `isRHIReady()` 才立即实体化;否则返回未就绪 Proxy(由缓存重试或命令执行时守卫兜底)。
+- `createTexture/createBuffer`:在 `GfxRenderScope` 内立即 `initializeGpu`(渲染线程同帧可用);scope 外录制 `CreateTextureCommand/CreateBufferCommand`(携带 device + proxy + 变长数据),回放时实体化并上传。
+- `createFramebuffer/createBindingSet`:scope 内且依赖资源全部 `isGpuReady()` 才立即实体化;否则返回未就绪 Proxy(由缓存重试或命令执行时守卫兜底)。
 - `createGraphicsPipeline` 总是立即(shader 与格式签名不依赖未就绪资源)。
 - `createSampler/createBindingLayout/createInputLayout/createShader`:直接转发 device(无 Proxy 包装)。
 
-**执行时守卫**:所有延迟命令的 `execute()` 对引用的资源做 `isRHIReady()` 检查,未就绪则跳过并告警——防止跨线程录制顺序差异导致对空 RHI 句柄操作。
+**执行时守卫**:所有延迟命令的 `execute()` 对引用的资源做 `isGpuReady()` 检查,未就绪则跳过并告警——防止跨线程录制顺序差异导致对空 RHI 句柄操作。
 
 **`detachRecordedCommands()`**:在录制锁内用移动构造把整条命令流(含分配器)转出,供渲染线程回放,不阻塞生产者继续录制。
 
@@ -145,6 +145,6 @@ using GfxTextureHandle = Ref<GfxTexture>;   // 引擎自研侵入式智能指针
 给上层代码的硬性规则:
 
 1. **不要在非渲染线程直接调用 `IDevice`**——经 `DrawCommandList`,由 Proxy/延迟命令机制保证在渲染线程实体化。
-2. **`GfxTexture::getRHIHandle()` 在 `isRHIReady()` 为 false 时是空句柄**——绑定 desc 中引用资源前必须确认就绪(或依赖缓存与守卫)。
+2. **`GfxTexture::getRHIHandle()` 在 `isGpuReady()` 为 false 时是空句柄**——绑定 desc 中引用资源前必须确认就绪(或依赖缓存与守卫)。
 3. 帧内创建的瞬态资源由 RenderGraph transient pool 管理,**不要跨帧持有**。
-4. GL 后端下 GPU 提交线程 = 持有上下文的线程;`ThreadingMode::TripleThread` 会被强制降级为 DualThread(render_settings.cpp:17)。
+4. GL 后端下 GPU 提交线程 = 持有上下文的线程;默认双线程模式通过 acquire/release 在主线程与渲染线程间转移上下文(render_settings.h / opengl_backend)。

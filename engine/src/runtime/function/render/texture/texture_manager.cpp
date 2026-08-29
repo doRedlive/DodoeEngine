@@ -6,14 +6,15 @@
 
 #include "runtime/core/utils/common.h"
 #include "runtime/core/object/object_id.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/resource/file/file_id.h"
 #include "runtime/resource/file/file_system.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/parser/texture_blob.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/render/render_command.h"
 #include "runtime/function/render/render_settings.h"
-#include "runtime/core/context/system_context.h"
 
 namespace dodoe {
 
@@ -95,76 +96,57 @@ namespace dodoe {
         m_cubemap_cache.erase(id);
     }
 
-    Texture2D* TextureManager::createTexture(const String& path, const ObjectID& ref, DrawCommandList& cmd_list, FrameStagingAllocator* staging) {
-        DO_PROFILE_SCOPE_CATEGORY("TextureManager::createTexture", "startup");
-        const auto* asset_manager = ResourceManager::Self().getAssetManager();
-        const FsPath base = asset_manager ? asset_manager->getAssetDir() : FsPath{};
-        const auto absolute_path = FileSystem::RelativeToAbsolute(path, base);
-        TextureBlob data(absolute_path);
-        if (!data.isValid()) {
-            DO_ERROR("TextureManager: Create texture {0} failed!", path);
-            return nullptr;
-        }
+    void TextureManager::realizeTexture(ResourceCommand& cmd) {
+        DO_PROFILE_SCOPE_CATEGORY("TextureManager::realizeTexture", "render-command");
+        auto texture = std::move(cmd.texture_object);
+        if (!texture) { return; }
 
-        const auto texture_format = data.is_hdr ? GfxFormat::RGBA32_FLOAT : GfxFormat::RGBA8_UNORM;
-        const Size_t bytes_per_channel = data.is_hdr ? sizeof(Float) : sizeof(UByte);
-        const Size_t data_size = static_cast<Size_t>(data.width) * static_cast<Size_t>(data.height) * 4u * bytes_per_channel;
+        const UInt32 width = static_cast<UInt32>(texture->getWidth());
+        const UInt32 height = static_cast<UInt32>(texture->getHeight());
 
         auto texture_desc = GfxTextureDesc()
             .setDimension(GfxTextureDimension::Texture2D)
-            .setWidth(data.width)
-            .setHeight(data.height)
-            .setFormat(texture_format)
+            .setWidth(width)
+            .setHeight(height)
+            .setFormat(cmd.texture_is_hdr ? GfxFormat::RGBA32_FLOAT : GfxFormat::RGBA8_UNORM)
             .setMipLevels(1)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
-            .setDebugName(path.c_str());
+            .setDebugName(texture->getPath().c_str());
 
-        auto texture = create_scope<Texture2D>(ref);
-        Texture2D* texture_raw = texture.get();
-        texture->setDimensions(data.width, data.height);
-        texture->setPath(path);
+        auto handle = create_ref<GfxTexture>(texture_desc);
+        handle->initializeGpu(m_device);
 
-        auto handle = cmd_list.createTexture(texture_desc);
-        if (data.pixels && data_size > 0) {
-            const UInt32 bytes_per_pixel = data.is_hdr ? 16u : 4u;
-            const Size_t row_pitch = static_cast<Size_t>(data.width) * bytes_per_pixel;
-            if (staging) {
-                auto alloc = staging->allocate(data_size, 256);
-                if (alloc.mapped_data) {
-                    std::memcpy(alloc.mapped_data, data.pixels, data_size);
-                    cmd_list.writeTexture(handle, 0, 0, alloc.mapped_data, row_pitch);
-                } else {
-                    cmd_list.writeTexture(handle, 0, 0, data.pixels, row_pitch);
-                }
-            } else {
-                cmd_list.writeTexture(handle, 0, 0, data.pixels, row_pitch);
-            }
+        if (!cmd.resource_data.empty()) {
+            const UInt32 bpp = cmd.texture_is_hdr ? 16u : 4u;
+            const Size_t row_pitch = static_cast<Size_t>(width) * bpp;
+            GDrawCommandList.writeTexture(handle, 0, 0, cmd.resource_data.data(), row_pitch);
         }
         texture->setGpuHandle(handle);
 
-        if (RenderSettings::IsBindlessActive()) {
-            UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
-            m_slot_lut.push_back(texture_raw->getInstanceID());
-            texture->setSlot(slot);
+        const UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
+        m_slot_lut.push_back(texture->getInstanceID());
+        texture->setSlot(slot);
 
+        if (RenderSettings::IsBindlessActive()) {
             DescriptorIndex desc_idx = static_cast<DescriptorIndex>(m_descriptor_table->allocateSlot());
             DO_ASSERT(static_cast<UInt32>(desc_idx) == slot);
-
             auto item = GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle());
             item.slot = desc_idx;
             handle->getRHIHandle()->AddRef();
             m_device->writeDescriptorTable(m_descriptor_table->getDescriptorTable(), item);
-
             texture->setDescriptorIndex(desc_idx);
-        } else {
-            UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
-            m_slot_lut.push_back(texture_raw->getInstanceID());
-            texture->setSlot(slot);
         }
 
         const InstanceID id = texture->getInstanceID();
         m_texture2d_cache.emplace(id, std::move(texture));
-        return texture_raw;
+    }
+
+    UInt32 TextureManager::resolveAtlasIndex(const Texture2D* texture) const {
+        if (!texture) { return 0; }
+        if (texture->getDescriptorIndex() >= 0) {
+            return static_cast<UInt32>(texture->getDescriptorIndex());
+        }
+        return texture->getSlot();
     }
 
     void TextureManager::createFallbackTexture() {

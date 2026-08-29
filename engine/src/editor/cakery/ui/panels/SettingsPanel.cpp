@@ -32,9 +32,17 @@ InspectorFieldMetadata MakeEnumField(
     return metadata;
 }
 
+InspectorFieldMetadata MakeBoolField(const char* path)
+{
+    InspectorFieldMetadata metadata;
+    metadata.name = path;
+    metadata.kind = InspectorFieldKind::Bool;
+    return metadata;
+}
+
 std::vector<InspectorFieldMetadata> SettingsFieldMetadata()
 {
-    return {
+    std::vector<InspectorFieldMetadata> fields = {
         MakeEnumField("app_mode", {
             {"Game", 0}, {"Sandbox", 1}, {"Editor", 2},
         }),
@@ -45,13 +53,14 @@ std::vector<InspectorFieldMetadata> SettingsFieldMetadata()
             {"None", 0}, {"Forward", 1}, {"Forward Plus", 2},
             {"Deferred", 3}, {"Deferred Plus", 4}, {"Only 2D", 5},
         }),
-        MakeEnumField("render_settings.threading_mode", {
-            {"Triple Thread", 0}, {"Dual Thread", 1}, {"Single Thread", 2},
-        }),
         MakeEnumField("render_settings.present_mode", {
             {"VSync", 0}, {"Mailbox", 1}, {"Immediate", 2},
         }),
     };
+#ifdef DODOE_DEBUG_ENABLED
+    fields.push_back(MakeBoolField("render_settings.enable_single_thread"));
+#endif
+    return fields;
 }
 
 } // namespace

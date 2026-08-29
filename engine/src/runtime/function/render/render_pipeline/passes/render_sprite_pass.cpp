@@ -71,6 +71,7 @@ namespace dodoe {
                 }
 
                 if (const auto* sprite_extension = context.view.getExtension<SpriteViewExtension>()) {
+                    auto* texture_manager = context.scene ? context.scene->getTextureManager() : nullptr;
                     Size_t instance_count = 0;
                     for (const auto* sprite : sprite_extension->visible_sprites) {
                         if (!sprite) continue;
@@ -80,10 +81,20 @@ namespace dodoe {
                     for (const auto* sprite : sprite_extension->visible_sprites) {
                         if (!sprite) continue;
                         if (sprite->hasInstances()) {
-                            const auto& instances = sprite->getInstances();
-                            parameters.instances.insert(parameters.instances.end(), instances.begin(), instances.end());
+                            const auto& atlases = sprite->getBatchAtlases();
+                            for (const auto& base : sprite->getInstances()) {
+                                SpriteInstance instance = base;
+                                const Size_t atlas = instance.atlas_index;
+                                const auto* texture = atlas < atlases.size() ? atlases[atlas].get() : nullptr;
+                                instance.atlas_index = texture_manager
+                                    ? texture_manager->resolveAtlasIndex(texture)
+                                    : 0;
+                                parameters.instances.push_back(instance);
+                            }
                         } else {
-                            parameters.instances.push_back(sprite->toInstance());
+                            SpriteInstance instance = sprite->toInstance();
+                            instance.atlas_index = context.scene ? context.scene->resolveSpriteAtlasIndex(*sprite) : 0;
+                            parameters.instances.push_back(instance);
                         }
                     }
                     // 层级排序：sorting_key 升序（稳定），同 key 内按 atlas 聚合；

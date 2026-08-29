@@ -1,7 +1,6 @@
 // do@Redlive
 
 #include "render_thread.h"
-#include "draw_thread.h"
 #include "runtime/core/memory/memory.h"
 #include "runtime/core/memory/thread_allocator.h"
 
@@ -15,14 +14,10 @@ namespace dodoe {
         stop();
     }
 
-    void RenderThread::start(const ThreadingMode mode) {
+    void RenderThread::start(const Bool spawn_thread) {
         DO_PROFILE_SCOPE_CATEGORY("RenderThread::start", "startup");
         if (m_running) return;
-        m_mode = mode;
-        if (m_mode == ThreadingMode::SingleThread) {
-            m_running = false;
-            return;
-        }
+        if (!spawn_thread) return;
         m_running = true;
         m_thread = std::thread(&RenderThread::loop, this);
         DO_INFO("Started.");
@@ -40,17 +35,7 @@ namespace dodoe {
             m_thread.join();
         }
         m_frame_task = nullptr;
-        m_draw_thread = nullptr;
         DO_INFO("Stopped.");
-    }
-
-    void RenderThread::submit() {
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_has_pending_frame = true;
-            m_frame_completed = false;
-        }
-        m_cv.notify_all();
     }
 
     void RenderThread::submitAndWait() {

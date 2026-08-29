@@ -10,6 +10,7 @@ namespace dodoe {
 
     Bool GpuScene::initialize(const GpuSceneCreateInfo& info) {
         (void)info;
+        ensureQuadBuffers();
         return true;
     }
 
@@ -505,28 +506,16 @@ namespace dodoe {
                 .setByteSize(static_cast<UInt32>(sizeof(kQuadVertices)))
                 .setIsVertexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
-                .setDebugName("GpuScene QuadVB"));
+                .setDebugName("GpuScene QuadVB"),
+            kQuadVertices, sizeof(kQuadVertices));
 
         m_quad_ib = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(kQuadIndices)))
                 .setIsIndexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::IndexBuffer)
-                .setDebugName("GpuScene QuadIB"));
-
-        auto device = GDrawCommandList.getDevice();
-        auto cmd = device->createCommandList();
-        cmd->open();
-        cmd->setBufferState(m_quad_vb->getRHIHandle(), GfxResourceStates::CopyDest);
-        cmd->setBufferState(m_quad_ib->getRHIHandle(), GfxResourceStates::CopyDest);
-        cmd->commitBarriers();
-        cmd->writeBuffer(m_quad_vb->getRHIHandle(), kQuadVertices, sizeof(kQuadVertices), 0);
-        cmd->writeBuffer(m_quad_ib->getRHIHandle(), kQuadIndices, sizeof(kQuadIndices), 0);
-        cmd->setBufferState(m_quad_vb->getRHIHandle(), GfxResourceStates::VertexBuffer);
-        cmd->setBufferState(m_quad_ib->getRHIHandle(), GfxResourceStates::IndexBuffer);
-        cmd->commitBarriers();
-        cmd->close();
-        device->executeCommandList(cmd);
+                .setDebugName("GpuScene QuadIB"),
+            kQuadIndices, sizeof(kQuadIndices));
 
         m_quad_buffers_ready = true;
     }

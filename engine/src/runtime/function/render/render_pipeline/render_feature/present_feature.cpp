@@ -15,7 +15,7 @@ namespace dodoe {
                 .setIsConstantBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
                 .setDebugName("PresentViewportCB"));
-        m_present_cb->initializeRHI(gfx->getDevice());
+        m_present_cb->initializeGpu(gfx->getDevice());
     }
 
     void PresentFeature::shutdown() {

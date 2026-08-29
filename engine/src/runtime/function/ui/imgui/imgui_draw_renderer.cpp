@@ -159,7 +159,7 @@ namespace dodoe {
                 }
 
                 auto* texture = reinterpret_cast<GfxTexture*>(draw.texture_id);
-                if (!texture || !texture->isRHIReady()) {
+                if (!texture || !texture->isGpuReady()) {
                     continue;
                 }
                 const auto binding_set = texture == m_font_texture.get() && m_font_binding_set &&

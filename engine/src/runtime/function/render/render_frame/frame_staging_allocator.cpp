@@ -16,7 +16,7 @@ namespace dodoe {
         desc.enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer);
 
         m_ring_buffer = create_ref<GfxBuffer>(desc);
-        m_ring_buffer->initializeRHI(m_device);
+        m_ring_buffer->initializeGpu(m_device);
         m_mapped_base = static_cast<UInt8*>(m_device->mapBuffer(m_ring_buffer->getRHI(), GfxCpuAccessMode::Write));
 
         m_head = 0;

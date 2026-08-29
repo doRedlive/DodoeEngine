@@ -306,7 +306,7 @@ namespace dodoe {
                   const StaticArray<GfxBindingSetHandle, kShaderParameterSetCount>& binding_sets) const {
             for (UInt32 set = 0; set < kShaderParameterSetCount; ++set) {
                 const auto& binding_set = binding_sets[set];
-                if (binding_set && binding_set->isRHIReady()) {
+                if (binding_set && binding_set->isGpuReady()) {
                     graphics_state.addBindingSet(binding_set->getRHIHandle());
                 }
             }

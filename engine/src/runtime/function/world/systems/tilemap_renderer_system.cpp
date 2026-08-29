@@ -63,6 +63,7 @@ namespace dodoe {
         }
         submitted.clear();
 
+        DynamicArray<PPtr<Texture2D>> batch_atlases{};
         UnorderedMap<const Tileset*, UInt32> atlas_indices{};
         atlas_indices.reserve(tm.tilesets.size());
         for (auto& tileset_ref : tm.tilesets) {
@@ -74,13 +75,13 @@ namespace dodoe {
             }
             const auto* tileset = tileset_ref.get();
             if (!tileset) continue;
-            UInt32 atlas_index = 0;
+            if (atlas_indices.find(tileset) != atlas_indices.end()) continue;
+            UInt32 atlas_slot = 0;
             if (auto* tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(tileset->image_path))) {
-                atlas_index = tex->getDescriptorIndex() >= 0
-                    ? static_cast<UInt32>(tex->getDescriptorIndex())
-                    : tex->getSlot();
+                atlas_slot = static_cast<UInt32>(batch_atlases.size());
+                batch_atlases.push_back(PPtr<Texture2D>(tex));
             }
-            atlas_indices.emplace(tileset, atlas_index);
+            atlas_indices.emplace(tileset, atlas_slot);
         }
 
         Size_t layer_index = 0;
@@ -150,6 +151,7 @@ namespace dodoe {
                         chunk->setVisible(true);
                         chunk->setSortingKey(MakeLayerSortingKey(layer_index));
                         chunk->setBatchInstances(std::move(instances));
+                        chunk->setBatchAtlases(batch_atlases);
                         chunk->setBounds(
                             Vector3f((min_x + max_x) * 0.5f, (min_y + max_y) * 0.5f, 0.0f),
                             Vector3f((max_x - min_x) * 0.5f, (max_y - min_y) * 0.5f, 0.01f));

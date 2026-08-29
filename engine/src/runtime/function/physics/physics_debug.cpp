@@ -61,14 +61,14 @@ namespace dodoe {
                 .setIsVertexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
                 .setDebugName("Physics Debug Vertex Buffer");
-            lod.buffers.vertex_buffer = GDrawCommandList.createBuffer(vertex_buffer_desc, vertex_bytes.data(), kBoxVertexByteSize);
+            lod.buffers.vertex_buffer = RenderResourceQueue::CreateBuffer(vertex_buffer_desc, vertex_bytes.data(), kBoxVertexByteSize);
 
             auto index_buffer_desc = GfxBufferDesc()
                 .setByteSize(kBoxIndexByteSize)
                 .setIsIndexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::IndexBuffer)
                 .setDebugName("Physics Debug Index Buffer");
-            lod.buffers.index_buffer = GDrawCommandList.createBuffer(index_buffer_desc, indices, kBoxIndexByteSize);
+            lod.buffers.index_buffer = RenderResourceQueue::CreateBuffer(index_buffer_desc, indices, kBoxIndexByteSize);
 
             SubMesh section{};
             section.index_offset = 0;

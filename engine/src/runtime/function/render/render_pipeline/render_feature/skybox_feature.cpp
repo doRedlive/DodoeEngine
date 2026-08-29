@@ -18,7 +18,7 @@ namespace dodoe {
                 .setIsConstantBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
                 .setDebugName("SkyboxCB"));
-        m_skybox_cb->initializeRHI(gfx->getDevice());
+        m_skybox_cb->initializeGpu(gfx->getDevice());
     }
 
     void SkyboxFeature::shutdown() {

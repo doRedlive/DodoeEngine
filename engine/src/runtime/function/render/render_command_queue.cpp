@@ -8,137 +8,119 @@
 
 namespace dodoe {
 
-    void RenderCommandQueue::AddPrimitive(Scope<PrimitiveRenderObject> primitive) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->addPrimitive(std::move(primitive));
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::AddPrimitive;
-            cmd.primitive = std::move(primitive);
-            rs->enqueueRenderCommand(std::move(cmd));
+    namespace {
+
+        RenderSystem* requireRenderSystem() {
+            return GetRenderSystem();
         }
+
+        void enqueueResourceCommand(ResourceCommand&& cmd) {
+            auto* rs = requireRenderSystem();
+            if (!rs) { return; }
+            if (RenderSettings::IsSingleThread()) {
+                rs->realizeResourceCommand(cmd);
+            } else {
+                rs->enqueueResourceCommand(std::move(cmd));
+            }
+        }
+
+        void enqueueSceneCommand(SceneCommand&& cmd) {
+            auto* rs = requireRenderSystem();
+            if (!rs) { return; }
+            if (RenderSettings::IsSingleThread()) {
+                rs->applySceneCommand(*rs->getRenderScene(), cmd);
+            } else {
+                rs->enqueueSceneCommand(std::move(cmd));
+            }
+        }
+    }
+
+    GfxBufferHandle RenderResourceQueue::CreateBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
+        auto* rs = requireRenderSystem();
+        if (!rs) { return {}; }
+        auto buffer = create_ref<GfxBuffer>(desc);
+        ResourceCommand cmd;
+        cmd.type = ResourceCommandType::CreateBuffer;
+        cmd.buffer = buffer;
+        cmd.buffer_desc = desc;
+        if (data && data_size > 0) {
+            cmd.resource_data.assign(static_cast<const UInt8*>(data), static_cast<const UInt8*>(data) + data_size);
+        }
+        enqueueResourceCommand(std::move(cmd));
+        return buffer;
+    }
+
+    void RenderCommandQueue::AddPrimitive(Scope<PrimitiveRenderObject> primitive) {
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::AddPrimitive;
+        cmd.primitive = std::move(primitive);
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::RemovePrimitive(UUID id) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->removePrimitive(id);
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::RemovePrimitive;
-            cmd.id = id;
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::RemovePrimitive;
+        cmd.id = id;
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::UpdatePrimitiveTransform(UUID id, const Matrix4f& world_transform) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->updatePrimitiveTransform(id, world_transform);
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::UpdatePrimitiveTransform;
-            cmd.id = id;
-            cmd.transform = world_transform;
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::UpdatePrimitiveTransform;
+        cmd.id = id;
+        cmd.transform = world_transform;
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::AddLight(LightSceneInfo&& info) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->addLightSceneInfo(std::move(info));
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::AddLight;
-            cmd.light = std::move(info);
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::AddLight;
+        cmd.light = std::move(info);
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::RemoveLight(UUID id) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->removeLightSceneInfo(id);
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::RemoveLight;
-            cmd.id = id;
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::RemoveLight;
+        cmd.id = id;
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::UpdateLightTransform(UUID id, const Matrix4f& world_transform) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->updateLightSceneInfoTransform(id, world_transform);
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::UpdateLightTransform;
-            cmd.id = id;
-            cmd.transform = world_transform;
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::UpdateLightTransform;
+        cmd.id = id;
+        cmd.transform = world_transform;
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::AddSprite(Scope<SpriteRenderObject> sprite) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->addSprite(std::move(sprite));
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::AddSprite;
-            cmd.sprite = std::move(sprite);
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::AddSprite;
+        cmd.sprite = std::move(sprite);
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::RemoveSprite(UUID id) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->removeSprite(id);
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::RemoveSprite;
-            cmd.id = id;
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::RemoveSprite;
+        cmd.id = id;
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::UpdateSpriteTransform(UUID id, const Matrix4f& world_transform) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->updateSpriteTransform(id, world_transform);
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::UpdateSpriteTransform;
-            cmd.id = id;
-            cmd.transform = world_transform;
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::UpdateSpriteTransform;
+        cmd.id = id;
+        cmd.transform = world_transform;
+        enqueueSceneCommand(std::move(cmd));
     }
 
     void RenderCommandQueue::SubmitUI(DynamicArray<UISceneInfo> instances) {
-        auto* rs = GetRenderSystem();
-        if (!rs) { return; }
-        if (RenderSettings::GetThreadingMode() == ThreadingMode::SingleThread) {
-            rs->getRenderScene()->submitUIInstances(std::move(instances));
-        } else {
-            RenderCommand cmd;
-            cmd.type = RenderCommandType::SubmitUIBatch;
-            cmd.ui_scene_infos = std::move(instances);
-            rs->enqueueRenderCommand(std::move(cmd));
-        }
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::SubmitUIBatch;
+        cmd.ui_scene_infos = std::move(instances);
+        enqueueSceneCommand(std::move(cmd));
     }
 
 } // dodoe

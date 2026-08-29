@@ -13,7 +13,6 @@ namespace dodoe {
         ss << "\"delta_ms\":" << delta_time_ms << ",";
         ss << "\"game_ms\":" << game_thread_ms << ",";
         ss << "\"render_ms\":" << render_thread_ms << ",";
-        ss << "\"draw_ms\":" << draw_thread_ms << ",";
         ss << "\"gpu_ms\":" << gpu_frame_ms << ",";
         ss << "\"upload_bytes\":" << upload_bytes << ",";
         ss << "\"upload_stall\":" << upload_stall_count << ",";

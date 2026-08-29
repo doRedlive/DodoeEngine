@@ -4,6 +4,7 @@
 
 #include "dopch.h"
 
+#include "runtime/function/graphics/gfx.h"
 #include "render_scene/render_scene.h"
 #include "render_scene/light_scene_info.h"
 #include "render_view/render_view.h"
@@ -27,6 +28,13 @@ namespace dodoe {
         static void UpdateSpriteTransform(UUID id, const Matrix4f& world_transform);
 
         static void SubmitUI(DynamicArray<UISceneInfo> instances);
+    };
+
+    class DODOE_API RenderResourceQueue {
+    public:
+        RenderResourceQueue() = delete;
+
+        static GfxBufferHandle CreateBuffer(const GfxBufferDesc& desc, const void* data = nullptr, Size_t data_size = 0);
     };
 
 } // dodoe

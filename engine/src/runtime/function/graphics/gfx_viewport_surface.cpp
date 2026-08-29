@@ -763,7 +763,7 @@ namespace dodoe {
             GfxFramebufferDesc framebuffer_desc{};
             framebuffer_desc.addColorAttachment(tex);
             auto framebuffer = create_ref<GfxFramebuffer>(framebuffer_desc);
-            framebuffer->initializeRHI(m_device);
+            framebuffer->initializeGpu(m_device);
             m_framebuffers.push_back(framebuffer);
         }
     }
@@ -819,7 +819,7 @@ namespace dodoe {
             GfxFramebufferDesc framebuffer_desc{};
             framebuffer_desc.addColorAttachment(tex);
             auto framebuffer = create_ref<GfxFramebuffer>(framebuffer_desc);
-            framebuffer->initializeRHI(m_device);
+            framebuffer->initializeGpu(m_device);
             m_framebuffers.push_back(framebuffer);
         }
     }

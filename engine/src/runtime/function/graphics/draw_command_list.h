@@ -166,14 +166,14 @@ namespace dodoe {
             static WriteBufferCommand& Create(DrawCommandList& cl, const GfxBufferHandle& b, const void* d, Size_t s, UInt64 o) {
                 auto& c = VarCmd::Create(cl, s, d, b, o); return c;
             }
-            void execute(GfxCommandList& c) const { if (m_b->isRHIReady()) c.writeBuffer(m_b->getRHIHandle(), data(), m_sz, m_off); }
+            void execute(GfxCommandList& c) const { if (m_b->isGpuReady()) c.writeBuffer(m_b->getRHIHandle(), data(), m_sz, m_off); }
         };
 
         struct WriteTextureCommand final : VarCmd<WriteTextureCommand> {
             GfxTextureHandle m_t{}; UInt32 m_m{0}, m_s{0}; Size_t m_p{0}, m_ds{0};
             WriteTextureCommand(const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, Size_t pi, Size_t sz) : VarCmd(CalcSize(sz)), m_t(tx), m_m(mi), m_s(sl), m_p(pi), m_ds(sz) {}
             static WriteTextureCommand& Create(DrawCommandList& cl, const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, const void* d, Size_t pi, Size_t sz) { auto& c=VarCmd::Create(cl,sz,d,tx,mi,sl,pi); return c; }
-            void execute(GfxCommandList& c) const { if (m_t->isRHIReady()) c.writeTexture(m_t->getRHIHandle(), m_m, m_s, data(), m_p); }
+            void execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.writeTexture(m_t->getRHIHandle(), m_m, m_s, data(), m_p); }
         };
 
         struct PushConstantsCommand final : VarCmd<PushConstantsCommand> {

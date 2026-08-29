@@ -4,9 +4,10 @@
 
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/project/project.h"
+#include "runtime/core/utils/common.h"
 #include "runtime/resource/file/file_system.h"
-#include "runtime/function/graphics/draw_command_list.h"
-#include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/resource/parser/texture_blob.h"
+#include "runtime/function/render/render_command.h"
 #include "runtime/function/render/material/material.h"
 #include "runtime/function/render/mesh_draw/mesh.h"
 #include "runtime/function/animation/animation.h"
@@ -80,11 +81,34 @@ namespace dodoe {
         if (!asset) {
             return nullptr;
         }
-        auto* texture_manager = GetRenderSystem()->getSharedRenderService()->getTextureManager();
-        if (!texture_manager) {
+        const String& path = asset->getSourcePath();
+        const FsPath base = m_assetManager->getAssetDir();
+        const auto absolute_path = FileSystem::RelativeToAbsolute(path, base);
+        TextureBlob data(absolute_path);
+        if (!data.isValid()) {
+            DO_ERROR("ResourceManager: Load texture {0} failed!", path);
             return nullptr;
         }
-        return texture_manager->createTexture(asset->getSourcePath(), ObjectID{asset_id, local_id}, GDrawCommandList, nullptr);
+
+        const Size_t bytes_per_channel = data.is_hdr ? sizeof(Float) : sizeof(UByte);
+        const Size_t data_size = static_cast<Size_t>(data.width) * static_cast<Size_t>(data.height) * 4u * bytes_per_channel;
+
+        auto texture = create_scope<Texture2D>(ObjectID{asset_id, local_id});
+        Texture2D* texture_raw = texture.get();
+        texture->setDimensions(data.width, data.height);
+        texture->setPath(path);
+
+        ResourceCommand cmd;
+        cmd.type = ResourceCommandType::CreateTexture;
+        cmd.texture_object = std::move(texture);
+        cmd.texture_is_hdr = data.is_hdr;
+        if (data.pixels && data_size > 0) {
+            cmd.resource_data.assign(static_cast<const UInt8*>(data.pixels), static_cast<const UInt8*>(data.pixels) + data_size);
+        }
+        if (auto* rs = GetRenderSystem()) {
+            rs->enqueueResourceCommand(std::move(cmd));
+        }
+        return texture_raw;
     }
 
     Sprite* ResourceManager::LoadSprite(const UUID& asset_id, UInt32 local_id) {

@@ -11,7 +11,7 @@
 | Event | `event/*` | `EventSystem`、事件发布、订阅、轮询和处理 |
 | Layer | `layer/*` | `Layer`、`LayerStack`、attach/detach/update/render 回调 |
 | Async | `async/*` | `TaskScheduler`、`TaskGraph` |
-| Thread | `thread/*` | `RenderThread`、`DrawThread`、`ThreadPool`、`WaitGroup` |
+| Thread | `thread/*` | `RenderThread`、`ThreadPool`、`WaitGroup` |
 | Memory | `memory/*` | `Managed`、allocator、thread allocator、deferred deletion |
 | Meta | `meta/*` | reflection、serializer、`ComponentDB` |
 | Project | `project/*` | `Project`、`ProjectSerializer`、active project |

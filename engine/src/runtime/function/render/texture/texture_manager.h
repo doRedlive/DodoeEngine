@@ -8,11 +8,10 @@
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
-#include <mutex>
-
 namespace dodoe {
 
     class GfxContext;
+    struct ResourceCommand;
 
     struct TextureManagerCreateInfo {
         GfxContext* gfx{nullptr};
@@ -30,7 +29,6 @@ namespace dodoe {
         UnorderedMap<InstanceID, Scope<Texture2D>> m_texture2d_cache{};
         UnorderedMap<InstanceID, Scope<TextureCubemap>> m_cubemap_cache{};
         UnorderedMap<String, InstanceID> m_cubemap_by_path{};
-        std::mutex m_mutex{};
         DynamicArray<InstanceID> m_slot_lut{};
 
         Bool initialize(const TextureManagerCreateInfo& info);
@@ -39,7 +37,8 @@ namespace dodoe {
         void createFallbackTexture();
 
     public:
-        Texture2D* createTexture(const String& path, const ObjectID& ref, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
+        void realizeTexture(ResourceCommand& cmd);
+        [[nodiscard]] UInt32 resolveAtlasIndex(const Texture2D* texture) const;
         [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
         [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths);
         [[nodiscard]] Texture* findTexture(InstanceID id);
