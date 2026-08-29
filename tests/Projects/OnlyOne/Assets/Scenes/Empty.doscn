@@ -1,0 +1,25 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "Primary Camera",
+            "m_native_components": [
+                {
+                    "m_component": "{\"tag\":\"PrimaryCamera\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.5,2.5],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"background\":[1.0,1.0,1.0,1.0],\"far_plane\":100.0,\"fov\":60.0,\"near_plane\":0.01,\"type\":2}",
+                    "m_type_name": "CameraComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 1001
+        }
+    ],
+    "m_name": "Empty"
+}
