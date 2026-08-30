@@ -97,8 +97,6 @@ namespace dodoe {
                             parameters.instances.push_back(instance);
                         }
                     }
-                    // 层级排序：sorting_key 升序（稳定），同 key 内按 atlas 聚合；
-                    // 传统路径依赖 atlas 连续分段绘制，绑定无路径则仅受 sorting_key 影响
                     std::stable_sort(parameters.instances.begin(), parameters.instances.end(),
                         [](const SpriteInstance& a, const SpriteInstance& b) {
                             if (a.sorting_key != b.sorting_key) {
@@ -270,7 +268,6 @@ namespace dodoe {
                         return;
                     }
 
-                    // 实例数据已在 build 阶段按 (sorting_key, atlas_index) 排序并写入缓冲区
                     const auto& sorted_instances = parameters.instances;
 
                     GfxDepthStencilState depth_stencil;

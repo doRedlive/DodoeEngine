@@ -12,7 +12,7 @@ namespace dodoe {
 		void GLAPIENTRY OnGlDebugMessage(GLenum, GLenum, GLuint, GLenum severity,
 			GLsizei, const GLchar* message, const void* user_param) {
 			auto* backend = static_cast<const OpenGLBackend*>(user_param);
-			if (!backend || !message) return;
+			if (!backend || !message || severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
 
 			GfxNativeMessageSeverity mapped = GfxNativeMessageSeverity::Info;
 			switch (severity) {
@@ -22,8 +22,11 @@ namespace dodoe {
 			case GL_DEBUG_SEVERITY_MEDIUM:
 				mapped = GfxNativeMessageSeverity::Warning;
 				break;
-			default:
+			case GL_DEBUG_SEVERITY_LOW:
+				mapped = GfxNativeMessageSeverity::Info;
 				break;
+			default:
+				return;
 			}
 
 			backend->reportNativeMessage(mapped, message);
@@ -63,7 +66,7 @@ namespace dodoe {
             glEnable(GL_DEBUG_OUTPUT);
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
             glDebugMessageCallback(OnGlDebugMessage, this);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
             DO_INFO("OpenGLBackend: native debug message callback registered");
         } else if (enable_validation_) {
             DO_WARN("OpenGLBackend: validation requested but OpenGL 4.3 debug output is unavailable");

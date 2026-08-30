@@ -64,7 +64,7 @@ namespace dodoe {
             Serializer::read(json["emissive_texture"], m_emissive_texture);
         }
 
-        DO_DEBUG("Material: loaded '{}'", absolute_path);
+        // DO_DEBUG("Material: loaded '{}'", absolute_path);
         return true;
     }
 
@@ -88,7 +88,7 @@ namespace dodoe {
 
         file << json.dump(4);
         file.flush();
-        DO_DEBUG("Material: saved '{}'", absolute_path);
+        // DO_DEBUG("Material: saved '{}'", absolute_path);
         return true;
     }
 

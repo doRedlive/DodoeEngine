@@ -49,15 +49,13 @@ namespace dodoe {
 
         auto binding_set = GDrawCommandList.createBindingSet(desc, layout);
         m_cache[h] = binding_set;
-        DO_DEBUG("BindingSetCache: created binding set (cache size={})", m_cache.size());
+        // DO_DEBUG("BindingSetCache: created binding set (cache size={})", m_cache.size());
         return binding_set;
     }
 
     void BindingSetCache::invalidateForLayout(GfxBindingLayoutHandle layout) {
         DO_PROFILE_SCOPE_CATEGORY("BindingSetCache::invalidateForLayout", "resource-cache");
-        // 简单策略：layout 变化时清除全部缓存
-        // 更精细的实现可以只清除引用该 layout 的条目
-        DO_DEBUG("BindingSetCache: invalidating {} entries for layout change", m_cache.size());
+        // DO_DEBUG("BindingSetCache: invalidating {} entries for layout change", m_cache.size());
         m_cache.clear();
     }
 

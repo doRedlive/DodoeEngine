@@ -582,10 +582,10 @@ namespace dodoe {
 
     void DebugImGui::OnImGuiRender() {
 #ifndef DODOE_EDITOR_ENABLED
-        // RenderHierarchyPanel();
-        // RenderInspectorPanel();
-        // RenderMemoryPanel();
-        // RenderDebuggerPanel();
+        RenderHierarchyPanel();
+        RenderInspectorPanel();
+        RenderMemoryPanel();
+        RenderDebuggerPanel();
 #endif//DODOE_EDITOR_ENABLED;
     }
 

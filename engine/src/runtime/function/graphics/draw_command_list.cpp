@@ -205,7 +205,7 @@ namespace dodoe {
             const UInt32 pitch = desc.width * bpp;
             writeTexture(texture, 0, 0, data, pitch);
         }
-        DO_DEBUG("DrawCommandList: created texture ({}x{}, data={})", desc.width, desc.height, data_size > 0);
+        // DO_DEBUG("DrawCommandList: created texture ({}x{}, data={})", desc.width, desc.height, data_size > 0);
         return texture;
     }
     GfxBufferHandle DrawCommandList::createBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
@@ -219,7 +219,7 @@ namespace dodoe {
         if (data && data_size > 0) {
             writeBuffer(buffer, data, data_size, 0);
         }
-        DO_DEBUG("DrawCommandList: created buffer (size={}, data={})", desc.byteSize, data_size > 0);
+        // DO_DEBUG("DrawCommandList: created buffer (size={}, data={})", desc.byteSize, data_size > 0);
         return buffer;
     }
     GfxFramebufferHandle DrawCommandList::createFramebuffer(const GfxFramebufferDesc& desc) {
@@ -232,7 +232,7 @@ namespace dodoe {
         if (IsFramebufferAttachmentsReady(desc)) {
             fb->initializeGpu(m_device);
         } else {
-            DO_DEBUG("DrawCommandList: deferred framebuffer creation because attachments are not ready");
+            // DO_DEBUG("DrawCommandList: deferred framebuffer creation because attachments are not ready");
         }
         return fb;
     }
@@ -246,7 +246,7 @@ namespace dodoe {
         if (IsBindingSetResourcesReady(desc)) {
             bs->initializeGpu(m_device, desc, layout);
         } else {
-            DO_DEBUG("DrawCommandList: deferred binding set creation because resources are not ready");
+            // DO_DEBUG("DrawCommandList: deferred binding set creation because resources are not ready");
         }
         return bs;
     }

@@ -194,8 +194,8 @@ namespace dodoe {
             result.vertex_inputs.push_back(vi);
         }
 
-        DO_DEBUG("ShaderReflector: '{}' reflected (constant buffers={}, resources={}, samplers={}, push constants={})",
-            name, result.constant_buffers.size(), result.textures.size(), result.samplers.size(), result.uses_push_constants);
+        // DO_DEBUG("ShaderReflector: '{}' reflected (constant buffers={}, resources={}, samplers={}, push constants={})",
+        //     name, result.constant_buffers.size(), result.textures.size(), result.samplers.size(), result.uses_push_constants);
         return result;
     }
 

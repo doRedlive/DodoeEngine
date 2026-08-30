@@ -50,7 +50,7 @@ namespace dodoe {
 
         auto framebuffer = GDrawCommandList.createFramebuffer(desc);
         m_entries.push_back({key, framebuffer});
-        DO_DEBUG("FramebufferCache: created framebuffer (cache size={})", m_entries.size());
+        // DO_DEBUG("FramebufferCache: created framebuffer (cache size={})", m_entries.size());
         return framebuffer;
     }
 
@@ -75,7 +75,7 @@ namespace dodoe {
             }
         }
         m_entries.resize(write_index);
-        DO_DEBUG("FramebufferCache: invalidated {} framebuffer(s)", old_size - m_entries.size());
+        // DO_DEBUG("FramebufferCache: invalidated {} framebuffer(s)", old_size - m_entries.size());
     }
 
     void FramebufferCache::endFrame() {

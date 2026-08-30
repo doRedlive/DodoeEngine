@@ -54,8 +54,8 @@ namespace dodoe {
 
         auto layout = GDrawCommandList.createBindingLayout(desc);
         m_cache[hash] = {layout, m_next_generation++};
-        DO_DEBUG("BindingLayoutCache: created binding layout (bindings={}, generation={})",
-            desc.bindings.size(), m_cache[hash].generation);
+        // DO_DEBUG("BindingLayoutCache: created binding layout (bindings={}, generation={})",
+        //     desc.bindings.size(), m_cache[hash].generation);
         return layout;
     }
 

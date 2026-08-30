@@ -73,7 +73,7 @@ namespace dodoe {
         ++m_revision;
 
         createAllTextures(gfx);
-        DO_DEBUG("RenderTargetHandle: resized to {}x{} (revision={})", m_current_width, m_current_height, m_revision);
+        // DO_DEBUG("RenderTargetHandle: resized to {}x{} (revision={})", m_current_width, m_current_height, m_revision);
         return true;
     }
 
@@ -161,8 +161,8 @@ namespace dodoe {
             m_depth_texture = create_ref<GfxTexture>(depth_desc, m_desc.depth_debug_name);
             m_depth_texture->initializeGpu(device);
         }
-        DO_DEBUG("RenderTargetHandle: created {} color texture(s){}",
-            m_color_textures.size(), m_depth_texture ? " and depth texture" : "");
+        // DO_DEBUG("RenderTargetHandle: created {} color texture(s){}",
+        //     m_color_textures.size(), m_depth_texture ? " and depth texture" : "");
     }
 
     void RenderTargetHandle::destroyAllTextures() {

@@ -37,8 +37,8 @@ namespace dodoe {
         if (!pixels) {
             DO_ERROR("Load texture {} error!", path);
         } else {
-            DO_DEBUG("TextureBlob: loaded '{}' ({}x{}, channels={}, hdr={})",
-                path, width, height, channels, is_hdr);
+            // DO_DEBUG("TextureBlob: loaded '{}' ({}x{}, channels={}, hdr={})",
+            //     path, width, height, channels, is_hdr);
         }
     }
 

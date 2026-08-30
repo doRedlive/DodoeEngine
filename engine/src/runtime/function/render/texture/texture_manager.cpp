@@ -112,7 +112,7 @@ namespace dodoe {
         DO_PROFILE_SCOPE_CATEGORY("TextureManager::removeTexture", "texture");
         m_texture2d_cache.erase(id);
         m_cubemap_cache.erase(id);
-        DO_DEBUG("TextureManager: removed texture {}", static_cast<UInt64>(id));
+        // DO_DEBUG("TextureManager: removed texture {}", static_cast<UInt64>(id));
     }
 
     void TextureManager::realizeTexture(ResourceCommand& cmd) {
@@ -268,7 +268,7 @@ namespace dodoe {
             const InstanceID existing = path_it->second;
             const auto it = m_cubemap_cache.find(existing);
             if (it != m_cubemap_cache.end()) {
-                DO_DEBUG("TextureManager: reusing cubemap '{}'", face_paths[0]);
+                // DO_DEBUG("TextureManager: reusing cubemap '{}'", face_paths[0]);
                 return it->second.get();
             }
         }

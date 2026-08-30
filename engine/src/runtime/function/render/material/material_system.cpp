@@ -147,7 +147,7 @@ namespace dodoe {
         it->second.desc.param_overrides[param_name] = value;
         it->second.revision++;
         ++m_global_revision;
-        DO_DEBUG("MaterialSystem: updated parameter '{}' on instance '{}'", param_name, instance_name);
+        // DO_DEBUG("MaterialSystem: updated parameter '{}' on instance '{}'", param_name, instance_name);
     }
 
     Bool MaterialSystem::resolveTemplate(const String& name) {
@@ -403,7 +403,7 @@ namespace dodoe {
             if (desc_index < 0) {
                 DO_WARN("MaterialSystem: texture parameter '{}' has no descriptor", def.name);
             }
-            DO_DEBUG("MaterialSystem: resolved texture parameter '{}' to descriptor {}", def.name, desc_index);
+            // DO_DEBUG("MaterialSystem: resolved texture parameter '{}' to descriptor {}", def.name, desc_index);
             return true;
         }
 
@@ -417,7 +417,7 @@ namespace dodoe {
                 desc_index = fallback->getDescriptorIndex();
             }
             instance.texture_descriptor_indices.push_back(desc_index);
-            DO_DEBUG("MaterialSystem: using fallback texture for parameter '{}'", def.name);
+            // DO_DEBUG("MaterialSystem: using fallback texture for parameter '{}'", def.name);
         } else {
             DO_WARN("MaterialSystem: fallback texture unavailable for parameter '{}'", def.name);
         }
@@ -467,7 +467,7 @@ namespace dodoe {
 
         auto* existing = findInstance(name);
         if (existing) {
-            DO_DEBUG("MaterialSystem: reusing instance '{}'", name);
+            // DO_DEBUG("MaterialSystem: reusing instance '{}'", name);
             return existing;
         }
 
@@ -521,7 +521,7 @@ namespace dodoe {
             }
         }
         ++m_global_revision;
-        DO_DEBUG("MaterialSystem: invalidated materials for changed texture");
+        // DO_DEBUG("MaterialSystem: invalidated materials for changed texture");
     }
 
     void MaterialSystem::invalidateAll() {
