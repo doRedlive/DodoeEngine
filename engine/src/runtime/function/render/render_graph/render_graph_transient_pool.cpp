@@ -24,8 +24,8 @@ namespace dodoe {
         const auto texture = command_list.createTexture(desc);
         m_textures.push_back({texture, desc});
         m_texture_in_use.push_back(true);
-        DO_DEBUG("RenderGraphTransientPool: created texture slot {} ({}x{})",
-            m_textures.size() - 1, desc.width, desc.height);
+        // DO_DEBUG("RenderGraphTransientPool: created texture slot {} ({}x{})",
+        //     m_textures.size() - 1, desc.width, desc.height);
         return texture;
     }
 
@@ -54,8 +54,8 @@ namespace dodoe {
         const auto buffer = command_list.createBuffer(desc);
         m_buffers.push_back({buffer, desc});
         m_buffer_in_use.push_back(true);
-        DO_DEBUG("RenderGraphTransientPool: created buffer slot {} (size={})",
-            m_buffers.size() - 1, desc.byteSize);
+        // DO_DEBUG("RenderGraphTransientPool: created buffer slot {} (size={})",
+        //     m_buffers.size() - 1, desc.byteSize);
         return buffer;
     }
 

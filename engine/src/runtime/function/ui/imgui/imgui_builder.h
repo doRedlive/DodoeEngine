@@ -38,11 +38,17 @@ namespace dodoe {
         Vector2f display_size;
     };
 
+    struct ImGuiViewportPacket {
+        ImGuiViewport* viewport{nullptr};
+        ImGuiRenderPacket packet{};
+    };
+
     class ImGuiBuilder {
     public:
         static void SetupImGui(GLFWwindow* window);
         static void PrepareImGui();
         static void RenderImGui();
+        static void RenderPlatformWindows();
         static void CleanupImGui();
 
         static void InstallViewportRenderer(GfxContext& gfx, ImGuiDrawRenderer draw_renderer,
@@ -54,6 +60,7 @@ namespace dodoe {
         static ImGuiContext* GetContext() { return s_context; }
         static const ImGuiRenderPacket& GetRenderPacket() { return s_packet; }
         static Bool GetViewportsEnabled() { return s_viewports_enabled; }
+        static DynamicArray<ImGuiViewportPacket> TakeViewportPackets();
 
     private:
         static inline Bool s_glfwBackendInit = false;
@@ -61,6 +68,7 @@ namespace dodoe {
         static inline ImGuiRenderPacket s_packet{};
         static inline Bool s_viewports_enabled = false;
         static inline Scope<ImGuiDrawRenderer> s_viewport_renderer{nullptr};
+        static inline DynamicArray<ImGuiViewportPacket> s_viewport_packets{};
     };
 
 } // namespace dodoe

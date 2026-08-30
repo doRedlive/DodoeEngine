@@ -925,8 +925,6 @@ namespace dodoe {
         DO_ASSERT(SUCCEEDED(hr), "GfxViewportSurface::createD3D12Swapchain: QueryInterface IDXGISwapChain4 failed with HRESULT={:08X}", static_cast<UINT>(hr));
 
         getD3D12Backend()->getFactory()->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
-
-        { char buf[128]; snprintf(buf, sizeof(buf), "[D3D12] swapchain created: %ux%u, format=%u\n", m_dx_width, m_dx_height, static_cast<UINT>(m_dx_format)); OutputDebugStringA(buf); }
     }
 
     void GfxViewportSurface::createD3D12RTVHeap() {

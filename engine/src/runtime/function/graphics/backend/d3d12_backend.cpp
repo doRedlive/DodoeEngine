@@ -35,7 +35,6 @@ namespace dodoe {
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&m_debug_controller)))) {
             m_debug_controller->EnableDebugLayer();
             DO_INFO("D3D12Backend: debug layer enabled");
-            OutputDebugStringA("[D3D12] Debug layer enabled\n");
         } else {
             DO_WARN("D3D12Backend: debug layer requested but unavailable");
         }
@@ -45,7 +44,6 @@ namespace dodoe {
         DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::setupInfoQueue", "startup");
         if (FAILED(m_device.As(&m_info_queue))) {
             DO_WARN("D3D12Backend: device does not expose ID3D12InfoQueue1");
-            OutputDebugStringA("[D3D12] WARNING: device does not expose ID3D12InfoQueue1\n");
             return;
         }
 
@@ -62,35 +60,26 @@ namespace dodoe {
         m_info_queue->AddStorageFilterEntries(&filter);
 
         m_info_queue->RegisterMessageCallback(&OnD3D12Message, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &m_message_callback_cookie);
-
-        OutputDebugStringA("[D3D12] Info queue configured (break on errors, message callback registered)\n");
     }
 
     bool D3D12Backend::initialize(const GfxBackendCreateInfo& info) {
         DO_PROFILE_SCOPE_CATEGORY("D3D12Backend::initialize", "startup");
-        OutputDebugStringA("[D3D12] initialize begin\n");
 
         initCommonState(info);
 
-        OutputDebugStringA("[D3D12] creating factory...\n");
         createFactory();
-        OutputDebugStringA("[D3D12] factory ok\n");
 
         if (enable_validation_) {
             enableDebugLayer();
         }
 
-        OutputDebugStringA("[D3D12] creating device...\n");
         createDevice();
-        OutputDebugStringA("[D3D12] device ok\n");
 
         if (enable_validation_) {
             setupInfoQueue();
         }
 
-        OutputDebugStringA("[D3D12] creating command queues...\n");
         createCommandQueues();
-        OutputDebugStringA("[D3D12] queues ok, initialize done\n");
 
         DO_INFO("D3D12Backend: initialized");
         return true;
@@ -171,11 +160,6 @@ namespace dodoe {
         }
 
         DO_ASSERT(out_adapter != nullptr, "D3D12Backend::selectAdapter: no suitable D3D12 adapter found.");
-        if (out_adapter) {
-            DXGI_ADAPTER_DESC1 desc;
-            out_adapter->GetDesc1(&desc);
-            { char buf[256]; snprintf(buf, sizeof(buf), "[D3D12] selected adapter: %ls, VRAM=%zu MB\n", desc.Description, max_vram / (1024 * 1024)); OutputDebugStringA(buf); }
-        }
     }
 
     void D3D12Backend::createDevice() {

@@ -2,6 +2,8 @@
 
 #include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
 
+#include <chrono>
+
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
@@ -249,6 +251,13 @@ namespace dodoe {
                 draw_list.dynamic_instances,
                 draw_list.dynamic_shader_data
             );
+        }
+
+        static auto last_stats_sample = std::chrono::steady_clock::now();
+        const auto now = std::chrono::steady_clock::now();
+        if (now - last_stats_sample >= std::chrono::seconds(1)) {
+            last_stats_sample = now;
+            DO_WARN("MeshDrawCache[LIT]: commands={}", m_mesh_draw_cache.size());
         }
     }
 

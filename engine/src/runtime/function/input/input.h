@@ -8,7 +8,7 @@ namespace dodoe {
 
     class InputManager;
 
-    class Input {
+    class DODOE_API Input {
     public:
         static void initialize(InputManager* input_manager);
         static void shutdown();

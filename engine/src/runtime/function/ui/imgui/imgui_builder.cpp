@@ -71,16 +71,36 @@ namespace dodoe {
         }
         ImGui::Render();
         SerializeImGuiDrawData(ImGui::GetDrawData(), s_packet);
-        if (s_viewports_enabled) {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-            if (RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
-                auto* main_viewport = ImGui::GetMainViewport();
-                if (main_viewport && main_viewport->PlatformHandle) {
-                    glfwMakeContextCurrent(static_cast<GLFWwindow*>(main_viewport->PlatformHandle));
-                }
-            }
+    }
+
+    void ImGuiBuilder::RenderPlatformWindows() {
+        if (!ImGui::GetCurrentContext()) {
+            return;
         }
+        if (!s_viewports_enabled) {
+            return;
+        }
+        ImGui::UpdatePlatformWindows();
+        s_viewport_packets.clear();
+        auto* main_viewport = ImGui::GetMainViewport();
+        for (ImGuiViewport* viewport : ImGui::GetPlatformIO().Viewports) {
+            if (!viewport || viewport == main_viewport) {
+                continue;
+            }
+            if ((viewport->Flags & ImGuiViewportFlags_IsMinimized) || !viewport->DrawData) {
+                continue;
+            }
+            if (viewport->DrawData->CmdListsCount <= 0) {
+                continue;
+            }
+            auto& entry = s_viewport_packets.emplace_back();
+            entry.viewport = viewport;
+            SerializeImGuiDrawData(viewport->DrawData, entry.packet);
+        }
+    }
+
+    DynamicArray<ImGuiViewportPacket> ImGuiBuilder::TakeViewportPackets() {
+        return std::move(s_viewport_packets);
     }
 
     void ImGuiBuilder::InstallViewportRenderer(GfxContext& gfx, ImGuiDrawRenderer draw_renderer,

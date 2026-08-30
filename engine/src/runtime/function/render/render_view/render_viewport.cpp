@@ -168,9 +168,7 @@ namespace dodoe {
         const float normalized_x = (pixel_pos.x - m_viewport.pos.x) / m_viewport.size.x;
         const float normalized_y = (pixel_pos.y - m_viewport.pos.y) / m_viewport.size.y;
 
-        const float logical_y = RenderSettings::IsClipSpaceYDown()
-            ? normalized_y * m_logical_size.y
-            : (1.0f - normalized_y) * m_logical_size.y;
+        const float logical_y = normalized_y * m_logical_size.y;
         const Vector3f logical_pos{
             normalized_x * m_logical_size.x,
             logical_y,

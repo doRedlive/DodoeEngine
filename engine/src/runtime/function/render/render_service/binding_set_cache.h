@@ -31,6 +31,7 @@ namespace dodoe {
                                          UInt64 layout_generation);
         void invalidateForLayout(GfxBindingLayoutHandle layout);
         void clear();
+        [[nodiscard]] Size_t size() const { return m_cache.size(); }
 
     private:
         Bool initialize(const BindingSetCacheCreateInfo& info);

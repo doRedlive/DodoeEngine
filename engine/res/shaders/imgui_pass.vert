@@ -5,6 +5,7 @@
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform PushConstants {
     vec2 uInvDisplaySize;
     vec2 uDisplayPos;
+    float uNdcYFlip;
 } pc;
 
 layout(location = 0) in vec2 a_Position;
@@ -20,6 +21,6 @@ void main() {
     vec2 ndc;
     vec2 pos = a_Position - pc.uDisplayPos;
     ndc.x = pos.x * pc.uInvDisplaySize.x * 2.0 - 1.0;
-    ndc.y = 1.0 - pos.y * pc.uInvDisplaySize.y * 2.0;
+    ndc.y = (pos.y * pc.uInvDisplaySize.y * 2.0 - 1.0) * pc.uNdcYFlip;
     gl_Position = vec4(ndc, 0.0, 1.0);
 }

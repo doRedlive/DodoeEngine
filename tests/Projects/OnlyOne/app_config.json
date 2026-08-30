@@ -1,14 +1,14 @@
 {
     "name": "OnlyOne",
-    "app_mode": 2,
+    "app_mode": 1,
     "engine_mode": 1,
     "width": 1600,
     "height": 900,
     "window_resizeable": true,
     "render_settings": {
-        "api": 3,
+        "api": 1,
         "pipeline": 5,
-        "threading_mode": 1,
+        "enable_single_thread": false,
         "present_mode": 1
     }
 }

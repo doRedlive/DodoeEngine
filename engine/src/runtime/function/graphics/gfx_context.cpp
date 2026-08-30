@@ -2,6 +2,8 @@
 
 #include "gfx_context.h"
 
+#include "runtime/core/memory/memory.h"
+
 #include "../render/render_settings.h"
 
 #include "vulkan/vulkan.hpp"
@@ -89,7 +91,6 @@ namespace dodoe {
     void GfxContext::initializeVulkan(const GfxContextCreateInfo& create_info) {
         DO_PROFILE_SCOPE_CATEGORY("GfxContext::initializeVulkan", "startup");
         DO_PROFILE_MARK("GfxContext::initializeVulkan.createBackend", "startup");
-        OutputDebugStringA("[GFX] Vulkan initialize begin\n");
 
         m_backend = GfxBackend::Create({create_info.window_handle, create_info.host_handle, RenderBackendApiType::Vulkan, create_info.enable_validation, create_info.width, create_info.height});
         DO_ASSERT(m_backend != nullptr, "GfxContext::initializeVulkan: failed to create Vulkan backend.");
@@ -99,10 +100,10 @@ namespace dodoe {
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(vulkan_backend->getInstance()));
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Device(vulkan_backend->getDevice()));
 
-        auto* error_callback = new RhiMessageCallback();
+        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Misc);
 
         vulkan::DeviceDesc device_desc{};
-        device_desc.errorCB = error_callback;
+        device_desc.errorCB = m_message_callback;
         device_desc.instance = vulkan_backend->getInstance();
         device_desc.physicalDevice = vulkan_backend->getPhysicalDevice();
         device_desc.device = vulkan_backend->getDevice();
@@ -135,23 +136,20 @@ namespace dodoe {
             "GfxContext::initializeVulkan: failed to initialize main viewport surface.");
         m_cmd = m_device->createCommandList();
         DO_ASSERT(m_cmd != nullptr, "GfxContext::initializeVulkan: failed to create command list.");
-
-        OutputDebugStringA("[GFX] Vulkan initialize done\n");
     }
 
     void GfxContext::initializeOpenGL(const GfxContextCreateInfo& create_info) {
         DO_PROFILE_SCOPE_CATEGORY("GfxContext::initializeOpenGL", "startup");
         DO_PROFILE_MARK("GfxContext::initializeOpenGL.createBackend", "startup");
-        OutputDebugStringA("[GFX] OpenGL initialize begin\n");
 
         m_backend = GfxBackend::Create({create_info.window_handle, nullptr, RenderBackendApiType::OpenGL, create_info.enable_validation, create_info.width, create_info.height});
         DO_ASSERT(m_backend != nullptr, "GfxContext::initializeOpenGL: failed to create OpenGL backend.");
         auto* opengl_backend = static_cast<OpenGLBackend*>(m_backend.get());
 
-        auto* error_callback = new RhiMessageCallback();
+        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Misc);
 
         opengl::DeviceDesc device_desc{};
-        device_desc.messageCallback = error_callback;
+        device_desc.messageCallback = m_message_callback;
         device_desc.glLoaderFunc = reinterpret_cast<opengl::GLloaderFunc>(glfwGetProcAddress);
 
         m_device = opengl::createDevice(device_desc);
@@ -165,23 +163,20 @@ namespace dodoe {
             "GfxContext::initializeOpenGL: failed to initialize main viewport surface.");
         m_cmd = m_device->createCommandList();
         DO_ASSERT(m_cmd != nullptr, "GfxContext::initializeOpenGL: failed to create command list.");
-
-        OutputDebugStringA("[GFX] OpenGL initialize done\n");
     }
 
     void GfxContext::initializeD3D12(const GfxContextCreateInfo& create_info) {
         DO_PROFILE_SCOPE_CATEGORY("GfxContext::initializeD3D12", "startup");
         DO_PROFILE_MARK("GfxContext::initializeD3D12.createBackend", "startup");
-        OutputDebugStringA("[GFX] D3D12 initialize begin\n");
 
         m_backend = GfxBackend::Create({create_info.window_handle, create_info.host_handle, RenderBackendApiType::D3D12, create_info.enable_validation, create_info.width, create_info.height});
         DO_ASSERT(m_backend != nullptr, "GfxContext::initializeD3D12: failed to create D3D12 backend.");
         auto* d3d12_backend = static_cast<D3D12Backend*>(m_backend.get());
 
-        auto* error_callback = new RhiMessageCallback();
+        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Misc);
 
         d3d12::DeviceDesc device_desc{};
-        device_desc.errorCB = error_callback;
+        device_desc.errorCB = m_message_callback;
         device_desc.pDevice = d3d12_backend->getDevice();
         device_desc.pGraphicsCommandQueue = d3d12_backend->getGraphicsQueue();
         device_desc.pComputeCommandQueue = d3d12_backend->getComputeQueue();
@@ -204,8 +199,6 @@ namespace dodoe {
             "GfxContext::initializeD3D12: failed to initialize main viewport surface.");
         m_cmd = m_device->createCommandList();
         DO_ASSERT(m_cmd != nullptr, "GfxContext::initializeD3D12: failed to create command list.");
-
-        OutputDebugStringA("[GFX] D3D12 initialize done\n");
     }
 
     void GfxContext::shutdown() {
@@ -223,6 +216,8 @@ namespace dodoe {
             m_device->runGarbageCollection();
         }
         m_device = nullptr;
+        DODOE_DELETE(static_cast<RhiMessageCallback*>(m_message_callback), RhiMessageCallback, AllocCategory::Misc);
+        m_message_callback = nullptr;
 
         if (m_backend) {
             GfxBackend::Destroy(m_backend);

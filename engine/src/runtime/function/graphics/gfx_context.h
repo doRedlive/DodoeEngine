@@ -41,6 +41,7 @@ namespace dodoe {
     class GfxContext {
         GfxDeviceHandle m_device{};
         GfxCommandListHandle m_cmd{};
+        GfxMessageCallback* m_message_callback{nullptr};
 
         Scope<GfxViewportSurface> m_main_surface{nullptr};
         DynamicArray<Scope<GfxViewportSurface>> m_secondary_surfaces{};

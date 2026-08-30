@@ -20,6 +20,7 @@ namespace dodoe {
     class ImGuiDrawRenderer;
     class PipelineStateCache;
     class ShaderLibrary;
+    struct ImGuiRenderPacket;
 
     struct ImGuiViewportRenderer {
         struct ViewportRenderData {
@@ -32,6 +33,9 @@ namespace dodoe {
             UInt32 image_index{0};
             Bool suspended{false};
             Bool frame_presentable{false};
+            Bool resize_pending{false};
+            Int32 resize_width{0};
+            Int32 resize_height{0};
         };
 
         static void Install(GfxContext& gfx, ImGuiDrawRenderer& draw_renderer,
@@ -39,12 +43,12 @@ namespace dodoe {
                             const ShaderLibrary* shader_library);
         static void Uninstall();
 
+        static void RenderWindowOnRenderThread(ImGuiViewport* viewport, const ImGuiRenderPacket& packet);
+
     private:
         static void RendererCreateWindow(ImGuiViewport* viewport);
         static void RendererDestroyWindow(ImGuiViewport* viewport);
         static void RendererSetWindowSize(ImGuiViewport* viewport, ImVec2 size);
-        static void RendererRenderWindow(ImGuiViewport* viewport, void* render_arg);
-        static void RendererSwapBuffers(ImGuiViewport* viewport, void* render_arg);
 
         static GfxContext* s_gfx;
         static GfxDeviceHandle s_device;

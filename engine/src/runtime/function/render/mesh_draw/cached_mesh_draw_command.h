@@ -79,6 +79,8 @@ namespace dodoe {
         [[nodiscard]] Bool isEmpty() const {
             return m_commands.empty();
         }
+
+        [[nodiscard]] Size_t size() const { return m_commands.size(); }
     };
 
 } // dodoe

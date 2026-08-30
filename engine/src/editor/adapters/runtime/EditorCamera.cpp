@@ -236,11 +236,11 @@ dodoe::Matrix4f EditorCamera::projection() const
         float halfH = m_orthoZoom * 0.5f;
         float halfW = halfH * aspect;
         auto proj = glm::ortho(-halfW, halfW, -halfH, halfH, -100.0f, 100.0f);
-        return dodoe::RenderSettings::IsClipSpaceYDown() ? dodoe::Math::FlipClipSpaceY(proj) : proj;
+        return dodoe::Math::FlipClipSpaceY(proj);
     }
 
     auto proj = glm::perspective(glm::radians(m_fov), aspect, 0.1f, 10000.0f);
-    return dodoe::RenderSettings::IsClipSpaceYDown() ? dodoe::Math::FlipClipSpaceY(proj) : proj;
+    return dodoe::Math::FlipClipSpaceY(proj);
 }
 
 void EditorCamera::screenToRay(float sx, float sy,
@@ -250,9 +250,7 @@ void EditorCamera::screenToRay(float sx, float sy,
     dodoe::Matrix4f invVP = glm::inverse(vp);
 
     float ndcX = (2.0f * sx) / m_vpW - 1.0f;
-    float ndcY = dodoe::RenderSettings::IsClipSpaceYDown()
-        ? (2.0f * sy) / m_vpH - 1.0f
-        : 1.0f - (2.0f * sy) / m_vpH;
+    float ndcY = (2.0f * sy) / m_vpH - 1.0f;
 
     dodoe::Vector4f nearPoint = invVP * dodoe::Vector4f{ndcX, ndcY, 0.0f, 1.0f};
     dodoe::Vector4f farPoint  = invVP * dodoe::Vector4f{ndcX, ndcY, 1.0f, 1.0f};
@@ -274,9 +272,7 @@ dodoe::Vector2f EditorCamera::projectToScreen(const dodoe::Vector3f& worldPos) c
     const float ndcX = clip.x / clip.w;
     const float ndcY = clip.y / clip.w;
     const float sx = (ndcX + 1.0f) * 0.5f * m_vpW;
-    const float sy = dodoe::RenderSettings::IsClipSpaceYDown()
-        ? (ndcY + 1.0f) * 0.5f * m_vpH
-        : (1.0f - ndcY) * 0.5f * m_vpH;
+    const float sy = (ndcY + 1.0f) * 0.5f * m_vpH;
     return {sx, sy};
 }
 

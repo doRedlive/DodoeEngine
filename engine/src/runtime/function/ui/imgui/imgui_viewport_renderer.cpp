@@ -43,8 +43,6 @@ namespace dodoe {
         platform_io.Renderer_CreateWindow = &RendererCreateWindow;
         platform_io.Renderer_DestroyWindow = &RendererDestroyWindow;
         platform_io.Renderer_SetWindowSize = &RendererSetWindowSize;
-        platform_io.Renderer_RenderWindow = &RendererRenderWindow;
-        platform_io.Renderer_SwapBuffers = &RendererSwapBuffers;
         ImGui::GetIO().BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
     }
 
@@ -55,8 +53,6 @@ namespace dodoe {
             platform_io.Renderer_CreateWindow = nullptr;
             platform_io.Renderer_DestroyWindow = nullptr;
             platform_io.Renderer_SetWindowSize = nullptr;
-            platform_io.Renderer_RenderWindow = nullptr;
-            platform_io.Renderer_SwapBuffers = nullptr;
             for (ImGuiViewport* viewport : platform_io.Viewports) {
                 if (viewport && viewport->RendererUserData) {
                     RendererDestroyWindow(viewport);
@@ -153,39 +149,35 @@ namespace dodoe {
         const int height = static_cast<int>(size.y);
         if (width <= 0 || height <= 0) {
             data->suspended = true;
+            data->resize_pending = false;
             return;
         }
 
-        const auto extent = data->surface->extent();
-        if (width == extent.x && height == extent.y) {
-            data->suspended = false;
-            return;
-        }
-
-        s_gfx->waitForIdle();
+        data->resize_width = width;
+        data->resize_height = height;
+        data->resize_pending = true;
         data->suspended = false;
-        if (!data->surface->resize(static_cast<UInt32>(width), static_cast<UInt32>(height))) {
-            data->suspended = true;
-        }
     }
 
-    void ImGuiViewportRenderer::RendererRenderWindow(ImGuiViewport* viewport, void*) {
-        if (!viewport || !s_draw_renderer || !s_device) {
+    void ImGuiViewportRenderer::RenderWindowOnRenderThread(ImGuiViewport* viewport, const ImGuiRenderPacket& packet) {
+        if (!viewport || !s_draw_renderer || !s_device || !s_gfx) {
             return;
         }
         auto* data = static_cast<ViewportRenderData*>(viewport->RendererUserData);
-        if (!data || !data->surface || !viewport->DrawData) {
-            return;
-        }
-        if (viewport->DrawData->CmdListsCount <= 0) {
+        if (!data || !data->surface || data->suspended || packet.lists.empty()) {
             return;
         }
 
-        data->frame_presentable = false;
-        ImGuiRenderPacket packet;
-        ImGuiBuilder::SerializeImGuiDrawData(viewport->DrawData, packet);
-        if (packet.lists.empty()) {
-            return;
+        if (data->resize_pending) {
+            data->resize_pending = false;
+            const auto extent = data->surface->extent();
+            if (data->resize_width != extent.x || data->resize_height != extent.y) {
+                s_gfx->waitForIdle();
+                if (!data->surface->resize(static_cast<UInt32>(data->resize_width), static_cast<UInt32>(data->resize_height))) {
+                    data->suspended = true;
+                    return;
+                }
+            }
         }
 
         if (!data->surface->acquire(data->image_index)) {
@@ -214,21 +206,11 @@ namespace dodoe {
             s_device->executeCommandList(cmd);
             data->tracker->runGarbageCollection();
         }
-    }
 
-    void ImGuiViewportRenderer::RendererSwapBuffers(ImGuiViewport* viewport, void*) {
-        if (!viewport) {
-            return;
-        }
-        auto* data = static_cast<ViewportRenderData*>(viewport->RendererUserData);
-        if (!data || data->suspended || !data->surface || !data->frame_presentable) {
-            return;
+        if (!data->surface->isOpenGL()) {
+            data->surface->present(data->image_index);
         }
         data->frame_presentable = false;
-        if (data->surface->isOpenGL()) {
-            return;
-        }
-        data->surface->present(data->image_index);
     }
 
 } // namespace dodoe

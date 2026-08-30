@@ -7,6 +7,7 @@
 #include "imgui_builder.h"
 
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/global_samplers.h"
 
@@ -138,9 +139,11 @@ namespace dodoe {
         struct ImGuiPushConstants {
             Float inv_display_size[2];
             Float display_origin[2];
+            Float ndc_y_flip;
         } push_data{
             {1.0f / (right - left), 1.0f / (bottom - top)},
-            {left, top}};
+            {left, top},
+            RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL ? 1.0f : -1.0f};
 
         command_list.setBufferState(constant_buffer, GfxResourceStates::CopyDest);
         command_list.commitBarriers();

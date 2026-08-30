@@ -16,3 +16,6 @@
 [submodule "engine/external/tracy"]
 	path = engine/external/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "tests/unit/googletest"]
+	path = tests/unit/googletest
+	url = https://github.com/google/googletest.git

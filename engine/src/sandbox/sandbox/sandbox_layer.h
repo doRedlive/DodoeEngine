@@ -1,7 +1,10 @@
 // do@Redlive
 
+#pragma once
+
 #include "dopch.h"
 #include "runtime/core/layer/layer.h"
+#include "sandbox_camera.h"
 
 namespace sandbox {
 
@@ -14,7 +17,10 @@ namespace sandbox {
         void detach() override;
         void updateTick(float delta_time) override;
         void renderTick() override;
+
+    private:
+        std::unique_ptr<SandboxCamera> m_camera;
+        SandboxCameraProvider m_provider;
     };
 
 } // sandbox
-

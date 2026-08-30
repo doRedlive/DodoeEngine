@@ -29,6 +29,7 @@ namespace dodoe {
             const GfxFramebufferInfo& framebuffer_info,
             DrawCommandList& command_list) const;
         void clear();
+        [[nodiscard]] Size_t size() const { return m_graphics_pipelines.size(); }
 
     private:
         Bool initialize(const PipelineStateCacheCreateInfo& info) { m_device = info.device; return m_device != nullptr; }

@@ -12,16 +12,51 @@
 #include "runtime/resource/resource_manager.h"
 #include "runtime/service/world/scene_importer.h"
 #include "runtime/function/render/pixel2d/sprite_manager.h"
+#include "runtime/function/input/input_types.h"
+#include "runtime/function/input/key_code.h"
+#include "runtime/function/input/mouse_code.h"
 #include "runtime/core/utils/common.h"
 
 
 namespace sandbox {
 
     SandboxLayer::SandboxLayer(const std::string& name)
-        : dodoe::Layer(name.c_str()) {
+        : dodoe::Layer(name.c_str()),
+          m_camera(std::make_unique<SandboxCamera>()),
+          m_provider(m_camera.get()) {
     }
 
     void SandboxLayer::attach() {
+        auto* input = dodoe::GetInputManager();
+        if (!input) {
+            return;
+        }
+
+        input->registerActionMap("Sandbox");
+
+        input->registerAction("Sandbox", "Move", dodoe::InputActionValueType::Axis2D);
+        input->bindKey2D("Sandbox", "Move", dodoe::KeyCode::W, {0.0f, 1.0f});
+        input->bindKey2D("Sandbox", "Move", dodoe::KeyCode::S, {0.0f, -1.0f});
+        input->bindKey2D("Sandbox", "Move", dodoe::KeyCode::A, {-1.0f, 0.0f});
+        input->bindKey2D("Sandbox", "Move", dodoe::KeyCode::D, {1.0f, 0.0f});
+
+        input->registerAction("Sandbox", "Look", dodoe::InputActionValueType::Button);
+        input->bindMouseButton("Sandbox", "Look", dodoe::MouseCode::ButtonRight);
+
+        input->registerAction("Sandbox", "Up", dodoe::InputActionValueType::Button);
+        input->bindKey("Sandbox", "Up", dodoe::KeyCode::E);
+
+        input->registerAction("Sandbox", "Down", dodoe::InputActionValueType::Button);
+        input->bindKey("Sandbox", "Down", dodoe::KeyCode::Q);
+
+        if (auto* render_system = dodoe::GetRenderSystem()) {
+            if (auto* view_manager = render_system->getViewManager()) {
+                for (auto& target : view_manager->getTargets()) {
+                    target->setCamera(&m_provider);
+                }
+            }
+        }
+
         // auto* world = dodoe::GetWorld();
         // if (!world) {
         //     return;
@@ -65,11 +100,26 @@ namespace sandbox {
     }
     
     void SandboxLayer::detach() {
-        
+        if (auto* render_system = dodoe::GetRenderSystem()) {
+            if (auto* view_manager = render_system->getViewManager()) {
+                for (auto& target : view_manager->getTargets()) {
+                    if (target->getCamera() == &m_provider) {
+                        target->setCamera(nullptr);
+                    }
+                }
+            }
+        }
     }
-    
-    void SandboxLayer::updateTick(const float delta_time) {
 
+    void SandboxLayer::updateTick(const float delta_time) {
+        if (auto* window_manager = dodoe::GetWindowManager()) {
+            if (auto* window = window_manager->getWindow()) {
+                m_camera->setViewportSize(
+                    static_cast<float>(window->getWidth()),
+                    static_cast<float>(window->getHeight()));
+            }
+        }
+        m_camera->update(delta_time);
     }
 
     void SandboxLayer::renderTick() {

@@ -17,13 +17,13 @@ namespace dodoe {
         Bool host_mode{false};
     };
 
-    class InputManager : public Managed<InputManager, InputManagerInitInfo> {
+    class DODOE_API InputManager : public Managed<InputManager, InputManagerInitInfo> {
         friend class Input;
         friend class Managed<InputManager, InputManagerInitInfo>;
 
     public:
-        void DODOE_API beginFrame();
-        void DODOE_API update(Float delta_time);
+        void beginFrame();
+        void update(Float delta_time);
 
         Bool registerActionMap(const String& map_name, Int priority = 0);
         Bool unregisterActionMap(StringView map_name);
