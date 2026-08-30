@@ -250,7 +250,7 @@ namespace dodoe {
                 }
                 return layouts;
             }();
-            static const Bool s_registered = [&s_layouts]() {
+            static const Bool s_registered = []() {
                 RegisterStaticBindingLayoutCache(&s_layouts);
                 return true;
             }();

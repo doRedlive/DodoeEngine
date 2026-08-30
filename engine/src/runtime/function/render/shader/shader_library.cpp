@@ -4,26 +4,31 @@
 #include "runtime/function/graphics/draw_command_list.h"
 #include "shader_parameter.h"
 
+#include <regex>
+
 namespace dodoe {
 
     static DynamicArray<Char> InlineShaderIncludes(const DynamicArray<Char>& source) {
         const String marker = "#include \"shader_parameter_sets.glsl\"";
-        const String text(source.begin(), source.end());
+        String text(source.begin(), source.end());
         const Size_t marker_pos = text.find(marker);
         if (marker_pos == String::npos) {
             return source;
         }
 
-        String result;
-        result.reserve(text.size() + 2048);
-        result.append(text, 0, marker_pos);
-
         const auto include_path = FileSystem::GetEngineResPath() / "shaders" / "shader_parameter_sets.glsl";
         std::ifstream include_file(include_path);
         if (include_file.is_open()) {
-            result.append((std::istreambuf_iterator<char>(include_file)), std::istreambuf_iterator<char>());
+            const String defines((std::istreambuf_iterator<char>(include_file)), std::istreambuf_iterator<char>());
+            const std::regex define_re(R"(#define\s+(DOE_\w+)\s+(\d+)\b)");
+            for (std::sregex_iterator it(defines.begin(), defines.end(), define_re), end; it != end; ++it) {
+                text = std::regex_replace(text, std::regex("\\b" + it->str(1) + "\\b"), it->str(2));
+            }
         }
 
+        String result;
+        result.reserve(text.size() + 2048);
+        result.append(text, 0, marker_pos);
         result.append(text, marker_pos + marker.size(), String::npos);
         return DynamicArray<Char>(result.begin(), result.end());
     }
