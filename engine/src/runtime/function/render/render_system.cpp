@@ -269,38 +269,6 @@ namespace dodoe {
         }
         m_gfx->clearGarbage();
 
-        // Low-frequency lifetime snapshot for diagnosing CPU-side growth.
-        static auto last_stats_sample = std::chrono::steady_clock::now();
-        const auto now = std::chrono::steady_clock::now();
-        if (now - last_stats_sample >= std::chrono::seconds(1)) {
-            last_stats_sample = now;
-            const auto* shared = m_shared_render_service.get();
-            const auto persistent = [](const AllocTag tag) {
-                return Memory::GetStats(AllocTier::Persistent, tag)
-                    .current_bytes.load(std::memory_order_relaxed);
-            };
-            const auto frame = [](const AllocTag tag) {
-                return Memory::GetStats(AllocTier::Frame, tag)
-                    .current_bytes.load(std::memory_order_relaxed);
-            };
-            DO_WARN(
-                "RenderStats: frame_slots_in_flight={}, frame_commands={}, deferred_deletes={}, binding_sets={}, pipelines={}",
-                m_frame_scheduler ? m_frame_scheduler->getInFlightCount() : 0,
-                frame_ctx.command_list ? frame_ctx.command_list->commandCount() : 0,
-                m_frame_scheduler && m_frame_scheduler->getDeletionQueue()
-                    ? m_frame_scheduler->getDeletionQueue()->getPendingCount() : 0,
-                shared && shared->getBindingSetCache() ? shared->getBindingSetCache()->size() : 0,
-                shared && shared->getPipelineStateCache() ? shared->getPipelineStateCache()->size() : 0);
-            DO_WARN(
-                "MemoryStats: persistent(object={}, texture={}, resource={}, misc={}), frame(render_cmd={}, misc={})",
-                persistent(AllocTag::Object),
-                persistent(AllocTag::Texture),
-                persistent(AllocTag::Resource),
-                persistent(AllocTag::Misc),
-                frame(AllocTag::RenderCmd),
-                frame(AllocTag::Misc));
-        }
-
 #ifdef DODOE_DEBUG_ENABLED
         for (auto& entry : ImGuiBuilder::TakeViewportPackets()) {
             ImGuiViewportRenderer::RenderWindowOnRenderThread(entry.viewport, entry.packet);

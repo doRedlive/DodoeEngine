@@ -96,25 +96,25 @@ namespace dodoe {
                 return loaded;
             }
             if constexpr (std::is_same_v<T, Texture2D>) {
-                return LoadTexture2D(asset_id, local_id);
+                return loadTexture2D(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Sprite>) {
-                return LoadSprite(asset_id, local_id);
+                return loadSprite(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Material>) {
-                return LoadMaterial(asset_id, local_id);
+                return loadMaterial(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Anim2DClip>) {
-                return LoadAnim2DClip(asset_id, local_id);
+                return loadAnim2DClip(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Skeleton>) {
-                return LoadSkeleton(asset_id, local_id);
+                return loadSkeleton(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, AnimClip>) {
-                return LoadAnimClip(asset_id, local_id);
+                return loadAnimClip(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, AnimatorController>) {
-                return LoadAnimatorController(asset_id, local_id);
+                return loadAnimatorController(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Tileset>) {
-                return LoadTileset(asset_id, local_id);
+                return loadTileset(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Mesh>) {
-                return LoadMesh(asset_id, local_id);
+                return loadMesh(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, AudioClip>) {
-                return LoadAudioClip(asset_id, local_id);
+                return loadAudioClip(asset_id, local_id);
             } else {
                 static_assert(detail::always_false<T>::value, "ResourceManager::loadObject: unsupported type");
             }
@@ -145,16 +145,16 @@ namespace dodoe {
         ResourceManager() = default;
         Scope<AssetManager> m_assetManager{nullptr};
 
-        DODOE_API Texture2D* LoadTexture2D(const UUID& asset_id, UInt32 local_id);
-        Sprite* LoadSprite(const UUID& asset_id, UInt32 local_id);
-        Material* LoadMaterial(const UUID& asset_id, UInt32 local_id);
-        Anim2DClip* LoadAnim2DClip(const UUID& asset_id, UInt32 local_id);
-        Skeleton* LoadSkeleton(const UUID& asset_id, UInt32 local_id);
-        AnimClip* LoadAnimClip(const UUID& asset_id, UInt32 local_id);
-        AnimatorController* LoadAnimatorController(const UUID& asset_id, UInt32 local_id);
-        DODOE_API Tileset* LoadTileset(const UUID& asset_id, UInt32 local_id);
-        Mesh* LoadMesh(const UUID& asset_id, UInt32 local_id);
-        AudioClip* LoadAudioClip(const UUID& asset_id, UInt32 local_id);
+        DODOE_API Texture2D* loadTexture2D(const UUID& asset_id, UInt32 local_id);
+        Sprite* loadSprite(const UUID& asset_id, UInt32 local_id);
+        Material* loadMaterial(const UUID& asset_id, UInt32 local_id);
+        Anim2DClip* loadAnim2DClip(const UUID& asset_id, UInt32 local_id);
+        Skeleton* loadSkeleton(const UUID& asset_id, UInt32 local_id);
+        AnimClip* loadAnimClip(const UUID& asset_id, UInt32 local_id);
+        AnimatorController* loadAnimatorController(const UUID& asset_id, UInt32 local_id);
+        DODOE_API Tileset* loadTileset(const UUID& asset_id, UInt32 local_id);
+        Mesh* loadMesh(const UUID& asset_id, UInt32 local_id);
+        AudioClip* loadAudioClip(const UUID& asset_id, UInt32 local_id);
     };
 
     template<typename T>

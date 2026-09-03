@@ -76,7 +76,7 @@ namespace dodoe {
         return handle;
     }
 
-    Texture2D* ResourceManager::LoadTexture2D(const UUID& asset_id, UInt32 local_id) {
+    Texture2D* ResourceManager::loadTexture2D(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
             return nullptr;
@@ -111,7 +111,7 @@ namespace dodoe {
         return texture_raw;
     }
 
-    Sprite* ResourceManager::LoadSprite(const UUID& asset_id, UInt32 local_id) {
+    Sprite* ResourceManager::loadSprite(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
             return nullptr;
@@ -119,7 +119,7 @@ namespace dodoe {
         return SpriteManager::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
     }
 
-    Material* ResourceManager::LoadMaterial(const UUID& asset_id, UInt32 local_id) {
+    Material* ResourceManager::loadMaterial(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
             return nullptr;
@@ -127,7 +127,7 @@ namespace dodoe {
         return Material::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
     }
 
-    Anim2DClip* ResourceManager::LoadAnim2DClip(const UUID& asset_id, UInt32 local_id) {
+    Anim2DClip* ResourceManager::loadAnim2DClip(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
             return nullptr;
@@ -135,15 +135,15 @@ namespace dodoe {
         return Anim2DClip::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
     }
 
-    Skeleton* ResourceManager::LoadSkeleton(const UUID& asset_id, UInt32 local_id) {
+    Skeleton* ResourceManager::loadSkeleton(const UUID& asset_id, UInt32 local_id) {
         return Skeleton::Create(ObjectID{asset_id, local_id});
     }
 
-    AnimClip* ResourceManager::LoadAnimClip(const UUID& asset_id, UInt32 local_id) {
+    AnimClip* ResourceManager::loadAnimClip(const UUID& asset_id, UInt32 local_id) {
         return AnimClip::Create(ObjectID{asset_id, local_id});
     }
 
-    AnimatorController* ResourceManager::LoadAnimatorController(const UUID& asset_id, UInt32 local_id) {
+    AnimatorController* ResourceManager::loadAnimatorController(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
             return nullptr;
@@ -151,7 +151,7 @@ namespace dodoe {
         return AnimatorController::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
     }
 
-    Tileset* ResourceManager::LoadTileset(const UUID& asset_id, UInt32 local_id) {
+    Tileset* ResourceManager::loadTileset(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
             return nullptr;
@@ -159,7 +159,7 @@ namespace dodoe {
         return Tileset::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
     }
 
-    Mesh* ResourceManager::LoadMesh(const UUID& asset_id, UInt32 local_id) {
+    Mesh* ResourceManager::loadMesh(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
             return nullptr;
@@ -167,7 +167,7 @@ namespace dodoe {
         return Mesh::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
     }
 
-    AudioClip* ResourceManager::LoadAudioClip(const UUID& asset_id, UInt32 local_id) {
+    AudioClip* ResourceManager::loadAudioClip(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset || asset->getType() != AssetType::Audio) {
             return nullptr;
