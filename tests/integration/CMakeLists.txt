@@ -1,0 +1,1 @@
+dodoe_add_test(IntegrationTestAppConfig LABEL integration TIMEOUT 120 SOURCES test_app_config.cpp)

@@ -1,0 +1,7 @@
+{
+    "name": "SmokeTest",
+    "app_mode": 2,
+    "width": 640,
+    "height": 480,
+    "window_resizeable": false
+}

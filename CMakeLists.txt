@@ -21,8 +21,16 @@ set(BINARY_ROOT_DIR "${CMAKE_INSTALL_PREFIX}")
 
 add_compile_definitions(DODOE_ROOT="${DODOE_ROOT_DIR}")
 
+option(DODOE_SHIPPING "Shipping build" OFF)
+add_compile_definitions($<$<BOOL:${DODOE_SHIPPING}>:DODOE_SHIPPING=1>)
+
 if(MSVC)
     add_compile_definitions(_ENABLE_EXTENDED_ALIGNED_STORAGE)
 endif()
 
 add_subdirectory(engine)
+
+option(DODOE_BUILD_TESTS "Build Dodoe tests" ON)
+if(DODOE_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

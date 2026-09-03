@@ -71,6 +71,9 @@ namespace dodoe {
     class DODOE_API Application {
         static Application* m_instance;
         Bool m_running {false};
+#ifndef DODOE_SHIPPING
+        UInt32 m_smoke_frames{0};
+#endif
         ApplicationSpecification m_app_spec{};
 
         void loadConfigFile();

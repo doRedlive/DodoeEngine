@@ -59,6 +59,13 @@
       }
     },
     {
+      "name": "mode-shipping",
+      "hidden": true,
+      "cacheVariables": {
+        "DODOE_SHIPPING": "ON"
+      }
+    },
+    {
       "name": "msvc-editor-debug",
       "displayName": "MSVC Editor Debug",
       "inherits": ["base-common", "gen-msvc", "cfg-debug", "mode-editor"],
@@ -113,6 +120,13 @@
       "inherits": ["base-common", "gen-ninja", "cfg-release", "mode-sandbox"],
       "binaryDir": "${sourceDir}/build/sandbox-release",
       "installDir": "${sourceDir}/bin/sandbox-release"
+    },
+    {
+      "name": "msvc-sandbox-shipping",
+      "displayName": "MSVC Sandbox Shipping",
+      "inherits": ["base-common", "gen-msvc", "cfg-release", "mode-sandbox", "mode-shipping"],
+      "binaryDir": "${sourceDir}/build/sandbox-shipping",
+      "installDir": "${sourceDir}/bin/sandbox-shipping"
     }
   ],
   "buildPresets": [
@@ -154,6 +168,11 @@
     {
       "name": "ninja-sandbox-release",
       "configurePreset": "ninja-sandbox-release",
+      "targets": "DodoeSandbox"
+    },
+    {
+      "name": "msvc-sandbox-shipping",
+      "configurePreset": "msvc-sandbox-shipping",
       "targets": "DodoeSandbox"
     }
   ]

@@ -11,6 +11,7 @@
 #include "runtime/core/async/task_scheduler.h"
 #include "runtime/resource/file/file_system.h"
 
+#include <charconv>
 #include <filesystem>
 #include <fstream>
 #include <thread>
@@ -33,6 +34,34 @@ namespace dodoe {
             }
             return {};
         }
+
+        constexpr UInt32 kDefaultSmokeFrames = 60;
+
+#ifndef DODOE_SHIPPING
+        UInt32 ParseSmokeFrames(const ApplicationCommandLineArgs& cli_args) {
+            if (!cli_args.args) return 0;
+            for (int i = 0; i < cli_args.argc; ++i) {
+                const StringView arg = cli_args.args[i];
+                if (arg == "--smoke-test") {
+                    return kDefaultSmokeFrames;
+                }
+                if (arg.size() >= 13 && arg.substr(0, 13) == "--smoke-test=") {
+                    const StringView value = arg.substr(13);
+                    UInt32 frames = kDefaultSmokeFrames;
+                    if (!value.empty()) {
+                        const char* first = value.data();
+                        const char* last = value.data() + value.size();
+                        const auto result = std::from_chars(first, last, frames);
+                        if (result.ec != std::errc() || frames == 0) {
+                            return kDefaultSmokeFrames;
+                        }
+                    }
+                    return frames;
+                }
+            }
+            return 0;
+        }
+#endif
 
         FsPath ProjectConfigPath() {
             const Ref<Project> active = Project::ActiveProject();
@@ -115,6 +144,9 @@ namespace dodoe {
     Application::Application(const ApplicationSpecification& spec) {
         DO_PROFILE_SCOPE_CATEGORY("Application::Application", "startup");
         m_app_spec = spec;
+#ifndef DODOE_SHIPPING
+        m_smoke_frames = ParseSmokeFrames(spec.cli_args);
+#endif
         loadConfigFile();
         if (m_app_spec.app_mode == AppMode::Server) {
             m_app_spec.render_settings.windowless = true;
@@ -153,6 +185,9 @@ namespace dodoe {
 
         m_context->getLayerStack().attach();
 
+#ifndef DODOE_SHIPPING
+        UInt32 frames_run = 0;
+#endif
         while (m_running) {
             EventSystem::Publish<BeforeOneTickEvent>();
             if (auto* input_manager = m_context->getInputManager()) {
@@ -166,6 +201,12 @@ namespace dodoe {
             m_context->tickOneFrame();
             DO_PROFILE_FRAME();
             EventSystem::Publish<AfterOneTickEvent>();
+#ifndef DODOE_SHIPPING
+            if (m_smoke_frames > 0 && ++frames_run >= m_smoke_frames) {
+                DO_INFO("Smoke test mode: exiting after {} frames.", frames_run);
+                quit();
+            }
+#endif
             if (isServerMode()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }

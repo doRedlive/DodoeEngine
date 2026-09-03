@@ -1,0 +1,11 @@
+{
+    "name": "TestProject",
+    "width": 800,
+    "height": 600,
+    "window_resizeable": false,
+    "render_settings": {
+        "api": 3,
+        "pipeline": 5,
+        "present_mode": 1
+    }
+}
