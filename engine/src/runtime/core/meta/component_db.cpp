@@ -175,6 +175,7 @@ namespace dodoe {
         registerComponent<TagComponent>("TagComponent", false);
         registerComponent<TransformComponent>("TransformComponent", false);
         registerComponent<HierarchyComponent>("HierarchyComponent", false);
+        registerComponent<PrefabInstanceComponent>("PrefabInstanceComponent");
 
         registerComponent<AnimatorComponent>("AnimatorComponent");
         registerComponent<AnimationDriveModeComponent>("AnimationDriveModeComponent");

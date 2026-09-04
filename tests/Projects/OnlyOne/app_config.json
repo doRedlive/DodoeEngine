@@ -6,10 +6,10 @@
     "height": 900,
     "window_resizeable": true,
     "render_settings": {
-        "api": 2,
+        "api": 3,
         "pipeline": 3,
         "enable_single_thread": false,
-        "enable_baseline_renderer": true,
+        "enable_baseline_renderer": false,
         "present_mode": 1
     }
 }

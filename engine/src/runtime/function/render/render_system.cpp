@@ -167,19 +167,6 @@ namespace dodoe {
             return;
         }
 
-        {
-            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::executeDeferredCommands", "render-command");
-            auto pending = GDrawCommandList.detachRecordedCommands();
-            if (!pending.isEmpty()) {
-                DO_INFO("RenderSystem: executing {} deferred render commands", pending.commandCount());
-                auto& gfx_cmd = m_gfx->getCommandList();
-                gfx_cmd->open();
-                pending.execute(*gfx_cmd);
-                gfx_cmd->close();
-                m_gfx->getDevice()->executeCommandList(gfx_cmd);
-            }
-        }
-
         Bool any_window_dirty = false;
         for (auto& target : view_mgr->getTargets()) {
             const auto& vp = target->getViewport();
@@ -214,6 +201,19 @@ namespace dodoe {
             ResourceCommand res_cmd;
             while (m_resource_command_queue.tryPop(res_cmd)) {
                 realizeResourceCommand(res_cmd);
+            }
+        }
+
+        {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::executeDeferredCommands", "render-command");
+            auto pending = GDrawCommandList.detachRecordedCommands();
+            if (!pending.isEmpty()) {
+                DO_INFO("RenderSystem: executing {} deferred render commands", pending.commandCount());
+                auto& gfx_cmd = m_gfx->getCommandList();
+                gfx_cmd->open();
+                pending.execute(*gfx_cmd);
+                gfx_cmd->close();
+                m_gfx->getDevice()->executeCommandList(gfx_cmd);
             }
         }
 

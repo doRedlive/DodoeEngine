@@ -133,6 +133,7 @@ namespace dodoe {
             reg.ensurePoolExists<TagComponent>();
             reg.ensurePoolExists<TransformComponent>();
             reg.ensurePoolExists<HierarchyComponent>();
+            reg.ensurePoolExists<PrefabInstanceComponent>();
             reg.ensurePoolExists<TilemapComponent>();
             reg.ensurePoolExists<TileLayerComponent>();
             reg.ensurePoolExists<SetVelocity2dRequest>();
@@ -491,13 +492,6 @@ namespace dodoe {
             return nullptr;
         }
         const String scene_name = scene_res.m_name.empty() ? name : scene_res.m_name;
-        Scene* scene = getScene(scene_name);
-        if (!scene) {
-            scene = createScene(scene_name);
-            scene->deserialize(scene_res);
-            DO_PROFILE_MARK("World::loadScene.deserialize", "startup");
-        }
-
         const Bool is_single = mode == LoadSceneMode::Single;
         if (is_single) {
             const DynamicArray<Scene*> scenes_to_deactivate = m_active_scenes;
@@ -506,14 +500,23 @@ namespace dodoe {
             }
         }
 
-        const auto active_it = std::find(m_active_scenes.begin(), m_active_scenes.end(), scene);
-        if (active_it == m_active_scenes.end()) {
+        Scene* scene = getScene(scene_name);
+        const Bool needs_deserialize = scene == nullptr;
+        if (!scene) {
+            scene = createScene(scene_name);
+        }
+
+        if (std::find(m_active_scenes.begin(), m_active_scenes.end(), scene) == m_active_scenes.end()) {
             activateScene(scene->getName());
-            DO_PROFILE_MARK("World::loadScene.activate", "startup");
         }
 
         if (is_single || m_current_scene == nullptr) {
             setActiveScene(scene);
+        }
+
+        if (needs_deserialize) {
+            scene->deserialize(scene_res);
+            DO_PROFILE_MARK("World::loadScene.deserialize", "startup");
         }
 
         return scene;
@@ -730,12 +733,13 @@ namespace dodoe {
 
         const String scene_name = scene_res.m_name.empty() ? name : scene_res.m_name;
         Scene* scene = createScene(scene_name);
-        scene->deserialize(scene_res);
         activateScene(scene->getName());
 
         if (mode == LoadSceneMode::Single || m_current_scene == nullptr) {
             setActiveScene(scene);
         }
+
+        scene->deserialize(scene_res);
 
         return scene;
     }

@@ -52,26 +52,7 @@ namespace dodoe {
 
     void DrawCommandList::shutdown() {
         DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::shutdown", "shutdown");
-        {
-            std::lock_guard<std::mutex> lock(m_upload_pool_mutex);
-            m_upload_list_pool.clear();
-        }
         m_device = nullptr;
-    }
-
-    GfxCommandListHandle DrawCommandList::acquireUploadCommandList() {
-        std::lock_guard<std::mutex> lock(m_upload_pool_mutex);
-        if (!m_upload_list_pool.empty()) {
-            GfxCommandListHandle command_list = std::move(m_upload_list_pool.front());
-            m_upload_list_pool.pop_front();
-            return command_list;
-        }
-        return m_device->createCommandList();
-    }
-
-    void DrawCommandList::releaseUploadCommandList(GfxCommandListHandle& command_list) {
-        std::lock_guard<std::mutex> lock(m_upload_pool_mutex);
-        m_upload_list_pool.push_back(std::move(command_list));
     }
 
     void DrawCommandList::beginFrame() { reset(); }
@@ -111,20 +92,20 @@ namespace dodoe {
 
     void DrawCommandList::writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes) {
         DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::writeBuffer", "resource-upload");
-        if (!buffer || !m_device || !data || data_size == 0) {
-            DO_ERROR("DrawCommandList::writeBuffer: invalid buffer, device, data, or size");
+        if (!buffer || !m_device) {
+            DO_ERROR("DrawCommandList::writeBuffer: invalid buffer or device");
             return;
         }
-        if (buffer->isGpuReady()) {
-            auto cmd = acquireUploadCommandList();
-            cmd->open();
-            cmd->writeBuffer(buffer->getRHIHandle(), data, data_size, destination_offset_bytes);
-            cmd->close();
-            m_device->executeCommandList(cmd);
-            releaseUploadCommandList(cmd);
+        if (data_size == 0) {
             return;
         }
-        DO_WARN("DrawCommandList::writeBuffer: buffer not realized, deferring upload");
+        if (!data) {
+            DO_ERROR("DrawCommandList::writeBuffer: null data with size {}", data_size);
+            return;
+        }
+        if (!buffer->isGpuReady()) {
+            DO_WARN("DrawCommandList::writeBuffer: buffer not realized, deferring upload");
+        }
         WriteBufferCommand::Create(*this, buffer, data, data_size, destination_offset_bytes);
     }
     void DrawCommandList::writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch) {
@@ -134,17 +115,9 @@ namespace dodoe {
             DO_ERROR("DrawCommandList::writeTexture: invalid texture, device, data, or row pitch");
             return;
         }
-        if (texture->isGpuReady()) {
-            const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
-            auto cmd = acquireUploadCommandList();
-            cmd->open();
-            cmd->writeTexture(texture->getRHIHandle(), mip_level, array_slice, data, row_pitch);
-            cmd->close();
-            m_device->executeCommandList(cmd);
-            releaseUploadCommandList(cmd);
-            return;
+        if (!texture->isGpuReady()) {
+            DO_WARN("DrawCommandList::writeTexture: texture not realized, deferring upload");
         }
-        DO_WARN("DrawCommandList::writeTexture: texture not realized, deferring upload");
         const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
         WriteTextureCommand::Create(*this, texture, mip_level, array_slice, data, row_pitch, data_size);
     }

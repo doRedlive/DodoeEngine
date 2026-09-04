@@ -1,0 +1,32 @@
+{
+    "base_color_texture": {
+        "asset_id": 0,
+        "legacy_path": "Models/flower (2)/source/tex/grass51.jpg",
+        "sub_object_id": 0
+    },
+    "color": [
+        0.5,
+        0.5,
+        0.5,
+        1.0
+    ],
+    "emissive": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emissive_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "metallic": 0.0,
+    "metallic_roughness_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "normal_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "roughness": 1.0
+}

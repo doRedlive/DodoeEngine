@@ -1,0 +1,209 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "Roses Orange",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":4479387508848797570,\"name\":\"Roses Orange\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":0}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 4479387508848797570
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "RootNode",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":13026045565000597300,\"name\":\"RootNode\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":4479387508848797570}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 13026045565000597300
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":14727258544147093585,\"name\":\"Roses_Orange\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":5,\"parent_uuid\":13026045565000597300}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 14727258544147093585
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mesh0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":14810046052520491217,\"name\":\"Roses_Orange_Mesh0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":14727258544147093585}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 14810046052520491217
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mesh1",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":14800076372975534938,\"name\":\"Roses_Orange_Mesh1\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":14727258544147093585}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 14800076372975534938
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mesh2",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":7761485265069527139,\"name\":\"Roses_Orange_Mesh2\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":14727258544147093585}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":2,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 7761485265069527139
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mesh3",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":7141860132748266621,\"name\":\"Roses_Orange_Mesh3\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":14727258544147093585}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":3,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 7141860132748266621
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mesh4",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":13159599643641682534,\"name\":\"Roses_Orange_Mesh4\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":14727258544147093585}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":4,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 13159599643641682534
+        }
+    ],
+    "m_name": "Roses Orange"
+}

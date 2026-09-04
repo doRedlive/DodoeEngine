@@ -20,6 +20,7 @@ namespace dodoe {
     class Tileset;
     class Mesh;
     class AudioClip;
+    class Prefab;
 
     namespace detail {
 
@@ -48,6 +49,8 @@ namespace dodoe {
         struct ObjectTypeName<Mesh> { static constexpr const char* kValue = "Mesh"; };
         template<>
         struct ObjectTypeName<AudioClip> { static constexpr const char* kValue = "AudioClip"; };
+        template<>
+        struct ObjectTypeName<Prefab> { static constexpr const char* kValue = "Prefab"; };
 
     } // namespace detail
 
@@ -115,6 +118,8 @@ namespace dodoe {
                 return loadMesh(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, AudioClip>) {
                 return loadAudioClip(asset_id, local_id);
+            } else if constexpr (std::is_same_v<T, Prefab>) {
+                return loadPrefab(asset_id, local_id);
             } else {
                 static_assert(detail::always_false<T>::value, "ResourceManager::loadObject: unsupported type");
             }
@@ -155,6 +160,7 @@ namespace dodoe {
         DODOE_API Tileset* loadTileset(const UUID& asset_id, UInt32 local_id);
         Mesh* loadMesh(const UUID& asset_id, UInt32 local_id);
         AudioClip* loadAudioClip(const UUID& asset_id, UInt32 local_id);
+        Prefab* loadPrefab(const UUID& asset_id, UInt32 local_id);
     };
 
     template<typename T>

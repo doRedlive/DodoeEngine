@@ -1,0 +1,147 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "scene",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":6712646186513632206,\"name\":\"scene\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":0}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 6712646186513632206
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Sketchfab_model",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":151899017192269872,\"name\":\"Sketchfab_model\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[-90.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":6712646186513632206}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 151899017192269872
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "4db56306614c41c6a5a2215aaf147b10.fbx",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":14079621515180977193,\"name\":\"4db56306614c41c6a5a2215aaf147b10.fbx\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[90.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":151899017192269872}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 14079621515180977193
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "RootNode",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":13251594905154589881,\"name\":\"RootNode\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":14079621515180977193}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 13251594905154589881
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Uchujin_Main2",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":7457689632536050178,\"name\":\"Uchujin_Main2\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[2.204996109008789,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":13251594905154589881}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 7457689632536050178
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Uchujin_Main2_Flowers1_0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":15238765014642770927,\"name\":\"Uchujin_Main2_Flowers1_0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":7457689632536050178}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3697530432527253767,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (4)\\\\scene.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 15238765014642770927
+        }
+    ],
+    "m_name": "scene"
+}

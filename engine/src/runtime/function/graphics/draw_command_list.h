@@ -34,12 +34,6 @@ namespace dodoe {
         GfxDeviceHandle m_device{};
         std::mutex m_record_mutex{};
 
-        Deque<GfxCommandListHandle> m_upload_list_pool{};
-        std::mutex m_upload_pool_mutex{};
-
-        [[nodiscard]] GfxCommandListHandle acquireUploadCommandList();
-        void releaseUploadCommandList(GfxCommandListHandle& command_list);
-
     public:
         void setDevice(GfxDeviceHandle device) { m_device = device; }
         void setDevice(class GfxContext& gfx);

@@ -50,6 +50,7 @@ namespace dodoe {
         void onSimulationStop();
         void onSimulationUpdate(float delta_time);
         [[nodiscard]] SceneRes serialize() const;
+        [[nodiscard]] SceneRes serializeSubtree(Entity root) const;
         void deserialize(const SceneRes& scene_res);
 
         [[nodiscard]] const String& getName() const { return m_name; }

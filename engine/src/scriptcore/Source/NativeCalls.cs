@@ -386,6 +386,14 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, ulong, void> native_HierarchyComponent_parent_uuid_set;
         public delegate* unmanaged<ulong, int> native_HierarchyComponent_child_count_get;
         public delegate* unmanaged<ulong, int, void> native_HierarchyComponent_child_count_set;
+        public delegate* unmanaged<ulong, int> native_PrefabInstanceComponent_prefab_get;
+        public delegate* unmanaged<ulong, int, void> native_PrefabInstanceComponent_prefab_set;
+        public delegate* unmanaged<ulong, float*, float*, float*, void> native_PrefabInstanceComponent_position_get;
+        public delegate* unmanaged<ulong, float, float, float, void> native_PrefabInstanceComponent_position_set;
+        public delegate* unmanaged<ulong, float*, float*, float*, void> native_PrefabInstanceComponent_rotation_get;
+        public delegate* unmanaged<ulong, float, float, float, void> native_PrefabInstanceComponent_rotation_set;
+        public delegate* unmanaged<ulong, float*, float*, float*, void> native_PrefabInstanceComponent_scale_get;
+        public delegate* unmanaged<ulong, float, float, float, void> native_PrefabInstanceComponent_scale_set;
         public delegate* unmanaged<ulong, byte*> native_TileLayerComponent_layer_name_get;
         public delegate* unmanaged<ulong, byte*, void> native_TileLayerComponent_layer_name_set;
         public delegate* unmanaged<ulong, uint> native_TileLayerComponent_layer_width_get;
@@ -422,6 +430,10 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<byte*, int, int>                                      native_world_load_scene_async;
         public delegate* unmanaged<int, int>                                             native_world_is_load_complete;
         public delegate* unmanaged<int>                                                  native_world_save_active_scene;
+        public delegate* unmanaged<byte*, void>                                          native_scene_import_model;
+        public delegate* unmanaged<byte*>                                                native_scene_dump_hierarchy;
+        public delegate* unmanaged<byte*, void>                                          native_scene_import_prefab;
+        public delegate* unmanaged<ulong, byte*, int>                                    native_scene_export_prefab;
         // === UI Bindings ===
         public delegate* unmanaged<byte*, int>                                            native_ui_load_layout;
         public delegate* unmanaged<void>                                                  native_ui_clear_all;
@@ -922,6 +934,45 @@ internal static unsafe partial class NativeCalls
     }
 
     internal static bool Native_WorldSaveActiveScene() => b->native_world_save_active_scene() != 0;
+
+    internal static void Native_SceneImportModel(string path)
+    {
+        var ptr = StrToPtr(path);
+        try { b->native_scene_import_model(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static string Native_SceneDumpHierarchy() => PtrToStr(b->native_scene_dump_hierarchy());
+
+    internal static void Native_SceneImportPrefab(string path)
+    {
+        var ptr = StrToPtr(path);
+        try { b->native_scene_import_prefab(ptr); } finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static bool Native_SceneExportPrefab(ulong rootEntityId, string path)
+    {
+        var ptr = StrToPtr(path);
+        try { return b->native_scene_export_prefab(rootEntityId, ptr) != 0; }
+        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+    }
+
+    internal static void TransformComponent_SetPosition(ulong entityId, float x, float y, float z)
+    {
+        var f = b->native_TransformComponent_position_set;
+        if (f != null) f(entityId, x, y, z);
+    }
+
+    internal static void TransformComponent_SetRotation(ulong entityId, float x, float y, float z)
+    {
+        var f = b->native_TransformComponent_rotation_set;
+        if (f != null) f(entityId, x, y, z);
+    }
+
+    internal static void TransformComponent_SetScale(ulong entityId, float x, float y, float z)
+    {
+        var f = b->native_TransformComponent_scale_set;
+        if (f != null) f(entityId, x, y, z);
+    }
 
     internal static void Native_WorldUnloadScene(string name)
     {

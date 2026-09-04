@@ -16,6 +16,7 @@
 #include "runtime/function/animation/animator_controller.h"
 #include "runtime/function/render/pixel2d/tileset.h"
 #include "runtime/function/render/pixel2d/sprite_manager.h"
+#include "runtime/function/world/prefab.h"
 #include "runtime/resource/asset/types/audio_clip_asset.h"
 
 namespace dodoe {
@@ -41,6 +42,7 @@ namespace dodoe {
         AnimClip::Shutdown();
         AnimatorController::Shutdown();
         Tileset::Shutdown();
+        Prefab::Shutdown();
         AssetManager::Destroy(m_assetManager);
     }
 
@@ -174,6 +176,14 @@ namespace dodoe {
         }
         auto* clip_asset = static_cast<AudioClipAsset*>(asset);
         return clip_asset->getClip();
+    }
+
+    Prefab* ResourceManager::loadPrefab(const UUID& asset_id, UInt32 local_id) {
+        Asset* asset = m_assetManager->findAsset(asset_id);
+        if (!asset) {
+            return nullptr;
+        }
+        return Prefab::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
     }
 
 } // dodoe

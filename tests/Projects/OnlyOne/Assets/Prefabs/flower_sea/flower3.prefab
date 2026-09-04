@@ -1,0 +1,255 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "scene",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":17813975448716921079,\"name\":\"scene\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":0}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 17813975448716921079
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Sketchfab_model",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":17066204732282542242,\"name\":\"Sketchfab_model\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[-90.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":17813975448716921079}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 17066204732282542242
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "cf6f75f2bcf94f5d824f8640f6a639d3.fbx",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":14907668534666906285,\"name\":\"cf6f75f2bcf94f5d824f8640f6a639d3.fbx\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[90.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":17066204732282542242}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 14907668534666906285
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "RootNode",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":9731116412993446254,\"name\":\"RootNode\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":14907668534666906285}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 9731116412993446254
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":12492647925502784160,\"name\":\"Roses_Orange\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":5,\"parent_uuid\":9731116412993446254}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 12492647925502784160
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mf_Petal_0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":18221670334145645057,\"name\":\"Roses_Orange_Mf_Petal_0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":12492647925502784160}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":16370736628361184183,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (3)\\\\scene.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 18221670334145645057
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mf_Grass_0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":3362997876621783270,\"name\":\"Roses_Orange_Mf_Grass_0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":12492647925502784160}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":16370736628361184183,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (3)\\\\scene.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 3362997876621783270
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mf_Stem_0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2563412605668702738,\"name\":\"Roses_Orange_Mf_Stem_0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":12492647925502784160}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":16370736628361184183,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (3)\\\\scene.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":2,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2563412605668702738
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mf_Leaf_0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":17435816317319912787,\"name\":\"Roses_Orange_Mf_Leaf_0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":12492647925502784160}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":16370736628361184183,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (3)\\\\scene.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":3,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 17435816317319912787
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Roses_Orange_Mf_Stigma_0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":13865572984443747821,\"name\":\"Roses_Orange_Mf_Stigma_0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":12492647925502784160}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":16370736628361184183,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (3)\\\\scene.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":4,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 13865572984443747821
+        }
+    ],
+    "m_name": "scene"
+}

@@ -1,0 +1,147 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "scene",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":7110600359522726018,\"name\":\"scene\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":0}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 7110600359522726018
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Sketchfab_model",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":9086582065085818834,\"name\":\"Sketchfab_model\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[-90.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":7110600359522726018}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 9086582065085818834
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "141011ec1f3245d5a1244b80aa332fbf.fbx",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":9393078600605050525,\"name\":\"141011ec1f3245d5a1244b80aa332fbf.fbx\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[90.0,-0.0,0.0],\"scale\":[0.009999999776482582,0.009999999776482582,0.009999999776482582]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":9086582065085818834}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 9393078600605050525
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "RootNode",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":17815381158093293767,\"name\":\"RootNode\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":9393078600605050525}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 17815381158093293767
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Plane.003",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":4486936320157899429,\"name\":\"Plane.003\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,100.64978790283203,0.0],\"rotation\":[120.81307220458984,3.4150946248701075e-06,90.0],\"scale\":[100.0,100.0,100.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":17815381158093293767}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 4486936320157899429
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Plane.003_Material_0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":7072848362330540705,\"name\":\"Plane.003_Material_0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":4486936320157899429}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":8693997761884575328,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (1)\\\\scene.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 7072848362330540705
+        }
+    ],
+    "m_name": "scene"
+}

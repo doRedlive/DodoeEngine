@@ -1,0 +1,78 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "lavendar",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":3586855637374273117,\"name\":\"lavendar\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":0}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 3586855637374273117
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "RootNode",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":16247563437275085110,\"name\":\"RootNode\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":3586855637374273117}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 16247563437275085110
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Plane.003",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":9027811018190583444,\"name\":\"Plane.003\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,100.64978790283203,0.0],\"rotation\":[120.81307220458984,3.4150946248701075e-06,90.0],\"scale\":[100.0,100.0,100.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":16247563437275085110}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":17479775527222278167,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower\\\\source\\\\lavendar.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 9027811018190583444
+        }
+    ],
+    "m_name": "lavendar"
+}

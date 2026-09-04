@@ -25,7 +25,9 @@
 #include "runtime/function/animation/animation.h"
 #include "runtime/function/audio/audio_clip.h"
 #include "runtime/resource/resource_manager.h"
+#include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/file/file_id.h"
+#include "runtime/service/world/scene_importer.h"
 #include "runtime/core/utils/json.h"
 #include "runtime/function/ui/ui_manager.h"
 #include "runtime/function/ui/ui_button.h"
@@ -874,6 +876,65 @@ namespace dodoe {
             return 1;
         }
 
+        static void native_scene_import_model(const char* path) {
+            if (!path || path[0] == '\0') return;
+            auto* asset_manager = ResourceManager::Self().getAssetManager();
+            if (asset_manager) asset_manager->ensureImported(String(path));
+            SceneImporter::ImportModel(String(path));
+        }
+
+        static const char* native_scene_dump_hierarchy() {
+            DEF_STR_RET(scene_hierarchy);
+            _s_scene_hierarchy = "[]";
+            auto* world = GetWorld();
+            if (!world) return _s_scene_hierarchy.c_str();
+            auto* scene = world->getActiveScene();
+            if (!scene) return _s_scene_hierarchy.c_str();
+
+            Json arr = Json::array();
+            for (Entity e : scene->getEntities()) {
+                if (!e.valid()) continue;
+                Json item = Json::object();
+                item["uuid"] = static_cast<uint64_t>(e.uuid());
+                item["name"] = e.name();
+                if (e.hasComponent<HierarchyComponent>()) {
+                    const auto& hier = e.getComponent<HierarchyComponent>();
+                    if (hier.parent_uuid.isValid()) {
+                        item["parent"] = static_cast<uint64_t>(hier.parent_uuid);
+                    }
+                }
+                if (e.hasComponent<TransformComponent>()) {
+                    const auto& tc = e.getComponent<TransformComponent>();
+                    item["pos"] = {tc.position.x, tc.position.y, tc.position.z};
+                    item["rot"] = {tc.rotation.x, tc.rotation.y, tc.rotation.z};
+                    item["scale"] = {tc.scale.x, tc.scale.y, tc.scale.z};
+                }
+                if (e.hasComponent<MeshRendererComponent>()) {
+                    item["section"] = e.getComponent<MeshRendererComponent>().section_index;
+                }
+                arr.push_back(std::move(item));
+            }
+            _s_scene_hierarchy = arr.dump();
+            return _s_scene_hierarchy.c_str();
+        }
+
+        static void native_scene_import_prefab(const char* path) {
+            if (!path || path[0] == '\0') return;
+            SceneImporter::ImportPrefab(String(path));
+        }
+
+        static int native_scene_export_prefab(uint64_t root, const char* path) {
+            if (!path || path[0] == '\0') return 0;
+            auto* world = GetWorld();
+            if (!world) return 0;
+            auto* scene = world->getActiveScene();
+            if (!scene) return 0;
+            Entity root_entity = scene->tryGetEntityByUUID(UUID(root));
+            if (!root_entity.valid()) return 0;
+            const ObjectID ref = SceneImporter::ExportPrefab(String(path), root_entity);
+            return ref.isValid() ? 1 : 0;
+        }
+
         static void native_world_unload_scene(const char* name) {
             if (!name) return;
             auto* world = GetWorld();
@@ -1564,6 +1625,14 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_HierarchyComponent_parent_uuid_set, void, (uint64_t e, uint64_t v), e, v) \
     X(native_HierarchyComponent_child_count_get, int, (uint64_t e), e) \
     X(native_HierarchyComponent_child_count_set, void, (uint64_t e, int v), e, v) \
+    X(native_PrefabInstanceComponent_prefab_get, int, (uint64_t e), e) \
+    X(native_PrefabInstanceComponent_prefab_set, void, (uint64_t e, int v), e, v) \
+    X(native_PrefabInstanceComponent_position_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_PrefabInstanceComponent_position_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_PrefabInstanceComponent_rotation_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_PrefabInstanceComponent_rotation_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_PrefabInstanceComponent_scale_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
+    X(native_PrefabInstanceComponent_scale_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_TileLayerComponent_layer_name_get, const char*, (uint64_t e), e) \
     X(native_TileLayerComponent_layer_name_set, void, (uint64_t e, const char* v), e, v) \
     X(native_TileLayerComponent_layer_width_get, uint, (uint64_t e), e) \
@@ -1599,6 +1668,10 @@ X(native_AnimatorComponent_controller_get, int, (uint64_t e), e) \
     X(native_world_load_scene_async, int, (const char* name, int mode), name, mode) \
     X(native_world_is_load_complete, int, (int token), token) \
     X(native_world_save_active_scene, int, (), ) \
+    X(native_scene_import_model, void, (const char* path), path) \
+    X(native_scene_dump_hierarchy, const char*, (), ) \
+    X(native_scene_import_prefab, void, (const char* path), path) \
+    X(native_scene_export_prefab, int, (uint64_t root, const char* path), root, path) \
     X(native_ui_load_layout, int, (const char* path), path) \
     X(native_ui_clear_all, void, (), ) \
     X(native_ui_find_element, uint32_t, (const char* id_str, const char* type_name), id_str, type_name) \

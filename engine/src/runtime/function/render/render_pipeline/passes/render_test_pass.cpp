@@ -79,6 +79,7 @@ namespace dodoe {
                 parameters.triangle_vb = pass_builder.writeBuffer(
                     pass_builder.createTransientBuffer(tri_vb_desc, "TestTriangleVB"),
                     RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.triangle_vb, RenderGraphPipelineStage::VertexShader);
 
                 if (test_texture) {
                     parameters.test_texture = pass_builder.read(

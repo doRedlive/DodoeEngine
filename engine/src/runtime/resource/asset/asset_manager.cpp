@@ -39,6 +39,7 @@ namespace dodoe {
         };
 
         const String kSceneExt = ".doscn";
+        const String kPrefabExt = ".prefab";
         const String kMaterialExt = ".domat";
         const String kAnimClipExt = ".doaniclip";
         const String kAnimatorControllerExt = ".doanim";
@@ -107,6 +108,7 @@ namespace dodoe {
             case AssetType::Anim2DClip:      return create_scope<Anim2DClipAsset>();
             case AssetType::AnimatorController: return create_scope<AnimatorControllerAsset>();
             case AssetType::Scene:           return create_scope<SceneAsset>();
+            case AssetType::Prefab:          return create_scope<PrefabAsset>();
             case AssetType::Tileset:         return create_scope<TilesetAsset>();
             case AssetType::InputAction:     return create_scope<InputActionAsset>();
             case AssetType::TiledMap:        return create_scope<TiledMapAsset>();
@@ -254,6 +256,36 @@ namespace dodoe {
 
         String ext = String(abs.extension().string().c_str());
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+        if (ext == kPrefabExt) {
+            UUID asset_id;
+            {
+                std::shared_lock lock(m_mutex);
+                const auto it = m_path_to_asset_id.find(source_path);
+                if (it != m_path_to_asset_id.end()) {
+                    asset_id = it->second;
+                }
+            }
+            if (!asset_id.isValid()) {
+                asset_id = registerAsset(source_path, AssetType::Prefab);
+                if (!asset_id.isValid()) {
+                    return {};
+                }
+            }
+            {
+                std::unique_lock lock(m_mutex);
+                if (m_assets.find(asset_id) == m_assets.end()) {
+                    auto prefab = create_scope<PrefabAsset>();
+                    prefab->setObjectID(ObjectID{asset_id, 0});
+                    prefab->setName(FileSystem::PathToNameNoExt(source_path));
+                    if (prefab->loadFromSource(abs.generic_string().c_str())) {
+                        prefab->setLoadState(AssetLoadState::Loaded);
+                    }
+                    m_assets[asset_id] = std::move(prefab);
+                }
+            }
+            return ObjectID{asset_id, 0};
+        }
 
         if (std::ranges::find(kImageExts, ext) == kImageExts.end()
             && std::ranges::find(kModelExts, ext) == kModelExts.end()
@@ -419,6 +451,16 @@ namespace dodoe {
                         scene->setLoadState(AssetLoadState::Loaded);
                     }
                     m_assets[asset_id] = std::move(scene);
+                } else if (ext == kPrefabExt) {
+                    UUID asset_id = registerAsset(source_path, AssetType::Prefab);
+                    auto prefab = create_scope<PrefabAsset>();
+                    prefab->setObjectID(ObjectID{asset_id, 0});
+                    prefab->setName(FileSystem::PathToNameNoExt(source_path));
+                    String abs_path(entry.path().generic_string().c_str());
+                    if (prefab->loadFromSource(abs_path)) {
+                        prefab->setLoadState(AssetLoadState::Loaded);
+                    }
+                    m_assets[asset_id] = std::move(prefab);
                 } else if (ext == kMaterialExt) {
                     UUID asset_id = registerAsset(source_path, AssetType::Material);
                     auto mat = create_scope<MaterialAsset>();

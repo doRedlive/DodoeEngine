@@ -45,7 +45,7 @@ namespace dodoe {
 
 	    m_gpu_culling = GpuCulling::Create({m_gfx_context, const_cast<ShaderLibrary*>(shader_library)});
 
-	    addFeature<TestFeature>();
+	    // addFeature<TestFeature>();
 
 	    addFeature<GBufferSceneFeature>();
 	    addFeature<ShadowSceneFeature>();

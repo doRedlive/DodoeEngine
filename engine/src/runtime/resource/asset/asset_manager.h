@@ -13,6 +13,7 @@
 #include "types/material_asset.h"
 #include "types/anim2d_clip_asset.h"
 #include "types/scene_asset.h"
+#include "types/prefab_asset.h"
 #include "types/input_action_asset.h"
 #include "types/audio_clip_asset.h"
 
