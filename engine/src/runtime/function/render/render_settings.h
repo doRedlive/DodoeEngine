@@ -45,6 +45,8 @@ namespace dodoe {
         META(Enable)
         Bool enable_single_thread{ false };
         META(Enable)
+        Bool enable_baseline_renderer{ false };
+        META(Enable)
         PresentMode present_mode{ PresentMode::Mailbox };
         META(Enable)
         Bool windowless{ false };
@@ -87,6 +89,7 @@ namespace dodoe {
         [[nodiscard]] static Bool IsSingleThread() { return m_enable_single_thread; }
         [[nodiscard]] static PresentMode GetPresentMode() { return m_present_mode; }
         [[nodiscard]] static Bool IsWindowless() { return m_windowless; }
+        [[nodiscard]] static Bool IsEnableBaselineRender() { return m_enable_baseline_renderer; }
 
         [[nodiscard]] static Bool IsGpuDrivenSupported() { return m_gpu_driven_supported; }
         static void SetGpuDrivenSupported(const Bool supported) { m_gpu_driven_supported = supported; }
@@ -106,6 +109,7 @@ namespace dodoe {
         inline static RenderBackendApiType m_api{ RenderBackendApiType::None };
         inline static RenderingPipelineType m_pipeline{ RenderingPipelineType::None };
         inline static Bool m_enable_single_thread{ false };
+        inline static Bool m_enable_baseline_renderer{ false };
         inline static PresentMode m_present_mode{ PresentMode::Mailbox };
         inline static Bool m_windowless{ false };
         inline static Bool m_gpu_driven_supported{ false };

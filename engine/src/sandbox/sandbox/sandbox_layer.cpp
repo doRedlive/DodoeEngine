@@ -33,6 +33,7 @@ namespace sandbox {
         }
 
         input->registerActionMap("Sandbox");
+        input->pushInputContext("Sandbox");
 
         input->registerAction("Sandbox", "Move", dodoe::InputActionValueType::Axis2D);
         input->bindKey2D("Sandbox", "Move", dodoe::KeyCode::W, {0.0f, 1.0f});
@@ -100,6 +101,9 @@ namespace sandbox {
     }
     
     void SandboxLayer::detach() {
+        if (auto* input = dodoe::GetInputManager()) {
+            input->popInputContext("Sandbox");
+        }
         if (auto* render_system = dodoe::GetRenderSystem()) {
             if (auto* view_manager = render_system->getViewManager()) {
                 for (auto& target : view_manager->getTargets()) {

@@ -74,6 +74,7 @@ namespace dodoe {
         render_settings_init_info.api      = m_init_info.spec.render_settings.api;
         render_settings_init_info.pipeline = m_init_info.spec.render_settings.pipeline;
         render_settings_init_info.enable_single_thread = m_init_info.spec.render_settings.enable_single_thread;
+        render_settings_init_info.enable_baseline_renderer = m_init_info.spec.render_settings.enable_baseline_renderer;
         render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
         render_settings_init_info.windowless = m_init_info.spec.render_settings.windowless;
         if (engine_mode == EngineMode::TwoD) {
@@ -247,13 +248,18 @@ namespace dodoe {
     void SystemContext::renderTick() {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::renderTick", "frame");
         if (!m_render_system) { return; }
+        const Bool baseline_only = RenderSettings::IsEnableBaselineRender();
 #ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::PrepareImGui();
+        if (!baseline_only) {
+            ImGuiBuilder::PrepareImGui();
+        }
 #endif//DODOE_DEBUG_ENABLED
-        if (m_debugger) { m_debugger->onRender(); }
+        if (m_debugger && !baseline_only) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
 #ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::RenderImGui();
+        if (!baseline_only) {
+            ImGuiBuilder::RenderImGui();
+        }
 #endif//DODOE_DEBUG_ENABLED
 
         m_render_system->submitFrame();

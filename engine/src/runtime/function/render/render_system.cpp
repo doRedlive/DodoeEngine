@@ -105,7 +105,9 @@ namespace dodoe {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::submitFrame", "frame");
         if (!m_render_thread) return;
 #ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::RenderPlatformWindows();
+        if (!RenderSettings::IsEnableBaselineRender()) {
+            ImGuiBuilder::RenderPlatformWindows();
+        }
 #endif//DODOE_DEBUG_ENABLED
         if (RenderSettings::IsSingleThread()) {
             m_render_thread->executeFrameOnce();
@@ -241,18 +243,30 @@ namespace dodoe {
         DO_PROFILE_MARK("RenderSystem::renderFrame.sceneFlushed", "frame");
 
         DO_PROFILE_MARK("RenderSystem::renderFrame.renderViewTargets", "frame");
-        for (auto& target : view_mgr->getTargets()) {
-            auto* cam = target->getCamera();
-            Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
-            Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
-            Bool show_editor = false;
+        if (RenderSettings::IsEnableBaselineRender()) {
+            static Bool s_baseline_branch_logged = false;
+            if (!s_baseline_branch_logged) {
+                s_baseline_branch_logged = true;
+                DO_INFO("RenderSystem: baseline branch active, hook_valid={}",
+                    static_cast<bool>(m_baseline_renderer_hook));
+            }
+            if (m_baseline_renderer_hook) {
+                m_baseline_renderer_hook(*gfx, frame_ctx.swapchain_image_index);
+            }
+        } else {
+            for (auto& target : view_mgr->getTargets()) {
+                auto* cam = target->getCamera();
+                Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
+                Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
+                Bool show_editor = false;
 #ifdef DODOE_EDITOR_ENABLED
-            show_editor = cam && cam->isEditorCamera();
+                show_editor = cam && cam->isEditorCamera();
 #endif//DODOE_EDITOR_ENABLED
-            auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
-            pipeline->render(
-                family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
-                frame_ctx.staging, frame_ctx.transient_resource_pool);
+                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
+                pipeline->render(
+                    family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
+                    frame_ctx.staging, frame_ctx.transient_resource_pool);
+            }
         }
 
         {
@@ -270,10 +284,12 @@ namespace dodoe {
         m_gfx->clearGarbage();
 
 #ifdef DODOE_DEBUG_ENABLED
-        for (auto& entry : ImGuiBuilder::TakeViewportPackets()) {
-            ImGuiViewportRenderer::RenderWindowOnRenderThread(entry.viewport, entry.packet);
+        if (!RenderSettings::IsEnableBaselineRender()) {
+            for (auto& entry : ImGuiBuilder::TakeViewportPackets()) {
+                ImGuiViewportRenderer::RenderWindowOnRenderThread(entry.viewport, entry.packet);
+            }
+            m_gfx->acquireOpenGLContext();
         }
-        m_gfx->acquireOpenGLContext();
 #endif//DODOE_DEBUG_ENABLED
     }
 

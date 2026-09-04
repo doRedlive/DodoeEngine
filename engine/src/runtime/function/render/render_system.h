@@ -37,6 +37,8 @@ namespace dodoe {
 
         WindowManager* m_window_manager{nullptr};
 
+        std::function<void(GfxContext&, UInt32)> m_baseline_renderer_hook{nullptr};
+
         MpmcQueue<ResourceCommand, kGameCommandQueueCapacity> m_resource_command_queue;
         MpmcQueue<SceneCommand, kGameCommandQueueCapacity> m_scene_command_queue;
 
@@ -50,6 +52,7 @@ namespace dodoe {
 
         void enqueueResourceCommand(ResourceCommand&& cmd);
         void enqueueSceneCommand(SceneCommand&& cmd);
+        void setBaselineRendererHook(std::function<void(GfxContext&, UInt32)> hook) { m_baseline_renderer_hook = std::move(hook); }
         void realizeResourceCommand(ResourceCommand& cmd);
         void applySceneCommand(RenderScene& scene, SceneCommand& cmd);
         [[nodiscard]] Bool beginMainThreadFrame();

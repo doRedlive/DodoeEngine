@@ -840,6 +840,9 @@ void RuntimeEditorBackend::tickAtSafePoint()
     m_lastTick = now;
 
     EventSystem::Publish<BeforeOneTickEvent>();
+    if (auto* time_system = m_app->context().getTimeSystem()) {
+        time_system->updateTime();
+    }
     if (auto* input = m_app->context().getInputManager()) {
         input->beginFrame();
     }

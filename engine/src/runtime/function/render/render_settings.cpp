@@ -11,6 +11,7 @@ namespace dodoe {
         m_api = info.api;
         m_pipeline = info.pipeline;
         m_enable_single_thread = info.enable_single_thread;
+        m_enable_baseline_renderer = info.enable_baseline_renderer;
         m_present_mode = info.present_mode;
         m_windowless = info.windowless;
 

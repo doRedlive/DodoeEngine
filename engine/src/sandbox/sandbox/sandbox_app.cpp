@@ -1,8 +1,12 @@
 // do@Redlive
 
+#include "sandbox_layer.h"
+
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
-#include "sandbox_layer.h"
+#include "runtime/function/render/render_settings.h"
+
+#include "runtime/service/reference/render_reference_layer.h"
 
 namespace sandbox {
 
@@ -11,6 +15,11 @@ namespace sandbox {
         explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
             : dodoe::Application(spec) {
                 m_context->getLayerStack().pushLayer(new SandboxLayer("Sandbox"));
+
+                if (dodoe::RenderSettings::IsEnableBaselineRender() ||
+                    specification().render_settings.enable_baseline_renderer) {
+                    m_context->getLayerStack().pushLayer(new dodoe::RenderReferenceLayer("RenderDebug"));
+                }
         }
 
         ~SandboxApp() override = default;
@@ -30,6 +39,7 @@ namespace dodoe {
         sandbox_spec.height = 900;
         sandbox_spec.render_settings.api = RenderBackendApiType::D3D12;
         sandbox_spec.render_settings.pipeline = RenderingPipelineType::Deferred;
+        sandbox_spec.render_settings.enable_baseline_renderer = true;
         sandbox_spec.cli_args = cli_args;
 
         return new sandbox::SandboxApp(sandbox_spec);

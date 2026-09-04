@@ -190,6 +190,9 @@ namespace dodoe {
 #endif
         while (m_running) {
             EventSystem::Publish<BeforeOneTickEvent>();
+            if (auto* time_system = m_context->getTimeSystem()) {
+                time_system->updateTime();
+            }
             if (auto* input_manager = m_context->getInputManager()) {
                 input_manager->beginFrame();
             }

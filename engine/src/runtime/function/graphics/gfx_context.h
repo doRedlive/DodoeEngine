@@ -63,7 +63,7 @@ namespace dodoe {
         [[nodiscard]] Bool acquireNextSwapchainImage(UInt32& image_index);
         [[nodiscard]] Bool presentSwapchainImage(UInt32 image_index);
         [[nodiscard]] Bool recreateSwapchain(UInt32 width, UInt32 height);
-        [[nodiscard]] Bool acquireOpenGLContext();
+        Bool acquireOpenGLContext();
         void releaseOpenGLContext();
         [[nodiscard]] static Bool IsInRenderScope();
         [[nodiscard]] const GfxCommandListHandle& getCommandList() { return m_cmd; }

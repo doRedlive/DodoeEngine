@@ -3,6 +3,6 @@
         "Name": "OnlyOne",
         "ProjectPath": "OnlyOne.doproj",
         "AssetDirectory": "Assets",
-        "StartSceneName": "Gameplay"
+        "StartSceneName": "Empty"
     }
 }

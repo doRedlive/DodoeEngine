@@ -6,8 +6,11 @@
 
 namespace dodoe {
 
-    float TimeSystem::getDeltaTime() {
+    void TimeSystem::updateTime() {
         calculateTime();
+    }
+
+    float TimeSystem::getDeltaTime() {
         return delta_time_ * time_scale_;
     }
 
@@ -23,7 +26,7 @@ namespace dodoe {
         return static_cast<int>(1.0f / delta_time_); // dt = 1s / fps;
     }
 
-    int TimeSystem::get_target_fps() const {
+    int TimeSystem::getTargetFps() const {
         return target_fps_;
     }
 
