@@ -1,0 +1,11 @@
+Model Information:
+* title:	Flowers Lib
+* source:	https://sketchfab.com/3d-models/flowers-lib-a147bd36c23c473faebbc363b2b355d9
+* author:	Vish4More (https://sketchfab.com/Vish4More)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Flowers Lib" (https://sketchfab.com/3d-models/flowers-lib-a147bd36c23c473faebbc363b2b355d9) by Vish4More (https://sketchfab.com/Vish4More) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
