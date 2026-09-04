@@ -14,11 +14,11 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,0.5,2.5],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_component": "{\"position\":[0.0,0.5,15.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"background\":[1.0,1.0,1.0,1.0],\"far_plane\":100.0,\"fov\":60.0,\"near_plane\":0.01,\"type\":2}",
+                    "m_component": "{\"background\":[1.0,1.0,1.0,1.0],\"far_plane\":1000.0,\"fov\":60.0,\"near_plane\":0.1,\"type\":1}",
                     "m_type_name": "CameraComponent"
                 }
             ],

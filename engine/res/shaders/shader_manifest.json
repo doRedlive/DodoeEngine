@@ -1,6 +1,7 @@
 {
   "shaders": [
     { "name": "LitVS",                 "source": "lit_pass",                     "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
+    { "name": "GBufferVS",             "source": "lit_pass",                     "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "GBufferPS",             "source": "gbuffer_pass",                 "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "GBufferNoBindlessPS",   "source": "gbuffer_pass_nobindless",      "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "ForwardLitPS",          "source": "forward_lit_pass",             "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
@@ -14,6 +15,8 @@
     { "name": "ColorGradingPS",        "source": "color_grading_pass",            "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "FxaaPS",                "source": "fxaa_pass",                     "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "PresentPS",             "source": "combine_pass",                  "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
+    { "name": "BaselineVS",            "source": "baseline_pass",                 "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
+    { "name": "BaselinePS",            "source": "baseline_pass",                 "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "ImGuiVS",               "source": "imgui_pass",                    "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "ImGuiPS",               "source": "imgui_pass",                    "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "SpriteVS",              "source": "sprite_pass",                   "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },

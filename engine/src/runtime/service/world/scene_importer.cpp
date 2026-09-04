@@ -57,9 +57,9 @@ namespace dodoe {
             return;
         }
 
-        const ObjectID ref = asset_manager->ensureImported(path);
+        const ObjectID ref = asset_manager->resolvePathToRef(FileID(path));
         if (!ref.isValid()) {
-            DO_ERROR("SceneImporter::ImportModel: failed to ensure import for '{}'", path);
+            DO_ERROR("SceneImporter::ImportModel: asset not found in database for '{}'", path);
             return;
         }
 

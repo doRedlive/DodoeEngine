@@ -24,8 +24,8 @@ namespace sandbox {
 
         if (input->isActionDown("Sandbox/Look")) {
             const dodoe::Vector2f delta = input->getMouseDelta();
-            m_yaw   -= delta.x * m_look_speed;
-            m_pitch += delta.y * m_look_speed;
+            m_yaw += delta.x * m_look_speed;
+            m_pitch -= delta.y * m_look_speed;
             m_pitch = std::clamp(m_pitch, -kPitchLimit, kPitchLimit);
         }
 

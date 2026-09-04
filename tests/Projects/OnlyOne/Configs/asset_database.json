@@ -4810,6 +4810,19 @@
             "tags": [],
             "type": "Texture"
         },
+        "13153449413105862248": {
+            "asset_file_mtime": 0,
+            "asset_id": 13153449413105862248,
+            "dependencies": [],
+            "import_signature": 1415952421,
+            "is_builtin": false,
+            "name": "Marry",
+            "source_file_mtime": 13432195158,
+            "source_path": "Models/marry/Marry.obj",
+            "sub_object_id": 0,
+            "tags": [],
+            "type": "Mesh"
+        },
         "13164471985528091627": {
             "asset_file_mtime": 0,
             "asset_id": 13164471985528091627,
@@ -7474,6 +7487,19 @@
             "sub_object_id": 0,
             "tags": [],
             "type": "Texture"
+        },
+        "14677521376975252587": {
+            "asset_file_mtime": 0,
+            "asset_id": 14677521376975252587,
+            "dependencies": [],
+            "import_signature": 0,
+            "is_builtin": false,
+            "name": "",
+            "source_file_mtime": 0,
+            "source_path": "materials/Marry_0.domat",
+            "sub_object_id": 0,
+            "tags": [],
+            "type": "Material"
         },
         "14680767465341839254": {
             "asset_file_mtime": 0,
@@ -15139,7 +15165,7 @@
             "import_signature": 1415952421,
             "is_builtin": false,
             "name": "backpack",
-            "source_file_mtime": 13427994987,
+            "source_file_mtime": 13432195158,
             "source_path": "Models/backpack/backpack.obj",
             "sub_object_id": 0,
             "tags": [],
@@ -17003,6 +17029,19 @@
             "sub_object_id": 0,
             "tags": [],
             "type": "Texture"
+        },
+        "4079298752658786658": {
+            "asset_file_mtime": 0,
+            "asset_id": 4079298752658786658,
+            "dependencies": [],
+            "import_signature": 0,
+            "is_builtin": false,
+            "name": "",
+            "source_file_mtime": 0,
+            "source_path": "materials/Marry_1.domat",
+            "sub_object_id": 0,
+            "tags": [],
+            "type": "Material"
         },
         "4083617401505468959": {
             "asset_file_mtime": 0,

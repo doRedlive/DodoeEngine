@@ -251,7 +251,14 @@ namespace dodoe {
                     static_cast<bool>(m_baseline_renderer_hook));
             }
             if (m_baseline_renderer_hook) {
-                m_baseline_renderer_hook(*gfx, frame_ctx.swapchain_image_index);
+                for (auto& target : view_mgr->getTargets()) {
+                    auto* cam = target->getCamera();
+                    Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
+                    Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
+                    auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, false);
+                    family.buildVisiblePrimitives(*scene);
+                    m_baseline_renderer_hook(*gfx, frame_ctx.swapchain_image_index, family, *scene);
+                }
             }
         } else {
             for (auto& target : view_mgr->getTargets()) {

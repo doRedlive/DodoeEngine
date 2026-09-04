@@ -170,10 +170,14 @@ namespace dodoe {
         auto& tpl = it->second;
 
         const String vs_name = tpl.desc.shader_name + "VS";
-        const String ps_name = tpl.desc.shader_name + "PS";
+        String ps_name = tpl.desc.shader_name + "PS";
 
         const auto* vs_handle = m_shader_library->findShader(vs_name);
         const auto* ps_handle = m_shader_library->findShader(ps_name);
+        if (!ps_handle) {
+            ps_name = tpl.desc.shader_name + "NoBindlessPS";
+            ps_handle = m_shader_library->findShader(ps_name);
+        }
 
         if (!vs_handle) {
             DO_ERROR("MaterialSystem::resolveTemplate vertex shader not found: {}", vs_name);

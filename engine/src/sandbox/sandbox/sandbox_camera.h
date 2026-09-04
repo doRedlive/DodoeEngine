@@ -26,7 +26,7 @@ namespace sandbox {
 
         dodoe::Vector3f m_position{0.0f, 5.0f, 10.0f};
         float m_yaw   = -90.0f;
-        float m_pitch = 0.0f;
+        float m_pitch = -20.0f;
         float m_fov   = 60.0f;
 
         float m_speed      = 10.0f;

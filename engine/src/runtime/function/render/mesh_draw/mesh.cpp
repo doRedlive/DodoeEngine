@@ -181,12 +181,13 @@ namespace dodoe {
         }
 
         AssetManager* asset_manager = ResourceManager::Self().getAssetManager();
-        String absolute_path = path;
-        if (asset_manager) {
-            if (FsPath(path.c_str()).is_relative()) {
-                absolute_path = String((asset_manager->getAssetDir() / FsPath(path.c_str())).generic_string().c_str());
-            }
+        FsPath resolved_path(path.c_str());
+        if (resolved_path.is_relative() && asset_manager) {
+            const FsPath joined = (asset_manager->getAssetDir() / resolved_path).lexically_normal();
+            resolved_path = std::filesystem::exists(resolved_path) ? resolved_path : joined;
         }
+        resolved_path = resolved_path.lexically_normal();
+        String absolute_path = String(resolved_path.generic_string().c_str());
 
         Assimp::Importer importer;
         const aiScene* imported_scene = importer.ReadFile(
@@ -197,6 +198,7 @@ namespace dodoe {
             aiProcess_JoinIdenticalVertices);
 
         if (!imported_scene || (imported_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || !imported_scene->mRootNode) {
+            DO_ERROR("Mesh::Create: failed to read '{}': {}", absolute_path, importer.GetErrorString());
             return nullptr;
         }
 
@@ -205,6 +207,7 @@ namespace dodoe {
         MeshBuildResult build = BuildMeshData(imported_scene, mesh_name, model_directory);
 
         if (build.upload_data.position_data.empty() || build.upload_data.index_data.empty()) {
+            DO_ERROR("Mesh::Create: no geometry parsed from '{}'", absolute_path);
             return nullptr;
         }
 

@@ -45,11 +45,14 @@ namespace dodoe {
             }
             return findShaderValue("ForwardLitNoBindlessPS");
         }
+        GfxShaderHandle getForwardLitPixelShaderNoBindless() const { return findShaderValue("ForwardLitNoBindlessPS"); }
         GfxShaderHandle getDeferredLightPixelShader() const { return findShaderValue("DeferredLightPS"); }
         GfxShaderHandle getToneMappingPixelShader() const { return findShaderValue("ToneMappingPS"); }
         GfxShaderHandle getColorGradingPixelShader() const { return findShaderValue("ColorGradingPS"); }
         GfxShaderHandle getFxaaPixelShader() const { return findShaderValue("FxaaPS"); }
         GfxShaderHandle getPresentPixelShader() const { return findShaderValue("PresentPS"); }
+        GfxShaderHandle getBaselineVertexShader() const { return findShaderValue("BaselineVS"); }
+        GfxShaderHandle getBaselinePixelShader() const { return findShaderValue("BaselinePS"); }
         GfxShaderHandle getImGuiVertexShader() const { return findShaderValue("ImGuiVS"); }
         GfxShaderHandle getImGuiPixelShader() const { return findShaderValue("ImGuiPS"); }
         GfxShaderHandle getSpriteVertexShader() const { return findShaderValue("SpriteVS"); }
