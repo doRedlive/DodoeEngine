@@ -248,18 +248,13 @@ namespace dodoe {
     void SystemContext::renderTick() {
         DO_PROFILE_SCOPE_CATEGORY("SystemContext::renderTick", "frame");
         if (!m_render_system) { return; }
-        const Bool baseline_only = RenderSettings::IsEnableBaselineRender();
 #ifdef DODOE_DEBUG_ENABLED
-        if (!baseline_only) {
-            ImGuiBuilder::PrepareImGui();
-        }
+        ImGuiBuilder::PrepareImGui();
 #endif//DODOE_DEBUG_ENABLED
-        if (m_debugger && !baseline_only) { m_debugger->onRender(); }
+        if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
 #ifdef DODOE_DEBUG_ENABLED
-        if (!baseline_only) {
-            ImGuiBuilder::RenderImGui();
-        }
+        ImGuiBuilder::RenderImGui();
 #endif//DODOE_DEBUG_ENABLED
 
         m_render_system->submitFrame();

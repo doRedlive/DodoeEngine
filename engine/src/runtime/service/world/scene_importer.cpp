@@ -68,6 +68,28 @@ namespace dodoe {
             }
         }
 
+        String ToAssetRelativePath(const String& path) {
+            if (path.empty()) {
+                return path;
+            }
+            const FsPath fs_path(path.c_str());
+            if (!fs_path.is_absolute()) {
+                return String(fs_path.generic_string().c_str());
+            }
+            AssetManager* asset_manager = ResourceManager::Self().getAssetManager();
+            if (!asset_manager) {
+                return String{};
+            }
+            std::error_code ec;
+            const FsPath rel = std::filesystem::relative(fs_path, asset_manager->getAssetDir(), ec);
+            const String rel_str(rel.generic_string().c_str());
+            if (ec || rel.empty() || rel_str.starts_with("..")) {
+                DO_ERROR("SceneImporter: path '{}' is outside the project Assets directory", path);
+                return String{};
+            }
+            return rel_str;
+        }
+
         void DeserializePrefabComponents(const std::vector<ComponentRes>& components, Entity entity) {
             auto& component_db = ComponentDB::self();
             for (const auto& component_res : components) {
@@ -156,7 +178,7 @@ namespace dodoe {
         if (hierarchy.empty()) {
             auto& mc = root_entity.addComponent<MeshRendererComponent>();
             mc.mesh = PPtr<Mesh>(mesh);
-            mc.mesh.setLegacyPath(path);
+            mc.mesh.setLegacyPath(ToAssetRelativePath(path));
             mc.section_index = 0;
             mc.dirty = true;
             return;
@@ -182,7 +204,7 @@ namespace dodoe {
             if (node.mesh_section_index >= 0) {
                 auto& mc = node_entity.addComponent<MeshRendererComponent>();
                 mc.mesh = PPtr<Mesh>(mesh);
-                mc.mesh.setLegacyPath(path);
+                mc.mesh.setLegacyPath(ToAssetRelativePath(path));
                 mc.section_index = node.mesh_section_index;
                 mc.dirty = true;
             }
@@ -327,7 +349,7 @@ namespace dodoe {
         }
 
         PPtr<Prefab> prefab_ref(ref);
-        prefab_ref.setLegacyPath(path);
+        prefab_ref.setLegacyPath(ToAssetRelativePath(path));
         Entity root = InstantiatePrefab(prefab_ref);
         if (!root.valid()) {
             DO_ERROR("SceneImporter::ImportPrefab: failed to load Prefab for '{}'", path);

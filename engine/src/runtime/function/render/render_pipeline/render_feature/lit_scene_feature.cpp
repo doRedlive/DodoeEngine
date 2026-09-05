@@ -115,8 +115,10 @@ namespace dodoe {
         auto* binding_set_cache = resources.getBindingSetCache();
         DO_ASSERT(binding_layout_cache != nullptr, "LitSceneFeature binding layout cache is null");
         DO_ASSERT(binding_set_cache != nullptr, "LitSceneFeature binding set cache is null");
+        auto* material_system = resources.getMaterialSystem();
+        DO_ASSERT(material_system != nullptr, "LitSceneFeature material system is null");
         m_lit_processor = create_scope<LitMeshProcessor>(
-            getMeshPassType(), descriptor_binding_set, *binding_layout_cache, *binding_set_cache);
+            getMeshPassType(), descriptor_binding_set, *binding_layout_cache, *binding_set_cache, *material_system);
     }
 
     void LitSceneFeature::shutdown() {

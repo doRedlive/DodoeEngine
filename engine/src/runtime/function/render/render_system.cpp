@@ -80,11 +80,31 @@ namespace dodoe {
     }
 
     void RenderSystem::enqueueResourceCommand(ResourceCommand&& cmd) {
-        m_resource_command_queue.push(std::move(cmd));
+        {
+            std::lock_guard<std::mutex> lock(m_pending_mutex);
+            if (!m_pending_resource_commands.empty()) {
+                m_pending_resource_commands.push_back(std::move(cmd));
+                return;
+            }
+        }
+        if (!m_resource_command_queue.tryPush(std::move(cmd))) {
+            std::lock_guard<std::mutex> lock(m_pending_mutex);
+            m_pending_resource_commands.push_back(std::move(cmd));
+        }
     }
 
     void RenderSystem::enqueueSceneCommand(SceneCommand&& cmd) {
-        m_scene_command_queue.push(std::move(cmd));
+        {
+            std::lock_guard<std::mutex> lock(m_pending_mutex);
+            if (!m_pending_scene_commands.empty()) {
+                m_pending_scene_commands.push_back(std::move(cmd));
+                return;
+            }
+        }
+        if (!m_scene_command_queue.tryPush(std::move(cmd))) {
+            std::lock_guard<std::mutex> lock(m_pending_mutex);
+            m_pending_scene_commands.push_back(std::move(cmd));
+        }
     }
 
     Bool RenderSystem::acquireApplicationGraphicsContext() {
@@ -202,6 +222,23 @@ namespace dodoe {
             while (m_resource_command_queue.tryPop(res_cmd)) {
                 realizeResourceCommand(res_cmd);
             }
+
+            DynamicArray<ResourceCommand> res_batch;
+            {
+                std::lock_guard<std::mutex> lock(m_pending_mutex);
+                auto& pending = m_pending_resource_commands;
+                if (!pending.empty()) {
+                    const Size_t count = pending.size() < kPendingCommandsPerFrame ? pending.size() : kPendingCommandsPerFrame;
+                    res_batch.reserve(count);
+                    for (Size_t i = 0; i < count; ++i) {
+                        res_batch.push_back(std::move(pending[i]));
+                    }
+                    pending.erase(pending.begin(), pending.begin() + static_cast<std::ptrdiff_t>(count));
+                }
+            }
+            for (auto& cmd : res_batch) {
+                realizeResourceCommand(cmd);
+            }
         }
 
         {
@@ -222,6 +259,23 @@ namespace dodoe {
             SceneCommand scene_cmd;
             while (m_scene_command_queue.tryPop(scene_cmd)) {
                 applySceneCommand(*scene, scene_cmd);
+            }
+
+            DynamicArray<SceneCommand> scene_batch;
+            {
+                std::lock_guard<std::mutex> lock(m_pending_mutex);
+                auto& pending = m_pending_scene_commands;
+                if (!pending.empty()) {
+                    const Size_t count = pending.size() < kPendingCommandsPerFrame ? pending.size() : kPendingCommandsPerFrame;
+                    scene_batch.reserve(count);
+                    for (Size_t i = 0; i < count; ++i) {
+                        scene_batch.push_back(std::move(pending[i]));
+                    }
+                    pending.erase(pending.begin(), pending.begin() + static_cast<std::ptrdiff_t>(count));
+                }
+            }
+            for (auto& cmd : scene_batch) {
+                applySceneCommand(*scene, cmd);
             }
         }
 

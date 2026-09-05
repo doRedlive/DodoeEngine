@@ -89,6 +89,10 @@ namespace dodoe {
 
 #ifdef DODOE_DEBUG_ENABLED
 	void ImGuiFeature::setupViewports(SharedRenderService& resources) {
+	    if (RenderSettings::IsEnableBaselineRender()) {
+	        DO_INFO("ImGui multi-viewport disabled for baseline renderer");
+	        return;
+	    }
 	    const auto viewport_api = RenderSettings::GetRenderBackendApiType();
 	    const Bool viewports_supported = viewport_api == RenderBackendApiType::D3D12 ||
 	                                     viewport_api == RenderBackendApiType::Vulkan;

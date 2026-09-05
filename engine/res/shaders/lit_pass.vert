@@ -17,6 +17,7 @@ layout(location = 1) out vec2 v_UV;
 layout(location = 2) out vec3 v_WorldPosition;
 layout(location = 3) flat out uint v_TexIndex;
 layout(location = 4) out vec4 v_ColorTint;
+layout(location = 5) flat out uint v_Selected;
 
 layout(set = DOE_SET_GLOBAL, binding = DOE_GLOBAL_BINDING_CONSTANTS) uniform GlobalConstants {
     vec4 u_TimeData;
@@ -57,5 +58,7 @@ void main()
     v_WorldPosition = world_position.xyz;
     v_TexIndex = uint(u_DrawData.x);
     v_ColorTint = a_InstanceColorTint;
+    // Selection flag travels in the (otherwise unused) tint alpha channel.
+    v_Selected = a_InstanceColorTint.a < 0.5 ? 1u : 0u;
     gl_Position = u_ViewProjection * world_position;
 }

@@ -112,11 +112,11 @@ public static class FlowerSea
             int placed = 0;
             for (int i = 0; i < archetype.Count; i++)
             {
-                string prefabPath = FilePath.Resolve($"{PrefabDir}/{archetype.Label}.prefab");
-                if (File.Exists(prefabPath))
-                    NativeCalls.Native_SceneImportPrefab(prefabPath);
+                string prefabRelativePath = $"{PrefabDir}/{archetype.Label}.prefab";
+                if (File.Exists(FilePath.Resolve(prefabRelativePath)))
+                    NativeCalls.Native_SceneImportPrefab(prefabRelativePath);
                 else
-                    NativeCalls.Native_SceneImportModel(fullPath);
+                    NativeCalls.Native_SceneImportModel(archetype.Path);
 
                 var uuids = CollectUuids();
                 string top = FindNewTopNode(uuids, seen);

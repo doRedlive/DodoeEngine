@@ -8,8 +8,21 @@
 
 REFLECTION_TYPE(PointLightComponent)
 REFLECTION_TYPE(SpotLightComponent)
+REFLECTION_TYPE(DirectionalLightComponent)
 
 namespace dodoe {
+
+    STRUCT(DirectionalLightComponent, WhiteListFields, ScriptBind) {
+        REFLECTION_BODY(DirectionalLightComponent)
+
+        META(Enable)
+        Color color{Color::white()};
+        META(Enable)
+        float intensity{1.0f};
+
+        bool enabled{true};
+        bool dirty{true};
+    };
 
     STRUCT(PointLightComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(PointLightComponent)

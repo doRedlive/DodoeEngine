@@ -11,6 +11,7 @@
 #include "runtime/resource/file/file_id.h"
 #include "runtime/resource/asset/asset_handle.h"
 #include "runtime/core/object/object_id.h"
+#include "runtime/core/project/project.h"
 
 namespace dodoe {
     template <typename...>
@@ -31,6 +32,29 @@ namespace dodoe {
     struct is_asset_handle : std::false_type {};
     template <typename T>
     struct is_asset_handle<AssetHandle<T>> : std::true_type {};
+
+    inline String canonicalize_asset_path(const String& path) {
+        if (path.empty()) {
+            return path;
+        }
+        const FsPath fs_path(path.c_str());
+        if (!fs_path.is_absolute()) {
+            return String(fs_path.generic_string().c_str());
+        }
+        if (!Project::ActiveProject()) {
+            DO_ERROR("Serializer: drop absolute asset path '{}' (no active project)", path);
+            return String{};
+        }
+        std::error_code ec;
+        const FsPath rel = std::filesystem::relative(fs_path, Project::AssetDirectory(), ec);
+        const String rel_str(rel.generic_string().c_str());
+        if (ec || rel.empty() || rel_str.starts_with("..")) {
+            DO_ERROR("Serializer: drop absolute asset path '{}': outside Assets directory '{}'",
+                     path, Project::AssetDirectory().string());
+            return String{};
+        }
+        return rel_str;
+    }
 
     class DODOE_API Serializer {
     public:
@@ -101,7 +125,12 @@ namespace dodoe {
                 j["asset_id"] = Serializer::write(instance.getObjectID().asset_id);
                 j["sub_object_id"] = Serializer::write(instance.getObjectID().local_id);
                 if (!instance.getLegacyPath().empty()) {
-                    j["legacy_path"] = Serializer::write(instance.getLegacyPath());
+                    if (FsPath(instance.getLegacyPath().c_str()).is_absolute()) {
+                        DO_ERROR("Serializer: absolute asset path '{}' is not allowed, use a path relative to Assets",
+                                 instance.getLegacyPath());
+                    } else {
+                        j["legacy_path"] = Serializer::write(instance.getLegacyPath());
+                    }
                 }
                 return j;
             }
@@ -164,7 +193,7 @@ namespace dodoe {
                         read(json_context.at("legacy_path"), legacy_path);
                     }
                     instance = T(id);
-                    instance.setLegacyPath(legacy_path);
+                    instance.setLegacyPath(canonicalize_asset_path(legacy_path));
                 }
                 return instance;
             }

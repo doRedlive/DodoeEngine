@@ -90,7 +90,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -117,7 +117,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -144,7 +144,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":2,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":2,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -171,7 +171,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":3,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":3,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -198,7 +198,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":4,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":3693327600484473598,\"legacy_path\":\"Models\\\\flower (2)\\\\source\\\\Roses Orange.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":4,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],

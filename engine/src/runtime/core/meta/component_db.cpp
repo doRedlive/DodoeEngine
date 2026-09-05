@@ -190,6 +190,7 @@ namespace dodoe {
         registerComponent<FoliageRendererComponent>("FoliageRendererComponent");
         registerComponent<PointLightComponent>("PointLightComponent");
         registerComponent<SpotLightComponent>("SpotLightComponent");
+        registerComponent<DirectionalLightComponent>("DirectionalLightComponent");
         registerComponent<SkyLightComponent>("SkyLightComponent");
         registerComponent<CircleRendererComponent>("CircleRendererComponent");
         registerComponent<LineRendererComponent>("LineRendererComponent");

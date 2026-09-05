@@ -337,13 +337,11 @@ namespace dodoe {
 
     void RenderScene::resolveBatchMaterialInstances(PrimitiveSceneInfo& info) {
         auto* material_system = m_shared_render_service->getMaterialSystem();
-        auto* texture_manager = m_shared_render_service->getTextureManager();
 
         const auto& materials = info.getMaterials();
         auto& batches = info.getMeshBatches();
 
-        auto resolveTexture = [&](const PPtr<Texture2D>& texture_ptr) -> GfxTextureHandle {
-            if (!texture_manager) return {};
+        auto resolveTexture = [&](const PPtr<Texture2D>& texture_ptr) -> Texture2D* {
             Texture2D* tex = texture_ptr.get();
             if (!tex && !texture_ptr.getLegacyPath().empty()) {
                 const String legacy_path = texture_ptr.getLegacyPath();
@@ -352,7 +350,7 @@ namespace dodoe {
                     tex = ResourceManager::Self().loadObject<Texture2D>(UUID(static_cast<UInt64>(string2hash(legacy_path))), 0);
                 }
             }
-            return tex ? tex->getGpuHandle() : GfxTextureHandle{};
+            return tex;
         };
 
         for (Size_t i = 0; i < batches.size(); i++) {
@@ -367,10 +365,9 @@ namespace dodoe {
 
             UnorderedMap<String, MaterialParamValue> overrides;
             auto addTex = [&](const String& name, const PPtr<Texture2D>& texture_ptr) {
-                const GfxTextureHandle handle = resolveTexture(texture_ptr);
-                if (handle) {
+                if (Texture2D* tex = resolveTexture(texture_ptr)) {
                     MaterialParamValue val{};
-                    val.texture = handle;
+                    val.texture = tex;
                     overrides[name] = val;
                 }
             };

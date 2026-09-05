@@ -12,6 +12,7 @@ layout(location = 1) in vec2 v_UV;
 layout(location = 2) in vec3 v_WorldPosition;
 layout(location = 3) flat in uint v_TexIndex;
 layout(location = 4) in vec4 v_ColorTint;
+layout(location = 5) flat in uint v_Selected;
 
 layout(set = DOE_SET_GLOBAL, binding = DOE_GLOBAL_BINDING_CONSTANTS) uniform GlobalConstants {
     vec4 u_TimeData;
@@ -46,5 +47,5 @@ void main()
     o_Albedo = vec4(albedo, 1.0);
     o_Normal = vec4(n, 1.0);
     o_Position = vec4(v_WorldPosition, 1.0);
-    o_Material = vec4(metallic, roughness, ao, 1.0);
+    o_Material = vec4(metallic, roughness, ao, float(v_Selected));
 }

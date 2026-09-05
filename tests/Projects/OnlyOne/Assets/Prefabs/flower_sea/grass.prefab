@@ -228,7 +228,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -255,7 +255,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -282,7 +282,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":2,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":2,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -470,7 +470,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":3,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":3,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -497,7 +497,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":4,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":4,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -524,7 +524,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":5,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":5,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -551,7 +551,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":6,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":6,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -739,7 +739,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":7,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":7,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
@@ -766,7 +766,7 @@
                     "m_type_name": "HierarchyComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"C:\\\\Users\\\\33235\\\\Redlive\\\\dodoe\\\\tests\\\\Projects\\\\OnlyOne\\\\Assets\\\\Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":8,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":328711916716111805,\"legacy_path\":\"Models\\\\grass\\\\source\\\\Grass.fbx\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":8,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],

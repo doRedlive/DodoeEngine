@@ -289,27 +289,6 @@ namespace dodoe {
 
         inst.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
 
-        if (!RenderSettings::IsBindlessActive() && m_binding_layout_cache && m_binding_set_cache && !inst.textures.empty()) {
-            auto texture_layout = m_binding_layout_cache->getOrCreate(
-                GfxBindingLayoutDesc()
-                    .setVisibility(GfxShaderType::Pixel)
-                    .setRegisterSpaceIsDescriptorSet(true)
-                    .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
-                    .addItem(GfxBindingLayoutItem::Sampler(1))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(2))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
-
-            GfxBindingSetDesc set_desc;
-            set_desc.addItem(GfxBindingSetItem::Sampler(1, inst.sampler));
-            set_desc.addItem(GfxBindingSetItem::Texture_SRV(2, inst.textures[0]->getRHIHandle()));
-            set_desc.addItem(GfxBindingSetItem::Texture_SRV(3,
-                (inst.textures.size() > 1 ? inst.textures[1] : inst.textures[0])->getRHIHandle()));
-            inst.texture_binding_set = m_binding_set_cache->getOrCreate(
-                set_desc,
-                texture_layout,
-                m_binding_layout_cache->getLayoutGeneration(texture_layout));
-        }
-
         inst.resolved = true;
         ++inst.revision;
         ++m_global_revision;
@@ -396,32 +375,15 @@ namespace dodoe {
             return false;
         }
 
-        const auto& tex_handle = value.texture;
-        if (tex_handle) {
-            instance.textures.push_back(tex_handle);
-            Int32 desc_index = -1;
-            if (auto* tex = findTexture2DByHandle(tex_handle)) {
-                desc_index = tex->getDescriptorIndex();
-            }
-            instance.texture_descriptor_indices.push_back(desc_index);
-            if (desc_index < 0) {
-                DO_WARN("MaterialSystem: texture parameter '{}' has no descriptor", def.name);
-            }
-            // DO_DEBUG("MaterialSystem: resolved texture parameter '{}' to descriptor {}", def.name, desc_index);
+        if (Texture2D* tex = value.texture) {
+            instance.textures.push_back(tex);
+            instance.texture_descriptor_indices.push_back(tex->getDescriptorIndex());
             return true;
         }
 
-        auto* fallback = m_texture_manager->getFallback();
-        if (fallback && fallback->getGpuHandle()) {
-            instance.textures.push_back(fallback->getGpuHandle());
-            Int32 desc_index = -1;
-            if (auto* tex = findTexture2DByHandle(fallback->getGpuHandle())) {
-                desc_index = tex->getDescriptorIndex();
-            } else if (fallback) {
-                desc_index = fallback->getDescriptorIndex();
-            }
-            instance.texture_descriptor_indices.push_back(desc_index);
-            // DO_DEBUG("MaterialSystem: using fallback texture for parameter '{}'", def.name);
+        if (Texture2D* fallback = m_texture_manager->getFallback()) {
+            instance.textures.push_back(fallback);
+            instance.texture_descriptor_indices.push_back(fallback->getDescriptorIndex());
         } else {
             DO_WARN("MaterialSystem: fallback texture unavailable for parameter '{}'", def.name);
         }
@@ -491,6 +453,41 @@ namespace dodoe {
         return findInstance(name);
     }
 
+    GfxBindingSetHandle MaterialSystem::getTextureBindingSet(const MaterialInstance* instance) {
+        if (!instance || instance->textures.empty() || !instance->sampler ||
+            !m_binding_layout_cache || !m_binding_set_cache) {
+            return {};
+        }
+
+        const auto* base_color = instance->textures[0];
+        const auto* metallic_rough = instance->textures.size() > 1 ? instance->textures[1] : instance->textures[0];
+
+        const GfxTextureHandle base_handle = base_color->getGpuHandle();
+        const GfxTextureHandle metallic_handle = metallic_rough->getGpuHandle();
+        if (!base_handle || !metallic_handle) {
+            return {};
+        }
+
+        const auto texture_layout = m_binding_layout_cache->getOrCreate(
+            GfxBindingLayoutDesc()
+                .setVisibility(GfxShaderType::Pixel)
+                .setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+                .addItem(GfxBindingLayoutItem::Sampler(shader_bindings::kMaterialBindingSampler))
+                .addItem(GfxBindingLayoutItem::Texture_SRV(shader_bindings::kMaterialBindingBaseColor))
+                .addItem(GfxBindingLayoutItem::Texture_SRV(shader_bindings::kMaterialBindingMetallicRough)));
+
+        GfxBindingSetDesc set_desc;
+        set_desc.addItem(GfxBindingSetItem::Sampler(shader_bindings::kMaterialBindingSampler, instance->sampler.Get()));
+        set_desc.addItem(GfxBindingSetItem::Texture_SRV(shader_bindings::kMaterialBindingBaseColor, base_handle->getRHIHandle().Get()));
+        set_desc.addItem(GfxBindingSetItem::Texture_SRV(shader_bindings::kMaterialBindingMetallicRough, metallic_handle->getRHIHandle().Get()));
+
+        return m_binding_set_cache->getOrCreate(
+            set_desc,
+            texture_layout,
+            m_binding_layout_cache->getLayoutGeneration(texture_layout));
+    }
+
     void MaterialSystem::invalidateForShader(const String& shader_name) {
         DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::invalidateForShader", "material");
         for (auto& [name, tpl] : m_templates) {
@@ -514,11 +511,11 @@ namespace dodoe {
         DO_INFO("MaterialSystem: invalidated materials for shader '{}'", shader_name);
     }
 
-    void MaterialSystem::invalidateForTexture(const GfxTextureHandle& texture) {
+    void MaterialSystem::invalidateForTexture(Texture2D* texture) {
         DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::invalidateForTexture", "texture");
         for (auto& [name, inst] : m_instances) {
-            for (const auto& tex : inst.textures) {
-                if (tex.get() == texture.get()) {
+            for (const auto* tex : inst.textures) {
+                if (tex == texture) {
                     inst.revision++;
                     break;
                 }
@@ -538,19 +535,6 @@ namespace dodoe {
         }
         ++m_global_revision;
         DO_INFO("MaterialSystem: invalidated all material templates and instances");
-    }
-
-    Texture2D* MaterialSystem::findTexture2DByHandle(GfxTextureHandle handle) const {
-        if (!m_texture_manager || !handle) {
-            return nullptr;
-        }
-
-        for (const auto& [id, tex] : m_texture_manager->getTexture2DCache()) {
-            if (tex && tex->getGpuHandle() && tex->getGpuHandle().get() == handle.get()) {
-                return tex.get();
-            }
-        }
-        return nullptr;
     }
 
 } // namespace dodoe

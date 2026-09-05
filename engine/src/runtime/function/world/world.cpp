@@ -27,6 +27,8 @@
 #include "systems/sprite_renderer_system.h"
 #include "systems/mono_system.h"
 #include "systems/tilemap_renderer_system.h"
+#include "components/animator_component.h"
+#include "components/joint2d_component.h"
 
 namespace dodoe {
 
@@ -101,6 +103,23 @@ namespace dodoe {
                     }
                     readers[type_hash].push_back(i);
                 }
+
+                if (access.structural) {
+                    for (Size_t j = 0; j < count; j++) {
+                        if (j == i) {
+                            continue;
+                        }
+                        if (j < i) {
+                            graph.addEdge(
+                                static_cast<TaskGraph::NodeId>(j),
+                                static_cast<TaskGraph::NodeId>(i));
+                        } else {
+                            graph.addEdge(
+                                static_cast<TaskGraph::NodeId>(i),
+                                static_cast<TaskGraph::NodeId>(j));
+                        }
+                    }
+                }
             }
 
             graph.compile();
@@ -109,6 +128,7 @@ namespace dodoe {
         void WarmupComponentsPools(Registry& reg) {
             reg.ensurePoolExists<CameraComponent>();
             reg.ensurePoolExists<CircleRendererComponent>();
+            reg.ensurePoolExists<AnimatorComponent>();
             reg.ensurePoolExists<AnimationPoseComponent>();
             reg.ensurePoolExists<AnimationDriveModeComponent>();
             reg.ensurePoolExists<AudioSourceComponent>();
@@ -116,6 +136,8 @@ namespace dodoe {
             reg.ensurePoolExists<BoneAttachmentComponent>();
             reg.ensurePoolExists<BoxCollider2dComponent>();
             reg.ensurePoolExists<CircleCollider2dComponent>();
+            reg.ensurePoolExists<DistanceJoint2dComponent>();
+            reg.ensurePoolExists<RevoluteJoint2dComponent>();
             reg.ensurePoolExists<BoxColliderComponent>();
             reg.ensurePoolExists<SphereColliderComponent>();
             reg.ensurePoolExists<CapsuleColliderComponent>();
@@ -127,6 +149,7 @@ namespace dodoe {
             reg.ensurePoolExists<RigidbodyComponent>();
             reg.ensurePoolExists<PointLightComponent>();
             reg.ensurePoolExists<SpotLightComponent>();
+            reg.ensurePoolExists<DirectionalLightComponent>();
             reg.ensurePoolExists<LineRendererComponent>();
             reg.ensurePoolExists<SkyLightComponent>();
             reg.ensurePoolExists<SpriteRendererComponent>();

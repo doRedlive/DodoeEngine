@@ -13,7 +13,7 @@ namespace dodoe {
 
     SystemAccess LightSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, PointLightComponent, SpotLightComponent>()
+            .readsComponents<IDComponent, TransformComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent>()
             .build();
     }
 
@@ -22,6 +22,17 @@ namespace dodoe {
         if (!GetRenderSystem()) { return; }
 
         UnorderedSet<UUID> active_lights{};
+
+        auto directional_view = reg.view<IDComponent, TransformComponent, DirectionalLightComponent>();
+        for (auto entity : directional_view) {
+            auto& id = entity.getComponent<IDComponent>();
+            auto& light = entity.getComponent<DirectionalLightComponent>();
+            active_lights.insert(id.id);
+            if (entity.hasComponent<PointLightComponent>() || entity.hasComponent<SpotLightComponent>() || !light.enabled) {
+                continue;
+            }
+            syncDirectionalLight(entity);
+        }
 
         auto point_view = reg.view<IDComponent, TransformComponent, PointLightComponent>();
         for (auto entity : point_view) {
@@ -46,6 +57,35 @@ namespace dodoe {
         }
 
         pruneRemovedLights(active_lights);
+    }
+
+    bool LightSystem::syncDirectionalLight(Entity entity) {
+        auto& id = entity.getComponent<IDComponent>();
+        auto& transform = entity.getComponent<TransformComponent>();
+        auto& light = entity.getComponent<DirectionalLightComponent>();
+
+        if (!needsLightSync(entity, LightType::Directional)) {
+            return false;
+        }
+
+        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        info.setLightType(LightType::Directional);
+        info.setWorldTransform(buildWorldMatrix(transform));
+        info.setEnabled(light.enabled);
+
+        DirectionalLightData data{};
+        data.direction = Math::Normalize(Vector3f(info.getWorldTransform()[2]));
+        data.color = Vector3f(light.color.r, light.color.g, light.color.b);
+        data.irradiance = light.intensity;
+        info.setDirectionalLightData(data);
+
+        RenderCommandQueue::AddLight(std::move(info));
+        m_submitted_lights[id.id] = LightType::Directional;
+
+        transform.dirty = false;
+        id.dirty = false;
+        light.dirty = false;
+        return true;
     }
 
     bool LightSystem::syncPointLight(Entity entity) {
@@ -126,7 +166,9 @@ namespace dodoe {
         const auto& transform = entity.getComponent<TransformComponent>();
         const bool light_dirty = kind == LightType::Point
             ? entity.getComponent<PointLightComponent>().dirty
-            : entity.getComponent<SpotLightComponent>().dirty;
+            : kind == LightType::Spot
+                ? entity.getComponent<SpotLightComponent>().dirty
+                : entity.getComponent<DirectionalLightComponent>().dirty;
 
         const auto submitted_it = m_submitted_lights.find(id.id);
         return submitted_it == m_submitted_lights.end() ||

@@ -19,6 +19,7 @@ namespace dodoe {
         void update(Registry& reg, float dt) override;
 
     private:
+        bool syncDirectionalLight(Entity entity);
         bool syncPointLight(Entity entity);
         bool syncSpotLight(Entity entity);
         void pruneRemovedLights(const UnorderedSet<UUID>& active_lights);

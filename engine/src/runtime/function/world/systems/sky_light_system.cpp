@@ -3,10 +3,12 @@
 #include "sky_light_system.h"
 
 #include "runtime/core/context/system_context.h"
+#include "runtime/core/project/project.h"
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
 #include "runtime/function/render/texture/texture.h"
+#include "runtime/resource/file/file_system.h"
 
 namespace dodoe {
 
@@ -77,7 +79,19 @@ namespace dodoe {
     TextureCubemap* SkyLightSystem::loadCubemap(const DynamicArray<String>& paths) {
         auto* tm = GetRenderSystem()->getSharedRenderService()->getTextureManager();
         if (!tm) return nullptr;
-        return tm->loadCubemapTexture(paths);
+
+        DynamicArray<String> resolved_paths = paths;
+        const FsPath asset_dir = Project::AssetDirectory();
+        for (auto& path : resolved_paths) {
+            if (path.empty()) {
+                continue;
+            }
+            const FsPath candidate = asset_dir / FsPath(path.c_str());
+            if (FileSystem::IsFileExists(candidate)) {
+                path = String(candidate.lexically_normal().generic_string().c_str());
+            }
+        }
+        return tm->loadCubemapTexture(resolved_paths);
     }
 
 } // dodoe

@@ -7,6 +7,8 @@
 #include "mesh_draw_command.h"
 #include "mesh_batch.h"
 #include "../render_scene/primitive_scene_info.h"
+#include "../material/material_system.h"
+#include "../texture/texture.h"
 
 namespace dodoe {
 
@@ -26,7 +28,15 @@ namespace dodoe {
         }
 
         inline Size_t ComputeMaterialHash(const MaterialInstance* mi) {
-            return reinterpret_cast<Size_t>(mi);
+            Size_t h = reinterpret_cast<Size_t>(mi);
+            if (mi) {
+                for (const auto* tex : mi->textures) {
+                    if (tex) {
+                        h ^= reinterpret_cast<Size_t>(tex->getGpuHandle().get()) << 7;
+                    }
+                }
+            }
+            return h;
         }
 
         inline Size_t ComputePassHash(const MeshPassType pass_type) {

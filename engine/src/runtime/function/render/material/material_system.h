@@ -37,14 +37,13 @@ namespace dodoe {
     union MaterialParamValue {
         Float f[4];
         Int32 i[4];
-        GfxTextureHandle texture;
+        Texture2D* texture;
 
         MaterialParamValue() : f{0.0f, 0.0f, 0.0f, 0.0f} {}
-        ~MaterialParamValue() { texture.~GfxTextureHandle(); }
         MaterialParamValue(const MaterialParamValue& other) : f{0.0f, 0.0f, 0.0f, 0.0f} { texture = other.texture; }
-        MaterialParamValue(MaterialParamValue&& other) noexcept : f{0.0f, 0.0f, 0.0f, 0.0f} { texture = other.texture; other.texture = {}; }
+        MaterialParamValue(MaterialParamValue&& other) noexcept : f{0.0f, 0.0f, 0.0f, 0.0f} { texture = other.texture; }
         MaterialParamValue& operator=(const MaterialParamValue& other) { texture = other.texture; return *this; }
-        MaterialParamValue& operator=(MaterialParamValue&& other) noexcept { texture = other.texture; other.texture = {}; return *this; }
+        MaterialParamValue& operator=(MaterialParamValue&& other) noexcept { texture = other.texture; return *this; }
     };
 
     struct MaterialParamDef {
@@ -94,10 +93,9 @@ namespace dodoe {
         MaterialInstanceDesc desc;
         const MaterialTemplate* tpl{nullptr};
 
-        DynamicArray<GfxTextureHandle> textures;
+        DynamicArray<Texture2D*> textures;
         DynamicArray<Int32> texture_descriptor_indices;
         GfxSamplerHandle sampler{};
-        GfxBindingSetHandle texture_binding_set{};
 
         UInt64 revision{0};
         Bool resolved{false};
@@ -112,7 +110,7 @@ namespace dodoe {
         GfxDepthStencilState depth_stencil{};
         GfxBlendState blend{};
 
-        DynamicArray<GfxTextureHandle> textures;
+        DynamicArray<Texture2D*> textures;
         GfxSamplerHandle sampler{};
 
         DynamicArray<UInt8> parameter_data;
@@ -140,6 +138,8 @@ namespace dodoe {
                                                     const String& template_name,
                                                     const UnorderedMap<String, MaterialParamValue>& param_overrides);
 
+        GfxBindingSetHandle getTextureBindingSet(const MaterialInstance* instance);
+
         void setInstanceParam(const String& instance_name,
                               const String& param_name,
                               MaterialParamValue value);
@@ -157,7 +157,7 @@ namespace dodoe {
                                      DynamicArray<UInt8>& out_data) const;
 
         void invalidateForShader(const String& shader_name);
-        void invalidateForTexture(const GfxTextureHandle& texture);
+        void invalidateForTexture(Texture2D* texture);
         void invalidateAll();
 
         const UnorderedMap<String, MaterialTemplate>& getTemplates() const { return m_templates; }
@@ -174,8 +174,6 @@ namespace dodoe {
         Bool resolveTextureSlot(MaterialInstance& instance,
                                 const MaterialParamDef& def,
                                 MaterialParamValue value);
-
-        Texture2D* findTexture2DByHandle(GfxTextureHandle handle) const;
 
         UnorderedMap<String, MaterialTemplate> m_templates{};
         UnorderedMap<String, MaterialInstance> m_instances{};

@@ -70,6 +70,26 @@ namespace dodoe {
             }
         }
 
+        bool tryPush(T&& item) {
+            for (;;) {
+                Size_t pos = m_enqueue_pos.load(std::memory_order_relaxed);
+                Cell& cell = m_buffer[pos & kMask];
+                const auto dif = static_cast<std::ptrdiff_t>(cell.sequence.load(std::memory_order_acquire))
+                    - static_cast<std::ptrdiff_t>(pos);
+                if (dif == 0) {
+                    if (m_enqueue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) {
+                        cell.storage = std::move(item);
+                        cell.sequence.store(pos + 1, std::memory_order_release);
+                        return true;
+                    }
+                    continue;
+                }
+                if (dif < 0) {
+                    return false;
+                }
+            }
+        }
+
         bool tryPop(T& item) {
             for (;;) {
                 Size_t pos = m_dequeue_pos.load(std::memory_order_relaxed);

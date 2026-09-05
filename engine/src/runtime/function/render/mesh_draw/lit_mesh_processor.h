@@ -15,12 +15,14 @@ namespace dodoe {
     class PrimitiveSceneInfo;
     class BindingLayoutCache;
     class BindingSetCache;
+    class MaterialSystem;
     struct InstanceSceneData;
     struct MeshPassRelevance;
 
     class LitMeshProcessor final : public IMeshPassProcessor {
         MeshPassType m_pass_type{MeshPassType::Opaque};
         GfxBindingSetHandle m_descriptor_binding_set{};
+        MaterialSystem* m_material_system{nullptr};
         GfxSamplerHandle m_sampler{};
         GfxBindingLayoutHandle m_global_binding_layout{};
         GfxBindingLayoutHandle m_view_binding_layout{};
@@ -38,7 +40,8 @@ namespace dodoe {
         LitMeshProcessor(const MeshPassType pass_type,
                          GfxBindingSetHandle descriptor_binding_set,
                          BindingLayoutCache& binding_layout_cache,
-                         BindingSetCache& binding_set_cache);
+                         BindingSetCache& binding_set_cache,
+                         MaterialSystem& material_system);
         void reset() override;
 
         [[nodiscard]] const GfxBindingLayoutHandle& getGlobalBindingLayout() const { return m_global_binding_layout; }

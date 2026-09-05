@@ -17,6 +17,8 @@
 #include "runtime/core/container/mpmc_queue.h"
 #include "runtime/core/thread/render_thread.h"
 
+#include <mutex>
+
 namespace dodoe {
 
     class RenderViewFamily;
@@ -27,6 +29,7 @@ namespace dodoe {
 
     class RenderSystem : public Managed<RenderSystem, RenderSystemCreateInfo> {
         static constexpr Size_t kGameCommandQueueCapacity = 256;
+        static constexpr Size_t kPendingCommandsPerFrame = 256;
 
         Scope<GfxContext> m_gfx{nullptr};
         Scope<RenderFrameScheduler> m_frame_scheduler{nullptr};
@@ -43,6 +46,10 @@ namespace dodoe {
 
         MpmcQueue<ResourceCommand, kGameCommandQueueCapacity> m_resource_command_queue;
         MpmcQueue<SceneCommand, kGameCommandQueueCapacity> m_scene_command_queue;
+
+        std::mutex m_pending_mutex{};
+        DynamicArray<ResourceCommand> m_pending_resource_commands{};
+        DynamicArray<SceneCommand> m_pending_scene_commands{};
 
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:

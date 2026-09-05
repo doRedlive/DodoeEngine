@@ -54,7 +54,7 @@ namespace dodoe {
         [[nodiscard]] AssetDatabase* getDatabase() const { return m_database.get(); }
         [[nodiscard]] const FsPath& getAssetDir() const { return m_asset_dir; }
 
-        UUID registerAsset(const String& source_path, AssetType type);
+        UUID registerAsset(const String& source_path, AssetType type, UUID forced_id = UUID{});
         Scope<Asset> createAssetInstance(AssetType type);
         void registerMaterialAsset(Scope<MaterialAsset> asset);
 

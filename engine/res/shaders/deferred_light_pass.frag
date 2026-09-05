@@ -218,7 +218,8 @@ vec3 applyPointLight(vec3 albedo, vec3 normal, vec3 position, float metallic, fl
     return evaluateDirectPBR(albedo, n, v, l, light_color * falloff, metallic, roughness);
 }
 
-vec3 evaluateIBL(vec3 albedo, vec3 N, vec3 V, float metallic, float roughness, float ao) {
+vec3 evaluateIBL(vec3 albedo, vec3 N, vec3 V, float metallic, float roughness, float ao,
+                 float diffuse_strength, float specular_strength) {
     vec3 R = reflect(-V, N);
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
     float NdotV = max(dot(N, V), 0.0);
@@ -245,7 +246,12 @@ vec3 evaluateIBL(vec3 albedo, vec3 N, vec3 V, float metallic, float roughness, f
 
     vec3 ibl_diffuse = kD * diffuse / PI;
     vec3 ibl_specular = specular;
-    return (ibl_diffuse * kIblDiffuseStrength + ibl_specular * kIblSpecularStrength) * ao;
+    return (ibl_diffuse * diffuse_strength + ibl_specular * specular_strength) * ao;
+}
+
+// Editor selection highlight: material.a is 1.0 on pixels belonging to the selected object.
+vec3 applySelectionHighlight(vec3 color, float selected) {
+    return color + vec3(0.30, 0.60, 1.00) * selected * 0.45;
 }
 
 void main()
@@ -253,7 +259,9 @@ void main()
     vec3 albedo = texture(sampler2D(u_Albedo, u_Sampler), v_UV).rgb;
     vec3 normal = texture(sampler2D(u_Normal, u_Sampler), v_UV).xyz;
     vec3 position = texture(sampler2D(u_Position, u_Sampler), v_UV).xyz;
-    vec3 material = texture(sampler2D(u_Material, u_Sampler), v_UV).rgb;
+    vec4 material_sample = texture(sampler2D(u_Material, u_Sampler), v_UV);
+    vec3 material = material_sample.rgb;
+    float selected = material_sample.a;
     float metallic = clamp(material.r, 0.0, 1.0);
     float roughness = clamp(material.g, 0.04, 1.0);
     float ao = clamp(material.b, 0.0, 1.0);
@@ -264,14 +272,20 @@ void main()
     }
     vec3 n = normalize(normal);
     vec3 v = normalize(u_CameraPosition.xyz - position);
-    vec3 color = evaluateIBL(albedo, n, v, metallic, roughness, ao);
+
+    if (u_CameraPosition.w > 0.5) {
+        o_Color = vec4(applySelectionHighlight(evaluateIBL(albedo, n, v, metallic, roughness, ao, 1.0, 0.5), selected), 1.0);
+        return;
+    }
+
+    vec3 color = evaluateIBL(albedo, n, v, metallic, roughness, ao, kIblDiffuseStrength, kIblSpecularStrength);
 
     if (u_LightDirectionType.w < 0.5) {
         color += applyDirectionalLight(albedo, normal, position, metallic, roughness);
-        o_Color = vec4(color, 1.0);
+        o_Color = vec4(applySelectionHighlight(color, selected), 1.0);
         return;
     }
 
     color += applyPointLight(albedo, normal, position, metallic, roughness);
-    o_Color = vec4(color, 1.0);
+    o_Color = vec4(applySelectionHighlight(color, selected), 1.0);
 }

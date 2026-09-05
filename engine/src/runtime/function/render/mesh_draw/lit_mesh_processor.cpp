@@ -22,9 +22,11 @@ namespace dodoe {
     LitMeshProcessor::LitMeshProcessor(const MeshPassType pass_type,
                                        GfxBindingSetHandle descriptor_binding_set,
                                        BindingLayoutCache& binding_layout_cache,
-                                       BindingSetCache& binding_set_cache)
+                                       BindingSetCache& binding_set_cache,
+                                       MaterialSystem& material_system)
         : m_pass_type(pass_type),
-          m_descriptor_binding_set(std::move(descriptor_binding_set)) {
+          m_descriptor_binding_set(std::move(descriptor_binding_set)),
+          m_material_system(&material_system) {
         m_sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
         m_global_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
@@ -106,6 +108,7 @@ namespace dodoe {
         m_primitive_binding_layout = nullptr;
         m_sampler_binding_layout = nullptr;
         m_sampler = nullptr;
+        m_material_system = nullptr;
     }
 
     void LitMeshProcessor::buildCachedCommands(
@@ -163,8 +166,11 @@ namespace dodoe {
                 if (RenderSettings::IsBindlessActive()) {
                     cmd.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
                     cmd.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
-                } else if (mi && mi->texture_binding_set) {
-                    cmd.setBindingSet(ShaderParameterSet::Material, mi->texture_binding_set);
+                } else if (mi) {
+                    const GfxBindingSetHandle material_binding_set = m_material_system->getTextureBindingSet(mi);
+                    if (material_binding_set) {
+                        cmd.setBindingSet(ShaderParameterSet::Material, material_binding_set);
+                    }
                 }
                 const UInt32 cmd_index = cache.findOrCreate(cache_key, std::move(cmd));
 
@@ -237,8 +243,11 @@ namespace dodoe {
                 if (RenderSettings::IsBindlessActive()) {
                     cmd.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
                     cmd.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
-                } else if (mi && mi->texture_binding_set) {
-                    cmd.setBindingSet(ShaderParameterSet::Material, mi->texture_binding_set);
+                } else if (mi) {
+                    const GfxBindingSetHandle material_binding_set = m_material_system->getTextureBindingSet(mi);
+                    if (material_binding_set) {
+                        cmd.setBindingSet(ShaderParameterSet::Material, material_binding_set);
+                    }
                 }
                 const UInt32 cmd_index = static_cast<UInt32>(local_commands.size());
                 local_commands.push_back(std::move(cmd));

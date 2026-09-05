@@ -15,6 +15,9 @@ namespace dodoe {
         static void RegisterDebugPanel();
         static void UnregisterDebugPanel();
 
+        // Entity currently selected in the debug hierarchy panel (invalid when nothing is selected).
+        static Entity GetSelectedEntity() { return s_selectedEntity; }
+
     private:
         static void OnImGuiRender();
 

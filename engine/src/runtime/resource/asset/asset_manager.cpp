@@ -20,8 +20,29 @@
 #include "runtime/resource/asset/types/audio_clip_asset.h"
 
 namespace dodoe {
-
     namespace {
+
+        const char* MetaImporterNameFor(AssetType type) {
+            switch (type) {
+                case AssetType::Scene:
+                    return "SceneImporter";
+                case AssetType::Prefab:
+                    return "PrefabImporter";
+                case AssetType::Material:
+                    return "MaterialImporter";
+                case AssetType::Anim2DClip:
+                    return "Anim2DClipImporter";
+                case AssetType::AnimatorController:
+                    return "AnimatorControllerImporter";
+                case AssetType::Tileset:
+                    return "TilesetImporter";
+                case AssetType::InputAction:
+                    return "InputActionImporter";
+                default:
+                    return "";
+            }
+        }
+
         const DynamicArray<String> kImageExts = {
             ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tga", ".psd", ".hdr"
         };
@@ -117,7 +138,7 @@ namespace dodoe {
         }
     }
 
-    UUID AssetManager::registerAsset(const String& source_path, AssetType type) {
+    UUID AssetManager::registerAsset(const String& source_path, AssetType type, UUID forced_id) {
         std::unique_lock lock(m_mutex);
 
         auto it = m_path_to_asset_id.find(source_path);
@@ -125,7 +146,18 @@ namespace dodoe {
             return it->second;
         }
 
-        UUID asset_id = AssetDatabase::generateUUID();
+        UUID asset_id = forced_id;
+        if (!asset_id.isValid()) {
+            const String importer_name = String(MetaImporterNameFor(type));
+            if (!m_asset_dir.empty() && !importer_name.empty()) {
+                const FsPath absolute_path = m_asset_dir / FsPath(source_path.c_str());
+                asset_id = ImportSettingsIO::LoadOrCreate(
+                    absolute_path, source_path, importer_name, Json::object()).guid;
+            }
+        }
+        if (!asset_id.isValid()) {
+            asset_id = AssetDatabase::generateUUID();
+        }
 
         AssetMetaData meta;
         meta.ref = ObjectID{asset_id, 0};
