@@ -44,6 +44,15 @@ namespace sandbox {
         input->registerAction("Sandbox", "Look", dodoe::InputActionValueType::Button);
         input->bindMouseButton("Sandbox", "Look", dodoe::MouseCode::ButtonRight);
 
+        input->registerAction("Sandbox", "Orbit", dodoe::InputActionValueType::Button);
+        input->bindMouseButton("Sandbox", "Orbit", dodoe::MouseCode::ButtonLeft);
+
+        input->registerAction("Sandbox", "Pan", dodoe::InputActionValueType::Button);
+        input->bindMouseButton("Sandbox", "Pan", dodoe::MouseCode::ButtonMiddle);
+
+        input->registerAction("Sandbox", "Alt", dodoe::InputActionValueType::Button);
+        input->bindKey("Sandbox", "Alt", dodoe::KeyCode::LeftAlt);
+
         input->registerAction("Sandbox", "Up", dodoe::InputActionValueType::Button);
         input->bindKey("Sandbox", "Up", dodoe::KeyCode::E);
 

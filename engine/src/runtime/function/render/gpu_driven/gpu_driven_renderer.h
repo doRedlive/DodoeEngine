@@ -42,11 +42,15 @@ namespace dodoe {
 
         GfxBufferHandle m_visible_objects_buffer{};
         GfxBufferHandle m_visible_count_buffer{};
+        GfxBufferHandle m_visible_flags_buffer{};
         GfxBufferHandle m_visible_count_readback_buffer{};
         GfxBufferHandle m_culling_params_buffer{};
         GfxBufferHandle m_indirect_args_buffer{};
         GfxBufferHandle m_bucket_counts_buffer{};
         GfxBufferHandle m_bucket_offsets_buffer{};
+
+        GfxComputePipelineHandle m_expand_pipeline{};
+        GfxBindingLayoutHandle m_expand_binding_layout{};
 
         UInt32 m_frame_index{0};
         UInt32 m_object_count{4096};
@@ -65,8 +69,15 @@ namespace dodoe {
                                const GpuScenePassResources& scene_resources,
                                UInt32 object_count);
 
+        void executeBatchExpand(DrawCommandList& cmd_list,
+                                UInt32 candidate_count,
+                                const GfxBufferHandle& arg_to_object,
+                                const GfxBufferHandle& candidate_args,
+                                const GfxBufferHandle& final_args);
+
         [[nodiscard]] GfxBufferHandle getVisibleObjectsBuffer() const { return m_visible_objects_buffer; }
         [[nodiscard]] GfxBufferHandle getVisibleCountBuffer() const { return m_visible_count_buffer; }
+        [[nodiscard]] GfxBufferHandle getVisibleFlagsBuffer() const { return m_visible_flags_buffer; }
         [[nodiscard]] GfxBufferHandle getIndirectArgsBuffer() const { return m_indirect_args_buffer; }
 
         [[nodiscard]] GpuVisibleStats getLastVisibleStats() const;

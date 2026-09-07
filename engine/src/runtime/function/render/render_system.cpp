@@ -293,7 +293,20 @@ namespace dodoe {
         const Float frame_delta = time_sys->getDeltaTime();
 
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
-        scene->flushUpdates(*frame_ctx.command_list);
+        if (RenderSettings::IsEnableBaselineRender() && RenderSettings::IsGpuDrivenSupported()) {
+            // GPU-driven baseline samples GpuScene buffers directly in its own
+            // command list, which submits before the frame list: upload first.
+            DrawCommandList upload_list;
+            upload_list.setDevice(*m_gfx);
+            scene->flushUpdates(upload_list);
+            auto& upload_cmd = m_gfx->getCommandList();
+            upload_cmd->open();
+            upload_list.execute(upload_cmd);
+            upload_cmd->close();
+            m_gfx->getDevice()->executeCommandList(upload_cmd);
+        } else {
+            scene->flushUpdates(*frame_ctx.command_list);
+        }
         DO_PROFILE_MARK("RenderSystem::renderFrame.sceneFlushed", "frame");
 
         DO_PROFILE_MARK("RenderSystem::renderFrame.renderViewTargets", "frame");

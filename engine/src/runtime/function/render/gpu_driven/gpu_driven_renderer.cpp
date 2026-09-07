@@ -14,6 +14,9 @@ namespace dodoe {
     }
 
     void GpuCulling::shutdown() {
+        m_expand_binding_layout = nullptr;
+        m_expand_pipeline = nullptr;
+        m_visible_flags_buffer = nullptr;
         m_bucket_offsets_buffer = nullptr;
         m_bucket_counts_buffer = nullptr;
         m_indirect_args_buffer = nullptr;
@@ -97,7 +100,8 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5));
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(6));
             m_culling_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
 
@@ -138,6 +142,18 @@ namespace dodoe {
                     .setDebugName("VisibleCount"));
         }
 
+        const UInt64 flags_buffer_size = std::max<UInt64>(effective_count, 1) * sizeof(UInt32);
+        if (!m_visible_flags_buffer ||
+            m_visible_flags_buffer->getByteSize() < flags_buffer_size) {
+            m_visible_flags_buffer = cmd_list.createBuffer(
+                GfxBufferDesc()
+                    .setByteSize(flags_buffer_size)
+                    .setStructStride(sizeof(UInt32))
+                    .setCanHaveUAVs(true)
+                    .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
+                    .setDebugName("VisibleFlags"));
+        }
+
         ensureReadbackBuffer(cmd_list);
 
         CullingParams params{};
@@ -163,6 +179,16 @@ namespace dodoe {
         cmd_list.setBufferState(m_visible_count_buffer, GfxResourceStates::UnorderedAccess);
         cmd_list.commitBarriers();
 
+        {
+            const UInt32 flag_count = static_cast<UInt32>(flags_buffer_size / sizeof(UInt32));
+            DynamicArray<UInt32> zero_flags(flag_count, 0);
+            cmd_list.setBufferState(m_visible_flags_buffer, GfxResourceStates::CopyDest);
+            cmd_list.commitBarriers();
+            cmd_list.writeBuffer(m_visible_flags_buffer, zero_flags.data(), flags_buffer_size, 0);
+            cmd_list.setBufferState(m_visible_flags_buffer, GfxResourceStates::UnorderedAccess);
+            cmd_list.commitBarriers();
+        }
+
         GfxBindingSetDesc binding_desc;
         binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, scene_resources.object_meta->getRHIHandle()));
@@ -170,6 +196,7 @@ namespace dodoe {
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, scene_resources.bounds->getRHIHandle()));
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_visible_objects_buffer->getRHIHandle()));
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_visible_count_buffer->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(6, m_visible_flags_buffer->getRHIHandle()));
 
         auto binding_set = cmd_list.createBindingSet(binding_desc, m_culling_binding_layout);
 
@@ -189,6 +216,7 @@ namespace dodoe {
 
         cmd_list.setBufferState(m_visible_objects_buffer, GfxResourceStates::ShaderResource);
         cmd_list.setBufferState(m_visible_count_buffer, GfxResourceStates::ShaderResource);
+        cmd_list.setBufferState(m_visible_flags_buffer, GfxResourceStates::ShaderResource);
         cmd_list.commitBarriers();
 
         m_frame_index = (m_frame_index + 1) % kMaxFramesInFlight;
@@ -301,6 +329,65 @@ namespace dodoe {
             cmd_list.setBufferState(m_indirect_args_buffer, GfxResourceStates::IndirectArgument);
             cmd_list.commitBarriers();
         }
+    }
+
+    void GpuCulling::executeBatchExpand(DrawCommandList& cmd_list,
+                                        UInt32 candidate_count,
+                                        const GfxBufferHandle& arg_to_object,
+                                        const GfxBufferHandle& candidate_args,
+                                        const GfxBufferHandle& final_args) {
+        if (!m_enabled || !m_shader_library || candidate_count == 0) return;
+        if (!m_visible_flags_buffer || !m_culling_params_buffer || !arg_to_object || !candidate_args || !final_args) return;
+
+        const auto cs = m_shader_library->getBatchExpandComputeShader();
+        if (!cs) return;
+
+        if (!m_expand_binding_layout) {
+            GfxBindingLayoutDesc layout_desc;
+            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4));
+            m_expand_binding_layout = cmd_list.createBindingLayout(layout_desc);
+        }
+
+        if (!m_expand_pipeline) {
+            GfxComputePipelineDesc pipeline_desc;
+            pipeline_desc.setComputeShader(cs);
+            pipeline_desc.addBindingLayout(m_expand_binding_layout);
+            m_expand_pipeline = m_gfx->getDevice()->createComputePipeline(pipeline_desc);
+        }
+        if (!m_expand_pipeline) return;
+
+        const UInt32 expand_params[4] = {candidate_count, 0, 0, 0};
+        cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::CopyDest);
+        cmd_list.commitBarriers();
+        cmd_list.writeBuffer(m_culling_params_buffer, expand_params, sizeof(expand_params), 0);
+        cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::ConstantBuffer);
+        cmd_list.commitBarriers();
+
+        GfxBindingSetDesc binding_desc;
+        binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_flags_buffer->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, arg_to_object->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, candidate_args->getRHIHandle()));
+        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, final_args->getRHIHandle()));
+
+        auto binding_set = cmd_list.createBindingSet(binding_desc, m_expand_binding_layout);
+
+        GfxComputeState compute_state;
+        compute_state.setPipeline(m_expand_pipeline);
+        compute_state.addBindingSet(binding_set->getRHIHandle());
+        cmd_list.setComputeState(compute_state);
+
+        const UInt32 thread_groups = (candidate_count + 63) / 64;
+        cmd_list.dispatch(thread_groups, 1, 1);
+
+        cmd_list.setBufferState(final_args, GfxResourceStates::IndirectArgument);
+        cmd_list.commitBarriers();
     }
 
     GpuVisibleStats GpuCulling::getLastVisibleStats() const {

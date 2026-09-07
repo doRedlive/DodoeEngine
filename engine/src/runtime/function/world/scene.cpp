@@ -12,6 +12,7 @@
 #include "runtime/core/utils/common.h"
 #include "runtime/function/script/script_runtime.h"
 #include "runtime/function/world/components.h"
+#include "runtime/function/world/components/prefab_node_component.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/res_type/scene_res.h"
 #include "runtime/service/world/scene_importer.h"
@@ -146,6 +147,255 @@ namespace dodoe {
             }
         }
 
+        void AttachHierarchyChild(Entity parent, Entity child) {
+            auto& parent_hier = parent.getComponent<HierarchyComponent>();
+            auto& child_hier = child.getComponent<HierarchyComponent>();
+            child_hier.parent = parent;
+            child_hier.parent_uuid = parent.uuid();
+            child_hier.dirty = true;
+            if (std::find(parent_hier.children.begin(), parent_hier.children.end(), child) == parent_hier.children.end()) {
+                parent_hier.children.push_back(child);
+            }
+            parent_hier.child_count = static_cast<int>(parent_hier.children.size());
+        }
+
+        String SerializeInstanceOverrides(Entity root, const PrefabInstanceComponent& inst) {
+            if (!root.hasComponent<PrefabNodeComponent>()) {
+                return String{};
+            }
+
+            const SceneRes* tmpl = SceneImporter::ResolvePrefabSceneRes(inst.prefab);
+            std::unordered_map<UUID, const EntityRes*> tmpl_by_uuid;
+            if (tmpl) {
+                for (const auto& er : tmpl->m_entities) {
+                    tmpl_by_uuid.emplace(er.m_uuid, &er);
+                }
+            }
+
+            std::vector<Entity> subtree;
+            CollectSubtree(root, subtree);
+
+            UnorderedMap<UUID, UUID> runtime_to_template;
+            for (Entity entity : subtree) {
+                UUID template_uuid = entity.uuid();
+                if (entity.hasComponent<PrefabNodeComponent>()) {
+                    template_uuid = entity.getComponent<PrefabNodeComponent>().template_uuid;
+                }
+                runtime_to_template.emplace(entity.uuid(), template_uuid);
+            }
+
+            SceneRes overrides;
+            for (Entity entity : subtree) {
+                const UUID template_uuid = runtime_to_template.at(entity.uuid());
+
+                const EntityRes* te = nullptr;
+                if (tmpl) {
+                    const auto tit = tmpl_by_uuid.find(template_uuid);
+                    if (tit != tmpl_by_uuid.end()) {
+                        te = tit->second;
+                    }
+                }
+
+                EntityRes er;
+                er.m_uuid = template_uuid;
+                er.m_name = entity.name();
+
+                std::vector<ComponentRes> natives = SerializeNativeComponents(entity);
+                for (auto& cr : natives) {
+                    if (cr.m_type_name == "IDComponent" || cr.m_type_name == "PrefabInstanceComponent") {
+                        continue;
+                    }
+                    if (cr.m_type_name == "HierarchyComponent") {
+                        Json h;
+                        if (ParseJsonText(cr.m_component, h) && h.contains("parent_uuid")) {
+                            const UUID parent_uuid(static_cast<uint64_t>(h["parent_uuid"].get<uint64_t>()));
+                            uint64_t out_uuid = 0;
+                            if (parent_uuid.isValid()) {
+                                const auto pit = runtime_to_template.find(parent_uuid);
+                                if (pit != runtime_to_template.end()) {
+                                    out_uuid = static_cast<uint64_t>(pit->second);
+                                }
+                            }
+                            h["parent_uuid"] = out_uuid;
+                            cr.m_component = h.dump();
+                        }
+                    }
+                    if (te) {
+                        const auto cit = std::find_if(te->m_native_components.begin(), te->m_native_components.end(),
+                            [&cr](const ComponentRes& t) { return t.m_type_name == cr.m_type_name; });
+                        if (cit != te->m_native_components.end() && cit->m_component == cr.m_component) {
+                            continue;
+                        }
+                    }
+                    er.m_native_components.push_back(std::move(cr));
+                }
+
+                std::vector<ComponentRes> managed = SerializeManagedComponents(entity);
+                for (auto& cr : managed) {
+                    if (te) {
+                        const auto cit = std::find_if(te->m_managed_components.begin(), te->m_managed_components.end(),
+                            [&cr](const ComponentRes& t) { return t.m_type_name == cr.m_type_name; });
+                        if (cit != te->m_managed_components.end() && cit->m_component == cr.m_component) {
+                            continue;
+                        }
+                    }
+                    er.m_managed_components.push_back(std::move(cr));
+                }
+
+                overrides.m_entities.push_back(std::move(er));
+            }
+
+            if (overrides.m_entities.empty()) {
+                return String{};
+            }
+            Json out = Serializer::write(overrides);
+            return String(out.dump().c_str());
+        }
+
+        void ApplyOverrideComponents(const EntityRes& er, Entity entity) {
+            std::vector<ComponentRes> natives;
+            for (const auto& cr : er.m_native_components) {
+                if (cr.m_type_name == "IDComponent" || cr.m_type_name == "PrefabInstanceComponent") {
+                    continue;
+                }
+                natives.push_back(cr);
+            }
+            DeserializeNativeComponents(natives, entity);
+            DeserializeManagedComponents(er.m_managed_components, entity);
+            if (entity.hasComponent<IDComponent>()) {
+                entity.getComponent<IDComponent>().setName(er.m_name);
+            }
+        }
+
+        void ApplyInstanceOverrides(Entity root, const String& overrides_text) {
+            if (overrides_text.empty()) {
+                return;
+            }
+            Scene* scene = root.getScene();
+            if (!scene) {
+                return;
+            }
+
+            Json parsed;
+            if (!ParseJsonText(overrides_text, parsed)) {
+                return;
+            }
+            SceneRes overrides;
+            Serializer::read(parsed, overrides);
+            if (overrides.m_entities.empty()) {
+                return;
+            }
+
+            std::vector<Entity> subtree;
+            CollectSubtree(root, subtree);
+            UnorderedMap<UUID, Entity> by_template;
+            for (Entity entity : subtree) {
+                if (!entity.valid()) continue;
+                if (entity.hasComponent<PrefabNodeComponent>()) {
+                    by_template.emplace(entity.getComponent<PrefabNodeComponent>().template_uuid, entity);
+                }
+            }
+
+            UnorderedSet<UUID> override_uuids;
+            for (const auto& er : overrides.m_entities) {
+                override_uuids.insert(er.m_uuid);
+            }
+
+            std::vector<Entity> remove_entities;
+            UnorderedSet<UUID> remove_uuids;
+            for (const auto& [template_uuid, entity] : by_template) {
+                if (!entity.valid() || override_uuids.count(template_uuid)) {
+                    continue;
+                }
+                std::vector<Entity> doomed;
+                CollectSubtree(entity, doomed);
+                for (Entity d : doomed) {
+                    if (!d.valid()) continue;
+                    if (remove_uuids.insert(d.uuid()).second) {
+                        remove_entities.push_back(d);
+                    }
+                }
+            }
+            for (auto it = remove_entities.rbegin(); it != remove_entities.rend(); ++it) {
+                scene->destroyEntity(*it);
+            }
+
+            std::vector<const EntityRes*> added;
+            for (const auto& er : overrides.m_entities) {
+                const auto it = by_template.find(er.m_uuid);
+                if (it != by_template.end()) {
+                    if (it->second.valid()) {
+                        ApplyOverrideComponents(er, it->second);
+                    }
+                    continue;
+                }
+                added.push_back(&er);
+            }
+
+            UnorderedMap<UUID, Entity> added_by_template;
+            for (const auto* er : added) {
+                Entity entity = scene->createEntity(UUID(), er->m_name);
+                entity.addComponent<PrefabNodeComponent>(er->m_uuid);
+                ApplyOverrideComponents(*er, entity);
+                added_by_template.emplace(er->m_uuid, entity);
+            }
+
+            for (const auto* er : added) {
+                Entity entity = added_by_template.at(er->m_uuid);
+                Entity parent{};
+                for (const auto& cr : er->m_native_components) {
+                    if (cr.m_type_name != "HierarchyComponent") continue;
+                    Json h;
+                    if (!ParseJsonText(cr.m_component, h) || !h.contains("parent_uuid")) continue;
+                    const UUID parent_uuid(static_cast<uint64_t>(h["parent_uuid"].get<uint64_t>()));
+                    if (!parent_uuid.isValid()) continue;
+                    const auto pit = by_template.find(parent_uuid);
+                    if (pit != by_template.end() && pit->second.valid()) {
+                        parent = pit->second;
+                    }
+                    else {
+                        const auto ait = added_by_template.find(parent_uuid);
+                        if (ait != added_by_template.end() && ait->second.valid()) {
+                            parent = ait->second;
+                        }
+                    }
+                }
+                if (parent.valid()) {
+                    AttachHierarchyChild(parent, entity);
+                }
+            }
+
+            std::vector<Entity> final_subtree;
+            CollectSubtree(root, final_subtree);
+            for (Entity entity : final_subtree) {
+                if (!entity.valid() || !entity.hasComponent<HierarchyComponent>()) continue;
+                auto& hier = entity.getComponent<HierarchyComponent>();
+                const UUID pu = hier.parent_uuid;
+                Entity parent{};
+                if (pu.isValid()) {
+                    const auto pit = by_template.find(pu);
+                    if (pit != by_template.end() && pit->second.valid()) {
+                        parent = pit->second;
+                    }
+                    else {
+                        const auto ait = added_by_template.find(pu);
+                        if (ait != added_by_template.end() && ait->second.valid()) {
+                            parent = ait->second;
+                        }
+                    }
+                }
+                if (!parent.valid()) continue;
+                const bool already_linked = hier.parent.valid() && hier.parent == parent;
+                if (already_linked) continue;
+                if (hier.parent.valid() && hier.parent.hasComponent<HierarchyComponent>()) {
+                    auto& old = hier.parent.getComponent<HierarchyComponent>();
+                    old.children.erase(std::remove(old.children.begin(), old.children.end(), entity), old.children.end());
+                    old.child_count = static_cast<int>(old.children.size());
+                }
+                AttachHierarchyChild(parent, entity);
+            }
+        }
+
     } // namespace
 
     Scene::Scene(const SceneCreateInfo& info) : Scene(info.world, info.name) { }
@@ -256,8 +506,9 @@ namespace dodoe {
                     inst.rotation = tc.rotation;
                     inst.scale = tc.scale;
                 }
+                inst.overrides = SerializeInstanceOverrides(entity, inst);
                 entity_res.m_native_components = SerializeNativeComponentsFiltered(
-                    entity, {String("IDComponent"), String("PrefabInstanceComponent")});
+                    entity, {String("IDComponent"), String("ActiveComponent"), String("PrefabInstanceComponent")});
             } else {
                 entity_res.m_native_components = SerializeNativeComponents(entity);
             }
@@ -372,6 +623,12 @@ namespace dodoe {
                 tc.dirty = true;
             }
 
+            if (marker.hasComponent<ActiveComponent>() && root.hasComponent<ActiveComponent>()) {
+                root.getComponent<ActiveComponent>().setActive(marker.activeSelf());
+            }
+
+            ApplyInstanceOverrides(root, inst.overrides);
+
             destroyEntity(marker);
         }
     }
@@ -386,6 +643,7 @@ namespace dodoe {
         id.name = name.empty() ? "Entity" : name;
         entity.addComponent<TagComponent>();
         entity.addComponent<TransformComponent>();
+        entity.addComponent<ActiveComponent>();
 
         m_entity_umap[uuid] = entity;
 
@@ -396,6 +654,9 @@ namespace dodoe {
         if (!entity.hasComponent<IDComponent>()) {
             auto& id = entity.addComponent<IDComponent>();
             id.name = "Entity";
+        }
+        if (!entity.hasComponent<ActiveComponent>()) {
+            entity.addComponent<ActiveComponent>();
         }
 
         const auto& id = entity.getComponent<IDComponent>();

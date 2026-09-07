@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
         cli_args.argc = argc;
         cli_args.args = argv;
 
-        auto project = dodoe::Project::Load("tests/Projects/OnlyOne/OnlyOne.doproj");
+        auto project = dodoe::Project::Load(dodoe::FsPath{DODOE_ROOT} / "tests/Projects/OnlyOne/OnlyOne.doproj");
         if (!project) {
             DO_ERROR("Failed to load project.");
             exit_code = -1;

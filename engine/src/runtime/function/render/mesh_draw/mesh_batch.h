@@ -6,6 +6,7 @@
 
 #include "runtime/function/graphics/gfx.h"
 #include "mesh_pass_type.h"
+#include "../render_scene/render_id.h"
 
 namespace dodoe {
 
@@ -41,7 +42,7 @@ namespace dodoe {
     };
 
     struct MeshBatch {
-        Identifier primitive_id{};
+        RenderId primitive_id{};
         MaterialInstance* material_instance{nullptr};
         MeshBatchPassMask pass_mask{};
         DynamicArray<MeshBatchElement> elements;

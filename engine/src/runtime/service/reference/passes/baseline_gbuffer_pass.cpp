@@ -236,7 +236,7 @@ namespace dodoe {
         for (const auto* primitive : mesh_ext.visible_primitives) {
             if (primitive) {
                 const Bool is_selected = selected_uuid != 0 &&
-                    static_cast<UInt64>(primitive->getId()) == selected_uuid;
+                    primitive->getId().value() == selected_uuid;
                 for (const auto& inst_data : primitive->getInstanceSceneData()) {
                     mesh_ext.instance_scene_data.push_back(inst_data);
                     if (is_selected) {
@@ -377,6 +377,9 @@ namespace dodoe {
                     ? material_instance->texture_descriptor_indices[1]
                     : -1;
                 shader_data.draw_data.z = material_instance->texture_descriptor_indices.size() > 1 ? 1 : 0;
+                shader_data.material_data.x = material_instance->metallic;
+                shader_data.material_data.y = material_instance->roughness;
+                shader_data.material_data.z = material_instance->ao;
                 m_command_list->writeBuffer(m_primitive_cb.Get(), &shader_data, sizeof(shader_data));
 
                 cutie::GraphicsState graphics_state;

@@ -127,8 +127,10 @@ namespace dodoe {
                     skybox_texture = fallback_cubemap->getGpuHandle();
                 }
 
+                const auto* brdf_lut = ctx.getTextureManager()->getBrdfLut();
                 const auto pass_binding_set = CreateLitPassBindingSet(
-                    command_list, allocation, shadow_handle, skybox_texture, binding_layout);
+                    command_list, allocation, shadow_handle, skybox_texture,
+                    brdf_lut ? brdf_lut->getGpuHandle() : GfxTextureHandle{}, binding_layout);
                 if (!pass_binding_set) {
                     DO_ERROR("TransparentPass: failed to create pass binding set");
                     return;

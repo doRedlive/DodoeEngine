@@ -14,7 +14,7 @@ namespace dodoe {
 
     SystemAccess CameraSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<CameraComponent, TransformComponent, TagComponent>()
+            .readsComponents<CameraComponent, TransformComponent, TagComponent, ActiveComponent, HierarchyComponent>()
             .build();
     }
 
@@ -36,6 +36,9 @@ namespace dodoe {
             }
         }
         for (auto entity : view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             if (camera_index >= kMaxCameras) {
                 break;
             }

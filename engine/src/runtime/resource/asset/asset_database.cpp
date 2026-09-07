@@ -78,6 +78,9 @@ namespace dodoe {
             if (asset_json.contains("asset_file_mtime")) {
                 meta.asset_file_mtime = asset_json["asset_file_mtime"].get<UInt64>();
             }
+            if (asset_json.contains("meta_file_mtime")) {
+                meta.meta_file_mtime = asset_json["meta_file_mtime"].get<UInt64>();
+            }
             if (asset_json.contains("import_signature")) {
                 meta.import_signature = asset_json["import_signature"].get<UInt64>();
             }
@@ -104,13 +107,15 @@ namespace dodoe {
                 }
             }
 
+            if (!meta.source_path.empty()) {
+                m_path_index[meta.source_path] = id.asset_id;
+            }
             m_metadata_cache[id] = std::move(meta);
         }
 
         m_dirty = false;
         return true;
     }
-
     Bool AssetDatabase::save() {
         std::error_code ec;
         std::filesystem::create_directories(m_database_path.parent_path(), ec);
@@ -133,6 +138,7 @@ namespace dodoe {
             asset_json["source_path"] = meta.source_path;
             asset_json["source_file_mtime"] = meta.source_file_mtime;
             asset_json["asset_file_mtime"] = meta.asset_file_mtime;
+            asset_json["meta_file_mtime"] = meta.meta_file_mtime;
             asset_json["import_signature"] = meta.import_signature;
             asset_json["is_builtin"] = meta.is_builtin;
 
@@ -176,13 +182,30 @@ namespace dodoe {
     }
 
     void AssetDatabase::setMetaData(const ObjectID& id, const AssetMetaData& meta) {
+        if (!meta.source_path.empty()) {
+            m_path_index[meta.source_path] = id.asset_id;
+        }
         m_metadata_cache[id] = meta;
         m_dirty = true;
     }
 
     void AssetDatabase::removeAsset(const ObjectID& id) {
-        m_metadata_cache.erase(id);
+        const auto it = m_metadata_cache.find(id);
+        if (it != m_metadata_cache.end()) {
+            if (!it->second.source_path.empty()) {
+                const auto path_it = m_path_index.find(it->second.source_path);
+                if (path_it != m_path_index.end() && path_it->second == id.asset_id) {
+                    m_path_index.erase(path_it);
+                }
+            }
+            m_metadata_cache.erase(it);
+        }
         m_dirty = true;
+    }
+
+    UUID AssetDatabase::getAssetIdByPath(const String& source_path) const {
+        const auto it = m_path_index.find(source_path);
+        return it != m_path_index.end() ? it->second : UUID{};
     }
 
     DynamicArray<ObjectID> AssetDatabase::getAllAssetIDs() const {

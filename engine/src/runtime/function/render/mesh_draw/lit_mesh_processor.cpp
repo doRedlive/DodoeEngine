@@ -153,6 +153,9 @@ namespace dodoe {
                 draw_shader_data.draw_data.x = mi->texture_descriptor_indices[0];
                 draw_shader_data.draw_data.y = mi->texture_descriptor_indices.size() > 1 ? mi->texture_descriptor_indices[1] : -1;
                 draw_shader_data.draw_data.z = mi->texture_descriptor_indices.size() > 1 ? 1 : 0;
+                draw_shader_data.material_data.x = mi->metallic;
+                draw_shader_data.material_data.y = mi->roughness;
+                draw_shader_data.material_data.z = mi->ao;
 
                 const UInt32 shader_data_index = static_cast<UInt32>(out_shader_data.size());
                 out_shader_data.push_back(draw_shader_data);
@@ -233,6 +236,9 @@ namespace dodoe {
                 draw_shader_data.draw_data.x = mi->texture_descriptor_indices[0];
                 draw_shader_data.draw_data.y = mi->texture_descriptor_indices.size() > 1 ? mi->texture_descriptor_indices[1] : -1;
                 draw_shader_data.draw_data.z = mi->texture_descriptor_indices.size() > 1 ? 1 : 0;
+                draw_shader_data.material_data.x = mi->metallic;
+                draw_shader_data.material_data.y = mi->roughness;
+                draw_shader_data.material_data.z = mi->ao;
 
                 const UInt32 shader_data_index = static_cast<UInt32>(out_shader_data.size());
                 out_shader_data.push_back(draw_shader_data);

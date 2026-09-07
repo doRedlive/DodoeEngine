@@ -16,6 +16,8 @@ namespace dodoe {
 
     using GpuObjectHandle = SlotHandle<8>;
 
+    static constexpr UInt32 kGpuObjectFlagValid = 1u << 0;
+
     using GpuResourceIndex = UInt32;
     static constexpr GpuResourceIndex kInvalidResourceIndex = ~0u;
 

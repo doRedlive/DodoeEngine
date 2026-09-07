@@ -118,7 +118,12 @@ namespace dodoe {
         if (!texture->isGpuReady()) {
             DO_WARN("DrawCommandList::writeTexture: texture not realized, deferring upload");
         }
-        const Size_t data_size = static_cast<Size_t>(texture->getHeight()) * row_pitch;
+        const auto& desc = texture->getDesc();
+        UInt32 effective_mip_height = desc.height >> array_slice;
+        if (effective_mip_height == 0) {
+            effective_mip_height = 1;
+        }
+        const Size_t data_size = static_cast<Size_t>(effective_mip_height) * row_pitch;
         WriteTextureCommand::Create(*this, texture, mip_level, array_slice, data, row_pitch, data_size);
     }
 

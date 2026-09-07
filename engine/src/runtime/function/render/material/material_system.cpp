@@ -287,6 +287,16 @@ namespace dodoe {
             }
         }
 
+        if (const auto it = resolved_params.find("metallic"); it != resolved_params.end()) {
+            inst.metallic = it->second.f[0];
+        }
+        if (const auto it = resolved_params.find("roughness"); it != resolved_params.end()) {
+            inst.roughness = it->second.f[0];
+        }
+        if (const auto it = resolved_params.find("ao"); it != resolved_params.end()) {
+            inst.ao = it->second.f[0];
+        }
+
         inst.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
 
         inst.resolved = true;
@@ -513,6 +523,9 @@ namespace dodoe {
 
     void MaterialSystem::invalidateForTexture(Texture2D* texture) {
         DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::invalidateForTexture", "texture");
+        if (!texture) {
+            return;
+        }
         for (auto& [name, inst] : m_instances) {
             for (const auto* tex : inst.textures) {
                 if (tex == texture) {
@@ -522,7 +535,6 @@ namespace dodoe {
             }
         }
         ++m_global_revision;
-        // DO_DEBUG("MaterialSystem: invalidated materials for changed texture");
     }
 
     void MaterialSystem::invalidateAll() {

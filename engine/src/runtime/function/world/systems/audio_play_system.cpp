@@ -12,7 +12,7 @@ namespace dodoe {
 
     SystemAccess AudioPlaySystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, AudioSourceComponent, AudioListenerComponent>()
+            .readsComponents<IDComponent, TransformComponent, AudioSourceComponent, AudioListenerComponent, ActiveComponent, HierarchyComponent>()
             .build();
     }
 
@@ -29,6 +29,9 @@ namespace dodoe {
         }
         auto view = reg.view<IDComponent, TransformComponent, AudioListenerComponent>();
         for (auto entity : view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& transform = entity.getComponent<TransformComponent>();
             audio->setListenerPosition(transform.position);
             break;
@@ -45,6 +48,9 @@ namespace dodoe {
         UnorderedSet<UUID> active{};
 
         for (auto entity : view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& transform = entity.getComponent<TransformComponent>();
             auto& src = entity.getComponent<AudioSourceComponent>();

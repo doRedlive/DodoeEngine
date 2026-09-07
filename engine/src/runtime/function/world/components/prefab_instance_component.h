@@ -22,6 +22,8 @@ namespace dodoe {
         Vector3f rotation{ 0.0f, 0.0f, 0.0f };
         META(Enable)
         Vector3f scale{ 1.0f, 1.0f, 1.0f };
+        META(Enable)
+        String overrides{};
     };
 
 } // dodoe

@@ -7,6 +7,7 @@
 #include "runtime/core/object/object_id.h"
 #include "runtime/core/object/pptr.h"
 #include "runtime/function/world/entity.h"
+#include "runtime/resource/res_type/scene_res.h"
 
 namespace dodoe {
 
@@ -18,6 +19,7 @@ namespace dodoe {
         static void ImportSprite(const String& path);
         static Entity ImportPrefab(const String& path);
         static Entity InstantiatePrefab(const PPtr<Prefab>& prefab_ref);
+        static const SceneRes* ResolvePrefabSceneRes(const PPtr<Prefab>& prefab_ref);
         static ObjectID ExportPrefab(const String& path, Entity root);
         static void ImportAsset(const String& path);
     };

@@ -97,6 +97,10 @@ namespace dodoe {
         DynamicArray<Int32> texture_descriptor_indices;
         GfxSamplerHandle sampler{};
 
+        Float metallic{0.0f};
+        Float roughness{1.0f};
+        Float ao{1.0f};
+
         UInt64 revision{0};
         Bool resolved{false};
     };

@@ -66,9 +66,9 @@ namespace dodoe {
     };
 
     struct RenderFeatureSettings {
-        Bool enable_gpu_driven{true};
+        Bool enable_gpu_driven{false};
         Bool enable_async_compute{false};
-        Bool enable_bindless{true};
+        Bool enable_bindless{false};
         CullingPath culling_path{CullingPath::CpuOnly};
     };
 

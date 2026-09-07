@@ -17,7 +17,7 @@ namespace dodoe {
 
     SystemAccess SpriteRendererSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, SpriteRendererComponent>()
+            .readsComponents<IDComponent, TransformComponent, SpriteRendererComponent, ActiveComponent, HierarchyComponent>()
             .build();
     }
 
@@ -28,6 +28,9 @@ namespace dodoe {
         UnorderedSet<UUID> active_sprites{};
 
         for (auto entity : sprite_view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& transform = entity.getComponent<TransformComponent>();
             auto& sr = entity.getComponent<SpriteRendererComponent>();

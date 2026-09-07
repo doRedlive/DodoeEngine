@@ -115,7 +115,7 @@ namespace dodoe {
     }
 
     DynamicArray<MeshBatch> PrimitiveRenderObject::buildMeshBatches(
-        const Identifier primitive_id,
+        const RenderId primitive_id,
         const DynamicArray<PPtr<Material>>& resolved_materials,
         const UInt32 first_instance) const
     {
@@ -161,13 +161,14 @@ namespace dodoe {
     }
 
     PrimitiveSceneInfo PrimitiveRenderObject::buildSceneInfo(
-        const Identifier primitive_id,
+        const RenderId primitive_id,
         const Matrix4f& world_transform,
         const Vector3f& bounds_min,
         const Vector3f& bounds_max) const
     {
         PrimitiveSceneInfo primitive(primitive_id);
         const auto materials = resolveMaterials();
+        primitive.setMaterials(materials);
         primitive.setSubMeshes(buildSections(materials));
         primitive.setMeshBatches(buildMeshBatches(primitive_id, materials, 0));
         primitive.setWorldTransform(world_transform);

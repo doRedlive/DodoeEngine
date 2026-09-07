@@ -155,7 +155,7 @@ namespace dodoe {
                 for (uint face_index = 0; face_index < source_mesh->mNumFaces; ++face_index) {
                     const auto& face = source_mesh->mFaces[face_index];
                     for (uint index_offset = 0; index_offset < face.mNumIndices; ++index_offset) {
-                        result.upload_data.index_data.push_back(face.mIndices[index_offset] + vertex_base);
+                        result.upload_data.index_data.push_back(face.mIndices[index_offset]);
                     }
                 }
 
@@ -283,6 +283,8 @@ namespace dodoe {
             Material* material = ResourceManager::Self().loadObjectByPath<Material>(FileID(source_path));
             if (material) {
                 lod.sub_meshes[section_index].material = PPtr<Material>(material);
+            } else {
+                DO_WARN("Mesh: material '{}' not loadable for section {}", source_path, section_index);
             }
         }
 

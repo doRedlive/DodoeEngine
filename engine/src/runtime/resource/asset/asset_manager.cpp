@@ -18,6 +18,7 @@
 #include "runtime/resource/asset/types/input_action_asset.h"
 #include "runtime/resource/asset/types/tiled_map_asset.h"
 #include "runtime/resource/asset/types/audio_clip_asset.h"
+#include "runtime/resource/asset/types/cubemap_asset.h"
 
 namespace dodoe {
     namespace {
@@ -38,6 +39,8 @@ namespace dodoe {
                     return "TilesetImporter";
                 case AssetType::InputAction:
                     return "InputActionImporter";
+                case AssetType::Cubemap:
+                    return "CubemapImporter";
                 default:
                     return "";
             }
@@ -66,6 +69,7 @@ namespace dodoe {
         const String kAnimatorControllerExt = ".doanim";
         const String kTilesetExt = ".tsx";
         const String kInputActionExt = ".doinput";
+        const String kCubemapExt = ".docubemap";
     }
 
     Bool AssetManager::initialize(const AssetManagerCreateInfo& info) {
@@ -134,6 +138,7 @@ namespace dodoe {
             case AssetType::InputAction:     return create_scope<InputActionAsset>();
             case AssetType::TiledMap:        return create_scope<TiledMapAsset>();
             case AssetType::Audio:           return create_scope<AudioClipAsset>();
+            case AssetType::Cubemap:         return create_scope<CubemapAsset>();
             default:                         return nullptr;
         }
     }
@@ -165,6 +170,10 @@ namespace dodoe {
         meta.source_file = FileID(source_path);
         meta.source_path = source_path;
         meta.name = FileSystem::PathToNameNoExt(source_path);
+        if (!m_asset_dir.empty()) {
+            meta.meta_file_mtime = ImportSettingsIO::MetaLastWriteTime(
+                m_asset_dir / FsPath(source_path.c_str()));
+        }
 
         m_path_to_asset_id[source_path] = asset_id;
 
@@ -431,130 +440,108 @@ namespace dodoe {
         DO_PROFILE_MARK("AssetManager::loadAssets.loadDatabase", "startup");
         m_database = create_scope<AssetDatabase>(configs_dir);
         if (!m_database->load()) {
-            return false;
+            DO_WARN("AssetManager: asset database load failed, rebuilding from .meta files");
         }
 
-        const auto asset_ids = m_database->getAllAssetIDs();
-        for (const auto& id : asset_ids) {
-            AssetMetaData meta = m_database->getMetaData(id);
-            m_path_to_asset_id[meta.source_path] = id.asset_id;
-            Size_t type_idx = static_cast<Size_t>(meta.type);
-            if (type_idx < static_cast<Size_t>(AssetType::Count)) {
-                m_assets_by_type[type_idx].push_back(id.asset_id);
-            }
-            auto asset = createAssetInstance(meta.type);
-            if (asset) {
-                asset->setMetaData(meta);
-                m_assets[id.asset_id] = std::move(asset);
-            }
-        }
+        return refreshAssets();
+    }
 
-        if (!asset_ids.empty()) {
-            DO_PROFILE_MARK("AssetManager::loadAssets.databaseReady", "startup");
-            return true;
-        }
+    void AssetManager::registerTextAsset(const String& source_path, AssetType type) {
+        const FsPath absolute_path = m_asset_dir / FsPath(source_path.c_str());
 
-        EnsureBuiltinImporters();
-        DO_PROFILE_MARK("AssetManager::loadAssets.scanDirectory", "startup");
-
-        try {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
-                if (!entry.is_regular_file()) {
-                    continue;
-                }
-
-                String ext = String(entry.path().extension().string().c_str());
-                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-                if (ext == ".meta") {
-                    continue;
-                }
-
-                FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
-                String source_path = String(rel_path.generic_string().c_str());
-
-                if (ext == kSceneExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::Scene);
-                    auto scene = create_scope<SceneAsset>();
-                    scene->setObjectID(ObjectID{asset_id, 0});
-                    scene->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path(entry.path().generic_string().c_str());
-                    if (scene->loadFromSource(abs_path)) {
-                        scene->setLoadState(AssetLoadState::Loaded);
-                    }
-                    m_assets[asset_id] = std::move(scene);
-                } else if (ext == kPrefabExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::Prefab);
-                    auto prefab = create_scope<PrefabAsset>();
-                    prefab->setObjectID(ObjectID{asset_id, 0});
-                    prefab->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path(entry.path().generic_string().c_str());
-                    if (prefab->loadFromSource(abs_path)) {
-                        prefab->setLoadState(AssetLoadState::Loaded);
-                    }
-                    m_assets[asset_id] = std::move(prefab);
-                } else if (ext == kMaterialExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::Material);
-                    auto mat = create_scope<MaterialAsset>();
-                    mat->setObjectID(ObjectID{asset_id, 0});
-                    mat->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path(entry.path().generic_string().c_str());
-                    if (mat->loadFromSource(abs_path)) {
-                        mat->setLoadState(AssetLoadState::Loaded);
-                    }
-                    m_assets[asset_id] = std::move(mat);
-                } else if (ext == kAnimClipExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::Anim2DClip);
-                    auto anim = create_scope<Anim2DClipAsset>();
-                    anim->setObjectID(ObjectID{asset_id, 0});
-                    anim->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path(entry.path().generic_string().c_str());
-                    if (anim->loadFromSource(abs_path)) {
-                        anim->setLoadState(AssetLoadState::Loaded);
-                    }
-                    m_assets[asset_id] = std::move(anim);
-                } else if (ext == kAnimatorControllerExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::AnimatorController);
-                    auto controller = create_scope<AnimatorControllerAsset>();
-                    controller->setObjectID(ObjectID{asset_id, 0});
-                    controller->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path(entry.path().generic_string().c_str());
-                    if (controller->loadFromSource(abs_path)) {
-                        controller->setLoadState(AssetLoadState::Loaded);
-                    }
-                    m_assets[asset_id] = std::move(controller);
-                } else if (ext == kTilesetExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::Tileset);
-                    auto tileset = create_scope<TilesetAsset>();
-                    tileset->setObjectID(ObjectID{asset_id, 0});
-                    tileset->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path(entry.path().generic_string().c_str());
-                    if (tileset->loadFromSource(abs_path)) {
-                        tileset->setLoadState(AssetLoadState::Loaded);
-                    }
-                    m_assets[asset_id] = std::move(tileset);
-                } else if (ext == kInputActionExt) {
-                    UUID asset_id = registerAsset(source_path, AssetType::InputAction);
-                    auto input = create_scope<InputActionAsset>();
-                    input->setObjectID(ObjectID{asset_id, 0});
-                    input->setName(FileSystem::PathToNameNoExt(source_path));
-                    String abs_path(entry.path().generic_string().c_str());
-                    if (input->loadFromSource(abs_path)) input->setLoadState(AssetLoadState::Loaded);
-                    m_assets[asset_id] = std::move(input);
-                } else if (std::ranges::find(kImageExts, ext) != kImageExts.end()
-                           || std::ranges::find(kModelExts, ext) != kModelExts.end()
-                           || std::ranges::find(kTiledMapExts, ext) != kTiledMapExts.end()) {
-                    importSourceFile(entry.path(), source_path, ext);
-                }
+        AssetMetaData cached;
+        if (m_database) {
+            const UUID known_id = m_database->getAssetIdByPath(source_path);
+            if (known_id.isValid()) {
+                cached = m_database->getMetaData(ObjectID{known_id, 0});
             }
         }
-        catch (const std::filesystem::filesystem_error& err) {
-            DO_ERROR("Traverse {} error: {}", m_asset_dir.string(), err.what());
-            return false;
+
+        const UInt64 meta_mtime = ImportSettingsIO::MetaLastWriteTime(absolute_path);
+        if (cached.ref.isValid() && cached.type == type
+            && meta_mtime != 0 && cached.meta_file_mtime == meta_mtime) {
+            std::unique_lock lock(m_mutex);
+            ensureAssetInstance(source_path, cached);
+            return;
         }
 
-        DO_PROFILE_MARK("AssetManager::loadAssets.scanComplete", "startup");
-        return true;
+        UUID asset_id;
+        const String importer_name = String(MetaImporterNameFor(type));
+        if (!importer_name.empty()) {
+            asset_id = ImportSettingsIO::LoadOrCreate(
+                absolute_path, source_path, importer_name, Json::object()).guid;
+        }
+        asset_id = registerAsset(source_path, type, asset_id);
+        if (!asset_id.isValid()) {
+            return;
+        }
+
+        AssetMetaData meta = m_database ? m_database->getMetaData(ObjectID{asset_id, 0}) : AssetMetaData{};
+        meta.ref = ObjectID{asset_id, 0};
+        meta.type = type;
+        meta.source_file = FileID(source_path);
+        meta.source_path = source_path;
+        meta.name = FileSystem::PathToNameNoExt(source_path);
+        meta.meta_file_mtime = ImportSettingsIO::MetaLastWriteTime(absolute_path);
+
+        if (m_database) {
+            m_database->setMetaData(ObjectID{asset_id, 0}, meta);
+        }
+        {
+            std::unique_lock lock(m_mutex);
+            ensureAssetInstance(source_path, meta);
+        }
+    }
+
+    void AssetManager::ensureAssetInstance(const String& source_path, const AssetMetaData& meta) {
+        const UUID asset_id = meta.ref.asset_id;
+
+        auto [it, inserted] = m_path_to_asset_id.try_emplace(source_path, asset_id);
+        if (!inserted && it->second != asset_id) {
+            m_assets.erase(it->second);
+            it->second = asset_id;
+        }
+
+        const Size_t type_idx = static_cast<Size_t>(meta.type);
+        if (type_idx < static_cast<Size_t>(AssetType::Count)) {
+            auto& by_type = m_assets_by_type[type_idx];
+            if (std::ranges::find(by_type, asset_id) == by_type.end()) {
+                by_type.push_back(asset_id);
+            }
+        }
+
+        if (m_assets.contains(asset_id)) {
+            return;
+        }
+
+        auto asset = createAssetInstance(meta.type);
+        if (!asset) {
+            return;
+        }
+        asset->setObjectID(ObjectID{asset_id, 0});
+        asset->setName(FileSystem::PathToNameNoExt(source_path));
+        asset->setMetaData(meta);
+        m_assets[asset_id] = std::move(asset);
+    }
+
+    void AssetManager::unregisterAsset(const String& source_path) {
+        UUID asset_id;
+        {
+            std::unique_lock lock(m_mutex);
+            const auto it = m_path_to_asset_id.find(source_path);
+            if (it == m_path_to_asset_id.end()) {
+                return;
+            }
+            asset_id = it->second;
+            m_path_to_asset_id.erase(it);
+            m_assets.erase(asset_id);
+            for (auto& by_type : m_assets_by_type) {
+                std::erase_if(by_type, [asset_id](const UUID& id) { return id == asset_id; });
+            }
+        }
+        if (m_database) {
+            m_database->removeAsset(ObjectID{asset_id, 0});
+        }
     }
 
     auto AssetManager::loadAssetsAsync() const -> std::future<void> {
@@ -597,55 +584,57 @@ namespace dodoe {
             return;
         }
 
-        ImportSettings settings = ImportSettingsIO::LoadOrCreate(
+        AssetMetaData cached;
+        if (m_database) {
+            const UUID known_id = m_database->getAssetIdByPath(source_path);
+            if (known_id.isValid()) {
+                cached = m_database->getMetaData(ObjectID{known_id, 0});
+            }
+        }
+
+        const UInt64 meta_mtime = ImportSettingsIO::MetaLastWriteTime(absolute_path);
+        const UInt64 source_mtime = ImportSettingsIO::LastWriteTimeSeconds(absolute_path);
+        const Bool untouched = cached.ref.isValid()
+            && meta_mtime != 0
+            && cached.meta_file_mtime == meta_mtime
+            && cached.source_file_mtime == source_mtime;
+
+        if (untouched) {
+            ensureAssetInstance(source_path, cached);
+            return;
+        }
+
+        const ImportSettings settings = ImportSettingsIO::LoadOrCreate(
             absolute_path, source_path,
             String(default_importer->getName()), default_importer->getDefaultSettings());
 
-        UUID asset_id = settings.guid;
+        const UUID asset_id = settings.guid;
         if (!asset_id.isValid()) {
             return;
         }
 
-        const UInt64 mtime = ImportSettingsIO::LastWriteTimeSeconds(absolute_path);
-        const UInt64 signature = ComputeImportSignature(settings.settings);
-
-        AssetMetaData cached = m_database ? m_database->getMetaData(ObjectID{asset_id, 0}) : AssetMetaData{};
+        cached = m_database ? m_database->getMetaData(ObjectID{asset_id, 0}) : AssetMetaData{};
         const Bool up_to_date = cached.ref.isValid()
-            && cached.source_file_mtime == mtime
-            && cached.import_signature == signature;
+            && cached.source_file_mtime == source_mtime
+            && cached.import_signature == ComputeImportSignature(settings.settings);
 
-        const auto existing_it = m_path_to_asset_id.find(source_path);
-        if (existing_it != m_path_to_asset_id.end()) {
-            if (up_to_date) {
-                if (m_assets.find(asset_id) == m_assets.end()) {
-                    Scope<Asset> asset = createAssetInstance(cached.type);
-                    if (asset) {
-                        asset->setObjectID(ObjectID{asset_id, 0});
-                        asset->setName(FileSystem::PathToNameNoExt(source_path));
-                        asset->setMetaData(cached);
-                        m_assets[asset_id] = std::move(asset);
-                    }
-                }
-                return;
+        if (up_to_date) {
+            AssetMetaData stamped = cached;
+            stamped.meta_file_mtime = meta_mtime;
+            if (m_database) {
+                m_database->setMetaData(ObjectID{asset_id, 0}, stamped);
             }
-            if (existing_it->second != asset_id) {
-                m_assets.erase(existing_it->second);
-                if (m_database) {
-                    m_database->removeAsset(ObjectID{existing_it->second, 0});
-                }
-            }
+            ensureAssetInstance(source_path, stamped);
+            return;
         }
 
-        AssetImporter* importer = nullptr;
-        if (!settings.importer.empty()) {
-            importer = ImporterRegistry::Self().findByName(settings.importer);
-        }
-        if (!importer) {
-            importer = default_importer;
-        }
+        AssetImporter* importer = !settings.importer.empty()
+            ? ImporterRegistry::Self().findByName(settings.importer)
+            : default_importer;
 
-        ImportContext ctx{FileID(source_path), source_path, String(absolute_path.generic_string().c_str()),
-                          asset_id, settings.settings, up_to_date ? &cached : nullptr};
+        const ImportContext ctx{FileID(source_path), source_path,
+                                String(absolute_path.generic_string().c_str()),
+                                asset_id, settings.settings, nullptr};
 
         lock.unlock();
         Scope<Asset> asset = importer->import(ctx);
@@ -662,25 +651,15 @@ namespace dodoe {
         meta.type = asset->getType();
         meta.source_file = FileID(source_path);
         meta.source_path = source_path;
-        meta.source_file_mtime = mtime;
-        meta.import_signature = signature;
+        meta.source_file_mtime = source_mtime;
+        meta.meta_file_mtime = ImportSettingsIO::MetaLastWriteTime(absolute_path);
+        meta.import_signature = ComputeImportSignature(settings.settings);
         asset->setMetaData(meta);
-
-        m_path_to_asset_id[source_path] = asset_id;
-
-        const Size_t type_idx = static_cast<Size_t>(meta.type);
-        if (type_idx < static_cast<Size_t>(AssetType::Count)) {
-            auto& by_type = m_assets_by_type[type_idx];
-            if (std::ranges::find(by_type, asset_id) == by_type.end()) {
-                by_type.push_back(asset_id);
-            }
-        }
-
-        m_assets[asset_id] = std::move(asset);
 
         if (m_database) {
             m_database->setMetaData(ObjectID{asset_id, 0}, meta);
         }
+        ensureAssetInstance(source_path, meta);
     }
 
     Bool AssetManager::isAssetDirty(const UUID& asset_id) const {
@@ -741,28 +720,23 @@ namespace dodoe {
         const auto is_importable = [](const String& ext) {
             return std::ranges::find(kImageExts, ext) != kImageExts.end()
                 || std::ranges::find(kModelExts, ext) != kModelExts.end()
-                || std::ranges::find(kTiledMapExts, ext) != kTiledMapExts.end();
+                || std::ranges::find(kTiledMapExts, ext) != kTiledMapExts.end()
+                || std::ranges::find(kAudioExts, ext) != kAudioExts.end();
         };
 
-        std::size_t total = 0;
-        try {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
-                if (!entry.is_regular_file()) {
-                    continue;
-                }
-                String ext = String(entry.path().extension().string().c_str());
-                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-                if (ext == ".meta" || !is_importable(ext)) {
-                    continue;
-                }
-                ++total;
-            }
-        }
-        catch (const std::filesystem::filesystem_error& err) {
-            DO_ERROR("Refresh {} error: {}", m_asset_dir.string(), err.what());
-            return false;
-        }
+        const auto text_asset_type_for = [](const String& ext) -> AssetType {
+            if (ext == kSceneExt) return AssetType::Scene;
+            if (ext == kPrefabExt) return AssetType::Prefab;
+            if (ext == kMaterialExt) return AssetType::Material;
+            if (ext == kAnimClipExt) return AssetType::Anim2DClip;
+            if (ext == kAnimatorControllerExt) return AssetType::AnimatorController;
+            if (ext == kTilesetExt) return AssetType::Tileset;
+            if (ext == kInputActionExt) return AssetType::InputAction;
+            if (ext == kCubemapExt) return AssetType::Cubemap;
+            return AssetType::Unknown;
+        };
 
+        UnorderedSet<String> live_paths;
         std::size_t done = 0;
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
@@ -776,16 +750,27 @@ namespace dodoe {
                 String ext = String(entry.path().extension().string().c_str());
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-                if (ext == ".meta" || !is_importable(ext)) {
+                if (ext == ".meta") {
                     continue;
                 }
 
                 FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
                 String source_path = String(rel_path.generic_string().c_str());
-                importSourceFile(entry.path(), source_path, ext);
+
+                const AssetType text_type = text_asset_type_for(ext);
+                if (text_type != AssetType::Unknown) {
+                    live_paths.insert(source_path);
+                    registerTextAsset(source_path, text_type);
+                } else if (is_importable(ext)) {
+                    live_paths.insert(source_path);
+                    importSourceFile(entry.path(), source_path, ext);
+                } else {
+                    continue;
+                }
+
                 ++done;
-                if (progress && (done % 8 == 0 || done == total)) {
-                    progress(done, total);
+                if (progress && (done % 8 == 0)) {
+                    progress(done, 0);
                 }
             }
         }
@@ -795,6 +780,22 @@ namespace dodoe {
         }
 
         if (m_database) {
+            DynamicArray<ObjectID> stale_ids;
+            for (const auto& id : m_database->getAllAssetIDs()) {
+                const AssetMetaData meta = m_database->getMetaData(id);
+                if (meta.source_path.empty()) {
+                    continue;
+                }
+                if (live_paths.find(meta.source_path) == live_paths.end()) {
+                    stale_ids.push_back(id);
+                }
+            }
+            for (const auto& id : stale_ids) {
+                const AssetMetaData meta = m_database->getMetaData(id);
+                DO_INFO("AssetManager: removed deleted asset '{}'", meta.source_path);
+                unregisterAsset(meta.source_path);
+                m_database->removeAsset(id);
+            }
             m_database->save();
         }
         return true;

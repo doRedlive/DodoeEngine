@@ -21,6 +21,7 @@ namespace dodoe {
     class Mesh;
     class AudioClip;
     class Prefab;
+    class TextureCubemap;
 
     namespace detail {
 
@@ -51,6 +52,8 @@ namespace dodoe {
         struct ObjectTypeName<AudioClip> { static constexpr const char* kValue = "AudioClip"; };
         template<>
         struct ObjectTypeName<Prefab> { static constexpr const char* kValue = "Prefab"; };
+        template<>
+        struct ObjectTypeName<TextureCubemap> { static constexpr const char* kValue = "TextureCubemap"; };
 
     } // namespace detail
 
@@ -120,6 +123,8 @@ namespace dodoe {
                 return loadAudioClip(asset_id, local_id);
             } else if constexpr (std::is_same_v<T, Prefab>) {
                 return loadPrefab(asset_id, local_id);
+            } else if constexpr (std::is_same_v<T, TextureCubemap>) {
+                return loadCubemapTexture(asset_id, local_id);
             } else {
                 static_assert(detail::always_false<T>::value, "ResourceManager::loadObject: unsupported type");
             }
@@ -149,6 +154,7 @@ namespace dodoe {
     private:
         ResourceManager() = default;
         Scope<AssetManager> m_assetManager{nullptr};
+        UnorderedMap<InstanceID, Scope<TextureCubemap>> m_cubemap_textures{};
 
         DODOE_API Texture2D* loadTexture2D(const UUID& asset_id, UInt32 local_id);
         Sprite* loadSprite(const UUID& asset_id, UInt32 local_id);
@@ -161,6 +167,7 @@ namespace dodoe {
         Mesh* loadMesh(const UUID& asset_id, UInt32 local_id);
         AudioClip* loadAudioClip(const UUID& asset_id, UInt32 local_id);
         Prefab* loadPrefab(const UUID& asset_id, UInt32 local_id);
+        TextureCubemap* loadCubemapTexture(const UUID& asset_id, UInt32 local_id);
     };
 
     template<typename T>

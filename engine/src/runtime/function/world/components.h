@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "runtime/function/world/components/active_component.h"
 #include "runtime/function/world/components/animator_component.h"
 #include "runtime/function/world/components/audio_listener_component.h"
 #include "runtime/function/world/components/audio_source_component.h"

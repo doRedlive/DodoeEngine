@@ -12,11 +12,15 @@
 
 namespace dodoe {
 
+    namespace {
+        constexpr std::size_t kMaxHierarchyDepth = 256;
+    }
+
     MeshRendererSystem::~MeshRendererSystem() = default;
 
     SystemAccess MeshRendererSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, MeshRendererComponent, HierarchyComponent, AnimationPoseComponent>()
+            .readsComponents<IDComponent, TransformComponent, MeshRendererComponent, HierarchyComponent, AnimationPoseComponent, ActiveComponent>()
             .build();
     }
 
@@ -24,10 +28,15 @@ namespace dodoe {
         (void)dt;
         if (!GetRenderSystem()) { return; }
 
+        propagateHierarchyDirty(reg);
+
         auto mesh_view = reg.view<IDComponent, TransformComponent, MeshRendererComponent>();
         UnorderedSet<UUID> active_renderers{};
 
         for (auto entity : mesh_view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& transform = entity.getComponent<TransformComponent>();
             auto& mesh = entity.getComponent<MeshRendererComponent>();
@@ -56,7 +65,6 @@ namespace dodoe {
 
     bool MeshRendererSystem::syncRenderObject(Entity entity) {
         auto& id = entity.getComponent<IDComponent>();
-        auto& transform = entity.getComponent<TransformComponent>();
         auto& mesh = entity.getComponent<MeshRendererComponent>();
 
         if (!needsRenderObjectSync(entity, m_submitted_objects)) {
@@ -85,7 +93,7 @@ namespace dodoe {
 
         auto render_object = buildRenderObject(mesh);
         render_object->setUUID(id.id);
-        render_object->setWorldTransform(buildWorldMatrix(transform));
+        render_object->setWorldTransform(buildWorldMatrix(entity));
         RenderCommandQueue::AddPrimitive(std::move(render_object));
         m_submitted_objects.insert(id.id);
         return true;
@@ -108,6 +116,21 @@ namespace dodoe {
         const auto& mesh = entity.getComponent<MeshRendererComponent>();
         const bool hierarchy_dirty = entity.hasComponent<HierarchyComponent>() && entity.getComponent<HierarchyComponent>().dirty;
 
+        Entity current = entity;
+        while (current.valid() && current.hasComponent<HierarchyComponent>()) {
+            Entity parent = current.getComponent<HierarchyComponent>().parent;
+            if (!parent.valid()) {
+                break;
+            }
+            if (parent.hasComponent<TransformComponent>() && parent.getComponent<TransformComponent>().dirty) {
+                return true;
+            }
+            if (parent.hasComponent<HierarchyComponent>() && parent.getComponent<HierarchyComponent>().dirty) {
+                return true;
+            }
+            current = parent;
+        }
+
         const auto* render_object = GetRenderSystem()->getRenderScene()->findPrimitive(id.id);
         return submitted.find(id.id) == submitted.end() ||
             render_object == nullptr ||
@@ -119,7 +142,77 @@ namespace dodoe {
             mesh.dirty;
     }
 
-    Matrix4f MeshRendererSystem::buildWorldMatrix(const TransformComponent& transform) {
+    void MeshRendererSystem::propagateHierarchyDirty(Registry& reg) {
+        auto hier_view = reg.view<HierarchyComponent>();
+        for (auto entity : hier_view) {
+            if (!entity.valid()) {
+                continue;
+            }
+            auto& hier = entity.getComponent<HierarchyComponent>();
+            const bool transform_dirty = entity.hasComponent<TransformComponent>() &&
+                entity.getComponent<TransformComponent>().dirty;
+            if (!hier.dirty && !transform_dirty) {
+                continue;
+            }
+
+            markSubtreeTransformDirty(hier.children, 0);
+
+            if (entity.hasComponent<MeshRendererComponent>() ||
+                entity.hasComponent<SpriteRendererComponent>() ||
+                entity.hasComponent<RectRendererComponent>() ||
+                entity.hasComponent<LineRendererComponent>() ||
+                entity.hasComponent<FoliageRendererComponent>() ||
+                entity.hasComponent<PointLightComponent>() ||
+                entity.hasComponent<SpotLightComponent>() ||
+                entity.hasComponent<DirectionalLightComponent>() ||
+                entity.hasComponent<CameraComponent>()) {
+                continue;
+            }
+
+            hier.dirty = false;
+            if (entity.hasComponent<TransformComponent>()) {
+                entity.getComponent<TransformComponent>().dirty = false;
+            }
+        }
+    }
+
+    void MeshRendererSystem::markSubtreeTransformDirty(const std::vector<Entity>& children, std::size_t depth) {
+        if (depth >= kMaxHierarchyDepth) {
+            return;
+        }
+        for (Entity child : children) {
+            if (!child.valid()) {
+                continue;
+            }
+            if (child.hasComponent<TransformComponent>()) {
+                child.getComponent<TransformComponent>().dirty = true;
+            }
+            if (child.hasComponent<HierarchyComponent>()) {
+                markSubtreeTransformDirty(child.getComponent<HierarchyComponent>().children, depth + 1);
+            }
+        }
+    }
+
+    Matrix4f MeshRendererSystem::buildWorldMatrix(Entity entity) {
+        std::array<const TransformComponent*, kMaxHierarchyDepth> chain{};
+        std::size_t depth = 0;
+        Entity current = entity;
+        while (current.valid() && current.hasComponent<TransformComponent>() && depth < kMaxHierarchyDepth) {
+            chain[depth++] = &current.getComponent<TransformComponent>();
+            if (!current.hasComponent<HierarchyComponent>()) {
+                break;
+            }
+            current = current.getComponent<HierarchyComponent>().parent;
+        }
+
+        Matrix4f world(1.0f);
+        for (std::size_t i = depth; i > 0; --i) {
+            world = world * buildLocalMatrix(*chain[i - 1]);
+        }
+        return world;
+    }
+
+    Matrix4f MeshRendererSystem::buildLocalMatrix(const TransformComponent& transform) {
         Matrix4f world(1.0f);
         world = Math::Translate(world, transform.position);
         world = Math::Rotate(world, Math::Radians(transform.rotation.x), Vector3f(1.0f, 0.0f, 0.0f));

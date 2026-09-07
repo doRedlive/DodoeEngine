@@ -6,6 +6,10 @@
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_settings.h"
+#ifdef DODOE_DEBUG_ENABLED
+#include "runtime/service/debug/debug_imgui.h"
+#endif
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -67,6 +71,7 @@ namespace dodoe {
             return false;
         }
         m_device = info.device;
+        m_shader_library = info.shader_library;
         m_command_list = m_device->createCommandList();
         if (!m_command_list) {
             DO_ERROR("BaselineRenderer: failed to create raw command list");
@@ -93,6 +98,10 @@ namespace dodoe {
         if (!m_lighting_pass->initialize(context)) {
             return false;
         }
+        m_shadow_pass = create_scope<BaselineShadowPass>();
+        if (!m_shadow_pass->initialize(context)) {
+            return false;
+        }
         m_sky_pass = create_scope<BaselineSkyPass>();
         if (!m_sky_pass->initialize(context)) {
             return false;
@@ -101,9 +110,17 @@ namespace dodoe {
         if (!m_sprite_pass->initialize(context)) {
             return false;
         }
+        m_outline_pass = create_scope<BaselineOutlinePass>();
+        if (!m_outline_pass->initialize(context)) {
+            return false;
+        }
 #ifdef DODOE_DEBUG_ENABLED
         m_imgui_pass = create_scope<BaselineImGuiPass>();
         if (!m_imgui_pass->initialize(context)) {
+            return false;
+        }
+        m_pick_pass = create_scope<BaselinePickPass>();
+        if (!m_pick_pass->initialize(context)) {
             return false;
         }
 #endif
@@ -128,7 +145,10 @@ namespace dodoe {
         if (m_rt.gbuffer_framebuffer && m_scene_rt_extent == extent &&
             m_rt.gbuffer_framebuffer->isGpuReady() &&
             m_rt.scene_color && m_rt.scene_color->isGpuReady() &&
-            m_rt.fxaa_color && m_rt.fxaa_color->isGpuReady()) {
+            m_rt.fxaa_color && m_rt.fxaa_color->isGpuReady() &&
+            m_rt.pick_id && m_rt.pick_id->isGpuReady() &&
+            m_rt.pick_framebuffer && m_rt.pick_framebuffer->isGpuReady() &&
+            m_pick_staging) {
             return true;
         }
         if (extent.x <= 0 || extent.y <= 0) {
@@ -160,6 +180,16 @@ namespace dodoe {
         m_rt.tone_map_framebuffer = CreateFramebuffer(m_device, {m_rt.tone_map_color});
         m_rt.fxaa_framebuffer = CreateFramebuffer(m_device, {m_rt.fxaa_color});
 
+        // Viewport pick id target
+        m_rt.pick_id = CreateColorTarget(m_device, width, height, GfxFormat::R32_UINT, "BaselinePickId");
+        m_rt.pick_framebuffer = CreateFramebuffer(m_device, {m_rt.pick_id}, m_rt.gbuffer_depth);
+        GfxTextureDesc pick_staging_desc;
+        pick_staging_desc.setDimension(GfxTextureDimension::Texture2D)
+            .setFormat(GfxFormat::R32_UINT)
+            .setWidth(1)
+            .setHeight(1);
+        m_pick_staging = m_device->createStagingTexture(pick_staging_desc, GfxCpuAccessMode::Read);
+
         m_scene_rt_extent = extent;
         return true;
     }
@@ -168,13 +198,19 @@ namespace dodoe {
         if (m_device) {
             m_device->waitForIdle();
         }
+        GpuCulling::Destroy(m_gpu_culling);
         m_gbuffer_pass.reset();
         m_lighting_pass.reset();
+        m_shadow_pass.reset();
         m_sky_pass.reset();
         m_sprite_pass.reset();
+        m_outline_pass.reset();
 #ifdef DODOE_DEBUG_ENABLED
         m_imgui_pass.reset();
+        m_pick_pass.reset();
 #endif
+        m_pick_staging = nullptr;
+        m_pick_ids.clear();
         m_post_process_pass.reset();
         m_present_pass.reset();
         m_rt = BaselineRenderTargets{};
@@ -203,23 +239,44 @@ namespace dodoe {
             return;
         }
 
+        if (RenderSettings::IsGpuDrivenSupported() && !m_gpu_culling) {
+            m_gpu_culling = GpuCulling::Create({&gfx, const_cast<ShaderLibrary*>(m_shader_library)});
+        }
+        m_gbuffer_pass->setGpuCulling(m_gpu_culling.get());
+
         m_gbuffer_pass->ensurePipeline(m_rt.gbuffer_framebuffer->getFramebufferInfo().getRHI());
         m_lighting_pass->ensurePipeline(m_rt.lighting_framebuffer->getFramebufferInfo().getRHI());
+        m_shadow_pass->ensurePipeline();
         m_sky_pass->ensurePipeline(m_rt.lighting_framebuffer->getFramebufferInfo().getRHI());
         m_sprite_pass->ensurePipeline(m_rt.sprite_framebuffer->getFramebufferInfo().getRHI());
+        m_outline_pass->ensurePipeline(m_rt.lighting_framebuffer->getFramebufferInfo().getRHI());
         m_post_process_pass->ensurePipelines(m_rt.tone_map_framebuffer->getFramebufferInfo().getRHI());
 #ifdef DODOE_DEBUG_ENABLED
         m_imgui_pass->ensurePipeline(framebuffer->getFramebufferInfo().getRHI());
+        m_pick_pass->ensurePipeline(m_rt.pick_framebuffer->getFramebufferInfo().getRHI());
 #endif
         m_present_pass->ensurePipeline(framebuffer->getFramebufferInfo().getRHI());
 
+#ifdef DODOE_DEBUG_ENABLED
+        Int32 pick_x = -1;
+        Int32 pick_y = -1;
+        Bool pick_requested = DebugImGui::ConsumePickRequest(pick_x, pick_y);
+        if (pick_x < 0 || pick_y < 0 || pick_x >= static_cast<Int32>(extent.x) || pick_y >= static_cast<Int32>(extent.y)) {
+            pick_requested = false;
+        }
+#endif
+
         m_command_list->open();
 
+#ifdef DODOE_DEBUG_ENABLED
+        Bool pick_copied = false;
+#endif
         for (auto& view : view_family.getViews()) {
             const auto viewport_state = rendering_pipeline_utils::BuildViewportState(view, extent);
             m_gbuffer_pass->setupView(view, view_family);
 
             // GBuffer pass
+            m_command_list->beginMarker("Baseline.GBuffer");
             m_command_list->setTextureState(m_rt.gbuffer_albedo->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
             m_command_list->setTextureState(m_rt.gbuffer_normal->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
             m_command_list->setTextureState(m_rt.gbuffer_position->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
@@ -229,7 +286,7 @@ namespace dodoe {
             m_command_list->clearTextureFloat(m_rt.gbuffer_albedo->getRHI(), cutie::AllSubresources, cutie::Color(0.08f, 0.09f, 0.11f, 1.0f));
             m_command_list->clearTextureFloat(m_rt.gbuffer_normal->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
             m_command_list->clearTextureFloat(m_rt.gbuffer_position->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
-            m_command_list->clearTextureFloat(m_rt.gbuffer_material->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 1.0f, 1.0f, 1.0f));
+            m_command_list->clearTextureFloat(m_rt.gbuffer_material->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 1.0f, 1.0f, 0.0f));
             m_command_list->clearDepthStencilTexture(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, true, 1.0f, false, 0);
             m_gbuffer_pass->render(view, scene, viewport_state, m_rt.gbuffer_framebuffer->getRHI());
 
@@ -238,36 +295,98 @@ namespace dodoe {
             m_command_list->setTextureState(m_rt.gbuffer_position->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
             m_command_list->setTextureState(m_rt.gbuffer_material->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
             m_command_list->commitBarriers();
+            m_command_list->endMarker();
+
+            // Viewport pick pass
+#ifdef DODOE_DEBUG_ENABLED
+            m_pick_ids.clear();
+            if (pick_requested) {
+                m_command_list->beginMarker("Baseline.Pick");
+                m_command_list->setTextureState(m_rt.pick_id->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
+                m_command_list->setTextureState(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthRead);
+                m_command_list->commitBarriers();
+                m_command_list->clearTextureUInt(m_rt.pick_id->getRHI(), cutie::AllSubresources, 0);
+                if (m_pick_pass->render(view, viewport_state, m_rt.pick_framebuffer->getRHI(),
+                        m_gbuffer_pass->getInstanceBuffer(), m_pick_ids)) {
+                    m_command_list->setTextureState(m_rt.pick_id->getRHI(), cutie::AllSubresources, cutie::ResourceStates::CopySource);
+                    m_command_list->commitBarriers();
+                    const cutie::TextureSlice src_slice = cutie::TextureSlice()
+                        .setOrigin(static_cast<UInt32>(pick_x), static_cast<UInt32>(pick_y))
+                        .setSize(1, 1);
+                    m_command_list->copyTexture(m_pick_staging.Get(), cutie::TextureSlice().setSize(1, 1),
+                        m_rt.pick_id->getRHI(), src_slice);
+                    pick_copied = true;
+                }
+                m_command_list->endMarker();
+            }
+#endif
+
+            // Shadow pass
+            m_command_list->beginMarker("Baseline.Shadow");
+            const BaselineShadowResult shadow = m_shadow_pass->render(view, scene);
+            m_command_list->endMarker();
 
             // Lighting pass
+            m_command_list->beginMarker("Baseline.Lighting");
             m_command_list->setTextureState(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
             m_command_list->commitBarriers();
             m_command_list->clearTextureFloat(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
             m_lighting_pass->render(view, scene, viewport_state, m_rt.lighting_framebuffer->getRHI(),
-                m_rt.gbuffer_albedo, m_rt.gbuffer_normal, m_rt.gbuffer_position, m_rt.gbuffer_material);
+                m_rt.gbuffer_albedo, m_rt.gbuffer_normal, m_rt.gbuffer_position, m_rt.gbuffer_material, shadow);
+            m_command_list->endMarker();
 
             // Sky pass
+            m_command_list->beginMarker("Baseline.Sky");
             m_command_list->setTextureState(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
             m_command_list->commitBarriers();
             m_sky_pass->render(view, scene, viewport_state, m_rt.lighting_framebuffer->getRHI(), m_rt.gbuffer_depth);
+            m_command_list->endMarker();
 
             // Sprite pass
+            m_command_list->beginMarker("Baseline.Sprite");
             m_command_list->setTextureState(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthRead);
             m_command_list->commitBarriers();
             m_sprite_pass->render(view, scene, m_rt.sprite_framebuffer->getRHI(), viewport_state);
+            m_command_list->endMarker();
+
+            // Selection outline pass (dilated selection mask, blended onto scene color)
+            m_command_list->beginMarker("Baseline.Outline");
+            m_command_list->setTextureState(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
+            m_command_list->commitBarriers();
+            m_outline_pass->render(view, extent, m_rt.gbuffer_material, m_rt.lighting_framebuffer->getRHI());
+            m_command_list->endMarker();
 
             // Post-process pass
+            m_command_list->beginMarker("Baseline.PostProcess");
             m_command_list->setTextureState(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
             m_command_list->commitBarriers();
             m_post_process_pass->render(view, extent, m_rt.scene_color,
                 m_rt.tone_map_color, m_rt.tone_map_framebuffer->getRHI(),
                 m_rt.fxaa_color, m_rt.fxaa_framebuffer->getRHI());
+            m_command_list->endMarker();
         }
 
+        m_command_list->beginMarker("Baseline.Present");
         m_present_pass->render(gfx, swapchain_image_index, extent, m_rt.fxaa_color);
+        m_command_list->endMarker();
 
         m_command_list->close();
         m_device->executeCommandList(m_command_list.Get());
+#ifdef DODOE_DEBUG_ENABLED
+        if (pick_copied) {
+            Size_t row_pitch = 0;
+            if (void* data = m_device->mapStagingTexture(m_pick_staging.Get(),
+                    cutie::TextureSlice().setSize(1, 1), GfxCpuAccessMode::Read, &row_pitch)) {
+                const UInt32 slot = *static_cast<const UInt32*>(data);
+                m_device->unmapStagingTexture(m_pick_staging.Get());
+                UInt64 picked_uuid = 0;
+                if (slot != 0 && static_cast<Size_t>(slot - 1) < m_pick_ids.size()) {
+                    picked_uuid = m_pick_ids[slot - 1];
+                }
+                DebugImGui::SubmitPickResult(picked_uuid);
+            }
+        }
+#endif
         m_device->runGarbageCollection();
 
         if (((m_frame_counter++) % 120) == 0) {

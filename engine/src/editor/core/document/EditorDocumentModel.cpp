@@ -127,6 +127,7 @@ std::uint64_t EditorDocumentModel::createEntity(const std::string& name, std::ui
     entity.nativeComponents.push_back(EditorComponent{"TagComponent", {{"tag", "default"}}});
     entity.nativeComponents.push_back(EditorComponent{"TransformComponent",
         {{"position", {0.0, 0.0, 0.0}}, {"rotation", {0.0, 0.0, 0.0}}, {"scale", {1.0, 1.0, 1.0}}}});
+    entity.nativeComponents.push_back(EditorComponent{"ActiveComponent", {{"active_self", true}}});
     m_document.entities.push_back(std::move(entity));
     m_dirty = true;
     notifyChanged();

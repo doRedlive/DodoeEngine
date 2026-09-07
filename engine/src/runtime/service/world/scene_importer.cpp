@@ -10,6 +10,7 @@
 #include "runtime/function/world/components/id_component.h"
 #include "runtime/function/world/components/mesh_renderer_component.h"
 #include "runtime/function/world/components/prefab_instance_component.h"
+#include "runtime/function/world/components/prefab_node_component.h"
 #include "runtime/function/world/components/sprite_renderer_component.h"
 #include "runtime/function/world/components/transform_component.h"
 #include "runtime/function/world/prefab.h"
@@ -277,6 +278,7 @@ namespace dodoe {
             Entity entity = cur_scene->createEntity(UUID(), entity_res.m_name);
             DeserializePrefabComponents(entity_res.m_native_components, entity);
             DeserializePrefabManagedComponents(entity_res.m_managed_components, entity);
+            entity.addComponent<PrefabNodeComponent>(entity_res.m_uuid);
             created[entity_res.m_uuid] = entity;
         }
 
@@ -328,6 +330,43 @@ namespace dodoe {
 
         LOG_INFO("SceneImporter::InstantiatePrefab: {} ({} entities)", root_name, res.m_entities.size());
         return root_count == 1 ? root : Entity::NullEntity();
+    }
+
+    const SceneRes* SceneImporter::ResolvePrefabSceneRes(const PPtr<Prefab>& prefab_ref) {
+        Prefab* prefab = prefab_ref.get();
+        if (!prefab && prefab_ref.isAssigned()) {
+            const ObjectID& id = prefab_ref.getObjectID();
+            prefab = ResourceManager::Self().loadObject<Prefab>(id.asset_id, id.local_id);
+        }
+        if (prefab) {
+            return &prefab->getSceneRes();
+        }
+
+        const String& legacy_path = prefab_ref.getLegacyPath();
+        if (legacy_path.empty()) {
+            return nullptr;
+        }
+
+        AssetManager* asset_manager = ResourceManager::Self().getAssetManager();
+        if (!asset_manager) {
+            return nullptr;
+        }
+
+        FsPath prefab_fs_path(legacy_path.c_str());
+        if (prefab_fs_path.is_relative()) {
+            prefab_fs_path = asset_manager->getAssetDir() / prefab_fs_path;
+        }
+
+        const ObjectID ref = asset_manager->ensureImported(String(prefab_fs_path.generic_string().c_str()));
+        if (!ref.isValid()) {
+            return nullptr;
+        }
+
+        PrefabAsset* asset = asset_manager->loadAssetSync<PrefabAsset>(ref.asset_id);
+        if (!asset) {
+            return nullptr;
+        }
+        return &asset->getSceneRes();
     }
 
     Entity SceneImporter::ImportPrefab(const String& path) {

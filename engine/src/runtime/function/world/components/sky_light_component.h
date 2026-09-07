@@ -5,6 +5,8 @@
 #include "dopch.h"
 
 #include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/object/pptr.h"
+#include "runtime/function/render/texture/texture.h"
 
 REFLECTION_TYPE(SkyLightComponent)
 
@@ -14,7 +16,7 @@ namespace dodoe {
         REFLECTION_BODY(SkyLightComponent)
 
         META(Enable)
-        DynamicArray<String> face_paths{};
+        PPtr<TextureCubemap> cubemap{};
         META(Enable)
         Float intensity{1.0f};
 

@@ -61,11 +61,25 @@ namespace dodoe::rendering_pipeline_utils {
         return proj * view;
     }
 
+    [[nodiscard]] inline Matrix4f BuildDirectionalLightViewProjection(const Vector3f& direction,
+                                                                      const Vector3f& center, Float extent) {
+        const Vector3f light_direction = Math::Length(direction) > 0.0001f
+            ? Math::Normalize(direction)
+            : Math::Normalize(Vector3f(0.3f, -0.8f, -0.5f));
+        const Float half_extent = Math::Clamp(extent, 10.0f, 500.0f);
+        const Vector3f light_eye = center - light_direction * (half_extent * 2.0f);
+        const Matrix4f view = Math::LookAt(light_eye, center, Vector3f(0.0f, 1.0f, 0.0f));
+        const Matrix4f proj = Math::OrthoRH_ZO(-half_extent, half_extent, -half_extent, half_extent,
+            0.01f, half_extent * 4.0f);
+        return proj * view;
+    }
+
     [[nodiscard]] inline GfxGraphicsPipelineDesc BuildFullscreenPipelineDesc(
         const GfxShaderHandle& vertex_shader,
         const GfxShaderHandle& pixel_shader,
         const GfxBindingLayoutHandle& binding_layout,
-        const Bool additive_blend = false)
+        const Bool additive_blend = false,
+        const Bool alpha_blend = false)
     {
         if (!binding_layout) {
             DO_ERROR("BuildFullscreenPipelineDesc: binding_layout is null!");
@@ -96,6 +110,16 @@ namespace dodoe::rendering_pipeline_utils {
                 .setDestBlend(GfxBlendFactor::One);
             blend_state.setRenderTarget(0, blend_target);
             render_state.setBlendState(blend_state);
+        } else if (alpha_blend) {
+            GfxBlendState blend_state;
+            GfxBlendState::RenderTarget blend_target;
+            blend_target.enableBlend()
+                .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                .setSrcBlendAlpha(GfxBlendFactor::One)
+                .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
+            blend_state.setRenderTarget(0, blend_target);
+            render_state.setBlendState(blend_state);
         }
         pipeline_desc.setRenderState(render_state);
         return pipeline_desc;
@@ -105,7 +129,8 @@ namespace dodoe::rendering_pipeline_utils {
         const GfxShaderHandle& vertex_shader,
         const GfxShaderHandle& pixel_shader,
         const DynamicArray<GfxBindingLayoutHandle>& binding_layouts,
-        const Bool additive_blend = false)
+        const Bool additive_blend = false,
+        const Bool alpha_blend = false)
     {
         if (!vertex_shader) {
             DO_ERROR("BuildFullscreenPipelineDesc: vertex_shader is null!");
@@ -135,6 +160,16 @@ namespace dodoe::rendering_pipeline_utils {
             blend_target.enableBlend()
                 .setSrcBlend(GfxBlendFactor::One)
                 .setDestBlend(GfxBlendFactor::One);
+            blend_state.setRenderTarget(0, blend_target);
+            render_state.setBlendState(blend_state);
+        } else if (alpha_blend) {
+            GfxBlendState blend_state;
+            GfxBlendState::RenderTarget blend_target;
+            blend_target.enableBlend()
+                .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                .setSrcBlendAlpha(GfxBlendFactor::One)
+                .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
             blend_state.setRenderTarget(0, blend_target);
             render_state.setBlendState(blend_state);
         }

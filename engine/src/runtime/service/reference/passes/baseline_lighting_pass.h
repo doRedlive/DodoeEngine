@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "../baseline_pass.h"
+#include "baseline_shadow_pass.h"
 
 namespace dodoe {
 
@@ -32,7 +33,8 @@ namespace dodoe {
         void render(RenderView& view, RenderScene& scene, const GfxViewportState& viewport_state,
                     cutie::IFramebuffer* framebuffer,
                     const GfxTextureHandle& gbuffer_albedo, const GfxTextureHandle& gbuffer_normal,
-                    const GfxTextureHandle& gbuffer_position, const GfxTextureHandle& gbuffer_material);
+                    const GfxTextureHandle& gbuffer_position, const GfxTextureHandle& gbuffer_material,
+                    const BaselineShadowResult& shadow);
     };
 
 } // namespace dodoe

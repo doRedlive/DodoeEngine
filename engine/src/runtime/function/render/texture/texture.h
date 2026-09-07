@@ -57,6 +57,8 @@ namespace dodoe {
 
     class DODOE_API TextureCubemap : public Texture {
         Int32 m_face_size{0};
+        DynamicArray<String> m_face_paths{};
+        Vector4f m_irradiance_sh[9]{};
 
     public:
         TextureCubemap() = default;
@@ -68,6 +70,16 @@ namespace dodoe {
         [[nodiscard]] Int32 getHeight() const override { return m_face_size; }
 
         void setFaceSize(const Int32 size) { m_face_size = size; }
+        void setFacePaths(const DynamicArray<String>& face_paths) { m_face_paths = face_paths; }
+
+        [[nodiscard]] Int32 getFaceSize() const { return m_face_size; }
+        [[nodiscard]] const DynamicArray<String>& getFacePaths() const { return m_face_paths; }
+        [[nodiscard]] const Vector4f* getIrradianceSH() const { return m_irradiance_sh; }
+        void setIrradianceSH(const Vector4f* sh) {
+            for (UInt32 i = 0; i < 9; ++i) {
+                m_irradiance_sh[i] = sh[i];
+            }
+        }
 
         [[nodiscard]] static TextureCubemap* LoadFromFaces(const DynamicArray<String>& face_paths);
     };

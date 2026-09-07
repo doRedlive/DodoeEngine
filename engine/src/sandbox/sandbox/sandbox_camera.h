@@ -23,21 +23,28 @@ namespace sandbox {
     private:
         [[nodiscard]] dodoe::Vector3f forward() const;
         [[nodiscard]] dodoe::Vector3f right() const;
+        [[nodiscard]] dodoe::Vector3f up() const;
 
         dodoe::Vector3f m_position{0.0f, 5.0f, 10.0f};
+        dodoe::Vector3f m_pivot{0.0f, 0.0f, 0.0f};
         float m_yaw   = -90.0f;
         float m_pitch = -20.0f;
         float m_fov   = 60.0f;
 
-        float m_speed      = 10.0f;
-        float m_look_speed = 0.15f;
+        float m_distance    = 15.0f;
+        float m_speed       = 10.0f;
+        float m_look_speed  = 0.15f;
+        float m_orbit_speed = 0.15f;
 
         float m_vpW = 1280.0f;
         float m_vpH = 720.0f;
 
-        static constexpr float kPitchLimit = 89.0f;
-        static constexpr float kMinSpeed   = 1.0f;
-        static constexpr float kMaxSpeed   = 100.0f;
+        static constexpr float kPitchLimit  = 89.0f;
+        static constexpr float kMinSpeed    = 1.0f;
+        static constexpr float kMaxSpeed    = 100.0f;
+        static constexpr float kPanScale    = 0.0015f;
+        static constexpr float kZoomScale   = 0.1f;
+        static constexpr float kMinDistance = 0.5f;
     };
 
     class SandboxCameraProvider final : public dodoe::ICameraProvider {

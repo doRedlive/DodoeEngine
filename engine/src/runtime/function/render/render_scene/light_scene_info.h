@@ -6,6 +6,7 @@
 
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/core/math/math.h"
+#include "render_id.h"
 
 namespace dodoe {
 
@@ -46,9 +47,9 @@ namespace dodoe {
     class LightSceneInfo {
     public:
         LightSceneInfo() = default;
-        explicit LightSceneInfo(const Identifier id) : m_id(id) { }
+        explicit LightSceneInfo(const RenderId id) : m_id(id) { }
 
-        void setId(const Identifier id) { m_id = id; }
+        void setId(const RenderId id) { m_id = id; }
         void setLightType(const LightType light_type) { m_light_type = light_type; }
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
         void setEnabled(const Bool enabled) { m_enabled = enabled; }
@@ -59,7 +60,7 @@ namespace dodoe {
         void setSpotLightData(const SpotLightData& data) { m_spot_data = data; }
         void setSkyLightData(const SkyLightData& data) { m_sky_data = data; }
 
-        [[nodiscard]] Identifier getId() const { return m_id; }
+        [[nodiscard]] RenderId getId() const { return m_id; }
         [[nodiscard]] LightType getLightType() const { return m_light_type; }
         [[nodiscard]] const Matrix4f& getWorldTransform() const { return m_world_transform; }
         [[nodiscard]] Bool isEnabled() const { return m_enabled; }
@@ -71,7 +72,7 @@ namespace dodoe {
         [[nodiscard]] const SkyLightData& getSkyLightData() const { return m_sky_data; }
 
     private:
-        Identifier m_id{};
+        RenderId m_id{};
         LightType m_light_type{LightType::Point};
         Matrix4f m_world_transform{1.0f};
         Bool m_enabled{true};

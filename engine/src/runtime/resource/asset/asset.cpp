@@ -113,6 +113,7 @@ namespace dodoe {
             case AssetType::Audio:           return "Audio";
             case AssetType::InputAction:     return "InputAction";
             case AssetType::TiledMap:        return "TiledMap";
+            case AssetType::Cubemap:         return "Cubemap";
             case AssetType::Unknown:
             default:                         return "Unknown";
         }
@@ -134,6 +135,7 @@ namespace dodoe {
         if (str == "Audio")           return AssetType::Audio;
         if (str == "InputAction")     return AssetType::InputAction;
         if (str == "TiledMap")        return AssetType::TiledMap;
+        if (str == "Cubemap")         return AssetType::Cubemap;
         return AssetType::Unknown;
     }
 
@@ -152,6 +154,7 @@ namespace dodoe {
             case AssetType::Prefab:          return ".prefab";
             case AssetType::Audio:           return ".wav";
             case AssetType::InputAction:     return ".doinput";
+            case AssetType::Cubemap:         return ".docubemap";
             case AssetType::Unknown:
             default:                         return ".asset";
         }
@@ -173,6 +176,7 @@ namespace dodoe {
             case AssetType::Tileset:
             case AssetType::Prefab:
             case AssetType::InputAction:
+            case AssetType::Cubemap:
                 return false;
             case AssetType::Unknown:
             default:

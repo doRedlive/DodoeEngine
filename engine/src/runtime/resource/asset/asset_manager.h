@@ -49,6 +49,9 @@ namespace dodoe {
 
         void importSourceFile(const FsPath& absolute_path, const String& source_path, const String& ext);
         static void EnsureBuiltinImporters();
+        void registerTextAsset(const String& source_path, AssetType type);
+        void unregisterAsset(const String& source_path);
+        void ensureAssetInstance(const String& source_path, const AssetMetaData& meta);
 
     public:
         [[nodiscard]] AssetDatabase* getDatabase() const { return m_database.get(); }

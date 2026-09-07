@@ -48,11 +48,11 @@ namespace dodoe {
         [[nodiscard]] virtual DynamicArray<PPtr<Material>> resolveMaterials() const;
         [[nodiscard]] virtual DynamicArray<SubMesh> buildSections(const DynamicArray<PPtr<Material>>& resolved_materials) const;
         [[nodiscard]] virtual DynamicArray<MeshBatch> buildMeshBatches(
-            Identifier primitive_id,
+            RenderId primitive_id,
             const DynamicArray<PPtr<Material>>& resolved_materials,
             UInt32 first_instance) const;
         [[nodiscard]] virtual PrimitiveSceneInfo buildSceneInfo(
-            Identifier primitive_id,
+            RenderId primitive_id,
             const Matrix4f& world_transform,
             const Vector3f& bounds_min,
             const Vector3f& bounds_max) const;

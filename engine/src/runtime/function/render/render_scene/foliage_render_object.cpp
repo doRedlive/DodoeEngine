@@ -108,7 +108,7 @@ namespace dodoe {
     }
 
     DynamicArray<MeshBatch> FoliageRenderObject::buildMeshBatches(
-        const Identifier primitive_id,
+        const RenderId primitive_id,
         const DynamicArray<PPtr<Material>>& resolved_materials,
         const UInt32 first_instance) const
     {
@@ -163,7 +163,7 @@ namespace dodoe {
     }
 
     PrimitiveSceneInfo FoliageRenderObject::buildSceneInfo(
-        const Identifier primitive_id,
+        const RenderId primitive_id,
         const Matrix4f& world_transform,
         const Vector3f& bounds_min,
         const Vector3f& bounds_max) const

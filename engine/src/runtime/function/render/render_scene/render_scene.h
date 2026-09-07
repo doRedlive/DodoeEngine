@@ -99,9 +99,9 @@ namespace dodoe {
         UnorderedMap<UUID, GpuObjectHandle> m_cpu_to_gpu_map{};
         Bool m_scene_data_dirty{true};
 
-        UnorderedMap<UUID, Size_t> m_primitive_scene_info_indices{};
-        UnorderedMap<UUID, Size_t> m_light_scene_info_indices{};
-        UnorderedMap<UUID, Size_t> m_sprite_scene_info_indices{};
+        UnorderedMap<RenderId, Size_t> m_primitive_scene_info_indices{};
+        UnorderedMap<RenderId, Size_t> m_light_scene_info_indices{};
+        UnorderedMap<RenderId, Size_t> m_sprite_scene_info_indices{};
         UnorderedMap<UUID, PrimitiveUpdateType> m_pending_primitive_updates{};
         UnorderedMap<UUID, SpriteUpdateType> m_pending_sprite_updates{};
         UnorderedMap<UUID, LightUpdateType> m_pending_light_updates{};
@@ -143,7 +143,7 @@ namespace dodoe {
         [[nodiscard]] const LightSceneInfo* findLightSceneInfo(UUID id) const;
 
         [[nodiscard]] Bool hasPrimitive(UUID id) const { return m_primitive_objects.find(id) != m_primitive_objects.end(); }
-        [[nodiscard]] Bool hasLight(UUID id) const { return m_light_scene_info_indices.find(id) != m_light_scene_info_indices.end(); }
+        [[nodiscard]] Bool hasLight(UUID id) const { return m_light_scene_info_indices.find(RenderId(static_cast<UInt64>(id))) != m_light_scene_info_indices.end(); }
         [[nodiscard]] Bool hasSprite(UUID id) const { return m_sprite_objects.find(id) != m_sprite_objects.end(); }
 
         [[nodiscard]] PrimitiveRenderObject* findPrimitive(UUID id);
@@ -152,6 +152,7 @@ namespace dodoe {
         [[nodiscard]] const SpriteSceneInfo* findSpriteSceneInfo(UUID id) const;
 
         [[nodiscard]] GpuScene* getGpuScene() const { return m_gpu_scene.get(); }
+        [[nodiscard]] GpuObjectHandle findGpuObjectHandle(UInt64 id) const;
         [[nodiscard]] class TextureManager* getTextureManager() const;
         [[nodiscard]] UInt32 resolveSpriteAtlasIndex(const SpriteSceneInfo& info) const;
 

@@ -37,6 +37,8 @@ namespace dodoe {
         GfxTextureHandle fxaa_color{};
         GfxFramebufferHandle tone_map_framebuffer{};
         GfxFramebufferHandle fxaa_framebuffer{};
+        GfxTextureHandle pick_id{};
+        GfxFramebufferHandle pick_framebuffer{};
     };
 
     class BaselineRenderPass {

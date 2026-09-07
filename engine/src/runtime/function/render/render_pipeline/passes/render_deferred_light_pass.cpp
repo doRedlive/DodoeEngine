@@ -25,7 +25,7 @@
 namespace dodoe {
 
     namespace {
-        constexpr UInt64 kDeferredLightConstantBufferSize = 256;
+        constexpr UInt64 kDeferredLightConstantBufferSize = 320;
     }
 
     struct DeferredLightPushConstants {
@@ -35,6 +35,8 @@ namespace dodoe {
         Matrix4f light_view_projection{1.0f};
         Vector4f shadow_params{0.0025f, 0.65f, 0.0f, 0.0f};
         Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f irradiance_sh[9]{};
+        Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
     };
 
     static_assert(sizeof(DeferredLightPushConstants) <= kDeferredLightConstantBufferSize);
@@ -68,6 +70,7 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::Texture_SRV(4))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(5))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(6))
+                .addItem(GfxBindingLayoutItem::Texture_SRV(7))
                 .addItem(GfxBindingLayoutItem::Sampler(9)));
 
         graph.addPass<DeferredLightPassParameters>(
@@ -106,19 +109,6 @@ namespace dodoe {
                                              const RenderGraphPassContext& ctx,
                                              DrawCommandList& command_list) {
                 const auto& light_infos = ctx.getScene()->getLightSceneInfos();
-                Bool has_enabled_lights = false;
-                for (const auto& light_info : light_infos) {
-                    if (!light_info.isEnabled()) {
-                        continue;
-                    }
-                    if (light_info.getLightType() != LightType::Sky) {
-                        has_enabled_lights = true;
-                    }
-                }
-
-                if (!has_enabled_lights) {
-                    return;
-                }
 
                 auto* staging = ctx.getFrameStagingAllocator();
                 if (!staging) {
@@ -134,9 +124,44 @@ namespace dodoe {
                 GfxTextureHandle skybox_texture{};
                 if (parameters.skybox_texture.isValid()) {
                     skybox_texture = ctx.resolveTexture(parameters.skybox_texture);
-                } else if (const auto* fallback_cubemap = ctx.getTextureManager()->getFallbackCubemap()) {
-                    skybox_texture = fallback_cubemap->getGpuHandle();
                 }
+                Float sky_intensity = 0.0f;
+                UInt32 sky_max_mip = 1;
+                Vector4f sky_irradiance_sh[9]{};
+                Bool has_enabled_sky = false;
+                for (const auto& light_info : light_infos) {
+                    if (light_info.getLightType() != LightType::Sky || !light_info.isEnabled()) {
+                        continue;
+                    }
+                    has_enabled_sky = true;
+                    const auto& sky_data = light_info.getSkyLightData();
+                    const auto& cubemap = sky_data.cubemap;
+                    if (cubemap && cubemap->getGpuHandle()) {
+                        if (!skybox_texture) {
+                            skybox_texture = cubemap->getGpuHandle();
+                        }
+                        if (const Vector4f* sh = cubemap->getIrradianceSH()) {
+                            for (UInt32 b = 0; b < 9u; ++b) {
+                                sky_irradiance_sh[b] = sh[b];
+                            }
+                        }
+                        sky_intensity = sky_data.intensity;
+                        UInt32 face_size = static_cast<UInt32>(cubemap->getFaceSize());
+                        UInt32 mip_count = 1;
+                        while ((face_size >> mip_count) != 0) {
+                            ++mip_count;
+                        }
+                        sky_max_mip = mip_count - 1;
+                    }
+                    break;
+                }
+                if (!skybox_texture) {
+                    if (const auto* fallback_cubemap = ctx.getTextureManager()->getFallbackCubemap()) {
+                        skybox_texture = fallback_cubemap->getGpuHandle();
+                    }
+                }
+                const auto* brdf_lut = ctx.getTextureManager()->getBrdfLut();
+                const GfxTextureHandle brdf_lut_handle = brdf_lut ? brdf_lut->getGpuHandle() : GfxTextureHandle{};
 
                 const auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
@@ -155,6 +180,54 @@ namespace dodoe {
                     *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                 const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView());
 
+                auto draw_fullscreen_light = [&](const DeferredLightPushConstants& push) {
+                    const auto allocation = staging->allocate(kDeferredLightConstantBufferSize);
+                    if (!allocation.buffer || !allocation.mapped_data) {
+                        DO_ERROR("DeferredLightPass: unable to allocate light constant buffer");
+                        return;
+                    }
+                    std::memset(allocation.mapped_data, 0, static_cast<Size_t>(allocation.size));
+                    std::memcpy(allocation.mapped_data, &push, sizeof(push));
+
+                    const auto binding_set = command_list.createBindingSet(
+                        GfxBindingSetDesc()
+                            .addItem(GfxBindingSetItem::ConstantBuffer(
+                                0, allocation.buffer->getRHIHandle().Get(),
+                                GfxBufferRange(allocation.offset, allocation.size)))
+                            .addItem(GfxBindingSetItem::Texture_SRV(1, albedo_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(2, normal_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(3, position_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(4, shadow_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(5, material_handle->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(
+                                6, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
+                                GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
+                            .addItem(GfxBindingSetItem::Texture_SRV(
+                                7, brdf_lut_handle ? brdf_lut_handle->getRHIHandle().Get() : nullptr))
+                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
+                        binding_layout);
+                    if (!binding_set) {
+                        DO_ERROR("DeferredLightPass: failed to create binding set");
+                        return;
+                    }
+
+                    DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
+                    command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
+                    command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+                };
+
+                if (has_enabled_sky) {
+                    DeferredLightPushConstants push{};
+                    push.camera_position = Vector4f(camera_position, 1.0f);
+                    for (UInt32 b = 0; b < 9u; ++b) {
+                        push.irradiance_sh[b] = sky_irradiance_sh[b];
+                    }
+                    push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
+                    push.light_color_intensity = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+                    push.light_direction_type = Vector4f(0.0f, -1.0f, 0.0f, 0.0f);
+                    draw_fullscreen_light(push);
+                }
+
                 for (const auto& light_info : light_infos) {
                     if (!light_info.isEnabled() || light_info.getLightType() == LightType::Sky) {
                         continue;
@@ -162,6 +235,7 @@ namespace dodoe {
 
                     DeferredLightPushConstants push{};
                     push.camera_position = Vector4f(camera_position, 0.0f);
+                    push.ibl_params = Vector4f(0.0f, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
 
                     switch (light_info.getLightType()) {
                     case LightType::Directional: {
@@ -193,37 +267,7 @@ namespace dodoe {
                         continue;
                     }
 
-                    const auto allocation = staging->allocate(kDeferredLightConstantBufferSize);
-                    if (!allocation.buffer || !allocation.mapped_data) {
-                        DO_ERROR("DeferredLightPass: unable to allocate light constant buffer");
-                        continue;
-                    }
-                    std::memset(allocation.mapped_data, 0, static_cast<Size_t>(allocation.size));
-                    std::memcpy(allocation.mapped_data, &push, sizeof(push));
-
-                    const auto binding_set = command_list.createBindingSet(
-                        GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(
-                                0, allocation.buffer->getRHIHandle().Get(),
-                                GfxBufferRange(allocation.offset, allocation.size)))
-                            .addItem(GfxBindingSetItem::Texture_SRV(1, albedo_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(2, normal_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(3, position_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(4, shadow_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(5, material_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(
-                                6, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
-                                GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
-                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
-                        binding_layout);
-                    if (!binding_set) {
-                        DO_ERROR("DeferredLightPass: failed to create binding set");
-                        continue;
-                    }
-
-                    DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
-                    command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
-                    command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+                    draw_fullscreen_light(push);
                 }
             });
     }

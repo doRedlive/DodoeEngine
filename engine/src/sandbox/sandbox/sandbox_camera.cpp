@@ -9,7 +9,9 @@
 
 namespace sandbox {
 
-    SandboxCamera::SandboxCamera() = default;
+    SandboxCamera::SandboxCamera() {
+        m_pivot = m_position + forward() * m_distance;
+    }
 
     void SandboxCamera::setViewportSize(const float w, const float h) {
         m_vpW = w;
@@ -22,29 +24,52 @@ namespace sandbox {
             return;
         }
 
-        if (input->isActionDown("Sandbox/Look")) {
-            const dodoe::Vector2f delta = input->getMouseDelta();
-            m_yaw += delta.x * m_look_speed;
+        const dodoe::Vector2f delta  = input->getMouseDelta();
+        const bool looking  = input->isActionDown("Sandbox/Look");
+        const bool orbiting = input->isActionDown("Sandbox/Orbit") && input->isActionDown("Sandbox/Alt");
+        const bool panning  = input->isActionDown("Sandbox/Pan");
+
+        if (orbiting) {
+            m_yaw   += delta.x * m_orbit_speed;
+            m_pitch -= delta.y * m_orbit_speed;
+            m_pitch  = std::clamp(m_pitch, -kPitchLimit, kPitchLimit);
+            m_position = m_pivot - forward() * m_distance;
+        } else if (looking) {
+            m_yaw   += delta.x * m_look_speed;
             m_pitch -= delta.y * m_look_speed;
-            m_pitch = std::clamp(m_pitch, -kPitchLimit, kPitchLimit);
+            m_pitch  = std::clamp(m_pitch, -kPitchLimit, kPitchLimit);
+        } else if (panning) {
+            const dodoe::Vector3f offset =
+                (-right() * delta.x + up() * delta.y) * (m_distance * kPanScale);
+            m_position += offset;
+            m_pivot += offset;
         }
 
-        const dodoe::Vector2f move = input->getActionVector2("Sandbox/Move");
-        if (move.x != 0.0f || move.y != 0.0f) {
-            m_position += forward() * (move.y * m_speed * dt);
-            m_position += right() * (move.x * m_speed * dt);
-        }
-
-        if (input->isActionDown("Sandbox/Up")) {
-            m_position.y += m_speed * dt;
-        }
-        if (input->isActionDown("Sandbox/Down")) {
-            m_position.y -= m_speed * dt;
+        if (looking) {
+            const dodoe::Vector2f move = input->getActionVector2("Sandbox/Move");
+            if (move.x != 0.0f || move.y != 0.0f) {
+                m_position += forward() * (move.y * m_speed * dt);
+                m_position += right() * (move.x * m_speed * dt);
+            }
+            if (input->isActionDown("Sandbox/Up")) {
+                m_position.y += m_speed * dt;
+            }
+            if (input->isActionDown("Sandbox/Down")) {
+                m_position.y -= m_speed * dt;
+            }
+            m_pivot = m_position + forward() * m_distance;
         }
 
         const dodoe::Vector2f wheel = input->getMouseWheel();
         if (wheel.y != 0.0f) {
-            m_speed = std::clamp(m_speed + wheel.y * 2.0f, kMinSpeed, kMaxSpeed);
+            if (looking) {
+                m_speed = std::clamp(m_speed + wheel.y * 2.0f, kMinSpeed, kMaxSpeed);
+            } else {
+                const float amount = wheel.y * m_distance * kZoomScale;
+                m_position += forward() * amount;
+                m_distance  = std::max(m_distance - amount, kMinDistance);
+                m_pivot = m_position + forward() * m_distance;
+            }
         }
     }
 
@@ -64,6 +89,16 @@ namespace sandbox {
             -std::sin(yaw_rad),
             0.0f,
             std::cos(yaw_rad)
+        };
+    }
+
+    dodoe::Vector3f SandboxCamera::up() const {
+        const float pitch_rad = glm::radians(m_pitch);
+        const float yaw_rad   = glm::radians(m_yaw);
+        return {
+            -std::cos(yaw_rad) * std::sin(pitch_rad),
+            std::cos(pitch_rad),
+            -std::sin(yaw_rad) * std::sin(pitch_rad)
         };
     }
 

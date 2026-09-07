@@ -364,6 +364,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, float, float, void> native_PrefabInstanceComponent_rotation_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_PrefabInstanceComponent_scale_get;
         public delegate* unmanaged<ulong, float, float, float, void> native_PrefabInstanceComponent_scale_set;
+        public delegate* unmanaged<ulong, byte*> native_PrefabInstanceComponent_overrides_get;
+        public delegate* unmanaged<ulong, byte*, void> native_PrefabInstanceComponent_overrides_set;
         public delegate* unmanaged<ulong, byte*> native_TagComponent_tag_get;
         public delegate* unmanaged<ulong, byte*, void> native_TagComponent_tag_set;
         public delegate* unmanaged<ulong, float*, float*, void> native_LineRendererComponent_direction_get;
@@ -374,6 +376,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_LineRendererComponent_thickness_set;
         public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_LineRendererComponent_color_get;
         public delegate* unmanaged<ulong, float, float, float, float, void> native_LineRendererComponent_color_set;
+        public delegate* unmanaged<ulong, int> native_SkyLightComponent_cubemap_get;
+        public delegate* unmanaged<ulong, int, void> native_SkyLightComponent_cubemap_set;
         public delegate* unmanaged<ulong, float> native_SkyLightComponent_intensity_get;
         public delegate* unmanaged<ulong, float, void> native_SkyLightComponent_intensity_set;
         public delegate* unmanaged<ulong, int> native_SpriteRendererComponent_sprite_get;

@@ -6,6 +6,7 @@
 
 #include "runtime/function/render/pixel2d/sprite.h"
 #include "runtime/core/math/math.h"
+#include "render_id.h"
 
 namespace dodoe {
 
@@ -61,7 +62,7 @@ namespace dodoe {
     class SpriteSceneInfo {
     public:
         SpriteSceneInfo() = default;
-        explicit SpriteSceneInfo(Identifier id);
+        explicit SpriteSceneInfo(RenderId id);
 
         void setRenderObject(const RenderObject* render_object) { m_render_object = render_object; }
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
@@ -87,7 +88,7 @@ namespace dodoe {
         void setBatchAtlases(DynamicArray<PPtr<Texture2D>> atlases) { m_batch_atlases = std::move(atlases); }
         void setUVRect(Float min_x, Float min_y, Float max_x, Float max_y);
 
-        [[nodiscard]] Identifier getId() const { return m_id; }
+        [[nodiscard]] RenderId getId() const { return m_id; }
         [[nodiscard]] const RenderObject* getRenderObject() const { return m_render_object; }
         [[nodiscard]] const Matrix4f& getWorldTransform() const { return m_world_transform; }
         [[nodiscard]] const Vector2f& getPosition() const { return m_position; }
@@ -114,7 +115,7 @@ namespace dodoe {
         [[nodiscard]] SpriteInstance toInstance() const;
 
     private:
-        Identifier m_id{};
+        RenderId m_id{};
         const RenderObject* m_render_object{nullptr};
         Matrix4f m_world_transform{1.0f};
         Vector2f m_position{0.0f};

@@ -26,6 +26,7 @@ namespace dodoe {
         Audio,
         InputAction,
         TiledMap,
+        Cubemap,
         Count
     };
 
@@ -45,6 +46,7 @@ namespace dodoe {
         String source_path{};
         UInt64 source_file_mtime{0};
         UInt64 asset_file_mtime{0};
+        UInt64 meta_file_mtime{0};
         UInt64 import_signature{0};
         DynamicArray<String> tags{};
         DynamicArray<ObjectID> dependencies{};

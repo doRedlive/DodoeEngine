@@ -13,7 +13,7 @@ namespace dodoe {
 
     SystemAccess LightSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent>()
+            .readsComponents<IDComponent, TransformComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent, ActiveComponent, HierarchyComponent>()
             .build();
     }
 
@@ -25,6 +25,9 @@ namespace dodoe {
 
         auto directional_view = reg.view<IDComponent, TransformComponent, DirectionalLightComponent>();
         for (auto entity : directional_view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& light = entity.getComponent<DirectionalLightComponent>();
             active_lights.insert(id.id);
@@ -36,6 +39,9 @@ namespace dodoe {
 
         auto point_view = reg.view<IDComponent, TransformComponent, PointLightComponent>();
         for (auto entity : point_view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& light = entity.getComponent<PointLightComponent>();
             active_lights.insert(id.id);
@@ -47,6 +53,9 @@ namespace dodoe {
 
         auto spot_view = reg.view<IDComponent, TransformComponent, SpotLightComponent>();
         for (auto entity : spot_view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& light = entity.getComponent<SpotLightComponent>();
             active_lights.insert(id.id);
@@ -68,7 +77,7 @@ namespace dodoe {
             return false;
         }
 
-        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        LightSceneInfo info(RenderId(static_cast<UInt64>(id.id)));
         info.setLightType(LightType::Directional);
         info.setWorldTransform(buildWorldMatrix(transform));
         info.setEnabled(light.enabled);
@@ -97,7 +106,7 @@ namespace dodoe {
             return false;
         }
 
-        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        LightSceneInfo info(RenderId(static_cast<UInt64>(id.id)));
         info.setLightType(LightType::Point);
         info.setWorldTransform(buildWorldMatrix(transform));
         info.setEnabled(light.enabled);
@@ -127,7 +136,7 @@ namespace dodoe {
             return false;
         }
 
-        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        LightSceneInfo info(RenderId(static_cast<UInt64>(id.id)));
         info.setLightType(LightType::Spot);
         info.setWorldTransform(buildWorldMatrix(transform));
         info.setEnabled(light.enabled);

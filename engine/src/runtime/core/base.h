@@ -256,6 +256,7 @@ namespace dodoe {
     using Int = int;
     using UInt = unsigned int;
     using Float = float;
+    using Double = double;
     using Byte = char;
     using Char = char;
     using UByte = unsigned char;

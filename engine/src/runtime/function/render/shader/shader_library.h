@@ -29,6 +29,7 @@ namespace dodoe {
         const ShaderManifest& getManifest() const { return m_manifest; }
 
         GfxShaderHandle getLitVertexShader() const { return findShaderValue("LitVS"); }
+        GfxShaderHandle getGpuSceneVertexShader() const { return findShaderValue("LitGpuSceneVS"); }
         GfxShaderHandle getGBufferPixelShader() const {
             if (RenderSettings::IsBindlessActive()) {
                 return findShaderValue("GBufferPS");
@@ -50,6 +51,9 @@ namespace dodoe {
         GfxShaderHandle getToneMappingPixelShader() const { return findShaderValue("ToneMappingPS"); }
         GfxShaderHandle getColorGradingPixelShader() const { return findShaderValue("ColorGradingPS"); }
         GfxShaderHandle getFxaaPixelShader() const { return findShaderValue("FxaaPS"); }
+        GfxShaderHandle getOutlinePixelShader() const { return findShaderValue("OutlinePS"); }
+        GfxShaderHandle getPickVertexShader() const { return findShaderValue("PickVS"); }
+        GfxShaderHandle getPickPixelShader() const { return findShaderValue("PickPS"); }
         GfxShaderHandle getPresentPixelShader() const { return findShaderValue("PresentPS"); }
         GfxShaderHandle getBaselineVertexShader() const { return findShaderValue("BaselineVS"); }
         GfxShaderHandle getBaselinePixelShader() const { return findShaderValue("BaselinePS"); }
@@ -63,6 +67,7 @@ namespace dodoe {
         GfxShaderHandle getGpuCullingComputeShader() const { return findShaderValue("GpuCullingCS"); }
         GfxShaderHandle getBucketCountComputeShader() const { return findShaderValue("BucketCountCS"); }
         GfxShaderHandle getBucketFillComputeShader() const { return findShaderValue("BucketFillCS"); }
+        GfxShaderHandle getBatchExpandComputeShader() const { return findShaderValue("BatchExpandCS"); }
         GfxShaderHandle getGizmoVertexShader() const { return findShaderValue("GizmoVS"); }
         GfxShaderHandle getGizmoPixelShader() const { return findShaderValue("GizmoPS"); }
         GfxShaderHandle getUIVertexShader() const { return findShaderValue("UIVS"); }

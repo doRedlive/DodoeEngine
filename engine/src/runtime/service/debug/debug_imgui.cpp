@@ -580,8 +580,62 @@ namespace dodoe {
         s_registered = false;
     }
 
+    void DebugImGui::RequestViewportPick(Int32 x, Int32 y) {
+        s_pick_x.store(x, std::memory_order_relaxed);
+        s_pick_y.store(y, std::memory_order_relaxed);
+        s_pick_requested.store(1, std::memory_order_release);
+    }
+
+    Bool DebugImGui::ConsumePickRequest(Int32& out_x, Int32& out_y) {
+        UInt32 expected = 1;
+        if (!s_pick_requested.compare_exchange_strong(expected, 0, std::memory_order_acq_rel)) {
+            return false;
+        }
+        out_x = s_pick_x.load(std::memory_order_relaxed);
+        out_y = s_pick_y.load(std::memory_order_relaxed);
+        return true;
+    }
+
+    void DebugImGui::SubmitPickResult(UInt64 entity_uuid) {
+        s_pick_result.store(entity_uuid, std::memory_order_relaxed);
+        s_pick_result_valid.store(1, std::memory_order_release);
+    }
+
+    Bool DebugImGui::ConsumePickResult(UInt64& out_entity_uuid) {
+        UInt32 expected = 1;
+        if (!s_pick_result_valid.compare_exchange_strong(expected, 0, std::memory_order_acq_rel)) {
+            return false;
+        }
+        out_entity_uuid = s_pick_result.load(std::memory_order_relaxed);
+        return true;
+    }
+
+    void DebugImGui::ApplyPickedEntity(UInt64 entity_uuid) {
+        if (entity_uuid == 0) {
+            s_selectedEntity = Entity{};
+            return;
+        }
+        Scene* scene = GetWorld() ? GetWorld()->getActiveScene() : nullptr;
+        if (!scene) {
+            return;
+        }
+        Entity entity = scene->tryGetEntityByUUID(UUID(entity_uuid));
+        if (entity.valid()) {
+            s_selectedEntity = entity;
+        }
+    }
+
     void DebugImGui::OnImGuiRender() {
 #ifndef DODOE_EDITOR_ENABLED
+        const ImGuiIO& io = ImGui::GetIO();
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.WantCaptureMouse &&
+            io.MousePos.x >= 0.0f && io.MousePos.y >= 0.0f) {
+            RequestViewportPick(static_cast<Int32>(io.MousePos.x), static_cast<Int32>(io.MousePos.y));
+        }
+        UInt64 picked_uuid = 0;
+        if (ConsumePickResult(picked_uuid)) {
+            ApplyPickedEntity(picked_uuid);
+        }
         RenderHierarchyPanel();
         RenderInspectorPanel();
         RenderMemoryPanel();

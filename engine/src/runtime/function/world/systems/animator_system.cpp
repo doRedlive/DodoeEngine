@@ -130,7 +130,8 @@ namespace dodoe {
     SystemAccess AnimatorSystem::getAccess() const {
         return SystemAccessBuilder{}
             .readsComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent, AnimationPoseComponent,
-                             PlayAnimationRequest, StopAnimationRequest, ResumeAnimationRequest>()
+                             PlayAnimationRequest, StopAnimationRequest, ResumeAnimationRequest,
+                             ActiveComponent, HierarchyComponent>()
             .writesComponents<AnimatorComponent, SpriteRendererComponent, MeshRendererComponent, AnimationPoseComponent,
                              PlayAnimationRequest, StopAnimationRequest, ResumeAnimationRequest>()
             .hasStructuralChanges(true)
@@ -140,6 +141,9 @@ namespace dodoe {
     void AnimatorSystem::update(Registry& reg, float dt) {
         auto view = reg.view<AnimatorComponent>();
         for (auto entity : view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& animator = reg.get<AnimatorComponent>(entity);
 
             if (reg.all_of<PlayAnimationRequest>(entity)) {

@@ -55,11 +55,11 @@ namespace dodoe {
         void appendInstanceSceneData(DynamicArray<InstanceSceneData>& out_instance_scene_data, const Matrix4f& world_transform) const override;
         [[nodiscard]] RenderObjectDirtyFlags diff(const RenderObject& previous) const override;
         [[nodiscard]] DynamicArray<MeshBatch> buildMeshBatches(
-            Identifier primitive_id,
+            RenderId primitive_id,
             const DynamicArray<PPtr<Material>>& resolved_materials,
             UInt32 first_instance) const override;
         [[nodiscard]] PrimitiveSceneInfo buildSceneInfo(
-            Identifier primitive_id,
+            RenderId primitive_id,
             const Matrix4f& world_transform,
             const Vector3f& bounds_min,
             const Vector3f& bounds_max) const override;

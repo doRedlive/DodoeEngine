@@ -27,6 +27,6 @@ void main()
         discard;
     }
 
-    vec3 sky_color = texture(samplerCube(u_SkyboxTexture, u_Sampler), view_dir).rgb;
+    vec3 sky_color = textureLod(samplerCube(u_SkyboxTexture, u_Sampler), view_dir, 0.0).rgb;
     o_Color = vec4(sky_color, 1.0);
 }

@@ -22,9 +22,12 @@ namespace dodoe {
     private:
         bool syncRenderObject(Entity entity);
         void pruneRemovedObjects(const UnorderedSet<UUID>& active_renderers);
+        void propagateHierarchyDirty(Registry& reg);
+        static void markSubtreeTransformDirty(const std::vector<Entity>& children, std::size_t depth);
 
         [[nodiscard]] static bool needsRenderObjectSync(Entity entity, const UnorderedSet<UUID>& submitted);
-        [[nodiscard]] static Matrix4f buildWorldMatrix(const TransformComponent& transform);
+        [[nodiscard]] static Matrix4f buildWorldMatrix(Entity entity);
+        [[nodiscard]] static Matrix4f buildLocalMatrix(const TransformComponent& transform);
         [[nodiscard]] static Scope<PrimitiveRenderObject> buildRenderObject(const MeshRendererComponent& mesh);
     };
 

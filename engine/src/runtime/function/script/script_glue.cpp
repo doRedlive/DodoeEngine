@@ -1603,6 +1603,8 @@ X(native_AnimationDriveModeComponent_enabled_get, bool, (uint64_t e), e) \
     X(native_PrefabInstanceComponent_rotation_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
     X(native_PrefabInstanceComponent_scale_get, void, (uint64_t e, float* x, float* y, float* z), e, x, y, z) \
     X(native_PrefabInstanceComponent_scale_set, void, (uint64_t e, float x, float y, float z), e, x, y, z) \
+    X(native_PrefabInstanceComponent_overrides_get, const char*, (uint64_t e), e) \
+    X(native_PrefabInstanceComponent_overrides_set, void, (uint64_t e, const char* v), e, v) \
     X(native_TagComponent_tag_get, const char*, (uint64_t e), e) \
     X(native_TagComponent_tag_set, void, (uint64_t e, const char* v), e, v) \
     X(native_LineRendererComponent_direction_get, void, (uint64_t e, float* x, float* y), e, x, y) \
@@ -1613,6 +1615,8 @@ X(native_AnimationDriveModeComponent_enabled_get, bool, (uint64_t e), e) \
     X(native_LineRendererComponent_thickness_set, void, (uint64_t e, float v), e, v) \
     X(native_LineRendererComponent_color_get, void, (uint64_t e, float* r, float* g, float* b, float* a), e, r, g, b, a) \
     X(native_LineRendererComponent_color_set, void, (uint64_t e, float r, float g, float b, float a), e, r, g, b, a) \
+    X(native_SkyLightComponent_cubemap_get, int, (uint64_t e), e) \
+    X(native_SkyLightComponent_cubemap_set, void, (uint64_t e, int v), e, v) \
     X(native_SkyLightComponent_intensity_get, float, (uint64_t e), e) \
     X(native_SkyLightComponent_intensity_set, void, (uint64_t e, float v), e, v) \
     X(native_SpriteRendererComponent_sprite_get, int, (uint64_t e), e) \

@@ -7,6 +7,7 @@
 #include "runtime/function/render/mesh_draw/mesh_batch.h"
 #include "runtime/function/render/mesh_draw/mesh_data.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
+#include "render_id.h"
 
 namespace dodoe {
 
@@ -18,7 +19,7 @@ namespace dodoe {
 
     class PrimitiveSceneInfo {
     private:
-        Identifier m_id{};
+        RenderId m_id{};
         Matrix4f m_world_transform{1.0f};
         Vector3f m_bounds_min{0.0f};
         Vector3f m_bounds_max{0.0f};
@@ -36,7 +37,7 @@ namespace dodoe {
 
     public:
         PrimitiveSceneInfo() = default;
-        explicit PrimitiveSceneInfo(const Identifier id) : m_id(id) { }
+        explicit PrimitiveSceneInfo(const RenderId id) : m_id(id) { }
 
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
         void setMaterials(const DynamicArray<PPtr<Material>>& materials) { m_materials = materials; }
@@ -52,7 +53,7 @@ namespace dodoe {
         void setInstanceCount(const UInt32 count) { m_instance_count = count; }
         void setInstanceSceneData(const DynamicArray<InstanceSceneData>& data) { m_instance_scene_data = data; }
 
-        [[nodiscard]] Identifier getId() const { return m_id; }
+        [[nodiscard]] RenderId getId() const { return m_id; }
         [[nodiscard]] const Matrix4f& getWorldTransform() const { return m_world_transform; }
         [[nodiscard]] const Vector3f& getBoundsMin() const { return m_bounds_min; }
         [[nodiscard]] const Vector3f& getBoundsMax() const { return m_bounds_max; }

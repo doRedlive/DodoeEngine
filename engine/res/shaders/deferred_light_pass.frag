@@ -12,6 +12,8 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform Deferre
     mat4 u_LightViewProjection;
     vec4 u_ShadowParams;
     vec4 u_CameraPosition;
+    vec4 u_IrradianceSH[9];
+    vec4 u_IblParams;
 };
 
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) uniform texture2D u_Albedo;
@@ -20,6 +22,7 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT2) uniform texture2D 
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT3) uniform texture2D u_ShadowMap;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT4) uniform texture2D u_Material;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT5) uniform textureCube u_SkyboxTexture;
+layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT6) uniform texture2D u_BrdfLut;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_SAMPLER) uniform sampler u_Sampler;
 
 const vec2 poissonDisk[16] = vec2[](
@@ -140,12 +143,24 @@ float computeShadow(vec3 world_position, vec3 normal, vec3 light_dir)
 }
 
 const float PI = 3.14159265359;
-const float kIblDiffuseStrength = 0.2;
-const float kIblSpecularStrength = 0.35;
 const float kIblMaxRadiance = 3.0;
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+vec3 evalIrradianceSH(vec3 n) {
+    vec3 result = vec3(0.0);
+    result += u_IrradianceSH[0].rgb * 0.282095;
+    result += u_IrradianceSH[1].rgb * (0.488603 * n.y);
+    result += u_IrradianceSH[2].rgb * (0.488603 * n.z);
+    result += u_IrradianceSH[3].rgb * (0.488603 * n.x);
+    result += u_IrradianceSH[4].rgb * (1.092548 * n.x * n.z);
+    result += u_IrradianceSH[5].rgb * (1.092548 * n.y * n.z);
+    result += u_IrradianceSH[6].rgb * (0.315392 * (3.0 * n.z * n.z - 1.0));
+    result += u_IrradianceSH[7].rgb * (1.092548 * n.x * n.y);
+    result += u_IrradianceSH[8].rgb * (1.092548 * (n.x * n.x - n.y * n.y));
+    return max(result, vec3(0.0));
 }
 
 float distributionGGX(vec3 N, vec3 H, float roughness) {
@@ -227,31 +242,19 @@ vec3 evaluateIBL(vec3 albedo, vec3 N, vec3 V, float metallic, float roughness, f
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
-    // Use high LOD as a cheap irradiance approximation (avoid strong sky tinting).
-    float max_lod = 5.0;
-    vec3 irradiance = textureLod(samplerCube(u_SkyboxTexture, u_Sampler), N, max_lod).rgb;
+    vec3 irradiance = evalIrradianceSH(N);
     irradiance = min(irradiance, vec3(kIblMaxRadiance));
     vec3 diffuse = irradiance * albedo;
 
-    // First-pass IBL: roughness LOD prefilter approximation.
+    float max_lod = max(u_IblParams.z, 1.0);
     vec3 prefiltered = textureLod(samplerCube(u_SkyboxTexture, u_Sampler), R, roughness * max_lod).rgb;
     prefiltered = min(prefiltered, vec3(kIblMaxRadiance));
-    // UE4-style BRDF approximation; avoids overly bright constant specular term.
-    vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
-    vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
-    vec4 r = roughness * c0 + c1;
-    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
-    vec2 env_brdf = vec2(-1.04, 1.04) * a004 + r.zw;
+    vec2 env_brdf = textureLod(sampler2D(u_BrdfLut, u_Sampler), vec2(NdotV, roughness), 0.0).rg;
     vec3 specular = prefiltered * (F * env_brdf.x + env_brdf.y);
 
-    vec3 ibl_diffuse = kD * diffuse / PI;
+    vec3 ibl_diffuse = kD * diffuse;
     vec3 ibl_specular = specular;
     return (ibl_diffuse * diffuse_strength + ibl_specular * specular_strength) * ao;
-}
-
-// Editor selection highlight: material.a is 1.0 on pixels belonging to the selected object.
-vec3 applySelectionHighlight(vec3 color, float selected) {
-    return color + vec3(0.30, 0.60, 1.00) * selected * 0.45;
 }
 
 void main()
@@ -259,9 +262,7 @@ void main()
     vec3 albedo = texture(sampler2D(u_Albedo, u_Sampler), v_UV).rgb;
     vec3 normal = texture(sampler2D(u_Normal, u_Sampler), v_UV).xyz;
     vec3 position = texture(sampler2D(u_Position, u_Sampler), v_UV).xyz;
-    vec4 material_sample = texture(sampler2D(u_Material, u_Sampler), v_UV);
-    vec3 material = material_sample.rgb;
-    float selected = material_sample.a;
+    vec3 material = texture(sampler2D(u_Material, u_Sampler), v_UV).rgb;
     float metallic = clamp(material.r, 0.0, 1.0);
     float roughness = clamp(material.g, 0.04, 1.0);
     float ao = clamp(material.b, 0.0, 1.0);
@@ -273,19 +274,21 @@ void main()
     vec3 n = normalize(normal);
     vec3 v = normalize(u_CameraPosition.xyz - position);
 
+    float diffuse_strength = u_IblParams.x;
+    float specular_strength = u_IblParams.x * u_IblParams.y * pow(1.0 - roughness, 2.0);
+    vec3 color = evaluateIBL(albedo, n, v, metallic, roughness, ao, diffuse_strength, specular_strength);
+
     if (u_CameraPosition.w > 0.5) {
-        o_Color = vec4(applySelectionHighlight(evaluateIBL(albedo, n, v, metallic, roughness, ao, 1.0, 0.5), selected), 1.0);
+        o_Color = vec4(color, 1.0);
         return;
     }
 
-    vec3 color = evaluateIBL(albedo, n, v, metallic, roughness, ao, kIblDiffuseStrength, kIblSpecularStrength);
-
     if (u_LightDirectionType.w < 0.5) {
         color += applyDirectionalLight(albedo, normal, position, metallic, roughness);
-        o_Color = vec4(applySelectionHighlight(color, selected), 1.0);
+        o_Color = vec4(color, 1.0);
         return;
     }
 
     color += applyPointLight(albedo, normal, position, metallic, roughness);
-    o_Color = vec4(applySelectionHighlight(color, selected), 1.0);
+    o_Color = vec4(color, 1.0);
 }

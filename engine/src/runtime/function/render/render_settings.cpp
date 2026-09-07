@@ -25,6 +25,9 @@ namespace dodoe {
         const auto& caps = m_device_caps;
 
         resolved.bindless_active = settings.enable_bindless && caps.bindless_supported;
+        if (settings.enable_bindless && !caps.bindless_supported) {
+            DO_WARN("RenderSettings: bindless requested but not supported by device, falling back to bound resources");
+        }
 
         if (settings.enable_gpu_driven) {
             if (!caps.bindless_supported) {
@@ -33,6 +36,10 @@ namespace dodoe {
                 resolved.gpu_driven_fallback_reason = "compute queue not supported by device";
             } else {
                 resolved.gpu_driven_active = true;
+            }
+            if (!resolved.gpu_driven_active) {
+                DO_WARN("RenderSettings: gpu-driven requested but unavailable ({}), falling back to CPU-driven path",
+                    resolved.gpu_driven_fallback_reason);
             }
         } else {
             resolved.gpu_driven_fallback_reason = "disabled by project settings";

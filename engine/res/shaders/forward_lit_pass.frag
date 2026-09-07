@@ -29,9 +29,12 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform OpaqueP
     vec4 u_PointLightColors[4];
     vec4 u_PointLightPositions[4];
     vec4 u_LightCountFlags;
+    vec4 u_IrradianceSH[9];
+    vec4 u_IblParams;
 };
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) uniform texture2D u_ShadowMap;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) uniform textureCube u_SkyboxTexture;
+layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT2) uniform texture2D u_BrdfLut;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_SAMPLER) uniform sampler u_Sampler;
 
 const uint kMaxTextures = 1024u;
@@ -152,12 +155,24 @@ float computeShadow(vec3 world_position, vec3 normal, vec3 light_dir)
 }
 
 const float PI = 3.14159265359;
-const float kIblDiffuseStrength = 0.2;
-const float kIblSpecularStrength = 0.35;
 const float kIblMaxRadiance = 3.0;
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+vec3 evalIrradianceSH(vec3 n) {
+    vec3 result = vec3(0.0);
+    result += u_IrradianceSH[0].rgb * 0.282095;
+    result += u_IrradianceSH[1].rgb * (0.488603 * n.y);
+    result += u_IrradianceSH[2].rgb * (0.488603 * n.z);
+    result += u_IrradianceSH[3].rgb * (0.488603 * n.x);
+    result += u_IrradianceSH[4].rgb * (1.092548 * n.x * n.z);
+    result += u_IrradianceSH[5].rgb * (1.092548 * n.y * n.z);
+    result += u_IrradianceSH[6].rgb * (0.315392 * (3.0 * n.z * n.z - 1.0));
+    result += u_IrradianceSH[7].rgb * (1.092548 * n.x * n.y);
+    result += u_IrradianceSH[8].rgb * (1.092548 * (n.x * n.x - n.y * n.y));
+    return max(result, vec3(0.0));
 }
 
 float distributionGGX(vec3 N, vec3 H, float roughness) {
@@ -237,23 +252,21 @@ vec3 evaluateIBL(vec3 albedo, vec3 N, vec3 V, float metallic, float roughness, f
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
-    float max_lod = 5.0;
-    vec3 irradiance = textureLod(samplerCube(u_SkyboxTexture, u_Sampler), N, max_lod).rgb;
+    vec3 irradiance = evalIrradianceSH(N);
     irradiance = min(irradiance, vec3(kIblMaxRadiance));
     vec3 diffuse = irradiance * albedo;
 
+    float max_lod = max(u_IblParams.z, 1.0);
     vec3 prefiltered = textureLod(samplerCube(u_SkyboxTexture, u_Sampler), R, roughness * max_lod).rgb;
     prefiltered = min(prefiltered, vec3(kIblMaxRadiance));
-    vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
-    vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
-    vec4 r = roughness * c0 + c1;
-    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
-    vec2 env_brdf = vec2(-1.04, 1.04) * a004 + r.zw;
+    vec2 env_brdf = textureLod(sampler2D(u_BrdfLut, u_Sampler), vec2(NdotV, roughness), 0.0).rg;
     vec3 specular = prefiltered * (F * env_brdf.x + env_brdf.y);
 
-    vec3 ibl_diffuse = kD * diffuse / PI;
+    float diffuse_strength = u_IblParams.x;
+    float specular_strength = u_IblParams.x * u_IblParams.y * pow(1.0 - roughness, 2.0);
+    vec3 ibl_diffuse = kD * diffuse;
     vec3 ibl_specular = specular;
-    return (ibl_diffuse * kIblDiffuseStrength + ibl_specular * kIblSpecularStrength) * ao;
+    return (ibl_diffuse * diffuse_strength + ibl_specular * specular_strength) * ao;
 }
 
 void main()

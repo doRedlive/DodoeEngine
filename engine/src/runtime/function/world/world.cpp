@@ -126,6 +126,7 @@ namespace dodoe {
         }
 
         void WarmupComponentsPools(Registry& reg) {
+            reg.ensurePoolExists<ActiveComponent>();
             reg.ensurePoolExists<CameraComponent>();
             reg.ensurePoolExists<CircleRendererComponent>();
             reg.ensurePoolExists<AnimatorComponent>();
@@ -159,6 +160,7 @@ namespace dodoe {
             reg.ensurePoolExists<PrefabInstanceComponent>();
             reg.ensurePoolExists<TilemapComponent>();
             reg.ensurePoolExists<TileLayerComponent>();
+
             reg.ensurePoolExists<SetVelocity2dRequest>();
             reg.ensurePoolExists<ApplyForce2dRequest>();
             reg.ensurePoolExists<ApplyImpulse2dRequest>();
@@ -307,6 +309,7 @@ namespace dodoe {
         registerSimulationSystem(animator);
         registerSimulationSystem(camera_system);
         registerSimulationSystem(light_system);
+        registerSimulationSystem(sky_light);
         registerSimulationSystem(physics2d);
         registerSimulationSystem(physics3d);
         registerSimulationSystem(audio_play);

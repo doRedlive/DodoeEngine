@@ -86,23 +86,39 @@ namespace dodoe {
 
     void BaselineSkyPass::render(RenderView& view, RenderScene& scene, const GfxViewportState& viewport_state,
                                   cutie::IFramebuffer* framebuffer, const GfxTextureHandle& gbuffer_depth) {
+        static UInt32 s_skip_log_counter = 0;
+        const Bool log_skip = ((s_skip_log_counter++) % 120) == 0;
+
         if (!m_pipeline || !gbuffer_depth) {
+            if (log_skip) {
+                DO_WARN("BaselineSkyPass: skipped, pipeline={} depth={}", m_pipeline != nullptr, gbuffer_depth != nullptr);
+            }
             return;
         }
 
         const auto& light_infos = scene.getLightSceneInfos();
         GfxTextureHandle skybox_texture{};
+        Bool sky_light_found = false;
         for (const auto& light_info : light_infos) {
             if (light_info.getLightType() != LightType::Sky || !light_info.isEnabled()) {
                 continue;
             }
+            sky_light_found = true;
             const auto& cubemap = light_info.getSkyLightData().cubemap;
             if (cubemap && cubemap->getGpuHandle() && cubemap->getGpuHandle()->isGpuReady()) {
                 skybox_texture = cubemap->getGpuHandle();
+            } else if (log_skip) {
+                DO_WARN("BaselineSkyPass: sky light found but cubemap not GPU ready (ptr={} handle={} ready={})",
+                    cubemap != nullptr,
+                    cubemap && cubemap->getGpuHandle() != nullptr,
+                    cubemap && cubemap->getGpuHandle() ? cubemap->getGpuHandle()->isGpuReady() : false);
             }
             break;
         }
         if (!skybox_texture) {
+            if (log_skip) {
+                DO_WARN("BaselineSkyPass: skipped, sky_light_found={} light_count={}", sky_light_found, light_infos.size());
+            }
             return;
         }
 
@@ -119,7 +135,7 @@ namespace dodoe {
         auto binding_set = m_device->createBindingSet(pass_desc, m_binding_layout.Get());
 
         SkyConstantBuffer cb_data{};
-        cb_data.inv_view_projection = Math::Inverse(view.getViewProjectionMatrix());
+        cb_data.inv_view_projection = Math::Inverse(Math::FlipClipSpaceY(view.getViewProjectionMatrix()));
         m_command_list->writeBuffer(m_sky_cb.Get(), &cb_data, sizeof(cb_data));
 
         cutie::GraphicsState graphics_state;

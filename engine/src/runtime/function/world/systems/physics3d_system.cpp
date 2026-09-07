@@ -14,7 +14,8 @@ namespace dodoe {
         return SystemAccessBuilder{}
             .readsComponents<RigidbodyComponent, BoxColliderComponent, SphereColliderComponent, CapsuleColliderComponent,
                              SetVelocityRequest, ApplyForceRequest, ApplyImpulseRequest, TeleportRequest,
-                             AnimationPoseComponent, AnimationDriveModeComponent, BoneAttachmentComponent, MeshRendererComponent>()
+                             AnimationPoseComponent, AnimationDriveModeComponent, BoneAttachmentComponent, MeshRendererComponent,
+                             ActiveComponent, HierarchyComponent>()
             .writesComponents<TransformComponent, SetVelocityRequest, ApplyForceRequest, ApplyImpulseRequest, TeleportRequest>()
             .hasStructuralChanges(true)
             .build();
@@ -518,9 +519,10 @@ namespace dodoe {
             }
 
             auto& rb = registry.get<RigidbodyComponent>(entity);
+            const bool body_enabled = rb.enabled && Entity::activeInHierarchy(registry, entity);
             const Body3dSnapshot snapshot{
                 rb.type, rb.gravity_scale, rb.linear_damping, rb.angular_damping,
-                rb.mass_override, rb.lock_rotation, rb.is_bullet, rb.enabled
+                rb.mass_override, rb.lock_rotation, rb.is_bullet, body_enabled
             };
             const auto snap_it = state.body_snapshot_umap.find(key);
             if (snap_it != state.body_snapshot_umap.end() && snap_it->second == snapshot) {
@@ -538,7 +540,7 @@ namespace dodoe {
             world->setFixedRotation(body_it->second, rb.lock_rotation);
             world->setBullet(body_it->second, rb.is_bullet);
             world->setMassOverride(body_it->second, rb.mass_override);
-            world->setBodyEnabled(body_it->second, rb.enabled);
+            world->setBodyEnabled(body_it->second, body_enabled);
             state.body_snapshot_umap[key] = snapshot;
         }
 

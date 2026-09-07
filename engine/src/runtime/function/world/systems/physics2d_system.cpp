@@ -15,7 +15,8 @@ namespace dodoe {
         return SystemAccessBuilder{}
             .readsComponents<Rigidbody2dComponent, BoxCollider2dComponent, CircleCollider2dComponent,
                              DistanceJoint2dComponent, RevoluteJoint2dComponent,
-                             SetVelocity2dRequest, ApplyForce2dRequest, ApplyImpulse2dRequest>()
+                             SetVelocity2dRequest, ApplyForce2dRequest, ApplyImpulse2dRequest,
+                             ActiveComponent, HierarchyComponent>()
             .writesComponents<TransformComponent, SetVelocity2dRequest, ApplyForce2dRequest, ApplyImpulse2dRequest>()
             .hasStructuralChanges(true)
             .build();
@@ -768,6 +769,16 @@ namespace dodoe {
             }
 
             auto& rb2d = registry.get<Rigidbody2dComponent>(entity);
+
+            const bool hierarchy_active = Entity::activeInHierarchy(registry, entity);
+            if (b2Body_IsEnabled(body_it->second) != hierarchy_active) {
+                if (hierarchy_active) {
+                    b2Body_Enable(body_it->second);
+                } else {
+                    b2Body_Disable(body_it->second);
+                }
+            }
+
             const Body2dSnapshot snapshot{ rb2d.type, rb2d.gravity_scale, rb2d.fixed_rotation };
             const auto snap_it = state.body_snapshot_umap.find(key);
             if (snap_it != state.body_snapshot_umap.end() && snap_it->second == snapshot) {

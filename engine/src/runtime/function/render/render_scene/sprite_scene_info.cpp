@@ -4,7 +4,7 @@
 
 namespace dodoe {
 
-    SpriteSceneInfo::SpriteSceneInfo(const Identifier id)
+    SpriteSceneInfo::SpriteSceneInfo(const RenderId id)
         : m_id(id) {}
 
     void SpriteSceneInfo::setSprite(const PPtr<Sprite>& sprite) {

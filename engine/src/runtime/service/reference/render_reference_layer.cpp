@@ -5,7 +5,6 @@
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/render/render_view/render_view_family.h"
-#include "runtime/service/world/scene_importer.h"
 
 namespace dodoe {
 
@@ -36,9 +35,6 @@ namespace dodoe {
             baseline->render(gfx, image_index, view_family, scene);
         });
         DO_INFO("RenderReferenceLayer: baseline renderer hook installed");
-
-        SceneImporter::ImportModel("Models/backpack/backpack.obj");
-        SceneImporter::ImportModel("Models/marry/Marry.obj");
     }
 
     void RenderReferenceLayer::detach() {

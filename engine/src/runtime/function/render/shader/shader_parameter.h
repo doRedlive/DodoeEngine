@@ -26,6 +26,7 @@ namespace dodoe {
     namespace shader_bindings {
         constexpr UInt32 kGlobalBindingConstants = 0;
         constexpr UInt32 kViewBindingConstants = 0;
+        constexpr UInt32 kViewBindingTransforms = 1;
         constexpr UInt32 kPassBindingConstants = 0;
         constexpr UInt32 kPassBindingInput0 = 1;
         constexpr UInt32 kPassBindingInput1 = 2;

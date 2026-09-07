@@ -12,6 +12,7 @@ namespace dodoe {
     class AssetDatabase {
         FsPath m_database_path;
         UnorderedMap<ObjectID, AssetMetaData> m_metadata_cache;
+        UnorderedMap<String, UUID> m_path_index;
         Bool m_dirty{false};
 
     public:
@@ -25,6 +26,8 @@ namespace dodoe {
         [[nodiscard]] AssetMetaData DODOE_API getMetaData(const ObjectID& id) const;
         void setMetaData(const ObjectID& id, const AssetMetaData& meta);
         void removeAsset(const ObjectID& id);
+
+        [[nodiscard]] UUID getAssetIdByPath(const String& source_path) const;
 
         [[nodiscard]] DynamicArray<ObjectID> DODOE_API getAllAssetIDs() const;
         [[nodiscard]] DynamicArray<ObjectID> getAssetsOfType(AssetType type) const;

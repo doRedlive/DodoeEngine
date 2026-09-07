@@ -25,6 +25,10 @@ namespace dodoe {
                 update_type,
                 SpriteUpdateType::Added | SpriteUpdateType::TextureChanged | SpriteUpdateType::MaterialChanged | SpriteUpdateType::StateChanged);
         }
+
+        RenderId ToRenderId(const UUID id) {
+            return RenderId(static_cast<UInt64>(id));
+        }
     }
 
     Bool RenderScene::initialize(const RenderSceneCreateInfo& info) {
@@ -110,7 +114,7 @@ namespace dodoe {
     }
 
     void RenderScene::addLightSceneInfo(LightSceneInfo&& info) {
-        const UUID id = static_cast<UUID>(static_cast<uint64_t>(info.getId()));
+        const RenderId id = info.getId();
         const auto it = m_light_scene_info_indices.find(id);
         LightUpdateType update_type = LightUpdateType::Added;
         if (it != m_light_scene_info_indices.end()) {
@@ -120,37 +124,37 @@ namespace dodoe {
             m_light_scene_info_indices[id] = m_light_scene_infos.size();
             m_light_scene_infos.push_back(std::move(info));
         }
-        markLightDirty(id, update_type);
+        markLightDirty(UUID(id.value()), update_type);
     }
 
     void RenderScene::updateLightSceneInfoTransform(const UUID id, const Matrix4f& world_transform) {
-        const auto it = m_light_scene_info_indices.find(id);
-        if (it != m_light_scene_info_indices.end()) {
-            m_light_scene_infos[it->second].setWorldTransform(world_transform);
-            markLightDirty(id, LightUpdateType::TransformChanged);
-        }
-    }
-
-    void RenderScene::removeLightSceneInfo(const UUID id) {
-        const auto it = m_light_scene_info_indices.find(id);
+        const auto it = m_light_scene_info_indices.find(ToRenderId(id));
         if (it == m_light_scene_info_indices.end()) {
             return;
         }
-        markLightDirty(id, LightUpdateType::Removed);
+        m_light_scene_infos[it->second].setWorldTransform(world_transform);
+        markLightDirty(UUID(it->first.value()), LightUpdateType::TransformChanged);
+    }
+
+    void RenderScene::removeLightSceneInfo(const UUID id) {
+        const auto it = m_light_scene_info_indices.find(ToRenderId(id));
+        if (it == m_light_scene_info_indices.end()) {
+            return;
+        }
+        markLightDirty(UUID(it->first.value()), LightUpdateType::Removed);
         const Size_t remove_index = it->second;
         const Size_t last_index = m_light_scene_infos.size() - 1;
         if (remove_index != last_index) {
             LightSceneInfo& moved = m_light_scene_infos[last_index];
-            const UUID moved_uuid = static_cast<UUID>(static_cast<uint64_t>(moved.getId()));
             m_light_scene_infos[remove_index] = std::move(moved);
-            m_light_scene_info_indices[moved_uuid] = remove_index;
+            m_light_scene_info_indices[moved.getId()] = remove_index;
         }
         m_light_scene_infos.pop_back();
         m_light_scene_info_indices.erase(it);
     }
 
     const LightSceneInfo* RenderScene::findLightSceneInfo(const UUID id) const {
-        const auto it = m_light_scene_info_indices.find(id);
+        const auto it = m_light_scene_info_indices.find(ToRenderId(id));
         return it != m_light_scene_info_indices.end() ? &m_light_scene_infos[it->second] : nullptr;
     }
 
@@ -238,17 +242,17 @@ namespace dodoe {
     }
 
     PrimitiveSceneInfo* RenderScene::findPrimitiveSceneInfo(const UUID id) {
-        const auto it = m_primitive_scene_info_indices.find(id);
+        const auto it = m_primitive_scene_info_indices.find(ToRenderId(id));
         return it != m_primitive_scene_info_indices.end() ? &m_primitive_scene_infos[it->second] : nullptr;
     }
 
     const PrimitiveSceneInfo* RenderScene::findPrimitiveSceneInfo(const UUID id) const {
-        const auto it = m_primitive_scene_info_indices.find(id);
+        const auto it = m_primitive_scene_info_indices.find(ToRenderId(id));
         return it != m_primitive_scene_info_indices.end() ? &m_primitive_scene_infos[it->second] : nullptr;
     }
 
     const SpriteSceneInfo* RenderScene::findSpriteSceneInfo(const UUID id) const {
-        const auto it = m_sprite_scene_info_indices.find(id);
+        const auto it = m_sprite_scene_info_indices.find(ToRenderId(id));
         return it != m_sprite_scene_info_indices.end() ? &m_sprite_scene_infos[it->second] : nullptr;
     }
 
@@ -291,20 +295,21 @@ namespace dodoe {
         }
 
         PrimitiveSceneInfo info = primitive->buildSceneInfo(
-            static_cast<Identifier>(static_cast<uint64_t>(id)),
+            ToRenderId(id),
             primitive->getWorldTransform(),
             bounds_min,
             bounds_max);
 
         resolveBatchMaterialInstances(info);
 
-        const auto it = m_primitive_scene_info_indices.find(id);
+        const RenderId key = ToRenderId(id);
+        const auto it = m_primitive_scene_info_indices.find(key);
         if (it != m_primitive_scene_info_indices.end()) {
             m_primitive_scene_infos[it->second] = std::move(info);
             return;
         }
 
-        m_primitive_scene_info_indices[id] = m_primitive_scene_infos.size();
+        m_primitive_scene_info_indices[key] = m_primitive_scene_infos.size();
         m_primitive_scene_infos.push_back(std::move(info));
     }
 
@@ -316,7 +321,11 @@ namespace dodoe {
         }
         const auto* primitive = findPrimitive(id);
         if (primitive) {
-            info->setWorldTransform(primitive->getWorldTransform());
+            const Matrix4f& world_transform = primitive->getWorldTransform();
+            info->setWorldTransform(world_transform);
+            DynamicArray<InstanceSceneData> instance_data;
+            primitive->appendInstanceSceneData(instance_data, world_transform);
+            info->setInstanceSceneData(instance_data);
         }
     }
 
@@ -341,16 +350,37 @@ namespace dodoe {
         const auto& materials = info.getMaterials();
         auto& batches = info.getMeshBatches();
 
+        if (materials.empty() && !batches.empty()) {
+            DO_WARN("RenderScene: primitive {} has {} batch(es) but no materials",
+                    static_cast<UInt64>(info.getId().value()), batches.size());
+        }
+
         auto resolveTexture = [&](const PPtr<Texture2D>& texture_ptr) -> Texture2D* {
-            Texture2D* tex = texture_ptr.get();
-            if (!tex && !texture_ptr.getLegacyPath().empty()) {
+            if (Texture2D* tex = texture_ptr.get()) {
+                return tex;
+            }
+            const ObjectID& object_id = texture_ptr.getObjectID();
+            if (object_id.isValid()) {
+                Texture2D* tex = ResourceManager::Self().loadObject<Texture2D>(object_id.asset_id, object_id.local_id);
+                if (!tex) {
+                    DO_WARN("RenderScene: texture asset not loadable (asset_id={}, local_id={})",
+                            static_cast<UInt64>(object_id.asset_id), object_id.local_id);
+                }
+                return tex;
+            }
+            if (!texture_ptr.getLegacyPath().empty()) {
                 const String legacy_path = texture_ptr.getLegacyPath();
-                tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(legacy_path));
+                Texture2D* tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(legacy_path));
                 if (!tex) {
                     tex = ResourceManager::Self().loadObject<Texture2D>(UUID(static_cast<UInt64>(string2hash(legacy_path))), 0);
                 }
+                if (!tex) {
+                    DO_WARN("RenderScene: texture path not resolvable ('{}')", legacy_path);
+                }
+                return tex;
             }
-            return tex;
+            DO_WARN("RenderScene: empty texture reference on material slot");
+            return nullptr;
         };
 
         for (Size_t i = 0; i < batches.size(); i++) {
@@ -359,6 +389,10 @@ namespace dodoe {
 
             const PPtr<Material>& material_ptr = i < materials.size() ? materials[i] : PPtr<Material>{};
             Material* material = material_ptr.get();
+            if (!material && material_ptr.getObjectID().isValid()) {
+                const ObjectID& object_id = material_ptr.getObjectID();
+                material = ResourceManager::Self().loadObject<Material>(object_id.asset_id, object_id.local_id);
+            }
             if (!material && !material_ptr.getLegacyPath().empty()) {
                 material = ResourceManager::Self().loadObjectByPath<Material>(FileID(material_ptr.getLegacyPath()));
             }
@@ -369,16 +403,31 @@ namespace dodoe {
                     MaterialParamValue val{};
                     val.texture = tex;
                     overrides[name] = val;
+                } else if (texture_ptr.isValid()) {
+                    DO_WARN("RenderScene: texture resolve failed for '{}' (asset_id={}, legacy_path='{}')",
+                            name, static_cast<UInt64>(texture_ptr.getObjectID().asset_id),
+                            texture_ptr.getLegacyPath());
                 }
+            };
+            auto addFloat = [&](const String& name, Float value) {
+                MaterialParamValue val{};
+                val.f[0] = value;
+                overrides[name] = val;
             };
             if (material) {
                 addTex("base_color_texture", material->getBaseColorTexture());
                 addTex("normal_texture", material->getNormalTexture());
                 addTex("metallic_roughness_texture", material->getMetallicRoughnessTexture());
                 addTex("emissive_texture", material->getEmissiveTexture());
+                addFloat("metallic", material->getMetallic());
+                addFloat("roughness", material->getRoughness());
+            } else if (material_ptr.isValid()) {
+                DO_WARN("RenderScene: material resolve failed (asset_id={}, legacy_path='{}')",
+                        static_cast<UInt64>(material_ptr.getObjectID().asset_id),
+                        material_ptr.getLegacyPath());
             }
 
-            String instance_name = String(fmt::format("Mat_{}_{}", info.getId(), i).c_str());
+            String instance_name = String(fmt::format("Mat_{}_{}", info.getId().value(), i).c_str());
             batch.material_instance = const_cast<MaterialInstance*>(
                 material_system->getOrCreateInstance(instance_name, "GBuffer", overrides));
         }
@@ -398,7 +447,7 @@ namespace dodoe {
     }
 
     void RenderScene::removePrimitiveSceneInfo(const UUID id) {
-        const auto it = m_primitive_scene_info_indices.find(id);
+        const auto it = m_primitive_scene_info_indices.find(ToRenderId(id));
         if (it == m_primitive_scene_info_indices.end()) {
             return;
         }
@@ -407,9 +456,8 @@ namespace dodoe {
         const Size_t last_index = m_primitive_scene_infos.size() - 1;
         if (remove_index != last_index) {
             PrimitiveSceneInfo& moved = m_primitive_scene_infos[last_index];
-            const UUID moved_uuid = static_cast<UUID>(static_cast<uint64_t>(moved.getId()));
             m_primitive_scene_infos[remove_index] = std::move(moved);
-            m_primitive_scene_info_indices[moved_uuid] = remove_index;
+            m_primitive_scene_info_indices[moved.getId()] = remove_index;
         }
         m_primitive_scene_infos.pop_back();
         m_primitive_scene_info_indices.erase(it);
@@ -422,7 +470,7 @@ namespace dodoe {
             return;
         }
 
-        SpriteSceneInfo info(static_cast<Identifier>(static_cast<UInt64>(id)));
+        SpriteSceneInfo info(ToRenderId(id));
         info.setRenderObject(sprite);
         info.setVisible(sprite->isVisible());
         info.setSortingKey(sprite->getSortingKey());
@@ -452,18 +500,19 @@ namespace dodoe {
             info.setFlags(sprite->getFlags());
         }
 
-        const auto it = m_sprite_scene_info_indices.find(id);
+        const RenderId key = ToRenderId(id);
+        const auto it = m_sprite_scene_info_indices.find(key);
         if (it != m_sprite_scene_info_indices.end()) {
             m_sprite_scene_infos[it->second] = std::move(info);
             return;
         }
 
-        m_sprite_scene_info_indices[id] = m_sprite_scene_infos.size();
+        m_sprite_scene_info_indices[key] = m_sprite_scene_infos.size();
         m_sprite_scene_infos.push_back(std::move(info));
     }
 
     void RenderScene::applySpriteTransform(const UUID id) {
-        const auto it = m_sprite_scene_info_indices.find(id);
+        const auto it = m_sprite_scene_info_indices.find(ToRenderId(id));
         if (it == m_sprite_scene_info_indices.end()) {
             upsertSpriteSceneInfo(id);
             return;
@@ -489,7 +538,7 @@ namespace dodoe {
     }
 
     void RenderScene::removeSpriteSceneInfo(const UUID id) {
-        const auto it = m_sprite_scene_info_indices.find(id);
+        const auto it = m_sprite_scene_info_indices.find(ToRenderId(id));
         if (it == m_sprite_scene_info_indices.end()) {
             return;
         }
@@ -498,9 +547,8 @@ namespace dodoe {
         const Size_t last_index = m_sprite_scene_infos.size() - 1;
         if (remove_index != last_index) {
             SpriteSceneInfo& moved = m_sprite_scene_infos[last_index];
-            const UUID moved_uuid = static_cast<UUID>(static_cast<uint64_t>(moved.getId()));
             m_sprite_scene_infos[remove_index] = std::move(moved);
-            m_sprite_scene_info_indices[moved_uuid] = remove_index;
+            m_sprite_scene_info_indices[moved.getId()] = remove_index;
         }
         m_sprite_scene_infos.pop_back();
         m_sprite_scene_info_indices.erase(it);
@@ -643,7 +691,7 @@ namespace dodoe {
             auto it = m_cpu_to_gpu_map.find(id);
             if (it == m_cpu_to_gpu_map.end()) {
                 GpuObjectMeta meta{};
-                meta.flags = 0;
+                meta.flags = kGpuObjectFlagValid;
                 meta.data_offset = 0;
                 meta.texture_id = 0;
                 meta.material_id = 0;
@@ -657,7 +705,7 @@ namespace dodoe {
             const auto* info = findPrimitiveSceneInfo(id);
             if (!info) continue;
 
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::TransformChanged)) {
+            if (HasAnyFlags(update_type, PrimitiveUpdateType::TransformChanged | PrimitiveUpdateType::Added)) {
                 const Matrix4f& transform = info->getWorldTransform();
                 m_gpu_scene->updateTransform(handle, transform);
                 const Vector3f& bounds_min = info->getBoundsMin();
@@ -680,6 +728,11 @@ namespace dodoe {
                 m_gpu_scene->updatePrimitiveInstance(handle, gpu_data);
             }
         }
+    }
+
+    GpuObjectHandle RenderScene::findGpuObjectHandle(const UInt64 id) const {
+        const auto it = m_cpu_to_gpu_map.find(static_cast<UUID>(id));
+        return it != m_cpu_to_gpu_map.end() ? it->second : GpuObjectHandle{};
     }
 
     TextureManager* RenderScene::getTextureManager() const {

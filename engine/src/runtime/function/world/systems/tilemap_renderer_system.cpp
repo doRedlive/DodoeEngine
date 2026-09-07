@@ -24,7 +24,7 @@ namespace dodoe {
 
     SystemAccess TilemapRendererSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TilemapComponent, TransformComponent, HierarchyComponent, TileLayerComponent>()
+            .readsComponents<IDComponent, TilemapComponent, TransformComponent, HierarchyComponent, TileLayerComponent, ActiveComponent>()
             .build();
     }
 
@@ -34,6 +34,9 @@ namespace dodoe {
         UnorderedSet<UUID> active_chunks{};
 
         for (auto entity : tilemap_view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& tm = entity.getComponent<TilemapComponent>();
             auto& id = entity.getComponent<IDComponent>();
             auto [submitted_it, inserted] = m_submitted_chunks.try_emplace(id.id);

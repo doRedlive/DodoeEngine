@@ -143,4 +143,8 @@ namespace dodoe {
             std::chrono::duration_cast<std::chrono::seconds>(ftime.time_since_epoch()).count());
     }
 
+    UInt64 ImportSettingsIO::MetaLastWriteTime(const FsPath& absolute_source_path) {
+        return LastWriteTimeSeconds(FsPath(absolute_source_path.string() + kMetaSuffix));
+    }
+
 } // dodoe

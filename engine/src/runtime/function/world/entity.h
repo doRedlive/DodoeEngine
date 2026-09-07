@@ -93,8 +93,13 @@ namespace dodoe {
 		[[nodiscard]] bool valid() const { return handle_ != entt::null; }
 		[[nodiscard]] Scene* getScene() const { return scene_; }
 
-		[[nodiscard]] UUID uuid() { return getComponent<IDComponent>().id; }	
+		[[nodiscard]] UUID uuid() { return getComponent<IDComponent>().id; }
 		[[nodiscard]] const String& name() { return getComponent<IDComponent>().name; }
+
+		void setActive(bool active);
+		[[nodiscard]] bool activeSelf() const;
+		[[nodiscard]] bool activeInHierarchy() const;
+		[[nodiscard]] static bool activeInHierarchy(entt::registry& registry, entt::entity entity);
 		
 		explicit operator bool() const { return valid(); }
 		bool operator==(const Entity&) const = default;

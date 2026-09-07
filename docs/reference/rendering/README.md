@@ -40,7 +40,11 @@
 | [threading.md](threading.md) | 渲染多线程模型:双线程/单线程模式(Debug 开关)、RenderThread/TaskScheduler/ThreadPool、OpenGL 上下文所有权转移、GfxRenderScope 与资源创建时序 |
 | [frame-flow.md](frame-flow.md) | 每帧流程:renderFrame 逐步时序、RenderFrameScheduler 帧槽与 in-flight、帧内存管理 |
 | [render-pipeline.md](render-pipeline.md) | 渲染管线:Renderer/Feature/Pass 体系、RenderGraph(资源/屏障/裁剪/并行执行)、视图与剔除、GpuScene/GpuCulling |
+| [render-graph.md](render-graph.md) | RenderGraph 体系:资源/访问模型、Pass 两段式声明、编译(依赖/裁剪/屏障/分层)、执行(并行录制/资源实体化/瞬态池)、与管线集成 |
+| [lighting-ibl.md](lighting-ibl.md) | 光照与 IBL:Cook-Torrance 直接光、SkyLight cubemap 烘焙(GGX prefilter mip / SH9 irradiance / BRDF LUT)、UBO 布局与 CPU 接线、两条渲染路径的共享方式 |
 | [resources.md](resources.md) | 资源体系:ResourceManager → TextureManager/Sprite/Mesh/Material 链路、PPtr 引用、渲染侧缓存(PSO/Framebuffer/BindingSet)、World 系统同步协议 |
+| [shader-system.md](shader-system.md) | Shader 体系:manifest 与 ShaderLibrary 加载、反射、Set/Binding 约定、声明式参数结构宏、Global/Material ShaderMap |
+| [material-system.md](material-system.md) | Material 体系:Material/MaterialAsset 资产层、MaterialSystem 模板/实例模型、resolve 与 invalidate 机制、渲染侧消费 |
 
 ## 与其他文档的关系
 

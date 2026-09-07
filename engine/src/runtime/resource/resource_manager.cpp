@@ -17,7 +17,9 @@
 #include "runtime/function/render/pixel2d/tileset.h"
 #include "runtime/function/render/pixel2d/sprite_manager.h"
 #include "runtime/function/world/prefab.h"
+#include "runtime/function/render/texture/texture.h"
 #include "runtime/resource/asset/types/audio_clip_asset.h"
+#include "runtime/resource/asset/types/cubemap_asset.h"
 
 namespace dodoe {
 
@@ -81,6 +83,7 @@ namespace dodoe {
     Texture2D* ResourceManager::loadTexture2D(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
+            DO_WARN("ResourceManager: loadTexture2D asset not registered (asset_id={})", static_cast<UInt64>(asset_id));
             return nullptr;
         }
         const String& path = asset->getSourcePath();
@@ -124,6 +127,7 @@ namespace dodoe {
     Material* ResourceManager::loadMaterial(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
+            DO_WARN("ResourceManager: loadMaterial asset not registered (asset_id={})", static_cast<UInt64>(asset_id));
             return nullptr;
         }
         return Material::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
@@ -184,6 +188,20 @@ namespace dodoe {
             return nullptr;
         }
         return Prefab::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
+    }
+
+    TextureCubemap* ResourceManager::loadCubemapTexture(const UUID& asset_id, UInt32 local_id) {
+        auto* cubemap_asset = m_assetManager->loadAssetSync<CubemapAsset>(asset_id);
+        if (!cubemap_asset) {
+            return nullptr;
+        }
+
+        auto texture = create_scope<TextureCubemap>(ObjectID{asset_id, local_id});
+        TextureCubemap* texture_raw = texture.get();
+        texture_raw->setPath(cubemap_asset->getSourcePath());
+        texture_raw->setFacePaths(cubemap_asset->getFacePaths());
+        m_cubemap_textures.emplace(texture_raw->getInstanceID(), std::move(texture));
+        return texture_raw;
     }
 
 } // dodoe

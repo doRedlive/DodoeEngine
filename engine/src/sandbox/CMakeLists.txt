@@ -15,7 +15,11 @@ file(GLOB_RECURSE SANDBOX_HEADERS
 set(SANDBOX_ALL_SOURCES ${SANDBOX_SOURCES} ${SANDBOX_HEADERS})
 
 add_executable(${TARGET_NAME} ${SANDBOX_ALL_SOURCES})
-set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Apps")
+set_target_properties(${TARGET_NAME} PROPERTIES
+        FOLDER "Apps"
+        VS_DEBUGGER_COMMAND "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
+        VS_DEBUGGER_WORKING_DIRECTORY "${BINARY_ROOT_DIR}"
+)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SANDBOX_ALL_SOURCES})
 
 target_link_libraries(${TARGET_NAME}
@@ -35,7 +39,9 @@ target_include_directories(${TARGET_NAME}
 set(POST_BUILD_COMMANDS
         COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${TARGET_NAME}>" "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_PDB_FILE:${TARGET_NAME}>" "${BINARY_ROOT_DIR}/$<TARGET_PDB_FILE_NAME:${TARGET_NAME}>"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:DodoeRuntime>" "${BINARY_ROOT_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_PDB_FILE:DodoeRuntime>" "${BINARY_ROOT_DIR}/"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res" "${BINARY_ROOT_DIR}/engine/res"
 )
 

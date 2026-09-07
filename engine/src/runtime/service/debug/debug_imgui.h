@@ -8,6 +8,8 @@
 #include "runtime/core/debug/debugger.h"
 #include "runtime/function/world/entity.h"
 
+#include <atomic>
+
 namespace dodoe {
 
     class DebugImGui {
@@ -18,8 +20,15 @@ namespace dodoe {
         // Entity currently selected in the debug hierarchy panel (invalid when nothing is selected).
         static Entity GetSelectedEntity() { return s_selectedEntity; }
 
+        static void RequestViewportPick(Int32 x, Int32 y);
+        static Bool ConsumePickRequest(Int32& out_x, Int32& out_y);
+        static void SubmitPickResult(UInt64 entity_uuid);
+        static Bool ConsumePickResult(UInt64& out_entity_uuid);
+
     private:
         static void OnImGuiRender();
+
+        static void ApplyPickedEntity(UInt64 entity_uuid);
 
         static void RenderHierarchyPanel();
         static void RenderInspectorPanel();
@@ -36,6 +45,11 @@ namespace dodoe {
 
         static inline bool  s_registered = false;
         static inline Entity s_selectedEntity{};
+        static inline std::atomic<UInt32> s_pick_requested{0};
+        static inline std::atomic<Int32> s_pick_x{0};
+        static inline std::atomic<Int32> s_pick_y{0};
+        static inline std::atomic<UInt64> s_pick_result{0};
+        static inline std::atomic<UInt32> s_pick_result_valid{0};
     };
 
 } // dodoe

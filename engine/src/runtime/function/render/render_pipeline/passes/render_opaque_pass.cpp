@@ -68,6 +68,29 @@ namespace dodoe {
             }
         }
         pass_cb.light_count_flags.x = static_cast<Float>(point_count);
+
+        for (const auto& light_info : scene.getLightSceneInfos()) {
+            if (light_info.getLightType() != LightType::Sky || !light_info.isEnabled()) {
+                continue;
+            }
+            const auto& sky_data = light_info.getSkyLightData();
+            const auto& cubemap = sky_data.cubemap;
+            if (cubemap) {
+                if (const Vector4f* sh = cubemap->getIrradianceSH()) {
+                    for (UInt32 b = 0; b < 9u; ++b) {
+                        pass_cb.irradiance_sh[b] = sh[b];
+                    }
+                }
+                pass_cb.ibl_params.x = sky_data.intensity;
+                UInt32 face_size = static_cast<UInt32>(cubemap->getFaceSize());
+                UInt32 mip_count = 1;
+                while ((face_size >> mip_count) != 0) {
+                    ++mip_count;
+                }
+                pass_cb.ibl_params.z = static_cast<Float>(mip_count - 1);
+            }
+            break;
+        }
     }
 
     GfxBindingLayoutHandle MakeLitPassBindingLayout(BindingLayoutCache& binding_layout_cache) {
@@ -79,6 +102,7 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(1))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+                .addItem(GfxBindingLayoutItem::Texture_SRV(3))
                 .addItem(GfxBindingLayoutItem::Sampler(9)));
     }
 
@@ -86,6 +110,7 @@ namespace dodoe {
                                                             const FrameStagingAllocator::Allocation& allocation,
                                                             const GfxTextureHandle& shadow_handle,
                                                             const GfxTextureHandle& skybox_texture,
+                                                            const GfxTextureHandle& brdf_lut,
                                                             const GfxBindingLayoutHandle& binding_layout) {
         return command_list.createBindingSet(
             GfxBindingSetDesc()
@@ -96,6 +121,8 @@ namespace dodoe {
                 .addItem(GfxBindingSetItem::Texture_SRV(
                     2, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
                     GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
+                .addItem(GfxBindingSetItem::Texture_SRV(
+                    3, brdf_lut ? brdf_lut->getRHIHandle().Get() : nullptr))
                 .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
             binding_layout);
     }
@@ -229,8 +256,10 @@ namespace dodoe {
                     skybox_texture = fallback_cubemap->getGpuHandle();
                 }
 
+                const auto* brdf_lut = ctx.getTextureManager()->getBrdfLut();
                 const auto pass_binding_set = CreateLitPassBindingSet(
-                    command_list, allocation, shadow_handle, skybox_texture, binding_layout);
+                    command_list, allocation, shadow_handle, skybox_texture,
+                    brdf_lut ? brdf_lut->getGpuHandle() : GfxTextureHandle{}, binding_layout);
                 if (!pass_binding_set) {
                     DO_ERROR("OpaquePass: failed to create pass binding set");
                     return;

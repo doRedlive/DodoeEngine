@@ -15,7 +15,7 @@ namespace dodoe {
 
     SystemAccess RectRendererSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, RectRendererComponent>()
+            .readsComponents<IDComponent, TransformComponent, RectRendererComponent, ActiveComponent, HierarchyComponent>()
             .build();
     }
 
@@ -26,6 +26,9 @@ namespace dodoe {
         UnorderedSet<UUID> active{};
 
         for (auto entity : view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             active.insert(id.id);
             syncRect(entity);

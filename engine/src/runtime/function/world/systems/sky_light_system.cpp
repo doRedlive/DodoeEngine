@@ -7,8 +7,10 @@
 #include "runtime/function/render/render_command_queue.h"
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
-#include "runtime/function/render/texture/texture.h"
+#include "runtime/function/render/texture/texture_manager.h"
+#include "runtime/resource/file/file_id.h"
 #include "runtime/resource/file/file_system.h"
+#include "runtime/resource/resource_manager.h"
 
 namespace dodoe {
 
@@ -16,7 +18,7 @@ namespace dodoe {
 
     SystemAccess SkyLightSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, SkyLightComponent>()
+            .readsComponents<IDComponent, SkyLightComponent, ActiveComponent, HierarchyComponent>()
             .build();
     }
 
@@ -28,10 +30,25 @@ namespace dodoe {
         UnorderedSet<UUID> active{};
 
         for (auto entity : view) {
+            if (!entity.activeInHierarchy()) {
+                static Bool logged_inactive = false;
+                if (!logged_inactive) {
+                    logged_inactive = true;
+                    DO_WARN("SkyLightSystem: skylight entity inactive in hierarchy, skipped");
+                }
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& sky = entity.getComponent<SkyLightComponent>();
             active.insert(id.id);
-            if (!sky.enabled) continue;
+            if (!sky.enabled) {
+                static Bool logged_disabled = false;
+                if (!logged_disabled) {
+                    logged_disabled = true;
+                    DO_WARN("SkyLightSystem: skylight '{}' disabled, skipped", static_cast<UInt64>(id.id));
+                }
+                continue;
+            }
             syncSkyLight(entity);
         }
 
@@ -42,12 +59,51 @@ namespace dodoe {
         auto& id = entity.getComponent<IDComponent>();
         auto& sky = entity.getComponent<SkyLightComponent>();
 
-        if (!sky.dirty) return false;
+        if (!sky.dirty) {
+            static Bool logged_not_dirty = false;
+            if (!logged_not_dirty) {
+                logged_not_dirty = true;
+                DO_WARN("SkyLightSystem: sync skipped, entity {} cubemap not dirty", static_cast<UInt64>(id.id));
+            }
+            return false;
+        }
 
-        auto cubemap = loadCubemap(sky.face_paths);
-        if (!cubemap) return false;
+        TextureCubemap* cubemap = sky.cubemap.get();
+        if (!cubemap && sky.cubemap.getObjectID().isValid()) {
+            const ObjectID& ref = sky.cubemap.getObjectID();
+            cubemap = ResourceManager::Self().loadObject<TextureCubemap>(ref.asset_id, ref.local_id);
+        }
+        if (!cubemap && !sky.cubemap.getLegacyPath().empty()) {
+            cubemap = ResourceManager::Self().loadObjectByPath<TextureCubemap>(FileID(sky.cubemap.getLegacyPath()));
+        }
+        if (!cubemap) {
+            static Bool logged_no_cubemap = false;
+            if (!logged_no_cubemap) {
+                logged_no_cubemap = true;
+                DO_WARN("SkyLightSystem: failed to load cubemap (asset_id_valid={} legacy_path='{}')",
+                    sky.cubemap.getObjectID().isValid(), sky.cubemap.getLegacyPath());
+            }
+            return false;
+        }
 
-        LightSceneInfo info(static_cast<Identifier>(static_cast<uint64_t>(id.id)));
+        const String legacy_path = sky.cubemap.getLegacyPath();
+        sky.cubemap = PPtr<TextureCubemap>(cubemap);
+        if (!legacy_path.empty()) {
+            sky.cubemap.setLegacyPath(legacy_path);
+        }
+
+        if (cubemap->getFaceSize() == 0) {
+            if (!loadCubemap(cubemap)) {
+                static Bool logged_load_failed = false;
+                if (!logged_load_failed) {
+                    logged_load_failed = true;
+                    DO_WARN("SkyLightSystem: cubemap GPU load failed for '{}'", cubemap->getPath());
+                }
+                return false;
+            }
+        }
+
+        LightSceneInfo info(RenderId(static_cast<UInt64>(id.id)));
         info.setLightType(LightType::Sky);
         info.setWorldTransform(Matrix4f(1.0f));
         info.setEnabled(sky.enabled);
@@ -76,11 +132,14 @@ namespace dodoe {
         }
     }
 
-    TextureCubemap* SkyLightSystem::loadCubemap(const DynamicArray<String>& paths) {
+    bool SkyLightSystem::loadCubemap(TextureCubemap* cubemap) {
         auto* tm = GetRenderSystem()->getSharedRenderService()->getTextureManager();
-        if (!tm) return nullptr;
+        if (!tm) {
+            DO_WARN("SkyLightSystem: texture manager unavailable");
+            return false;
+        }
 
-        DynamicArray<String> resolved_paths = paths;
+        DynamicArray<String> resolved_paths = cubemap->getFacePaths();
         const FsPath asset_dir = Project::AssetDirectory();
         for (auto& path : resolved_paths) {
             if (path.empty()) {
@@ -91,7 +150,15 @@ namespace dodoe {
                 path = String(candidate.lexically_normal().generic_string().c_str());
             }
         }
-        return tm->loadCubemapTexture(resolved_paths);
-    }
 
+        TextureCubemap* loaded = tm->loadCubemapTexture(resolved_paths);
+        if (!loaded) {
+            DO_WARN("SkyLightSystem: loadCubemapTexture failed for face0='{}'", resolved_paths.empty() ? "" : resolved_paths[0]);
+            return false;
+        }
+        cubemap->setGpuHandle(loaded->getGpuHandle());
+        cubemap->setFaceSize(loaded->getFaceSize());
+        cubemap->setIrradianceSH(loaded->getIrradianceSH());
+        return true;
+    }
 } // dodoe

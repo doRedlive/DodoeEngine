@@ -16,7 +16,7 @@ namespace dodoe {
     class DrawCommandList;
     class BindingLayoutCache;
 
-    inline constexpr UInt64 kLitPassConstantBufferSize = 272;
+    inline constexpr UInt64 kLitPassConstantBufferSize = 432;
 
     struct LitPassConstantBuffer {
         Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
@@ -27,6 +27,8 @@ namespace dodoe {
         Vector4f point_light_colors[4]{};
         Vector4f point_light_positions[4]{};
         Vector4f light_count_flags{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f irradiance_sh[9]{};
+        Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
     };
 
     void BuildLitPassConstantBuffer(LitPassConstantBuffer& pass_cb,
@@ -39,6 +41,7 @@ namespace dodoe {
                                                 const FrameStagingAllocator::Allocation& allocation,
                                                 const GfxTextureHandle& shadow_handle,
                                                 const GfxTextureHandle& skybox_texture,
+                                                const GfxTextureHandle& brdf_lut,
                                                 const GfxBindingLayoutHandle& binding_layout);
 
     class OpaquePass : public IRenderPass {

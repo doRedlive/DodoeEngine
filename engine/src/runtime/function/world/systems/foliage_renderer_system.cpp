@@ -16,7 +16,7 @@ namespace dodoe {
 
     SystemAccess FoliageRendererSystem::getAccess() const {
         return SystemAccessBuilder{}
-            .readsComponents<IDComponent, TransformComponent, FoliageRendererComponent, HierarchyComponent>()
+            .readsComponents<IDComponent, TransformComponent, FoliageRendererComponent, HierarchyComponent, ActiveComponent>()
             .build();
     }
 
@@ -28,6 +28,9 @@ namespace dodoe {
         UnorderedSet<UUID> active_objects{};
 
         for (auto entity : foliage_view) {
+            if (!entity.activeInHierarchy()) {
+                continue;
+            }
             auto& id = entity.getComponent<IDComponent>();
             auto& transform = entity.getComponent<TransformComponent>();
             auto& foliage = entity.getComponent<FoliageRendererComponent>();

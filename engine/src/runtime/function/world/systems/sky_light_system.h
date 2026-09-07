@@ -20,7 +20,7 @@ namespace dodoe {
     private:
         bool syncSkyLight(Entity entity);
         void pruneRemoved(const UnorderedSet<UUID>& active);
-        TextureCubemap* loadCubemap(const DynamicArray<String>& paths);
+        bool loadCubemap(TextureCubemap* cubemap);
     };
 
 } // dodoe

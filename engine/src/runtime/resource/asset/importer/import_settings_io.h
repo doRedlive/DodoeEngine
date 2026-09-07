@@ -43,6 +43,8 @@ namespace dodoe {
                                            const Json& default_settings);
 
         static UInt64 LastWriteTimeSeconds(const FsPath& path);
+
+        static UInt64 MetaLastWriteTime(const FsPath& absolute_source_path);
     };
 
 } // dodoe
