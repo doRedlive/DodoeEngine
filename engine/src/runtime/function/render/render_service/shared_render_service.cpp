@@ -29,7 +29,8 @@ namespace dodoe {
         m_mesh_pass_registry = create_scope<MeshPassRegistry>();
         const Bool mesh_passes_initialized = m_mesh_pass_registry &&
             m_binding_layout_cache && m_binding_set_cache &&
-            m_mesh_pass_registry->initialize(m_descriptor_table.get(), *m_binding_layout_cache, *m_binding_set_cache);
+            m_mesh_pass_registry->initialize(m_descriptor_table.get(), *m_binding_layout_cache,
+                *m_binding_set_cache);
 
         const Bool initialized = m_descriptor_table != nullptr
             && m_texture_manager != nullptr

@@ -106,6 +106,13 @@ namespace dodoe {
         m_used_byte_size = 0;
     }
 
+    void LinearAllocator::releaseToPool() {
+        std::lock_guard<std::recursive_mutex> lock(m_mutex);
+        recycleBlocks(m_blocks);
+        m_blocks.clear();
+        m_used_byte_size = 0;
+    }
+
     void LinearAllocator::reserve(Size_t byte_size) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
         if (m_blocks.empty() || m_blocks.back().offset + byte_size > m_blocks.back().size) {
@@ -135,8 +142,50 @@ namespace dodoe {
     void LinearAllocator::createBlock(Size_t minimum_size) {
         Size_t block_size = std::max(m_default_block_size, minimum_size);
 
-        Block block(block_size);
+        Block block = acquireRecycledBlock(block_size);
+        if (!block.data) {
+            block = Block(block_size);
+        }
+        block.offset = 0;
         m_blocks.push_back(std::move(block));
+    }
+
+    std::vector<LinearAllocator::Block>& LinearAllocator::recycledBlocks() {
+        static auto* blocks = new std::vector<Block>();
+        return *blocks;
+    }
+
+    std::mutex& LinearAllocator::recycledBlocksMutex() {
+        static auto* mutex = new std::mutex();
+        return *mutex;
+    }
+
+    LinearAllocator::Block LinearAllocator::acquireRecycledBlock(const Size_t minimum_size) {
+        std::lock_guard<std::mutex> lock(recycledBlocksMutex());
+        auto& blocks = recycledBlocks();
+        for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+            if (it->size < minimum_size) {
+                continue;
+            }
+            Block block = std::move(*it);
+            blocks.erase(it);
+            return block;
+        }
+        return {};
+    }
+
+    void LinearAllocator::recycleBlocks(std::vector<Block>& blocks) {
+        if (blocks.empty()) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(recycledBlocksMutex());
+        auto& recycled = recycledBlocks();
+        for (auto& block : blocks) {
+            if (block.data) {
+                block.offset = 0;
+                recycled.push_back(std::move(block));
+            }
+        }
     }
 
     Size_t LinearAllocator::alignUp(Size_t value, Size_t alignment) {

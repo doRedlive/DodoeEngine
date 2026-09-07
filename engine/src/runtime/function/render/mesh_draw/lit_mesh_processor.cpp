@@ -193,8 +193,12 @@ namespace dodoe {
         if (RenderSettings::IsBindlessActive()) {
             command.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
             command.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
-        } else if (material->texture_binding_set) {
-            command.setBindingSet(ShaderParameterSet::Material, material->texture_binding_set);
+        } else {
+            const auto& material_binding_set = batch.getMaterialBindingSet();
+            if (!material_binding_set) {
+                return false;
+            }
+            command.setBindingSet(ShaderParameterSet::Material, material_binding_set);
         }
         return true;
     }

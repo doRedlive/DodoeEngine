@@ -79,6 +79,7 @@ namespace dodoe {
         void reset();
         void resetTo(Size_t byte_offset);
         void release();
+        void releaseToPool();
         void reserve(Size_t byte_size);
         void transferFrom(LinearAllocator&& other);
 
@@ -87,6 +88,11 @@ namespace dodoe {
         [[nodiscard]] Size_t defaultBlockSize() const { return m_default_block_size; }
 
     private:
+        static std::vector<Block>& recycledBlocks();
+        static std::mutex& recycledBlocksMutex();
+        static Block acquireRecycledBlock(Size_t minimum_size);
+        static void recycleBlocks(std::vector<Block>& blocks);
+
         void createBlock(Size_t minimum_size);
         static Size_t alignUp(Size_t value, Size_t alignment);
     };

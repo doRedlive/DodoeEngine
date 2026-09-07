@@ -55,7 +55,7 @@ namespace dodoe {
         m_device = nullptr;
     }
 
-    void DrawCommandList::beginFrame() { reset(); }
+    void DrawCommandList::beginFrame() { resetAndRelease(); }
     void DrawCommandList::endFrame() {}
 
     CommandList<GfxCommandList> DrawCommandList::detachRecordedCommands() {

@@ -105,6 +105,11 @@ namespace dodoe {
             m_allocator.reset();
         }
 
+        void resetAndRelease() {
+            reset();
+            m_allocator.releaseToPool();
+        }
+
         [[nodiscard]] bool isEmpty() const { return m_head == nullptr; }
         [[nodiscard]] Size_t commandCount() const { return m_command_count; }
 

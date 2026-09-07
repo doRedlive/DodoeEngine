@@ -176,15 +176,15 @@ namespace dodoe {
 
             const MeshBatchElement* picked_element = nullptr;
             for (const auto& batch : primitive->getMeshBatches()) {
-                if (!batch.isValid() || !batch.isRelevant(MeshPassType::Opaque) || batch.elements.empty()) {
+                if (!batch.isValid() || !batch.isRelevant(MeshPassType::Opaque) || batch.getElements().empty()) {
                     continue;
                 }
-                const auto& element = batch.elements[0];
+                const auto& element = batch.getElements()[0];
                 if (!element.isValid() || !element.vertex_buffer || !element.index_buffer ||
                     !element.vertex_buffer->isGpuReady() || !element.index_buffer->isGpuReady()) {
                     continue;
                 }
-                const auto* material_instance = batch.material_instance;
+                const auto* material_instance = batch.getMaterialInstance();
                 if (!material_instance) {
                     continue;
                 }

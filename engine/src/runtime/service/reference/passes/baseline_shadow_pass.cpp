@@ -300,11 +300,11 @@ namespace dodoe {
             const UInt64 instance_offset = static_cast<UInt64>(instance_prefix[primitive_index]) * sizeof(InstanceSceneData);
 
             for (const auto& batch : primitive->getMeshBatches()) {
-                if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.elements.empty()) {
+                if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.getElements().empty()) {
                     shadow_skip_batch++;
                     continue;
                 }
-                const auto& element = batch.elements[0];
+                const auto& element = batch.getElements()[0];
                 if (!element.isValid() || !element.vertex_buffer || !element.index_buffer ||
                     !element.vertex_buffer->isGpuReady() || !element.index_buffer->isGpuReady()) {
                     shadow_skip_buffer++;
