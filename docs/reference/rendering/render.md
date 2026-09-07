@@ -1,6 +1,6 @@
 # Render
 
-> 深入的架构讲解(管线/RenderGraph/每帧流程/资源链路)见 [rendering/README.md](rendering/README.md)。
+> 深入的架构讲解(管线/RenderGraph/每帧流程/资源链路)见 [README.md](README.md)。
 
 ## 目录
 

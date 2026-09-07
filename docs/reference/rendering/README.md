@@ -48,6 +48,6 @@
 
 ## 与其他文档的关系
 
-- [graphics.md](../graphics.md) / [render.md](../render.md):目录级速查表(文件与职责的索引)。
-- [core.md](../core.md):`Ref<T>`/`Scope<T>` 智能指针、LinearAllocator、MPMC 队列等基础设施在本体系中被大量使用。
-- [world.md](../world.md):World 系统如何被调度(本文档 threading.md 的"游戏侧"部分)。
+- [graphics.md](graphics.md) / [render.md](render.md):目录级速查表(文件与职责的索引)。
+- [../core/core.md](../core/core.md):`Ref<T>`/`Scope<T>` 智能指针、LinearAllocator、MPMC 队列等基础设施在本体系中被大量使用;内存分配细节见 [../core/memory.md](../core/memory.md)。
+- [../modules/world.md](../modules/world.md):World 系统如何被调度(本文档 threading.md 的"游戏侧"部分)。

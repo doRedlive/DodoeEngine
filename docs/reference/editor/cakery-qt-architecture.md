@@ -441,7 +441,7 @@ Hierarchy 使用 `EditorSelection`，而 ProjectPanel 直接发出 Qt 的 `asset
 ## 十二、相关文档
 
 - [editor.md](editor.md)：编辑器模块总览和更广泛的功能缺口分析。
-- [core.md](core.md)：Runtime Core 基础对象和模块。
-- [resource.md](resource.md)：资源、Asset 和导入链路。
-- [render.md](render.md)：渲染系统和视图目标。
-- [ui-input-window.md](ui-input-window.md)：Runtime UI、输入和窗口系统。
+- [../core/core.md](../core/core.md)：Runtime Core 基础对象和模块。
+- [../core/resource.md](../core/resource.md)：资源、Asset 和导入链路。
+- [../rendering/render.md](../rendering/render.md)：渲染系统和视图目标。
+- [../modules/ui-input-window.md](../modules/ui-input-window.md)：Runtime UI、输入和窗口系统。

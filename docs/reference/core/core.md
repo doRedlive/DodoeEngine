@@ -12,7 +12,7 @@
 | Layer | `layer/*` | `Layer`、`LayerStack`、attach/detach/update/render 回调 |
 | Async | `async/*` | `TaskScheduler`、`TaskGraph` |
 | Thread | `thread/*` | `RenderThread`、`ThreadPool`、`WaitGroup` |
-| Memory | `memory/*` | `Managed`、allocator、thread allocator、deferred deletion |
+| Memory | `memory/*` | `Managed`、allocator、thread allocator、deferred deletion(详见 [memory.md](memory.md)) |
 | Meta | `meta/*` | reflection、serializer、`ComponentDB` |
 | Project | `project/*` | `Project`、`ProjectSerializer`、active project |
 | Object | `object/*` | `Object`、`ObjectID`、`PPtr` |
