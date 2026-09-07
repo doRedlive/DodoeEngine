@@ -385,7 +385,7 @@ namespace dodoe {
 
         for (Size_t i = 0; i < batches.size(); i++) {
             auto& batch = batches[i];
-            if (batch.material_instance) continue;
+            if (batch.getMaterialInstance()) continue;
 
             const PPtr<Material>& material_ptr = i < materials.size() ? materials[i] : PPtr<Material>{};
             Material* material = material_ptr.get();
@@ -428,8 +428,8 @@ namespace dodoe {
             }
 
             String instance_name = String(fmt::format("Mat_{}_{}", info.getId().value(), i).c_str());
-            batch.material_instance = const_cast<MaterialInstance*>(
-                material_system->getOrCreateInstance(instance_name, "GBuffer", overrides));
+            batch.setMaterialInstance(const_cast<MaterialInstance*>(
+                material_system->getOrCreateInstance(instance_name, "GBuffer", overrides)));
         }
     }
 

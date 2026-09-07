@@ -11,6 +11,7 @@
 #include "runtime/core/debug/debugger.h"
 #ifdef DODOE_DEBUG_ENABLED
 #include "runtime/service/debug/debug_imgui.h"
+#include "runtime/service/debug/render_graph_panel.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 #endif//DODOE_DEBUG_ENABLED
 #include "runtime/core/layer/layer.h"
@@ -110,6 +111,7 @@ namespace dodoe {
 #ifdef DODOE_DEBUG_ENABLED
             if (engine_mode != EngineMode::GUI) {
                 DebugImGui::RegisterDebugPanel();
+                RenderGraphPanel::Register();
             }
 #endif//DODOE_DEBUG_ENABLED
             m_render_system = RenderSystem::Create({m_window_manager.get()});
@@ -201,6 +203,10 @@ namespace dodoe {
 
         InputManager::Destroy(m_input_manager);
 
+        if (m_render_system) {
+            m_render_system->stopRenderThread();
+        }
+
 #ifdef DODOE_DEBUG_ENABLED
         ImGuiBuilder::CleanupImGui();
 #endif//DODOE_DEBUG_ENABLED
@@ -210,6 +216,7 @@ namespace dodoe {
         UIManager::Destroy(m_ui_manager);
 #ifdef DODOE_DEBUG_ENABLED
         DebugImGui::UnregisterDebugPanel();
+        RenderGraphPanel::Unregister();
 #endif//DODOE_DEBUG_ENABLED
         Debugger::Destroy(m_debugger);
         WindowManager::Destroy(m_window_manager);

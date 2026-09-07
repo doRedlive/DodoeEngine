@@ -4,7 +4,6 @@
 
 #include "mesh_draw_types.h"
 #include "mesh_draw_list.h"
-#include "cached_mesh_draw_command.h"
 #include "runtime/core/math/math.h"
 #include "../render_scene/primitive_render_object.h"
 #include "../material/material_system.h"
@@ -13,20 +12,80 @@
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/shader/shader_parameter.h"
+#include "runtime/function/render/shader/descriptor_table_manager.h"
 
 namespace dodoe {
     namespace {
         constexpr UInt32 kVolatileConstantBufferVersions = 4096;
+
+        GfxGraphicsPipelineDesc MakeLitPipelineDesc(const MeshPassPipelineContext& context,
+                                                    const GfxBindingLayoutHandle& global_binding_layout,
+                                                    const GfxBindingLayoutHandle& view_binding_layout,
+                                                    const GfxBindingLayoutHandle& primitive_binding_layout,
+                                                    const GfxBindingLayoutHandle& sampler_binding_layout) {
+            auto pipeline_desc = GfxGraphicsPipelineDesc()
+                .setVertexShader(context.vertex_shader)
+                .setPixelShader(context.pixel_shader)
+                .setInputLayout(context.input_layout)
+                .addBindingLayout(global_binding_layout)
+                .addBindingLayout(view_binding_layout)
+                .setPrimType(GfxPrimitiveType::TriangleList);
+            if (RenderSettings::IsBindlessActive()) {
+                pipeline_desc.addBindingLayout(sampler_binding_layout);
+            } else if (context.binding_layout_cache) {
+                auto material_layout = context.binding_layout_cache->getOrCreate(
+                    GfxBindingLayoutDesc()
+                        .setVisibility(GfxShaderType::Pixel)
+                        .setRegisterSpaceIsDescriptorSet(true)
+                        .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+                        .addItem(GfxBindingLayoutItem::Sampler(1))
+                        .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+                        .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
+                pipeline_desc.addBindingLayout(material_layout);
+            }
+            if (context.pass_binding_layout) {
+                pipeline_desc.addBindingLayout(context.pass_binding_layout);
+            }
+            pipeline_desc.addBindingLayout(primitive_binding_layout);
+            if (RenderSettings::IsBindlessActive() && context.descriptor_table &&
+                context.descriptor_table->getDescriptorTable()) {
+                pipeline_desc.addBindingLayout(context.descriptor_table->getDescriptorTable()->getLayout());
+            }
+            return pipeline_desc;
+        }
+    }
+
+    GfxGraphicsPipelineDesc LitMeshProcessor::buildPipelineDescription(
+        const MeshPassPipelineContext& context) const {
+        auto pipeline_desc = MakeLitPipelineDesc(context, m_global_binding_layout,
+            m_view_binding_layout, m_primitive_binding_layout, m_sampler_binding_layout);
+        GfxDepthStencilState depth_stencil_state;
+        GfxRenderState render_state;
+        if (getMeshPassType() == MeshPassType::Transparent) {
+            depth_stencil_state.enableDepthTest().disableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
+            GfxBlendState blend_state;
+            GfxBlendState::RenderTarget blend_target;
+            blend_target.enableBlend()
+                .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                .setSrcBlendAlpha(GfxBlendFactor::One)
+                .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
+            blend_state.setRenderTarget(0, blend_target);
+            render_state.setDepthStencilState(depth_stencil_state).setBlendState(blend_state);
+        } else {
+            depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
+            render_state.setDepthStencilState(depth_stencil_state);
+        }
+        pipeline_desc.setRenderState(render_state);
+        return pipeline_desc;
     }
 
     LitMeshProcessor::LitMeshProcessor(const MeshPassType pass_type,
                                        GfxBindingSetHandle descriptor_binding_set,
                                        BindingLayoutCache& binding_layout_cache,
-                                       BindingSetCache& binding_set_cache,
-                                       MaterialSystem& material_system)
-        : m_pass_type(pass_type),
-          m_descriptor_binding_set(std::move(descriptor_binding_set)),
-          m_material_system(&material_system) {
+                                       BindingSetCache& binding_set_cache)
+        : MeshPassProcessor(pass_type),
+          m_descriptor_binding_set(std::move(descriptor_binding_set)) {
         m_sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
         m_global_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
@@ -108,174 +167,36 @@ namespace dodoe {
         m_primitive_binding_layout = nullptr;
         m_sampler_binding_layout = nullptr;
         m_sampler = nullptr;
-        m_material_system = nullptr;
     }
 
-    void LitMeshProcessor::buildCachedCommands(
-        const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
-        const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
-        const DynamicArray<UInt32>& mesh_pass_primitive_indices,
-        const Matrix4f& view_projection,
-        MeshDrawCommandCache& cache,
-        DynamicArray<MeshDrawInstance>& out_instances,
-        DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data) const
-    {
-        (void)primitive_mesh_pass_relevance;
-        out_instances.clear();
-        out_shader_data.clear();
-        out_instances.reserve(mesh_pass_primitive_indices.size());
-        out_shader_data.reserve(mesh_pass_primitive_indices.size());
-
-        const auto frustum_planes = ExtractFrustumPlanes(view_projection);
-
-        UInt32 first_instance = 0;
-        for (const UInt32 primitive_index : mesh_pass_primitive_indices) {
-            DO_ASSERT(primitive_index < visible_primitives.size(), "LitMeshProcessor primitive index out of range");
-            const auto* primitive = visible_primitives[primitive_index];
-            if (!primitive || primitive->getMobility() == PrimitiveMobility::Movable) {
-                continue;
-            }
-            const auto& batches = primitive->getMeshBatches();
-            for (const auto& batch : batches) {
-                if (!batch.isValid() || !batch.isRelevant(m_pass_type) || batch.elements.empty()) {
-                    continue;
-                }
-                if (IsBatchFrustumCulled(batch, primitive, frustum_planes)) {
-                    continue;
-                }
-                const auto& element = batch.elements[0];
-                if (!element.isValid()) {
-                    continue;
-                }
-
-                const auto* mi = batch.material_instance;
-                PrimitiveMeshDrawShaderData draw_shader_data{};
-                draw_shader_data.draw_data.x = mi->texture_descriptor_indices[0];
-                draw_shader_data.draw_data.y = mi->texture_descriptor_indices.size() > 1 ? mi->texture_descriptor_indices[1] : -1;
-                draw_shader_data.draw_data.z = mi->texture_descriptor_indices.size() > 1 ? 1 : 0;
-                draw_shader_data.material_data.x = mi->metallic;
-                draw_shader_data.material_data.y = mi->roughness;
-                draw_shader_data.material_data.z = mi->ao;
-
-                const UInt32 shader_data_index = static_cast<UInt32>(out_shader_data.size());
-                out_shader_data.push_back(draw_shader_data);
-
-                const auto cache_key = CacheHashUtils::MakeCacheKey(
-                    element, batch.material_instance, m_pass_type);
-
-                auto cmd = BuildDrawCommand(element, m_pass_type, m_primitive_binding_set);
-                cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
-                cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
-                if (RenderSettings::IsBindlessActive()) {
-                    cmd.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
-                    cmd.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
-                } else if (mi) {
-                    const GfxBindingSetHandle material_binding_set = m_material_system->getTextureBindingSet(mi);
-                    if (material_binding_set) {
-                        cmd.setBindingSet(ShaderParameterSet::Material, material_binding_set);
-                    }
-                }
-                const UInt32 cmd_index = cache.findOrCreate(cache_key, std::move(cmd));
-
-                MeshDrawInstance instance{};
-                instance.cmd_index = cmd_index;
-                instance.shader_data_index = shader_data_index;
-                instance.instance_offset = static_cast<UInt64>(first_instance) * sizeof(InstanceSceneData);
-                out_instances.push_back(instance);
-            }
-
-            first_instance += primitive->getInstanceCount();
-        }
+    Bool LitMeshProcessor::shouldDrawPrimitive(const PrimitiveSceneInfo& primitive) const {
+        return primitive.isVisible();
     }
 
-    void LitMeshProcessor::buildDynamicCommands(
-        const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
-        const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
-        const DynamicArray<UInt32>& mesh_pass_primitive_indices,
-        const Matrix4f& view_projection,
-        DynamicArray<MeshDrawCommand>& frame_commands,
-        DynamicArray<MeshDrawInstance>& out_instances,
-        DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data) const
-    {
-        (void)primitive_mesh_pass_relevance;
-        out_instances.clear();
-        out_shader_data.clear();
-        out_instances.reserve(mesh_pass_primitive_indices.size());
-        out_shader_data.reserve(mesh_pass_primitive_indices.size());
-
-        DynamicArray<MeshDrawCommand> local_commands;
-        local_commands.reserve(mesh_pass_primitive_indices.size());
-
-        const auto frustum_planes = ExtractFrustumPlanes(view_projection);
-
-        UInt32 first_instance = 0;
-        for (const UInt32 primitive_index : mesh_pass_primitive_indices) {
-            DO_ASSERT(primitive_index < visible_primitives.size(), "LitMeshProcessor primitive index out of range");
-            const auto* primitive = visible_primitives[primitive_index];
-            if (!primitive || primitive->getMobility() != PrimitiveMobility::Movable) {
-                if (primitive) {
-                    first_instance += primitive->getInstanceCount();
-                }
-                continue;
-            }
-            const auto& batches = primitive->getMeshBatches();
-            for (const auto& batch : batches) {
-                if (!batch.isValid() || !batch.isRelevant(m_pass_type) || batch.elements.empty()) {
-                    continue;
-                }
-                if (IsBatchFrustumCulled(batch, primitive, frustum_planes)) {
-                    continue;
-                }
-                const auto& element = batch.elements[0];
-                if (!element.isValid()) {
-                    continue;
-                }
-
-                const auto* mi = batch.material_instance;
-                PrimitiveMeshDrawShaderData draw_shader_data{};
-                draw_shader_data.draw_data.x = mi->texture_descriptor_indices[0];
-                draw_shader_data.draw_data.y = mi->texture_descriptor_indices.size() > 1 ? mi->texture_descriptor_indices[1] : -1;
-                draw_shader_data.draw_data.z = mi->texture_descriptor_indices.size() > 1 ? 1 : 0;
-                draw_shader_data.material_data.x = mi->metallic;
-                draw_shader_data.material_data.y = mi->roughness;
-                draw_shader_data.material_data.z = mi->ao;
-
-                const UInt32 shader_data_index = static_cast<UInt32>(out_shader_data.size());
-                out_shader_data.push_back(draw_shader_data);
-
-                auto cmd = BuildDrawCommand(element, m_pass_type, m_primitive_binding_set);
-                cmd.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
-                cmd.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
-                if (RenderSettings::IsBindlessActive()) {
-                    cmd.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
-                    cmd.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
-                } else if (mi) {
-                    const GfxBindingSetHandle material_binding_set = m_material_system->getTextureBindingSet(mi);
-                    if (material_binding_set) {
-                        cmd.setBindingSet(ShaderParameterSet::Material, material_binding_set);
-                    }
-                }
-                const UInt32 cmd_index = static_cast<UInt32>(local_commands.size());
-                local_commands.push_back(std::move(cmd));
-
-                MeshDrawInstance instance{};
-                instance.cmd_index = cmd_index;
-                instance.shader_data_index = shader_data_index;
-                instance.instance_offset = static_cast<UInt64>(first_instance) * sizeof(InstanceSceneData);
-                out_instances.push_back(instance);
-            }
-
-            first_instance += primitive->getInstanceCount();
+    Bool LitMeshProcessor::setupMeshDrawCommand(
+        const MeshBatch& batch,
+        const MeshBatchElement&,
+        MeshDrawCommand& command,
+        PrimitiveMeshDrawShaderData& shader_data) const {
+        const auto* material = batch.getMaterialInstance();
+        if (!material) {
+            return false;
         }
-
-        const UInt32 base_index = static_cast<UInt32>(frame_commands.size());
-        frame_commands.reserve(frame_commands.size() + local_commands.size());
-        for (auto& inst : out_instances) {
-            inst.cmd_index += base_index;
+        shader_data.draw_data.x = material->texture_descriptor_indices.empty()
+            ? 0 : material->texture_descriptor_indices[0];
+        shader_data.draw_data.y = material->texture_descriptor_indices.size() > 1
+            ? material->texture_descriptor_indices[1] : -1;
+        shader_data.draw_data.z = material->texture_descriptor_indices.size() > 1 ? 1 : 0;
+        command.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
+        command.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
+        command.setBindingSet(ShaderParameterSet::Primitive, m_primitive_binding_set);
+        if (RenderSettings::IsBindlessActive()) {
+            command.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
+            command.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
+        } else if (material->texture_binding_set) {
+            command.setBindingSet(ShaderParameterSet::Material, material->texture_binding_set);
         }
-        for (auto& cmd : local_commands) {
-            frame_commands.push_back(std::move(cmd));
-        }
+        return true;
     }
 
 } // namespace dodoe

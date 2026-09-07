@@ -4,11 +4,19 @@
 
 #include "runtime/function/graphics/draw_command_list.h"
 
+#include <chrono>
+
 namespace dodoe {
 
     GfxTextureHandle RenderGraphTransientPool::acquireTexture(const GfxTextureDesc& desc,
                                                                 DrawCommandList& command_list) {
         DO_PROFILE_SCOPE_CATEGORY("RenderGraphTransientPool::acquireTexture", "resource-cache");
+        static auto last_stats_time = std::chrono::steady_clock::now();
+        const auto now_stats_time = std::chrono::steady_clock::now();
+        if (now_stats_time - last_stats_time >= std::chrono::seconds(1)) {
+            last_stats_time = now_stats_time;
+            DO_WARN("RenderGraphTransientPool: textures={} buffers={}", m_textures.size(), m_buffers.size());
+        }
         for (Size_t i = 0; i < m_textures.size(); i++) {
             if (!m_texture_in_use[i]) {
                 const auto& pooled = m_textures[i].desc;
@@ -32,24 +40,35 @@ namespace dodoe {
     GfxBufferHandle RenderGraphTransientPool::acquireBuffer(const GfxBufferDesc& desc,
                                                               DrawCommandList& command_list) {
         DO_PROFILE_SCOPE_CATEGORY("RenderGraphTransientPool::acquireBuffer", "resource-cache");
+        constexpr Size_t kInvalidIndex = static_cast<Size_t>(-1);
+        Size_t best = kInvalidIndex;
         for (Size_t i = 0; i < m_buffers.size(); i++) {
-            if (!m_buffer_in_use[i]) {
-                const auto& pooled = m_buffers[i].desc;
-                if (pooled.byteSize == desc.byteSize && pooled.structStride == desc.structStride &&
-                    pooled.format == desc.format && pooled.canHaveUAVs == desc.canHaveUAVs &&
-                    pooled.canHaveTypedViews == desc.canHaveTypedViews &&
-                    pooled.isVertexBuffer == desc.isVertexBuffer &&
-                    pooled.isIndexBuffer == desc.isIndexBuffer &&
-                    pooled.isConstantBuffer == desc.isConstantBuffer &&
-                    pooled.isDrawIndirectArgs == desc.isDrawIndirectArgs &&
-                    pooled.isAccelStructBuildInput == desc.isAccelStructBuildInput &&
-                    pooled.isAccelStructStorage == desc.isAccelStructStorage &&
-                    pooled.isShaderBindingTable == desc.isShaderBindingTable &&
-                    pooled.isVolatile == desc.isVolatile) {
-                    m_buffer_in_use[i] = true;
-                    return m_buffers[i].buffer;
-                }
+            if (m_buffer_in_use[i]) {
+                continue;
             }
+            const auto& pooled = m_buffers[i].desc;
+            if (pooled.byteSize < desc.byteSize ||
+                pooled.structStride != desc.structStride ||
+                pooled.format != desc.format ||
+                pooled.canHaveUAVs != desc.canHaveUAVs ||
+                pooled.canHaveTypedViews != desc.canHaveTypedViews ||
+                pooled.isVertexBuffer != desc.isVertexBuffer ||
+                pooled.isIndexBuffer != desc.isIndexBuffer ||
+                pooled.isConstantBuffer != desc.isConstantBuffer ||
+                pooled.isDrawIndirectArgs != desc.isDrawIndirectArgs ||
+                pooled.isAccelStructBuildInput != desc.isAccelStructBuildInput ||
+                pooled.isAccelStructStorage != desc.isAccelStructStorage ||
+                pooled.isShaderBindingTable != desc.isShaderBindingTable ||
+                pooled.isVolatile != desc.isVolatile) {
+                continue;
+            }
+            if (best == kInvalidIndex || pooled.byteSize < m_buffers[best].desc.byteSize) {
+                best = i;
+            }
+        }
+        if (best != kInvalidIndex) {
+            m_buffer_in_use[best] = true;
+            return m_buffers[best].buffer;
         }
         const auto buffer = command_list.createBuffer(desc);
         m_buffers.push_back({buffer, desc});

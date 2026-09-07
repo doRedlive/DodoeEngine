@@ -1,0 +1,62 @@
+#version 450 core
+
+#include "shader_parameter_sets.glsl"
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+struct BucketCount
+{
+    uint instance_count;
+    uint current_offset;
+    uint pad0;
+    uint pad1;
+};
+
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) readonly buffer BucketCounts { BucketCount bucket_counts[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) writeonly buffer BucketBases  { uint bucket_bases[]; };
+
+layout(std140, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform BucketParams
+{
+    uint object_count;
+    uint max_buckets;
+    uint pad0;
+    uint pad1;
+};
+
+shared uint partials[256];
+
+void main()
+{
+    const uint tid = gl_LocalInvocationID.x;
+    const uint per_thread = min((max_buckets + 255u) / 256u, 16u);
+
+    uint local[16];
+    uint thread_total = 0u;
+    for (uint i = 0u; i < per_thread; ++i) {
+        uint idx = tid * per_thread + i;
+        uint value = idx < max_buckets ? bucket_counts[idx].instance_count : 0u;
+        local[i] = value;
+        thread_total += value;
+    }
+
+    partials[tid] = thread_total;
+    barrier();
+
+    for (uint offset = 1u; offset < 256u; offset <<= 1u) {
+        uint addend = tid >= offset ? partials[tid - offset] : 0u;
+        barrier();
+        partials[tid] += addend;
+        barrier();
+    }
+
+    uint exclusive = tid > 0u ? partials[tid - 1u] : 0u;
+
+    uint base = exclusive;
+    for (uint i = 0u; i < per_thread; ++i) {
+        uint idx = tid * per_thread + i;
+        if (idx < max_buckets) {
+            bucket_bases[idx] = base;
+        }
+        base += local[i];
+    }
+}

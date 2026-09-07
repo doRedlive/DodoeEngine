@@ -206,7 +206,7 @@ namespace dodoe {
 
                 auto* feature = static_cast<LitSceneFeature*>(m_owning_feature);
                 DO_ASSERT(feature != nullptr, "OpaquePass owning feature is null");
-                auto* processor = feature->getLitProcessor();
+                auto* processor = feature->getMeshProcessor();
                 if (!processor) {
                     DO_ERROR("OpaquePass lit processor is null");
                     return;
@@ -267,11 +267,7 @@ namespace dodoe {
 
                 const auto fb = ctx.getFramebuffer();
                 const auto& draw_list = feature->getLitDrawLists()[ctx.getViewIndex()];
-                SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    draw_list.cached_shader_data, processor->getPrimitiveConstantBuffer(),
-                    fb, viewport_state, resolved_psb, &pass_binding_set, command_list);
-                SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    draw_list.dynamic_shader_data, processor->getPrimitiveConstantBuffer(),
+                SubmitMeshDrawSources(draw_list.sources, processor->getPrimitiveConstantBuffer(),
                     fb, viewport_state, resolved_psb, &pass_binding_set, command_list);
             });
     }

@@ -14,18 +14,25 @@ namespace dodoe {
     }
 
     void GpuCulling::shutdown() {
-        m_expand_binding_layout = nullptr;
-        m_expand_pipeline = nullptr;
-        m_visible_flags_buffer = nullptr;
-        m_bucket_offsets_buffer = nullptr;
+        for (auto& args : m_indirect_args_buffer) args = nullptr;
+        for (auto& templates : m_bucket_templates_buffer) templates = nullptr;
+        for (auto& map_buffer : m_bucket_template_map_buffer) map_buffer = nullptr;
+        for (auto& readback : m_bucket_ranges_readback_buffer) readback = nullptr;
+        for (auto& map_history : m_template_map_history) map_history.clear();
+        for (auto& count_history : m_template_count_history) count_history = 0;
+        m_bucket_ranges_buffer = nullptr;
+        m_bucket_bases_buffer = nullptr;
+        m_template_count = 0;
+        m_generation_counter = 0;
         m_bucket_counts_buffer = nullptr;
-        m_indirect_args_buffer = nullptr;
         m_visible_count_readback_buffer = nullptr;
         m_culling_params_buffer = nullptr;
         m_visible_count_buffer = nullptr;
         m_visible_objects_buffer = nullptr;
         m_bucket_fill_binding_layout = nullptr;
         m_bucket_fill_pipeline = nullptr;
+        m_bucket_scan_binding_layout = nullptr;
+        m_bucket_scan_pipeline = nullptr;
         m_bucket_count_binding_layout = nullptr;
         m_bucket_count_pipeline = nullptr;
         m_culling_binding_layout = nullptr;
@@ -57,26 +64,72 @@ namespace dodoe {
                     .setDebugName("BucketCounts"));
         }
 
-        if (!m_bucket_offsets_buffer) {
-            m_bucket_offsets_buffer = cmd_list.createBuffer(
+        for (auto& templates : m_bucket_templates_buffer) {
+            if (!templates) {
+                templates = cmd_list.createBuffer(
+                    GfxBufferDesc()
+                        .setByteSize(kMaxBuckets * static_cast<UInt32>(sizeof(GpuBucketTemplate)))
+                        .setStructStride(sizeof(GpuBucketTemplate))
+                        .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+                        .setDebugName("BucketTemplates"));
+            }
+        }
+
+        for (auto& map_buffer : m_bucket_template_map_buffer) {
+            if (!map_buffer) {
+                map_buffer = cmd_list.createBuffer(
+                    GfxBufferDesc()
+                        .setByteSize(kMaxBuckets * static_cast<UInt32>(sizeof(UInt32)))
+                        .setStructStride(sizeof(UInt32))
+                        .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+                        .setDebugName("BucketTemplateMap"));
+            }
+        }
+
+        if (!m_bucket_bases_buffer) {
+            m_bucket_bases_buffer = cmd_list.createBuffer(
                 GfxBufferDesc()
-                    .setByteSize(bucket_buffer_size)
-                    .setStructStride(sizeof(BucketCount))
+                    .setByteSize(kMaxBuckets * static_cast<UInt32>(sizeof(UInt32)))
+                    .setStructStride(sizeof(UInt32))
                     .setCanHaveUAVs(true)
                     .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
-                    .setDebugName("BucketOffsets"));
+                    .setDebugName("BucketBases"));
+        }
+
+        if (!m_bucket_ranges_buffer) {
+            m_bucket_ranges_buffer = cmd_list.createBuffer(
+                GfxBufferDesc()
+                    .setByteSize(kMaxBuckets * static_cast<UInt32>(sizeof(GpuBucketRange)))
+                    .setStructStride(sizeof(GpuBucketRange))
+                    .setCanHaveUAVs(true)
+                    .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
+                    .setDebugName("BucketRanges"));
         }
 
         const UInt64 indirect_args_size = std::max(object_count, 1u) * static_cast<UInt32>(sizeof(DrawIndexedIndirectArgs));
-        if (!m_indirect_args_buffer ||
-            m_indirect_args_buffer->getByteSize() < indirect_args_size) {
-            m_indirect_args_buffer = cmd_list.createBuffer(
-                GfxBufferDesc()
-                    .setByteSize(indirect_args_size)
-                    .setIsDrawIndirectArgs(true)
-                    .setCanHaveUAVs(true)
-                    .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
-                    .setDebugName("IndirectArgs"));
+        for (auto& indirect_args : m_indirect_args_buffer) {
+            if (!indirect_args ||
+                indirect_args->getByteSize() < indirect_args_size) {
+                indirect_args = cmd_list.createBuffer(
+                    GfxBufferDesc()
+                        .setByteSize(indirect_args_size)
+                        .setIsDrawIndirectArgs(true)
+                        .setCanHaveUAVs(true)
+                        .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
+                        .setDebugName("IndirectArgs"));
+            }
+        }
+
+        for (auto& readback : m_bucket_ranges_readback_buffer) {
+            if (!readback) {
+                readback = cmd_list.createBuffer(
+                    GfxBufferDesc()
+                        .setByteSize(kMaxBuckets * static_cast<UInt32>(sizeof(GpuBucketRange)))
+                        .setStructStride(sizeof(GpuBucketRange))
+                        .setCpuAccess(GfxCpuAccessMode::Read)
+                        .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
+                        .setDebugName("BucketRangesReadback"));
+            }
         }
     }
 
@@ -100,8 +153,7 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(6));
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5));
             m_culling_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
 
@@ -142,18 +194,6 @@ namespace dodoe {
                     .setDebugName("VisibleCount"));
         }
 
-        const UInt64 flags_buffer_size = std::max<UInt64>(effective_count, 1) * sizeof(UInt32);
-        if (!m_visible_flags_buffer ||
-            m_visible_flags_buffer->getByteSize() < flags_buffer_size) {
-            m_visible_flags_buffer = cmd_list.createBuffer(
-                GfxBufferDesc()
-                    .setByteSize(flags_buffer_size)
-                    .setStructStride(sizeof(UInt32))
-                    .setCanHaveUAVs(true)
-                    .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
-                    .setDebugName("VisibleFlags"));
-        }
-
         ensureReadbackBuffer(cmd_list);
 
         CullingParams params{};
@@ -179,16 +219,6 @@ namespace dodoe {
         cmd_list.setBufferState(m_visible_count_buffer, GfxResourceStates::UnorderedAccess);
         cmd_list.commitBarriers();
 
-        {
-            const UInt32 flag_count = static_cast<UInt32>(flags_buffer_size / sizeof(UInt32));
-            DynamicArray<UInt32> zero_flags(flag_count, 0);
-            cmd_list.setBufferState(m_visible_flags_buffer, GfxResourceStates::CopyDest);
-            cmd_list.commitBarriers();
-            cmd_list.writeBuffer(m_visible_flags_buffer, zero_flags.data(), flags_buffer_size, 0);
-            cmd_list.setBufferState(m_visible_flags_buffer, GfxResourceStates::UnorderedAccess);
-            cmd_list.commitBarriers();
-        }
-
         GfxBindingSetDesc binding_desc;
         binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, scene_resources.object_meta->getRHIHandle()));
@@ -196,7 +226,6 @@ namespace dodoe {
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, scene_resources.bounds->getRHIHandle()));
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_visible_objects_buffer->getRHIHandle()));
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_visible_count_buffer->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(6, m_visible_flags_buffer->getRHIHandle()));
 
         auto binding_set = cmd_list.createBindingSet(binding_desc, m_culling_binding_layout);
 
@@ -216,10 +245,8 @@ namespace dodoe {
 
         cmd_list.setBufferState(m_visible_objects_buffer, GfxResourceStates::ShaderResource);
         cmd_list.setBufferState(m_visible_count_buffer, GfxResourceStates::ShaderResource);
-        cmd_list.setBufferState(m_visible_flags_buffer, GfxResourceStates::ShaderResource);
         cmd_list.commitBarriers();
 
-        m_frame_index = (m_frame_index + 1) % kMaxFramesInFlight;
         m_object_count = effective_count;
     }
 
@@ -228,10 +255,12 @@ namespace dodoe {
                                          UInt32 object_count) {
         if (!m_enabled || !m_shader_library || object_count == 0) return;
         if (!m_visible_objects_buffer || !m_visible_count_buffer) return;
+        if (!scene_resources.primitive_instance || !scene_resources.primitive_instance->getRHI()) return;
 
         ensureBucketBuffers(cmd_list, object_count);
 
         const auto bucket_count_cs = m_shader_library->getBucketCountComputeShader();
+        const auto bucket_scan_cs = m_shader_library->getBucketScanComputeShader();
         const auto bucket_fill_cs = m_shader_library->getBucketFillComputeShader();
 
         if (!m_bucket_count_binding_layout) {
@@ -240,8 +269,10 @@ namespace dodoe {
                 .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(4))
                 .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4));
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5));
             m_bucket_count_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
 
@@ -252,16 +283,38 @@ namespace dodoe {
             m_bucket_count_pipeline = m_gfx->getDevice()->createComputePipeline(pipeline_desc);
         }
 
+        if (!m_bucket_scan_binding_layout) {
+            GfxBindingLayoutDesc layout_desc;
+            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(2));
+            m_bucket_scan_binding_layout = cmd_list.createBindingLayout(layout_desc);
+        }
+
+        if (!m_bucket_scan_pipeline && bucket_scan_cs) {
+            GfxComputePipelineDesc pipeline_desc;
+            pipeline_desc.setComputeShader(bucket_scan_cs);
+            pipeline_desc.addBindingLayout(m_bucket_scan_binding_layout);
+            m_bucket_scan_pipeline = m_gfx->getDevice()->createComputePipeline(pipeline_desc);
+        }
+
         if (!m_bucket_fill_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
             layout_desc.setRegisterSpaceIsDescriptorSet(true)
                 .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(6));
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(7))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(8))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(10))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(11))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(12));
             m_bucket_fill_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
 
@@ -274,21 +327,23 @@ namespace dodoe {
 
         if (bucket_count_cs && m_bucket_count_pipeline) {
             const UInt32 bucket_size = kMaxBuckets * static_cast<UInt32>(sizeof(BucketCount));
-            const UInt32 zero_bucket[4] = {0, 0, 0, 0};
+            DynamicArray<UInt32> zero_buckets(kMaxBuckets * 4, 0);
             cmd_list.setBufferState(m_bucket_counts_buffer, GfxResourceStates::CopyDest);
             cmd_list.commitBarriers();
-            cmd_list.writeBuffer(m_bucket_counts_buffer, zero_bucket, sizeof(zero_bucket), 0);
+            cmd_list.writeBuffer(m_bucket_counts_buffer, zero_buckets.data(), bucket_size, 0);
             cmd_list.setBufferState(m_bucket_counts_buffer, GfxResourceStates::UnorderedAccess);
             cmd_list.commitBarriers();
 
-            const UInt32 count_params[4] = {object_count, kMaxBuckets, 0, 0};
+            const UInt32 count_params[4] = {object_count, kMaxBuckets, m_template_count, 0};
             cmd_list.writeBuffer(m_culling_params_buffer, count_params, sizeof(count_params), 0);
 
             GfxBindingSetDesc count_binding_desc;
             count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_objects_buffer->getRHIHandle()));
             count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.object_meta->getRHIHandle()));
+            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, m_visible_count_buffer->getRHIHandle()));
+            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(4, scene_resources.primitive_instance->getRHIHandle()));
             count_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_bucket_counts_buffer->getRHIHandle()));
+            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_bucket_counts_buffer->getRHIHandle()));
 
             auto count_binding_set = cmd_list.createBindingSet(count_binding_desc, m_bucket_count_binding_layout);
 
@@ -304,17 +359,64 @@ namespace dodoe {
             cmd_list.commitBarriers();
         }
 
+        if (bucket_scan_cs && m_bucket_scan_pipeline) {
+            GfxBindingSetDesc scan_binding_desc;
+            scan_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
+            scan_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_bucket_counts_buffer->getRHIHandle()));
+            scan_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(2, m_bucket_bases_buffer->getRHIHandle()));
+
+            auto scan_binding_set = cmd_list.createBindingSet(scan_binding_desc, m_bucket_scan_binding_layout);
+
+            GfxComputeState scan_state;
+            scan_state.setPipeline(m_bucket_scan_pipeline);
+            scan_state.addBindingSet(scan_binding_set->getRHIHandle());
+            cmd_list.setComputeState(scan_state);
+            cmd_list.dispatch(1, 1, 1);
+
+            cmd_list.setBufferState(m_bucket_bases_buffer, GfxResourceStates::ShaderResource);
+            cmd_list.commitBarriers();
+        }
+
         if (bucket_fill_cs && m_bucket_fill_pipeline) {
-            cmd_list.setBufferState(m_indirect_args_buffer, GfxResourceStates::UnorderedAccess);
+            const UInt32 generation = m_generation_counter % kMaxGenerations;
+            auto& indirect_args = m_indirect_args_buffer[generation];
+            auto& templates = m_bucket_templates_buffer[generation];
+            auto& template_map = m_bucket_template_map_buffer[generation];
+            auto& ranges_readback = m_bucket_ranges_readback_buffer[generation];
+            if (!indirect_args || !templates || !template_map || !ranges_readback) {
+                return;
+            }
+
+            const UInt64 indirect_size = std::max(object_count, 1u) *
+                static_cast<UInt32>(sizeof(DrawIndexedIndirectArgs));
+            DynamicArray<UInt32> zero_indirect((indirect_size + sizeof(UInt32) - 1) / sizeof(UInt32), 0);
+            cmd_list.setBufferState(indirect_args, GfxResourceStates::CopyDest);
+            cmd_list.commitBarriers();
+            cmd_list.writeBuffer(indirect_args, zero_indirect.data(), indirect_size, 0);
+
+            const UInt32 ranges_size = kMaxBuckets * static_cast<UInt32>(sizeof(GpuBucketRange));
+            DynamicArray<UInt32> zero_ranges(ranges_size / sizeof(UInt32), 0);
+            cmd_list.setBufferState(m_bucket_ranges_buffer, GfxResourceStates::CopyDest);
+            cmd_list.commitBarriers();
+            cmd_list.writeBuffer(m_bucket_ranges_buffer, zero_ranges.data(), ranges_size, 0);
+
+            cmd_list.setBufferState(indirect_args, GfxResourceStates::UnorderedAccess);
+            cmd_list.setBufferState(m_bucket_counts_buffer, GfxResourceStates::UnorderedAccess);
+            cmd_list.setBufferState(m_bucket_ranges_buffer, GfxResourceStates::UnorderedAccess);
             cmd_list.commitBarriers();
 
             GfxBindingSetDesc fill_binding_desc;
+            fill_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
             fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_objects_buffer->getRHIHandle()));
             fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.object_meta->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, scene_resources.transforms->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, m_visible_count_buffer->getRHIHandle()));
             fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_bucket_counts_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_indirect_args_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(6, m_bucket_offsets_buffer->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, indirect_args->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(7, scene_resources.primitive_instance->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(8, templates->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(10, template_map->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(11, m_bucket_bases_buffer->getRHIHandle()));
+            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(12, m_bucket_ranges_buffer->getRHIHandle()));
 
             auto fill_binding_set = cmd_list.createBindingSet(fill_binding_desc, m_bucket_fill_binding_layout);
 
@@ -326,68 +428,108 @@ namespace dodoe {
             const UInt32 fill_groups = (object_count + 63) / 64;
             cmd_list.dispatch(fill_groups, 1, 1);
 
-            cmd_list.setBufferState(m_indirect_args_buffer, GfxResourceStates::IndirectArgument);
+            cmd_list.setBufferState(indirect_args, GfxResourceStates::IndirectArgument);
+            cmd_list.setBufferState(m_bucket_ranges_buffer, GfxResourceStates::CopySource);
+            cmd_list.setBufferState(ranges_readback, GfxResourceStates::CopyDest);
             cmd_list.commitBarriers();
+            cmd_list.copyBuffer(ranges_readback, 0,
+                m_bucket_ranges_buffer, 0, kMaxBuckets * static_cast<UInt32>(sizeof(GpuBucketRange)));
+
+            m_generation_counter++;
         }
     }
 
-    void GpuCulling::executeBatchExpand(DrawCommandList& cmd_list,
-                                        UInt32 candidate_count,
-                                        const GfxBufferHandle& arg_to_object,
-                                        const GfxBufferHandle& candidate_args,
-                                        const GfxBufferHandle& final_args) {
-        if (!m_enabled || !m_shader_library || candidate_count == 0) return;
-        if (!m_visible_flags_buffer || !m_culling_params_buffer || !arg_to_object || !candidate_args || !final_args) return;
-
-        const auto cs = m_shader_library->getBatchExpandComputeShader();
-        if (!cs) return;
-
-        if (!m_expand_binding_layout) {
-            GfxBindingLayoutDesc layout_desc;
-            layout_desc.setRegisterSpaceIsDescriptorSet(true)
-                .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
-                .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(3))
-                .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(4));
-            m_expand_binding_layout = cmd_list.createBindingLayout(layout_desc);
+    void GpuCulling::uploadBucketTemplates(DrawCommandList& cmd_list,
+                                           const GpuBucketTemplateUpload* uploads,
+                                           const UInt32 upload_count) {
+        if (!uploads || upload_count == 0) {
+            return;
+        }
+        const UInt32 generation = m_generation_counter % kMaxGenerations;
+        auto& templates_buffer = m_bucket_templates_buffer[generation];
+        auto& map_buffer = m_bucket_template_map_buffer[generation];
+        if (!templates_buffer) {
+            templates_buffer = cmd_list.createBuffer(
+                GfxBufferDesc()
+                    .setByteSize(kMaxBuckets * static_cast<UInt32>(sizeof(GpuBucketTemplate)))
+                    .setStructStride(sizeof(GpuBucketTemplate))
+                    .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+                    .setDebugName("BucketTemplates"));
+        }
+        if (!map_buffer) {
+            map_buffer = cmd_list.createBuffer(
+                GfxBufferDesc()
+                    .setByteSize(kMaxBuckets * static_cast<UInt32>(sizeof(UInt32)))
+                    .setStructStride(sizeof(UInt32))
+                    .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+                    .setDebugName("BucketTemplateMap"));
         }
 
-        if (!m_expand_pipeline) {
-            GfxComputePipelineDesc pipeline_desc;
-            pipeline_desc.setComputeShader(cs);
-            pipeline_desc.addBindingLayout(m_expand_binding_layout);
-            m_expand_pipeline = m_gfx->getDevice()->createComputePipeline(pipeline_desc);
+        const UInt32 count = std::min(upload_count, kMaxBuckets);
+        DynamicArray<GpuBucketTemplate> templates(count);
+        for (UInt32 index = 0; index < count; ++index) {
+            templates[index] = uploads[index].data;
         }
-        if (!m_expand_pipeline) return;
-
-        const UInt32 expand_params[4] = {candidate_count, 0, 0, 0};
-        cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::CopyDest);
+        const UInt32 byte_size = count * static_cast<UInt32>(sizeof(GpuBucketTemplate));
+        cmd_list.setBufferState(templates_buffer, GfxResourceStates::CopyDest);
         cmd_list.commitBarriers();
-        cmd_list.writeBuffer(m_culling_params_buffer, expand_params, sizeof(expand_params), 0);
-        cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::ConstantBuffer);
+        cmd_list.writeBuffer(templates_buffer, templates.data(), byte_size, 0);
+        cmd_list.setBufferState(templates_buffer, GfxResourceStates::ShaderResource);
         cmd_list.commitBarriers();
 
-        GfxBindingSetDesc binding_desc;
-        binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_flags_buffer->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, arg_to_object->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, candidate_args->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, final_args->getRHIHandle()));
-
-        auto binding_set = cmd_list.createBindingSet(binding_desc, m_expand_binding_layout);
-
-        GfxComputeState compute_state;
-        compute_state.setPipeline(m_expand_pipeline);
-        compute_state.addBindingSet(binding_set->getRHIHandle());
-        cmd_list.setComputeState(compute_state);
-
-        const UInt32 thread_groups = (candidate_count + 63) / 64;
-        cmd_list.dispatch(thread_groups, 1, 1);
-
-        cmd_list.setBufferState(final_args, GfxResourceStates::IndirectArgument);
+        auto& map_history = m_template_map_history[generation];
+        map_history.assign(kMaxBuckets, kInvalidBucketTemplateIndex);
+        for (UInt32 index = 0; index < count; ++index) {
+            const UInt32 hash_bucket = uploads[index].hash_bucket;
+            if (hash_bucket < kMaxBuckets &&
+                map_history[hash_bucket] == kInvalidBucketTemplateIndex) {
+                map_history[hash_bucket] = index;
+            }
+        }
+        m_template_count_history[generation] = count;
+        cmd_list.setBufferState(map_buffer, GfxResourceStates::CopyDest);
         cmd_list.commitBarriers();
+        cmd_list.writeBuffer(map_buffer, map_history.data(),
+            kMaxBuckets * static_cast<UInt32>(sizeof(UInt32)), 0);
+        cmd_list.setBufferState(map_buffer, GfxResourceStates::ShaderResource);
+        cmd_list.commitBarriers();
+
+        m_template_count = count;
+    }
+
+    Bool GpuCulling::acquireBucketDraws(DynamicArray<GpuBucketCpuDraw>& out_draws) {
+        out_draws.clear();
+        if (!m_gfx || m_generation_counter < 2) {
+            return false;
+        }
+        const UInt32 generation = m_generation_counter - 2;
+        const UInt32 slot = generation % kMaxGenerations;
+        const auto& readback = m_bucket_ranges_readback_buffer[slot];
+        const auto& template_map = m_template_map_history[slot];
+        if (!readback || template_map.size() != kMaxBuckets) {
+            return false;
+        }
+
+        auto device = m_gfx->getDevice();
+        void* mapped = device->mapBuffer(readback->getRHI(), GfxCpuAccessMode::Read);
+        if (!mapped) {
+            return false;
+        }
+        const auto* ranges = static_cast<const GpuBucketRange*>(mapped);
+        for (UInt32 bucket = 0; bucket < kMaxBuckets; ++bucket) {
+            const UInt32 template_index = template_map[bucket];
+            if (ranges[bucket].arg_count > 0 && template_index != kInvalidBucketTemplateIndex) {
+                out_draws.push_back(GpuBucketCpuDraw{
+                    template_index, ranges[bucket].first_arg, ranges[bucket].arg_count});
+            }
+        }
+        device->unmapBuffer(readback->getRHI());
+
+        std::stable_sort(out_draws.begin(), out_draws.end(),
+            [](const GpuBucketCpuDraw& lhs, const GpuBucketCpuDraw& rhs) {
+                return lhs.template_index < rhs.template_index;
+            });
+        return !out_draws.empty();
     }
 
     GpuVisibleStats GpuCulling::getLastVisibleStats() const {

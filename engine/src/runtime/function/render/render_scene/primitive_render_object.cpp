@@ -149,11 +149,12 @@ namespace dodoe {
             element.index_buffer = buffers.index_buffer;
 
             MeshBatch batch{};
-            batch.primitive_id = primitive_id;
-            batch.pass_mask.setRelevant(MeshPassType::Opaque, m_visible && !m_transparent);
-            batch.pass_mask.setRelevant(MeshPassType::Transparent, m_visible && m_transparent);
-            batch.pass_mask.setRelevant(MeshPassType::Shadow, m_visible && m_cast_shadow);
-            batch.elements.push_back(element);
+            batch.setPrimitiveId(primitive_id);
+            batch.setMaterialIndex(static_cast<UInt32>(section_index));
+            batch.setRelevant(MeshPassType::Opaque, m_visible && !m_transparent);
+            batch.setRelevant(MeshPassType::Transparent, m_visible && m_transparent);
+            batch.setRelevant(MeshPassType::Shadow, m_visible && m_cast_shadow);
+            batch.addElement(std::move(element));
             mesh_batches.push_back(std::move(batch));
         }
 

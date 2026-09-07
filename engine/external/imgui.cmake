@@ -18,4 +18,6 @@ target_include_directories(imgui PUBLIC
         ${Vulkan_INCLUDE_DIRS}
 )
 
+target_compile_definitions(imgui PUBLIC "ImDrawIdx=unsigned int")
+
 target_link_libraries(imgui PUBLIC glfw ${Vulkan_LIBRARIES})

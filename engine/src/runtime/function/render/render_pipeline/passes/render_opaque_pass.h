@@ -11,7 +11,7 @@
 
 namespace dodoe {
 
-    class LitMeshProcessor;
+    class MeshPassProcessor;
     class RenderScene;
     class DrawCommandList;
     class BindingLayoutCache;
@@ -49,7 +49,7 @@ namespace dodoe {
         using Produces = TypeList<SceneHdrKey, SceneTexturesKey>;
         using Consumes = TypeList<>;
 
-        explicit OpaquePass(const LitMeshProcessor* processor = nullptr)
+        explicit OpaquePass(const MeshPassProcessor* processor = nullptr)
             : m_mesh_processor(processor) {}
 
         RenderPhase getPhase() const override { return RenderPhase::Opaque; }
@@ -62,7 +62,7 @@ namespace dodoe {
                    const RenderPassBuildContext& context) override;
 
     private:
-        const LitMeshProcessor* m_mesh_processor;
+        const MeshPassProcessor* m_mesh_processor;
     };
 
 } // namespace dodoe

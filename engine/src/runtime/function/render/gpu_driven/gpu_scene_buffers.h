@@ -35,6 +35,10 @@ namespace dodoe {
         UInt32 mesh_id;
         UInt32 section_start, section_count;
         UInt32 material_start, material_count;
+        UInt32 index_count;
+        UInt32 start_index;
+        UInt32 base_vertex;
+        UInt32 _pad0;
     };
 
     struct alignas(16) GpuTransform {
@@ -70,7 +74,7 @@ namespace dodoe {
         UInt32 padding[3];
     };
 
-    struct alignas(16) DrawIndexedIndirectArgs {
+    struct DrawIndexedIndirectArgs {
         UInt32 index_count;
         UInt32 instance_count;
         UInt32 start_index_location;
@@ -78,15 +82,64 @@ namespace dodoe {
         UInt32 start_instance_location;
     };
 
+    static constexpr UInt32 kDrawIndexedIndirectArgsStride = static_cast<UInt32>(sizeof(DrawIndexedIndirectArgs));
+
     struct alignas(16) BucketKey {
-        UInt32 key;
-        UInt32 _pad[3];
+        UInt64 pipeline;
+        UInt64 material;
+        UInt64 vertex_buffer;
+        UInt64 index_buffer;
+        UInt32 index_count;
+        UInt32 start_index;
+        Int32 base_vertex;
+        UInt32 _pad;
+    };
+
+    struct alignas(16) GpuBucketTemplate {
+        UInt64 pipeline;
+        UInt64 material;
+        UInt64 binding_set;
+        UInt64 vertex_buffer;
+        UInt64 index_buffer;
+        UInt32 index_count;
+        UInt32 start_index;
+        Int32 base_vertex;
+        UInt32 source_count;
     };
 
     struct alignas(16) BucketCount {
         UInt32 instance_count;
         UInt32 current_offset;
         UInt32 _pad[2];
+    };
+
+    struct alignas(16) GpuBucketRange {
+        UInt32 first_arg;
+        UInt32 arg_count;
+        UInt32 _pad[2];
+    };
+
+    struct GpuBucketHashKey {
+        UInt32 type{0};
+        UInt32 material_id{0};
+        UInt32 mesh_id{0};
+        UInt32 index_count{0};
+        UInt32 start_index{0};
+    };
+
+    inline UInt32 ComputeGpuBucketHash(const GpuBucketHashKey& key, const UInt32 max_buckets) {
+        UInt32 value = key.type ^ (key.material_id * 16777619u);
+        value ^= key.mesh_id * 2166136261u;
+        value ^= key.index_count * 709607u;
+        value ^= key.start_index * 1000003u;
+        return value % max_buckets;
+    }
+
+    static constexpr UInt32 kInvalidBucketTemplateIndex = ~0u;
+
+    struct GpuBucketTemplateUpload {
+        GpuBucketTemplate data;
+        UInt32 hash_bucket;
     };
 
 } // dodoe

@@ -88,8 +88,8 @@ namespace dodoe {
     }
 
     void GBufferSceneFeature::collectPasses(PassCollector& collector) {
-        DO_ASSERT(getLitProcessor() != nullptr, "GBufferSceneFeature lit processor is null");
-        collector.addPass<GBufferPass>(getLitProcessor());
+        DO_ASSERT(getMeshProcessor() != nullptr, "GBufferSceneFeature mesh processor is null");
+        collector.addPass<GBufferPass>(getMeshProcessor());
     }
 
     GfxShaderHandle GBufferSceneFeature::getPixelShader(const ShaderLibrary& shader_library) const {

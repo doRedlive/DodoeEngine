@@ -61,6 +61,7 @@ namespace dodoe {
 
         void enqueueResourceCommand(ResourceCommand&& cmd);
         void enqueueSceneCommand(SceneCommand&& cmd);
+        void stopRenderThread();
         void setBaselineRendererHook(std::function<void(GfxContext&, UInt32, RenderViewFamily&, RenderScene&)> hook) { m_baseline_renderer_hook = std::move(hook); }
         void realizeResourceCommand(ResourceCommand& cmd);
         void applySceneCommand(RenderScene& scene, SceneCommand& cmd);

@@ -8,6 +8,7 @@ namespace dodoe {
     void MeshViewExtension::reset() {
         visible_primitives.clear();
         instance_scene_data.clear();
+        primitive_instance_offsets.clear();
         primitive_mesh_pass_relevance.clear();
 
         for (auto& indices : mesh_pass_primitive_indices) {

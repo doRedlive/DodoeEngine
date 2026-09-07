@@ -2,7 +2,10 @@
 
 #include "pipeline_state_cache.h"
 
+#include <chrono>
+
 namespace dodoe {
+
     GfxGraphicsPipelineHandle PipelineStateCache::resolveGraphicsPipeline(
         const MeshPassType pass_type,
         const GfxGraphicsPipelineDesc& pipeline_desc,
@@ -11,6 +14,13 @@ namespace dodoe {
     {
         DO_ASSERT(m_device != nullptr, "PipelineStateCache device is null");
 
+        static auto last_stats_time = std::chrono::steady_clock::now();
+        const auto now_stats_time = std::chrono::steady_clock::now();
+        if (now_stats_time - last_stats_time >= std::chrono::seconds(1)) {
+            last_stats_time = now_stats_time;
+            DO_WARN("PipelineStateCache: graphics_psos={}", m_graphics_pipelines.size());
+        }
+
         const auto cache_key = BuildGraphicsPipelineCacheKey(pass_type, pipeline_desc, framebuffer_info);
         const auto cache_it = m_graphics_pipelines.find(cache_key);
         if (cache_it != m_graphics_pipelines.end()) {
@@ -18,6 +28,10 @@ namespace dodoe {
         }
 
         auto handle = command_list.createGraphicsPipeline(pipeline_desc, framebuffer_info);
+        if (!handle) {
+            DO_ERROR("PipelineStateCache: failed to create graphics pipeline");
+            return {};
+        }
         m_graphics_pipelines.emplace(cache_key, handle);
         return handle;
     }

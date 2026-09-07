@@ -64,10 +64,16 @@ namespace dodoe {
 
         const auto& vb = vertex_buffer;
         const auto& ib = index_buffer;
+        if (!vb || !ib || !constant_buffer || !vb->isGpuReady() || !ib->isGpuReady() ||
+            !constant_buffer->isGpuReady()) {
+            DO_ERROR("ImGuiDrawRenderer: transient buffers are unavailable");
+            return;
+        }
         const UInt64 vertex_bytes = static_cast<UInt64>(total_vertex_count) * sizeof(ImDrawVert);
         const UInt64 index_bytes = static_cast<UInt64>(total_index_count) * sizeof(ImDrawIdx);
         if (vertex_bytes > vb->getByteSize() || index_bytes > ib->getByteSize()) {
-            DO_ERROR("ImGuiDrawRenderer: transient UI buffers are too small");
+            DO_ERROR("ImGuiDrawRenderer: transient UI buffers are too small (VB {} / {}, IB {} / {})",
+                     vertex_bytes, vb->getByteSize(), index_bytes, ib->getByteSize());
             return;
         }
 
@@ -157,6 +163,12 @@ namespace dodoe {
                 if (draw.user_callback) {
                     continue;
                 }
+                if (draw.idx_offset > list.indices.size() ||
+                    draw.elem_count > list.indices.size() - draw.idx_offset ||
+                    draw.vtx_offset > list.vertices.size()) {
+                    DO_ERROR("ImGuiDrawRenderer: draw command exceeds its list buffers");
+                    continue;
+                }
                 if (!draw.texture_id) {
                     continue;
                 }
@@ -196,7 +208,7 @@ namespace dodoe {
                 DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
                     GfxVertexBufferBinding().setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(global_vertex_offset)};
                 command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport, vertex_buffers,
-                    GfxIndexBufferBinding().setBuffer(ib->getRHIHandle()).setFormat(GfxFormat::R16_UINT).setOffset(global_index_offset));
+                    GfxIndexBufferBinding().setBuffer(ib->getRHIHandle()).setFormat(GfxFormat::R32_UINT).setOffset(global_index_offset));
                 command_list.drawIndexed(GfxDrawArguments()
                     .setVertexCount(draw.elem_count)
                     .setStartIndexLocation(draw.idx_offset)

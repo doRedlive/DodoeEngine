@@ -17,7 +17,6 @@ namespace dodoe {
         [[nodiscard]] GfxShaderHandle getPixelShader(const ShaderLibrary& shader_library) const override;
         [[nodiscard]] GfxFramebufferInfo getFramebufferInfo() const override;
         [[nodiscard]] bool usesPassBindingLayout() const override { return true; }
-        void modifyPipelineDesc(GfxGraphicsPipelineDesc& pipeline_desc) const override;
     };
 
 } // namespace dodoe

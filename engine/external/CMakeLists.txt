@@ -46,6 +46,11 @@ if (NOT TARGET imgui)
     set_target_properties(imgui PROPERTIES FOLDER ${external_folder}/imgui)
 endif ()
 
+if (NOT TARGET imnodes)
+    include(imnodes.cmake)
+    set_target_properties(imnodes PROPERTIES FOLDER ${external_folder}/imnodes)
+endif ()
+
 if (NOT TARGET EnTT::EnTT)
     option(ENTT_BUILD_TEST "" OFF)
     option(ENTT_BUILD_DOCS "" OFF)

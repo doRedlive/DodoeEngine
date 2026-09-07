@@ -53,9 +53,17 @@ namespace dodoe {
                 parameters.imgui_cb = pass_builder.write(pass_builder.importBuffer(
                     context.graph_imports->require<ImGuiConstantBufferKey>(), "ImGuiViewportCB"));
 
+                const auto& packet = ImGuiBuilder::GetRenderPacket();
+                Size_t vertex_count = 1;
+                Size_t index_count = 1;
+                for (const auto& list : packet.lists) {
+                    vertex_count += list.vertices.size();
+                    index_count += list.indices.size();
+                }
+
                 RenderGraphBufferDesc vb_desc{};
                 vb_desc.desc = GfxBufferDesc()
-                    .setByteSize(65536 * sizeof(ImDrawVert))
+                    .setByteSize(static_cast<UInt64>(vertex_count) * sizeof(ImDrawVert))
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG ImGuiVB");
@@ -66,7 +74,7 @@ namespace dodoe {
 
                 RenderGraphBufferDesc ib_desc{};
                 ib_desc.desc = GfxBufferDesc()
-                    .setByteSize(65536 * sizeof(ImDrawIdx))
+                    .setByteSize(static_cast<UInt64>(index_count) * sizeof(ImDrawIdx))
                     .setIsIndexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG ImGuiIB");

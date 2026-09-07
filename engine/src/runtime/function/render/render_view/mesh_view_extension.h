@@ -17,6 +17,7 @@ namespace dodoe {
         DynamicArray<const PrimitiveSceneInfo*> visible_primitives{};
         DynamicArray<MeshPassRelevance> primitive_mesh_pass_relevance{};
         DynamicArray<UInt32> mesh_pass_primitive_indices[static_cast<Size_t>(MeshPassType::Count)]{};
+        DynamicArray<UInt32> primitive_instance_offsets{};
         DynamicArray<InstanceSceneData> instance_scene_data{};
         Matrix4f directional_shadow_view_projection{1.0f};
         Vector4f frame_time_data{0.0f};

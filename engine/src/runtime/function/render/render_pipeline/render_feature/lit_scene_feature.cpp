@@ -25,6 +25,7 @@
 #include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/core/math/math.h"
+#include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
 
@@ -44,51 +45,6 @@ namespace dodoe {
         };
     }
 
-    static GfxGraphicsPipelineDesc MakeLitPipelineDesc(const GfxShaderHandle& vertex_shader,
-                                                       const GfxShaderHandle& pixel_shader,
-                                                       GfxInputLayoutHandle mesh_input_layout,
-                                                       const GfxBindingLayoutHandle& global_binding_layout,
-                                                       const GfxBindingLayoutHandle& view_binding_layout,
-                                                       const GfxBindingLayoutHandle& primitive_binding_layout,
-                                                       const GfxBindingLayoutHandle& sampler_binding_layout,
-                                                       const GfxBindingLayoutHandle& pass_binding_layout,
-                                                       DescriptorTableManager* descriptor_table,
-                                                       BindingLayoutCache* binding_layout_cache) {
-        auto pipeline_desc = GfxGraphicsPipelineDesc()
-            .setVertexShader(vertex_shader)
-            .setPixelShader(pixel_shader)
-            .setInputLayout(mesh_input_layout)
-            .addBindingLayout(global_binding_layout)
-            .addBindingLayout(view_binding_layout)
-            .setPrimType(GfxPrimitiveType::TriangleList);
-        if (RenderSettings::IsBindlessActive()) {
-            pipeline_desc.addBindingLayout(sampler_binding_layout);
-        } else if (binding_layout_cache) {
-            auto material_layout = binding_layout_cache->getOrCreate(
-                GfxBindingLayoutDesc()
-                    .setVisibility(GfxShaderType::Pixel)
-                    .setRegisterSpaceIsDescriptorSet(true)
-                    .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
-                    .addItem(GfxBindingLayoutItem::Sampler(1))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(2))
-                    .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
-            pipeline_desc.addBindingLayout(material_layout);
-        }
-        if (pass_binding_layout) {
-            pipeline_desc.addBindingLayout(pass_binding_layout);
-        }
-        pipeline_desc.addBindingLayout(primitive_binding_layout);
-        if (RenderSettings::IsBindlessActive() && descriptor_table && descriptor_table->getDescriptorTable()) {
-            pipeline_desc.addBindingLayout(descriptor_table->getDescriptorTable()->getLayout());
-        }
-        GfxDepthStencilState depth_stencil_state;
-        depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
-        GfxRenderState render_state;
-        render_state.setDepthStencilState(depth_stencil_state);
-        pipeline_desc.setRenderState(render_state);
-        return pipeline_desc;
-    }
-
     static MeshPassRelevance BuildPrimitiveMeshPassRelevance(const PrimitiveSceneInfo& primitive) {
         MeshPassRelevance relevance{};
         if (!primitive.isVisible()) {
@@ -104,28 +60,42 @@ namespace dodoe {
 
     void LitSceneFeature::initialize(SharedRenderService& resources) {
         m_shared_render_service = &resources;
-
-        GfxBindingSetHandle descriptor_binding_set{};
-        auto* descriptor_table = resources.getDescriptorTable();
-        if (descriptor_table && descriptor_table->getDescriptorTable()) {
-            descriptor_binding_set = create_ref<GfxBindingSet>(
-                cutie::BindingSetHandle(descriptor_table->getDescriptorTable()));
-        }
-        auto* binding_layout_cache = resources.getBindingLayoutCache();
-        auto* binding_set_cache = resources.getBindingSetCache();
-        DO_ASSERT(binding_layout_cache != nullptr, "LitSceneFeature binding layout cache is null");
-        DO_ASSERT(binding_set_cache != nullptr, "LitSceneFeature binding set cache is null");
-        auto* material_system = resources.getMaterialSystem();
-        DO_ASSERT(material_system != nullptr, "LitSceneFeature material system is null");
-        m_lit_processor = create_scope<LitMeshProcessor>(
-            getMeshPassType(), descriptor_binding_set, *binding_layout_cache, *binding_set_cache, *material_system);
     }
 
     void LitSceneFeature::shutdown() {
-        if (m_lit_processor) {
-            m_lit_processor->reset();
-            m_lit_processor.reset();
+        m_shared_render_service = nullptr;
+    }
+
+    MeshPassProcessor* LitSceneFeature::getMeshProcessor() const {
+        if (!m_shared_render_service || !m_shared_render_service->getMeshPassRegistry()) {
+            return nullptr;
         }
+        return m_shared_render_service->getMeshPassRegistry()->find(getMeshPassType());
+    }
+
+    MeshPassCommandStorage* LitSceneFeature::getCommandStorage() const {
+        if (!m_shared_render_service || !m_shared_render_service->getMeshPassRegistry()) {
+            return nullptr;
+        }
+        return m_shared_render_service->getMeshPassRegistry()->getCommandStorage(getMeshPassType());
+    }
+
+    const MeshDrawCommandCache& LitSceneFeature::getMeshDrawCache() const {
+        static const MeshDrawCommandCache empty_cache{};
+        const auto* storage = getCommandStorage();
+        return storage ? storage->getCache() : empty_cache;
+    }
+
+    const DynamicArray<MeshDrawList>& LitSceneFeature::getLitDrawLists() const {
+        static const DynamicArray<MeshDrawList> empty_lists{};
+        const auto* storage = getCommandStorage();
+        return storage ? storage->getDrawLists() : empty_lists;
+    }
+
+    const DynamicArray<MeshDrawGpuBucket>& LitSceneFeature::getGpuBuckets(const Size_t view_index) const {
+        static const DynamicArray<MeshDrawGpuBucket> empty_buckets{};
+        const auto* storage = getCommandStorage();
+        return storage ? storage->getGpuBuckets(view_index) : empty_buckets;
     }
 
     void LitSceneFeature::setupMeshPassContexts(const RenderScene& scene,
@@ -149,12 +119,18 @@ namespace dodoe {
                 total_instance_count += primitive ? primitive->getInstanceCount() : 1;
             }
             mesh_ext.instance_scene_data.reserve(total_instance_count);
-            for (const auto* primitive : mesh_ext.visible_primitives) {
+            mesh_ext.primitive_instance_offsets.resize(mesh_ext.visible_primitives.size());
+            UInt32 instance_offset = 0;
+            for (Size_t primitive_index = 0; primitive_index < mesh_ext.visible_primitives.size(); ++primitive_index) {
+                const auto* primitive = mesh_ext.visible_primitives[primitive_index];
+                mesh_ext.primitive_instance_offsets[primitive_index] = instance_offset;
                 if (primitive) {
+                    instance_offset += primitive->getInstanceCount();
                     for (const auto& inst_data : primitive->getInstanceSceneData()) {
                         mesh_ext.instance_scene_data.push_back(inst_data);
                     }
                 } else {
+                    instance_offset += 1;
                     InstanceSceneData inst_scene_data{};
                     mesh_ext.instance_scene_data.push_back(inst_scene_data);
                 }
@@ -173,8 +149,11 @@ namespace dodoe {
     }
 
     void LitSceneFeature::buildMeshDrawCommands(RenderViewFamily& view_family,
-                                                DrawCommandList& cmd_list) {
+                                                DrawCommandList& cmd_list,
+                                                ThreadPool* thread_pool) {
         DO_ASSERT(m_shared_render_service != nullptr, "LitSceneFeature shared render service is null");
+        auto* processor = getMeshProcessor();
+        DO_ASSERT(processor != nullptr, "LitSceneFeature mesh pass processor is null");
         DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "LitSceneFeature shader library is null");
         DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "LitSceneFeature pipeline cache is null");
 
@@ -206,60 +185,75 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::Sampler(9)));
         }
 
-        auto pipeline_desc = MakeLitPipelineDesc(
+        const MeshPassPipelineContext pipeline_context{
             shader_library.getLitVertexShader(),
             getPixelShader(shader_library),
             mesh_input_layout,
-            m_lit_processor->getGlobalBindingLayout(),
-            m_lit_processor->getViewBindingLayout(),
-            m_lit_processor->getPrimitiveBindingLayout(),
-            m_lit_processor->getSamplerBindingLayout(),
             pass_binding_layout,
             descriptor_table,
-            binding_layout_cache);
-        modifyPipelineDesc(pipeline_desc);
-
-        (void)pso_cache->resolveGraphicsPipeline(
+            binding_layout_cache};
+        auto pipeline_desc = processor->buildPipelineDescription(pipeline_context);
+        const auto pipeline = pso_cache->resolveGraphicsPipeline(
             getMeshPassType(),
             pipeline_desc,
             getFramebufferInfo(),
             cmd_list);
-        m_draw_lists.resize(view_family.getSize());
+        if (!pipeline) {
+            DO_ERROR("LitSceneFeature: failed to resolve graphics pipeline");
+            return;
+        }
+        auto* command_storage = getCommandStorage();
+        if (!command_storage) {
+            DO_ERROR("LitSceneFeature: mesh pass command storage is unavailable");
+            return;
+        }
+        command_storage->prepare(pipeline, view_family.getSize());
         const auto pass_type = getMeshPassType();
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
 
-            auto& draw_list = m_draw_lists[view_index];
-            draw_list.reset();
-            draw_list.cached_commands = &m_mesh_draw_cache.getCommands();
+            auto& draw_list = command_storage->beginView(view_index);
 
-            m_lit_processor->buildCachedCommands(
-                mesh_ext.visible_primitives,
-                mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(pass_type)],
-                view.getViewProjectionMatrix(),
-                m_mesh_draw_cache,
-                draw_list.cached_instances,
-                draw_list.cached_shader_data
-            );
-            m_lit_processor->buildDynamicCommands(
-                mesh_ext.visible_primitives,
-                mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(pass_type)],
-                view.getViewProjectionMatrix(),
-                draw_list.frame_commands,
-                draw_list.dynamic_instances,
-                draw_list.dynamic_shader_data
-            );
+            const auto& primitive_indices =
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(pass_type)];
+            const Size_t chunk_size = 64;
+            const Size_t chunk_count = (primitive_indices.size() + chunk_size - 1) / chunk_size;
+            if (thread_pool && chunk_count > 1) {
+                DynamicArray<MeshPassThreadLocalCommandStorage> local_storages;
+                local_storages.resize(chunk_count);
+                thread_pool->parallelFor(chunk_count, [&](const Size_t chunk_index) {
+                    const Size_t begin = chunk_index * chunk_size;
+                    const Size_t end = std::min(begin + chunk_size, primitive_indices.size());
+                    DynamicArray<UInt32> chunk_indices(
+                        primitive_indices.begin() + begin, primitive_indices.begin() + end);
+                    auto& local = local_storages[chunk_index];
+                    const MeshPassCommandBuildContext context{
+                        mesh_ext.visible_primitives, mesh_ext.primitive_mesh_pass_relevance,
+                        chunk_indices, &mesh_ext.primitive_instance_offsets,
+                        view.getViewProjectionMatrix(), view.getViewMatrix(), pipeline,
+                        local.sources};
+                    processor->buildMeshDrawCommands(context);
+                });
+                command_storage->mergeThreadLocal(view_index, local_storages);
+            } else {
+                const MeshPassCommandBuildContext context{
+                    mesh_ext.visible_primitives, mesh_ext.primitive_mesh_pass_relevance,
+                    primitive_indices, &mesh_ext.primitive_instance_offsets,
+                    view.getViewProjectionMatrix(), view.getViewMatrix(), pipeline,
+                    draw_list.sources};
+                processor->buildMeshDrawCommands(context);
+            }
         }
+        command_storage->sort();
+        command_storage->materializeSources();
 
         static auto last_stats_sample = std::chrono::steady_clock::now();
         const auto now = std::chrono::steady_clock::now();
         if (now - last_stats_sample >= std::chrono::seconds(1)) {
             last_stats_sample = now;
-            DO_WARN("MeshDrawCache[LIT]: commands={}", m_mesh_draw_cache.size());
+            DO_WARN("MeshDrawCache[LIT]: commands={}", command_storage->getCache().size());
         }
     }
 

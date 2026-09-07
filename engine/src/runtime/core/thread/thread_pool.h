@@ -11,6 +11,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
+#include <atomic>
 
 namespace dodoe {
 
@@ -67,6 +68,28 @@ namespace dodoe {
                 tasks_.emplace([f, args...] { f(args...); });
             }
             condition_.notify_one();
+        }
+
+        template <typename F>
+        void parallelFor(const Size_t count, F&& function) {
+            if (count == 0) {
+                return;
+            }
+            std::atomic<Size_t> remaining{count};
+            std::mutex wait_mutex;
+            std::condition_variable wait_condition;
+            for (Size_t index = 0; index < count; ++index) {
+                enqueue([&, index]() {
+                    function(index);
+                    if (remaining.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                        wait_condition.notify_one();
+                    }
+                });
+            }
+            std::unique_lock<std::mutex> lock(wait_mutex);
+            wait_condition.wait(lock, [&remaining]() {
+                return remaining.load(std::memory_order_acquire) == 0;
+            });
         }
     };
 

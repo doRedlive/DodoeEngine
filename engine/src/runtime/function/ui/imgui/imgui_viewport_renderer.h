@@ -30,6 +30,8 @@ namespace dodoe {
             GfxBufferHandle constant_buffer{};
             GfxCommandListLifetimeTrackerHandle tracker{};
             DrawCommandList recorder;
+            UInt32 vertex_capacity{0};
+            UInt32 index_capacity{0};
             UInt32 image_index{0};
             Bool suspended{false};
             Bool frame_presentable{false};

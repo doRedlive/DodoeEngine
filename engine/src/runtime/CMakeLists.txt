@@ -80,6 +80,7 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC spdlog::spdlog
         PUBLIC stb_image
         PUBLIC imgui
+        PUBLIC imnodes
         PUBLIC EnTT::EnTT
         PUBLIC box2d
         PUBLIC Jolt

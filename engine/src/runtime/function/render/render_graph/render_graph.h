@@ -40,6 +40,8 @@ namespace dodoe {
         [[nodiscard]] DynamicArray<RenderGraphResourceRecord>& getResources() { return m_resources; }
         [[nodiscard]] const DynamicArray<RenderGraphResourceRecord>& getResources() const { return m_resources; }
         [[nodiscard]] const DynamicArray<String>& getSubgraphNames() const { return m_subgraph_names; }
+        [[nodiscard]] const DynamicArray<DynamicArray<Size_t>>& getLevels() const { return m_levels; }
+        [[nodiscard]] const DynamicArray<Bool>& getCulledPasses() const { return m_culled_passes; }
 
     private:
         void resetResourceTracking();

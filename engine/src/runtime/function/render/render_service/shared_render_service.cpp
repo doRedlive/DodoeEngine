@@ -26,6 +26,10 @@ namespace dodoe {
         m_binding_set_cache = BindingSetCache::Create({m_gfx_context});
         m_input_layout_cache = InputLayoutCache::Create({m_gfx_context});
         m_material_system = MaterialSystem::Create({m_shader_library.get(), m_binding_layout_cache.get(), m_binding_set_cache.get(), m_texture_manager.get()});
+        m_mesh_pass_registry = create_scope<MeshPassRegistry>();
+        const Bool mesh_passes_initialized = m_mesh_pass_registry &&
+            m_binding_layout_cache && m_binding_set_cache &&
+            m_mesh_pass_registry->initialize(m_descriptor_table.get(), *m_binding_layout_cache, *m_binding_set_cache);
 
         const Bool initialized = m_descriptor_table != nullptr
             && m_texture_manager != nullptr
@@ -37,7 +41,8 @@ namespace dodoe {
             && m_binding_layout_cache != nullptr
             && m_binding_set_cache != nullptr
             && m_input_layout_cache != nullptr
-            && m_material_system != nullptr;
+            && m_material_system != nullptr
+            && mesh_passes_initialized;
         if (!initialized) {
             shutdown();
         }
@@ -47,6 +52,11 @@ namespace dodoe {
     void SharedRenderService::shutdown() {
         DO_PROFILE_SCOPE_CATEGORY("SharedRenderService::shutdown", "shutdown");
         GlobalSamplers::reset();
+
+        if (m_mesh_pass_registry) {
+            m_mesh_pass_registry->shutdown();
+            m_mesh_pass_registry.reset();
+        }
 
         if (m_input_layout_cache) {
             InputLayoutCache::Destroy(m_input_layout_cache);

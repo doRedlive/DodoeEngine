@@ -16,16 +16,18 @@ struct GpuObjectMeta
     uint reserved1;
 };
 
-struct GpuTransform
-{
-    mat4 local_to_world;
-    mat4 world_to_local;
-};
-
 struct BucketCount
 {
     uint instance_count;
     uint current_offset;
+    uint pad0;
+    uint pad1;
+};
+
+struct BucketRange
+{
+    uint first_arg;
+    uint arg_count;
     uint pad0;
     uint pad1;
 };
@@ -39,34 +41,83 @@ struct DrawIndexedIndirectArgs
     uint start_instance_location;
 };
 
+struct PrimitiveGpuData
+{
+    uint transform_index;
+    uint mesh_id;
+    uint section_start;
+    uint section_count;
+    uint material_start;
+    uint material_count;
+    uint index_count;
+    uint start_index;
+    uint base_vertex;
+    uint pad0;
+};
+
+struct BucketTemplateGpu
+{
+    uint data[16];
+};
+
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) readonly buffer VisibleObjects  { uint visible_objects[]; };
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) readonly buffer ObjectMetaBuffer { GpuObjectMeta object_meta[]; };
-layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT2) readonly buffer TransformBuffer  { GpuTransform transform[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT2) readonly buffer VisibleCount { uint visible_count[]; };
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT3) buffer BucketCounts    { BucketCount bucket_counts[]; };
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT4) buffer IndirectArgs   { DrawIndexedIndirectArgs indirect_args[]; };
-layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT5) buffer BucketOffsets  { BucketCount bucket_offsets[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT6) readonly buffer PrimitiveInstances { PrimitiveGpuData primitive[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT7) readonly buffer BucketTemplates { BucketTemplateGpu templates[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT8) readonly buffer BucketTemplateMap { uint template_map[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT9) readonly buffer BucketBases { uint bucket_bases[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT10) buffer BucketRanges  { BucketRange bucket_ranges[]; };
 
-uint getBucketKey(GpuObjectMeta meta)
+layout(std140, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform BucketParams
 {
-    return meta.type & 0xFFu;
+    uint object_count;
+    uint max_buckets;
+    uint template_count;
+    uint pad1;
+};
+
+uint getBucketKey(GpuObjectMeta meta, PrimitiveGpuData primitive_data)
+{
+    uint key = meta.type ^ (meta.material_id * 16777619u);
+    key ^= primitive_data.mesh_id * 2166136261u;
+    key ^= primitive_data.index_count * 709607u;
+    key ^= primitive_data.start_index * 1000003u;
+    return key % max_buckets;
 }
 
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
+    if (idx >= visible_count[0] || idx >= object_count)
+        return;
     uint object_idx = visible_objects[idx];
     GpuObjectMeta meta = object_meta[object_idx];
-    uint bucket = getBucketKey(meta);
+    PrimitiveGpuData primitive_data = primitive[object_idx];
+    uint bucket = getBucketKey(meta, primitive_data);
+    if (bucket >= max_buckets)
+        return;
 
-    uint slot = atomicAdd(bucket_counts[bucket].current_offset, 1u);
+    uint template_index = template_map[bucket];
+    if (template_index >= template_count)
+        return;
+    BucketTemplateGpu tpl = templates[template_index];
+
+    uint bucket_slot = atomicAdd(bucket_counts[bucket].current_offset, 1u);
+    uint slot = bucket_bases[bucket] + bucket_slot;
 
     DrawIndexedIndirectArgs args;
-    args.index_count = 6u;
+    args.index_count = tpl.data[10];
     args.instance_count = 1u;
-    args.start_index_location = 0u;
-    args.base_vertex_location = 0;
+    args.start_index_location = tpl.data[11];
+    args.base_vertex_location = int(tpl.data[12]);
     args.start_instance_location = object_idx;
 
     indirect_args[slot] = args;
-    bucket_offsets[bucket + 1u].instance_count = bucket_counts[bucket].current_offset;
+    if (bucket_slot == 0u) {
+        bucket_ranges[bucket].first_arg = slot;
+    }
+    atomicMax(bucket_ranges[bucket].arg_count, bucket_slot + 1u);
 }

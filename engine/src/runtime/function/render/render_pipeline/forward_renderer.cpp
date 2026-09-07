@@ -83,17 +83,17 @@ namespace dodoe {
         opaque_feature->setupMeshPassContexts(scene, view_family);
 
         DO_PROFILE_MARK("ForwardRenderer::render.buildMeshDrawCommands", "frame");
-        opaque_feature->buildMeshDrawCommands(view_family, out_commands);
+        opaque_feature->buildMeshDrawCommands(view_family, out_commands, getThreadPool());
 
         DO_PROFILE_MARK("ForwardRenderer::render.buildTransparentMeshDrawCommands", "frame");
         auto* transparent_feature = getFeature<TransparentSceneFeature>();
         DO_ASSERT(transparent_feature != nullptr, "ForwardRenderer TransparentSceneFeature is null");
-        transparent_feature->buildMeshDrawCommands(view_family, out_commands);
+        transparent_feature->buildMeshDrawCommands(view_family, out_commands, getThreadPool());
 
         DO_PROFILE_MARK("ForwardRenderer::render.buildShadowDrawCommands", "frame");
         auto* shadow_feature = getFeature<ShadowSceneFeature>();
         DO_ASSERT(shadow_feature != nullptr, "ForwardRenderer ShadowSceneFeature is null");
-        shadow_feature->buildShadowDrawCommands(view_family, out_commands);
+        shadow_feature->buildShadowDrawCommands(view_family, out_commands, getThreadPool());
 
         DO_PROFILE_MARK("ForwardRenderer::render.buildOrderedPasses", "frame");
         buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,

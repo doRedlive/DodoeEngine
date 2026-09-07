@@ -10,7 +10,7 @@ namespace dodoe {
 
     struct TimeSystemCreateInfo {};
 
-    class TimeSystem : public Managed<TimeSystem, TimeSystemCreateInfo> {
+    class DODOE_API TimeSystem : public Managed<TimeSystem, TimeSystemCreateInfo> {
         friend class Managed<TimeSystem, TimeSystemCreateInfo>;
 
     public:

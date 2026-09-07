@@ -19,3 +19,6 @@
 [submodule "tests/unit/googletest"]
 	path = tests/unit/googletest
 	url = https://github.com/google/googletest.git
+[submodule "engine/external/imnodes"]
+	path = engine/external/imnodes
+	url = https://github.com/Nelarius/imnodes.git

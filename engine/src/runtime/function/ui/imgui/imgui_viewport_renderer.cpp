@@ -17,8 +17,8 @@
 namespace dodoe {
 
     namespace {
-        constexpr UInt32 kViewportVertexCapacity = 65536;
-        constexpr UInt32 kViewportIndexCapacity = 65536;
+        constexpr UInt32 kViewportVertexCapacity = 1u << 18;
+        constexpr UInt32 kViewportIndexCapacity = 1u << 19;
     }
 
     GfxContext* ImGuiViewportRenderer::s_gfx = nullptr;
@@ -94,6 +94,7 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
             .setDebugName("Viewport ImGuiVertexBuffer"));
         data->vertex_buffer->initializeGpu(s_device);
+        data->vertex_capacity = kViewportVertexCapacity;
 
         data->index_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
             .setByteSize(kViewportIndexCapacity * sizeof(ImDrawIdx))
@@ -101,9 +102,11 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
             .setDebugName("Viewport ImGuiIndexBuffer"));
         data->index_buffer->initializeGpu(s_device);
+        data->index_capacity = kViewportIndexCapacity;
 
         data->constant_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
-            .setByteSize(16)
+            // ImGuiDrawRenderer uploads five floats (20 bytes) per viewport.
+            .setByteSize(sizeof(Float) * 5u)
             .setIsConstantBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
             .setDebugName("Viewport ImGuiConstantBuffer"));
@@ -164,20 +167,31 @@ namespace dodoe {
             return;
         }
         auto* data = static_cast<ViewportRenderData*>(viewport->RendererUserData);
-        if (!data || !data->surface || data->suspended || packet.lists.empty()) {
+        if (!data || !data->surface || packet.lists.empty() ||
+            (data->suspended && !data->resize_pending)) {
             return;
         }
 
+        // The recorder owns references to the previous frame's framebuffer. Release
+        // those references before DXGI is asked to replace its backbuffers.
+        data->recorder.beginFrame();
+
         if (data->resize_pending) {
-            data->resize_pending = false;
             const auto extent = data->surface->extent();
             if (data->resize_width != extent.x || data->resize_height != extent.y) {
                 s_gfx->waitForIdle();
+                if (data->tracker) {
+                    // The viewport uses a private lifetime tracker, so the device-wide
+                    // garbage collection pass does not release its completed command list.
+                    data->tracker->runGarbageCollection();
+                }
                 if (!data->surface->resize(static_cast<UInt32>(data->resize_width), static_cast<UInt32>(data->resize_height))) {
                     data->suspended = true;
+                    data->resize_pending = true;
                     return;
                 }
             }
+            data->resize_pending = false;
         }
 
         if (!data->surface->acquire(data->image_index)) {
@@ -192,7 +206,34 @@ namespace dodoe {
             return;
         }
 
-        data->recorder.beginFrame();
+        UInt64 vertex_count = 0;
+        UInt64 index_count = 0;
+        for (const auto& list : packet.lists) {
+            vertex_count += list.vertices.size();
+            index_count += list.indices.size();
+        }
+        if (vertex_count > data->vertex_capacity || index_count > data->index_capacity) {
+            s_gfx->waitForIdle();
+            const UInt32 vertex_capacity = static_cast<UInt32>(std::max<UInt64>(
+                vertex_count, static_cast<UInt64>(data->vertex_capacity) * 2u));
+            const UInt32 index_capacity = static_cast<UInt32>(std::max<UInt64>(
+                index_count, static_cast<UInt64>(data->index_capacity) * 2u));
+            data->vertex_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
+                .setByteSize(static_cast<UInt64>(vertex_capacity) * sizeof(ImDrawVert))
+                .setIsVertexBuffer(true)
+                .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
+                .setDebugName("Viewport ImGuiVertexBuffer"));
+            data->vertex_buffer->initializeGpu(s_device);
+            data->vertex_capacity = vertex_capacity;
+            data->index_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
+                .setByteSize(static_cast<UInt64>(index_capacity) * sizeof(ImDrawIdx))
+                .setIsIndexBuffer(true)
+                .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
+                .setDebugName("Viewport ImGuiIndexBuffer"));
+            data->index_buffer->initializeGpu(s_device);
+            data->index_capacity = index_capacity;
+        }
+
         s_draw_renderer->render(packet, framebuffer, framebuffer->getFramebufferInfo(),
                                 data->vertex_buffer, data->index_buffer, data->constant_buffer,
                                 data->recorder, s_pipeline_cache, s_shader_library);

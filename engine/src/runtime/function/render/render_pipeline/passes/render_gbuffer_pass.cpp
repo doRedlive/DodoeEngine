@@ -106,12 +106,8 @@ namespace dodoe {
                 const auto& draw_list = feature->getLitDrawLists()[ctx.getViewIndex()];
 
                 const auto fb = ctx.getFramebuffer();
-                SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    draw_list.cached_shader_data, processor->getPrimitiveConstantBuffer(),
-                    fb, viewport_state, resolved_psb, command_list);
-                SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    draw_list.dynamic_shader_data, processor->getPrimitiveConstantBuffer(),
-                    fb, viewport_state, resolved_psb, command_list);
+                SubmitMeshDrawSources(draw_list.sources, processor->getPrimitiveConstantBuffer(),
+                    fb, viewport_state, resolved_psb, nullptr, command_list);
             }
         );
     }

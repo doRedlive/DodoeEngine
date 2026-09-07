@@ -5,6 +5,7 @@
 #include "render_graph_import_registry.h"
 
 #include "../render_graph/render_graph_builder.h"
+#include "../render_graph/render_graph_debug.h"
 #include "runtime/function/render/render_view/render_view.h"
 
 namespace dodoe {
@@ -91,8 +92,9 @@ namespace dodoe {
 	        for (auto* pass : m_ordered_passes) {
 	            pass->build(graph, build_ctx);
 	        }
-	        graph.compile();
-	        graphs.push_back(std::move(graph));
+        graph.compile();
+        RenderGraphDebug::publish(graph.graph());
+        graphs.push_back(std::move(graph));
 	    }
 
 	    DO_PROFILE_MARK("BaseRenderer::buildOrderedPasses.executeGraphs", "frame");

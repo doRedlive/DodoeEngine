@@ -16,8 +16,8 @@ namespace dodoe {
     }
 
     void ForwardLitSceneFeature::collectPasses(PassCollector& collector) {
-        DO_ASSERT(getLitProcessor() != nullptr, "ForwardLitSceneFeature lit processor is null");
-        collector.addPass<OpaquePass>(getLitProcessor());
+        DO_ASSERT(getMeshProcessor() != nullptr, "ForwardLitSceneFeature mesh processor is null");
+        collector.addPass<OpaquePass>(getMeshProcessor());
     }
 
     GfxShaderHandle ForwardLitSceneFeature::getPixelShader(const ShaderLibrary& shader_library) const {

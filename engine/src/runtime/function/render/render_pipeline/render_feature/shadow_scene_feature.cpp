@@ -24,6 +24,7 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
+#include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
 
@@ -48,28 +49,6 @@ namespace dodoe {
         return framebuffer_info;
     }
 
-    static GfxGraphicsPipelineDesc MakeShadowPipelineDesc(const ShaderLibrary& shader_library,
-                                                          GfxInputLayoutHandle shadow_input_layout,
-                                                          const GfxBindingLayoutHandle& global_binding_layout,
-                                                          const GfxBindingLayoutHandle& view_binding_layout) {
-        auto pipeline_desc = GfxGraphicsPipelineDesc()
-            .setVertexShader(shader_library.getShadowVertexShader())
-            .setPixelShader(shader_library.getShadowPixelShader())
-            .setInputLayout(shadow_input_layout)
-            .addBindingLayout(global_binding_layout)
-            .addBindingLayout(view_binding_layout)
-            .setPrimType(GfxPrimitiveType::TriangleList);
-        GfxDepthStencilState depth_stencil_state;
-        depth_stencil_state.enableDepthTest().enableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
-        GfxRasterState raster_state;
-        raster_state.setCullBack().setDepthBiasClamp(0.0f).setDepthBias(6).setSlopeScaleDepthBias(1.5f);
-        GfxRenderState render_state;
-        render_state.setDepthStencilState(depth_stencil_state);
-        render_state.setRasterState(raster_state);
-        pipeline_desc.setRenderState(render_state);
-        return pipeline_desc;
-    }
-
     void ShadowSceneFeature::initialize(SharedRenderService& resources) {
         auto* gfx = resources.getGfxContext();
         auto* deletion_queue = resources.getRenderTargetSystem()
@@ -80,12 +59,6 @@ namespace dodoe {
         m_shadow_map = create_scope<RenderTargetHandle>();
         m_shadow_map->initialize(BuildShadowMapDesc(), *gfx, deletion_queue);
 
-        auto* binding_layout_cache = resources.getBindingLayoutCache();
-        auto* binding_set_cache = resources.getBindingSetCache();
-        DO_ASSERT(binding_layout_cache != nullptr, "ShadowSceneFeature binding layout cache is null");
-        DO_ASSERT(binding_set_cache != nullptr, "ShadowSceneFeature binding set cache is null");
-        m_shadow_processor = create_scope<ShadowMeshProcessor>(
-            *binding_layout_cache, *binding_set_cache);
     }
 
     void ShadowSceneFeature::onResize(const UInt32 width, const UInt32 height) {
@@ -102,10 +75,35 @@ namespace dodoe {
             m_shadow_map->shutdown();
             m_shadow_map.reset();
         }
-        if (m_shadow_processor) {
-            m_shadow_processor->reset();
-            m_shadow_processor.reset();
+        m_shared_render_service = nullptr;
+    }
+
+    MeshPassProcessor* ShadowSceneFeature::getMeshProcessor() const {
+        if (!m_shared_render_service || !m_shared_render_service->getMeshPassRegistry()) {
+            return nullptr;
         }
+        return m_shared_render_service->getMeshPassRegistry()->find(MeshPassType::Shadow);
+    }
+
+    const MeshDrawCommandCache& ShadowSceneFeature::getMeshDrawCache() const {
+        static const MeshDrawCommandCache empty_cache{};
+        const auto* registry = m_shared_render_service ? m_shared_render_service->getMeshPassRegistry() : nullptr;
+        const auto* storage = registry ? registry->getCommandStorage(MeshPassType::Shadow) : nullptr;
+        return storage ? storage->getCache() : empty_cache;
+    }
+
+    const DynamicArray<MeshDrawList>& ShadowSceneFeature::getShadowDrawLists() const {
+        static const DynamicArray<MeshDrawList> empty_lists{};
+        const auto* registry = m_shared_render_service ? m_shared_render_service->getMeshPassRegistry() : nullptr;
+        const auto* storage = registry ? registry->getCommandStorage(MeshPassType::Shadow) : nullptr;
+        return storage ? storage->getDrawLists() : empty_lists;
+    }
+
+    const DynamicArray<MeshDrawGpuBucket>& ShadowSceneFeature::getGpuBuckets(const Size_t view_index) const {
+        static const DynamicArray<MeshDrawGpuBucket> empty_buckets{};
+        const auto* registry = m_shared_render_service ? m_shared_render_service->getMeshPassRegistry() : nullptr;
+        const auto* storage = registry ? registry->getCommandStorage(MeshPassType::Shadow) : nullptr;
+        return storage ? storage->getGpuBuckets(view_index) : empty_buckets;
     }
 
     void ShadowSceneFeature::registerGraphImports(RenderGraphImportRegistry& imports,
@@ -117,13 +115,17 @@ namespace dodoe {
     }
 
     void ShadowSceneFeature::collectPasses(PassCollector& collector) {
-        DO_ASSERT(m_shadow_processor != nullptr, "ShadowSceneFeature shadow processor is null");
-        collector.addPass<ShadowPass>(m_shadow_processor.get());
+        auto* processor = getMeshProcessor();
+        DO_ASSERT(processor != nullptr, "ShadowSceneFeature shadow processor is null");
+        collector.addPass<ShadowPass>(processor);
     }
 
     void ShadowSceneFeature::buildShadowDrawCommands(RenderViewFamily& view_family,
-                                                     DrawCommandList& cmd_list) {
+                                                     DrawCommandList& cmd_list,
+                                                     ThreadPool* thread_pool) {
         DO_ASSERT(m_shared_render_service != nullptr, "ShadowSceneFeature shared render service is null");
+        auto* processor = getMeshProcessor();
+        DO_ASSERT(processor != nullptr, "ShadowSceneFeature mesh pass processor is null");
         DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "ShadowSceneFeature shader library is null");
         DO_ASSERT(m_shared_render_service->getPipelineStateCache() != nullptr, "ShadowSceneFeature pipeline cache is null");
 
@@ -152,47 +154,73 @@ namespace dodoe {
         DO_ASSERT(pso_cache != nullptr, "ShadowSceneFeature PSO cache is null");
 
         const auto shadow_fb_info = MakeShadowFramebufferInfo();
-        (void)pso_cache->resolveGraphicsPipeline(
+        const MeshPassPipelineContext pipeline_context{
+            shader_library.getShadowVertexShader(),
+            shader_library.getShadowPixelShader(),
+            shadow_input_layout,
+            {},
+            nullptr,
+            nullptr};
+        const auto shadow_pipeline = pso_cache->resolveGraphicsPipeline(
             MeshPassType::Shadow,
-            MakeShadowPipelineDesc(shader_library, shadow_input_layout,
-                m_shadow_processor->getGlobalBindingLayout(),
-                m_shadow_processor->getViewBindingLayout()),
+            processor->buildPipelineDescription(pipeline_context),
             shadow_fb_info,
             cmd_list);
-
-        m_shadow_draw_lists.resize(view_family.getSize());
+        if (!shadow_pipeline) {
+            DO_ERROR("ShadowSceneFeature: failed to resolve shadow graphics pipeline");
+            return;
+        }
+        auto* command_storage = m_shared_render_service->getMeshPassRegistry()->getCommandStorage(MeshPassType::Shadow);
+        if (!command_storage) {
+            DO_ERROR("ShadowSceneFeature: mesh pass definition is unavailable");
+            return;
+        }
+        command_storage->prepare(shadow_pipeline, view_family.getSize());
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
 
-            auto& shadow_list = m_shadow_draw_lists[view_index];
-            shadow_list.reset();
-            shadow_list.cached_commands = &m_mesh_draw_cache.getCommands();
+            auto& shadow_list = command_storage->beginView(view_index);
 
-            m_shadow_processor->buildCachedCommands(
-                mesh_ext.visible_primitives,
-                mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Shadow)],
-                mesh_ext.directional_shadow_view_projection,
-                m_mesh_draw_cache,
-                shadow_list.cached_instances
-            );
-            m_shadow_processor->buildDynamicCommands(
-                mesh_ext.visible_primitives,
-                mesh_ext.primitive_mesh_pass_relevance,
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Shadow)],
-                mesh_ext.directional_shadow_view_projection,
-                shadow_list.frame_commands,
-                shadow_list.dynamic_instances
-            );
+            const auto& primitive_indices =
+                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Shadow)];
+            const Size_t chunk_size = 64;
+            const Size_t chunk_count = (primitive_indices.size() + chunk_size - 1) / chunk_size;
+            if (thread_pool && chunk_count > 1) {
+                DynamicArray<MeshPassThreadLocalCommandStorage> local_storages;
+                local_storages.resize(chunk_count);
+                thread_pool->parallelFor(chunk_count, [&](const Size_t chunk_index) {
+                    const Size_t begin = chunk_index * chunk_size;
+                    const Size_t end = std::min(begin + chunk_size, primitive_indices.size());
+                    DynamicArray<UInt32> chunk_indices(
+                        primitive_indices.begin() + begin, primitive_indices.begin() + end);
+                    auto& local = local_storages[chunk_index];
+                    const MeshPassCommandBuildContext context{
+                        mesh_ext.visible_primitives, mesh_ext.primitive_mesh_pass_relevance,
+                        chunk_indices, &mesh_ext.primitive_instance_offsets,
+                        mesh_ext.directional_shadow_view_projection, view.getViewMatrix(),
+                        shadow_pipeline, local.sources};
+                    processor->buildMeshDrawCommands(context);
+                });
+                command_storage->mergeThreadLocal(view_index, local_storages);
+            } else {
+                const MeshPassCommandBuildContext context{
+                    mesh_ext.visible_primitives, mesh_ext.primitive_mesh_pass_relevance,
+                    primitive_indices, &mesh_ext.primitive_instance_offsets,
+                    mesh_ext.directional_shadow_view_projection, view.getViewMatrix(),
+                    shadow_pipeline, shadow_list.sources};
+                processor->buildMeshDrawCommands(context);
+            }
         }
+        command_storage->sort();
+        command_storage->materializeSources();
 
         static auto last_stats_sample = std::chrono::steady_clock::now();
         const auto now = std::chrono::steady_clock::now();
         if (now - last_stats_sample >= std::chrono::seconds(1)) {
             last_stats_sample = now;
-            DO_WARN("MeshDrawCache[SHADOW]: commands={}", m_mesh_draw_cache.size());
+            DO_WARN("MeshDrawCache[SHADOW]: commands={}", command_storage->getCache().size());
         }
     }
 

@@ -19,8 +19,7 @@ namespace dodoe {
     struct InstanceSceneData;
     struct MeshPassRelevance;
 
-    class LitMeshProcessor final : public IMeshPassProcessor {
-        MeshPassType m_pass_type{MeshPassType::Opaque};
+    class LitMeshProcessor final : public MeshPassProcessor {
         GfxBindingSetHandle m_descriptor_binding_set{};
         MaterialSystem* m_material_system{nullptr};
         GfxSamplerHandle m_sampler{};
@@ -43,37 +42,29 @@ namespace dodoe {
                          BindingSetCache& binding_set_cache,
                          MaterialSystem& material_system);
         void reset() override;
+        [[nodiscard]] GfxGraphicsPipelineDesc buildPipelineDescription(
+            const MeshPassPipelineContext& context) const override;
 
-        [[nodiscard]] const GfxBindingLayoutHandle& getGlobalBindingLayout() const { return m_global_binding_layout; }
-        [[nodiscard]] const GfxBindingLayoutHandle& getViewBindingLayout() const { return m_view_binding_layout; }
-        [[nodiscard]] const GfxBindingLayoutHandle& getPrimitiveBindingLayout() const { return m_primitive_binding_layout; }
-        [[nodiscard]] const GfxBindingLayoutHandle& getSamplerBindingLayout() const { return m_sampler_binding_layout; }
+        [[nodiscard]] const GfxBindingLayoutHandle& getGlobalBindingLayout() const override { return m_global_binding_layout; }
+        [[nodiscard]] const GfxBindingLayoutHandle& getViewBindingLayout() const override { return m_view_binding_layout; }
+        [[nodiscard]] const GfxBindingLayoutHandle& getPrimitiveBindingLayout() const override { return m_primitive_binding_layout; }
+        [[nodiscard]] const GfxBindingLayoutHandle& getSamplerBindingLayout() const override { return m_sampler_binding_layout; }
         [[nodiscard]] const GfxBindingSetHandle& getGlobalBindingSet() const { return m_global_binding_set; }
         [[nodiscard]] const GfxBindingSetHandle& getViewBindingSet() const { return m_view_binding_set; }
         [[nodiscard]] const GfxBindingSetHandle& getPrimitiveBindingSet() const { return m_primitive_binding_set; }
         [[nodiscard]] const GfxBindingSetHandle& getSamplerBindingSet() const { return m_sampler_binding_set; }
         [[nodiscard]] const GfxBindingSetHandle& getDescriptorBindingSet() const { return m_descriptor_binding_set; }
-        [[nodiscard]] const GfxBufferHandle& getGlobalConstantBuffer() const { return m_global_constant_buffer; }
-        [[nodiscard]] const GfxBufferHandle& getViewConstantBuffer() const { return m_view_constant_buffer; }
-        [[nodiscard]] const GfxBufferHandle& getPrimitiveConstantBuffer() const { return m_primitive_constant_buffer; }
+        [[nodiscard]] const GfxBufferHandle& getGlobalConstantBuffer() const override { return m_global_constant_buffer; }
+        [[nodiscard]] const GfxBufferHandle& getViewConstantBuffer() const override { return m_view_constant_buffer; }
+        [[nodiscard]] const GfxBufferHandle& getPrimitiveConstantBuffer() const override { return m_primitive_constant_buffer; }
 
-        void buildCachedCommands(
-            const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
-            const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
-            const DynamicArray<UInt32>& mesh_pass_primitive_indices,
-            const Matrix4f& view_projection,
-            MeshDrawCommandCache& cache,
-            DynamicArray<MeshDrawInstance>& out_instances,
-            DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data) const;
-
-        void buildDynamicCommands(
-            const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives,
-            const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance,
-            const DynamicArray<UInt32>& mesh_pass_primitive_indices,
-            const Matrix4f& view_projection,
-            DynamicArray<MeshDrawCommand>& frame_commands,
-            DynamicArray<MeshDrawInstance>& out_instances,
-            DynamicArray<PrimitiveMeshDrawShaderData>& out_shader_data) const;
+    protected:
+        [[nodiscard]] Bool shouldDrawPrimitive(const PrimitiveSceneInfo& primitive) const override;
+        [[nodiscard]] Bool setupMeshDrawCommand(
+            const MeshBatch& batch,
+            const MeshBatchElement& element,
+            MeshDrawCommand& command,
+            PrimitiveMeshDrawShaderData& shader_data) const override;
     };
 
 } // namespace dodoe

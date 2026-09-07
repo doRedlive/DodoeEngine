@@ -6,6 +6,8 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/core/math/math.h"
 
+#include <chrono>
+
 namespace dodoe {
 
     Size_t FramebufferCacheKey::computeHash() const {
@@ -36,6 +38,12 @@ namespace dodoe {
     GfxFramebufferHandle FramebufferCache::getOrCreate(const FramebufferCacheKey& key,
                                                          const GfxFramebufferDesc& desc) {
         DO_PROFILE_SCOPE_CATEGORY("FramebufferCache::getOrCreate", "resource-cache");
+        static auto last_stats_time = std::chrono::steady_clock::now();
+        const auto now_stats_time = std::chrono::steady_clock::now();
+        if (now_stats_time - last_stats_time >= std::chrono::seconds(1)) {
+            last_stats_time = now_stats_time;
+            DO_WARN("FramebufferCache: entries={}", m_entries.size());
+        }
         const auto hash = key.computeHash();
         for (auto& entry : m_entries) {
             if (entry.key == key) {

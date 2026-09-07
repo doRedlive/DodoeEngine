@@ -16,6 +16,7 @@
 #include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/material/material_system.h"
+#include "runtime/function/render/mesh_draw/mesh_pass_registry.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
@@ -39,6 +40,7 @@ namespace dodoe {
         Scope<BindingSetCache> m_binding_set_cache{nullptr};
         Scope<InputLayoutCache> m_input_layout_cache{nullptr};
         Scope<MaterialSystem> m_material_system{nullptr};
+        Scope<MeshPassRegistry> m_mesh_pass_registry{nullptr};
 
     public:
 
@@ -54,6 +56,7 @@ namespace dodoe {
         [[nodiscard]] BindingSetCache* getBindingSetCache() const { return m_binding_set_cache.get(); }
         [[nodiscard]] InputLayoutCache* getInputLayoutCache() const { return m_input_layout_cache.get(); }
         [[nodiscard]] MaterialSystem* getMaterialSystem() const { return m_material_system.get(); }
+        [[nodiscard]] MeshPassRegistry* getMeshPassRegistry() const { return m_mesh_pass_registry.get(); }
         [[nodiscard]] GfxTextureHandle resolveTextureBySlot(UInt32 slot) const;
 
     private:

@@ -9,14 +9,14 @@
 
 namespace dodoe {
 
-	class ShadowMeshProcessor;
+    class MeshPassProcessor;
 
 	class ShadowPass : public IRenderPass {
 	public:
 	    using Produces = TypeList<ShadowMapKey>;
 	    using Consumes = TypeList<SceneTexturesKey>;
 
-	    explicit ShadowPass(const ShadowMeshProcessor* processor = nullptr)
+        explicit ShadowPass(const MeshPassProcessor* processor = nullptr)
 	        : m_mesh_processor(processor) {}
 
 	    RenderPhase getPhase() const override { return RenderPhase::Shadow; }
@@ -33,7 +33,7 @@ namespace dodoe {
 	               const RenderPassBuildContext& context) override;
 
 	private:
-	    const ShadowMeshProcessor* m_mesh_processor;
+        const MeshPassProcessor* m_mesh_processor;
 	};
 
 } // namespace dodoe

@@ -8,14 +8,14 @@
 
 namespace dodoe {
 
-    class LitMeshProcessor;
+    class MeshPassProcessor;
 
     class TransparentPass final : public OpaquePass {
     public:
         using Produces = TypeList<>;
         using Consumes = TypeList<SceneHdrKey, SceneTexturesKey, ShadowMapKey>;
 
-        explicit TransparentPass(const LitMeshProcessor* processor = nullptr)
+        explicit TransparentPass(const MeshPassProcessor* processor = nullptr)
             : OpaquePass(processor) {}
 
         RenderPhase getPhase() const override { return RenderPhase::Transparent; }

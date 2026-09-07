@@ -360,8 +360,8 @@ namespace dodoe {
             HRESULT hr = m_dx_swapchain->ResizeBuffers(kBackbufferCount, m_dx_width, m_dx_height, m_dx_format, GetSwapchainFlags());
             if (FAILED(hr)) {
                 DO_ERROR("GfxViewportSurface::resize: ResizeBuffers failed with HRESULT=0x{:08X}", static_cast<UINT>(hr));
+                return false;
             }
-            DO_ASSERT(SUCCEEDED(hr), "GfxViewportSurface::resize: ResizeBuffers failed");
 
             createD3D12BackbufferRTVs();
             createSwapchainTexturesD3D12();

@@ -24,8 +24,24 @@ struct BucketCount
     uint pad1;
 };
 
+struct PrimitiveGpuData
+{
+    uint transform_index;
+    uint mesh_id;
+    uint section_start;
+    uint section_count;
+    uint material_start;
+    uint material_count;
+    uint index_count;
+    uint start_index;
+    uint base_vertex;
+    uint pad0;
+};
+
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) readonly buffer VisibleObjects  { uint visible_objects[]; };
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) readonly buffer ObjectMetaBuffer { GpuObjectMeta object_meta[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT2) readonly buffer VisibleCount { uint visible_count[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT3) readonly buffer PrimitiveInstances { PrimitiveGpuData primitive[]; };
 
 layout(std140, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform BucketParams
 {
@@ -35,23 +51,28 @@ layout(std140, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform
     uint pad1;
 };
 
-layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT3) buffer BucketCounts { BucketCount bucket_counts[]; };
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT4) buffer BucketCounts { BucketCount bucket_counts[]; };
 
-uint getBucketKey(GpuObjectMeta meta)
+uint getBucketKey(GpuObjectMeta meta, PrimitiveGpuData primitive_data)
 {
-    return meta.type & 0xFFu;
+    uint key = meta.type ^ (meta.material_id * 16777619u);
+    key ^= primitive_data.mesh_id * 2166136261u;
+    key ^= primitive_data.index_count * 709607u;
+    key ^= primitive_data.start_index * 1000003u;
+    return key % max_buckets;
 }
 
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
-    if (idx >= object_count)
+    if (idx >= visible_count[0] || idx >= object_count)
         return;
 
     uint object_idx = visible_objects[idx];
     GpuObjectMeta meta = object_meta[object_idx];
+    PrimitiveGpuData primitive_data = primitive[object_idx];
 
-    uint bucket = getBucketKey(meta);
+    uint bucket = getBucketKey(meta, primitive_data);
     if (bucket >= max_buckets)
         return;
 

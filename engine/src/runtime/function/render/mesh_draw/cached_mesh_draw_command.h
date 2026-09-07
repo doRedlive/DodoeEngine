@@ -5,78 +5,35 @@
 #include "dopch.h"
 
 #include "mesh_draw_command.h"
-#include "mesh_batch.h"
-#include "../render_scene/primitive_scene_info.h"
-#include "../material/material_system.h"
-#include "../texture/texture.h"
 
 namespace dodoe {
 
     struct MaterialInstance;
+    struct MeshBatchElement;
 
     namespace CacheHashUtils {
 
-        inline Size_t ComputeBatchHash(const MeshBatchElement& element) {
-            Size_t h = 0;
-            h ^= reinterpret_cast<Size_t>(element.vertex_buffer.get());
-            h ^= reinterpret_cast<Size_t>(element.index_buffer.get()) << 7;
-            h ^= static_cast<Size_t>(element.index_count) << 13;
-            h ^= static_cast<Size_t>(element.index_offset) << 17;
-            h ^= static_cast<Size_t>(element.vertex_offset) << 23;
-            h ^= static_cast<Size_t>(element.instance_count) << 29;
-            return h;
-        }
-
-        inline Size_t ComputeMaterialHash(const MaterialInstance* mi) {
-            Size_t h = reinterpret_cast<Size_t>(mi);
-            if (mi) {
-                for (const auto* tex : mi->textures) {
-                    if (tex) {
-                        h ^= reinterpret_cast<Size_t>(tex->getGpuHandle().get()) << 7;
-                    }
-                }
-            }
-            return h;
-        }
-
-        inline Size_t ComputePassHash(const MeshPassType pass_type) {
-            return static_cast<Size_t>(pass_type);
-        }
-
-        inline MeshDrawCommandCacheKey MakeCacheKey(const MeshBatchElement& element,
-                                                     const MaterialInstance* mi,
-                                                     const MeshPassType pass_type) {
-            return MeshDrawCommandCacheKey{
-                .batch_hash    = ComputeBatchHash(element),
-                .material_hash = ComputeMaterialHash(mi),
-                .pass_hash     = ComputePassHash(pass_type),
-            };
-        }
+        [[nodiscard]] MeshDrawCommandCacheKey MakeCacheKey(const MeshBatchElement& element,
+                                                           const MaterialInstance* mi,
+                                                           MeshPassType pass_type,
+                                                           const GfxGraphicsPipelineHandle& pipeline);
 
     } // namespace CacheHashUtils
 
     class MeshDrawCommandCache {
         UnorderedMap<MeshDrawCommandCacheKey, UInt32> m_key_to_index;
+        UnorderedMap<MeshDrawCommandCacheKey, UInt32> m_loose_key_to_index;
+        DynamicArray<MeshDrawCommandCacheKey> m_keys;
         DynamicArray<MeshDrawCommand> m_commands;
+
+        [[nodiscard]] static MeshDrawCommandCacheKey MakeLooseKey(const MeshDrawCommandCacheKey& key);
 
     public:
         MeshDrawCommandCache() = default;
+        ~MeshDrawCommandCache();
 
-        [[nodiscard]] UInt32 findOrCreate(const MeshDrawCommandCacheKey& key, MeshDrawCommand&& cmd) {
-            const auto it = m_key_to_index.find(key);
-            if (it != m_key_to_index.end()) {
-                return it->second;
-            }
-            const UInt32 index = static_cast<UInt32>(m_commands.size());
-            m_commands.push_back(std::move(cmd));
-            m_key_to_index[key] = index;
-            return index;
-        }
-
-        void invalidate() {
-            m_key_to_index.clear();
-            m_commands.clear();
-        }
+        [[nodiscard]] UInt32 findOrCreate(const MeshDrawCommandCacheKey& key, MeshDrawCommand&& cmd);
+        void invalidate();
 
         [[nodiscard]] const MeshDrawCommand& getCommand(const UInt32 index) const {
             return m_commands[index];

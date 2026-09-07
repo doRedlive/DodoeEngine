@@ -20,6 +20,7 @@ endif()
 set(BINARY_ROOT_DIR "${CMAKE_INSTALL_PREFIX}")
 
 add_compile_definitions(DODOE_ROOT="${DODOE_ROOT_DIR}")
+add_compile_definitions("ImDrawIdx=unsigned int")
 
 option(DODOE_SHIPPING "Shipping build" OFF)
 add_compile_definitions($<$<BOOL:${DODOE_SHIPPING}>:DODOE_SHIPPING=1>)

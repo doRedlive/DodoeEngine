@@ -70,10 +70,7 @@ namespace dodoe {
                 const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];
 
                 const auto fb = ctx.getFramebuffer();
-                SubmitMeshDrawCommands(draw_list.cached_instances, *draw_list.cached_commands,
-                    {}, {}, fb, viewport_state, resolved_psb, command_list);
-                SubmitMeshDrawCommands(draw_list.dynamic_instances, draw_list.frame_commands,
-                    {}, {}, fb, viewport_state, resolved_psb, command_list);
+                SubmitMeshDrawSources(draw_list.sources, {}, fb, viewport_state, resolved_psb, nullptr, command_list);
             }
         );
     }

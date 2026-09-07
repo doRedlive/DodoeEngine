@@ -66,6 +66,7 @@ namespace dodoe {
         GfxShaderHandle getTestPixelShader() const { return findShaderValue("TestPS"); }
         GfxShaderHandle getGpuCullingComputeShader() const { return findShaderValue("GpuCullingCS"); }
         GfxShaderHandle getBucketCountComputeShader() const { return findShaderValue("BucketCountCS"); }
+        GfxShaderHandle getBucketScanComputeShader() const { return findShaderValue("BucketScanCS"); }
         GfxShaderHandle getBucketFillComputeShader() const { return findShaderValue("BucketFillCS"); }
         GfxShaderHandle getBatchExpandComputeShader() const { return findShaderValue("BatchExpandCS"); }
         GfxShaderHandle getGizmoVertexShader() const { return findShaderValue("GizmoVS"); }
