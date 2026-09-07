@@ -9,7 +9,7 @@
         "api": 3,
         "pipeline": 3,
         "enable_single_thread": false,
-        "enable_baseline_renderer": false,
+        "enable_baseline_renderer": true,
         "present_mode": 1
     }
 }

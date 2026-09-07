@@ -1,0 +1,10 @@
+{
+    "facePaths": [
+        "textures/Skybox/skybox_specular_X+.hdr",
+        "textures/Skybox/skybox_specular_X-.hdr",
+        "textures/Skybox/skybox_specular_Y+.hdr",
+        "textures/Skybox/skybox_specular_Y-.hdr",
+        "textures/Skybox/skybox_specular_Z+.hdr",
+        "textures/Skybox/skybox_specular_Z-.hdr"
+    ]
+}

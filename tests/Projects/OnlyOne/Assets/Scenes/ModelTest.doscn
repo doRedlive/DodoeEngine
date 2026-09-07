@@ -17,6 +17,10 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
                     "m_component": "{\"color\":[1.0,0.9800000190734863,0.9200000166893005,1.0],\"intensity\":1.2000000476837158}",
                     "m_type_name": "DirectionalLightComponent"
                 }
@@ -40,38 +44,15 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
                     "m_component": "{\"aspect_ratio\":1.7777777910232544,\"background\":[0.15000000596046448,0.15000000596046448,0.18000000715255737,1.0],\"far_plane\":200.0,\"fov\":60.0,\"near_plane\":0.009999999776482582,\"type\":2,\"zoom\":1.0}",
                     "m_type_name": "CameraComponent"
                 }
             ],
             "m_uuid": 1001
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.036__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":10368180695211315386,\"name\":\"Cube.036__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":19,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 10368180695211315386
         },
         {
             "m_managed_components": [],
@@ -88,6 +69,10 @@
                 {
                     "m_component": "{\"position\":[-150.0,10.0,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
                     "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
                     "m_component": "{\"color\":[1.0,0.949999988079071,0.800000011920929,1.0],\"intensity\":4.0,\"radius\":0.0,\"range\":120.0}",
@@ -113,11 +98,34 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
                     "m_component": "{\"color\":[0.5,0.699999988079071,1.0,1.0],\"intensity\":3.5,\"radius\":0.0,\"range\":120.0}",
                     "m_type_name": "PointLightComponent"
                 }
             ],
             "m_uuid": 3003
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "backpack",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":13129280433834102908,\"name\":\"backpack\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"backpack\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":6804237515790648700},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"backpack.obj\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"child_count\\\\\\\":79,\\\\\\\"parent_uuid\\\\\\\":6804237515790648700}\\\",\\\"m_type_name\\\":\\\"HierarchyComponent\\\"}],\\\"m_uuid\\\":352715221003086890},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.037__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":429687009452190569},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.036__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":10368180695211315386},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.040__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":11120584657374588731},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.042__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":870265859413264291},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.050__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":11513148997357925235},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.012__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":2149340538995401435},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.030__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":18192585669491624987},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.043__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":14163838862625011904},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.032__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":14234902684503317184},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.008__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":4633464462253425920},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.039__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":681898004483389137},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.051__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":17673333285346403729},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.014__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":12276435265221837336},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.031__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":3836969138892333528},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.045__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":14392176993669579738},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.028__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":3526532388372415962},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.029__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":1586866763424552263},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.009__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":10815419138483651493},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.010__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":1775992362016404823},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.039__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":9653067194606833837},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.051__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":7131880691705296813},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.011__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":7299508912994021293},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.029__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":1989593348491052428},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.052__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":4141615129819739253},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.013__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":5510646780346685557},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.030__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":13612710270389837012},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.037__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":11821088222501111332},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.031__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":16749020876597828900},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.034__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":1401001373683202785},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.032__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":8493120230425292385},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.041__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":14221569031774396609},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.036__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":17508823476456724161},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.033__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":11589925377538594177},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.047__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":17652507984924818270},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.046__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":16695376138191542814},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.022__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":7777306192807487902},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.038__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":4664497527486305182},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.034__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":14908810597393130206},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.035__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":10265633480588090649},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.033__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":17062383578580660785},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.024__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":8927188601037003313},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.035__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":5796269771768941472},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.038__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":13301034507215066258},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.027__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":16003407223429373262},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.041__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":15790331833326521166},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.042__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":3927369139864504077},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.044__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":7186414981053383196},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.045__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":8254946371855864330},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.048__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":8899261318263802265},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.049__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":4053568558897848022},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.040__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":10287511506954764725},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.043__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":17282201234171908734},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.044__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":4046443854867269240},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.015__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":3556312788561599711},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.046__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":9681598264394916975},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.047__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":5954007460930987185},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.050__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":13976944973517950596},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.048__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":11773747794721099776},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.052__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":8658416807588673767},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.053__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":1408780326172089870},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.054__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":5770546893562687736},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"BezierCurve.003__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":4304840892446062850},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.049__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":12252550691753014379},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.055__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":15205016568595078957},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.056__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":10868481984302399618},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.053__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":7660399244209489026},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.014__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":15750859881857342523},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.015__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":1296470457427051418},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.016__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":223401858802683463},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.017__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":17639596068859501077},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.018__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":3506520906560087190},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.019__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":8490366057403625180},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.020__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":4950934824032420274},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.021__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":14760533377022420647},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.054__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":5034087320804900958},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.023__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":7763612952339451110},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.025__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":9849137942652960030},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sphere.026__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":7532503253109218891},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cube.055__0\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":10238930655178065489}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[0.0,0.0,0.0],\"prefab\":{\"asset_id\":8703204732509285647,\"legacy_path\":\"Prefabs/backpack.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "PrefabInstanceComponent"
+                }
+            ],
+            "m_uuid": 13129280433834102908
         },
         {
             "m_managed_components": [],
@@ -136,11 +144,42 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
                     "m_component": "{\"color\":[1.0,0.6000000238418579,0.800000011920929,1.0],\"intensity\":2.5,\"radius\":0.0,\"range\":100.0}",
                     "m_type_name": "PointLightComponent"
                 }
             ],
             "m_uuid": 3004
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Sky Light",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":1005,\"name\":\"Sky Light\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"SkyLight\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cubemap\":{\"asset_id\":0,\"legacy_path\":\"textures/Skybox/skybox_specular.docubemap\",\"sub_object_id\":0},\"intensity\":1.0}",
+                    "m_type_name": "SkyLightComponent"
+                }
+            ],
+            "m_uuid": 1005
         },
         {
             "m_managed_components": [],
@@ -159,6 +198,10 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
                     "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"inner_angle\":25.0,\"intensity\":5.0,\"outer_angle\":40.0,\"radius\":0.0,\"range\":160.0}",
                     "m_type_name": "SpotLightComponent"
                 }
@@ -167,2360 +210,182 @@
         },
         {
             "m_managed_components": [],
-            "m_name": "Cube.042__0",
+            "m_name": "flower3",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":870265859413264291,\"name\":\"Cube.042__0\"}",
+                    "m_component": "{\"id\":611683027825921446,\"name\":\"flower3\"}",
                     "m_type_name": "IDComponent"
                 },
                 {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":42,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"flower3\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"position\\\\\\\":[-100.0,0.0,0.0],\\\\\\\"rotation\\\\\\\":[0.0,15.0,0.0],\\\\\\\"scale\\\\\\\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}\\\",\\\"m_type_name\\\":\\\"TransformComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":false}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":17813975448716921079},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sketchfab_model\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":17066204732282542242},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"cf6f75f2bcf94f5d824f8640f6a639d3.fbx\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":14907668534666906285},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"RootNode\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":9731116412993446254},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":12492647925502784160},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mf_Petal_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":16370736628361184183,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (3)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":0,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":18221670334145645057},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mf_Grass_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":16370736628361184183,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (3)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":1,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":3362997876621783270},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mf_Stem_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":16370736628361184183,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (3)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":2,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":2563412605668702738},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mf_Leaf_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":16370736628361184183,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (3)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":3,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":17435816317319912787},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mf_Stigma_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":16370736628361184183,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (3)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":4,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":13865572984443747821}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[-100.0,0.0,0.0],\"prefab\":{\"asset_id\":15956333587102533461,\"legacy_path\":\"Prefabs/flower_sea/flower3.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,15.0,0.0],\"scale\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}",
+                    "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 870265859413264291
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.050__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":11513148997357925235,\"name\":\"Cube.050__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":59,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 11513148997357925235
+            "m_uuid": 611683027825921446
         },
         {
             "m_managed_components": [],
             "m_name": "lavender",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":16143389577442249523,\"name\":\"lavender\"}",
+                    "m_component": "{\"id\":18060752850513226015,\"name\":\"lavender\"}",
                     "m_type_name": "IDComponent"
                 },
                 {
-                    "m_component": "{\"position\":[-300.0,-1.0,0.0],\"prefab\":{\"asset_id\":14666833834107450232,\"legacy_path\":\"Prefabs/flower_sea/lavender.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,30.0,0.0],\"scale\":[0.029999999329447746,0.029999999329447746,0.029999999329447746]}",
-                    "m_type_name": "PrefabInstanceComponent"
-                }
-            ],
-            "m_uuid": 16143389577442249523
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "grass",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":17868982328485753712,\"name\":\"grass\"}",
-                    "m_type_name": "IDComponent"
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"position\":[200.0,0.0,0.0],\"prefab\":{\"asset_id\":13680251191752245718,\"legacy_path\":\"Prefabs/flower_sea/grass.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,120.0,0.0],\"scale\":[1.399999976158142,1.399999976158142,1.399999976158142]}",
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lavender\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"position\\\\\\\":[-300.0,-1.0,0.0],\\\\\\\"rotation\\\\\\\":[0.0,30.0,0.0],\\\\\\\"scale\\\\\\\":[0.029999999329447746,0.029999999329447746,0.029999999329447746]}\\\",\\\"m_type_name\\\":\\\"TransformComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":false}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":3586855637374273117},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"RootNode\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":16247563437275085110},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.003\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":17479775527222278167,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower/source/lavendar.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":0,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":9027811018190583444}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[-300.0,-1.0,0.0],\"prefab\":{\"asset_id\":14716007773133125349,\"legacy_path\":\"Prefabs/flower_sea/lavender.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,30.0,0.0],\"scale\":[0.029999999329447746,0.029999999329447746,0.029999999329447746]}",
                     "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 17868982328485753712
+            "m_uuid": 18060752850513226015
         },
         {
             "m_managed_components": [],
             "m_name": "flower1",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":3416391445551175835,\"name\":\"flower1\"}",
+                    "m_component": "{\"id\":8171469968120897748,\"name\":\"flower1\"}",
                     "m_type_name": "IDComponent"
                 },
                 {
-                    "m_component": "{\"position\":[-200.0,-1.0,0.0],\"prefab\":{\"asset_id\":14069201030644281744,\"legacy_path\":\"Prefabs/flower_sea/flower1.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,80.0,0.0],\"scale\":[0.029999999329447746,0.029999999329447746,0.029999999329447746]}",
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"flower1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"position\\\\\\\":[-200.0,-1.0,0.0],\\\\\\\"rotation\\\\\\\":[0.0,80.0,0.0],\\\\\\\"scale\\\\\\\":[0.029999999329447746,0.029999999329447746,0.029999999329447746]}\\\",\\\"m_type_name\\\":\\\"TransformComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":false}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":7110600359522726018},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sketchfab_model\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":9086582065085818834},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"141011ec1f3245d5a1244b80aa332fbf.fbx\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":9393078600605050525},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"RootNode\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":17815381158093293767},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.003\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":4486936320157899429},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.003_Material_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":8693997761884575328,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (1)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":0,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":7072848362330540705}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[-200.0,-1.0,0.0],\"prefab\":{\"asset_id\":14687997498224549500,\"legacy_path\":\"Prefabs/flower_sea/flower1.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,80.0,0.0],\"scale\":[0.029999999329447746,0.029999999329447746,0.029999999329447746]}",
                     "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 3416391445551175835
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.008__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":4633464462253425920,\"name\":\"Plane.008__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 4633464462253425920
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "flower5",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7886442727905390508,\"name\":\"flower5\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"position\":[100.0,0.0,0.0],\"prefab\":{\"asset_id\":12691940162548915669,\"legacy_path\":\"Prefabs/flower_sea/flower5.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,60.0,0.0],\"scale\":[1.399999976158142,1.399999976158142,1.399999976158142]}",
-                    "m_type_name": "PrefabInstanceComponent"
-                }
-            ],
-            "m_uuid": 7886442727905390508
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "flower3",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":6844458773567938220,\"name\":\"flower3\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"position\":[-100.0,0.0,0.0],\"prefab\":{\"asset_id\":5978186912059657495,\"legacy_path\":\"Prefabs/flower_sea/flower3.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,15.0,0.0],\"scale\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}",
-                    "m_type_name": "PrefabInstanceComponent"
-                }
-            ],
-            "m_uuid": 6844458773567938220
+            "m_uuid": 8171469968120897748
         },
         {
             "m_managed_components": [],
             "m_name": "Marry",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":5942112575528718210,\"name\":\"Marry\"}",
+                    "m_component": "{\"id\":1798075006404837076,\"name\":\"Marry\"}",
                     "m_type_name": "IDComponent"
                 },
                 {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":1,\"parent_uuid\":8596182794003097373}",
-                    "m_type_name": "HierarchyComponent"
-                }
-            ],
-            "m_uuid": 5942112575528718210
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "flower4",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":10371966598319246495,\"name\":\"flower4\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"prefab\":{\"asset_id\":1694045825111197359,\"legacy_path\":\"Prefabs/flower_sea/flower4.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,200.0,0.0],\"scale\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}",
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Marry\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":5942112575528718210},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Marry.obj\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":16017966687381701946},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"文本\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":14291310177799393303},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Body_MC003_Kozakura_Mari_face\\\",\\\"m_native_components\\\":[],\\\"m_uuid\\\":11303978661429954569}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[0.0,0.0,0.0],\"prefab\":{\"asset_id\":3733090886868858500,\"legacy_path\":\"Prefabs/Marry.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
                     "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 10371966598319246495
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.051__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":17673333285346403729,\"name\":\"Cube.051__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":64,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 17673333285346403729
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "backpack.obj",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":352715221003086890,\"name\":\"backpack.obj\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":79,\"parent_uuid\":6804237515790648700}",
-                    "m_type_name": "HierarchyComponent"
-                }
-            ],
-            "m_uuid": 352715221003086890
+            "m_uuid": 1798075006404837076
         },
         {
             "m_managed_components": [],
             "m_name": "rose",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":1421287545998425447,\"name\":\"rose\"}",
+                    "m_component": "{\"id\":13201743190567164455,\"name\":\"rose\"}",
                     "m_type_name": "IDComponent"
                 },
                 {
-                    "m_component": "{\"position\":[300.0,0.0,0.0],\"prefab\":{\"asset_id\":5054879640173568966,\"legacy_path\":\"Prefabs/flower_sea/rose.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,45.0,0.0],\"scale\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}",
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"rose\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"position\\\\\\\":[300.0,0.0,0.0],\\\\\\\"rotation\\\\\\\":[0.0,45.0,0.0],\\\\\\\"scale\\\\\\\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}\\\",\\\"m_type_name\\\":\\\"TransformComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":false}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":4479387508848797570},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"RootNode\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":13026045565000597300},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":14727258544147093585},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mesh0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3693327600484473598,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (2)/source/Roses Orange.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":0,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":14810046052520491217},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mesh1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3693327600484473598,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (2)/source/Roses Orange.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":1,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":14800076372975534938},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mesh2\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3693327600484473598,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (2)/source/Roses Orange.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":2,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":7761485265069527139},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mesh3\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3693327600484473598,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (2)/source/Roses Orange.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":3,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":7141860132748266621},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Roses_Orange_Mesh4\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3693327600484473598,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (2)/source/Roses Orange.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":4,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":13159599643641682534}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[300.0,0.0,0.0],\"prefab\":{\"asset_id\":15169478177944893014,\"legacy_path\":\"Prefabs/flower_sea/rose.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,45.0,0.0],\"scale\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}",
                     "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 1421287545998425447
+            "m_uuid": 13201743190567164455
         },
         {
             "m_managed_components": [],
-            "m_name": "Cube.031__0",
+            "m_name": "flower5",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":3836969138892333528,\"name\":\"Cube.031__0\"}",
+                    "m_component": "{\"id\":15161041101890480067,\"name\":\"flower5\"}",
                     "m_type_name": "IDComponent"
                 },
                 {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":12,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 3836969138892333528
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "backpack",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":6804237515790648700,\"name\":\"backpack\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":1,\"parent_uuid\":1922783901942317187}",
-                    "m_type_name": "HierarchyComponent"
-                }
-            ],
-            "m_uuid": 6804237515790648700
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.045__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":14392176993669579738,\"name\":\"Cube.045__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":45,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 14392176993669579738
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.028__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":3526532388372415962,\"name\":\"Cube.028__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 3526532388372415962
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.029__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":1586866763424552263,\"name\":\"Cube.029__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":2,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 1586866763424552263
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.009__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":10815419138483651493,\"name\":\"Plane.009__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":3,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 10815419138483651493
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.010__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":1775992362016404823,\"name\":\"Plane.010__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":4,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 1775992362016404823
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.051__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7131880691705296813,\"name\":\"Cylinder.051__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":51,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 7131880691705296813
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.011__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7299508912994021293,\"name\":\"Plane.011__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":5,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 7299508912994021293
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.029__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":1989593348491052428,\"name\":\"Cylinder.029__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":6,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 1989593348491052428
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.030__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":18192585669491624987,\"name\":\"Cube.030__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":7,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 18192585669491624987
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.012__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":2149340538995401435,\"name\":\"Plane.012__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":8,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 2149340538995401435
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.052__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":4141615129819739253,\"name\":\"Cube.052__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":69,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 4141615129819739253
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.013__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":5510646780346685557,\"name\":\"Plane.013__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":9,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 5510646780346685557
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.030__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":13612710270389837012,\"name\":\"Cylinder.030__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":10,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 13612710270389837012
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.014__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":12276435265221837336,\"name\":\"Plane.014__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":11,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 12276435265221837336
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.031__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":16749020876597828900,\"name\":\"Cylinder.031__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":13,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 16749020876597828900
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.043__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":14163838862625011904,\"name\":\"Cylinder.043__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":33,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 14163838862625011904
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.032__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":14234902684503317184,\"name\":\"Cube.032__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":14,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 14234902684503317184
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.032__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":8493120230425292385,\"name\":\"Cylinder.032__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":15,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 8493120230425292385
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.033__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":11589925377538594177,\"name\":\"Cube.033__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":16,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 11589925377538594177
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.034__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":14908810597393130206,\"name\":\"Cube.034__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":17,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 14908810597393130206
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.035__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":10265633480588090649,\"name\":\"Cube.035__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":18,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 10265633480588090649
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.024__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":8927188601037003313,\"name\":\"Sphere.024__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":74,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 8927188601037003313
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.033__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":17062383578580660785,\"name\":\"Cylinder.033__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":20,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 17062383578580660785
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.037__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":429687009452190569,\"name\":\"Cube.037__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":21,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 429687009452190569
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.034__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":1401001373683202785,\"name\":\"Cylinder.034__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":22,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 1401001373683202785
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.035__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":5796269771768941472,\"name\":\"Cylinder.035__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":23,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 5796269771768941472
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.022__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7777306192807487902,\"name\":\"Sphere.022__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":72,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 7777306192807487902
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.038__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":4664497527486305182,\"name\":\"Cube.038__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":24,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 4664497527486305182
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.039__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":681898004483389137,\"name\":\"Cube.039__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":25,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 681898004483389137
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.041__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":14221569031774396609,\"name\":\"Cube.041__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":41,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 14221569031774396609
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.036__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":17508823476456724161,\"name\":\"Cylinder.036__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":26,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 17508823476456724161
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.037__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":11821088222501111332,\"name\":\"Cylinder.037__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":27,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 11821088222501111332
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.038__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":13301034507215066258,\"name\":\"Cylinder.038__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":28,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 13301034507215066258
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.039__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":9653067194606833837,\"name\":\"Cylinder.039__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":29,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 9653067194606833837
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.040__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":11120584657374588731,\"name\":\"Cylinder.040__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":30,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 11120584657374588731
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.027__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":16003407223429373262,\"name\":\"Sphere.027__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":77,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 16003407223429373262
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.041__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":15790331833326521166,\"name\":\"Cylinder.041__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":31,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 15790331833326521166
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.042__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":3927369139864504077,\"name\":\"Cylinder.042__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":32,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 3927369139864504077
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.044__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7186414981053383196,\"name\":\"Cylinder.044__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":34,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 7186414981053383196
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.045__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":8254946371855864330,\"name\":\"Cylinder.045__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":35,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 8254946371855864330
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.046__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":16695376138191542814,\"name\":\"Cylinder.046__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":36,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 16695376138191542814
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.047__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":17652507984924818270,\"name\":\"Cylinder.047__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":37,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 17652507984924818270
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.048__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":8899261318263802265,\"name\":\"Cylinder.048__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":38,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 8899261318263802265
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.049__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":4053568558897848022,\"name\":\"Cylinder.049__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":39,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 4053568558897848022
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.040__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":10287511506954764725,\"name\":\"Cube.040__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":40,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 10287511506954764725
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.043__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":17282201234171908734,\"name\":\"Cube.043__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":43,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 17282201234171908734
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.044__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":4046443854867269240,\"name\":\"Cube.044__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":44,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 4046443854867269240
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Plane.015__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":3556312788561599711,\"name\":\"Plane.015__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":46,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 3556312788561599711
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.046__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":9681598264394916975,\"name\":\"Cube.046__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":47,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 9681598264394916975
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.047__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":5954007460930987185,\"name\":\"Cube.047__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":48,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 5954007460930987185
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.050__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":13976944973517950596,\"name\":\"Cylinder.050__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":49,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 13976944973517950596
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.048__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":11773747794721099776,\"name\":\"Cube.048__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":50,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 11773747794721099776
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.052__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":8658416807588673767,\"name\":\"Cylinder.052__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":52,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 8658416807588673767
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.053__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":1408780326172089870,\"name\":\"Cylinder.053__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":53,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 1408780326172089870
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.054__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":5770546893562687736,\"name\":\"Cylinder.054__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":54,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 5770546893562687736
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "BezierCurve.003__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":4304840892446062850,\"name\":\"BezierCurve.003__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":55,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 4304840892446062850
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.049__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":12252550691753014379,\"name\":\"Cube.049__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":56,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 12252550691753014379
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.055__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":15205016568595078957,\"name\":\"Cylinder.055__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":57,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 15205016568595078957
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.053__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7660399244209489026,\"name\":\"Cube.053__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":70,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 7660399244209489026
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cylinder.056__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":10868481984302399618,\"name\":\"Cylinder.056__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":58,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 10868481984302399618
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.014__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":15750859881857342523,\"name\":\"Sphere.014__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":60,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 15750859881857342523
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.015__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":1296470457427051418,\"name\":\"Sphere.015__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":61,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 1296470457427051418
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.016__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":223401858802683463,\"name\":\"Sphere.016__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":62,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 223401858802683463
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.017__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":17639596068859501077,\"name\":\"Sphere.017__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":63,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 17639596068859501077
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.018__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":3506520906560087190,\"name\":\"Sphere.018__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":65,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 3506520906560087190
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.019__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":8490366057403625180,\"name\":\"Sphere.019__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":66,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 8490366057403625180
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.020__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":4950934824032420274,\"name\":\"Sphere.020__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":67,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 4950934824032420274
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.021__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":14760533377022420647,\"name\":\"Sphere.021__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":68,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 14760533377022420647
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.054__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":5034087320804900958,\"name\":\"Cube.054__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":71,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 5034087320804900958
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.023__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7763612952339451110,\"name\":\"Sphere.023__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":73,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 7763612952339451110
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.025__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":9849137942652960030,\"name\":\"Sphere.025__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":75,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 9849137942652960030
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Sphere.026__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":7532503253109218891,\"name\":\"Sphere.026__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":76,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 7532503253109218891
-        },
-        {
-            "m_managed_components": [],
-            "m_name": "Cube.055__0",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":10238930655178065489,\"name\":\"Cube.055__0\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":352715221003086890}",
-                    "m_type_name": "HierarchyComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":2891297215412014030,\"legacy_path\":\"Models/backpack/backpack.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":78,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"flower5\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"position\\\\\\\":[100.0,0.0,0.0],\\\\\\\"rotation\\\\\\\":[0.0,60.0,0.0],\\\\\\\"scale\\\\\\\":[1.399999976158142,1.399999976158142,1.399999976158142]}\\\",\\\"m_type_name\\\":\\\"TransformComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":false}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":12219890862562814895},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sketchfab_model\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":13711488871924405663},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Root\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":13441693524051399899},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Lamp\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":4512630736998211187},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Lamp\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":12379981430632694027},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.001\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":13256715754627351720},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.001_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":0,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":9025715855939632591},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.001_1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":1,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":6916876681634538181},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.001_2\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":2,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":12797359194572476894},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.001_3\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":3,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":10442761605546325973},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.006\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":9988591881874397737},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.006_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":4,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":4406466115416111299},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.006_1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":5,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":5950090665571480019},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.006_2\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":6,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":13433557923644997997},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"lakegrass.006_3\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":7,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":15593046254804336866},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.005\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":668438260803229014},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.005_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":8,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":2230692363832338562},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.005_1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":9,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":1432931367665259591},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.005_2\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":10,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":17552499883363351305},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Cylinder.005_3\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":11,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":4782430850029291913},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"BezierCurve.003\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":12539922942625372501},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"BezierCurve.003_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":12,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":7186697150371770103},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"BezierCurve.003_1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":13,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":14652271315332286228},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"BezierCurve.003_1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":14,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":12873460655140968644},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.000\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":1616877520133377772},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.000_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":15,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":14696665545956115520},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.000_1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":16,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":13034390813985581656},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Plane.000_1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3431419595380209316,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (5)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":17,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":18422607815713077344}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[100.0,0.0,0.0],\"prefab\":{\"asset_id\":4386867412762108551,\"legacy_path\":\"Prefabs/flower_sea/flower5.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,60.0,0.0],\"scale\":[1.399999976158142,1.399999976158142,1.399999976158142]}",
+                    "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 10238930655178065489
+            "m_uuid": 15161041101890480067
         },
         {
             "m_managed_components": [],
-            "m_name": "Marry.obj",
+            "m_name": "flower4",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":16017966687381701946,\"name\":\"Marry.obj\"}",
+                    "m_component": "{\"id\":17153325163000260410,\"name\":\"flower4\"}",
                     "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"child_count\":2,\"parent_uuid\":5942112575528718210}",
-                    "m_type_name": "HierarchyComponent"
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"flower4\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"position\\\\\\\":[0.0,0.0,0.0],\\\\\\\"rotation\\\\\\\":[0.0,200.0,0.0],\\\\\\\"scale\\\\\\\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}\\\",\\\"m_type_name\\\":\\\"TransformComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":false}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":6712646186513632206},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Sketchfab_model\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":151899017192269872},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"4db56306614c41c6a5a2215aaf147b10.fbx\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":14079621515180977193},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"RootNode\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":13251594905154589881},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Uchujin_Main2\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":7457689632536050178},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Uchujin_Main2_Flowers1_0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":3697530432527253767,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/flower (4)/scene.gltf\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":0,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":15238765014642770927}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[0.0,0.0,0.0],\"prefab\":{\"asset_id\":6463099278726967326,\"legacy_path\":\"Prefabs/flower_sea/flower4.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,200.0,0.0],\"scale\":[1.2999999523162842,1.2999999523162842,1.2999999523162842]}",
+                    "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 16017966687381701946
+            "m_uuid": 17153325163000260410
         },
         {
             "m_managed_components": [],
-            "m_name": "文本",
+            "m_name": "Ground",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":14291310177799393303,\"name\":\"文本\"}",
+                    "m_component": "{\"id\":1006,\"name\":\"Ground\"}",
                     "m_type_name": "IDComponent"
                 },
                 {
-                    "m_component": "{\"tag\":\"default\"}",
+                    "m_component": "{\"tag\":\"Ground\"}",
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1000.0,1.0,1000.0]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":16017966687381701946}",
-                    "m_type_name": "HierarchyComponent"
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":13153449413105862248,\"legacy_path\":\"Models/marry/Marry.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_component": "{\"cast_shadow\":false,\"mesh\":{\"asset_id\":7301908342258012671,\"legacy_path\":\"Models/quad/quad.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
                     "m_type_name": "MeshRendererComponent"
                 }
             ],
-            "m_uuid": 14291310177799393303
+            "m_uuid": 1006
         },
         {
             "m_managed_components": [],
-            "m_name": "Body_MC003_Kozakura_Mari_face",
+            "m_name": "grass",
             "m_native_components": [
                 {
-                    "m_component": "{\"id\":11303978661429954569,\"name\":\"Body_MC003_Kozakura_Mari_face\"}",
+                    "m_component": "{\"id\":11230619255950496399,\"name\":\"grass\"}",
                     "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"default\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
-                    "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"child_count\":0,\"parent_uuid\":16017966687381701946}",
-                    "m_type_name": "HierarchyComponent"
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":13153449413105862248,\"legacy_path\":\"Models/marry/Marry.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
+                    "m_component": "{\"overrides\":\"{\\\"m_entities\\\":[{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"grass\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"position\\\\\\\":[200.0,0.0,0.0],\\\\\\\"rotation\\\\\\\":[0.0,120.0,0.0],\\\\\\\"scale\\\\\\\":[1.399999976158142,1.399999976158142,1.399999976158142]}\\\",\\\"m_type_name\\\":\\\"TransformComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":false}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":1203577988595784764},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"RootNode\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":7422264108769478849},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_$AssimpFbx$_RotationPivot\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":15872144498731941370},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_$AssimpFbx$_RotationPivotInverse\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":655143578669380764},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_$AssimpFbx$_ScalingOffset\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":15240592238313786869},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_$AssimpFbx$_ScalingPivot\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":6400534827059870695},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_$AssimpFbx$_Scaling\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":7129418624554404591},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_$AssimpFbx$_ScalingPivotInverse\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":3532044237385479180},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":1558427582086352120},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_Mesh0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":0,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":1062385570916727520},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_Mesh1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":1,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":13506437830299771910},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"Grass1_Mesh2\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":2,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":5456005372523499083},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_$AssimpFbx$_RotationPivot\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":10779464252403523106},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_$AssimpFbx$_RotationPivotInverse\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":5379970755222301103},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_$AssimpFbx$_ScalingOffset\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":9734830635639311302},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_$AssimpFbx$_ScalingPivot\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":6235943278158793349},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_$AssimpFbx$_Scaling\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":5742495861786047631},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_$AssimpFbx$_ScalingPivotInverse\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":18177383145989494139},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":11965077042179606915},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_Mesh0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":3,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":17458797638544437545},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_Mesh1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":4,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":5272403712235565479},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_Mesh2\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":5,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":5500082692704936549},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassLawnAutumn_Mesh3\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":6,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":4224005275909690929},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_$AssimpFbx$_RotationPivot\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":9373883775624953876},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_$AssimpFbx$_RotationPivotInverse\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":14184673878295893050},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_$AssimpFbx$_ScalingOffset\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":8980109009900749631},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_$AssimpFbx$_ScalingPivot\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":16841705281807519434},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_$AssimpFbx$_Scaling\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":5934033175729459722},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_$AssimpFbx$_ScalingPivotInverse\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":533457164544182701},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"}],\\\"m_uuid\\\":7288232893784803915},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_Mesh0\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":7,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":15318534270670378024},{\\\"m_managed_components\\\":[],\\\"m_name\\\":\\\"GrassAutumn3_Mesh1\\\",\\\"m_native_components\\\":[{\\\"m_component\\\":\\\"{\\\\\\\"active_self\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"ActiveComponent\\\"},{\\\"m_component\\\":\\\"{\\\\\\\"cast_shadow\\\\\\\":true,\\\\\\\"mesh\\\\\\\":{\\\\\\\"asset_id\\\\\\\":328711916716111805,\\\\\\\"legacy_path\\\\\\\":\\\\\\\"Models/grass/source/Grass.fbx\\\\\\\",\\\\\\\"sub_object_id\\\\\\\":0},\\\\\\\"mobility\\\\\\\":0,\\\\\\\"override_materials\\\\\\\":[],\\\\\\\"section_index\\\\\\\":8,\\\\\\\"visible\\\\\\\":true}\\\",\\\"m_type_name\\\":\\\"MeshRendererComponent\\\"}],\\\"m_uuid\\\":18256943332121768711}],\\\"m_name\\\":\\\"\\\"}\",\"position\":[200.0,0.0,0.0],\"prefab\":{\"asset_id\":11230952119336906917,\"legacy_path\":\"Prefabs/flower_sea/grass.prefab\",\"sub_object_id\":0},\"rotation\":[0.0,120.0,0.0],\"scale\":[1.399999976158142,1.399999976158142,1.399999976158142]}",
+                    "m_type_name": "PrefabInstanceComponent"
                 }
             ],
-            "m_uuid": 11303978661429954569
+            "m_uuid": 11230619255950496399
         }
     ],
     "m_name": "ModelTest"

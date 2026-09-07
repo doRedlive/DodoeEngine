@@ -1,0 +1,121 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "Marry",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":5942112575528718210,\"name\":\"Marry\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":false}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":1,\"parent_uuid\":0}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 5942112575528718210
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Marry.obj",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":16017966687381701946,\"name\":\"Marry.obj\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":2,\"parent_uuid\":5942112575528718210}",
+                    "m_type_name": "HierarchyComponent"
+                }
+            ],
+            "m_uuid": 16017966687381701946
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "文本",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":14291310177799393303,\"name\":\"文本\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":16017966687381701946}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":13153449413105862248,\"legacy_path\":\"Models/marry/Marry.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 14291310177799393303
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Body_MC003_Kozakura_Mari_face",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":11303978661429954569,\"name\":\"Body_MC003_Kozakura_Mari_face\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,-0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"child_count\":0,\"parent_uuid\":16017966687381701946}",
+                    "m_type_name": "HierarchyComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":13153449413105862248,\"legacy_path\":\"Models/marry/Marry.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 11303978661429954569
+        }
+    ],
+    "m_name": "Marry"
+}

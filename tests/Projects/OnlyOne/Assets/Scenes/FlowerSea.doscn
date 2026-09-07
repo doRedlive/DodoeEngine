@@ -1344,7 +1344,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"face_paths\":[\"textures/Skybox/skybox_irradiance_X+.hdr\",\"textures/Skybox/skybox_irradiance_X-.hdr\",\"textures/Skybox/skybox_irradiance_Y+.hdr\",\"textures/Skybox/skybox_irradiance_Y-.hdr\",\"textures/Skybox/skybox_irradiance_Z+.hdr\",\"textures/Skybox/skybox_irradiance_Z-.hdr\"],\"intensity\":1.0}",
+                    "m_component": "{\"cubemap\":{\"legacy_path\":\"textures/Skybox/skybox_irradiance.docubemap\"},\"intensity\":1.0}",
                     "m_type_name": "SkyLightComponent"
                 }
             ],
