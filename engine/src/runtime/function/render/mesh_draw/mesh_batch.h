@@ -6,6 +6,7 @@
 
 #include "runtime/function/graphics/gfx.h"
 #include "mesh_pass_type.h"
+#include "../render_scene/render_id.h"
 
 namespace dodoe {
 
@@ -60,7 +61,7 @@ namespace dodoe {
     };
 
     class MeshBatch {
-        Identifier m_primitive_id{};
+        RenderId m_primitive_id{};
         UInt32 m_material_index{0};
         MaterialInstance* m_material_instance{nullptr};
         MeshBatchPassMask m_pass_mask{};
@@ -70,7 +71,7 @@ namespace dodoe {
         Vector3f m_bounds_max{0.0f};
 
     public:
-        void setPrimitiveId(const Identifier primitive_id) { m_primitive_id = primitive_id; }
+        void setPrimitiveId(const RenderId primitive_id) { m_primitive_id = primitive_id; }
         void setMaterialIndex(const UInt32 material_index) { m_material_index = material_index; }
         void setMaterialInstance(MaterialInstance* material_instance) { m_material_instance = material_instance; }
         void setRelevant(const MeshPassType pass_type, const Bool relevant) {
@@ -83,7 +84,7 @@ namespace dodoe {
         }
         void addElement(MeshBatchElement element) { m_elements.push_back(std::move(element)); }
 
-        [[nodiscard]] Identifier getPrimitiveId() const { return m_primitive_id; }
+        [[nodiscard]] RenderId getPrimitiveId() const { return m_primitive_id; }
         [[nodiscard]] UInt32 getMaterialIndex() const { return m_material_index; }
         [[nodiscard]] MaterialInstance* getMaterialInstance() const { return m_material_instance; }
         [[nodiscard]] const MeshBatchPassMask& getPassMask() const { return m_pass_mask; }
