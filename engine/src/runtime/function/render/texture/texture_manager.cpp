@@ -305,21 +305,21 @@ namespace dodoe {
         // DO_DEBUG("TextureManager: removed texture {}", static_cast<UInt64>(id));
     }
 
-    void TextureManager::realizeTexture(ResourceCommand& cmd) {
+    Texture2D* TextureManager::realizeTexture(ResourceCommand& cmd) {
         DO_PROFILE_SCOPE_CATEGORY("TextureManager::realizeTexture", "render-command");
         auto texture = std::move(cmd.texture_object);
         if (!texture) {
             DO_WARN("TextureManager::realizeTexture: command has no texture object");
-            return;
+            return nullptr;
         }
         const String texture_path = texture->getPath();
         if (!m_device) {
             DO_ERROR("TextureManager::realizeTexture: graphics device is unavailable for '{}'", texture_path);
-            return;
+            return nullptr;
         }
         if (RenderSettings::IsBindlessActive() && !m_descriptor_table) {
             DO_ERROR("TextureManager::realizeTexture: bindless descriptor table is unavailable for '{}'", texture_path);
-            return;
+            return nullptr;
         }
 
         const UInt32 width = static_cast<UInt32>(texture->getWidth());
@@ -358,11 +358,13 @@ namespace dodoe {
             texture->setDescriptorIndex(desc_idx);
         }
 
-        const InstanceID id = texture->getInstanceID();
+        Texture2D* realized = texture.get();
+        const InstanceID id = realized->getInstanceID();
         m_texture2d_cache.emplace(id, std::move(texture));
         DO_INFO("TextureManager: realized texture '{}' ({}x{}, hdr={}, slot={})",
             texture_path,
             width, height, cmd.texture_is_hdr, slot);
+        return realized;
     }
 
     UInt32 TextureManager::resolveAtlasIndex(const Texture2D* texture) const {

@@ -39,7 +39,7 @@ namespace dodoe {
         void createBrdfLookupTexture();
 
     public:
-        void realizeTexture(ResourceCommand& cmd);
+        [[nodiscard]] Texture2D* realizeTexture(ResourceCommand& cmd);
         [[nodiscard]] UInt32 resolveAtlasIndex(const Texture2D* texture) const;
         [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths, DrawCommandList& cmd_list, FrameStagingAllocator* staging = nullptr);
         [[nodiscard]] TextureCubemap* loadCubemapTexture(const DynamicArray<String>& face_paths);

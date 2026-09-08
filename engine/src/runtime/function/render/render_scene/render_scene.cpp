@@ -440,9 +440,6 @@ namespace dodoe {
             auto* material_instance = const_cast<MaterialInstance*>(
                 material_system->getOrCreateInstance(instance_name, "GBuffer", overrides));
             batch.setMaterialInstance(material_instance);
-            if (material_instance) {
-                batch.setMaterialBindingSet(material_system->getTextureBindingSet(material_instance));
-            }
         }
     }
 

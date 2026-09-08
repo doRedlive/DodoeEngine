@@ -317,6 +317,7 @@ namespace dodoe {
         } else {
             scene->flushUpdates(*frame_ctx.command_list);
         }
+        m_shared_render_service->getMaterialSystem()->prepare();
         DO_PROFILE_MARK("RenderSystem::renderFrame.sceneFlushed", "frame");
 
         DO_PROFILE_MARK("RenderSystem::renderFrame.renderViewTargets", "frame");
@@ -399,10 +400,8 @@ namespace dodoe {
     void RenderSystem::realizeResourceCommand(ResourceCommand& cmd) {
         switch (cmd.type) {
         case ResourceCommandType::CreateTexture:
-            if (cmd.texture_object) {
-                if (auto* texture_manager = m_shared_render_service->getTextureManager()) {
-                    texture_manager->realizeTexture(cmd);
-                }
+            if (auto* texture_manager = m_shared_render_service->getTextureManager()) {
+                (void)texture_manager->realizeTexture(cmd);
             }
             break;
         case ResourceCommandType::CreateBuffer:

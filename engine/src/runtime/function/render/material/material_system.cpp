@@ -157,6 +157,7 @@ namespace dodoe {
             instance.emissive = Vector3f(value.f[0], value.f[1], value.f[2]);
         } else if (param_name.ends_with("_texture")) {
             instance.resolved = false;
+            instance.gpu_ready = false;
             resolveInstance(instance_name);
         }
 
@@ -290,6 +291,9 @@ namespace dodoe {
 
         if (m_texture_manager) {
             inst.textures.clear();
+            inst.texture_descriptor_indices.clear();
+            inst.texture_binding_set = {};
+            inst.gpu_ready = false;
             for (const auto& def : param_defs) {
                 auto param_it = resolved_params.find(def.name);
                 if (param_it == resolved_params.end()) {
@@ -315,9 +319,6 @@ namespace dodoe {
             inst.emissive = Vector3f(it->second.f[0], it->second.f[1], it->second.f[2]);
         }
 
-        inst.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
-        buildTextureBindingSet(inst);
-
         inst.resolved = true;
         ++inst.revision;
         ++m_global_revision;
@@ -335,6 +336,64 @@ namespace dodoe {
             resolveInstance(name);
         }
         DO_INFO("MaterialSystem: resolved {} template(s) and {} instance(s)", m_templates.size(), m_instances.size());
+    }
+
+    void MaterialSystem::prepare() {
+        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::prepare", "frame");
+
+        for (auto& [name, instance] : m_instances) {
+            if (!instance.resolved && !resolveInstance(name)) {
+                instance.gpu_ready = false;
+                continue;
+            }
+
+            Bool changed = false;
+            if (!instance.sampler) {
+                instance.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
+                if (instance.sampler) {
+                    changed = true;
+                }
+            }
+
+            Bool resources_ready = instance.sampler != nullptr;
+            if (instance.texture_descriptor_indices.size() != instance.textures.size()) {
+                instance.texture_descriptor_indices.resize(instance.textures.size(), -1);
+                changed = true;
+            }
+            for (Size_t i = 0; i < instance.textures.size(); ++i) {
+                const Texture2D* texture = instance.textures[i];
+                const GfxTextureHandle gpu_handle = texture ? texture->getGpuHandle() : GfxTextureHandle{};
+                const DescriptorIndex descriptor_index = texture ? texture->getDescriptorIndex() : -1;
+                if (!gpu_handle || !gpu_handle->isGpuReady()) {
+                    resources_ready = false;
+                }
+                if (RenderSettings::IsBindlessActive() && descriptor_index < 0) {
+                    resources_ready = false;
+                }
+                if (instance.texture_descriptor_indices[i] != descriptor_index) {
+                    instance.texture_descriptor_indices[i] = descriptor_index;
+                    changed = true;
+                }
+            }
+
+            const GfxBindingSetHandle previous_binding_set = instance.texture_binding_set;
+            buildTextureBindingSet(instance);
+            if (previous_binding_set.get() != instance.texture_binding_set.get()) {
+                changed = true;
+            }
+            if (!RenderSettings::IsBindlessActive() &&
+                (!instance.texture_binding_set || !instance.texture_binding_set->isGpuReady())) {
+                resources_ready = false;
+            }
+            if (instance.gpu_ready != resources_ready) {
+                instance.gpu_ready = resources_ready;
+                changed = true;
+            }
+            if (changed) {
+                ++instance.revision;
+                ++m_global_revision;
+            }
+        }
     }
 
     Bool MaterialSystem::getResolvedMaterial(
@@ -482,16 +541,11 @@ namespace dodoe {
         return findInstance(name);
     }
 
-    GfxBindingSetHandle MaterialSystem::getTextureBindingSet(const MaterialInstance* instance) {
+    GfxBindingSetHandle MaterialSystem::getTextureBindingSet(const MaterialInstance* instance) const {
         if (!instance) {
             return {};
         }
-        if (instance->texture_binding_set) {
-            return instance->texture_binding_set;
-        }
-        auto& mutable_instance = const_cast<MaterialInstance&>(*instance);
-        buildTextureBindingSet(mutable_instance);
-        return mutable_instance.texture_binding_set;
+        return instance->texture_binding_set;
     }
 
     void MaterialSystem::buildTextureBindingSet(MaterialInstance& instance) {
@@ -546,28 +600,13 @@ namespace dodoe {
         for (auto& [name, inst] : m_instances) {
             if (inst.tpl && inst.tpl->desc.shader_name == shader_name) {
                 inst.resolved = false;
+                inst.gpu_ready = false;
                 inst.revision++;
             }
         }
 
         ++m_global_revision;
         DO_INFO("MaterialSystem: invalidated materials for shader '{}'", shader_name);
-    }
-
-    void MaterialSystem::invalidateForTexture(Texture2D* texture) {
-        DO_PROFILE_SCOPE_CATEGORY("MaterialSystem::invalidateForTexture", "texture");
-        if (!texture) {
-            return;
-        }
-        for (auto& [name, inst] : m_instances) {
-            for (const auto* tex : inst.textures) {
-                if (tex == texture) {
-                    inst.revision++;
-                    break;
-                }
-            }
-        }
-        ++m_global_revision;
     }
 
     void MaterialSystem::invalidateAll() {
@@ -577,6 +616,9 @@ namespace dodoe {
         }
         for (auto& [name, inst] : m_instances) {
             inst.resolved = false;
+            inst.gpu_ready = false;
+            inst.texture_binding_set = {};
+            inst.revision++;
         }
         ++m_global_revision;
         DO_INFO("MaterialSystem: invalidated all material templates and instances");

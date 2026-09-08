@@ -105,6 +105,7 @@ namespace dodoe {
 
         UInt64 revision{0};
         Bool resolved{false};
+        Bool gpu_ready{false};
     };
 
     struct ResolvedMaterial {
@@ -144,7 +145,7 @@ namespace dodoe {
                                                     const String& template_name,
                                                     const UnorderedMap<String, MaterialParamValue>& param_overrides);
 
-        GfxBindingSetHandle getTextureBindingSet(const MaterialInstance* instance);
+        GfxBindingSetHandle getTextureBindingSet(const MaterialInstance* instance) const;
 
         void setInstanceParam(const String& instance_name,
                               const String& param_name,
@@ -153,6 +154,7 @@ namespace dodoe {
         Bool resolveTemplate(const String& name);
         Bool resolveInstance(const String& name);
         void resolveAll();
+        void prepare();
 
         Bool getResolvedMaterial(const String& instance_name,
                                  const UnorderedMap<String, UInt32>& permutation_overrides,
@@ -163,7 +165,6 @@ namespace dodoe {
                                      DynamicArray<UInt8>& out_data) const;
 
         void invalidateForShader(const String& shader_name);
-        void invalidateForTexture(Texture2D* texture);
         void invalidateAll();
 
         const UnorderedMap<String, MaterialTemplate>& getTemplates() const { return m_templates; }

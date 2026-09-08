@@ -63,7 +63,6 @@ namespace dodoe {
         RenderId m_primitive_id{};
         UInt32 m_material_index{0};
         MaterialInstance* m_material_instance{nullptr};
-        GfxBindingSetHandle m_material_binding_set{};
         MeshBatchPassMask m_pass_mask{};
         DynamicArray<MeshBatchElement> m_elements{};
         Bool m_uses_custom_bounds{false};
@@ -74,9 +73,6 @@ namespace dodoe {
         void setPrimitiveId(const RenderId primitive_id) { m_primitive_id = primitive_id; }
         void setMaterialIndex(const UInt32 material_index) { m_material_index = material_index; }
         void setMaterialInstance(MaterialInstance* material_instance) { m_material_instance = material_instance; }
-        void setMaterialBindingSet(GfxBindingSetHandle material_binding_set) {
-            m_material_binding_set = std::move(material_binding_set);
-        }
         void setRelevant(const MeshPassType pass_type, const Bool relevant) {
             m_pass_mask.setRelevant(pass_type, relevant);
         }
@@ -90,7 +86,6 @@ namespace dodoe {
         [[nodiscard]] RenderId getPrimitiveId() const { return m_primitive_id; }
         [[nodiscard]] UInt32 getMaterialIndex() const { return m_material_index; }
         [[nodiscard]] MaterialInstance* getMaterialInstance() const { return m_material_instance; }
-        [[nodiscard]] const GfxBindingSetHandle& getMaterialBindingSet() const { return m_material_binding_set; }
         [[nodiscard]] const MeshBatchPassMask& getPassMask() const { return m_pass_mask; }
         [[nodiscard]] const DynamicArray<MeshBatchElement>& getElements() const { return m_elements; }
         [[nodiscard]] Bool usesCustomBounds() const { return m_uses_custom_bounds; }

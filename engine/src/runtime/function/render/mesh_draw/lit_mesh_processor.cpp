@@ -179,7 +179,7 @@ namespace dodoe {
         MeshDrawCommand& command,
         PrimitiveMeshDrawShaderData& shader_data) const {
         const auto* material = batch.getMaterialInstance();
-        if (!material) {
+        if (!material || !material->gpu_ready) {
             return false;
         }
         const auto& descriptor_indices = material->texture_descriptor_indices;
@@ -203,9 +203,6 @@ namespace dodoe {
             command.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
             command.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
         } else {
-            if (!material->texture_binding_set) {
-                return false;
-            }
             command.setBindingSet(ShaderParameterSet::Material, material->texture_binding_set);
         }
         return true;
