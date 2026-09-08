@@ -25,9 +25,9 @@ namespace dodoe {
 	    void collectPasses(PassCollector& collector) override;
 
 	private:
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	    void setupViewports(SharedRenderService& resources);
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
 	};
 
 } // namespace dodoe

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <cstdint>
 #include <fstream>

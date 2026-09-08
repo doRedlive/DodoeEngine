@@ -49,6 +49,29 @@ namespace dodoe {
 		void recordFree(Size_t size);
 	};
 
+#ifdef DODOE_PERF_ENABLED
+        struct ThreadAllocatorStats {
+			Size_t allocator_count{0};
+			Size_t frame_used_bytes{0};
+			Size_t frame_reserved_bytes{0};
+			Size_t frame_block_count{0};
+			Size_t scratch_used_bytes{0};
+			Size_t scratch_reserved_bytes{0};
+			Size_t scratch_block_count{0};
+        };
+
+        struct PoolRuntimeStats {
+			Bool registered{false};
+			Size_t block_size{0};
+			Size_t block_align{0};
+			Size_t chunk_count{0};
+			Size_t chunk_bytes{0};
+			Size_t capacity_blocks{0};
+			Size_t free_blocks{0};
+			Size_t used_blocks{0};
+        };
+#endif
+
 	struct ThreadAllocator;
 
 	class DODOE_API Memory {
@@ -83,6 +106,10 @@ namespace dodoe {
 
 		static const TierStats& GetStats(AllocTier tier, AllocTag tag = AllocTag::Misc);
 		static Size_t FrameUsedBytesTotal();
+#ifdef DODOE_PERF_ENABLED
+		static ThreadAllocatorStats GetThreadAllocatorStats();
+		static PoolRuntimeStats GetPoolRuntimeStats(AllocTag tag);
+#endif
 
 		static void ResetAllStats();
 		static void DumpAll();
@@ -100,6 +127,15 @@ namespace dodoe {
 	inline constexpr AllocCategory categoryFor() {
 		return AllocCategory::Misc;
 	}
+
+	class DODOE_API MemoryTrackedObject {
+	public:
+		virtual ~MemoryTrackedObject() = default;
+
+		static void operator delete(void* ptr, std::size_t size) noexcept {
+			Memory::DeallocatePersistent(ptr, size, AllocTag::Object);
+		}
+	};
 
 } // namespace dodoe
 

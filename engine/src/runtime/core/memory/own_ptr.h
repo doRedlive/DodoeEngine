@@ -10,17 +10,6 @@
 
 namespace dodoe {
 
-    // OwnPtr: 独占所有权指针，语义同 std::unique_ptr。
-    //
-    // 分配走引擎 Memory（create_own_ptr 直接 AllocatePersistent，入内存统计）；
-    // 销毁用 delete 表达式（释放 + 析构一步完成）。delete 对不完整类型也能编译
-    // 通过（不要求 sizeof / 可见析构），因此 OwnPtr 可以持有不完整类型完成 pimpl
-    // （头文件 forward-declare，.cpp 完整定义）。真正销毁发生在 T 完整的编译单元，
-    // 那里 delete 会解析到 T 重载的 sized operator delete。
-    //
-    // 被 OwnPtr 持有的类型（如 physics_world.cpp 的 PhysicsWorld::Impl）应定义
-    // sized operator delete 并把释放路由回 Memory::DeallocatePersistent，
-    // 否则 delete 默认落全局 ::operator delete，逃过引擎内存统计。
     template <typename T>
     class OwnPtr {
         T* m_ptr{nullptr};

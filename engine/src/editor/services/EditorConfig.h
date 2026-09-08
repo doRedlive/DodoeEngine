@@ -39,9 +39,6 @@ public:
 private:
     EditorConfig() = default;
 
-    dodoe::Json loadJsonFile(const std::string& path) const;
-    void mergeOverride(dodoe::Json& base, const std::string& overrideDir, const std::string& filename);
-
     std::string m_builtinDir;
     std::string m_projectDir;
     std::string m_userDir;

@@ -24,6 +24,8 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/utils/common.h"
 
+#include <cstdlib>
+
 namespace dodoe {
 
 	Bool DeferredRenderer::initialize(const RendererCreateInfo& info) {
@@ -47,6 +49,7 @@ namespace dodoe {
 
 	    // addFeature<TestFeature>();
 
+	    LogEnabledRenderFeatures();
 	    addFeature<GBufferSceneFeature>();
 	    addFeature<ShadowSceneFeature>();
 	    addFeature<SkyboxFeature>();
@@ -58,8 +61,8 @@ namespace dodoe {
 #ifdef DODOE_EDITOR_ENABLED
 	    //addFeature<GizmoFeature>();
 #endif//DODOE_EDITOR_ENABLED
-	    addFeature<ImGuiFeature>();
-	    addFeature<PresentFeature>();
+    if (IsRuntimeImGuiEnabled())    addFeature<ImGuiFeature>();
+    if (IsRenderFeatureEnabled("present"))  addFeature<PresentFeature>();
 
 	    bakePasses();
 

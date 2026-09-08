@@ -9,11 +9,12 @@
 #include "runtime/core/meta/reflection/reflection_register.h"
 
 #include "runtime/core/debug/debugger.h"
-#ifdef DODOE_DEBUG_ENABLED
+#include "runtime/core/debug/debug_switches.h"
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "runtime/service/debug/debug_imgui.h"
 #include "runtime/service/debug/render_graph_panel.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
 #include "runtime/core/layer/layer.h"
 #include "runtime/core/layer/layer_stack.h"
 #include "runtime/core/project/project.h"
@@ -99,21 +100,25 @@ namespace dodoe {
             m_window_manager = WindowManager::Create(window_manager_create_info);
             DO_INFO("WindowManager initialized.");
 
-#ifdef DODOE_DEBUG_ENABLED
-            ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
-#endif//DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+            if (DebugSwitches::IsImguiEnabled()) {
+                ImGuiBuilder::SetupImGui(m_window_manager->getWindow()->getNativeWindow());
+            }
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
 
             m_ui_manager = UIManager::Create({m_window_manager.get()});
             DO_INFO("UIManager initialized.");
 
             m_debugger      = Debugger::Create({});
             DO_INFO("Debugger initialized.");
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
             if (engine_mode != EngineMode::GUI) {
-                DebugImGui::RegisterDebugPanel();
+                if (DebugSwitches::IsImguiEnabled()) {
+                    DebugImGui::RegisterDebugPanel();
+                }
                 RenderGraphPanel::Register();
             }
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
             m_render_system = RenderSystem::Create({m_window_manager.get()});
             DO_ASSERT(m_render_system, "RenderSystem init failed");
             DO_INFO("RenderSystem initialized.");
@@ -198,29 +203,30 @@ namespace dodoe {
         ScriptSystem::Destroy(m_script_system);
         PhysicsSystem::Destroy(m_physics_system);
         AudioSystem::Destroy(m_audio_system);
-
         m_layer_stack.clearLayers();
-
         InputManager::Destroy(m_input_manager);
 
         if (m_render_system) {
             m_render_system->stopRenderThread();
         }
 
-#ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::CleanupImGui();
-#endif//DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        if (DebugSwitches::IsImguiEnabled()) {
+            ImGuiBuilder::CleanupImGui();
+        }
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
         ResourceManager::Self().shutdown();
         RenderSystem::Destroy(m_render_system);
         ServiceManager::Destroy(m_service_manager);
         UIManager::Destroy(m_ui_manager);
-#ifdef DODOE_DEBUG_ENABLED
-        DebugImGui::UnregisterDebugPanel();
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        if (DebugSwitches::IsImguiEnabled()) {
+            DebugImGui::UnregisterDebugPanel();
+        }
         RenderGraphPanel::Unregister();
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
         Debugger::Destroy(m_debugger);
         WindowManager::Destroy(m_window_manager);
-
         TimeSystem::Destroy(m_time_system);
         DO_INFO("Module shutdown completed.");
     }
@@ -260,9 +266,11 @@ namespace dodoe {
 #endif//DODOE_DEBUG_ENABLED
         if (m_debugger) { m_debugger->onRender(); }
         for (auto& layer : m_layer_stack) { layer->renderTick(); }
-#ifdef DODOE_DEBUG_ENABLED
-        ImGuiBuilder::RenderImGui();
-#endif//DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        if (DebugSwitches::IsImguiEnabled()) {
+            ImGuiBuilder::RenderImGui();
+        }
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
 
         m_render_system->submitFrame();
     }

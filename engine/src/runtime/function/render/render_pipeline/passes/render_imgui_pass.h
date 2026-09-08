@@ -7,13 +7,13 @@
 #include "../render_pass.h"
 #include "render_pass_blackboard_keys.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "runtime/function/ui/imgui/imgui_draw_renderer.h"
 #endif
 
 namespace dodoe {
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	class ImGuiPass : public IRenderPass {
 	    GfxBindingLayoutHandle m_binding_layout{};
 	    GfxBindingSetHandle m_font_binding_set{};

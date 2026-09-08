@@ -84,6 +84,9 @@ namespace dodoe {
         void transferFrom(LinearAllocator&& other);
 
         [[nodiscard]] Size_t usedByteSize() const { return m_used_byte_size; }
+#ifdef DODOE_PERF_ENABLED
+        [[nodiscard]] Size_t reservedByteSize() const;
+#endif
         [[nodiscard]] Size_t blockCount() const { return m_blocks.size(); }
         [[nodiscard]] Size_t defaultBlockSize() const { return m_default_block_size; }
 
@@ -110,6 +113,17 @@ namespace dodoe {
         std::mutex m_mutex{};
 
     public:
+#ifdef DODOE_PERF_ENABLED
+        struct RuntimeStats {
+            Size_t block_size{0};
+            Size_t block_align{0};
+            Size_t chunk_count{0};
+            Size_t chunk_bytes{0};
+            Size_t capacity_blocks{0};
+            Size_t free_blocks{0};
+        };
+#endif
+
         PoolAllocator() = default;
         PoolAllocator(Size_t block_size, Size_t block_align);
         ~PoolAllocator() override;
@@ -125,6 +139,9 @@ namespace dodoe {
         [[nodiscard]] const char* name() const override { return "Pool"; }
 
         [[nodiscard]] Size_t blockSize() const { return m_block_size; }
+#ifdef DODOE_PERF_ENABLED
+        [[nodiscard]] RuntimeStats runtimeStats() const;
+#endif
 
     private:
         void refill();

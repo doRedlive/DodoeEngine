@@ -4,6 +4,7 @@
 
 #include "_generated/serializer/application.serializer.gen.h"
 
+#include "runtime/core/config/config_system.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/project/project.h"
 #include "runtime/core/event/event_system.h"
@@ -20,20 +21,6 @@
 namespace dodoe {
 
     namespace {
-
-        FsPath FindConfigFilePath(const ApplicationCommandLineArgs& cli_args) {
-            if (!cli_args.args) return {};
-            for (int i = 0; i < cli_args.argc; ++i) {
-                const StringView arg = cli_args.args[i];
-                if (arg == "--config" && i + 1 < cli_args.argc) {
-                    return FsPath(String(cli_args.args[i + 1]));
-                }
-                if (arg.size() > 9 && arg.substr(0, 9) == "--config=") {
-                    return FsPath(String(arg.substr(9)));
-                }
-            }
-            return {};
-        }
 
         constexpr UInt32 kDefaultSmokeFrames = 60;
 
@@ -63,14 +50,6 @@ namespace dodoe {
         }
 #endif
 
-        FsPath ProjectConfigPath() {
-            const Ref<Project> active = Project::ActiveProject();
-            if (!active) {
-                return {};
-            }
-            return std::filesystem::absolute(Project::ProjectDirectory() / "app_config.json");
-        }
-
     } // namespace
 
     Application* Application::m_instance = nullptr;
@@ -88,6 +67,10 @@ namespace dodoe {
             DO_ERROR("ApplicationSpecification: failed to parse config file {}: {}", file_path.string(), e.what());
             return false;
         }
+        return loadFromJson(data);
+    }
+
+    Bool ApplicationSpecification::loadFromJson(const Json& data) {
         Serializer::read(data, *this);
         return true;
     }
@@ -103,46 +86,22 @@ namespace dodoe {
     }
 
     void Application::loadConfigFile() {
-        const FsPath cli_path = FindConfigFilePath(m_app_spec.cli_args);
-        if (!cli_path.empty()) {
-            if (std::filesystem::exists(cli_path)) {
-                if (m_app_spec.loadFromFile(cli_path)) {
-                    DO_INFO("Loaded application config from: {}", cli_path.string());
-                } else {
-                    DO_ERROR("Failed to load application config from: {}", cli_path.string());
-                }
-            } else {
-                DO_ERROR("Application config not found: {}", cli_path.string());
-            }
+        ConfigSource source{};
+        const Json config_data = ConfigSystem::BuildAppConfig(
+            m_app_spec.cli_args, source, m_app_spec.config_file);
+        if (source.layer == ConfigLayer::Default) {
+            DO_ERROR("Application config not found (no cli/project/engine-builtin config)");
             return;
         }
-
-        DynamicArray<FsPath> candidates;
-        const FsPath project_config = ProjectConfigPath();
-        if (!project_config.empty()) {
-            candidates.push_back(project_config);
-        }
-        if (!m_app_spec.config_file.empty()) {
-            candidates.push_back(m_app_spec.config_file);
-        }
-        candidates.push_back(FileSystem::GetEngineResPath() / "configs" / "app_config.json");
-
-        for (const FsPath& config_path : candidates) {
-            if (!std::filesystem::exists(config_path)) {
-                DO_ERROR("Application config not found: {}", config_path.string());
-                continue;
-            }
-            if (m_app_spec.loadFromFile(config_path)) {
-                DO_INFO("Loaded application config from: {}", config_path.string());
-            } else {
-                DO_ERROR("Failed to load application config from: {}", config_path.string());
-            }
-            return;
-        }
+        m_app_spec.loadFromJson(config_data);
+        m_app_spec.config_file = source.path;
+        DO_INFO("Loaded application config [layer:{}] from: {}",
+            ConfigLayerName(source.layer), source.path.string());
     }
 
     Application::Application(const ApplicationSpecification& spec) {
         DO_PROFILE_SCOPE_CATEGORY("Application::Application", "startup");
+        ConfigSystem::Initialize(spec.cli_args);
         m_app_spec = spec;
 #ifndef DODOE_SHIPPING
         m_smoke_frames = ParseSmokeFrames(spec.cli_args);
@@ -162,6 +121,7 @@ namespace dodoe {
         SystemContext::Destroy(m_context);
         m_instance = nullptr;
         m_running = false;
+        ConfigSystem::Shutdown();
     }
 
     SystemContext& Application::context() {
@@ -218,11 +178,8 @@ namespace dodoe {
         m_context->getLayerStack().detach();
 
         m_context->stopRuntime();
-
         m_context->finalizeModules();
-
         EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
-
         m_context->postShutdown();
     }
 

@@ -17,12 +17,27 @@ namespace dodoe {
         friend class Managed<FrameStagingAllocator, FrameStagingAllocatorCreateInfo>;
 
     public:
+#ifdef DODOE_PERF_ENABLED
+        struct GlobalStats {
+            Size_t allocator_count{0};
+            UInt64 total_bytes{0};
+            UInt64 used_bytes{0};
+            UInt64 peak_used_bytes{0};
+            UInt64 stall_count{0};
+            UInt64 overflow_count{0};
+        };
+#endif
+
         struct Allocation {
             GfxBufferHandle buffer{};
             UInt64 offset{0};
             UInt64 size{0};
             void* mapped_data{nullptr};
         };
+
+#ifdef DODOE_PERF_ENABLED
+        static GlobalStats QueryGlobalStats();
+#endif
 
         Allocation allocate(UInt64 size, UInt64 alignment = 256);
         void reset();
@@ -42,9 +57,17 @@ namespace dodoe {
         UInt8* m_mapped_base{nullptr};
         UInt64 m_ring_size{0};
         UInt64 m_head{0};
+#ifdef DODOE_PERF_ENABLED
+        UInt64 m_peak_used_bytes{0};
+#endif
 
         UInt32 m_stall_count{0};
         UInt32 m_overflow_count{0};
+
+#ifdef DODOE_PERF_ENABLED
+        static std::mutex s_stats_mutex;
+        static std::vector<FrameStagingAllocator*> s_instances;
+#endif
     };
 
 } // namespace dodoe

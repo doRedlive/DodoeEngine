@@ -20,6 +20,19 @@ namespace dodoe {
         ScriptEngine* script_engine;
     };
 
+    struct ScriptGcInfo {
+        ui64 heap_allocated_bytes{0};
+        ui64 heap_size_bytes{0};
+        ui64 memory_load_bytes{0};
+        ui32 gen0_collections{0};
+        ui32 gen1_collections{0};
+        ui32 gen2_collections{0};
+        ui32 assembly_count{0};
+        ui64 object_registry_count{0};
+        ui64 instance_type_cache_count{0};
+        ui64 entity_handle_total{0};
+    };
+
     class DODOE_API ScriptRuntime : public Managed<ScriptRuntime, ScriptRuntimeCreateInfo> {
         friend class Managed<ScriptRuntime, ScriptRuntimeCreateInfo>;
         ScriptEngine* m_script_engine{nullptr};
@@ -42,6 +55,7 @@ namespace dodoe {
 
         bool listToolActions(DynamicArray<String>& out_actions);
         bool invokeToolAction(const String& action_name, String& out_error);
+        bool fetchScriptGcInfo(ScriptGcInfo& out_info);
 
         void loadEntityManagedComponentsFromManaged(uint64_t entity_uuid);
         bool getEntityManagedComponentFields(uint64_t entity_uuid,

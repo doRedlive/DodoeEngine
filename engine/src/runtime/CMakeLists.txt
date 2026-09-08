@@ -65,6 +65,7 @@ target_include_directories(${TARGET_NAME}
 )
 
 target_compile_definitions(${TARGET_NAME} PUBLIC $<$<CONFIG:Debug>:DODOE_DEBUG_ENABLED>)
+target_compile_definitions(${TARGET_NAME} PUBLIC $<$<CONFIG:Debug>:DODOE_IMGUI_ENABLED>)
 target_compile_definitions(${TARGET_NAME} PUBLIC
     $<$<CONFIG:Debug>:DODOE_PERF_ENABLED=1>
     $<$<AND:$<NOT:$<CONFIG:Debug>>,$<BOOL:${DODOE_ENABLE_PERF}>>:DODOE_PERF_ENABLED=1>

@@ -1,6 +1,6 @@
 // do@Redlive
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 
 #include "imgui_draw_renderer.h"
 

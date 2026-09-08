@@ -21,6 +21,16 @@ namespace dodoe {
         void releaseAll();
         void reset();
 
+#ifdef DODOE_PERF_ENABLED
+        struct GlobalStats {
+            Size_t texture_count{0};
+            UInt64 texture_bytes{0};
+            Size_t buffer_count{0};
+            UInt64 buffer_bytes{0};
+        };
+        static GlobalStats QueryGlobalStats();
+#endif
+
     private:
         struct PooledTexture {
             GfxTextureHandle texture{};

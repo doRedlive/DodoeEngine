@@ -14,7 +14,7 @@ namespace sandbox {
     public:
         explicit SandboxApp(const dodoe::ApplicationSpecification& spec)
             : dodoe::Application(spec) {
-                m_context->getLayerStack().pushLayer(new SandboxLayer("Sandbox"));
+                m_context->getLayerStack().pushLayer(DODOE_NEW(SandboxLayer, dodoe::AllocCategory::Object, "Sandbox"));
 
                 if (dodoe::RenderSettings::IsEnableBaselineRender() ||
                     specification().render_settings.enable_baseline_renderer) {

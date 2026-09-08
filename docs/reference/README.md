@@ -15,7 +15,7 @@
 ```text
 reference/
 ├── README.md          本索引
-├── core/              引擎核心:core.md、memory.md、resource.md、tooling.md、code-style.md
+├── core/              引擎核心:core.md、configuration.md、memory.md、resource.md、tooling.md、code-style.md
 ├── rendering/         渲染架构:rhi、cutie-rhi、threading、frame-flow、render-pipeline、
 │                      render-graph、lighting-ibl、resources、shader-system、material-system、
 │                      graphics.md、render.md(模块速查表)

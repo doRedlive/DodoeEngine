@@ -25,7 +25,10 @@ namespace dodoe {
 
     void LayerStack::clearLayers() {
         for (auto* layer : m_layers) {
-            delete layer;
+            if (layer) {
+                layer->~Layer();
+                Memory::DeallocatePersistent(layer, sizeof(Layer), AllocTag::Object);
+            }
         }
         m_layers.clear();
         m_layer_insert_index = 0;
@@ -43,7 +46,10 @@ namespace dodoe {
     void LayerStack::popLayer(Layer *layer) {
         if (const auto it = std::find(m_layers.begin(), m_layers.begin() + m_layer_insert_index, layer);
             it != m_layers.begin() + m_layer_insert_index) {
-                delete *it;
+                if (*it) {
+                    (*it)->~Layer();
+                    Memory::DeallocatePersistent(*it, sizeof(Layer), AllocTag::Object);
+                }
                 m_layers.erase(it);
                 m_layer_insert_index--;
         }
@@ -52,7 +58,10 @@ namespace dodoe {
     void LayerStack::popOverLayer(Layer *layer) {
         if (const auto it = std::find(m_layers.begin() + m_layer_insert_index, m_layers.end(), layer);
             it != m_layers.end()) {
-                delete *it;
+                if (*it) {
+                    (*it)->~Layer();
+                    Memory::DeallocatePersistent(*it, sizeof(Layer), AllocTag::Object);
+                }
                 m_layers.erase(it);
         }
     }

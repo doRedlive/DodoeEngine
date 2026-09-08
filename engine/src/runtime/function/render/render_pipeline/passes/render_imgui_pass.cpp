@@ -10,7 +10,7 @@
 #include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 

@@ -92,7 +92,7 @@ namespace dodoe {
     }
 
     void TaskScheduler::waitAll() {
-        auto promise = std::make_shared<std::promise<void>>();
+        auto promise = std::allocate_shared<std::promise<void>>(StdAllocator<std::promise<void>>{});
         auto future = promise->get_future();
         submit([promise]() {
             promise->set_value();

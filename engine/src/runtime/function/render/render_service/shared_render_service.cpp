@@ -98,4 +98,10 @@ namespace dodoe {
         return tex ? tex->getGpuHandle() : GfxTextureHandle{};
     }
 
+    void SharedRenderService::processDeferredDeletions(UInt64 last_completed_frame) {
+        if (m_deletion_queue) {
+            m_deletion_queue->processCompleted(last_completed_frame);
+        }
+    }
+
 } // dodoe

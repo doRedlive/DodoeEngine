@@ -3,10 +3,23 @@
 #include "script_engine.h"
 #include "runtime/core/utils/json.h"
 
+#include <combaseapi.h>
+
 namespace dodoe {
 
     namespace {
         using json = Json;
+
+        class CoTaskMemResult {
+        public:
+            explicit CoTaskMemResult(void* ptr) : m_ptr(ptr) {}
+            ~CoTaskMemResult() { if (m_ptr) CoTaskMemFree(m_ptr); }
+            CoTaskMemResult(const CoTaskMemResult&) = delete;
+            CoTaskMemResult& operator=(const CoTaskMemResult&) = delete;
+            const char* get() const { return static_cast<const char*>(m_ptr); }
+        private:
+            void* m_ptr{nullptr};
+        };
     }
 
     bool ScriptRuntime::initialize(const ScriptRuntimeCreateInfo &info) {
@@ -41,7 +54,8 @@ namespace dodoe {
         m_call("scan_types", args, &result);
         if (!result) return;
 
-        String json_str((char*)result);
+        const CoTaskMemResult owned_result(result);
+        String json_str(owned_result.get());
 
         try {
             json types = json::parse(json_str);
@@ -103,7 +117,8 @@ namespace dodoe {
         m_call("snapshot", nullptr, &result);
         if (!result) return;
 
-        String json_str((char*)result);
+        const CoTaskMemResult owned_result(result);
+        String json_str(owned_result.get());
         try {
             json snapshot = json::parse(json_str);
             for (auto& [entityStr, fields_obj] : snapshot.items()) {
@@ -159,9 +174,10 @@ namespace dodoe {
 
         void* result = nullptr;
         int rc = m_call("list_tool_actions", nullptr, &result);
-        if (rc != 1 || !result) return false;
-
-        String json_str((char*)result);
+        if (!result) return false;
+        const CoTaskMemResult owned_result(result);
+        if (rc != 1) return false;
+        String json_str(owned_result.get());
         try {
             json actions = json::parse(json_str);
             if (!actions.is_array()) return false;
@@ -183,9 +199,10 @@ namespace dodoe {
         void* args[1] = { (void*)action_name.c_str() };
         void* result = nullptr;
         int rc = m_call("invoke_tool_action", args, &result);
-        if (rc != 1 || !result) return false;
-
-        String json_str((char*)result);
+        if (!result) return false;
+        const CoTaskMemResult owned_result(result);
+        if (rc != 1) return false;
+        String json_str(owned_result.get());
         try {
             json response = json::parse(json_str);
             if (!response.value("ok", false)) {
@@ -199,12 +216,42 @@ namespace dodoe {
         }
     }
 
+    bool ScriptRuntime::fetchScriptGcInfo(ScriptGcInfo& out_info) {
+        out_info = {};
+        if (!m_call) return false;
+
+        void* result = nullptr;
+        const int rc = m_call("gc_info", nullptr, &result);
+        if (rc != 1 || !result) return false;
+
+        const CoTaskMemResult owned_result(result);
+        try {
+            const Json info = Json::parse(owned_result.get());
+            out_info.heap_allocated_bytes = info.value("heapAllocatedBytes", 0ull);
+            out_info.heap_size_bytes = info.value("heapSizeBytes", 0ull);
+            out_info.memory_load_bytes = info.value("memoryLoadBytes", 0ull);
+            out_info.gen0_collections = info.value("gen0Collections", 0u);
+            out_info.gen1_collections = info.value("gen1Collections", 0u);
+            out_info.gen2_collections = info.value("gen2Collections", 0u);
+            out_info.assembly_count = info.value("assemblyCount", 0u);
+            out_info.object_registry_count = info.value("objectRegistryCount", 0ull);
+            out_info.instance_type_cache_count = info.value("instanceTypeCacheCount", 0ull);
+            out_info.entity_handle_total = info.value("entityHandleTotal", 0ull);
+        }
+        catch (const Json::exception& e) {
+            DO_ERROR("ScriptRuntime: failed to parse gc_info: {}", e.what());
+            return false;
+        }
+        return true;
+    }
+
     void ScriptRuntime::loadEntityManagedComponentsFromManaged(uint64_t entity_uuid) {
         if (!m_call) return;
 
         void* args[1] = { &entity_uuid };
         void* result = nullptr;
         m_call("get_entity_components", args, &result);
+        const CoTaskMemResult owned_result(result);
     }
 
     bool ScriptRuntime::getEntityManagedComponentFields(
@@ -215,10 +262,11 @@ namespace dodoe {
         void* args[1] = { &entity_uuid };
         void* result = nullptr;
         const int rc = m_call("get_entity_component_data", args, &result);
-        if (rc <= 0 || !result) return false;
-
+        if (!result) return false;
+        const CoTaskMemResult owned_result(result);
+        if (rc <= 0) return false;
         try {
-            const Json data = Json::parse(static_cast<const char*>(result));
+            const Json data = Json::parse(owned_result.get());
             if (!data.is_object()) return false;
             for (const auto& [type_name, fields] : data.items()) {
                 out_components.emplace_back(String(type_name.c_str()), fields);

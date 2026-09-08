@@ -7,6 +7,7 @@
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/shader/shader_reflection.h"
+#include "runtime/function/render/render_service/binding_set_cache.h"
 
 namespace dodoe {
 
@@ -260,16 +261,10 @@ namespace dodoe {
         }
 
         template <typename ResolveTexFunc, typename ResolveBufFunc>
-        static DynamicArray<GfxBindingSetHandle> createBindingSets(
-            DrawCommandList& command_list,
-            const DynamicArray<GfxBindingLayoutHandle>& layouts,
-            ShaderParamStruct& params,
-            ResolveTexFunc&& resolveTex,
-            ResolveBufFunc&& resolveBuf)
-        {
-            DynamicArray<GfxBindingSetHandle> result;
-
-            StaticArray<GfxBindingSetDesc, 8> set_descs{};
+        static void buildSetDescs(ShaderParamStruct& params,
+                                  StaticArray<GfxBindingSetDesc, 8>& set_descs,
+                                  ResolveTexFunc&& resolveTex,
+                                  ResolveBufFunc&& resolveBuf) {
             params.forEachMember([&](auto& member) {
                 using MemberT = std::decay_t<decltype(member)>;
                 if constexpr (MemberT::kType == ShaderParamType::PushConstants) {
@@ -290,15 +285,28 @@ namespace dodoe {
                     }
                 }
             });
+        }
 
+        template <typename ResolveTexFunc, typename ResolveBufFunc>
+        static DynamicArray<GfxBindingSetHandle> createBindingSets(
+            BindingSetCache& cache,
+            const DynamicArray<GfxBindingLayoutHandle>& layouts,
+            ShaderParamStruct& params,
+            ResolveTexFunc&& resolveTex,
+            ResolveBufFunc&& resolveBuf)
+        {
+            StaticArray<GfxBindingSetDesc, 8> set_descs{};
+            buildSetDescs(params, set_descs, std::forward<ResolveTexFunc>(resolveTex), std::forward<ResolveBufFunc>(resolveBuf));
+
+            DynamicArray<GfxBindingSetHandle> result;
             UInt32 layout_index = 0;
             for (UInt32 set = 0; set < set_descs.size() && layout_index < layouts.size(); ++set) {
                 if (set_descs[set].bindings.empty()) {
                     continue;
                 }
-                auto bs = command_list.createBindingSet(set_descs[set], layouts[layout_index]);
+                auto bs = cache.getOrCreate(set_descs[set], layouts[layout_index], 0);
                 if (!bs) {
-                    DO_ERROR("ShaderBindingReflector::createBindingSets createBindingSet failed for set {}", set);
+                    DO_ERROR("ShaderBindingReflector::createBindingSets getOrCreate failed for set {}", set);
                 }
                 result.push_back(bs);
                 ++layout_index;

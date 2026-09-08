@@ -196,14 +196,13 @@ namespace dodoe {
                         return;
                     }
 
-                    const auto cb_binding_set = command_list.createBindingSet(
-                        GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
-                        m_cb_binding_layout);
-                    const auto sampler_binding_set = command_list.createBindingSet(
-                        GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get())),
-                        m_sampler_binding_layout);
+                    auto* set_cache = shared_service->getBindingSetCache();
+                    const GfxBindingSetDesc cb_desc = GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()));
+                    const auto cb_binding_set = set_cache->getOrCreate(cb_desc, m_cb_binding_layout, 0);
+                    const GfxBindingSetDesc sampler_desc = GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get()));
+                    const auto sampler_binding_set = set_cache->getOrCreate(sampler_desc, m_sampler_binding_layout, 0);
                     if (!cb_binding_set || !sampler_binding_set) {
                         DO_ERROR("SpritePass: failed to create bindless binding sets");
                         return;

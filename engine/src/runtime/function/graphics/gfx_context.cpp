@@ -100,7 +100,7 @@ namespace dodoe {
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(vulkan_backend->getInstance()));
         VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Device(vulkan_backend->getDevice()));
 
-        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Misc);
+        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Object);
 
         vulkan::DeviceDesc device_desc{};
         device_desc.errorCB = m_message_callback;
@@ -146,7 +146,7 @@ namespace dodoe {
         DO_ASSERT(m_backend != nullptr, "GfxContext::initializeOpenGL: failed to create OpenGL backend.");
         auto* opengl_backend = static_cast<OpenGLBackend*>(m_backend.get());
 
-        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Misc);
+        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Object);
 
         opengl::DeviceDesc device_desc{};
         device_desc.messageCallback = m_message_callback;
@@ -173,7 +173,7 @@ namespace dodoe {
         DO_ASSERT(m_backend != nullptr, "GfxContext::initializeD3D12: failed to create D3D12 backend.");
         auto* d3d12_backend = static_cast<D3D12Backend*>(m_backend.get());
 
-        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Misc);
+        m_message_callback = DODOE_NEW(RhiMessageCallback, AllocCategory::Object);
 
         d3d12::DeviceDesc device_desc{};
         device_desc.errorCB = m_message_callback;

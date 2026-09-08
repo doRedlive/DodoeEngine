@@ -4,6 +4,8 @@
 
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/core/thread/wait_group.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/render_service/framebuffer_cache.h"
 
 #include <cstdio>
 
@@ -462,7 +464,24 @@ namespace dodoe {
                 }
             }
 
-            const auto fb = cmd.createFramebuffer(fb_desc);
+            GfxFramebufferHandle fb;
+            if (context.shared_render_service) {
+                auto* fb_cache = context.shared_render_service->getFramebufferCache();
+                if (fb_cache) {
+                    FramebufferCacheKey key{};
+                    for (const auto& tex : fb_desc.colors()) {
+                        key.color_refs.push_back({tex.get(), 0, 0, 0});
+                    }
+                    if (fb_desc.depth()) {
+                        key.depth_ref = {fb_desc.depth().get(), 0, 0, 0};
+                    }
+                    fb = fb_cache->getOrCreate(key, fb_desc);
+                } else {
+                    fb = cmd.createFramebuffer(fb_desc);
+                }
+            } else {
+                fb = cmd.createFramebuffer(fb_desc);
+            }
             pass_context.setFramebuffer(fb);
             pass_context.setFramebufferInfo(GfxFramebufferInfo(fb_desc));
         };

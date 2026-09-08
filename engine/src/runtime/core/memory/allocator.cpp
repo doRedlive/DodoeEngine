@@ -73,6 +73,17 @@ namespace dodoe {
         (void)size;
     }
 
+#ifdef DODOE_PERF_ENABLED
+    Size_t LinearAllocator::reservedByteSize() const {
+        std::lock_guard<std::recursive_mutex> lock(const_cast<std::recursive_mutex&>(m_mutex));
+        Size_t total = 0;
+        for (const auto& block : m_blocks) {
+            total += block.size;
+        }
+        return total;
+    }
+#endif
+
     Bool LinearAllocator::owns(const void* p) const {
         if (!p) return false;
         std::lock_guard<std::recursive_mutex> lock(const_cast<std::recursive_mutex&>(m_mutex));
@@ -282,6 +293,23 @@ namespace dodoe {
         }
         return false;
     }
+
+#ifdef DODOE_PERF_ENABLED
+    PoolAllocator::RuntimeStats PoolAllocator::runtimeStats() const {
+        std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+        RuntimeStats stats;
+        stats.block_size = m_block_size;
+        stats.block_align = m_block_align;
+        stats.chunk_count = m_chunks.size();
+        stats.chunk_bytes = m_chunks.size() * m_chunk_size;
+        const Size_t node_size = std::max(m_block_size, sizeof(FreeNode));
+        stats.capacity_blocks = node_size > 0 ? (stats.chunk_bytes / node_size) : 0;
+        for (FreeNode* node = m_free_list; node != nullptr; node = node->next) {
+            ++stats.free_blocks;
+        }
+        return stats;
+    }
+#endif
 
     void PoolAllocator::refill() {
         const Size_t node_size = std::max(m_block_size, sizeof(FreeNode));

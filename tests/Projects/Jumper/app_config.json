@@ -7,6 +7,9 @@
     "render_settings": {
         "api": 3,
         "pipeline": 5,
-        "present_mode": 1
+        "present_mode": 1,
+        "enable_single_thread": false,
+        "enable_baseline_renderer": true,
+        "windowless": false
     }
 }

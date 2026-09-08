@@ -59,10 +59,10 @@ namespace dodoe {
     Bool InputManager::initialize(const InputManagerInitInfo& init_info) {
         m_has_focus_ = !init_info.host_mode;
         if (!init_info.host_mode && init_info.native_window) {
-            m_backend_ = new InputBackendGlfw();
+            m_backend_ = DODOE_NEW(InputBackendGlfw, AllocCategory::Object);
             m_backend_->initialize(m_raw_state_, init_info.native_window);
         } else {
-            m_backend_ = new InputBackendQt();
+            m_backend_ = DODOE_NEW(InputBackendQt, AllocCategory::Object);
             m_backend_->initialize(m_raw_state_, init_info.native_window);
         }
 

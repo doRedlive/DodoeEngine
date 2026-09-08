@@ -96,7 +96,23 @@ namespace dodoe {
     class PhysicsWorld : public Managed<PhysicsWorld, PhysicsWorldCreateInfo> {
         friend class Managed<PhysicsWorld, PhysicsWorldCreateInfo>;
     public:
+#ifdef DODOE_PERF_ENABLED
+        struct MemoryStats {
+            Size_t world_count{0};
+            UInt64 temp_allocator_bytes{0};
+            UInt64 peak_temp_allocator_bytes{0};
+            Size_t body_count{0};
+            Size_t peak_body_count{0};
+            Size_t shape_count{0};
+            Size_t peak_shape_count{0};
+        };
+#endif
+
         ~PhysicsWorld();
+
+#ifdef DODOE_PERF_ENABLED
+        static MemoryStats QueryMemoryStats();
+#endif
 
         void step(float dt);
         void takeContactEvents(DynamicArray<ContactEvent>& out_events);

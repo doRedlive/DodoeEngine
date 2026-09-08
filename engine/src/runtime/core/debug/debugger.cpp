@@ -2,7 +2,7 @@
 
 #include "debugger.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 #endif
@@ -51,7 +51,7 @@ namespace dodoe {
     }
 
     void Debugger::onImGuiRender() {
-#if defined(DODOE_DEBUG_ENABLED) && !defined(DODOE_EDITOR_ENABLED)
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED) && !defined(DODOE_EDITOR_ENABLED)
         for (const auto& pair : m_imguiRenderFuncs) {
             if (pair.second) {
                 pair.second();

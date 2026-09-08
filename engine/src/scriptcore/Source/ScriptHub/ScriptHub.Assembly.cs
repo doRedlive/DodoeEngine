@@ -83,6 +83,7 @@ public static partial class ScriptHub
     private static unsafe int ResetState(void** args)
     {
         ObjectRegistry.Clear();
+        EntityComponentHandles.Clear();
         InstanceTypeCache.Clear();
         SystemTypeCache.Clear();
         SystemDispatcher.InvalidateCache();

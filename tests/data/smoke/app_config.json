@@ -3,5 +3,13 @@
     "app_mode": 2,
     "width": 640,
     "height": 480,
-    "window_resizeable": false
+    "window_resizeable": false,
+    "render_settings": {
+        "api": 3,
+        "pipeline": 3,
+        "present_mode": 1,
+        "enable_single_thread": false,
+        "enable_baseline_renderer": true,
+        "windowless": false
+    }
 }

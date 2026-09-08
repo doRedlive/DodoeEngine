@@ -20,6 +20,15 @@ namespace dodoe {
         void free();
 
         bool isValid() const { return pixels != nullptr; }
+
+#ifdef DODOE_PERF_ENABLED
+        struct MemoryStats {
+            Size_t blob_count{0};
+            UInt64 pixel_bytes{0};
+            UInt64 peak_pixel_bytes{0};
+        };
+        static MemoryStats QueryMemoryStats();
+#endif
     };
 
 } // dodoe

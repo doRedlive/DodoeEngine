@@ -8,7 +8,7 @@
 namespace dodoe {
 
     Bool AudioSystem::initialize(const AudioSystemCreateInfo& create_info) {
-        m_backend = new AudioBackendMiniaudio();
+        m_backend = DODOE_NEW(AudioBackendMiniaudio, AllocCategory::Object);
         AudioBackendInitInfo backend_info;
         backend_info.master_volume = create_info.master_volume;
         if (!m_backend->initialize(backend_info)) {

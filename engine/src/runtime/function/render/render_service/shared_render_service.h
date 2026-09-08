@@ -58,6 +58,7 @@ namespace dodoe {
         [[nodiscard]] MaterialSystem* getMaterialSystem() const { return m_material_system.get(); }
         [[nodiscard]] MeshPassRegistry* getMeshPassRegistry() const { return m_mesh_pass_registry.get(); }
         [[nodiscard]] GfxTextureHandle resolveTextureBySlot(UInt32 slot) const;
+        void processDeferredDeletions(UInt64 last_completed_frame);
 
     private:
         Bool initialize(const SharedRenderServiceCreateInfo& info);

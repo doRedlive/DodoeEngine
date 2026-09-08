@@ -7,6 +7,7 @@
 #include "render_pass.h"
 #include "pass_collector.h"
 #include "render_feature/render_feature.h"
+#include "runtime/core/debug/debug_switches.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_view/render_view_family.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -15,6 +16,18 @@
 #include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
+
+    inline Bool IsRenderFeatureEnabled(const char* name) {
+        return DebugSwitches::IsRenderFeatureEnabled(name);
+    }
+
+    inline Bool IsRuntimeImGuiEnabled() {
+        return DebugSwitches::IsImguiEnabled();
+    }
+
+    inline void LogEnabledRenderFeatures() {
+        DO_INFO("DebugSwitches: [{}]", DebugSwitches::BuildSummary());
+    }
 
     class FrameStagingAllocator;
     class RenderGraphTransientPool;

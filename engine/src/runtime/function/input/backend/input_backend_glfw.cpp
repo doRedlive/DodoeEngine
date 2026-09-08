@@ -6,7 +6,7 @@
 #include "runtime/core/event/event_system.h"
 #include "GLFW/glfw3.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #endif
@@ -24,7 +24,7 @@ namespace dodoe {
         s_active = this;
 
         glfwSetKeyCallback(window, [](GLFWwindow* w, int key, int scancode, int action, int mods) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
             if (ImGui::GetCurrentContext()) ImGui_ImplGlfw_KeyCallback(w, key, scancode, action, mods);
 #endif
             auto* self = static_cast<InputBackendGlfw*>(glfwGetWindowUserPointer(w));
@@ -50,13 +50,13 @@ namespace dodoe {
         });
 
         glfwSetCharCallback(window, [](GLFWwindow* w, unsigned int keycode) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
             if (ImGui::GetCurrentContext()) ImGui_ImplGlfw_CharCallback(w, keycode);
 #endif
         });
 
         glfwSetMouseButtonCallback(window, [](GLFWwindow* w, int button, int action, int mods) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
             if (ImGui::GetCurrentContext()) ImGui_ImplGlfw_MouseButtonCallback(w, button, action, mods);
 #endif
             auto* self = static_cast<InputBackendGlfw*>(glfwGetWindowUserPointer(w));
@@ -93,7 +93,7 @@ namespace dodoe {
         });
 
         glfwSetCursorPosCallback(window, [](GLFWwindow* w, double x_pos, double y_pos) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
             if (ImGui::GetCurrentContext()) ImGui_ImplGlfw_CursorPosCallback(w, x_pos, y_pos);
 #endif
             auto* self = static_cast<InputBackendGlfw*>(glfwGetWindowUserPointer(w));

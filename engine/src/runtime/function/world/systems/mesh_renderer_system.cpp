@@ -27,7 +27,6 @@ namespace dodoe {
     void MeshRendererSystem::update(Registry& reg, float dt) {
         (void)dt;
         if (!GetRenderSystem()) { return; }
-
         propagateHierarchyDirty(reg);
 
         auto mesh_view = reg.view<IDComponent, TransformComponent, MeshRendererComponent>();

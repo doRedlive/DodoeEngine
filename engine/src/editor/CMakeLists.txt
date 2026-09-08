@@ -30,7 +30,10 @@ set(EDITOR_CORE_SOURCES
 )
 add_library(EditorCore STATIC ${EDITOR_CORE_SOURCES})
 target_link_libraries(EditorCore PUBLIC nlohmann_json::nlohmann_json)
-target_include_directories(EditorCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(EditorCore PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ENGINE_ROOT_DIR}/src/shared
+)
 set_target_properties(EditorCore PROPERTIES FOLDER "Engine/Editor")
 
 set(EDITOR_SERVICES_SOURCES
@@ -41,7 +44,10 @@ set(EDITOR_SERVICES_SOURCES
 )
 add_library(EditorServices STATIC ${EDITOR_SERVICES_SOURCES})
 target_link_libraries(EditorServices PUBLIC nlohmann_json::nlohmann_json)
-target_include_directories(EditorServices PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(EditorServices PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ENGINE_ROOT_DIR}/src/shared
+)
 set_target_properties(EditorServices PROPERTIES FOLDER "Engine/Editor")
 
 set(EDITOR_NULL_BACKEND_SOURCES

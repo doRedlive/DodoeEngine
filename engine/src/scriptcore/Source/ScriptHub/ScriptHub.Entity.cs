@@ -9,6 +9,19 @@ using System.Text.Json;
 
 public static partial class ScriptHub
 {
+    private static readonly Dictionary<ulong, List<long>> EntityComponentHandles = new();
+
+    private static void RemoveEntityComponentHandles(ulong entityId)
+    {
+        if (!EntityComponentHandles.TryGetValue(entityId, out var trackedHandles)) return;
+        foreach (var handle in trackedHandles)
+        {
+            ObjectRegistry.Remove(handle);
+            InstanceTypeCache.Remove(handle);
+        }
+        EntityComponentHandles.Remove(entityId);
+    }
+
     private static Type FindComponentType(string fullName)
     {
         if (string.IsNullOrWhiteSpace(fullName)) return null;
@@ -41,6 +54,19 @@ public static partial class ScriptHub
         if (World.Current is null)
             return 0;
 
+        if (!EntityComponentHandles.TryGetValue(entityId, out var trackedHandles))
+        {
+            trackedHandles = new List<long>();
+            EntityComponentHandles[entityId] = trackedHandles;
+        }
+
+        foreach (var oldHandle in trackedHandles)
+        {
+            ObjectRegistry.Remove(oldHandle);
+            InstanceTypeCache.Remove(oldHandle);
+        }
+        trackedHandles.Clear();
+
         var handles = new List<long>();
         foreach (var type in World.Current.GetManagedComponentTypes(entityId))
         {
@@ -52,6 +78,7 @@ public static partial class ScriptHub
             var handle = NextHandle++;
             ObjectRegistry[handle] = comp;
             InstanceTypeCache[handle] = comp.GetType();
+            trackedHandles.Add(handle);
             handles.Add(handle);
         }
 
@@ -159,6 +186,19 @@ public static partial class ScriptHub
 
         var closed = generic.MakeGenericMethod(type);
         closed.Invoke(entity, null);
+
+        if (EntityComponentHandles.TryGetValue(entityId, out var trackedHandles))
+        {
+            for (var i = trackedHandles.Count - 1; i >= 0; i--)
+            {
+                if (InstanceTypeCache.TryGetValue(trackedHandles[i], out var trackedType) && trackedType == type)
+                {
+                    ObjectRegistry.Remove(trackedHandles[i]);
+                    InstanceTypeCache.Remove(trackedHandles[i]);
+                    trackedHandles.RemoveAt(i);
+                }
+            }
+        }
         return 1;
     }
 
@@ -166,6 +206,7 @@ public static partial class ScriptHub
     {
         var entityId = *(ulong*)args[0];
         World.Current?.RemoveEntityLocal(entityId);
+        RemoveEntityComponentHandles(entityId);
         return 1;
     }
 }

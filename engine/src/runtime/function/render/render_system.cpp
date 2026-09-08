@@ -297,6 +297,7 @@ namespace dodoe {
 #endif
 
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
+        m_shared_render_service->processDeferredDeletions(frame_ctx.frame_number);
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
 
         auto* time_sys = GetTimeSystem();

@@ -38,19 +38,21 @@ namespace dodoe {
         DO_ASSERT(m_shared_render_service->getShaderLibrary() != nullptr, "ForwardRenderer requires shader library");
         DO_ASSERT(m_shared_render_service->getTextureManager() != nullptr, "ForwardRenderer requires texture manager");
 
+        LogEnabledRenderFeatures();
+
         addFeature<ForwardLitSceneFeature>();
         addFeature<TransparentSceneFeature>();
         addFeature<ShadowSceneFeature>();
         addFeature<SkyboxFeature>();
 
-        addFeature<PostProcessFeature>();
-        addFeature<SpriteFeature>();
-        addFeature<UIFeature>();
+        if (IsRenderFeatureEnabled("postprocess")) addFeature<PostProcessFeature>();
+        if (IsRenderFeatureEnabled("sprite"))      addFeature<SpriteFeature>();
+        if (IsRenderFeatureEnabled("ui"))          addFeature<UIFeature>();
 #ifdef DODOE_EDITOR_ENABLED
-        addFeature<GizmoFeature>();
+        if (IsRenderFeatureEnabled("gizmo"))       addFeature<GizmoFeature>();
 #endif//DODOE_EDITOR_ENABLED
-        addFeature<ImGuiFeature>();
-        addFeature<PresentFeature>();
+        if (IsRuntimeImGuiEnabled())               addFeature<ImGuiFeature>();
+        if (IsRenderFeatureEnabled("present"))     addFeature<PresentFeature>();
 
         bakePasses();
 

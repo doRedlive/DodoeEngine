@@ -37,6 +37,7 @@ public static partial class ScriptHub
             "unload_app"            => UnloadApp(args),
             "reset_state"           => ResetState(args),
             "gc_collect"            => CollectAndWait(args),
+            "gc_info"               => GcInfo(args, result),
             "get_entity_components" => GetEntityComponents(args, result),
             "get_entity_component_data" => GetEntityComponentData(args, result),
             "set_entity_component_data" => SetEntityComponentData(args),

@@ -10,6 +10,17 @@ namespace dodoe {
 
     class DODOE_API AudioClip : public Object {
     public:
+#ifdef DODOE_PERF_ENABLED
+        struct MemoryStats {
+            Size_t clip_count{0};
+            UInt64 pcm_bytes{0};
+            UInt64 peak_pcm_bytes{0};
+            Size_t reader_count{0};
+            UInt64 reader_bytes{0};
+            UInt64 peak_reader_bytes{0};
+        };
+#endif
+
         AudioClip();
         explicit AudioClip(const ObjectID& id);
         ~AudioClip() override;
@@ -30,6 +41,10 @@ namespace dodoe {
 
         void* acquireReader() const;
         void releaseReader(void* reader) const;
+
+#ifdef DODOE_PERF_ENABLED
+        static MemoryStats QueryMemoryStats();
+#endif
 
     private:
         struct Impl;

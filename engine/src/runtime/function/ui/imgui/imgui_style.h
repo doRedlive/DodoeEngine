@@ -8,6 +8,8 @@
 
 #include "GLFW/glfw3.h"
 
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+
 namespace dodoe {
 
     inline Float ResolveImGuiScale(GLFWwindow* window) {
@@ -134,3 +136,5 @@ namespace dodoe {
     }
 
 } // namespace dodoe
+
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED

@@ -13,7 +13,7 @@
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/graphics/draw_command_list.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "imgui/imgui.h"
 #include "runtime/function/ui/imgui/imgui_builder.h"
 #include "runtime/function/ui/imgui/imgui_draw_renderer.h"
@@ -23,7 +23,7 @@
 namespace dodoe {
 
 	void ImGuiFeature::initialize(SharedRenderService& resources) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	    ImGuiIO& io = ImGui::GetIO();
 	    unsigned char* pixels = nullptr;
 	    int width = 0;
@@ -73,7 +73,7 @@ namespace dodoe {
 	            layout_generation);
 	    }
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	    if (auto* input_layout_cache = resources.getInputLayoutCache()) {
 	        const DynamicArray<GfxVertexAttributeDesc> attributes = {
 	            GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RG32_FLOAT).setOffset(0).setElementStride(sizeof(ImDrawVert)),
@@ -87,7 +87,7 @@ namespace dodoe {
 #endif//DODOE_DEBUG_ENABLED
 	}
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	void ImGuiFeature::setupViewports(SharedRenderService& resources) {
 	    if (RenderSettings::IsEnableBaselineRender()) {
 	        DO_INFO("ImGui multi-viewport disabled for baseline renderer");
@@ -136,7 +136,7 @@ namespace dodoe {
 	}
 
 	void ImGuiFeature::collectPasses(PassCollector& collector) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	    collector.addPass<ImGuiPass>(m_binding_layout, m_font_binding_set, m_input_layout, m_font_texture, m_imgui_cb);
 #endif//DODOE_DEBUG_ENABLED
 	}

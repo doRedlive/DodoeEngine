@@ -65,6 +65,7 @@ namespace dodoe {
         FsPath config_file{};
 
         DODOE_API Bool loadFromFile(const FsPath& file_path);
+        DODOE_API Bool loadFromJson(const Json& data);
         DODOE_API Bool saveToFile(const FsPath& file_path) const;
     };
 

@@ -13,6 +13,8 @@
 #include "runtime/core/meta/serializer/serializer.h"
 #include "runtime/core/async/task_scheduler.h"
 
+#include "runtime/core/debug/debug_switches.h"
+
 #include "systems/animator_system.h"
 #include "systems/audio_play_system.h"
 #include "systems/camera_system.h"
@@ -253,6 +255,8 @@ namespace dodoe {
         m_name = create_info.name;
         const auto app_mode = Application::Self().getAppMode();
         if (app_mode != AppMode::Game && app_mode != AppMode::Server) {
+            m_state = WorldState::Simulation;
+        } else if (app_mode == AppMode::Server && DebugSwitches::IsServerSimulationEnabled()) {
             m_state = WorldState::Simulation;
         }
         if (!setupSystems()) return false;

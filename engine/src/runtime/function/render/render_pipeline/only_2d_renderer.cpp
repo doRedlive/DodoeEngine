@@ -24,14 +24,15 @@ namespace dodoe {
         m_gfx_context = info.gfx_context;
         m_shared_render_service = info.shared_render_service;
 
-        addFeature<SpriteFeature>();
-        addFeature<UIFeature>();
-        addFeature<PostProcess2DFeature>();
+        LogEnabledRenderFeatures();
+        if (IsRenderFeatureEnabled("sprite"))   addFeature<SpriteFeature>();
+        if (IsRenderFeatureEnabled("ui"))       addFeature<UIFeature>();
+        if (IsRenderFeatureEnabled("postprocess2d")) addFeature<PostProcess2DFeature>();
 #ifdef DODOE_EDITOR_ENABLED
-	    addFeature<GizmoFeature>();
+	    if (IsRenderFeatureEnabled("gizmo"))    addFeature<GizmoFeature>();
 #endif//DODOE_EDITOR_ENABLED
-        addFeature<ImGuiFeature>();
-        addFeature<PresentFeature>();
+        if (IsRuntimeImGuiEnabled())            addFeature<ImGuiFeature>();
+        if (IsRenderFeatureEnabled("present"))  addFeature<PresentFeature>();
 
         bakePasses();
 

@@ -14,6 +14,7 @@
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/shader/global_samplers.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
@@ -113,10 +114,10 @@ namespace dodoe {
                 const auto binding_layouts = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayouts();
 
                 auto binding_sets = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSets(
-                    command_list, binding_layouts, shader_params,
+                    *ctx.getSharedRenderService()->getBindingSetCache(),
+                    binding_layouts, shader_params,
                     [&](auto h) { return ctx.resolveTexture(h); },
-                    [&](auto h) { return ctx.resolveBuffer(h); }
-                );
+                    [&](auto h) { return ctx.resolveBuffer(h); });
 
                 if (binding_sets.empty()) {
                     DO_ERROR("SkyboxPass: Failed to create binding set");

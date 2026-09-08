@@ -57,10 +57,10 @@ namespace dodoe {
                 const auto binding_layouts = ShaderBindingReflector<PostProcessPassShaderParams>::getOrCreateLayouts();
 
                 auto binding_sets = ShaderBindingReflector<PostProcessPassShaderParams>::createBindingSets(
-                    command_list, binding_layouts, shader_params,
+                    *ctx.getSharedRenderService()->getBindingSetCache(),
+                    binding_layouts, shader_params,
                     [&](auto h) { return ctx.resolveTexture(h); },
-                    [&](auto h) { return ctx.resolveBuffer(h); }
-                );
+                    [&](auto h) { return ctx.resolveBuffer(h); });
 
                 if (binding_sets.empty()) {
                     DO_ERROR("PostProcessPass: Failed to create binding set");

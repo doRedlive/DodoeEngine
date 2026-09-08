@@ -10,6 +10,8 @@
 
 #include <atomic>
 
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+
 namespace dodoe {
 
     class DebugImGui {
@@ -57,3 +59,5 @@ namespace dodoe {
     };
 
 } // dodoe
+
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED

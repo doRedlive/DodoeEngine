@@ -4,6 +4,8 @@
 #include "thread_allocator.h"
 #include "runtime/core/log/log_system.h"
 
+#include <mimalloc.h>
+
 #if defined(DODOE_TRACY_ENABLED) && DODOE_TRACY_ENABLED
 #include <tracy/Tracy.hpp>
 namespace {
@@ -40,6 +42,9 @@ namespace dodoe {
 	}
 
 	void Memory::Init() {
+		mi_option_set(mi_option_purge_delay, 0);
+		mi_option_enable(mi_option_purge_decommits);
+		mi_option_set(mi_option_abandoned_page_purge, 1);
 	}
 
 	void Memory::Shutdown() {
@@ -194,6 +199,45 @@ namespace dodoe {
 		return total;
 	}
 
+#ifdef DODOE_PERF_ENABLED
+	ThreadAllocatorStats Memory::GetThreadAllocatorStats() {
+		ThreadAllocatorStats stats;
+		std::lock_guard<std::mutex> lock(s_thread_allocators_mutex);
+		stats.allocator_count = s_thread_allocators.size();
+		for (auto* ta : s_thread_allocators) {
+			stats.frame_used_bytes += ta->frame.usedByteSize();
+			stats.frame_reserved_bytes += ta->frame.reservedByteSize();
+			stats.frame_block_count += ta->frame.blockCount();
+			stats.scratch_used_bytes += ta->scratch.usedByteSize();
+			stats.scratch_reserved_bytes += ta->scratch.reservedByteSize();
+			stats.scratch_block_count += ta->scratch.blockCount();
+		}
+		return stats;
+	}
+
+	PoolRuntimeStats Memory::GetPoolRuntimeStats(AllocTag tag) {
+		PoolRuntimeStats stats;
+		const int idx = static_cast<int>(tag);
+		std::lock_guard<std::mutex> lock(s_pools_mutex);
+		PoolAllocator* pool = s_pools[idx];
+		if (!pool) {
+				return stats;
+		}
+		const auto runtime = pool->runtimeStats();
+		stats.registered = true;
+		stats.block_size = runtime.block_size;
+		stats.block_align = runtime.block_align;
+		stats.chunk_count = runtime.chunk_count;
+		stats.chunk_bytes = runtime.chunk_bytes;
+		stats.capacity_blocks = runtime.capacity_blocks;
+		stats.free_blocks = runtime.free_blocks;
+		stats.used_blocks = runtime.capacity_blocks >= runtime.free_blocks
+				? (runtime.capacity_blocks - runtime.free_blocks)
+				: 0;
+		return stats;
+	}
+#endif
+
 	void Memory::ResetAllStats() {
 		for (int t = 0; t < static_cast<int>(AllocTier::Count); ++t) {
 			for (int g = 0; g < static_cast<int>(AllocTag::Count); ++g) {
@@ -259,6 +303,12 @@ namespace dodoe {
 		std::lock_guard<std::mutex> lock(s_thread_allocators_mutex);
 		for (auto* ta : s_thread_allocators) {
 			ta->frame.reset();
+		}
+		for (int g = 0; g < static_cast<int>(AllocTag::Count); ++g) {
+			auto& stats = s_tier_stats[static_cast<int>(AllocTier::Frame)][g];
+			stats.current_bytes.store(0, std::memory_order_relaxed);
+			stats.alloc_count.store(0, std::memory_order_relaxed);
+			stats.dealloc_count.store(0, std::memory_order_relaxed);
 		}
 		AdvanceFrameEpoch();
 	}

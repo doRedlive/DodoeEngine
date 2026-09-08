@@ -74,7 +74,7 @@ namespace dodoe {
             DO_ASSERT(!type_name.empty(), "Serializer::read_pointer empty $typeName");
 
             if ('*' == type_name[0]) {
-                instance = new T;
+                instance = DODOE_NEW(T, AllocCategory::Object);
                 read(json_context.at("$context"), *instance);
             }
             else {

@@ -1,12 +1,18 @@
+// do@Redlive
+
 #include "debug_imgui.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 
 #include "imgui/imgui.h"
 
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/memory/memory.h"
 #include "runtime/core/meta/component_db.h"
+#include "runtime/function/audio/audio_clip.h"
+#include "runtime/function/physics/physics_world.h"
+#include "runtime/function/render/render_frame/frame_staging_allocator.h"
+#include "runtime/function/render/render_graph/render_graph_transient_pool.h"
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/time/time_system.h"
 #include "runtime/function/world/components/hierarchy_component.h"
@@ -14,6 +20,7 @@
 #include "runtime/function/world/world.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/material/material_system.h"
+#include "runtime/resource/parser/texture_blob.h"
 
 #include <mimalloc.h>
 
@@ -32,6 +39,7 @@
 #include <functional>
 #include <iterator>
 #include <map>
+#include <thread>
 
 namespace dodoe {
 
@@ -192,12 +200,26 @@ namespace dodoe {
             auto* runtime = script_system ? script_system->getScriptRuntime() : nullptr;
             if (!runtime) return;
 
-            DynamicArray<Pair<String, Json>> components;
-            if (!runtime->getEntityManagedComponentFields(static_cast<uint64_t>(entity.uuid()), components)) {
-                return;
+            static uint64_t s_cached_uuid = 0;
+            static DynamicArray<Pair<String, Json>> s_cached_components;
+            static Bool s_cache_valid = false;
+
+            const uint64_t entity_uuid = static_cast<uint64_t>(entity.uuid());
+            if (entity_uuid != s_cached_uuid || !s_cache_valid) {
+                s_cached_uuid = entity_uuid;
+                s_cache_valid = runtime->getEntityManagedComponentFields(entity_uuid, s_cached_components);
             }
 
-            for (auto& [type_name, fields] : components) {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextDisabled("Managed");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Refresh##managed")) {
+                s_cache_valid = runtime->getEntityManagedComponentFields(entity_uuid, s_cached_components);
+            }
+
+            if (!s_cache_valid) return;
+
+            for (auto& [type_name, fields] : s_cached_components) {
                 ImGui::PushID(type_name.c_str());
                 String title = type_name;
                 const auto dot = title.find_last_of('.');
@@ -206,8 +228,7 @@ namespace dodoe {
                 }
                 if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (DrawJsonValue(fields, false)) {
-                        runtime->setEntityManagedComponentFields(
-                            static_cast<uint64_t>(entity.uuid()), type_name, fields);
+                        runtime->setEntityManagedComponentFields(entity_uuid, type_name, fields);
                     }
                 }
                 ImGui::PopID();
@@ -277,6 +298,27 @@ namespace dodoe {
         }
 
 #ifdef DO_PLATFORM_WINDOWS
+        UInt64 QueryProcessHeapInUse() {
+            UInt64 in_use = 0;
+            DWORD heap_count = GetProcessHeaps(0, nullptr);
+            if (heap_count > 0 && heap_count < 1024) {
+                std::array<HANDLE, 1024> heaps{};
+                if (GetProcessHeaps(heap_count, heaps.data()) == heap_count) {
+                    for (DWORD i = 0; i < heap_count; ++i) {
+                        HeapLock(heaps[i]);
+                        PROCESS_HEAP_ENTRY entry{};
+                        while (HeapWalk(heaps[i], &entry)) {
+                            if (entry.wFlags & PROCESS_HEAP_ENTRY_BUSY) {
+                                in_use += entry.cbData;
+                            }
+                        }
+                        HeapUnlock(heaps[i]);
+                    }
+                }
+            }
+            return in_use;
+        }
+
         void RenderProcessMemorySection() {
             PROCESS_MEMORY_COUNTERS_EX pmc{};
             pmc.cb = sizeof(pmc);
@@ -305,7 +347,7 @@ namespace dodoe {
             ImGui::Text("Page Faults:      %llu (+%llu)",
                         static_cast<unsigned long long>(page_faults),
                         static_cast<unsigned long long>(s_page_fault_delta));
-            ImGui::Text("Commit Charge:    %s / %s",
+            ImGui::Text("System Commit:   %s / %s",
                         FormatBytes(commit_charge).c_str(),
                         FormatBytes(mem_status.ullTotalPageFile).c_str());
 
@@ -315,24 +357,7 @@ namespace dodoe {
             s_heap_walk_elapsed += ImGui::GetIO().DeltaTime;
             if (s_heap_walk_elapsed >= kHeapWalkInterval) {
                 s_heap_walk_elapsed = 0.0f;
-                UInt64 in_use = 0;
-                DWORD heap_count = GetProcessHeaps(0, nullptr);
-                if (heap_count > 0 && heap_count < 1024) {
-                    std::array<HANDLE, 1024> heaps{};
-                    if (GetProcessHeaps(heap_count, heaps.data()) == heap_count) {
-                        for (DWORD i = 0; i < heap_count; ++i) {
-                            HeapLock(heaps[i]);
-                            PROCESS_HEAP_ENTRY entry{};
-                            while (HeapWalk(heaps[i], &entry)) {
-                                if (entry.wFlags & PROCESS_HEAP_ENTRY_BUSY) {
-                                    in_use += entry.cbData;
-                                }
-                            }
-                            HeapUnlock(heaps[i]);
-                        }
-                    }
-                }
-                s_heap_in_use = in_use;
+                s_heap_in_use = QueryProcessHeapInUse();
             }
             ImGui::Text("Process Heaps In-Use: %s", FormatBytes(s_heap_in_use).c_str());
         }
@@ -345,8 +370,10 @@ namespace dodoe {
         struct MimallocStats {
             Size_t live_allocated = 0;
             Size_t committed = 0;
+            Size_t peak_commit = 0;
             Size_t reserved = 0;
             Size_t area_count = 0;
+            Size_t heap_committed = 0;
         };
 
         struct MimallocVisitArg {
@@ -354,9 +381,13 @@ namespace dodoe {
             const void* areas[256];
         };
 
-        bool MimallocAreaVisit(const mi_heap_t*, const mi_heap_area_t* area, void*, size_t block_size, void* arg) {
+        bool MimallocLiveVisit(const mi_heap_t*, const mi_heap_area_t*, void*, size_t block_size, void* arg) {
+            static_cast<MimallocVisitArg*>(arg)->stats.live_allocated += block_size;
+            return true;
+        }
+
+        bool MimallocAreaVisit(const mi_heap_t*, const mi_heap_area_t* area, void*, size_t, void* arg) {
             MimallocVisitArg* a = static_cast<MimallocVisitArg*>(arg);
-            a->stats.live_allocated += block_size;
             for (Size_t i = 0; i < a->stats.area_count; ++i) {
                 if (a->areas[i] == area) {
                     return true;
@@ -364,24 +395,47 @@ namespace dodoe {
             }
             if (a->stats.area_count < 256) {
                 a->areas[a->stats.area_count++] = area;
-                a->stats.committed += area->committed;
                 a->stats.reserved += area->reserved;
+                a->stats.heap_committed += area->committed;
             }
             return true;
         }
 
+        void MiStatsCaptureFn(const char* msg, void* arg) {
+            static_cast<String*>(arg)->append(msg);
+        }
+
         MimallocStats QueryMimallocStats() {
-            MimallocVisitArg arg{};
-            mi_heap_visit_blocks(mi_heap_get_default(), false, &MimallocAreaVisit, &arg);
-            mi_heap_visit_blocks(mi_heap_get_backing(), false, &MimallocAreaVisit, &arg);
-            return arg.stats;
+            MimallocStats stats;
+
+            MimallocVisitArg live{};
+            mi_heap_visit_blocks(mi_heap_get_default(), false, &MimallocLiveVisit, &live);
+            mi_heap_visit_blocks(mi_heap_get_backing(), false, &MimallocLiveVisit, &live);
+            stats.live_allocated = live.stats.live_allocated;
+
+            MimallocVisitArg areas{};
+            mi_heap_visit_blocks(mi_heap_get_default(), true, &MimallocAreaVisit, &areas);
+            mi_heap_visit_blocks(mi_heap_get_backing(), true, &MimallocAreaVisit, &areas);
+            stats.reserved = areas.stats.reserved;
+            stats.area_count = areas.stats.area_count;
+            stats.heap_committed = areas.stats.heap_committed;
+
+            size_t elapsed_msecs = 0, user_msecs = 0, system_msecs = 0;
+            size_t current_rss = 0, peak_rss = 0, current_commit = 0, peak_commit = 0, page_faults = 0;
+            mi_process_info(&elapsed_msecs, &user_msecs, &system_msecs,
+                            &current_rss, &peak_rss, &current_commit, &peak_commit, &page_faults);
+            stats.committed = current_commit;
+            stats.peak_commit = peak_commit;
+            return stats;
         }
 
         void RenderMimallocSection() {
             const MimallocStats stats = QueryMimallocStats();
 
             ImGui::Text("Live Allocated:  %s", FormatBytes(stats.live_allocated).c_str());
-            ImGui::Text("Committed:       %s", FormatBytes(stats.committed).c_str());
+            ImGui::Text("Heap Committed:  %s", FormatBytes(stats.heap_committed).c_str());
+            ImGui::Text("OS Commit:       %s", FormatBytes(stats.committed).c_str());
+            ImGui::Text("Peak Commit:     %s", FormatBytes(stats.peak_commit).c_str());
             ImGui::Text("Reserved:        %s", FormatBytes(stats.reserved).c_str());
             ImGui::Text("Arena Areas:     %llu", static_cast<unsigned long long>(stats.area_count));
 
@@ -447,9 +501,56 @@ namespace dodoe {
                 ImGui::EndTable();
             }
 
-            ImGui::Text("Frame Used (Thread Allocators): %s",
-                        FormatBytes(Memory::FrameUsedBytesTotal()).c_str());
-            ImGui::TextDisabled("Frame/Scratch current counts outstanding allocs (ring buffer, not reclaimed per frame)");
+            const ThreadAllocatorStats thread_stats = Memory::GetThreadAllocatorStats();
+            ImGui::Separator();
+            ImGui::TextUnformatted("Thread Allocators");
+            ImGui::Text("Allocators:        %llu", static_cast<unsigned long long>(thread_stats.allocator_count));
+            ImGui::Text("Frame Used:        %s", FormatBytes(thread_stats.frame_used_bytes).c_str());
+            ImGui::Text("Frame Reserved:    %s (%llu blocks)",
+                        FormatBytes(thread_stats.frame_reserved_bytes).c_str(),
+                        static_cast<unsigned long long>(thread_stats.frame_block_count));
+            ImGui::Text("Scratch Used:      %s", FormatBytes(thread_stats.scratch_used_bytes).c_str());
+            ImGui::Text("Scratch Reserved:  %s (%llu blocks)",
+                        FormatBytes(thread_stats.scratch_reserved_bytes).c_str(),
+                        static_cast<unsigned long long>(thread_stats.scratch_block_count));
+            ImGui::TextDisabled("Tier current bytes are logical allocations; reserved bytes show allocator backing capacity");
+
+            ImGui::Separator();
+            ImGui::TextUnformatted("Pools");
+            if (ImGui::BeginTable("engine_pools", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                ImGui::TableSetupColumn("Tag");
+                ImGui::TableSetupColumn("Block");
+                ImGui::TableSetupColumn("Align");
+                ImGui::TableSetupColumn("Chunks");
+                ImGui::TableSetupColumn("Reserved");
+                ImGui::TableSetupColumn("Used");
+                ImGui::TableSetupColumn("Free");
+                ImGui::TableHeadersRow();
+
+                for (int g = 0; g < kTagCount; ++g) {
+                    const PoolRuntimeStats pool_stats = Memory::GetPoolRuntimeStats(static_cast<AllocTag>(g));
+                    if (!pool_stats.registered) {
+                        continue;
+                    }
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted(kTagNames[g]);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%llu", static_cast<unsigned long long>(pool_stats.block_size));
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%llu", static_cast<unsigned long long>(pool_stats.block_align));
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%llu", static_cast<unsigned long long>(pool_stats.chunk_count));
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("%s", FormatBytes(pool_stats.chunk_bytes).c_str());
+                    ImGui::TableSetColumnIndex(5);
+                    ImGui::Text("%llu", static_cast<unsigned long long>(pool_stats.used_blocks));
+                    ImGui::TableSetColumnIndex(6);
+                    ImGui::Text("%llu", static_cast<unsigned long long>(pool_stats.free_blocks));
+                }
+                ImGui::EndTable();
+            }
 
             if (ImGui::Button("Reset Stats")) {
                 Memory::ResetAllStats();
@@ -458,6 +559,43 @@ namespace dodoe {
             if (ImGui::Button("Dump All")) {
                 Memory::DumpAll();
             }
+        }
+
+        void RenderFrameStagingSection() {
+            const auto stats = FrameStagingAllocator::QueryGlobalStats();
+            ImGui::Text("Allocators:   %llu", static_cast<unsigned long long>(stats.allocator_count));
+            ImGui::Text("Used Bytes:   %s", FormatBytes(static_cast<Size_t>(stats.used_bytes)).c_str());
+            ImGui::Text("Total Bytes:  %s", FormatBytes(static_cast<Size_t>(stats.total_bytes)).c_str());
+            ImGui::Text("Peak Used:    %s", FormatBytes(static_cast<Size_t>(stats.peak_used_bytes)).c_str());
+            ImGui::Text("Stalls:       %llu", static_cast<unsigned long long>(stats.stall_count));
+            ImGui::Text("Overflows:    %llu", static_cast<unsigned long long>(stats.overflow_count));
+        }
+
+        void RenderAudioSection() {
+            const auto stats = AudioClip::QueryMemoryStats();
+            ImGui::Text("Clips:        %llu", static_cast<unsigned long long>(stats.clip_count));
+            ImGui::Text("PCM Bytes:    %s", FormatBytes(static_cast<Size_t>(stats.pcm_bytes)).c_str());
+            ImGui::Text("Peak PCM:     %s", FormatBytes(static_cast<Size_t>(stats.peak_pcm_bytes)).c_str());
+            ImGui::Text("Readers:      %llu", static_cast<unsigned long long>(stats.reader_count));
+            ImGui::Text("Reader Bytes: %s", FormatBytes(static_cast<Size_t>(stats.reader_bytes)).c_str());
+        }
+
+        void RenderPhysicsSection() {
+            const auto stats = PhysicsWorld::QueryMemoryStats();
+            ImGui::Text("Worlds:              %llu", static_cast<unsigned long long>(stats.world_count));
+            ImGui::Text("Temp Allocator:      %s", FormatBytes(static_cast<Size_t>(stats.temp_allocator_bytes)).c_str());
+            ImGui::Text("Peak Temp Allocator: %s", FormatBytes(static_cast<Size_t>(stats.peak_temp_allocator_bytes)).c_str());
+            ImGui::Text("Bodies:              %llu", static_cast<unsigned long long>(stats.body_count));
+            ImGui::Text("Peak Bodies:         %llu", static_cast<unsigned long long>(stats.peak_body_count));
+            ImGui::Text("Shapes:              %llu", static_cast<unsigned long long>(stats.shape_count));
+            ImGui::Text("Peak Shapes:         %llu", static_cast<unsigned long long>(stats.peak_shape_count));
+        }
+
+        void RenderTextureSection() {
+            const auto stats = TextureBlob::QueryMemoryStats();
+            ImGui::Text("Blobs:        %llu", static_cast<unsigned long long>(stats.blob_count));
+            ImGui::Text("Pixel Bytes:  %s", FormatBytes(static_cast<Size_t>(stats.pixel_bytes)).c_str());
+            ImGui::Text("Peak Pixels:  %s", FormatBytes(static_cast<Size_t>(stats.peak_pixel_bytes)).c_str());
         }
 
         static Bool s_csv_export_ok = false;
@@ -487,6 +625,16 @@ namespace dodoe {
                 return false;
             }
 
+            String mi_global_text;
+            mi_stats_print_out(&MiStatsCaptureFn, &mi_global_text);
+            const FsPath mi_text_path = std::filesystem::current_path()
+                / ("memory_mi_stats_" + sampled_at + ".txt").c_str();
+            std::ofstream mi_text_out(mi_text_path);
+            if (mi_text_out.is_open()) {
+                mi_text_out << mi_global_text;
+                mi_text_out.close();
+            }
+
             fout << "sampled_at,category,key,current_bytes,peak_bytes,allocs,frees\n";
 
 #ifdef DO_PLATFORM_WINDOWS
@@ -503,14 +651,17 @@ namespace dodoe {
             MEMORYSTATUSEX mem_status{};
             mem_status.dwLength = sizeof(mem_status);
             if (GlobalMemoryStatusEx(&mem_status)) {
-                fout << sampled_at << ",Process,commit_charge,"
+                fout << sampled_at << ",Process,system_commit_charge,"
                      << (mem_status.ullTotalPageFile - mem_status.ullAvailPageFile) << ",,,\n";
             }
+            fout << sampled_at << ",Process,heap_in_use," << QueryProcessHeapInUse() << ",,,\n";
 #endif
 
             const MimallocStats mi_stats = QueryMimallocStats();
             fout << sampled_at << ",Mimalloc,live_allocated," << mi_stats.live_allocated << ",,,\n";
+            fout << sampled_at << ",Mimalloc,heap_committed," << mi_stats.heap_committed << ",,,\n";
             fout << sampled_at << ",Mimalloc,committed," << mi_stats.committed << ",,,\n";
+            fout << sampled_at << ",Mimalloc,peak_commit," << mi_stats.peak_commit << ",,,\n";
             fout << sampled_at << ",Mimalloc,reserved," << mi_stats.reserved << ",,,\n";
             fout << sampled_at << ",Mimalloc,area_count," << mi_stats.area_count << ",,,\n";
 
@@ -536,6 +687,68 @@ namespace dodoe {
             }
             fout << sampled_at << ",Engine,total," << total_current << ',' << total_peak << ",,\n";
             fout << sampled_at << ",Engine,frame_used," << Memory::FrameUsedBytesTotal() << ",,,\n";
+            const ThreadAllocatorStats thread_stats = Memory::GetThreadAllocatorStats();
+            fout << sampled_at << ",Engine,thread_allocators," << thread_stats.allocator_count << ",,,\n";
+            fout << sampled_at << ",Engine,thread_frame_reserved," << thread_stats.frame_reserved_bytes << ",,,\n";
+            fout << sampled_at << ",Engine,thread_scratch_reserved," << thread_stats.scratch_reserved_bytes << ",,,\n";
+            for (int g = 0; g < kTagCount; ++g) {
+                const PoolRuntimeStats pool_stats = Memory::GetPoolRuntimeStats(static_cast<AllocTag>(g));
+                if (!pool_stats.registered) {
+                    continue;
+                }
+                fout << sampled_at << ",Pools," << kTagNames[g] << "_chunk_bytes," << pool_stats.chunk_bytes << ",,,\n";
+                fout << sampled_at << ",Pools," << kTagNames[g] << "_used_blocks," << pool_stats.used_blocks << ",,,\n";
+                fout << sampled_at << ",Pools," << kTagNames[g] << "_free_blocks," << pool_stats.free_blocks << ",,,\n";
+            }
+
+            const auto frame_staging_stats = FrameStagingAllocator::QueryGlobalStats();
+            fout << sampled_at << ",FrameStaging,total_bytes," << frame_staging_stats.total_bytes << ",,,\n";
+            fout << sampled_at << ",FrameStaging,used_bytes," << frame_staging_stats.used_bytes << ",,,\n";
+            fout << sampled_at << ",FrameStaging,peak_used_bytes," << frame_staging_stats.peak_used_bytes << ",,,\n";
+            fout << sampled_at << ",FrameStaging,stalls," << frame_staging_stats.stall_count << ",,,\n";
+            fout << sampled_at << ",FrameStaging,overflows," << frame_staging_stats.overflow_count << ",,,\n";
+
+            const auto transient_pool_stats = RenderGraphTransientPool::QueryGlobalStats();
+            fout << sampled_at << ",TransientPool,texture_count," << transient_pool_stats.texture_count << ",,,\n";
+            fout << sampled_at << ",TransientPool,texture_bytes," << transient_pool_stats.texture_bytes << ",,,\n";
+            fout << sampled_at << ",TransientPool,buffer_count," << transient_pool_stats.buffer_count << ",,,\n";
+            fout << sampled_at << ",TransientPool,buffer_bytes," << transient_pool_stats.buffer_bytes << ",,,\n";
+
+            const auto audio_stats = AudioClip::QueryMemoryStats();
+            fout << sampled_at << ",Audio,clip_count," << audio_stats.clip_count << ",,,\n";
+            fout << sampled_at << ",Audio,pcm_bytes," << audio_stats.pcm_bytes << ",,,\n";
+            fout << sampled_at << ",Audio,peak_pcm_bytes," << audio_stats.peak_pcm_bytes << ",,,\n";
+            fout << sampled_at << ",Audio,reader_count," << audio_stats.reader_count << ",,,\n";
+            fout << sampled_at << ",Audio,reader_bytes," << audio_stats.reader_bytes << ",,,\n";
+
+            const auto physics_stats = PhysicsWorld::QueryMemoryStats();
+            fout << sampled_at << ",Physics,world_count," << physics_stats.world_count << ",,,\n";
+            fout << sampled_at << ",Physics,temp_allocator_bytes," << physics_stats.temp_allocator_bytes << ",,,\n";
+            fout << sampled_at << ",Physics,body_count," << physics_stats.body_count << ",,,\n";
+            fout << sampled_at << ",Physics,shape_count," << physics_stats.shape_count << ",,,\n";
+
+            const auto texture_stats = TextureBlob::QueryMemoryStats();
+            fout << sampled_at << ",TextureBlob,blob_count," << texture_stats.blob_count << ",,,\n";
+            fout << sampled_at << ",TextureBlob,pixel_bytes," << texture_stats.pixel_bytes << ",,,\n";
+            fout << sampled_at << ",TextureBlob,peak_pixel_bytes," << texture_stats.peak_pixel_bytes << ",,,\n";
+
+            if (auto* script_system = GetScriptSystem()) {
+                if (auto* script_runtime = script_system->getScriptRuntime()) {
+                    ScriptGcInfo gc_info;
+                    if (script_runtime->fetchScriptGcInfo(gc_info)) {
+                        fout << sampled_at << ",ScriptGC,heap_allocated," << gc_info.heap_allocated_bytes << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,heap_size," << gc_info.heap_size_bytes << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,memory_load," << gc_info.memory_load_bytes << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,gen0_collections," << gc_info.gen0_collections << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,gen1_collections," << gc_info.gen1_collections << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,gen2_collections," << gc_info.gen2_collections << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,assembly_count," << gc_info.assembly_count << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,object_registry_count," << gc_info.object_registry_count << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,instance_type_cache_count," << gc_info.instance_type_cache_count << ",,,\n";
+                        fout << sampled_at << ",ScriptGC,entity_handle_total," << gc_info.entity_handle_total << ",,,\n";
+                    }
+                }
+            }
 
             fout.close();
             s_csv_export_path = out_path.string();
@@ -565,7 +778,21 @@ namespace dodoe {
                 RenderMimallocSection();
             }
 
-            RenderEngineMemorySection();
+            if (ImGui::CollapsingHeader("Engine Allocators", ImGuiTreeNodeFlags_DefaultOpen)) {
+                RenderEngineMemorySection();
+            }
+            if (ImGui::CollapsingHeader("Frame Staging", ImGuiTreeNodeFlags_DefaultOpen)) {
+                RenderFrameStagingSection();
+            }
+            if (ImGui::CollapsingHeader("Audio", ImGuiTreeNodeFlags_DefaultOpen)) {
+                RenderAudioSection();
+            }
+            if (ImGui::CollapsingHeader("Physics3D", ImGuiTreeNodeFlags_DefaultOpen)) {
+                RenderPhysicsSection();
+            }
+            if (ImGui::CollapsingHeader("TextureBlob", ImGuiTreeNodeFlags_DefaultOpen)) {
+                RenderTextureSection();
+            }
 
             ImGui::End();
         }
@@ -782,6 +1009,34 @@ namespace dodoe {
         }
         ImGui::Separator();
         RenderToolActions();
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Launch Switches");
+        ImGui::TextDisabled("--dswitch=<key,...> / --dswitch-off=<key,...>");
+        {
+            Bool any_explicit = false;
+            DebugSwitches::ForEachToken([&any_explicit](const DebugSwitches::Token& token) {
+                any_explicit = true;
+            });
+            for (Size_t i = 0; i < ConfigSwitchRegistry::Count(); ++i) {
+                const ConfigSwitchInfo& info = ConfigSwitchRegistry::At(i);
+                const Bool on = DebugSwitches::IsEnabled(info.key);
+                const ImVec4 color = on
+                    ? ImVec4(0.45f, 0.90f, 0.50f, 1.0f)
+                    : ImVec4(0.95f, 0.45f, 0.45f, 1.0f);
+                ImGui::TextColored(color, "%c %s - %s",
+                    on ? '+' : '-', info.key.data(), info.description.data());
+            }
+            if (any_explicit) {
+                ImGui::Separator();
+                DebugSwitches::ForEachToken([](const DebugSwitches::Token& token) {
+                    const ImVec4 color = token.on
+                        ? ImVec4(0.45f, 0.90f, 0.50f, 1.0f)
+                        : ImVec4(0.95f, 0.45f, 0.45f, 1.0f);
+                    ImGui::TextColored(color, "%c %s (explicit)", token.on ? '+' : '-', token.key.c_str());
+                });
+            }
+        }
         ImGui::End();
     }
 

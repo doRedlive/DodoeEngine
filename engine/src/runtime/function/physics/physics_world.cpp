@@ -48,6 +48,26 @@
 
 namespace dodoe {
 
+#ifdef DODOE_PERF_ENABLED
+    namespace {
+        std::atomic<Size_t> s_physics_world_count{0};
+        std::atomic<UInt64> s_physics_temp_allocator_bytes{0};
+        std::atomic<UInt64> s_physics_temp_allocator_peak{0};
+        std::atomic<Size_t> s_physics_body_count{0};
+        std::atomic<Size_t> s_physics_body_peak{0};
+        std::atomic<Size_t> s_physics_shape_count{0};
+        std::atomic<Size_t> s_physics_shape_peak{0};
+
+        template <typename T>
+        void RecordPeak(std::atomic<T>& peak, const T current) {
+            T expected = peak.load(std::memory_order_relaxed);
+            while (current > expected &&
+                   !peak.compare_exchange_weak(expected, current, std::memory_order_relaxed, std::memory_order_relaxed)) {
+            }
+        }
+    }
+#endif
+
     namespace {
 
         Vector3f ToVector3(const JPH::Vec3& v) {
@@ -232,14 +252,7 @@ namespace dodoe {
 
         private:
             PhysicsDebugger* m_debugger{nullptr};
-
-        public:
-            static void operator delete(void* ptr, std::size_t size) noexcept;
         };
-
-        void JoltDebugRendererImpl::operator delete(void* ptr, const std::size_t size) noexcept {
-            Memory::DeallocatePersistent(ptr, size, AllocTag::Object);
-        }
 
         struct LogicalBody {
             RigidBodyType type{RigidBodyType::Static};
@@ -302,7 +315,7 @@ namespace dodoe {
         float accumulator{0.0f};
         int last_step_count{0};
         Scope<PhysicsDebugger> debugger{nullptr};
-        OwnPtr<JoltDebugRendererImpl> debug_renderer{nullptr};
+        Scope<JoltDebugRendererImpl> debug_renderer{nullptr};
         UnorderedMap<ui64, LogicalBody> bodies;
         UnorderedMap<ui64, JPH::BodyID> shape_bodies;
         UnorderedMap<ui64, ui64> shape_to_body;
@@ -316,17 +329,25 @@ namespace dodoe {
             fixed_dt = info.fixed_dt;
             max_sub_steps = info.max_sub_steps;
         }
-
-        static void operator delete(void* ptr, std::size_t size) noexcept;
     };
-
-    void PhysicsWorld::Impl::operator delete(void* ptr, const std::size_t size) noexcept {
-        Memory::DeallocatePersistent(ptr, size, AllocTag::Object);
-    }
 
     PhysicsWorld::~PhysicsWorld() {
         shutdown();
     }
+
+#ifdef DODOE_PERF_ENABLED
+    PhysicsWorld::MemoryStats PhysicsWorld::QueryMemoryStats() {
+        MemoryStats stats;
+        stats.world_count = s_physics_world_count.load(std::memory_order_relaxed);
+        stats.temp_allocator_bytes = s_physics_temp_allocator_bytes.load(std::memory_order_relaxed);
+        stats.peak_temp_allocator_bytes = s_physics_temp_allocator_peak.load(std::memory_order_relaxed);
+        stats.body_count = s_physics_body_count.load(std::memory_order_relaxed);
+        stats.peak_body_count = s_physics_body_peak.load(std::memory_order_relaxed);
+        stats.shape_count = s_physics_shape_count.load(std::memory_order_relaxed);
+        stats.peak_shape_count = s_physics_shape_peak.load(std::memory_order_relaxed);
+        return stats;
+    }
+#endif
 
     bool PhysicsWorld::initialize(const PhysicsWorldCreateInfo& create_info) {
         DO_PROFILE_SCOPE_CATEGORY("PhysicsWorld::initialize", "startup");
@@ -338,7 +359,13 @@ namespace dodoe {
         m_impl->system.SetGravity(JPH::Vec3(create_info.gravity.x, create_info.gravity.y, create_info.gravity.z));
         m_impl->system.SetContactListener(&m_impl->contact_listener);
         m_impl->debugger = PhysicsDebugger::Create({});
-        m_impl->debug_renderer = create_own_ptr<JoltDebugRendererImpl>(m_impl->debugger.get());
+        m_impl->debug_renderer = create_scope<JoltDebugRendererImpl>(m_impl->debugger.get());
+#ifdef DODOE_PERF_ENABLED
+        s_physics_world_count.fetch_add(1, std::memory_order_relaxed);
+        const UInt64 temp_bytes = s_physics_temp_allocator_bytes.fetch_add(16ull * 1024ull * 1024ull, std::memory_order_relaxed)
+            + (16ull * 1024ull * 1024ull);
+        RecordPeak(s_physics_temp_allocator_peak, temp_bytes);
+#endif
         return true;
     }
 
@@ -347,6 +374,10 @@ namespace dodoe {
         if (!m_impl) {
             return;
         }
+#ifdef DODOE_PERF_ENABLED
+        const Size_t body_count = m_impl->bodies.size();
+        const Size_t shape_count = m_impl->shape_bodies.size();
+#endif
         JPH::BodyInterface& bi = m_impl->system.GetBodyInterface();
         for (auto& [handle, body] : m_impl->bodies) {
             (void)handle;
@@ -363,6 +394,16 @@ namespace dodoe {
         m_impl->debug_renderer.reset();
         PhysicsDebugger::Destroy(m_impl->debugger);
         m_impl.reset();
+#ifdef DODOE_PERF_ENABLED
+        if (body_count > 0) {
+            s_physics_body_count.fetch_sub(body_count, std::memory_order_relaxed);
+        }
+        if (shape_count > 0) {
+            s_physics_shape_count.fetch_sub(shape_count, std::memory_order_relaxed);
+        }
+        s_physics_world_count.fetch_sub(1, std::memory_order_relaxed);
+        s_physics_temp_allocator_bytes.fetch_sub(16ull * 1024ull * 1024ull, std::memory_order_relaxed);
+#endif
         JPH::UnregisterTypes();
         delete JPH::Factory::sInstance;
         JPH::Factory::sInstance = nullptr;
@@ -415,11 +456,15 @@ namespace dodoe {
         lb.is_bullet = info.is_bullet;
         lb.mass_override = info.mass_override;
         lb.user_data = info.user_data;
-        auto* filter = new EntityGroupFilter();
+        auto* filter = DODOE_NEW(EntityGroupFilter, AllocCategory::Object);
         filter->m_entity_key = info.user_data;
         lb.group_filter = filter;
         const ui64 handle = m_impl->next_body_handle++;
         m_impl->bodies.emplace(handle, std::move(lb));
+#ifdef DODOE_PERF_ENABLED
+        const Size_t body_count = s_physics_body_count.fetch_add(1, std::memory_order_relaxed) + 1;
+        RecordPeak(s_physics_body_peak, body_count);
+#endif
         return handle;
     }
 
@@ -438,16 +483,28 @@ namespace dodoe {
             std::lock_guard<std::mutex> lock(m_impl->contact_data.mutex);
             m_impl->contact_data.body_shape_user_data.erase(id.GetIndexAndSequenceNumber());
         }
+#ifdef DODOE_PERF_ENABLED
+        Size_t removed_shapes = 0;
+#endif
         for (auto sit = m_impl->shape_bodies.begin(); sit != m_impl->shape_bodies.end();) {
             const ui64 shape = sit->first;
             if (m_impl->shape_to_body[shape] == body) {
                 m_impl->shape_to_body.erase(shape);
                 sit = m_impl->shape_bodies.erase(sit);
+#ifdef DODOE_PERF_ENABLED
+                ++removed_shapes;
+#endif
             } else {
                 ++sit;
             }
         }
         m_impl->bodies.erase(it);
+#ifdef DODOE_PERF_ENABLED
+        if (removed_shapes > 0) {
+            s_physics_shape_count.fetch_sub(removed_shapes, std::memory_order_relaxed);
+        }
+        s_physics_body_count.fetch_sub(1, std::memory_order_relaxed);
+#endif
     }
 
     void PhysicsWorld::setBodyType(const ui64 body, const RigidBodyType type) {
@@ -721,6 +778,10 @@ namespace dodoe {
             std::lock_guard<std::mutex> lock(m_impl->contact_data.mutex);
             m_impl->contact_data.body_shape_user_data[body_id.GetIndexAndSequenceNumber()] = inner.mUserData;
         }
+#ifdef DODOE_PERF_ENABLED
+        const Size_t shape_count = s_physics_shape_count.fetch_add(1, std::memory_order_relaxed) + 1;
+        RecordPeak(s_physics_shape_peak, shape_count);
+#endif
         return shape_handle;
     }
 
@@ -754,6 +815,10 @@ namespace dodoe {
             std::lock_guard<std::mutex> lock(m_impl->contact_data.mutex);
             m_impl->contact_data.body_shape_user_data[body_id.GetIndexAndSequenceNumber()] = inner.mUserData;
         }
+#ifdef DODOE_PERF_ENABLED
+        const Size_t shape_count = s_physics_shape_count.fetch_add(1, std::memory_order_relaxed) + 1;
+        RecordPeak(s_physics_shape_peak, shape_count);
+#endif
         return shape_handle;
     }
 
@@ -787,6 +852,10 @@ namespace dodoe {
             std::lock_guard<std::mutex> lock(m_impl->contact_data.mutex);
             m_impl->contact_data.body_shape_user_data[body_id.GetIndexAndSequenceNumber()] = inner.mUserData;
         }
+#ifdef DODOE_PERF_ENABLED
+        const Size_t shape_count = s_physics_shape_count.fetch_add(1, std::memory_order_relaxed) + 1;
+        RecordPeak(s_physics_shape_peak, shape_count);
+#endif
         return shape_handle;
     }
 
@@ -813,6 +882,9 @@ namespace dodoe {
         }
         m_impl->shape_to_body.erase(shape);
         m_impl->shape_bodies.erase(sit);
+#ifdef DODOE_PERF_ENABLED
+        s_physics_shape_count.fetch_sub(1, std::memory_order_relaxed);
+#endif
     }
 
     void PhysicsWorld::raycast(const Vector3f& origin, const Vector3f& direction, const float max_distance,
