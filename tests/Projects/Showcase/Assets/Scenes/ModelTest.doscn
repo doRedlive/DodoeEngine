@@ -1,0 +1,811 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"height\":70.0,\"heightSensitivity\":0.30000001192092896,\"lookAtHeight\":12.0,\"maxHeight\":320.0,\"maxRadius\":480.0,\"minHeight\":12.0,\"minRadius\":80.0,\"mouseSensitivity\":0.25,\"orbitSpeed\":6.0,\"radius\":250.0,\"wheelZoomSpeed\":15.0}",
+                    "m_type_name": "Showcase.ShowcaseCamera"
+                }
+            ],
+            "m_name": "Primary Camera",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2001,\"name\":\"Primary Camera\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PrimaryCamera\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,70.0,250.0],\"rotation\":[-14.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"aspect_ratio\":1.7777777910232544,\"background\":[0.05999999865889549,0.05999999865889549,0.09000000357627869,1.0],\"far_plane\":4000.0,\"fov\":60.0,\"near_plane\":0.10000000149011612,\"type\":2,\"zoom\":1.0}",
+                    "m_type_name": "CameraComponent"
+                }
+            ],
+            "m_uuid": 2001
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Sun Light",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2002,\"name\":\"Sun Light\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"SunLight\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,100.0,0.0],\"rotation\":[-45.0,30.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,0.9800000190734863,0.9200000166893005,1.0],\"intensity\":2.0}",
+                    "m_type_name": "DirectionalLightComponent"
+                }
+            ],
+            "m_uuid": 2002
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Sky Light",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2003,\"name\":\"Sky Light\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"SkyLight\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cubemap\":{\"asset_id\":660000000000200001,\"legacy_path\":\"Textures/Skybox/skybox_specular.docubemap\",\"sub_object_id\":0},\"intensity\":0.30000001192092896}",
+                    "m_type_name": "SkyLightComponent"
+                }
+            ],
+            "m_uuid": 2003
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Key Point Light",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2004,\"name\":\"Key Point Light\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"KeyLight\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-140.0,50.0,140.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,0.949999988079071,0.800000011920929,1.0],\"intensity\":1.2000000476837158,\"radius\":0.0,\"range\":300.0}",
+                    "m_type_name": "PointLightComponent"
+                }
+            ],
+            "m_uuid": 2004
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Fill Point Light",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2005,\"name\":\"Fill Point Light\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"FillLight\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[140.0,40.0,160.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[0.5,0.699999988079071,1.0,1.0],\"intensity\":0.800000011920929,\"radius\":0.0,\"range\":300.0}",
+                    "m_type_name": "PointLightComponent"
+                }
+            ],
+            "m_uuid": 2005
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Rim Spot Light",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2006,\"name\":\"Rim Spot Light\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"SpotLight\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,180.0,40.0],\"rotation\":[-90.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"inner_angle\":30.0,\"intensity\":2.5,\"outer_angle\":45.0,\"radius\":0.0,\"range\":600.0}",
+                    "m_type_name": "SpotLightComponent"
+                }
+            ],
+            "m_uuid": 2006
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Ground",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2007,\"name\":\"Ground\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Ground\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[3000.0,1.0,3000.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":false,\"mesh\":{\"asset_id\":660000000000100010,\"legacy_path\":\"Models/quad/quad.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":0,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2007
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":20.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "Avocado",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2101,\"name\":\"Avocado\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Avocado\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-80.0,0.02,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[430.0,430.0,430.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100005,\"legacy_path\":\"Models/Avocado/Avocado.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2101
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":15.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "Duck",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2102,\"name\":\"Duck\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Duck\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,-1.6,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[0.16,0.16,0.16]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100008,\"legacy_path\":\"Models/Duck/Duck.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2102
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "Suzanne",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2103,\"name\":\"Suzanne\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Suzanne\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[80.0,9.8,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[10.0,10.0,10.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100009,\"legacy_path\":\"Models/Suzanne/Suzanne.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2103
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":15.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "AntiqueCamera",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2104,\"name\":\"AntiqueCamera\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"AntiqueCamera\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-80.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[2.13,2.13,2.13]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100006,\"legacy_path\":\"Models/AntiqueCamera/AntiqueCamera.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2104
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "DamagedHelmet",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2105,\"name\":\"DamagedHelmet\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"DamagedHelmet\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,16.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[13.5,13.5,13.5]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100001,\"legacy_path\":\"Models/DamagedHelmet/DamagedHelmet.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2105
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":15.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "BoomBox",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2106,\"name\":\"BoomBox\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"BoomBox\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[80.0,13.1,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1340.0,1340.0,1340.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100002,\"legacy_path\":\"Models/BoomBox/BoomBox.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2106
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":10.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "CesiumMilkTruck",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2107,\"name\":\"CesiumMilkTruck\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"CesiumMilkTruck\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-80.0,7.7,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.55,5.55,5.55]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100007,\"legacy_path\":\"Models/CesiumMilkTruck/CesiumMilkTruck.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2107
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "WaterBottle",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2108,\"name\":\"WaterBottle\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"WaterBottle\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,13.5,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[103.7,103.7,103.7]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100004,\"legacy_path\":\"Models/WaterBottle/WaterBottle.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2108
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "Lantern",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2109,\"name\":\"Lantern\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Lantern\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[80.0,13.5,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.05,1.05,1.05]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100003,\"legacy_path\":\"Models/Lantern/Lantern.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2109
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Dielectric R0.05",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2201,\"name\":\"PBR Dielectric R0.05\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-37.5,5.0,-190.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400011,\"legacy_path\":\"materials/pbr_dielectric_r005.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2201
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Dielectric R0.25",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2202,\"name\":\"PBR Dielectric R0.25\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-22.5,5.0,-190.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400012,\"legacy_path\":\"materials/pbr_dielectric_r025.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2202
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Dielectric R0.45",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2203,\"name\":\"PBR Dielectric R0.45\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-7.5,5.0,-190.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400013,\"legacy_path\":\"materials/pbr_dielectric_r045.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2203
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Dielectric R0.65",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2204,\"name\":\"PBR Dielectric R0.65\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[7.5,5.0,-190.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400014,\"legacy_path\":\"materials/pbr_dielectric_r065.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2204
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Dielectric R0.85",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2205,\"name\":\"PBR Dielectric R0.85\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[22.5,5.0,-190.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400015,\"legacy_path\":\"materials/pbr_dielectric_r085.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2205
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Dielectric R1.0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2206,\"name\":\"PBR Dielectric R1.0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[37.5,5.0,-190.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400016,\"legacy_path\":\"materials/pbr_dielectric_r100.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2206
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Metal R0.05",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2207,\"name\":\"PBR Metal R0.05\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-37.5,5.0,-210.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400021,\"legacy_path\":\"materials/pbr_metal_r005.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2207
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Metal R0.25",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2208,\"name\":\"PBR Metal R0.25\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-22.5,5.0,-210.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400022,\"legacy_path\":\"materials/pbr_metal_r025.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2208
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Metal R0.45",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2209,\"name\":\"PBR Metal R0.45\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-7.5,5.0,-210.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400023,\"legacy_path\":\"materials/pbr_metal_r045.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2209
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Metal R0.65",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2210,\"name\":\"PBR Metal R0.65\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[7.5,5.0,-210.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400024,\"legacy_path\":\"materials/pbr_metal_r065.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2210
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Metal R0.85",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2211,\"name\":\"PBR Metal R0.85\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[22.5,5.0,-210.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400025,\"legacy_path\":\"materials/pbr_metal_r085.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2211
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "PBR Metal R1.0",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2212,\"name\":\"PBR Metal R1.0\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PbrSphere\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[37.5,5.0,-210.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000400026,\"legacy_path\":\"materials/pbr_metal_r100.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2212
+        }
+    ],
+    "m_name": "ModelTest"
+}

@@ -1,0 +1,34 @@
+{
+    "base_color_texture": {
+        "asset_id": 11780637520344556634,
+        "legacy_path": "Models/BoomBox/BoomBox_baseColor.png",
+        "sub_object_id": 0
+    },
+    "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "emissive": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emissive_texture": {
+        "asset_id": 10507872613666300691,
+        "legacy_path": "Models/BoomBox/BoomBox_emissive.png",
+        "sub_object_id": 0
+    },
+    "metallic": 0.0,
+    "metallic_roughness_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "normal_texture": {
+        "asset_id": 4200342300330961814,
+        "legacy_path": "Models/BoomBox/BoomBox_normal.png",
+        "sub_object_id": 0
+    },
+    "roughness": 1.0
+}

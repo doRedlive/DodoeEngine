@@ -63,7 +63,7 @@ namespace sandbox {
         const dodoe::Vector2f wheel = input->getMouseWheel();
         if (wheel.y != 0.0f) {
             if (looking) {
-                m_speed = std::clamp(m_speed + wheel.y * 2.0f, kMinSpeed, kMaxSpeed);
+                m_speed = std::clamp(m_speed + wheel.y * 8.0f, kMinSpeed, kMaxSpeed);
             } else {
                 const float amount = wheel.y * m_distance * kZoomScale;
                 m_position += forward() * amount;

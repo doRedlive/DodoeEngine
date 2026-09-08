@@ -383,12 +383,6 @@ namespace dodoe {
             telemetry.drawn_instance_count = counters.getDrawnInstances();
             telemetry.pending_deletion_count = 0;
             m_frame_scheduler->recordTelemetry(telemetry);
-
-            static UInt64 s_telemetry_log_frame = 0;
-            if ((s_telemetry_log_frame++ % 120) == 0) {
-                const char* branch = RenderSettings::IsEnableBaselineRender() ? "baseline" : "deferred";
-                DO_INFO("FrameTelemetry[{}]: {}", branch, telemetry.toJSON());
-            }
         }
 #endif
 

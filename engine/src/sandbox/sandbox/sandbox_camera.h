@@ -41,7 +41,7 @@ namespace sandbox {
 
         static constexpr float kPitchLimit  = 89.0f;
         static constexpr float kMinSpeed    = 1.0f;
-        static constexpr float kMaxSpeed    = 100.0f;
+        static constexpr float kMaxSpeed    = 2000.0f;
         static constexpr float kPanScale    = 0.0015f;
         static constexpr float kZoomScale   = 0.1f;
         static constexpr float kMinDistance = 0.5f;

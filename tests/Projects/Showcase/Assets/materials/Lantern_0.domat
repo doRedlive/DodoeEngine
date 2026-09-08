@@ -1,0 +1,34 @@
+{
+    "base_color_texture": {
+        "asset_id": 6804229056204363252,
+        "legacy_path": "Models/Lantern/Lantern_baseColor.png",
+        "sub_object_id": 0
+    },
+    "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "emissive": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emissive_texture": {
+        "asset_id": 7679365536715377813,
+        "legacy_path": "Models/Lantern/Lantern_emissive.png",
+        "sub_object_id": 0
+    },
+    "metallic": 0.0,
+    "metallic_roughness_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "normal_texture": {
+        "asset_id": 16777472405872884392,
+        "legacy_path": "Models/Lantern/Lantern_normal.png",
+        "sub_object_id": 0
+    },
+    "roughness": 1.0
+}

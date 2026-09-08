@@ -1,0 +1,8 @@
+{
+    "Project": {
+        "Name": "Showcase",
+        "ProjectPath": "Showcase.doproj",
+        "AssetDirectory": "Assets",
+        "StartSceneName": "ModelTest"
+    }
+}

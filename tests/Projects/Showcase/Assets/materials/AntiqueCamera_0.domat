@@ -1,0 +1,33 @@
+{
+    "base_color_texture": {
+        "asset_id": 185508477219708280,
+        "legacy_path": "Models/AntiqueCamera/camera_camera_BaseColor.png",
+        "sub_object_id": 0
+    },
+    "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "emissive": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emissive_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "metallic": 0.0,
+    "metallic_roughness_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "normal_texture": {
+        "asset_id": 6770968692920169033,
+        "legacy_path": "Models/AntiqueCamera/camera_camera_Normal.png",
+        "sub_object_id": 0
+    },
+    "roughness": 1.0
+}
