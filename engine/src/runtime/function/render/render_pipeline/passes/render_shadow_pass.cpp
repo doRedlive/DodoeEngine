@@ -65,9 +65,10 @@ namespace dodoe {
 
                 const auto resolved_psb = ctx.resolveBuffer(parameters.primitive_scene_buffer);
 
-                const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
+                const auto global_data = GlobalMeshShaderData{mesh_ext->frame_time_data};
                 command_list.writeBuffer(processor->getGlobalConstantBuffer(), &global_data, sizeof(global_data));
-                const ViewMeshShaderData view_data{mesh_ext->directional_shadow_view_projection};
+                const auto view_data = ViewMeshShaderData{
+                    Math::FlipClipSpaceY(mesh_ext->directional_shadow_view_projection)};
                 command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
 
                 auto* feature = static_cast<ShadowSceneFeature*>(m_owning_feature);
