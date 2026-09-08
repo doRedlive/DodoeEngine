@@ -57,7 +57,11 @@ namespace dodoe {
                 const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
                 if (!mesh_ext) return;
 
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
+                const auto shadow_width = parameters.shadow_rt->getWidth();
+                const auto shadow_height = parameters.shadow_rt->getHeight();
+                const auto viewport_state = GfxViewportState().addViewportAndScissorRect(
+                    GfxViewport(0.0f, static_cast<Float>(shadow_width),
+                                0.0f, static_cast<Float>(shadow_height), 0.0f, 1.0f));
 
                 const auto resolved_psb = ctx.resolveBuffer(parameters.primitive_scene_buffer);
 

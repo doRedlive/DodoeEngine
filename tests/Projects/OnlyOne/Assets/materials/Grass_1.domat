@@ -1,7 +1,6 @@
 {
     "base_color_texture": {
         "asset_id": 0,
-        "legacy_path": "Program Files/Autodesk/Maya2024/bin/Grass2.png",
         "sub_object_id": 0
     },
     "color": [
@@ -26,7 +25,6 @@
     },
     "normal_texture": {
         "asset_id": 0,
-        "legacy_path": "Program Files/Autodesk/Maya2024/bin/Grass2_Normal.png",
         "sub_object_id": 0
     },
     "roughness": 1.0

@@ -83,7 +83,8 @@ namespace dodoe {
         info.setEnabled(light.enabled);
 
         DirectionalLightData data{};
-        data.direction = Math::Normalize(Vector3f(info.getWorldTransform()[2]));
+        // Directional lights emit along local -Z, matching the camera/mesh convention.
+        data.direction = -Math::Normalize(Vector3f(info.getWorldTransform()[2]));
         data.color = Vector3f(light.color.r, light.color.g, light.color.b);
         data.irradiance = light.intensity;
         info.setDirectionalLightData(data);

@@ -221,7 +221,7 @@ namespace dodoe {
                 push.light_view_projection = shadow.has_shadow
                     ? shadow.light_view_projection
                     : rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
-                push.shadow_params = Vector4f(0.005f, 0.2f, 0.005f, 2.0f);
+                push.shadow_params = shadow.shadow_params;
                 if (!emissive_applied) {
                     push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
                     emissive_applied = true;
@@ -263,7 +263,7 @@ namespace dodoe {
                 push.light_view_projection = shadow.has_shadow
                     ? shadow.light_view_projection
                     : rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
-                push.shadow_params = Vector4f(0.005f, 0.2f, 0.005f, 2.0f);
+                push.shadow_params = shadow.shadow_params;
                 break;
             }
             case LightType::Point: {

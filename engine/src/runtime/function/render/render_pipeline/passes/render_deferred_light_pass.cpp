@@ -12,6 +12,7 @@
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_scene/render_scene.h"
+#include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
@@ -252,8 +253,13 @@ namespace dodoe {
                         const auto& data = light_info.getDirectionalLightData();
                         push.light_color_intensity = Vector4f(data.color, data.irradiance);
                         push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
-                        push.light_view_projection = rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
-                        push.shadow_params = Vector4f(0.005f, 0.2f, 0.005f, 2.0f);
+                        const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
+                        push.light_view_projection = mesh_ext
+                            ? mesh_ext->directional_shadow_view_projection
+                            : rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
+                        if (mesh_ext) {
+                            push.shadow_params = mesh_ext->directional_shadow_params;
+                        }
                         break;
                     }
                     case LightType::Point: {

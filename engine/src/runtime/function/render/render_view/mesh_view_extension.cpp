@@ -15,6 +15,7 @@ namespace dodoe {
             indices.clear();
         }
         directional_shadow_view_projection = Matrix4f(1.0f);
+        directional_shadow_params = Vector4f(0.005f, 0.2f, 0.0f, 2.0f);
         frame_time_data = Vector4f(0.0f);
     }
 

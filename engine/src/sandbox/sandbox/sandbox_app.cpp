@@ -18,7 +18,7 @@ namespace sandbox {
 
                 if (dodoe::RenderSettings::IsEnableBaselineRender() ||
                     specification().render_settings.enable_baseline_renderer) {
-                    m_context->getLayerStack().pushLayer(new dodoe::RenderReferenceLayer("RenderDebug"));
+                    m_context->getLayerStack().pushLayer(DODOE_NEW(dodoe::RenderReferenceLayer, dodoe::AllocCategory::Object, "RenderDebug"));
                 }
         }
 

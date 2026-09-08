@@ -85,9 +85,10 @@ namespace dodoe {
 
     FrameStagingAllocator::Allocation FrameStagingAllocator::allocate(UInt64 size, UInt64 alignment) {
         UInt64 aligned_offset = (m_head + alignment - 1) & ~(alignment - 1);
+        UInt64 aligned_size = (size + alignment - 1) & ~(alignment - 1);
 
-        if (aligned_offset + size > m_ring_size) {
-            if (size > m_ring_size) {
+        if (aligned_offset + aligned_size > m_ring_size) {
+            if (aligned_size > m_ring_size) {
                 m_overflow_count++;
                 DO_ERROR("FrameStagingAllocator::allocate: requested size exceeds total ring capacity");
                 return {};
@@ -100,10 +101,10 @@ namespace dodoe {
         Allocation alloc;
         alloc.buffer = m_ring_buffer;
         alloc.offset = aligned_offset;
-        alloc.size = size;
+        alloc.size = aligned_size;
         alloc.mapped_data = m_mapped_base + aligned_offset;
 
-        m_head = aligned_offset + size;
+        m_head = aligned_offset + aligned_size;
 #ifdef DODOE_PERF_ENABLED
         m_peak_used_bytes = std::max(m_peak_used_bytes, m_head);
 #endif

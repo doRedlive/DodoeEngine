@@ -20,6 +20,7 @@ namespace dodoe {
         DynamicArray<UInt32> primitive_instance_offsets{};
         DynamicArray<InstanceSceneData> instance_scene_data{};
         Matrix4f directional_shadow_view_projection{1.0f};
+        Vector4f directional_shadow_params{0.005f, 0.2f, 0.0f, 2.0f};
         Vector4f frame_time_data{0.0f};
 
         void reset() override;

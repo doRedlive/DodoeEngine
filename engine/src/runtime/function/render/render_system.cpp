@@ -306,8 +306,6 @@ namespace dodoe {
 
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
         if (RenderSettings::IsEnableBaselineRender() && RenderSettings::IsGpuDrivenSupported()) {
-            // GPU-driven baseline samples GpuScene buffers directly in its own
-            // command list, which submits before the frame list: upload first.
             DrawCommandList upload_list;
             upload_list.setDevice(*m_gfx);
             scene->flushUpdates(upload_list);

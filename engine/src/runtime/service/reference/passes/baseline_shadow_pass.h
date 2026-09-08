@@ -15,6 +15,7 @@ namespace dodoe {
     struct BaselineShadowResult {
         GfxTextureHandle shadow_map{};
         Matrix4f light_view_projection{1.0f};
+        Vector4f shadow_params{0.005f, 0.2f, 0.0f, 2.0f};
         Bool has_shadow{false};
     };
 

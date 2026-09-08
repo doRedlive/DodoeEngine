@@ -195,7 +195,6 @@ namespace dodoe {
             return;
         }
 
-        ShaderParameterBinder binder;
         for (const auto& source : sources) {
             const auto& cmd = source.command;
             if (!cmd.getPipeline()) {
@@ -207,27 +206,28 @@ namespace dodoe {
                     sizeof(PrimitiveMeshDrawShaderData));
             }
 
-            auto graphics_state = GfxGraphicsState()
-                .setFramebuffer(framebuffer->getRHI())
-                .setViewport(viewport_state)
-                .setPipeline(cmd.getPipeline()->getRHIHandle());
             auto binding_sets = cmd.getBindingSets();
             if (pass_binding_set && *pass_binding_set) {
                 binding_sets[static_cast<Size_t>(ShaderParameterSet::Pass)] = *pass_binding_set;
             }
-            binder.bind(graphics_state, binding_sets);
-            for (const auto& vertex_binding : cmd.getVertexBindings()) {
-                graphics_state.addVertexBuffer(vertex_binding);
+            DynamicArray<GfxBindingSetHandle> binding_set_list{};
+            for (const auto& binding_set : binding_sets) {
+                if (binding_set) {
+                    binding_set_list.push_back(binding_set);
+                }
             }
+
+            DynamicArray<GfxVertexBufferBinding> vertex_bindings = cmd.getVertexBindings();
             if (primitive_scene_buffer) {
-                graphics_state.addVertexBuffer(
+                vertex_bindings.push_back(
                     GfxVertexBufferBinding()
                         .setBuffer(primitive_scene_buffer->getRHI())
                         .setSlot(1)
                         .setOffset(source.instance.instance_offset));
             }
-            graphics_state.setIndexBuffer(cmd.getIndexBinding());
-            command_list.setGraphicsState(graphics_state);
+
+            command_list.setGraphicsState(framebuffer, cmd.getPipeline(), binding_set_list,
+                viewport_state, vertex_bindings, cmd.getIndexBinding());
             command_list.drawIndexed(cmd.getDrawArguments());
         }
     }

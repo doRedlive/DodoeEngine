@@ -9,11 +9,14 @@
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_scene/light_scene_info.h"
+#include "runtime/function/render/render_scene/primitive_scene_info.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
-#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "runtime/function/render/mesh_draw/mesh_batch.h"
+#include "runtime/function/render/render_pipeline/shadow/shadow_system.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -198,14 +201,8 @@ namespace dodoe {
             return result;
         }
 
-        const LightSceneInfo* directional = nullptr;
-        for (const auto& info : scene.getLightSceneInfos()) {
-            if (info.getLightType() == LightType::Directional && info.isEnabled()) {
-                directional = &info;
-                break;
-            }
-        }
-        if (!directional) {
+        const ShadowFrameData shadow_data = ShadowSystem::buildFrameData(view, scene);
+        if (!shadow_data.has_shadow) {
             return result;
         }
 
@@ -215,29 +212,8 @@ namespace dodoe {
         }
         result.has_shadow = true;
 
-        Vector3f bounds_min(0.0f);
-        Vector3f bounds_max(0.0f);
-        Bool bounds_valid = false;
-        for (const auto* primitive : mesh_ext->visible_primitives) {
-            if (!primitive) {
-                continue;
-            }
-            const Vector3f& p_min = primitive->getBoundsMin();
-            const Vector3f& p_max = primitive->getBoundsMax();
-            if (!bounds_valid) {
-                bounds_min = p_min;
-                bounds_max = p_max;
-                bounds_valid = true;
-                continue;
-            }
-            bounds_min = Math::Min(bounds_min, p_min);
-            bounds_max = Math::Max(bounds_max, p_max);
-        }
-        const Vector3f bounds_center = (bounds_min + bounds_max) * 0.5f;
-        const Float bounds_extent = Math::Length(Math::Max(bounds_max - bounds_center, Vector3f(0.0f)));
-
-        result.light_view_projection = rendering_pipeline_utils::BuildDirectionalLightViewProjection(
-            directional->getDirectionalLightData().direction, bounds_center, bounds_extent * 1.2f);
+        result.light_view_projection = shadow_data.light_view_projection;
+        result.shadow_params = shadow_data.shadow_params;
         result.shadow_map = m_shadow_depth;
 
         ensureInstanceCapacity(static_cast<UInt32>(mesh_ext->instance_scene_data.size()));
@@ -257,8 +233,10 @@ namespace dodoe {
 
         DynamicArray<UInt32> instance_prefix(mesh_ext->visible_primitives.size() + 1, 0);
         for (Size_t i = 0; i < mesh_ext->visible_primitives.size(); ++i) {
-            const auto* primitive = mesh_ext->visible_primitives[i];
-            instance_prefix[i + 1] = instance_prefix[i] + (primitive ? primitive->getInstanceCount() : 0);
+            const PrimitiveSceneInfo* instance_primitive = mesh_ext->visible_primitives[i];
+            const UInt32 instance_count = instance_primitive
+                ? instance_primitive->getInstanceCount() : 0;
+            instance_prefix[i + 1] = instance_prefix[i] + instance_count;
         }
 
         const auto viewport_state = GfxViewportState().addViewportAndScissorRect(
@@ -272,13 +250,13 @@ namespace dodoe {
             if (primitive_index >= mesh_ext->visible_primitives.size()) {
                 continue;
             }
-            const auto* primitive = mesh_ext->visible_primitives[primitive_index];
-            if (!primitive) {
+            const PrimitiveSceneInfo* draw_primitive = mesh_ext->visible_primitives[primitive_index];
+            if (!draw_primitive) {
                 continue;
             }
             const UInt64 instance_offset = static_cast<UInt64>(instance_prefix[primitive_index]) * sizeof(InstanceSceneData);
 
-            for (const auto& batch : primitive->getMeshBatches()) {
+            for (const MeshBatch& batch : draw_primitive->getMeshBatches()) {
                 if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.getElements().empty()) {
                     continue;
                 }

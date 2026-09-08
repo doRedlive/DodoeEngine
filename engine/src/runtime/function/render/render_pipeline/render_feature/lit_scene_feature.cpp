@@ -23,8 +23,7 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
-#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
-#include "runtime/core/math/math.h"
+#include "runtime/function/render/render_pipeline/shadow/shadow_system.h"
 #include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
@@ -100,16 +99,6 @@ namespace dodoe {
 
     void LitSceneFeature::setupMeshPassContexts(const RenderScene& scene,
                                                 RenderViewFamily& view_family) const {
-        Vector3f light_direction(0.3f, -0.8f, -0.5f);
-        for (const auto& info : scene.getLightSceneInfos()) {
-            if (info.getLightType() == LightType::Directional && info.isEnabled()) {
-                light_direction = info.getDirectionalLightData().direction;
-                break;
-            }
-        }
-        const Matrix4f directional_light_view_projection =
-            rendering_pipeline_utils::BuildDirectionalLightViewProjection(light_direction);
-
         for (auto& view : view_family.getViews()) {
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
             mesh_ext.frame_time_data = Vector4f(view_family.getTimeSeconds(),
@@ -135,8 +124,6 @@ namespace dodoe {
                     mesh_ext.instance_scene_data.push_back(inst_scene_data);
                 }
             }
-            mesh_ext.directional_shadow_view_projection = directional_light_view_projection;
-
             auto& ext = view.getOrCreateExtension<MeshViewExtension>();
             ext.primitive_mesh_pass_relevance.clear();
             ext.primitive_mesh_pass_relevance.reserve(mesh_ext.visible_primitives.size());
@@ -146,6 +133,7 @@ namespace dodoe {
             }
             ext.buildMeshPassPrimitiveIndices();
         }
+        ShadowSystem::setupView(scene, view_family);
     }
 
     void LitSceneFeature::buildMeshDrawCommands(RenderViewFamily& view_family,
