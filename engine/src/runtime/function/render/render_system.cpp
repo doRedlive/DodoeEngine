@@ -5,18 +5,13 @@
 
 #include <chrono>
 
-#if defined(_WIN32)
-#include <windows.h>
-#include <psapi.h>
-#endif
-#include <mimalloc.h>
-
 #include "render_settings.h"
 #include "runtime/core/memory/memory.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/core/thread/render_thread.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/time/time_system.h"
+#include "render_frame/frame_telemetry.h"
 #ifdef DODOE_DEBUG_ENABLED
 #include "runtime/function/ui/imgui/imgui_builder.h"
 #include "runtime/function/ui/imgui/imgui_viewport_renderer.h"
@@ -187,31 +182,7 @@ namespace dodoe {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrame", "frame");
         GfxRenderScope render_scope;
         Memory::ResetFrame();
-
-        {
-            static auto last_mem_time = std::chrono::steady_clock::now();
-            const auto now_mem_time = std::chrono::steady_clock::now();
-            if (now_mem_time - last_mem_time >= std::chrono::seconds(1)) {
-                last_mem_time = now_mem_time;
-                size_t elapsed = 0, user = 0, sys = 0, rss = 0, peak_rss = 0, commit = 0, peak_commit = 0, faults = 0;
-                mi_process_info(&elapsed, &user, &sys, &rss, &peak_rss, &commit, &peak_commit, &faults);
-#if defined(_WIN32)
-                PROCESS_MEMORY_COUNTERS_EX pmc{};
-                K32GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc));
-                DO_WARN("ProcessMemory: os_commit={:.1f}MB os_ws={:.1f}MB mi_commit={:.1f}MB mi_rss={:.1f}MB faults={}",
-                    static_cast<double>(pmc.PrivateUsage) / (1024.0 * 1024.0),
-                    static_cast<double>(pmc.WorkingSetSize) / (1024.0 * 1024.0),
-                    static_cast<double>(commit) / (1024.0 * 1024.0),
-                    static_cast<double>(rss) / (1024.0 * 1024.0),
-                    faults);
-#else
-                DO_WARN("ProcessMemory: mi_commit={:.1f}MB mi_rss={:.1f}MB faults={}",
-                    static_cast<double>(commit) / (1024.0 * 1024.0),
-                    static_cast<double>(rss) / (1024.0 * 1024.0),
-                    faults);
-#endif
-            }
-        }
+        RenderFrameCounters::Self().reset();
 
         auto* gfx = m_gfx.get();
         auto* pipeline = m_render_pipeline.get();
@@ -283,7 +254,6 @@ namespace dodoe {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::executeDeferredCommands", "render-command");
             auto pending = GDrawCommandList.detachRecordedCommands();
             if (!pending.isEmpty()) {
-                DO_INFO("RenderSystem: executing {} deferred render commands", pending.commandCount());
                 auto& gfx_cmd = m_gfx->getCommandList();
                 gfx_cmd->open();
                 pending.execute(*gfx_cmd);
@@ -322,6 +292,9 @@ namespace dodoe {
             return;
         }
         DO_PROFILE_MARK("RenderSystem::renderFrame.swapchainAcquired", "swapchain");
+#ifdef DODOE_PERF_ENABLED
+        const auto render_frame_start = std::chrono::steady_clock::now();
+#endif
 
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
@@ -394,6 +367,31 @@ namespace dodoe {
             DO_ERROR("RenderSystem failed to present swapchain image {}", frame_ctx.swapchain_image_index);
         }
         m_gfx->clearGarbage();
+
+#ifdef DODOE_PERF_ENABLED
+        {
+            const auto render_frame_end = std::chrono::steady_clock::now();
+            const auto& counters = RenderFrameCounters::Self();
+            FrameTelemetry telemetry{};
+            telemetry.frame_number = frame_ctx.frame_number;
+            telemetry.delta_time_ms = frame_delta * 1000.0f;
+            telemetry.render_thread_ms =
+                std::chrono::duration<Float, std::milli>(render_frame_end - render_frame_start).count();
+            telemetry.draw_call_count = static_cast<UInt32>(counters.getDrawCalls());
+            telemetry.indirect_draw_call_count = static_cast<UInt32>(counters.getIndirectDrawCalls());
+            telemetry.dispatch_count = static_cast<UInt32>(counters.getDispatches());
+            telemetry.barrier_count = static_cast<UInt32>(counters.getBarriers());
+            telemetry.drawn_instance_count = counters.getDrawnInstances();
+            telemetry.pending_deletion_count = 0;
+            m_frame_scheduler->recordTelemetry(telemetry);
+
+            static UInt64 s_telemetry_log_frame = 0;
+            if ((s_telemetry_log_frame++ % 120) == 0) {
+                const char* branch = RenderSettings::IsEnableBaselineRender() ? "baseline" : "deferred";
+                DO_INFO("FrameTelemetry[{}]: {}", branch, telemetry.toJSON());
+            }
+        }
+#endif
 
 #ifdef DODOE_DEBUG_ENABLED
         if (!RenderSettings::IsEnableBaselineRender()) {

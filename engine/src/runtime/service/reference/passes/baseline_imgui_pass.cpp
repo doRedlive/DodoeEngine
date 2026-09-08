@@ -5,6 +5,7 @@
 #include "baseline_imgui_pass.h"
 
 #include "runtime/function/ui/imgui/imgui_builder.h"
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -164,7 +165,7 @@ namespace dodoe {
         m_command_list->setBufferState(m_vertex_buffer.Get(), cutie::ResourceStates::CopyDest);
         m_command_list->setBufferState(m_index_buffer.Get(), cutie::ResourceStates::CopyDest);
         m_command_list->setBufferState(m_constant_buffer.Get(), cutie::ResourceStates::CopyDest);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         UInt32 vertex_offset = 0;
         UInt32 index_offset = 0;
@@ -202,7 +203,7 @@ namespace dodoe {
         m_command_list->setBufferState(m_vertex_buffer.Get(), cutie::ResourceStates::VertexBuffer);
         m_command_list->setBufferState(m_index_buffer.Get(), cutie::ResourceStates::IndexBuffer);
         m_command_list->setBufferState(m_constant_buffer.Get(), cutie::ResourceStates::ConstantBuffer);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         UInt32 global_vertex_offset = 0;
         UInt32 global_index_offset = 0;
@@ -250,9 +251,10 @@ namespace dodoe {
                 graphics_state.setIndexBuffer(
                     cutie::IndexBufferBinding()
                         .setBuffer(m_index_buffer.Get())
-                        .setFormat(GfxFormat::R16_UINT)
+                        .setFormat(GfxFormat::R32_UINT)
                         .setOffset(global_index_offset));
                 m_command_list->setGraphicsState(graphics_state);
+                RenderFrameCounters::Self().addDrawCall(1);
                 m_command_list->drawIndexed(GfxDrawArguments()
                     .setVertexCount(draw.elem_count)
                     .setStartIndexLocation(draw.idx_offset)

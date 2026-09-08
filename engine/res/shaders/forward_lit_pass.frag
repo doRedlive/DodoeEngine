@@ -19,6 +19,7 @@ layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform ViewCon
 layout(set = DOE_SET_PRIMITIVE, binding = DOE_PRIMITIVE_BINDING_CONSTANTS) uniform PrimitiveConstants {
     ivec4 u_DrawData;
     vec4 u_MaterialData;
+    vec4 u_EmissiveData;
 };
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform OpaquePassUBO {
     vec4 u_CameraPosition;
@@ -40,6 +41,20 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_SAMPLER) uniform sampler u
 const uint kMaxTextures = 1024u;
 layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_SAMPLER) uniform sampler u_TextureSampler;
 layout(set = DOE_SET_BINDLESS, binding = DOE_BINDLESS_BINDING_TEXTURES) uniform texture2D u_Textures[kMaxTextures];
+
+vec3 perturbNormal(vec3 surf_position, vec3 surf_normal, vec2 uv, vec3 tangent_space_normal)
+{
+    vec3 sigma_x = dFdx(surf_position);
+    vec3 sigma_y = dFdy(surf_position);
+    vec3 r1 = cross(sigma_y, surf_normal);
+    vec3 r2 = cross(surf_normal, sigma_x);
+    float det = dot(sigma_x, r1);
+    float face = gl_FrontFacing ? 1.0 : -1.0;
+    det *= face;
+    vec2 slope = tangent_space_normal.xy / max(tangent_space_normal.z, 0.1);
+    vec3 gradient = sign(det) * (slope.x * r1 + slope.y * r2);
+    return normalize(abs(det) * surf_normal - gradient);
+}
 
 const vec2 poissonDisk[16] = vec2[](
     vec2( -0.94201624, -0.39906216 ),
@@ -284,17 +299,30 @@ void main()
     }
 
     vec3 n = normalize(v_Normal);
+    if (u_DrawData.w >= 0) {
+        vec3 tangent_space = texture(sampler2D(u_Textures[uint(u_DrawData.w)], u_TextureSampler), v_UV).xyz;
+        bool fallback_white = tangent_space.r >= 0.999 && tangent_space.g >= 0.999 && tangent_space.b >= 0.999;
+        if (!fallback_white) {
+            n = perturbNormal(v_WorldPosition, n, v_UV, tangent_space * 2.0 - 1.0);
+        }
+    }
+    vec3 emissive = u_EmissiveData.rgb;
+    if (u_EmissiveData.w > 0.0) {
+        vec3 emissive_tex = texture(sampler2D(u_Textures[uint(u_EmissiveData.w) - 1u], u_TextureSampler), v_UV).rgb;
+        emissive *= emissive_tex;
+    }
+
     vec3 v = normalize(u_CameraPosition.xyz - v_WorldPosition);
     vec3 color = evaluateIBL(albedo, n, v, metallic, roughness, ao);
 
     if (u_DirectionalDirectionFlags.w < 0.5) {
-        color += applyDirectionalLight(albedo, v_Normal, v_WorldPosition, metallic, roughness);
+        color += applyDirectionalLight(albedo, n, v_WorldPosition, metallic, roughness);
     }
 
     int point_light_count = int(u_LightCountFlags.x);
     for (int i = 0; i < point_light_count; i++) {
-        color += applyPointLight(albedo, v_Normal, v_WorldPosition, metallic, roughness, i);
+        color += applyPointLight(albedo, n, v_WorldPosition, metallic, roughness, i);
     }
 
-    o_Color = vec4(color, albedo_sample.a * v_ColorTint.a);
+    o_Color = vec4(color + max(emissive, vec3(0.0)), albedo_sample.a * v_ColorTint.a);
 }

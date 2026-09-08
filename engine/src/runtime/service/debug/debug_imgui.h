@@ -32,6 +32,7 @@ namespace dodoe {
 
         static void RenderHierarchyPanel();
         static void RenderInspectorPanel();
+        static void RenderEntityMaterials(Entity entity);
         static void RenderDebuggerPanel();
         static void RenderToolActions();
 
@@ -45,6 +46,9 @@ namespace dodoe {
 
         static inline bool  s_registered = false;
         static inline Entity s_selectedEntity{};
+        static inline UUID s_material_owner_entity{};
+        static inline bool s_material_owner_valid = false;
+        static inline DynamicArray<Entity> s_material_owner_candidates{};
         static inline std::atomic<UInt32> s_pick_requested{0};
         static inline std::atomic<Int32> s_pick_x{0};
         static inline std::atomic<Int32> s_pick_y{0};

@@ -34,6 +34,7 @@ namespace dodoe {
                     cutie::IFramebuffer* framebuffer,
                     const GfxTextureHandle& gbuffer_albedo, const GfxTextureHandle& gbuffer_normal,
                     const GfxTextureHandle& gbuffer_position, const GfxTextureHandle& gbuffer_material,
+                    const GfxTextureHandle& gbuffer_emissive,
                     const BaselineShadowResult& shadow);
     };
 

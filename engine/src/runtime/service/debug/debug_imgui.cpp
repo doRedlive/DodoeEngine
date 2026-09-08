@@ -10,7 +10,10 @@
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/time/time_system.h"
 #include "runtime/function/world/components/hierarchy_component.h"
+#include "runtime/function/world/components/mesh_renderer_component.h"
 #include "runtime/function/world/world.h"
+#include "runtime/function/render/render_system.h"
+#include "runtime/function/render/material/material_system.h"
 
 #include <mimalloc.h>
 
@@ -643,6 +646,128 @@ namespace dodoe {
 #endif//DODOE_EDITOR_ENABLED;
     }
 
+    void DebugImGui::RenderEntityMaterials(Entity entity) {
+        auto* render_system = GetRenderSystem();
+        auto* shared_service = render_system ? render_system->getSharedRenderService() : nullptr;
+        auto* material_system = shared_service ? shared_service->getMaterialSystem() : nullptr;
+        if (!material_system) {
+            return;
+        }
+
+        static constexpr std::array<const char*, 4> kTextureSlotNames = {
+            "Base Color", "Metallic Roughness", "Normal", "Emissive"
+        };
+
+        auto draw_instance_editor = [&](const String& owner_label, const String& instance_name,
+                                        const MaterialInstance& instance, const String& section_label) {
+            ImGui::PushID(instance_name.c_str());
+            ImGui::SeparatorText(owner_label.c_str());
+            ImGui::Text("%s (template: %s)",
+                        section_label.c_str(),
+                        instance.tpl ? instance.tpl->desc.name.c_str() : "<none>");
+            if (!instance.resolved) {
+                ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.25f, 1.0f), "Not resolved");
+            }
+
+            MaterialParamValue value{};
+
+            Float metallic = instance.metallic;
+            if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f, "%.2f")) {
+                value.f[0] = metallic;
+                material_system->setInstanceParam(instance_name, "metallic", value);
+            }
+
+            Float roughness = instance.roughness;
+            if (ImGui::SliderFloat("Roughness", &roughness, 0.04f, 1.0f, "%.2f")) {
+                value.f[0] = roughness;
+                material_system->setInstanceParam(instance_name, "roughness", value);
+            }
+
+            Float ao = instance.ao;
+            if (ImGui::SliderFloat("Ambient Occlusion", &ao, 0.0f, 1.0f, "%.2f")) {
+                value.f[0] = ao;
+                material_system->setInstanceParam(instance_name, "ao", value);
+            }
+
+            Float emissive[3] = {instance.emissive.x, instance.emissive.y, instance.emissive.z};
+            if (ImGui::ColorEdit3("Emissive", emissive, ImGuiColorEditFlags_Float)) {
+                value.f[0] = emissive[0];
+                value.f[1] = emissive[1];
+                value.f[2] = emissive[2];
+                material_system->setInstanceParam(instance_name, "emissive", value);
+            }
+
+            for (Size_t slot = 0; slot < kTextureSlotNames.size(); ++slot) {
+                const bool has_texture = slot < instance.textures.size() && instance.textures[slot] != nullptr;
+                if (!has_texture) {
+                    ImGui::TextDisabled("  %s: fallback", kTextureSlotNames[slot]);
+                }
+            }
+
+            ImGui::PopID();
+        };
+
+        if (!ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen)) {
+            return;
+        }
+
+        if (!s_material_owner_valid || s_material_owner_entity != entity.uuid()) {
+            s_material_owner_entity = entity.uuid();
+            s_material_owner_valid = true;
+            s_material_owner_candidates.clear();
+            UnorderedSet<UUID> visited;
+            Entity current = entity;
+            while (current.valid() && visited.insert(current.uuid()).second &&
+                   s_material_owner_candidates.size() < 64) {
+                s_material_owner_candidates.push_back(current);
+                if (!current.hasComponent<HierarchyComponent>()) {
+                    break;
+                }
+                current = current.getComponent<HierarchyComponent>().parent;
+            }
+            Scene* scene = GetWorld() ? GetWorld()->getActiveScene() : nullptr;
+            DynamicArray<Entity> queue;
+            if (entity.hasComponent<HierarchyComponent>()) {
+                for (Entity child : entity.getComponent<HierarchyComponent>().children) {
+                    queue.push_back(child);
+                }
+            }
+            for (Size_t index = 0; index < queue.size() && s_material_owner_candidates.size() < 64; ++index) {
+                Entity child = queue[index];
+                if (!child.valid() || !visited.insert(child.uuid()).second) {
+                    continue;
+                }
+                s_material_owner_candidates.push_back(child);
+                if (child.hasComponent<HierarchyComponent>()) {
+                    for (Entity grandchild : child.getComponent<HierarchyComponent>().children) {
+                        queue.push_back(grandchild);
+                    }
+                }
+            }
+        }
+
+        bool found_any = false;
+        for (Entity owner : s_material_owner_candidates) {
+            const String owner_label = owner.hasComponent<IDComponent>()
+                ? owner.getComponent<IDComponent>().name : String("Entity");
+            const String owner_prefix = String(fmt::format(
+                "Mat_{}_", static_cast<UInt64>(owner.uuid())).c_str());
+            for (const auto& [instance_name, instance] : material_system->getInstances()) {
+                if (instance_name.compare(0, owner_prefix.size(), owner_prefix) != 0) {
+                    continue;
+                }
+                found_any = true;
+                draw_instance_editor(owner_label, instance_name, instance,
+                                     "Section " + instance_name.substr(owner_prefix.size()));
+            }
+        }
+
+        if (!found_any) {
+            ImGui::TextDisabled("No material instances (total: %zu).",
+                                material_system->getInstances().size());
+        }
+    }
+
     void DebugImGui::RenderDebuggerPanel() { 
         ImGui::Begin("Dodoe Debugger");
         ImGuiIO& io = ImGui::GetIO();
@@ -799,6 +924,7 @@ namespace dodoe {
             if (entry.contains(entity)) DrawNativeComponent(entity, entry);
         }
         DrawManagedComponents(entity);
+        RenderEntityMaterials(entity);
         ImGui::End();
     }
 

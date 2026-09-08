@@ -2,6 +2,7 @@
 
 #include "baseline_outline_pass.h"
 
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -80,7 +81,7 @@ namespace dodoe {
         graphics_state.setViewport(viewport_state);
         graphics_state.addBindingSet(binding_set.Get());
         m_command_list->setGraphicsState(graphics_state);
-        m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+        RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
     }
 
 } // namespace dodoe

@@ -13,6 +13,7 @@
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
 #include "runtime/function/render/mesh_draw/mesh_batch.h"
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/material/material_system.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/shader/descriptor_table_manager.h"
@@ -269,30 +270,18 @@ namespace dodoe {
         if (!m_pipeline) {
             return;
         }
-        static UInt64 s_mesh_debug_frame = 0;
-        const Bool mesh_debug = ((s_mesh_debug_frame++) % 120) == 0;
         const auto* mesh_ext = view.getExtension<MeshViewExtension>();
         if (!mesh_ext || mesh_ext->instance_scene_data.empty()) {
-            if (mesh_debug) {
-                DO_INFO("BaselineGBufferPass: mesh draw skipped (ext={} primitives={} instances={})",
-                    mesh_ext != nullptr,
-                    mesh_ext ? mesh_ext->visible_primitives.size() : 0,
-                    mesh_ext ? mesh_ext->instance_scene_data.size() : 0);
-            }
             return;
         }
         const auto& primitive_indices = mesh_ext->getMeshPassPrimitiveIndices(MeshPassType::Opaque);
         if (primitive_indices.empty()) {
-            if (mesh_debug) {
-                DO_INFO("BaselineGBufferPass: mesh draw skipped (no opaque indices, primitives={})",
-                    mesh_ext->visible_primitives.size());
-            }
             return;
         }
         ensureInstanceCapacity(static_cast<UInt32>(mesh_ext->instance_scene_data.size()));
 
         m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::CopyDest);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->writeBuffer(m_instance_buffer.Get(), mesh_ext->instance_scene_data.data(),
             mesh_ext->instance_scene_data.size() * sizeof(InstanceSceneData));
 
@@ -302,18 +291,13 @@ namespace dodoe {
         m_command_list->writeBuffer(m_view_cb.Get(), &view_data, sizeof(view_data));
 
         m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::VertexBuffer);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         DynamicArray<UInt32> instance_prefix(mesh_ext->visible_primitives.size() + 1, 0);
         for (Size_t i = 0; i < mesh_ext->visible_primitives.size(); ++i) {
             const auto* primitive = mesh_ext->visible_primitives[i];
             instance_prefix[i + 1] = instance_prefix[i] + (primitive ? primitive->getInstanceCount() : 0);
         }
-
-        UInt32 mesh_draw_count = 0;
-        UInt32 mesh_skip_buffer = 0;
-        UInt32 mesh_skip_material = 0;
-        UInt32 mesh_skip_batch = 0;
 
         for (const UInt32 primitive_index : primitive_indices) {
             if (primitive_index >= mesh_ext->visible_primitives.size()) {
@@ -327,18 +311,15 @@ namespace dodoe {
 
             for (const auto& batch : primitive->getMeshBatches()) {
                 if (!batch.isValid() || !batch.isRelevant(MeshPassType::Opaque) || batch.getElements().empty()) {
-                    mesh_skip_batch++;
                     continue;
                 }
                 const auto& element = batch.getElements()[0];
                 if (!element.isValid() || !element.vertex_buffer || !element.index_buffer ||
                     !element.vertex_buffer->isGpuReady() || !element.index_buffer->isGpuReady()) {
-                    mesh_skip_buffer++;
                     continue;
                 }
                 const auto* material_instance = batch.getMaterialInstance();
                 if (!material_instance) {
-                    mesh_skip_material++;
                     continue;
                 }
                 GfxBindingSetHandle material_binding_set{};
@@ -351,7 +332,6 @@ namespace dodoe {
                             m_material_warning_logged = true;
                             DO_WARN("BaselineGBufferPass: bindless descriptor table is unavailable, primitive skipped");
                         }
-                        mesh_skip_material++;
                         continue;
                     }
                 } else {
@@ -364,22 +344,29 @@ namespace dodoe {
                             m_material_warning_logged = true;
                             DO_WARN("BaselineGBufferPass: material has no resolvable texture binding set, primitive skipped");
                         }
-                        mesh_skip_material++;
                         continue;
                     }
                 }
 
                 PrimitiveMeshDrawShaderData shader_data{};
-                shader_data.draw_data.x = material_instance->texture_descriptor_indices.empty()
+                const auto& descriptor_indices = material_instance->texture_descriptor_indices;
+                shader_data.draw_data.x = descriptor_indices.empty()
                     ? -1
-                    : material_instance->texture_descriptor_indices[0];
-                shader_data.draw_data.y = material_instance->texture_descriptor_indices.size() > 1
-                    ? material_instance->texture_descriptor_indices[1]
+                    : descriptor_indices[0];
+                shader_data.draw_data.y = descriptor_indices.size() > 1
+                    ? descriptor_indices[1]
                     : -1;
-                shader_data.draw_data.z = material_instance->texture_descriptor_indices.size() > 1 ? 1 : 0;
+                shader_data.draw_data.z = descriptor_indices.size() > 1 ? 1 : 0;
+                shader_data.draw_data.w = descriptor_indices.size() > 2
+                    ? static_cast<Int32>(descriptor_indices[2])
+                    : -1;
                 shader_data.material_data.x = material_instance->metallic;
                 shader_data.material_data.y = material_instance->roughness;
                 shader_data.material_data.z = material_instance->ao;
+                shader_data.emissive_data = Vector4f(
+                    material_instance->emissive.x, material_instance->emissive.y, material_instance->emissive.z,
+                    descriptor_indices.size() > 3
+                        ? static_cast<Float>(descriptor_indices[3]) + 1.0f : 0.0f);
                 m_command_list->writeBuffer(m_primitive_cb.Get(), &shader_data, sizeof(shader_data));
 
                 cutie::GraphicsState graphics_state;
@@ -404,21 +391,13 @@ namespace dodoe {
                         .setOffset(0));
 
                 m_command_list->setGraphicsState(graphics_state);
+                RenderFrameCounters::Self().addDrawCall(element.instance_count);
                 m_command_list->drawIndexed(GfxDrawArguments()
                     .setVertexCount(element.index_count)
                     .setInstanceCount(element.instance_count)
                     .setStartIndexLocation(element.index_offset)
                     .setStartVertexLocation(element.vertex_offset));
-                mesh_draw_count++;
             }
-        }
-
-        if (mesh_debug) {
-            DO_INFO("BaselineGBufferPass: mesh draw primitives={} instances={} opaque={} draws={} skip_batch={} skip_buffer={} skip_material={}",
-                mesh_ext->visible_primitives.size(),
-                mesh_ext->instance_scene_data.size(),
-                primitive_indices.size(),
-                mesh_draw_count, mesh_skip_batch, mesh_skip_buffer, mesh_skip_material);
         }
     }
 

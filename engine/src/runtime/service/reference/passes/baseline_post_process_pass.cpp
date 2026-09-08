@@ -2,6 +2,7 @@
 
 #include "baseline_post_process_pass.h"
 
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -87,7 +88,7 @@ namespace dodoe {
 
         // Tone mapping: HDR -> LDR
         m_command_list->setTextureState(tone_map_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->clearTextureFloat(tone_map_color->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
         if (m_tone_map_pipeline) {
@@ -102,13 +103,13 @@ namespace dodoe {
             graphics_state.setViewport(viewport_state);
             graphics_state.addBindingSet(binding_set.Get());
             m_command_list->setGraphicsState(graphics_state);
-            m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+            RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         }
 
         // FXAA: LDR (tone mapped) -> LDR (anti-aliased)
         m_command_list->setTextureState(tone_map_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
         m_command_list->setTextureState(fxaa_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->clearTextureFloat(fxaa_color->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
         if (m_fxaa_pipeline) {
@@ -123,11 +124,11 @@ namespace dodoe {
             graphics_state.setViewport(viewport_state);
             graphics_state.addBindingSet(binding_set.Get());
             m_command_list->setGraphicsState(graphics_state);
-            m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+            RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         }
 
         m_command_list->setTextureState(fxaa_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
     }
 
 } // namespace dodoe

@@ -49,6 +49,9 @@ namespace dodoe {
 
         [[nodiscard]] DeferredDeletionQueue* getDeletionQueue() { return &m_deletion_queue; }
 
+        void recordTelemetry(const FrameTelemetry& telemetry) { m_telemetry.record(telemetry); }
+        [[nodiscard]] const FrameTelemetryCollector& getTelemetry() const { return m_telemetry; }
+
         [[nodiscard]] Size_t getInFlightCount() const;
 
     private:

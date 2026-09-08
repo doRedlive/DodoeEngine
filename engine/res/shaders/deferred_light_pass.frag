@@ -14,6 +14,7 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform Deferre
     vec4 u_CameraPosition;
     vec4 u_IrradianceSH[9];
     vec4 u_IblParams;
+    vec4 u_EmissiveParams;
 };
 
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) uniform texture2D u_Albedo;
@@ -24,6 +25,7 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT4) uniform texture2D 
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT5) uniform textureCube u_SkyboxTexture;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT6) uniform texture2D u_BrdfLut;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_SAMPLER) uniform sampler u_Sampler;
+layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT8) uniform texture2D u_Emissive;
 
 const vec2 poissonDisk[16] = vec2[](
     vec2( -0.94201624, -0.39906216 ),
@@ -278,13 +280,37 @@ void main()
     float specular_strength = u_IblParams.x * u_IblParams.y * pow(1.0 - roughness, 2.0);
     vec3 color = evaluateIBL(albedo, n, v, metallic, roughness, ao, diffuse_strength, specular_strength);
 
+    if (u_EmissiveParams.x > 0.5) {
+        color += max(texture(sampler2D(u_Emissive, u_Sampler), v_UV).rgb, vec3(0.0));
+    }
+
     if (u_CameraPosition.w > 0.5) {
         o_Color = vec4(color, 1.0);
         return;
     }
 
     if (u_LightDirectionType.w < 0.5) {
-        color += applyDirectionalLight(albedo, normal, position, metallic, roughness);
+        vec3 light_dir = normalize(-u_LightDirectionType.xyz);
+        float cs_shadow = computeShadow(position, n, -light_dir);
+        if (u_IblParams.w > 0.5) {
+            float ndotl = max(dot(n, -(-light_dir)), 0.0);
+            vec2 tex_size = vec2(textureSize(sampler2D(u_ShadowMap, u_Sampler), 0));
+            float texel = 1.0 / max(tex_size.x, tex_size.y);
+            vec3 sp = position + n * max(u_ShadowParams.z, texel * 2.0);
+            vec4 lc = u_LightViewProjection * vec4(sp, 1.0);
+            vec3 lndc = lc.xyz / max(lc.w, 1e-5);
+            vec2 suv = lndc.xy * 0.5 + 0.5;
+            float in_range = (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) ? 0.0 : 1.0;
+            float map_depth = in_range > 0.5 ? texture(sampler2D(u_ShadowMap, u_Sampler), suv).r : 0.0;
+            float z_receiver = lndc.z - max(u_ShadowParams.x * (1.0 - ndotl), texel * 1.5);
+            float inline_lit = (lc.w <= 0.0 || lndc.z < 0.0 || lndc.z > 1.0)
+                ? 1.0
+                : ((z_receiver <= map_depth) ? 1.0 : 0.2);
+            o_Color = vec4(cs_shadow, inline_lit, clamp(z_receiver, 0.0, 1.0), 1.0);
+            return;
+        }
+        color += evaluateDirectPBR(albedo, n, v, light_dir,
+            u_LightColorIntensity.rgb * u_LightColorIntensity.a * cs_shadow, metallic, roughness);
         o_Color = vec4(color, 1.0);
         return;
     }

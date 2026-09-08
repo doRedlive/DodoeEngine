@@ -2,6 +2,7 @@
 
 #include "baseline_sky_pass.h"
 
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -86,39 +87,23 @@ namespace dodoe {
 
     void BaselineSkyPass::render(RenderView& view, RenderScene& scene, const GfxViewportState& viewport_state,
                                   cutie::IFramebuffer* framebuffer, const GfxTextureHandle& gbuffer_depth) {
-        static UInt32 s_skip_log_counter = 0;
-        const Bool log_skip = ((s_skip_log_counter++) % 120) == 0;
-
         if (!m_pipeline || !gbuffer_depth) {
-            if (log_skip) {
-                DO_WARN("BaselineSkyPass: skipped, pipeline={} depth={}", m_pipeline != nullptr, gbuffer_depth != nullptr);
-            }
             return;
         }
 
         const auto& light_infos = scene.getLightSceneInfos();
         GfxTextureHandle skybox_texture{};
-        Bool sky_light_found = false;
         for (const auto& light_info : light_infos) {
             if (light_info.getLightType() != LightType::Sky || !light_info.isEnabled()) {
                 continue;
             }
-            sky_light_found = true;
             const auto& cubemap = light_info.getSkyLightData().cubemap;
             if (cubemap && cubemap->getGpuHandle() && cubemap->getGpuHandle()->isGpuReady()) {
                 skybox_texture = cubemap->getGpuHandle();
-            } else if (log_skip) {
-                DO_WARN("BaselineSkyPass: sky light found but cubemap not GPU ready (ptr={} handle={} ready={})",
-                    cubemap != nullptr,
-                    cubemap && cubemap->getGpuHandle() != nullptr,
-                    cubemap && cubemap->getGpuHandle() ? cubemap->getGpuHandle()->isGpuReady() : false);
             }
             break;
         }
         if (!skybox_texture) {
-            if (log_skip) {
-                DO_WARN("BaselineSkyPass: skipped, sky_light_found={} light_count={}", sky_light_found, light_infos.size());
-            }
             return;
         }
 
@@ -144,7 +129,7 @@ namespace dodoe {
         graphics_state.setViewport(viewport_state);
         graphics_state.addBindingSet(binding_set.Get());
         m_command_list->setGraphicsState(graphics_state);
-        m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+        RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
     }
 
 } // namespace dodoe

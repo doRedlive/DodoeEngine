@@ -3,6 +3,7 @@
 #include "baseline_present_pass.h"
 
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -105,7 +106,7 @@ namespace dodoe {
         if (color_attachment) {
             m_command_list->setTextureState(color_attachment, cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
         }
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         if (color_attachment && m_pipeline) {
             auto present_binding_set = m_device->createBindingSet(
@@ -124,7 +125,7 @@ namespace dodoe {
             present_state.setViewport(present_viewport);
             present_state.addBindingSet(present_binding_set.Get());
             m_command_list->setGraphicsState(present_state);
-            m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+            RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         }
 
 #ifdef DODOE_DEBUG_ENABLED
@@ -136,7 +137,7 @@ namespace dodoe {
         if (color_attachment) {
             m_command_list->setTextureState(color_attachment, cutie::AllSubresources, cutie::ResourceStates::Present);
         }
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
     }
 
 } // namespace dodoe

@@ -2,6 +2,7 @@
 
 #include "baseline_sprite_pass.h"
 
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -210,7 +211,7 @@ namespace dodoe {
 
         m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::CopyDest);
         m_command_list->setBufferState(m_vp_buffer.Get(), cutie::ResourceStates::CopyDest);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->writeBuffer(m_instance_buffer.Get(), instances.data(),
             instances.size() * sizeof(SpriteInstance));
         const Matrix4f view_projection = Math::FlipClipSpaceY(view.getViewProjectionMatrix());
@@ -220,7 +221,7 @@ namespace dodoe {
         m_command_list->setBufferState(m_vp_buffer.Get(), cutie::ResourceStates::ConstantBuffer);
         m_command_list->setBufferState(scene_resources.quad_vb->getRHI(), cutie::ResourceStates::VertexBuffer);
         m_command_list->setBufferState(scene_resources.quad_ib->getRHI(), cutie::ResourceStates::IndexBuffer);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         Size_t start = 0;
         while (start < instances.size()) {
@@ -262,6 +263,7 @@ namespace dodoe {
                     .setOffset(0));
 
             m_command_list->setGraphicsState(graphics_state);
+            RenderFrameCounters::Self().addDrawCall(static_cast<UInt32>(end - start));
             m_command_list->drawIndexed(GfxDrawArguments()
                 .setVertexCount(6)
                 .setInstanceCount(static_cast<UInt32>(end - start))

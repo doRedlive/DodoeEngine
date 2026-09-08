@@ -8,6 +8,7 @@ layout(location = 0) out vec4 o_Albedo;
 layout(location = 1) out vec4 o_Normal;
 layout(location = 2) out vec4 o_Position;
 layout(location = 3) out vec4 o_Material;
+layout(location = 4) out vec4 o_Emissive;
 
 layout(location = 0) in vec3 v_Normal;
 layout(location = 1) in vec2 v_UV;
@@ -53,4 +54,5 @@ void main()
     o_Normal   = vec4(n, 1.0);
     o_Position = vec4(v_WorldPosition, 1.0);
     o_Material = vec4(metallic, roughness, ao, float(v_Selected));
+    o_Emissive = vec4(0.0);
 }

@@ -2,6 +2,7 @@
 
 #include "baseline_shadow_pass.h"
 
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -192,14 +193,8 @@ namespace dodoe {
         if (!m_pipeline || !m_shadow_depth || !m_shadow_depth->isGpuReady()) {
             return result;
         }
-        static UInt64 s_shadow_debug_frame = 0;
-        const Bool shadow_debug = ((s_shadow_debug_frame++) % 120) == 0;
         const auto* mesh_ext = view.getExtension<MeshViewExtension>();
         if (!mesh_ext || mesh_ext->instance_scene_data.empty()) {
-            if (shadow_debug) {
-                DO_INFO("BaselineShadowPass: draw skipped (ext={} instances={})",
-                    mesh_ext != nullptr, mesh_ext ? mesh_ext->instance_scene_data.size() : 0);
-            }
             return result;
         }
 
@@ -211,18 +206,11 @@ namespace dodoe {
             }
         }
         if (!directional) {
-            if (shadow_debug) {
-                DO_INFO("BaselineShadowPass: draw skipped (no enabled directional light)");
-            }
             return result;
         }
 
         const auto& primitive_indices = mesh_ext->getMeshPassPrimitiveIndices(MeshPassType::Shadow);
         if (primitive_indices.empty()) {
-            if (shadow_debug) {
-                DO_INFO("BaselineShadowPass: draw skipped (no shadow indices, primitives={})",
-                    mesh_ext->visible_primitives.size());
-            }
             return result;
         }
         result.has_shadow = true;
@@ -247,12 +235,6 @@ namespace dodoe {
         }
         const Vector3f bounds_center = (bounds_min + bounds_max) * 0.5f;
         const Float bounds_extent = Math::Length(Math::Max(bounds_max - bounds_center, Vector3f(0.0f)));
-        if (shadow_debug) {
-            DO_INFO("BaselineShadowPass: primitives={} shadow_indices={} instances={} center=({:.1f},{:.1f},{:.1f}) extent={:.1f}",
-                mesh_ext->visible_primitives.size(), primitive_indices.size(),
-                mesh_ext->instance_scene_data.size(),
-                bounds_center.x, bounds_center.y, bounds_center.z, bounds_extent);
-        }
 
         result.light_view_projection = rendering_pipeline_utils::BuildDirectionalLightViewProjection(
             directional->getDirectionalLightData().direction, bounds_center, bounds_extent * 1.2f);
@@ -261,17 +243,17 @@ namespace dodoe {
         ensureInstanceCapacity(static_cast<UInt32>(mesh_ext->instance_scene_data.size()));
 
         m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::CopyDest);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->writeBuffer(m_instance_buffer.Get(), mesh_ext->instance_scene_data.data(),
             mesh_ext->instance_scene_data.size() * sizeof(InstanceSceneData));
 
         const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
         m_command_list->writeBuffer(m_global_cb.Get(), &global_data, sizeof(global_data));
-        const ViewMeshShaderData view_data{result.light_view_projection};
+        const ViewMeshShaderData view_data{Math::FlipClipSpaceY(result.light_view_projection)};
         m_command_list->writeBuffer(m_view_cb.Get(), &view_data, sizeof(view_data));
 
         m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::VertexBuffer);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         DynamicArray<UInt32> instance_prefix(mesh_ext->visible_primitives.size() + 1, 0);
         for (Size_t i = 0; i < mesh_ext->visible_primitives.size(); ++i) {
@@ -282,11 +264,8 @@ namespace dodoe {
         const auto viewport_state = GfxViewportState().addViewportAndScissorRect(
             GfxViewport(0.0f, static_cast<Float>(kShadowMapSize), 0.0f, static_cast<Float>(kShadowMapSize), 0.0f, 1.0f));
 
-        UInt32 shadow_draw_count = 0;
-        UInt32 shadow_skip_batch = 0;
-        UInt32 shadow_skip_buffer = 0;
         m_command_list->setTextureState(m_shadow_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthWrite);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->clearDepthStencilTexture(m_shadow_depth->getRHI(), cutie::AllSubresources, true, 1.0f, false, 0);
 
         for (const UInt32 primitive_index : primitive_indices) {
@@ -301,13 +280,11 @@ namespace dodoe {
 
             for (const auto& batch : primitive->getMeshBatches()) {
                 if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.getElements().empty()) {
-                    shadow_skip_batch++;
                     continue;
                 }
                 const auto& element = batch.getElements()[0];
                 if (!element.isValid() || !element.vertex_buffer || !element.index_buffer ||
                     !element.vertex_buffer->isGpuReady() || !element.index_buffer->isGpuReady()) {
-                    shadow_skip_buffer++;
                     continue;
                 }
 
@@ -328,21 +305,17 @@ namespace dodoe {
                         .setOffset(0));
 
                 m_command_list->setGraphicsState(graphics_state);
+                RenderFrameCounters::Self().addDrawCall(element.instance_count);
                 m_command_list->drawIndexed(GfxDrawArguments()
                     .setVertexCount(element.index_count)
                     .setInstanceCount(element.instance_count)
                     .setStartIndexLocation(element.index_offset)
                     .setStartVertexLocation(element.vertex_offset));
-                shadow_draw_count++;
             }
-        }
-        if (shadow_debug) {
-            DO_INFO("BaselineShadowPass: draws={} skip_batch={} skip_buffer={}",
-                shadow_draw_count, shadow_skip_batch, shadow_skip_buffer);
         }
 
         m_command_list->setTextureState(m_shadow_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
-        m_command_list->commitBarriers();
+        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         return result;
     }
 

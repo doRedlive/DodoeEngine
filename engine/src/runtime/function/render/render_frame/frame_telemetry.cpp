@@ -20,12 +20,51 @@ namespace dodoe {
         ss << "\"arena_mb\":" << frame_arena_used_mb << ",";
         ss << "\"arena_peak_mb\":" << frame_arena_peak_mb << ",";
         ss << "\"draw_calls\":" << draw_call_count << ",";
+        ss << "\"indirect_draws\":" << indirect_draw_call_count << ",";
         ss << "\"dispatches\":" << dispatch_count << ",";
         ss << "\"barriers\":" << barrier_count << ",";
+        ss << "\"drawn_instances\":" << drawn_instance_count << ",";
         ss << "\"pending_deletions\":" << pending_deletion_count;
         ss << "}";
         return String(ss.str().c_str());
     }
+
+#ifdef DODOE_PERF_ENABLED
+    RenderFrameCounters& RenderFrameCounters::Self() {
+        static RenderFrameCounters instance;
+        return instance;
+    }
+
+    void RenderFrameCounters::reset() {
+        m_draw_calls.store(0, std::memory_order_relaxed);
+        m_indirect_draw_calls.store(0, std::memory_order_relaxed);
+        m_dispatches.store(0, std::memory_order_relaxed);
+        m_barriers.store(0, std::memory_order_relaxed);
+        m_drawn_instances.store(0, std::memory_order_relaxed);
+    }
+
+    void RenderFrameCounters::addDrawCall(UInt32 instance_count) {
+        m_draw_calls.fetch_add(1, std::memory_order_relaxed);
+        m_drawn_instances.fetch_add(instance_count, std::memory_order_relaxed);
+    }
+
+    void RenderFrameCounters::addIndirectDrawCall(UInt32 draw_count) {
+        m_indirect_draw_calls.fetch_add(draw_count, std::memory_order_relaxed);
+    }
+
+    void RenderFrameCounters::addDispatch() {
+        m_dispatches.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    void RenderFrameCounters::addBarrier() {
+        m_barriers.fetch_add(1, std::memory_order_relaxed);
+    }
+#else
+    RenderFrameCounters& RenderFrameCounters::Self() {
+        static RenderFrameCounters instance;
+        return instance;
+    }
+#endif
 
     void FrameTelemetryCollector::record(const FrameTelemetry& telemetry) {
         m_history[m_write_index] = telemetry;

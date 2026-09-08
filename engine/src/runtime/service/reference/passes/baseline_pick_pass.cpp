@@ -2,6 +2,7 @@
 
 #include "baseline_pick_pass.h"
 
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -226,6 +227,7 @@ namespace dodoe {
                     .setFormat(GfxFormat::R32_UINT)
                     .setOffset(0));
             m_command_list->setGraphicsState(graphics_state);
+            RenderFrameCounters::Self().addDrawCall(picked_element->instance_count);
             m_command_list->drawIndexed(GfxDrawArguments()
                 .setVertexCount(picked_element->index_count)
                 .setInstanceCount(picked_element->instance_count)

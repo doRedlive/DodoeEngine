@@ -1,6 +1,7 @@
 set(TARGET_NAME DodoeRuntime)
 
 option(DODOE_ENABLE_PROFILING "Enable Chrome trace profiling" ON)
+option(DODOE_ENABLE_PERF "Enable render performance counters in non-Debug configs" OFF)
 
 find_package(Vulkan REQUIRED)
 if (NOT Vulkan_FOUND)
@@ -64,6 +65,10 @@ target_include_directories(${TARGET_NAME}
 )
 
 target_compile_definitions(${TARGET_NAME} PUBLIC $<$<CONFIG:Debug>:DODOE_DEBUG_ENABLED>)
+target_compile_definitions(${TARGET_NAME} PUBLIC
+    $<$<CONFIG:Debug>:DODOE_PERF_ENABLED=1>
+    $<$<AND:$<NOT:$<CONFIG:Debug>>,$<BOOL:${DODOE_ENABLE_PERF}>>:DODOE_PERF_ENABLED=1>
+)
 target_compile_definitions(${TARGET_NAME} PUBLIC $<$<BOOL:${DODOE_ENABLE_PROFILING}>:DODOE_PROFILE_ENABLED=1>)
 if(TARGET DodoeProfiling)
     target_link_libraries(${TARGET_NAME} PUBLIC DodoeProfiling)

@@ -2,6 +2,7 @@
 
 #include "draw_command_list.h"
 #include "gfx_context.h"
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 
 namespace dodoe {
 
@@ -138,6 +139,7 @@ namespace dodoe {
         recordCommand<SetBufferStateCommand>(buffer, state_bits);
     }
     void DrawCommandList::commitBarriers() {
+        RenderFrameCounters::Self().addBarrier();
         recordCommand<CommitBarriersCommand>();
     }
 
@@ -152,21 +154,27 @@ namespace dodoe {
     }
 
     void DrawCommandList::draw(const GfxDrawArguments& args) {
+        RenderFrameCounters::Self().addDrawCall(args.instanceCount);
         recordCommand<DrawPrimitiveCommand>(args);
     }
     void DrawCommandList::drawIndexed(const GfxDrawArguments& args) {
+        RenderFrameCounters::Self().addDrawCall(args.instanceCount);
         recordCommand<DrawIndexedPrimitiveCommand>(args);
     }
     void DrawCommandList::drawIndirect(UInt32 offset_bytes, UInt32 draw_count) {
+        RenderFrameCounters::Self().addIndirectDrawCall(draw_count);
         recordCommand<DrawIndirectCommand>(offset_bytes, draw_count);
     }
     void DrawCommandList::drawIndexedIndirect(UInt32 offset_bytes, UInt32 draw_count) {
+        RenderFrameCounters::Self().addIndirectDrawCall(draw_count);
         recordCommand<DrawIndexedIndirectCommand>(offset_bytes, draw_count);
     }
     void DrawCommandList::dispatch(UInt32 x, UInt32 y, UInt32 z) {
+        RenderFrameCounters::Self().addDispatch();
         recordCommand<DispatchCommand>(x, y, z);
     }
     void DrawCommandList::dispatchIndirect(UInt32 offset_bytes) {
+        RenderFrameCounters::Self().addDispatch();
         recordCommand<DispatchIndirectCommand>(offset_bytes);
     }
 

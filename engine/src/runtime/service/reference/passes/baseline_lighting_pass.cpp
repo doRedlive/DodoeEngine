@@ -2,6 +2,7 @@
 
 #include "baseline_lighting_pass.h"
 
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -28,6 +29,7 @@ namespace dodoe {
         Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f irradiance_sh[9]{};
         Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
+        Vector4f emissive_params{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
     static_assert(sizeof(DeferredLightPushConstants) <= kDeferredLightConstantBufferSize);
@@ -57,6 +59,7 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::Texture_SRV(5))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(6))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(7))
+                .addItem(GfxBindingLayoutItem::Texture_SRV(10))
                 .addItem(GfxBindingLayoutItem::Sampler(9)));
 
         GfxBufferDesc cb_desc;
@@ -103,6 +106,7 @@ namespace dodoe {
                                       cutie::IFramebuffer* framebuffer,
                                       const GfxTextureHandle& gbuffer_albedo, const GfxTextureHandle& gbuffer_normal,
                                       const GfxTextureHandle& gbuffer_position, const GfxTextureHandle& gbuffer_material,
+                                      const GfxTextureHandle& gbuffer_emissive,
                                       const BaselineShadowResult& shadow) {
         if (!m_pipeline) {
             return;
@@ -169,6 +173,8 @@ namespace dodoe {
         GfxTextureHandle brdf_lut_handle = brdf_lut ? brdf_lut->getGpuHandle() : GfxTextureHandle{};
         pass_desc.addItem(GfxBindingSetItem::Texture_SRV(
             7, brdf_lut_handle ? brdf_lut_handle->getRHIHandle().Get() : nullptr));
+        pass_desc.addItem(GfxBindingSetItem::Texture_SRV(
+            10, gbuffer_emissive ? gbuffer_emissive->getRHIHandle().Get() : nullptr));
         pass_desc.addItem(GfxBindingSetItem::Sampler(9, m_sampler.Get()));
 
         auto binding_set = m_device->createBindingSet(pass_desc, m_binding_layout.Get());
@@ -184,10 +190,24 @@ namespace dodoe {
             graphics_state.setViewport(viewport_state);
             graphics_state.addBindingSet(binding_set.Get());
             m_command_list->setGraphicsState(graphics_state);
-            m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+            RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         };
 
         if (kDebugShadowSamplingView) {
+            Bool emissive_applied = false;
+            if (has_enabled_sky) {
+                DeferredLightPushConstants sky_push{};
+                sky_push.camera_position = Vector4f(camera_position, 1.0f);
+                for (UInt32 b = 0; b < 9u; ++b) {
+                    sky_push.irradiance_sh[b] = sky_irradiance_sh[b];
+                }
+                sky_push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
+                sky_push.light_color_intensity = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+                sky_push.light_direction_type = Vector4f(0.0f, -1.0f, 0.0f, 0.0f);
+                sky_push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
+                emissive_applied = true;
+                draw_fullscreen_light(sky_push);
+            }
             for (const auto& light_info : light_infos) {
                 if (!light_info.isEnabled() || light_info.getLightType() != LightType::Directional) {
                     continue;
@@ -202,12 +222,16 @@ namespace dodoe {
                     ? shadow.light_view_projection
                     : rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
                 push.shadow_params = Vector4f(0.005f, 0.2f, 0.005f, 2.0f);
+                if (!emissive_applied) {
+                    push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
+                    emissive_applied = true;
+                }
                 draw_fullscreen_light(push);
-                return;
             }
             return;
         }
 
+        Bool emissive_applied = false;
         if (has_enabled_sky) {
             DeferredLightPushConstants push{};
             push.camera_position = Vector4f(camera_position, 1.0f);
@@ -217,6 +241,8 @@ namespace dodoe {
             push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
             push.light_color_intensity = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
             push.light_direction_type = Vector4f(0.0f, -1.0f, 0.0f, 0.0f);
+            push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
+            emissive_applied = true;
             draw_fullscreen_light(push);
         }
 
@@ -261,6 +287,10 @@ namespace dodoe {
                 continue;
             }
 
+            if (!emissive_applied) {
+                push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
+                emissive_applied = true;
+            }
             draw_fullscreen_light(push);
         }
     }
