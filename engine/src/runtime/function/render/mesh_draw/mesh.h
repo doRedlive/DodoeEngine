@@ -7,6 +7,8 @@
 
 namespace dodoe {
 
+    class MeshAsset;
+
     class DODOE_API Mesh : public Object {
         String m_path{};
         String m_name{};
@@ -35,7 +37,7 @@ namespace dodoe {
         [[nodiscard]] const Vector3f& getBoundsMin() const { return m_bounds_min; }
         [[nodiscard]] const Vector3f& getBoundsMax() const { return m_bounds_max; }
 
-        [[nodiscard]] static Mesh* Create(const ObjectID& ref, const String& path);
+        [[nodiscard]] static Mesh* Create(const ObjectID& ref, MeshAsset& asset);
         static void Shutdown();
     };
 

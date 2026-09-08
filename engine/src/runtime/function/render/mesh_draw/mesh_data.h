@@ -33,14 +33,6 @@ namespace dodoe {
         [[nodiscard]] Bool isValid() const { return index_count > 0; }
     };
 
-    struct MeshUploadData {
-        String name{};
-        DynamicArray<Vector3f> position_data{};
-        DynamicArray<Vector2f> texcoord_data{};
-        DynamicArray<UInt32> normal_data{};
-        DynamicArray<UInt32> index_data{};
-    };
-
     struct MeshBufferData {
         GfxBufferHandle vertex_buffer{};
         GfxBufferHandle index_buffer{};

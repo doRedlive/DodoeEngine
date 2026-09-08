@@ -166,11 +166,11 @@ namespace dodoe {
     }
 
     Mesh* ResourceManager::loadMesh(const UUID& asset_id, UInt32 local_id) {
-        Asset* asset = m_assetManager->findAsset(asset_id);
+        MeshAsset* asset = m_assetManager->loadAssetSync<MeshAsset>(asset_id);
         if (!asset) {
             return nullptr;
         }
-        return Mesh::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());
+        return Mesh::Create(ObjectID{asset_id, local_id}, *asset);
     }
 
     AudioClip* ResourceManager::loadAudioClip(const UUID& asset_id, UInt32 local_id) {

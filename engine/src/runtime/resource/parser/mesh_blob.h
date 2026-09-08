@@ -7,6 +7,7 @@
 #include "runtime/resource/file/file_id.h"
 #include "runtime/function/animation/skeleton.h"
 #include "runtime/function/animation/anim_clip.h"
+#include "runtime/function/render/material/material.h"
 
 namespace dodoe {
 
@@ -18,6 +19,15 @@ namespace dodoe {
         Vector3f bitangent;
         UInt32 bone_ids[4]{0, 0, 0, 0};
         Float bone_weights[4]{0.0f, 0.0f, 0.0f, 0.0f};
+    };
+
+    struct MeshSection {
+        UInt32 vertex_base{0};
+        UInt32 vertex_count{0};
+        UInt32 index_base{0};
+        UInt32 index_count{0};
+        UInt32 material_index{0};
+        Matrix4f world{1.0f};
     };
 
     struct MeshNode {
@@ -32,6 +42,7 @@ namespace dodoe {
     struct MeshData {
         DynamicArray<MeshVertex> vertices;
         DynamicArray<UInt32> indices;
+        DynamicArray<MeshSection> sections;
         DynamicArray<FileID> textures;
         PPtr<Skeleton> skeleton{};
         DynamicArray<PPtr<AnimClip>> animations{};
@@ -40,6 +51,7 @@ namespace dodoe {
     struct MeshBlob {
         Ref<MeshData> data{nullptr};
         DynamicArray<MeshNode> hierarchy{};
+        DynamicArray<String> material_paths{};
 
         MeshBlob() = default;
         ~MeshBlob();
@@ -49,5 +61,14 @@ namespace dodoe {
 
         [[nodiscard]] bool isValid() const { return data != nullptr; }
     };
+
+    [[nodiscard]] String MakeMaterialAssetPath(const String& model_stem, UInt32 material_index);
+    [[nodiscard]] Bool BuildMeshImport(
+        const String& absolute_source_path,
+        const FsPath& asset_dir,
+        MeshBlob& out_blob,
+        DynamicArray<MaterialProperties>& out_materials);
+    [[nodiscard]] Bool SaveMeshCache(const String& absolute_cache_path, const MeshBlob& blob);
+    [[nodiscard]] Bool LoadMeshCache(const String& absolute_cache_path, MeshBlob& out_blob);
 
 } // namespace dodoe
