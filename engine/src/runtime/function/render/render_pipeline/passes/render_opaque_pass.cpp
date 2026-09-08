@@ -123,7 +123,7 @@ namespace dodoe {
                     GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
                 .addItem(GfxBindingSetItem::Texture_SRV(
                     3, brdf_lut ? brdf_lut->getRHIHandle().Get() : nullptr))
-                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
+                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
             binding_layout);
     }
 

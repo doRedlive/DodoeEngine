@@ -141,7 +141,7 @@ namespace dodoe {
                 const auto binding_set = binding_set_cache->getOrCreate(
                     GfxBindingSetDesc()
                         .addItem(GfxBindingSetItem::Texture_SRV(1, test_tex->getRHIHandle()))
-                        .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
+                        .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
                     binding_layout,
                     binding_layout_cache->getLayoutGeneration(binding_layout));
 

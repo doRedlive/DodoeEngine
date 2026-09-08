@@ -32,6 +32,7 @@ namespace dodoe {
     struct PrimitiveMeshDrawShaderData {
         Vector4i draw_data{0};
         Vector4f material_data{0.0f, 1.0f, 1.0f, 0.0f};
+        Vector4f emissive_data{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
 } // dodoe

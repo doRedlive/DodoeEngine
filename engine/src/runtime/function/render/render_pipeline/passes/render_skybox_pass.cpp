@@ -108,7 +108,7 @@ namespace dodoe {
                 shader_params.skybox_cb.value = skybox_cb;
                 shader_params.skybox_texture.value = cubemap_handle;
                 shader_params.depth.value = parameters.depth;
-                shader_params.sampler.value = GlobalSamplers::screen();
+                shader_params.sampler.value = GlobalSamplers::Screen();
 
                 const auto binding_layouts = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayouts();
 

@@ -202,7 +202,7 @@ namespace dodoe {
                         m_cb_binding_layout);
                     const auto sampler_binding_set = command_list.createBindingSet(
                         GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::screen().Get())),
+                            .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get())),
                         m_sampler_binding_layout);
                     if (!cb_binding_set || !sampler_binding_set) {
                         DO_ERROR("SpritePass: failed to create bindless binding sets");
@@ -312,7 +312,7 @@ namespace dodoe {
                         auto material_binding_set = command_list.createBindingSet(
                             GfxBindingSetDesc()
                                 .addItem(GfxBindingSetItem::Texture_SRV(2, tex_handle->getRHIHandle().Get()))
-                                .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::screen().Get())),
+                                .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get())),
                             m_material_binding_layout);
 
                         if (!cb_binding_set || !material_binding_set) {

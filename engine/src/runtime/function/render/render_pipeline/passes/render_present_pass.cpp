@@ -74,7 +74,7 @@ namespace dodoe {
                 shader_params.viewport_cb.value = viewport_cb;
                 shader_params.scene_color.value = parameters.scene_color;
                 shader_params.imgui_color.value = parameters.imgui_color;
-                shader_params.sampler.value = GlobalSamplers::screen();
+                shader_params.sampler.value = GlobalSamplers::Screen();
 
                 const auto binding_layouts = ShaderBindingReflector<PresentPassShaderParams>::getOrCreateLayouts();
 

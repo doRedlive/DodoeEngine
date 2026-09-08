@@ -22,7 +22,9 @@ namespace dodoe {
         return lhs.draw_data.x == rhs.draw_data.x && lhs.draw_data.y == rhs.draw_data.y &&
             lhs.draw_data.z == rhs.draw_data.z && lhs.draw_data.w == rhs.draw_data.w &&
             lhs.material_data.x == rhs.material_data.x && lhs.material_data.y == rhs.material_data.y &&
-            lhs.material_data.z == rhs.material_data.z && lhs.material_data.w == rhs.material_data.w;
+            lhs.material_data.z == rhs.material_data.z && lhs.material_data.w == rhs.material_data.w &&
+            lhs.emissive_data.x == rhs.emissive_data.x && lhs.emissive_data.y == rhs.emissive_data.y &&
+            lhs.emissive_data.z == rhs.emissive_data.z && lhs.emissive_data.w == rhs.emissive_data.w;
     }
 
     inline void MergeOpaqueMeshDrawSources(DynamicArray<MeshDrawCommandSource>& sources) {

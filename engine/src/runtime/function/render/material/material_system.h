@@ -96,10 +96,12 @@ namespace dodoe {
         DynamicArray<Texture2D*> textures;
         DynamicArray<Int32> texture_descriptor_indices;
         GfxSamplerHandle sampler{};
+        GfxBindingSetHandle texture_binding_set{};
 
         Float metallic{0.0f};
         Float roughness{1.0f};
         Float ao{1.0f};
+        Vector3f emissive{0.0f, 0.0f, 0.0f};
 
         UInt64 revision{0};
         Bool resolved{false};
@@ -178,6 +180,8 @@ namespace dodoe {
         Bool resolveTextureSlot(MaterialInstance& instance,
                                 const MaterialParamDef& def,
                                 MaterialParamValue value);
+
+        void buildTextureBindingSet(MaterialInstance& instance);
 
         UnorderedMap<String, MaterialTemplate> m_templates{};
         UnorderedMap<String, MaterialInstance> m_instances{};

@@ -184,7 +184,7 @@ namespace dodoe {
                         GfxBindingSetDesc()
                             .addItem(GfxBindingSetItem::ConstantBuffer(0, constant_buffer->getRHIHandle().Get()))
                             .addItem(GfxBindingSetItem::Texture_SRV(1, texture->getRHI()))
-                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
+                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
                         m_binding_layout);
                 if (!binding_set) {
                     continue;

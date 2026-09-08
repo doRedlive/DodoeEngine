@@ -27,6 +27,7 @@ namespace dodoe {
         RenderGraphTextureHandle normal{};
         RenderGraphTextureHandle position{};
         RenderGraphTextureHandle material{};
+        RenderGraphTextureHandle emissive{};
         RenderGraphTextureHandle depth{};
         RenderGraphBufferHandle primitive_scene_buffer{};
         RenderTargetHandle* gbuffer_rt{nullptr};
@@ -62,6 +63,9 @@ namespace dodoe {
                 color_attach.clear_color = GfxColor(0.0f, 1.0f, 1.0f, 1.0f);
                 p.material = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(3), "GBufferMaterial"), color_attach);
 
+                color_attach.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
+                p.emissive = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(4), "GBufferEmissive"), color_attach);
+
                 RenderGraphAttachmentInfo depth_attach{};
                 depth_attach.load_op = LoadOp::Clear;
                 p.depth = b.writeDepth(b.importTexture(p.gbuffer_rt->getDepthTexture(), "GBufferDepth"), depth_attach);
@@ -79,6 +83,7 @@ namespace dodoe {
                 gbuffer.normal   = p.normal;
                 gbuffer.position = p.position;
                 gbuffer.material = p.material;
+                gbuffer.emissive = p.emissive;
                 gbuffer.depth    = p.depth;
                 gbuffer.instance_scene_data = p.primitive_scene_buffer;
                 b.blackboard().set<SceneTexturesKey>(gbuffer);

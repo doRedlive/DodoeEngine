@@ -7,13 +7,9 @@
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_settings.h"
+#include "runtime/function/render/render_frame/frame_telemetry.h"
 #ifdef DODOE_DEBUG_ENABLED
 #include "runtime/service/debug/debug_imgui.h"
-#endif
-
-#if defined(_WIN32)
-#include <windows.h>
-#include <psapi.h>
 #endif
 
 namespace dodoe {
@@ -136,7 +132,6 @@ namespace dodoe {
         m_present_pass->setImGuiPass(m_imgui_pass.get());
 #endif
 
-        m_frame_counter = 0;
         DO_INFO("BaselineRenderer: initialized (raw cutie path, deferred GBuffer + lighting + AA)");
         return true;
     }
@@ -164,9 +159,10 @@ namespace dodoe {
         m_rt.gbuffer_normal = CreateColorTarget(m_device, width, height, GfxFormat::RGBA16_FLOAT, "BaselineGBufferNormal");
         m_rt.gbuffer_position = CreateColorTarget(m_device, width, height, GfxFormat::RGBA32_FLOAT, "BaselineGBufferPosition");
         m_rt.gbuffer_material = CreateColorTarget(m_device, width, height, GfxFormat::RGBA8_UNORM, "BaselineGBufferMaterial");
+        m_rt.gbuffer_emissive = CreateColorTarget(m_device, width, height, GfxFormat::RGBA16_FLOAT, "BaselineGBufferEmissive");
         m_rt.gbuffer_depth = CreateDepthTarget(m_device, width, height, "BaselineGBufferDepth");
         m_rt.gbuffer_framebuffer = CreateFramebuffer(m_device,
-            {m_rt.gbuffer_albedo, m_rt.gbuffer_normal, m_rt.gbuffer_position, m_rt.gbuffer_material},
+            {m_rt.gbuffer_albedo, m_rt.gbuffer_normal, m_rt.gbuffer_position, m_rt.gbuffer_material, m_rt.gbuffer_emissive},
             m_rt.gbuffer_depth);
 
         // HDR scene color
@@ -218,7 +214,6 @@ namespace dodoe {
         m_sampler = nullptr;
         m_command_list = nullptr;
         m_device = nullptr;
-        m_frame_counter = 0;
     }
 
     void BaselineRenderer::render(GfxContext& gfx, UInt32 swapchain_image_index,
@@ -281,12 +276,14 @@ namespace dodoe {
             m_command_list->setTextureState(m_rt.gbuffer_normal->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
             m_command_list->setTextureState(m_rt.gbuffer_position->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
             m_command_list->setTextureState(m_rt.gbuffer_material->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
+            m_command_list->setTextureState(m_rt.gbuffer_emissive->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
             m_command_list->setTextureState(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthWrite);
-            m_command_list->commitBarriers();
+            RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
             m_command_list->clearTextureFloat(m_rt.gbuffer_albedo->getRHI(), cutie::AllSubresources, cutie::Color(0.08f, 0.09f, 0.11f, 1.0f));
             m_command_list->clearTextureFloat(m_rt.gbuffer_normal->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
             m_command_list->clearTextureFloat(m_rt.gbuffer_position->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
             m_command_list->clearTextureFloat(m_rt.gbuffer_material->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 1.0f, 1.0f, 0.0f));
+            m_command_list->clearTextureFloat(m_rt.gbuffer_emissive->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
             m_command_list->clearDepthStencilTexture(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, true, 1.0f, false, 0);
             m_gbuffer_pass->render(view, scene, viewport_state, m_rt.gbuffer_framebuffer->getRHI());
 
@@ -294,7 +291,8 @@ namespace dodoe {
             m_command_list->setTextureState(m_rt.gbuffer_normal->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
             m_command_list->setTextureState(m_rt.gbuffer_position->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
             m_command_list->setTextureState(m_rt.gbuffer_material->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
-            m_command_list->commitBarriers();
+            m_command_list->setTextureState(m_rt.gbuffer_emissive->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
+            RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
             m_command_list->endMarker();
 
             // Viewport pick pass
@@ -304,12 +302,12 @@ namespace dodoe {
                 m_command_list->beginMarker("Baseline.Pick");
                 m_command_list->setTextureState(m_rt.pick_id->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
                 m_command_list->setTextureState(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthRead);
-                m_command_list->commitBarriers();
+                RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
                 m_command_list->clearTextureUInt(m_rt.pick_id->getRHI(), cutie::AllSubresources, 0);
                 if (m_pick_pass->render(view, viewport_state, m_rt.pick_framebuffer->getRHI(),
                         m_gbuffer_pass->getInstanceBuffer(), m_pick_ids)) {
                     m_command_list->setTextureState(m_rt.pick_id->getRHI(), cutie::AllSubresources, cutie::ResourceStates::CopySource);
-                    m_command_list->commitBarriers();
+                    RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
                     const cutie::TextureSlice src_slice = cutie::TextureSlice()
                         .setOrigin(static_cast<UInt32>(pick_x), static_cast<UInt32>(pick_y))
                         .setSize(1, 1);
@@ -329,37 +327,38 @@ namespace dodoe {
             // Lighting pass
             m_command_list->beginMarker("Baseline.Lighting");
             m_command_list->setTextureState(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
-            m_command_list->commitBarriers();
+            RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
             m_command_list->clearTextureFloat(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
             m_lighting_pass->render(view, scene, viewport_state, m_rt.lighting_framebuffer->getRHI(),
-                m_rt.gbuffer_albedo, m_rt.gbuffer_normal, m_rt.gbuffer_position, m_rt.gbuffer_material, shadow);
+                m_rt.gbuffer_albedo, m_rt.gbuffer_normal, m_rt.gbuffer_position, m_rt.gbuffer_material,
+                m_rt.gbuffer_emissive, shadow);
             m_command_list->endMarker();
 
             // Sky pass
             m_command_list->beginMarker("Baseline.Sky");
             m_command_list->setTextureState(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
-            m_command_list->commitBarriers();
+            RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
             m_sky_pass->render(view, scene, viewport_state, m_rt.lighting_framebuffer->getRHI(), m_rt.gbuffer_depth);
             m_command_list->endMarker();
 
             // Sprite pass
             m_command_list->beginMarker("Baseline.Sprite");
             m_command_list->setTextureState(m_rt.gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthRead);
-            m_command_list->commitBarriers();
+            RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
             m_sprite_pass->render(view, scene, m_rt.sprite_framebuffer->getRHI(), viewport_state);
             m_command_list->endMarker();
 
             // Selection outline pass (dilated selection mask, blended onto scene color)
             m_command_list->beginMarker("Baseline.Outline");
             m_command_list->setTextureState(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
-            m_command_list->commitBarriers();
+            RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
             m_outline_pass->render(view, extent, m_rt.gbuffer_material, m_rt.lighting_framebuffer->getRHI());
             m_command_list->endMarker();
 
             // Post-process pass
             m_command_list->beginMarker("Baseline.PostProcess");
             m_command_list->setTextureState(m_rt.scene_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
-            m_command_list->commitBarriers();
+            RenderFrameCounters::get().addBarrier(); m_command_list->commitBarriers();
             m_post_process_pass->render(view, extent, m_rt.scene_color,
                 m_rt.tone_map_color, m_rt.tone_map_framebuffer->getRHI(),
                 m_rt.fxaa_color, m_rt.fxaa_framebuffer->getRHI());
@@ -388,18 +387,6 @@ namespace dodoe {
         }
 #endif
         m_device->runGarbageCollection();
-
-        if (((m_frame_counter++) % 120) == 0) {
-#if defined(_WIN32)
-            PROCESS_MEMORY_COUNTERS_EX pmc{};
-            K32GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc));
-            DO_INFO("BaselineRenderer: frame={} private_commit={:.1f} MB",
-                m_frame_counter - 1,
-                static_cast<double>(pmc.PrivateUsage) / (1024.0 * 1024.0));
-#else
-            DO_INFO("BaselineRenderer: frame={}", m_frame_counter - 1);
-#endif
-        }
     }
 
 } // namespace dodoe

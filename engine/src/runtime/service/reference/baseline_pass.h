@@ -26,6 +26,7 @@ namespace dodoe {
         GfxTextureHandle gbuffer_normal{};
         GfxTextureHandle gbuffer_position{};
         GfxTextureHandle gbuffer_material{};
+        GfxTextureHandle gbuffer_emissive{};
         GfxTextureHandle gbuffer_depth{};
         GfxFramebufferHandle gbuffer_framebuffer{};
         // HDR scene color (lighting output / sprite input)

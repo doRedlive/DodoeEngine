@@ -144,8 +144,23 @@ namespace dodoe {
             DO_ERROR("MaterialSystem::setInstanceParam instance not found: {}", instance_name);
             return;
         }
-        it->second.desc.param_overrides[param_name] = value;
-        it->second.revision++;
+        auto& instance = it->second;
+        instance.desc.param_overrides[param_name] = value;
+
+        if (param_name == "metallic") {
+            instance.metallic = value.f[0];
+        } else if (param_name == "roughness") {
+            instance.roughness = value.f[0];
+        } else if (param_name == "ao") {
+            instance.ao = value.f[0];
+        } else if (param_name == "emissive") {
+            instance.emissive = Vector3f(value.f[0], value.f[1], value.f[2]);
+        } else if (param_name.ends_with("_texture")) {
+            instance.resolved = false;
+            resolveInstance(instance_name);
+        }
+
+        instance.revision++;
         ++m_global_revision;
         // DO_DEBUG("MaterialSystem: updated parameter '{}' on instance '{}'", param_name, instance_name);
     }
@@ -296,8 +311,12 @@ namespace dodoe {
         if (const auto it = resolved_params.find("ao"); it != resolved_params.end()) {
             inst.ao = it->second.f[0];
         }
+        if (const auto it = resolved_params.find("emissive"); it != resolved_params.end()) {
+            inst.emissive = Vector3f(it->second.f[0], it->second.f[1], it->second.f[2]);
+        }
 
         inst.sampler = GDrawCommandList.createSampler(GfxSamplerDesc());
+        buildTextureBindingSet(inst);
 
         inst.resolved = true;
         ++inst.revision;
@@ -464,18 +483,32 @@ namespace dodoe {
     }
 
     GfxBindingSetHandle MaterialSystem::getTextureBindingSet(const MaterialInstance* instance) {
-        if (!instance || instance->textures.empty() || !instance->sampler ||
-            !m_binding_layout_cache || !m_binding_set_cache) {
+        if (!instance) {
             return {};
         }
+        if (instance->texture_binding_set) {
+            return instance->texture_binding_set;
+        }
+        auto& mutable_instance = const_cast<MaterialInstance&>(*instance);
+        buildTextureBindingSet(mutable_instance);
+        return mutable_instance.texture_binding_set;
+    }
 
-        const auto* base_color = instance->textures[0];
-        const auto* metallic_rough = instance->textures.size() > 1 ? instance->textures[1] : instance->textures[0];
+    void MaterialSystem::buildTextureBindingSet(MaterialInstance& instance) {
+        instance.texture_binding_set = {};
+
+        if (instance.textures.empty() || !instance.sampler ||
+            !m_binding_layout_cache || !m_binding_set_cache) {
+            return;
+        }
+
+        const auto* base_color = instance.textures[0];
+        const auto* metallic_rough = instance.textures.size() > 1 ? instance.textures[1] : instance.textures[0];
 
         const GfxTextureHandle base_handle = base_color->getGpuHandle();
         const GfxTextureHandle metallic_handle = metallic_rough->getGpuHandle();
         if (!base_handle || !metallic_handle) {
-            return {};
+            return;
         }
 
         const auto texture_layout = m_binding_layout_cache->getOrCreate(
@@ -488,11 +521,11 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::Texture_SRV(shader_bindings::kMaterialBindingMetallicRough)));
 
         GfxBindingSetDesc set_desc;
-        set_desc.addItem(GfxBindingSetItem::Sampler(shader_bindings::kMaterialBindingSampler, instance->sampler.Get()));
+        set_desc.addItem(GfxBindingSetItem::Sampler(shader_bindings::kMaterialBindingSampler, instance.sampler.Get()));
         set_desc.addItem(GfxBindingSetItem::Texture_SRV(shader_bindings::kMaterialBindingBaseColor, base_handle->getRHIHandle().Get()));
         set_desc.addItem(GfxBindingSetItem::Texture_SRV(shader_bindings::kMaterialBindingMetallicRough, metallic_handle->getRHIHandle().Get()));
 
-        return m_binding_set_cache->getOrCreate(
+        instance.texture_binding_set = m_binding_set_cache->getOrCreate(
             set_desc,
             texture_layout,
             m_binding_layout_cache->getLayoutGeneration(texture_layout));

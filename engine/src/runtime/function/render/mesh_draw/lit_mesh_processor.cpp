@@ -182,11 +182,20 @@ namespace dodoe {
         if (!material) {
             return false;
         }
-        shader_data.draw_data.x = material->texture_descriptor_indices.empty()
-            ? 0 : material->texture_descriptor_indices[0];
-        shader_data.draw_data.y = material->texture_descriptor_indices.size() > 1
-            ? material->texture_descriptor_indices[1] : -1;
-        shader_data.draw_data.z = material->texture_descriptor_indices.size() > 1 ? 1 : 0;
+        const auto& descriptor_indices = material->texture_descriptor_indices;
+        shader_data.draw_data.x = descriptor_indices.empty()
+            ? 0 : descriptor_indices[0];
+        shader_data.draw_data.y = descriptor_indices.size() > 1
+            ? descriptor_indices[1] : -1;
+        shader_data.draw_data.z = descriptor_indices.size() > 1 
+            ? 1 : 0;
+        shader_data.draw_data.w = descriptor_indices.size() > 2
+            ? static_cast<Int32>(descriptor_indices[2]) : -1;
+        shader_data.material_data = Vector4f(material->metallic, material->roughness, material->ao, 0.0f);
+        shader_data.emissive_data = Vector4f(
+            material->emissive.x, material->emissive.y, material->emissive.z,
+            descriptor_indices.size() > 3
+                ? static_cast<Float>(descriptor_indices[3]) + 1.0f : 0.0f);
         command.setBindingSet(ShaderParameterSet::Global, m_global_binding_set);
         command.setBindingSet(ShaderParameterSet::View, m_view_binding_set);
         command.setBindingSet(ShaderParameterSet::Primitive, m_primitive_binding_set);
@@ -194,11 +203,10 @@ namespace dodoe {
             command.setBindingSet(ShaderParameterSet::Material, m_sampler_binding_set);
             command.setBindingSet(ShaderParameterSet::Bindless, m_descriptor_binding_set);
         } else {
-            const auto& material_binding_set = batch.getMaterialBindingSet();
-            if (!material_binding_set) {
+            if (!material->texture_binding_set) {
                 return false;
             }
-            command.setBindingSet(ShaderParameterSet::Material, material_binding_set);
+            command.setBindingSet(ShaderParameterSet::Material, material->texture_binding_set);
         }
         return true;
     }

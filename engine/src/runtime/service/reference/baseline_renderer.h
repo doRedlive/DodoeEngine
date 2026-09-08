@@ -58,8 +58,6 @@ namespace dodoe {
         DynamicArray<UInt64> m_pick_ids{};
         Scope<BaselinePresentPass> m_present_pass{};
 
-        UInt64 m_frame_counter{0};
-
     public:
         void render(GfxContext& gfx, UInt32 swapchain_image_index, RenderViewFamily& view_family, RenderScene& scene);
 

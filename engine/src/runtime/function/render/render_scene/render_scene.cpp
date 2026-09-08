@@ -414,6 +414,13 @@ namespace dodoe {
                 val.f[0] = value;
                 overrides[name] = val;
             };
+            auto addVec3 = [&](const String& name, Float x, Float y, Float z) {
+                MaterialParamValue val{};
+                val.f[0] = x;
+                val.f[1] = y;
+                val.f[2] = z;
+                overrides[name] = val;
+            };
             if (material) {
                 addTex("base_color_texture", material->getBaseColorTexture());
                 addTex("normal_texture", material->getNormalTexture());
@@ -421,6 +428,8 @@ namespace dodoe {
                 addTex("emissive_texture", material->getEmissiveTexture());
                 addFloat("metallic", material->getMetallic());
                 addFloat("roughness", material->getRoughness());
+                const Vector3f& emissive = material->getEmissive();
+                addVec3("emissive", emissive.x, emissive.y, emissive.z);
             } else if (material_ptr.isValid()) {
                 DO_WARN("RenderScene: material resolve failed (asset_id={}, legacy_path='{}')",
                         static_cast<UInt64>(material_ptr.getObjectID().asset_id),

@@ -52,7 +52,7 @@ namespace dodoe {
             [shader_library](const PostProcessPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 PostProcessPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
-                shader_params.sampler.value = GlobalSamplers::screen();
+                shader_params.sampler.value = GlobalSamplers::Screen();
 
                 const auto binding_layouts = ShaderBindingReflector<PostProcessPassShaderParams>::getOrCreateLayouts();
 

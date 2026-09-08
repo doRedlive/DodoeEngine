@@ -19,9 +19,9 @@ namespace dodoe {
         static void initialize(GfxDevice* device);
         static void reset();
 
-        static GfxSamplerHandle point() { return s_point; }
-        static GfxSamplerHandle bilinear() { return s_bilinear; }
-        static GfxSamplerHandle screen() { return s_screen; }
+        static GfxSamplerHandle Point() { return s_point; }
+        static GfxSamplerHandle Bilinear() { return s_bilinear; }
+        static GfxSamplerHandle Screen() { return s_screen; }
     };
 
 } // dodoe

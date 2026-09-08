@@ -68,7 +68,7 @@ namespace dodoe {
 	            GfxBindingSetDesc()
 	                .addItem(GfxBindingSetItem::ConstantBuffer(0, m_imgui_cb->getRHIHandle().Get()))
 	                .addItem(GfxBindingSetItem::Texture_SRV(1, m_font_texture->getRHIHandle().Get()))
-	                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
+	                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
 	            m_binding_layout,
 	            layout_generation);
 	    }

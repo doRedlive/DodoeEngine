@@ -37,6 +37,7 @@ namespace dodoe {
         Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f irradiance_sh[9]{};
         Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
+        Vector4f emissive_params{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
     static_assert(sizeof(DeferredLightPushConstants) <= kDeferredLightConstantBufferSize);
@@ -46,6 +47,7 @@ namespace dodoe {
         RenderGraphTextureHandle normal{};
         RenderGraphTextureHandle position{};
         RenderGraphTextureHandle material{};
+        RenderGraphTextureHandle emissive{};
         RenderGraphTextureHandle shadow_map{};
         RenderGraphTextureHandle hdr_color{};
         RenderGraphTextureHandle skybox_texture{};
@@ -71,6 +73,7 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::Texture_SRV(5))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(6))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(7))
+                .addItem(GfxBindingLayoutItem::Texture_SRV(10))
                 .addItem(GfxBindingLayoutItem::Sampler(9)));
 
         graph.addPass<DeferredLightPassParameters>(
@@ -85,6 +88,7 @@ namespace dodoe {
                 parameters.normal = pass_builder.read(gbuffer->normal);
                 parameters.position = pass_builder.read(gbuffer->position);
                 parameters.material = pass_builder.read(gbuffer->material);
+                parameters.emissive = pass_builder.read(gbuffer->emissive);
                 parameters.shadow_map = pass_builder.read(*shadow);
                 RenderGraphAttachmentInfo hdr_attachment{};
                 hdr_attachment.load_op = LoadOp::Load;
@@ -120,6 +124,7 @@ namespace dodoe {
                 const auto normal_handle = ctx.resolveTexture(parameters.normal);
                 const auto position_handle = ctx.resolveTexture(parameters.position);
                 const auto material_handle = ctx.resolveTexture(parameters.material);
+                const auto emissive_handle = ctx.resolveTexture(parameters.emissive);
                 const auto shadow_handle = ctx.resolveTexture(parameters.shadow_map);
                 GfxTextureHandle skybox_texture{};
                 if (parameters.skybox_texture.isValid()) {
@@ -204,7 +209,9 @@ namespace dodoe {
                                 GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
                             .addItem(GfxBindingSetItem::Texture_SRV(
                                 7, brdf_lut_handle ? brdf_lut_handle->getRHIHandle().Get() : nullptr))
-                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::screen().Get())),
+                            .addItem(GfxBindingSetItem::Texture_SRV(
+                                10, emissive_handle ? emissive_handle->getRHIHandle().Get() : nullptr))
+                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
                         binding_layout);
                     if (!binding_set) {
                         DO_ERROR("DeferredLightPass: failed to create binding set");
@@ -216,15 +223,18 @@ namespace dodoe {
                     command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                 };
 
-                if (has_enabled_sky) {
+                {
                     DeferredLightPushConstants push{};
-                    push.camera_position = Vector4f(camera_position, 1.0f);
-                    for (UInt32 b = 0; b < 9u; ++b) {
-                        push.irradiance_sh[b] = sky_irradiance_sh[b];
+                    push.camera_position = Vector4f(camera_position, has_enabled_sky ? 1.0f : 0.0f);
+                    if (has_enabled_sky) {
+                        for (UInt32 b = 0; b < 9u; ++b) {
+                            push.irradiance_sh[b] = sky_irradiance_sh[b];
+                        }
+                        push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
                     }
-                    push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
                     push.light_color_intensity = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
                     push.light_direction_type = Vector4f(0.0f, -1.0f, 0.0f, 0.0f);
+                    push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
                     draw_fullscreen_light(push);
                 }
 

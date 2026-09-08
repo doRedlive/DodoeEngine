@@ -8,7 +8,9 @@
 #include <cstdio>
 
 namespace dodoe {
+
     namespace {
+
         void AddEdge(DynamicArray<DynamicArray<Size_t>>& edges, DynamicArray<Int32>& indegree, const Size_t from, const Size_t to) {
             if (from == to) {
                 return;

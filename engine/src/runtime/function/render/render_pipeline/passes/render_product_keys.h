@@ -11,6 +11,7 @@ namespace dodoe {
         RenderGraphTextureHandle normal{};
         RenderGraphTextureHandle position{};
         RenderGraphTextureHandle material{};
+        RenderGraphTextureHandle emissive{};
         RenderGraphTextureHandle depth{};
         RenderGraphBufferHandle instance_scene_data{};
     };
