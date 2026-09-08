@@ -411,8 +411,16 @@ namespace dodoe {
 
         const bool direct_mode = context.gfx_context->getOpenGLBackend() != nullptr;
 
-        auto setupPassAttachments = [&](const Ref<RenderGraphPass>& pass, RenderGraphPassContext& pass_context, DrawCommandList& cmd) {
-            if (!pass->hasRenderTargetSlots()) return;
+        struct PreparedPassAttachments {
+            GfxFramebufferHandle framebuffer{};
+            GfxFramebufferInfo framebuffer_info{};
+            Bool has_attachments{false};
+            Bool uses_swapchain{false};
+        };
+
+        auto preparePassAttachments = [&](const Ref<RenderGraphPass>& pass) {
+            PreparedPassAttachments prepared{};
+            if (!pass->hasRenderTargetSlots()) return prepared;
 
             for (const auto& slot : pass->getColorSlots()) {
                 if (m_resources[slot.texture.index].source != RenderGraphResourceSource::ImportedBackBuffer) continue;
@@ -422,9 +430,11 @@ namespace dodoe {
                     "Swapchain framebuffer clear must be issued explicitly by the pass.");
                 const auto framebuffer = context.gfx_context->getSwapchainFramebuffer(context.swapchain_image_index);
                 DO_ASSERT(framebuffer != nullptr, "RenderGraph swapchain framebuffer is unavailable.");
-                pass_context.setFramebuffer(framebuffer);
-                pass_context.setFramebufferInfo(framebuffer->getFramebufferInfo());
-                return;
+                prepared.framebuffer = framebuffer;
+                prepared.framebuffer_info = framebuffer->getFramebufferInfo();
+                prepared.has_attachments = true;
+                prepared.uses_swapchain = true;
+                return prepared;
             }
 
             GfxFramebufferDesc fb_desc{};
@@ -432,7 +442,6 @@ namespace dodoe {
 
             for (const auto& slot : pass->getColorSlots()) {
                 const auto tex = resource_resolver.getTexture(slot.texture);
-                cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 fb_desc.addColorAttachment(tex);
                 has_attachments = true;
             }
@@ -440,31 +449,12 @@ namespace dodoe {
             if (pass->getDepthSlot().has_value()) {
                 const auto& ds = pass->getDepthSlot().value();
                 const auto tex = resource_resolver.getTexture(ds.texture);
-                cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::DepthWrite);
                 fb_desc.setDepthAttachment(tex);
                 has_attachments = true;
             }
 
-            if (!has_attachments) return;
+            if (!has_attachments) return prepared;
 
-            cmd.commitBarriers();
-
-            for (const auto& slot : pass->getColorSlots()) {
-                if (slot.load_op == LoadOp::Clear) {
-                    cmd.clearTextureFloat(resource_resolver.getTexture(slot.texture),
-                                          GfxAllSubresources, slot.clear_color);
-                }
-            }
-
-            if (pass->getDepthSlot().has_value()) {
-                const auto& ds = pass->getDepthSlot().value();
-                if (ds.depth_load_op == LoadOp::Clear) {
-                    cmd.clearDepthStencilTexture(resource_resolver.getTexture(ds.texture),
-                                                 GfxAllSubresources, true, ds.clear_depth, false, 0);
-                }
-            }
-
-            GfxFramebufferHandle fb;
             if (context.shared_render_service) {
                 auto* fb_cache = context.shared_render_service->getFramebufferCache();
                 if (fb_cache) {
@@ -475,19 +465,65 @@ namespace dodoe {
                     if (fb_desc.depth()) {
                         key.depth_ref = {fb_desc.depth().get(), 0, 0, 0};
                     }
-                    fb = fb_cache->getOrCreate(key, fb_desc);
+                    prepared.framebuffer = fb_cache->getOrCreate(key, fb_desc);
                 } else {
-                    fb = cmd.createFramebuffer(fb_desc);
+                    prepared.framebuffer = out_commands.createFramebuffer(fb_desc);
                 }
             } else {
-                fb = cmd.createFramebuffer(fb_desc);
+                prepared.framebuffer = out_commands.createFramebuffer(fb_desc);
             }
-            pass_context.setFramebuffer(fb);
-            pass_context.setFramebufferInfo(GfxFramebufferInfo(fb_desc));
+            prepared.framebuffer_info = GfxFramebufferInfo(fb_desc);
+            prepared.has_attachments = true;
+            return prepared;
+        };
+
+        auto recordPassAttachments = [&](const Ref<RenderGraphPass>& pass,
+                                         const PreparedPassAttachments& prepared,
+                                         RenderGraphPassContext& pass_context,
+                                         DrawCommandList& cmd) {
+            if (!prepared.has_attachments) return;
+
+            if (!prepared.uses_swapchain) {
+                for (const auto& slot : pass->getColorSlots()) {
+                    const auto tex = resource_resolver.getTexture(slot.texture);
+                    cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::RenderTarget);
+                }
+
+                if (pass->getDepthSlot().has_value()) {
+                    const auto& ds = pass->getDepthSlot().value();
+                    const auto tex = resource_resolver.getTexture(ds.texture);
+                    cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::DepthWrite);
+                }
+
+                cmd.commitBarriers();
+
+                for (const auto& slot : pass->getColorSlots()) {
+                    if (slot.load_op == LoadOp::Clear) {
+                        cmd.clearTextureFloat(resource_resolver.getTexture(slot.texture),
+                                              GfxAllSubresources, slot.clear_color);
+                    }
+                }
+
+                if (pass->getDepthSlot().has_value()) {
+                    const auto& ds = pass->getDepthSlot().value();
+                    if (ds.depth_load_op == LoadOp::Clear) {
+                        cmd.clearDepthStencilTexture(resource_resolver.getTexture(ds.texture),
+                                                     GfxAllSubresources, true, ds.clear_depth, false, 0);
+                    }
+                }
+            }
+
+            pass_context.setFramebuffer(prepared.framebuffer);
+            pass_context.setFramebufferInfo(prepared.framebuffer_info);
         };
 
         for (Size_t graph_level_index = 0; graph_level_index < m_levels.size(); ++graph_level_index) {
             const auto& level = m_levels[graph_level_index];
+            DynamicArray<PreparedPassAttachments> prepared_attachments{};
+            prepared_attachments.reserve(level.size());
+            for (const auto pass_index : level) {
+                prepared_attachments.push_back(preparePassAttachments(m_passes[pass_index]));
+            }
 
             if (direct_mode) {
                 for (Size_t i = 0; i < level.size(); ++i) {
@@ -507,7 +543,7 @@ namespace dodoe {
                     if (!pass->getPreBarriers().empty()) {
                         out_commands.commitBarriers();
                     }
-                    setupPassAttachments(pass, pass_context, out_commands);
+                    recordPassAttachments(pass, prepared_attachments[i], pass_context, out_commands);
                     out_commands.beginMarker(pass->getName().c_str());
                     pass->execute(pass_context, out_commands);
                     out_commands.endMarker();
@@ -523,8 +559,9 @@ namespace dodoe {
                     const auto pass_index = level[i];
                     const auto pass = m_passes[pass_index];
                     auto* cmd_list = &pass_command_lists[i];
+                    const auto* attachments = &prepared_attachments[i];
 
-                    pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list, &setupPassAttachments] {
+                    pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list, attachments, &recordPassAttachments] {
                         GfxRenderScope render_scope;
                         DO_PROFILE_SCOPE_CATEGORY(pass->getName().c_str(), "render-pass");
                         RenderGraphPassContext pass_context(context, resource_resolver);
@@ -540,7 +577,7 @@ namespace dodoe {
                         if (!pass->getPreBarriers().empty()) {
                             cmd_list->commitBarriers();
                         }
-                        setupPassAttachments(pass, pass_context, *cmd_list);
+                        recordPassAttachments(pass, *attachments, pass_context, *cmd_list);
                         cmd_list->beginMarker(pass->getName().c_str());
                         pass->execute(pass_context, *cmd_list);
                         cmd_list->endMarker();
