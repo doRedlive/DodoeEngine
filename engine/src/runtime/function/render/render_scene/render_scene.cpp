@@ -379,7 +379,7 @@ namespace dodoe {
                 }
                 return tex;
             }
-            DO_WARN("RenderScene: empty texture reference on material slot");
+            DO_DEBUG("RenderScene: empty texture reference on material slot");
             return nullptr;
         };
 
