@@ -159,6 +159,16 @@ namespace dodoe {
         return handle;
     }
 
+    RenderGraphTextureHandle RenderGraphPassBuilder::writeTexture(
+        const RenderGraphTextureHandle handle,
+        const RenderGraphPipelineStage stage)
+    {
+        DO_ASSERT(m_pass, "RenderGraphPassBuilder pass is null");
+        DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::writeTexture invalid handle");
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Write, stage);
+        return handle;
+    }
+
     RenderGraphTextureHandle RenderGraphPassBuilder::writeColor(
         const RenderGraphTextureHandle handle,
         const RenderGraphAttachmentInfo& attachment)

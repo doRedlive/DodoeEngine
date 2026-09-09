@@ -73,6 +73,7 @@ namespace dodoe {
         for (const auto& instance : m_instances) {
             InstanceSceneData scene_instance{};
             scene_instance.model = buildInstanceWorldTransform(instance, world_transform);
+            scene_instance.prev_model = scene_instance.model;
             scene_instance.color_tint = instance.color_tint;
             scene_instance.params = Vector4f(instance.wind_phase, instance.variation, 1.0f, 1.0f);
             out_instance_scene_data.push_back(scene_instance);

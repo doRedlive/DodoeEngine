@@ -12,6 +12,7 @@ namespace dodoe {
         Matrix4f model{1.0f};
         Vector4f color_tint{1.0f, 1.0f, 1.0f, 1.0f};
         Vector4f params{0.0f};
+        Matrix4f prev_model{1.0f};
     };
 
     struct MeshPassRelevance {
@@ -27,6 +28,8 @@ namespace dodoe {
 
     struct ViewMeshShaderData {
         Matrix4f view_projection{1.0f};
+        Matrix4f prev_view_projection{1.0f};
+        Vector4f prev_jitter_uv{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
     struct PrimitiveMeshDrawShaderData {

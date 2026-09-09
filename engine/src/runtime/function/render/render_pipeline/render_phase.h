@@ -14,6 +14,8 @@ namespace dodoe {
 	    Decals,
 	    Transparent,
 	    Sprite,
+	    Resolve,
+	    Taa,
 	    PostProcess,
 	    UI,
 	    EditorGizmo,

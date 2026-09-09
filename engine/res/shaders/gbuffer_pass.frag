@@ -7,6 +7,7 @@ layout(location = 1) out vec4 o_Normal;
 layout(location = 2) out vec4 o_Position;
 layout(location = 3) out vec4 o_Material;
 layout(location = 4) out vec4 o_Emissive;
+layout(location = 5) out vec4 o_Motion;
 
 layout(location = 0) in vec3 v_Normal;
 layout(location = 1) in vec2 v_UV;
@@ -14,12 +15,16 @@ layout(location = 2) in vec3 v_WorldPosition;
 layout(location = 3) flat in uint v_TexIndex;
 layout(location = 4) in vec4 v_ColorTint;
 layout(location = 5) flat in uint v_Selected;
+layout(location = 6) in vec4 v_CurrClip;
+layout(location = 7) in vec4 v_PrevClip;
 
 layout(set = DOE_SET_GLOBAL, binding = DOE_GLOBAL_BINDING_CONSTANTS) uniform GlobalConstants {
     vec4 u_TimeData;
 };
 layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform ViewConstants {
     mat4 u_ViewProjection;
+    mat4 u_PrevViewProjection;
+    vec4 u_PrevJitterUV;
 };
 layout(set = DOE_SET_PRIMITIVE, binding = DOE_PRIMITIVE_BINDING_CONSTANTS) uniform PrimitiveConstants {
     ivec4 u_DrawData;
@@ -30,6 +35,11 @@ layout(set = DOE_SET_PRIMITIVE, binding = DOE_PRIMITIVE_BINDING_CONSTANTS) unifo
 const uint kMaxTextures = 1024u;
 layout(set = DOE_SET_MATERIAL, binding = DOE_MATERIAL_BINDING_SAMPLER) uniform sampler u_TextureSampler;
 layout(set = DOE_SET_BINDLESS, binding = DOE_BINDLESS_BINDING_TEXTURES) uniform texture2D u_Textures[kMaxTextures];
+
+vec2 ndcToUv(vec2 ndc)
+{
+    return vec2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+}
 
 vec3 perturbNormal(vec3 surf_position, vec3 surf_normal, vec2 uv, vec3 tangent_space_normal)
 {
@@ -77,4 +87,10 @@ void main()
     o_Position = vec4(v_WorldPosition, 1.0);
     o_Material = vec4(metallic, roughness, ao, float(v_Selected));
     o_Emissive = vec4(max(emissive, vec3(0.0)), 1.0);
+    vec2 motion = vec2(0.0);
+    if (v_CurrClip.w > 0.0001 && v_PrevClip.w > 0.0001) {
+        motion = ndcToUv(v_CurrClip.xy / v_CurrClip.w)
+            - (ndcToUv(v_PrevClip.xy / v_PrevClip.w) + u_PrevJitterUV.xy);
+    }
+    o_Motion = vec4(motion, 0.0, 1.0);
 }

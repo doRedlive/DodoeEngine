@@ -91,6 +91,10 @@ namespace dodoe {
         recordCommand<CopyBufferCommand>(destination, destination_offset_bytes, source, source_offset_bytes, data_size_bytes);
     }
 
+    void DrawCommandList::resolveTexture(const GfxTextureHandle& destination, const GfxTextureHandle& source, const GfxTextureSubresourceSet& subresources) {
+        recordCommand<ResolveTextureCommand>(destination, source, subresources);
+    }
+
     void DrawCommandList::writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes) {
         DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::writeBuffer", "resource-upload");
         if (!buffer || !m_device) {
@@ -308,6 +312,7 @@ namespace dodoe {
     void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& c) const { if (m_texture->isGpuReady()) c.clearTextureUInt(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
     void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& c) const { if (m_texture->isGpuReady()) c.clearDepthStencilTexture(m_texture->getRHIHandle(), m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil); }
     void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& c) const { if (m_dst->isGpuReady() && m_src->isGpuReady()) c.copyBuffer(m_dst->getRHIHandle(), m_dst_off, m_src->getRHIHandle(), m_src_off, m_size); }
+    void DrawCommandList::ResolveTextureCommand::execute(GfxCommandList& c) const { if (m_dst->isGpuReady() && m_src->isGpuReady()) c.resolveTexture(m_dst->getRHIHandle().Get(), m_subresources, m_src->getRHIHandle().Get(), m_subresources); }
     void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.setTextureState(m_t->getRHIHandle(), m_s, m_st); else DO_WARN("SetTextureState: texture not realized"); }
     void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& c) const { if (m_b->isGpuReady()) c.setBufferState(m_b->getRHIHandle(), m_st); else DO_WARN("SetBufferState: buffer not realized"); }
 

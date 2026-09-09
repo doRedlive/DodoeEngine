@@ -17,6 +17,7 @@
 #include "passes/baseline_outline_pass.h"
 #include "passes/baseline_imgui_pass.h"
 #include "passes/baseline_pick_pass.h"
+#include "passes/baseline_taa_pass.h"
 #include "passes/baseline_post_process_pass.h"
 #include "passes/baseline_present_pass.h"
 
@@ -38,6 +39,7 @@ namespace dodoe {
         cutie::CommandListHandle m_command_list{};
         cutie::SamplerHandle m_sampler{};
         const ShaderLibrary* m_shader_library{nullptr};
+        SharedRenderService* m_shared_render_service{nullptr};
         Scope<GpuCulling> m_gpu_culling{};
 
         BaselineRenderTargets m_rt{};
@@ -50,6 +52,9 @@ namespace dodoe {
         Scope<BaselineSpritePass> m_sprite_pass{};
         Scope<BaselineOutlinePass> m_outline_pass{};
         Scope<BaselinePostProcessPass> m_post_process_pass{};
+        Scope<BaselineTaaPass> m_taa_pass{};
+        UInt64 m_taa_frame_index{0};
+        Bool m_rt_recreated{false};
 #ifdef DODOE_DEBUG_ENABLED
         Scope<BaselineImGuiPass> m_imgui_pass{};
         Scope<BaselinePickPass> m_pick_pass{};

@@ -7,7 +7,8 @@
 
 #include "render_pass_blackboard_keys.h"
 
-#include "../render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_settings.h"
 
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
@@ -39,19 +40,29 @@ namespace dodoe {
         RenderGraphTextureHandle skybox_texture{};
         RenderGraphBufferHandle skybox_cb{};
         Bool has_sky_light{false};
+        Bool depth_test_variant{false};
     };
 
     void SkyboxPass::build(RenderGraphBuilder& graph,
                             const RenderPassBuildContext& context) {
+        const UInt32 msaa_sample_count = RenderSettings::GetMsaaSampleCount();
+        const Bool depth_test_variant = msaa_sample_count > 1;
         graph.addPass<SkyboxPassParameters>(
             "SkyboxPass",
             RenderGraphPassFlags::Raster,
-            [&context](RenderGraphPassBuilder& pass_builder, SkyboxPassParameters& parameters) {
+            [&context, depth_test_variant](RenderGraphPassBuilder& pass_builder, SkyboxPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
                 DO_ASSERT(scene_textures, "SkyboxPass scene textures are missing");
 
-                parameters.depth = pass_builder.read(scene_textures->depth);
+                parameters.depth_test_variant = depth_test_variant;
+                if (depth_test_variant) {
+                    RenderGraphAttachmentInfo depth_attachment{};
+                    depth_attachment.load_op = LoadOp::Load;
+                    pass_builder.writeDepth(scene_textures->depth, depth_attachment);
+                } else {
+                    parameters.depth = pass_builder.read(scene_textures->depth);
+                }
                 const auto* existing_hdr = pass_builder.blackboard().get<SceneHdrKey>();
                 RenderGraphAttachmentInfo hdr_attachment{};
                 if (existing_hdr && existing_hdr->isValid()) {
@@ -108,31 +119,77 @@ namespace dodoe {
                 SkyboxPassShaderParams shader_params;
                 shader_params.skybox_cb.value = skybox_cb;
                 shader_params.skybox_texture.value = cubemap_handle;
-                shader_params.depth.value = parameters.depth;
+                if (parameters.depth_test_variant) {
+                    shader_params.depth.value = RenderGraphTextureHandle{};
+                } else {
+                    shader_params.depth.value = parameters.depth;
+                }
                 shader_params.sampler.value = GlobalSamplers::Screen();
 
                 const auto binding_layouts = ShaderBindingReflector<SkyboxPassShaderParams>::getOrCreateLayouts();
 
-                auto binding_sets = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSets(
-                    *ctx.getSharedRenderService()->getBindingSetCache(),
-                    binding_layouts, shader_params,
-                    [&](auto h) { return ctx.resolveTexture(h); },
-                    [&](auto h) { return ctx.resolveBuffer(h); });
+                DynamicArray<GfxBindingSetHandle> binding_sets{};
+                if (parameters.depth_test_variant) {
+                    const auto binding_set = command_list.createBindingSet(
+                        GfxBindingSetDesc()
+                            .addItem(GfxBindingSetItem::ConstantBuffer(0, skybox_cb->getRHIHandle().Get()))
+                            .addItem(GfxBindingSetItem::Texture_SRV(
+                                1, cubemap_handle->getRHIHandle().Get(),
+                                GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
+                            .addItem(GfxBindingSetItem::Texture_SRV(2, nullptr))
+                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                        binding_layouts.back());
+                    if (binding_set) {
+                        binding_sets.push_back(binding_set);
+                    }
+                } else {
+                    binding_sets = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSets(
+                        *ctx.getSharedRenderService()->getBindingSetCache(),
+                        binding_layouts, shader_params,
+                        [&](auto h) { return ctx.resolveTexture(h); },
+                        [&](auto h) { return ctx.resolveBuffer(h); });
+                }
 
                 if (binding_sets.empty()) {
                     DO_ERROR("SkyboxPass: Failed to create binding set");
                     return;
                 }
 
-                auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
-                    rendering_pipeline_utils::BuildFullscreenPipelineDesc(
-                        ctx.getShaderLibrary()->getFullscreenVertexShader(),
-                        ctx.getShaderLibrary()->getSkyboxPixelShader(),
+                GfxGraphicsPipelineHandle pipeline{};
+                if (parameters.depth_test_variant) {
+                    auto depth_test_pipeline_desc = rendering_pipeline_utils::BuildFullscreenPipelineDesc(
+                        ctx.getShaderLibrary()->getSkyboxVertexShaderDepthTest(),
+                        ctx.getShaderLibrary()->getSkyboxPixelShaderDepthTest(),
                         binding_layouts
-                    ),
-                    ctx.getRenderTargetSignature(),
-                    command_list
-                );
+                    );
+                    GfxDepthStencilState depth_stencil_state;
+                    depth_stencil_state.enableDepthTest()
+                        .setDepthFunc(GfxComparisonFunc::LessOrEqual)
+                        .disableDepthWrite()
+                        .disableStencil();
+                    GfxRenderState render_state;
+                    render_state.setDepthStencilState(depth_stencil_state);
+                    GfxRasterState raster_state;
+                    raster_state.setCullNone();
+                    render_state.setRasterState(raster_state);
+                    depth_test_pipeline_desc.setRenderState(render_state);
+
+                    pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
+                        depth_test_pipeline_desc,
+                        ctx.getRenderTargetSignature(),
+                        command_list
+                    );
+                } else {
+                    pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
+                        rendering_pipeline_utils::BuildFullscreenPipelineDesc(
+                            ctx.getShaderLibrary()->getFullscreenVertexShader(),
+                            ctx.getShaderLibrary()->getSkyboxPixelShader(),
+                            binding_layouts
+                        ),
+                        ctx.getRenderTargetSignature(),
+                        command_list
+                    );
+                }
 
                 if (!pipeline) {
                     DO_ERROR("SkyboxPass: Failed to create pipeline");

@@ -1,0 +1,31 @@
+{
+    "base_color_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "color": [
+        0.550000011920929,
+        0.75,
+        1.0,
+        0.30000001192092896
+    ],
+    "emissive": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emissive_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "metallic": 0.0,
+    "metallic_roughness_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "normal_texture": {
+        "asset_id": 0,
+        "sub_object_id": 0
+    },
+    "roughness": 0.05000000074505806
+}

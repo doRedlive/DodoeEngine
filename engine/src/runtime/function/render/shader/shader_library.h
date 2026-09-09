@@ -39,7 +39,9 @@ namespace dodoe {
         GfxShaderHandle getShadowVertexShader() const { return findShaderValue("ShadowVS"); }
         GfxShaderHandle getShadowPixelShader() const { return findShaderValue("ShadowPS"); }
         GfxShaderHandle getFullscreenVertexShader() const { return findShaderValue("FullscreenVS"); }
+        GfxShaderHandle getSkyboxVertexShaderDepthTest() const { return findShaderValue("SkyboxVSDepthTest"); }
         GfxShaderHandle getSkyboxPixelShader() const { return findShaderValue("SkyboxPS"); }
+        GfxShaderHandle getSkyboxPixelShaderDepthTest() const { return findShaderValue("SkyboxPSDepthTest"); }
         GfxShaderHandle getForwardLitPixelShader() const {
             if (RenderSettings::IsBindlessActive()) {
                 return findShaderValue("ForwardLitPS");
@@ -49,6 +51,8 @@ namespace dodoe {
         GfxShaderHandle getForwardLitPixelShaderNoBindless() const { return findShaderValue("ForwardLitNoBindlessPS"); }
         GfxShaderHandle getDeferredLightPixelShader() const { return findShaderValue("DeferredLightPS"); }
         GfxShaderHandle getToneMappingPixelShader() const { return findShaderValue("ToneMappingPS"); }
+        GfxShaderHandle getTaaPixelShader() const { return findShaderValue("TaaPS"); }
+        GfxShaderHandle getTaaDepthCopyPixelShader() const { return findShaderValue("TaaDepthCopyPS"); }
         GfxShaderHandle getColorGradingPixelShader() const { return findShaderValue("ColorGradingPS"); }
         GfxShaderHandle getFxaaPixelShader() const { return findShaderValue("FxaaPS"); }
         GfxShaderHandle getOutlinePixelShader() const { return findShaderValue("OutlinePS"); }

@@ -5,6 +5,7 @@
 #include "runtime/function/render/render_pipeline/renderer.h"
 #include "runtime/function/render/render_scene/static_mesh_render_object.h"
 #include "runtime/function/render/mesh_draw/mesh.h"
+#include "runtime/function/render/material/material.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
 
@@ -228,6 +229,51 @@ namespace dodoe {
         render_object->setMobility(mesh.mobility);
         render_object->setVisible(mesh.visible);
         render_object->setCastShadow(mesh.cast_shadow);
+
+        auto resolveMaterial = [](const PPtr<Material>& material_ptr) -> Material* {
+            if (Material* material = material_ptr.get()) {
+                return material;
+            }
+            const ObjectID& object_id = material_ptr.getObjectID();
+            if (object_id.isValid()) {
+                return ResourceManager::Self().loadObject<Material>(object_id.asset_id, object_id.local_id);
+            }
+            if (!material_ptr.getLegacyPath().empty()) {
+                return ResourceManager::Self().loadObjectByPath<Material>(FileID(material_ptr.getLegacyPath()));
+            }
+            return nullptr;
+        };
+
+        DynamicArray<PPtr<Material>> candidates{};
+        for (const auto& override_material : mesh.override_materials) {
+            candidates.push_back(override_material);
+        }
+        if (candidates.empty()) {
+            const Mesh* resolved_mesh = mesh.mesh.get();
+            if (resolved_mesh && !resolved_mesh->getLODData().empty()) {
+                for (const auto& sub_mesh : resolved_mesh->getLODData()[0].sub_meshes) {
+                    candidates.push_back(sub_mesh.material);
+                }
+            }
+        }
+
+        Bool transparent = false;
+        Vector4f color_tint{1.0f, 1.0f, 1.0f, 1.0f};
+        for (const auto& candidate : candidates) {
+            Material* material = resolveMaterial(candidate);
+            if (!material) {
+                continue;
+            }
+            const Vector4f& color = material->getColor();
+            if (color.a < 0.999f) {
+                transparent = true;
+                color_tint = color;
+                break;
+            }
+        }
+
+        render_object->setTransparent(transparent);
+        render_object->setColorTint(color_tint);
         return render_object;
     }
 

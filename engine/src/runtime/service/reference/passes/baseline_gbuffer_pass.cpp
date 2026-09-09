@@ -9,6 +9,7 @@
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_scene/render_scene.h"
+#include "runtime/function/render/render_scene/primitive_scene_info.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
 #include "runtime/function/render/mesh_draw/mesh_batch.h"
@@ -17,6 +18,7 @@
 #include "runtime/function/render/material/material_system.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/shader/descriptor_table_manager.h"
+#include "runtime/function/render/render_view/taa_view_extension.h"
 #include "runtime/core/math/math.h"
 #include "runtime/service/debug/debug_imgui.h"
 
@@ -40,6 +42,10 @@ namespace dodoe {
                 GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kMeshInstanceStride).setIsInstanced(true),
                 GfxVertexAttributeDesc().setName("a_InstanceColorTint").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f)).setElementStride(kMeshInstanceStride).setIsInstanced(true),
                 GfxVertexAttributeDesc().setName("a_InstanceParams").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f)).setElementStride(kMeshInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD9").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 2).setElementStride(kMeshInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD10").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 3).setElementStride(kMeshInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD11").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2).setElementStride(kMeshInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD12").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2 + sizeof(Vector4f)).setElementStride(kMeshInstanceStride).setIsInstanced(true),
             };
         }
     }
@@ -220,6 +226,7 @@ namespace dodoe {
     void BaselineGBufferPass::setupView(RenderView& view, RenderViewFamily& view_family) {
         auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
         mesh_ext.frame_time_data = Vector4f(view_family.getTimeSeconds(), view_family.getDeltaSeconds(), 0.0f, 0.0f);
+        PrimitiveSceneInfo::beginMotionFrame();
 
         // Entity selected in the debug ImGui hierarchy panel is highlighted this frame.
         UInt64 selected_uuid = 0;
@@ -236,6 +243,7 @@ namespace dodoe {
         mesh_ext.instance_scene_data.reserve(total_instance_count);
         for (const auto* primitive : mesh_ext.visible_primitives) {
             if (primitive) {
+                primitive->advanceMotionFrame();
                 const Bool is_selected = selected_uuid != 0 &&
                     primitive->getId().value() == selected_uuid;
                 for (const auto& inst_data : primitive->getInstanceSceneData()) {
@@ -287,7 +295,16 @@ namespace dodoe {
 
         const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
         m_command_list->writeBuffer(m_global_cb.Get(), &global_data, sizeof(global_data));
-        const ViewMeshShaderData view_data{Math::FlipClipSpaceY(view.getViewProjectionMatrix())};
+        const auto* taa_extension = view.getExtension<TaaViewExtension>();
+        const Vector2f current_jitter_uv = taa_extension
+            ? Vector2f(taa_extension->jitter_ndc.x * 0.5f, taa_extension->jitter_ndc.y * 0.5f)
+            : Vector2f(0.0f, 0.0f);
+        ViewMeshShaderData view_data{};
+        view_data.view_projection = Math::FlipClipSpaceY(view.getViewProjectionMatrix());
+        view_data.prev_view_projection = m_has_prev_frame
+            ? Math::FlipClipSpaceY(m_prev_unjittered_view_projection)
+            : view_data.view_projection;
+        view_data.prev_jitter_uv = Vector4f(m_prev_jitter_uv.x, m_prev_jitter_uv.y, 0.0f, 0.0f);
         m_command_list->writeBuffer(m_view_cb.Get(), &view_data, sizeof(view_data));
 
         m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::VertexBuffer);
@@ -399,6 +416,14 @@ namespace dodoe {
                     .setStartVertexLocation(element.vertex_offset));
             }
         }
+
+        if (taa_extension) {
+            m_prev_unjittered_view_projection = taa_extension->unjittered_view_projection;
+        } else {
+            m_prev_unjittered_view_projection = view.getViewProjectionMatrix();
+        }
+        m_prev_jitter_uv = current_jitter_uv;
+        m_has_prev_frame = true;
     }
 
 } // namespace dodoe

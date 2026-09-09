@@ -163,6 +163,8 @@ namespace dodoe {
         RenderGraphTextureHandle readTexture(const RenderGraphTextureHandle handle,
                                              const RenderGraphPipelineStage stage,
                                              const RenderGraphSubresourceRange& subresource = {});
+        RenderGraphTextureHandle writeTexture(const RenderGraphTextureHandle handle,
+                                              const RenderGraphPipelineStage stage);
         RenderGraphTextureHandle writeColor(const RenderGraphTextureHandle handle,
                                             const RenderGraphAttachmentInfo& attachment = {});
         RenderGraphTextureHandle writeDepth(const RenderGraphTextureHandle handle,

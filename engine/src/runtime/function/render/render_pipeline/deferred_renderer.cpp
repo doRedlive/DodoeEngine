@@ -7,6 +7,8 @@
 #include "runtime/function/render/render_pipeline/render_feature/shadow_scene_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/skybox_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/lighting_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/transparent_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/taa_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/post_process_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/present_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/sprite_feature.h"
@@ -57,6 +59,8 @@ namespace dodoe {
 	    getFeature<GBufferSceneFeature>()->setGpuCulling(m_gpu_culling.get());
 
 	    addFeature<LightingFeature>();
+	    addFeature<TransparentSceneFeature>();
+	    addFeature<TaaFeature>();
 	    addFeature<PostProcessFeature>();
 	    addFeature<SpriteFeature>();
 	    addFeature<UIFeature>();
@@ -111,6 +115,11 @@ namespace dodoe {
 	       executeGpuCulling(view_family, scene, out_commands);
 	       buildGpuDrivenDrawCommands(scene, view_family, out_commands);
 	    }
+
+	    DO_PROFILE_MARK("DeferredRenderer::render.buildTransparentMeshDrawCommands", "frame");
+	    auto* transparent_feature = getFeature<TransparentSceneFeature>();
+	    DO_ASSERT(transparent_feature != nullptr, "DeferredRenderer TransparentSceneFeature is null");
+	    transparent_feature->buildMeshDrawCommands(view_family, out_commands, getThreadPool());
 
 	    DO_PROFILE_MARK("DeferredRenderer::render.buildOrderedPasses", "frame");
 	    buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,

@@ -2,7 +2,6 @@
 
 #include "shadow_scene_feature.h"
 
-#include <chrono>
 
 #include "runtime/function/render/render_pipeline/passes/render_shadow_pass.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
@@ -215,13 +214,6 @@ namespace dodoe {
         }
         command_storage->sort();
         command_storage->materializeSources();
-
-        static auto last_stats_sample = std::chrono::steady_clock::now();
-        const auto now = std::chrono::steady_clock::now();
-        if (now - last_stats_sample >= std::chrono::seconds(1)) {
-            last_stats_sample = now;
-            DO_WARN("MeshDrawCache[SHADOW]: commands={}", command_storage->getCache().size());
-        }
     }
 
 } // namespace dodoe

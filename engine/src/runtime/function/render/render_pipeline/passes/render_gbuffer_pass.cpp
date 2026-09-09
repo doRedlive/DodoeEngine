@@ -32,9 +32,11 @@ namespace dodoe {
         RenderGraphTextureHandle position{};
         RenderGraphTextureHandle material{};
         RenderGraphTextureHandle emissive{};
+        RenderGraphTextureHandle motion_vector{};
         RenderGraphTextureHandle depth{};
         RenderGraphBufferHandle primitive_scene_buffer{};
         RenderTargetHandle* gbuffer_rt{nullptr};
+        TaaFrameParams taa_frame_params{};
     };
 
     void GBufferPass::build(RenderGraphBuilder& graph,
@@ -70,6 +72,13 @@ namespace dodoe {
                 color_attach.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
                 p.emissive = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(4), "GBufferEmissive"), color_attach);
 
+                color_attach.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
+                p.motion_vector = b.writeColor(b.importTexture(p.gbuffer_rt->getColorTexture(5), "GBufferMotionVector"), color_attach);
+
+                if (const auto* taa_frame_params = imports->find<TaaFrameParamsKey>()) {
+                    p.taa_frame_params = *taa_frame_params;
+                }
+
                 RenderGraphAttachmentInfo depth_attach{};
                 depth_attach.load_op = LoadOp::Clear;
                 p.depth = b.writeDepth(b.importTexture(p.gbuffer_rt->getDepthTexture(), "GBufferDepth"), depth_attach);
@@ -88,6 +97,7 @@ namespace dodoe {
                 gbuffer.position = p.position;
                 gbuffer.material = p.material;
                 gbuffer.emissive = p.emissive;
+                gbuffer.motion_vector = p.motion_vector;
                 gbuffer.depth    = p.depth;
                 gbuffer.instance_scene_data = p.primitive_scene_buffer;
                 b.blackboard().set<SceneTexturesKey>(gbuffer);
@@ -107,7 +117,12 @@ namespace dodoe {
 
                 const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
                 command_list.writeBuffer(processor->getGlobalConstantBuffer(), &global_data, sizeof(global_data));
-                const ViewMeshShaderData view_data{ctx.getView()->getViewProjectionMatrix()};
+                ViewMeshShaderData view_data{};
+                view_data.view_projection = ctx.getView()->getViewProjectionMatrix();
+                view_data.prev_view_projection = p.taa_frame_params.prev_unjittered_view_projection;
+                view_data.prev_jitter_uv = Vector4f(
+                    p.taa_frame_params.prev_jitter_uv.x,
+                    p.taa_frame_params.prev_jitter_uv.y, 0.0f, 0.0f);
                 command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
 
                 auto* feature = static_cast<LitSceneFeature*>(m_owning_feature);

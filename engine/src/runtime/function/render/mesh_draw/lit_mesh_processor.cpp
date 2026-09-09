@@ -23,30 +23,30 @@ namespace dodoe {
                                                     const GfxBindingLayoutHandle& view_binding_layout,
                                                     const GfxBindingLayoutHandle& primitive_binding_layout,
                                                     const GfxBindingLayoutHandle& sampler_binding_layout) {
-            auto pipeline_desc = GfxGraphicsPipelineDesc()
-                .setVertexShader(context.vertex_shader)
-                .setPixelShader(context.pixel_shader)
-                .setInputLayout(context.input_layout)
-                .addBindingLayout(global_binding_layout)
-                .addBindingLayout(view_binding_layout)
-                .setPrimType(GfxPrimitiveType::TriangleList);
-            if (RenderSettings::IsBindlessActive()) {
-                pipeline_desc.addBindingLayout(sampler_binding_layout);
-            } else if (context.binding_layout_cache) {
-                auto material_layout = context.binding_layout_cache->getOrCreate(
-                    GfxBindingLayoutDesc()
-                        .setVisibility(GfxShaderType::Pixel)
-                        .setRegisterSpaceIsDescriptorSet(true)
-                        .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
-                        .addItem(GfxBindingLayoutItem::Sampler(1))
-                        .addItem(GfxBindingLayoutItem::Texture_SRV(2))
-                        .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
-                pipeline_desc.addBindingLayout(material_layout);
-            }
-            if (context.pass_binding_layout) {
-                pipeline_desc.addBindingLayout(context.pass_binding_layout);
-            }
-            pipeline_desc.addBindingLayout(primitive_binding_layout);
+        auto pipeline_desc = GfxGraphicsPipelineDesc()
+            .setVertexShader(context.vertex_shader)
+            .setPixelShader(context.pixel_shader)
+            .setInputLayout(context.input_layout)
+            .addBindingLayout(global_binding_layout)
+            .addBindingLayout(view_binding_layout)
+            .setPrimType(GfxPrimitiveType::TriangleList);
+        if (context.pass_binding_layout) {
+            pipeline_desc.addBindingLayout(context.pass_binding_layout);
+        }
+        if (RenderSettings::IsBindlessActive()) {
+            pipeline_desc.addBindingLayout(sampler_binding_layout);
+        } else if (context.binding_layout_cache) {
+            auto material_layout = context.binding_layout_cache->getOrCreate(
+                GfxBindingLayoutDesc()
+                    .setVisibility(GfxShaderType::Pixel)
+                    .setRegisterSpaceIsDescriptorSet(true)
+                    .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Material))
+                    .addItem(GfxBindingLayoutItem::Sampler(1))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(3)));
+            pipeline_desc.addBindingLayout(material_layout);
+        }
+        pipeline_desc.addBindingLayout(primitive_binding_layout);
             if (RenderSettings::IsBindlessActive() && context.descriptor_table &&
                 context.descriptor_table->getDescriptorTable()) {
                 pipeline_desc.addBindingLayout(context.descriptor_table->getDescriptorTable()->getLayout());
@@ -62,7 +62,7 @@ namespace dodoe {
         GfxDepthStencilState depth_stencil_state;
         GfxRenderState render_state;
         if (getMeshPassType() == MeshPassType::Transparent) {
-            depth_stencil_state.enableDepthTest().disableDepthWrite().setDepthFunc(GfxComparisonFunc::Less).disableStencil();
+            depth_stencil_state.disableDepthTest().disableDepthWrite().disableStencil();
             GfxBlendState blend_state;
             GfxBlendState::RenderTarget blend_target;
             blend_target.enableBlend()

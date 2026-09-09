@@ -27,6 +27,7 @@ namespace dodoe {
         GfxTextureHandle gbuffer_position{};
         GfxTextureHandle gbuffer_material{};
         GfxTextureHandle gbuffer_emissive{};
+        GfxTextureHandle gbuffer_motion{};
         GfxTextureHandle gbuffer_depth{};
         GfxFramebufferHandle gbuffer_framebuffer{};
         // HDR scene color (lighting output / sprite input)
@@ -38,6 +39,11 @@ namespace dodoe {
         GfxTextureHandle fxaa_color{};
         GfxFramebufferHandle tone_map_framebuffer{};
         GfxFramebufferHandle fxaa_framebuffer{};
+        // TAA
+        GfxTextureHandle taa_history_a{};
+        GfxTextureHandle taa_history_b{};
+        GfxFramebufferHandle taa_framebuffer_a{};
+        GfxFramebufferHandle taa_framebuffer_b{};
         GfxTextureHandle pick_id{};
         GfxFramebufferHandle pick_framebuffer{};
     };

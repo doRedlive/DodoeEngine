@@ -46,6 +46,9 @@ namespace dodoe {
         GfxBindingSetHandle m_material_binding_set{};
         GfxBindingSetHandle m_bindless_binding_set{};
         Bool m_material_warning_logged{false};
+        Matrix4f m_prev_unjittered_view_projection{1.0f};
+        Vector2f m_prev_jitter_uv{0.0f, 0.0f};
+        Bool m_has_prev_frame{false};
 
         cutie::GraphicsPipelineHandle m_pipeline_gpu{};
         cutie::InputLayoutHandle m_input_layout_gpu{};
@@ -74,6 +77,7 @@ namespace dodoe {
         [[nodiscard]] cutie::IBuffer* getInstanceBuffer() const { return m_instance_buffer.Get(); }
 
         void setGpuCulling(GpuCulling* culling) { m_gpu_culling = culling; }
+        void resetMotionHistory() { m_has_prev_frame = false; }
 
     private:
         void ensureInstanceCapacity(UInt32 instance_count);

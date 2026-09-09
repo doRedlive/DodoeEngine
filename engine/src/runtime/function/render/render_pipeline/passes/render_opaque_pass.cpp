@@ -18,6 +18,7 @@
 #include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_processor_base.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_list.h"
@@ -148,6 +149,7 @@ namespace dodoe {
             [&context, view = &context.view, imports = context.graph_imports]
             (RenderGraphPassBuilder& pass_builder, OpaquePassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
+                const UInt32 sample_count = RenderSettings::GetMsaaSampleCount();
                 const auto* mesh_ext = view->getExtension<MeshViewExtension>();
                 const Size_t visible_instance_count = mesh_ext ? mesh_ext->instance_scene_data.size() : 0;
 
@@ -155,14 +157,14 @@ namespace dodoe {
                 hdr_attachment.load_op = LoadOp::Clear;
                 hdr_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
                 parameters.hdr_color = pass_builder.writeColor(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG SceneHdrColor"),
+                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA16_FLOAT, "RDG SceneHdrColor", sample_count),
                     "SceneHdrColor"), hdr_attachment);
                 pass_builder.blackboard().set<SceneHdrKey>(parameters.hdr_color);
 
                 RenderGraphAttachmentInfo depth_attachment{};
                 depth_attachment.load_op = LoadOp::Clear;
                 parameters.depth = pass_builder.writeDepth(pass_builder.createTransientTexture(
-                    rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::D32, "RDG SceneDepth"),
+                    rendering_pipeline_utils::MakeSwapchainDepth2D(swapchain_extent, GfxFormat::D32, "RDG SceneDepth", sample_count),
                     "SceneDepth"), depth_attachment);
 
                 RenderGraphBufferDesc primitive_scene_buffer_desc{};

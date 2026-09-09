@@ -125,12 +125,14 @@ namespace dodoe {
     inline RenderGraphTextureDesc MakeRenderTarget2D(
         const UInt32 width, const UInt32 height,
         const GfxFormat format,
-        const String& debug_name)
+        const String& debug_name,
+        const UInt32 sample_count = 1)
     {
         RenderGraphTextureDesc desc{};
         desc.desc.setWidth(width)
             .setHeight(height)
             .setFormat(format)
+            .setSampleCount(sample_count)
             .setIsRenderTarget(true)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName(string_to_std(debug_name));
@@ -140,12 +142,14 @@ namespace dodoe {
     inline RenderGraphTextureDesc MakeDepthTarget2D(
         const UInt32 width, const UInt32 height,
         const GfxFormat format,
-        const String& debug_name)
+        const String& debug_name,
+        const UInt32 sample_count = 1)
     {
         RenderGraphTextureDesc desc{};
         desc.desc.setWidth(width)
             .setHeight(height)
             .setFormat(format)
+            .setSampleCount(sample_count)
             .setIsRenderTarget(true)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .enableAutomaticStateTracking(GfxResourceStates::DepthWrite)

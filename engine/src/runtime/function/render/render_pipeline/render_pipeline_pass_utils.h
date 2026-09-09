@@ -16,23 +16,25 @@ namespace dodoe::rendering_pipeline_utils {
     inline RenderGraphTextureDesc MakeSwapchainRT2D(
         const Vector2i& swapchain_extent,
         const GfxFormat format,
-        const String& debug_name)
+        const String& debug_name,
+        const UInt32 sample_count = 1)
     {
         return MakeRenderTarget2D(
             static_cast<UInt32>(swapchain_extent.x),
             static_cast<UInt32>(swapchain_extent.y),
-            format, debug_name);
+            format, debug_name, sample_count);
     }
 
     inline RenderGraphTextureDesc MakeSwapchainDepth2D(
         const Vector2i& swapchain_extent,
         const GfxFormat format,
-        const String& debug_name)
+        const String& debug_name,
+        const UInt32 sample_count = 1)
     {
         return MakeDepthTarget2D(
             static_cast<UInt32>(swapchain_extent.x),
             static_cast<UInt32>(swapchain_extent.y),
-            format, debug_name);
+            format, debug_name, sample_count);
     }
 
     [[nodiscard]] inline Vector3f ExtractCameraPosition(const RenderView& view) {

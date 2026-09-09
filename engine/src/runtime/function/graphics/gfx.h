@@ -166,6 +166,8 @@ namespace dodoe {
         [[nodiscard]] const cutie::FramebufferInfo& getRHI() const { return m_info; }
         GfxFramebufferInfo& addColorFormat(GfxFormat f) { m_info.addColorFormat(f); return *this; }
         GfxFramebufferInfo& setDepthFormat(GfxFormat f) { m_info.setDepthFormat(f); return *this; }
+        GfxFramebufferInfo& setSampleCount(UInt32 count) { m_info.setSampleCount(count); return *this; }
+        [[nodiscard]] UInt32 getSampleCount() const { return m_info.sampleCount; }
     };
 
     class GfxFramebuffer {

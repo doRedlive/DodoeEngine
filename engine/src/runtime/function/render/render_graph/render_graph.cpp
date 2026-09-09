@@ -473,6 +473,12 @@ namespace dodoe {
                 prepared.framebuffer = out_commands.createFramebuffer(fb_desc);
             }
             prepared.framebuffer_info = GfxFramebufferInfo(fb_desc);
+            {
+                const GfxTextureHandle first_attachment = !fb_desc.colors().empty() ? fb_desc.colors().front() : fb_desc.depth();
+                if (first_attachment && first_attachment->getDesc().sampleCount > 1) {
+                    prepared.framebuffer_info.setSampleCount(first_attachment->getDesc().sampleCount);
+                }
+            }
             prepared.has_attachments = true;
             return prepared;
         };

@@ -72,6 +72,10 @@ namespace dodoe {
             const GfxBufferHandle& source,
             UInt64 source_offset_bytes,
             UInt64 data_size_bytes);
+        void resolveTexture(
+            const GfxTextureHandle& destination,
+            const GfxTextureHandle& source,
+            const GfxTextureSubresourceSet& subresources = GfxAllSubresources);
         void writeBuffer(const GfxBufferHandle& buffer, const void* data, Size_t data_size, UInt64 destination_offset_bytes = 0);
         void writeTexture(const GfxTextureHandle& texture, UInt32 mip_level, UInt32 array_slice, const void* data, Size_t row_pitch);
 
@@ -155,6 +159,7 @@ namespace dodoe {
         GFX_DRAW_CMD(ClearTextureUIntCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; UInt32 m_clear_color{0}; ClearTextureUIntCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, UInt32 c) : m_texture(t), m_subresources(s), m_clear_color(c) {} void execute(GfxCommandList&) const; };
         GFX_DRAW_CMD(ClearDepthStencilTextureCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; Float m_depth{1}; Bool m_clear_depth{true}, m_clear_stencil{false}; UInt8 m_stencil{0}; ClearDepthStencilTextureCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, Bool cd, Float d, Bool cs, UInt8 st) : m_texture(t), m_subresources(s), m_depth(d), m_clear_depth(cd), m_clear_stencil(cs), m_stencil(st) {} void execute(GfxCommandList&) const; };
         GFX_DRAW_CMD(CopyBufferCommand) { GfxBufferHandle m_dst{}, m_src{}; UInt64 m_dst_off{0}, m_src_off{0}, m_size{0}; CopyBufferCommand(const GfxBufferHandle& d, UInt64 doff, const GfxBufferHandle& s, UInt64 soff, UInt64 sz) : m_dst(d), m_src(s), m_dst_off(doff), m_src_off(soff), m_size(sz) {} void execute(GfxCommandList&) const; };
+        GFX_DRAW_CMD(ResolveTextureCommand) { GfxTextureHandle m_dst{}, m_src{}; GfxTextureSubresourceSet m_subresources{}; ResolveTextureCommand(const GfxTextureHandle& d, const GfxTextureHandle& s, const GfxTextureSubresourceSet& sub) : m_dst(d), m_src(s), m_subresources(sub) {} void execute(GfxCommandList&) const; };
 
         struct WriteBufferCommand final : VarCmd<WriteBufferCommand> {
             GfxBufferHandle m_b{}; UInt64 m_off{0}; Size_t m_sz{0};

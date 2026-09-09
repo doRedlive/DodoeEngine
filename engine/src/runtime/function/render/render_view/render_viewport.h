@@ -47,6 +47,8 @@ namespace dodoe {
 
     private:
         LetterboxMetrics computeLetterboxMetrics(const Vector2i& pixel_size, const Vector2f& logical_size);
+
+        mutable UInt32 m_jitter_sequence{0};
     };
 
 } // namespace dodoe

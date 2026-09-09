@@ -2,7 +2,6 @@
 
 #include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
 
-#include <chrono>
 
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
@@ -41,6 +40,10 @@ namespace dodoe {
             GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
             GfxVertexAttributeDesc().setName("a_InstanceColorTint").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f)).setElementStride(kInstanceStride).setIsInstanced(true),
             GfxVertexAttributeDesc().setName("a_InstanceParams").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD9").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD10").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD11").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD12").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2 + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
         };
     }
 
@@ -99,12 +102,16 @@ namespace dodoe {
 
     void LitSceneFeature::setupMeshPassContexts(const RenderScene& scene,
                                                 RenderViewFamily& view_family) const {
+        PrimitiveSceneInfo::beginMotionFrame();
         for (auto& view : view_family.getViews()) {
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
             mesh_ext.frame_time_data = Vector4f(view_family.getTimeSeconds(),
                                                  view_family.getDeltaSeconds(), 0.0f, 0.0f);
             Size_t total_instance_count = 0;
             for (const auto* primitive : mesh_ext.visible_primitives) {
+                if (primitive) {
+                    primitive->advanceMotionFrame();
+                }
                 total_instance_count += primitive ? primitive->getInstanceCount() : 1;
             }
             mesh_ext.instance_scene_data.reserve(total_instance_count);
@@ -170,6 +177,7 @@ namespace dodoe {
                     .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
                     .addItem(GfxBindingLayoutItem::Texture_SRV(1))
                     .addItem(GfxBindingLayoutItem::Texture_SRV(2))
+                    .addItem(GfxBindingLayoutItem::Texture_SRV(3))
                     .addItem(GfxBindingLayoutItem::Sampler(9)));
         }
 
@@ -236,13 +244,6 @@ namespace dodoe {
         }
         command_storage->sort();
         command_storage->materializeSources();
-
-        static auto last_stats_sample = std::chrono::steady_clock::now();
-        const auto now = std::chrono::steady_clock::now();
-        if (now - last_stats_sample >= std::chrono::seconds(1)) {
-            last_stats_sample = now;
-            DO_WARN("MeshDrawCache[LIT]: commands={}", command_storage->getCache().size());
-        }
     }
 
 } // namespace dodoe

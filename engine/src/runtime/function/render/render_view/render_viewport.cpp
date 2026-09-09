@@ -6,6 +6,7 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_scene/render_scene.h"
+#include "runtime/function/render/render_view/taa_view_extension.h"
 
 namespace dodoe {
 
@@ -16,6 +17,19 @@ namespace dodoe {
                 hash = (hash ^ static_cast<UInt32>(static_cast<unsigned char>(*str))) * 16777619u;
             }
             return hash;
+        }
+
+        constexpr UInt32 kTaaJitterPhaseCount = 8;
+
+        Float HaltonSequence(UInt32 index, UInt32 base) {
+            Float f = 1.0f;
+            Float r = 0.0f;
+            while (index > 0) {
+                f /= static_cast<Float>(base);
+                r += f * static_cast<Float>(index % base);
+                index /= base;
+            }
+            return r;
         }
     }
 
@@ -139,8 +153,27 @@ namespace dodoe {
         const Matrix4f& view_mat, const Matrix4f& proj_mat, Bool show_editor_primitives) const {
         RenderViewFamily family{};
         family.setFrameTime(time, delta);
+
+        Matrix4f jittered_proj = proj_mat;
+        Vector2f jitter_ndc{0.0f, 0.0f};
+        if (RenderSettings::IsTaaEnabled()) {
+            const UInt32 phase = m_jitter_sequence++ % kTaaJitterPhaseCount;
+            const Float width = static_cast<Float>(std::max(1, m_pixel_size.x));
+            const Float height = static_cast<Float>(std::max(1, m_pixel_size.y));
+            const Float jx = (HaltonSequence(phase + 1, 2) - 0.5f) * 2.0f / width;
+            const Float jy = (HaltonSequence(phase + 1, 3) - 0.5f) * 2.0f / height;
+            jitter_ndc = Vector2f(jx, jy);
+            jittered_proj[2][0] += jx;
+            jittered_proj[2][1] += jy;
+        }
+
         auto& view = family.createView(MakeIdentifier("main_view"));
-        view.setMatrices(view_mat, proj_mat);
+        view.setMatrices(view_mat, jittered_proj);
+
+        auto& taa_extension = view.getOrCreateExtension<TaaViewExtension>();
+        taa_extension.jitter_ndc = jitter_ndc;
+        taa_extension.unjittered_view_projection = proj_mat * view_mat;
+
         view.setViewportRect(Vector4i(
             static_cast<int>(m_viewport.pos.x),
             static_cast<int>(m_viewport.pos.y),

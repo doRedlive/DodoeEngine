@@ -118,6 +118,24 @@ namespace dodoe {
 
         [[nodiscard]] static Bool IsBindlessActive() { return m_resolved_features.bindless_active; }
 
+        [[nodiscard]] static Bool IsTaaEnabled() {
+            return m_pipeline == RenderingPipelineType::Deferred
+                || m_pipeline == RenderingPipelineType::DeferredPlus
+                || m_enable_baseline_renderer;
+        }
+
+        [[nodiscard]] static Bool IsMsaaEnabled() {
+            return m_pipeline == RenderingPipelineType::Forward
+                || m_pipeline == RenderingPipelineType::ForwardPlus;
+        }
+
+        [[nodiscard]] static UInt32 GetMsaaSampleCount() {
+            if (!IsMsaaEnabled() || GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
+                return 1u;
+            }
+            return 4u;
+        }
+
         [[nodiscard]] static const RenderDeviceCapabilities& GetDeviceCapabilities() { return m_device_caps; }
         static void SetDeviceCapabilities(const RenderDeviceCapabilities& caps) { m_device_caps = caps; }
 

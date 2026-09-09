@@ -4,7 +4,6 @@
 
 #include "runtime/function/graphics/draw_command_list.h"
 
-#include <chrono>
 #include <atomic>
 
 namespace dodoe {
@@ -23,12 +22,6 @@ namespace dodoe {
     GfxTextureHandle RenderGraphTransientPool::acquireTexture(const GfxTextureDesc& desc,
                                                                 DrawCommandList& command_list) {
         DO_PROFILE_SCOPE_CATEGORY("RenderGraphTransientPool::acquireTexture", "resource-cache");
-        static auto last_stats_time = std::chrono::steady_clock::now();
-        const auto now_stats_time = std::chrono::steady_clock::now();
-        if (now_stats_time - last_stats_time >= std::chrono::seconds(1)) {
-            last_stats_time = now_stats_time;
-            DO_WARN("RenderGraphTransientPool: textures={} buffers={}", m_textures.size(), m_buffers.size());
-        }
         for (Size_t i = 0; i < m_textures.size(); i++) {
             if (!m_texture_in_use[i]) {
                 const auto& pooled = m_textures[i].desc;

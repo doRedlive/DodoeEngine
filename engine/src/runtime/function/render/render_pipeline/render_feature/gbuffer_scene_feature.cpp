@@ -33,6 +33,9 @@ namespace dodoe {
         desc.color_attachments.push_back({
             GfxFormat::RGBA16_FLOAT, "GBufferEmissive", GfxColor(0.0f, 0.0f, 0.0f, 1.0f)
         });
+        desc.color_attachments.push_back({
+            GfxFormat::RG16_FLOAT, "GBufferMotionVector", GfxColor(0.0f, 0.0f, 0.0f, 1.0f)
+        });
 
         desc.has_depth = true;
         desc.depth_format = GfxFormat::D32;
@@ -50,6 +53,7 @@ namespace dodoe {
             .addColorFormat(GfxFormat::RGBA32_FLOAT)
             .addColorFormat(GfxFormat::RGBA8_UNORM)
             .addColorFormat(GfxFormat::RGBA16_FLOAT)
+            .addColorFormat(GfxFormat::RG16_FLOAT)
             .setDepthFormat(GfxFormat::D32);
         return framebuffer_info;
     }

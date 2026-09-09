@@ -21,7 +21,7 @@ RenderPipeline(render_pipeline.cpp)
 
 ```text
 Opaque → Shadow → Skybox → Lighting → Decals → Transparent
-→ Sprite → PostProcess → UI → EditorGizmo → DebugUI → Present
+→ Sprite → Resolve → Taa → PostProcess → UI → EditorGizmo → DebugUI → Present
 ```
 
 **DeferredRenderer 注册的 Feature 与 Pass**:
@@ -32,6 +32,7 @@ Opaque → Shadow → Skybox → Lighting → Decals → Transparent
 | ShadowSceneFeature | ShadowPass | 阴影图 |
 | SkyboxFeature | SkyboxPass | 天空盒 |
 | LightingFeature | DeferredLightPass | 读 GBuffer + ShadowMap 合成 HDR 光照 |
+| TaaFeature | TaaDepthCopyPass + TaaPass | 上一帧深度拷贝 + TAA resolve(HDR 原地替换为 history write 目标) |
 | PostProcessFeature | PostProcessPass | ToneMapping → SceneColor |
 | SpriteFeature | SpritePass | 2D 精灵批渲染 |
 | UIFeature | UIPass | 运行时 UI 实例 |

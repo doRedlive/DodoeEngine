@@ -805,6 +805,114 @@
                 }
             ],
             "m_uuid": 2212
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Mirror Sphere",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2301,\"name\":\"Mirror Sphere\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Showpiece\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-60.0,12.0,170.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[12.0,12.0,12.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000500014,\"legacy_path\":\"materials/mirror.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2301
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Glass Sphere Blue",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2302,\"name\":\"Glass Sphere Blue\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Showpiece\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,10.0,170.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[10.0,10.0,10.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000500011,\"legacy_path\":\"materials/glass_blue.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2302
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Glass Sphere Green",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2303,\"name\":\"Glass Sphere Green\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Showpiece\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[25.0,7.0,163.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[7.0,7.0,7.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000500012,\"legacy_path\":\"materials/glass_green.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2303
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Glass Sphere Amber",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2304,\"name\":\"Glass Sphere Amber\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Showpiece\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-24.0,5.0,166.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.0,5.0,5.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100011,\"legacy_path\":\"Models/pbr_sphere/pbr_sphere.obj\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[{\"asset_id\":660000000000500013,\"legacy_path\":\"materials/glass_amber.domat\",\"sub_object_id\":0}],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2304
         }
     ],
     "m_name": "ModelTest"

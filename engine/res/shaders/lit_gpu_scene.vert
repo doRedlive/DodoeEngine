@@ -16,6 +16,8 @@ layout(location = 2) out vec3 v_WorldPosition;
 layout(location = 3) flat out uint v_TexIndex;
 layout(location = 4) out vec4 v_ColorTint;
 layout(location = 5) flat out uint v_Selected;
+layout(location = 6) out vec4 v_CurrClip;
+layout(location = 7) out vec4 v_PrevClip;
 
 struct GpuTransform
 {
@@ -68,5 +70,7 @@ void main()
     v_ColorTint = a_InstanceColorTint;
     // Selection flag travels in the (otherwise unused) tint alpha channel.
     v_Selected = a_InstanceColorTint.a < 0.5 ? 1u : 0u;
+    v_CurrClip = vec4(0.0, 0.0, 0.0, 1.0);
+    v_PrevClip = vec4(0.0, 0.0, 0.0, 1.0);
     gl_Position = u_ViewProjection * world_position;
 }

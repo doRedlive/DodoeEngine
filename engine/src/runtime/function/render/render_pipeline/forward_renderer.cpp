@@ -2,6 +2,7 @@
 
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_pipeline/render_feature/forward_lit_scene_feature.h"
+#include "runtime/function/render/render_pipeline/render_feature/msaa_resolve_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/transparent_scene_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/shadow_scene_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/skybox_feature.h"
@@ -44,6 +45,10 @@ namespace dodoe {
         addFeature<TransparentSceneFeature>();
         addFeature<ShadowSceneFeature>();
         addFeature<SkyboxFeature>();
+
+        if (RenderSettings::GetMsaaSampleCount() > 1) {
+            addFeature<MsaaResolveFeature>();
+        }
 
         if (IsRenderFeatureEnabled("postprocess")) addFeature<PostProcessFeature>();
         if (IsRenderFeatureEnabled("sprite"))      addFeature<SpriteFeature>();

@@ -5,7 +5,6 @@
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
 
-#include <chrono>
 
 namespace dodoe {
 
@@ -29,12 +28,6 @@ namespace dodoe {
     GfxBindingSetHandle BindingSetCache::getOrCreate(const GfxBindingSetDesc& desc,
                                                        GfxBindingLayoutHandle layout,
                                                        UInt64 layout_generation) {
-        static auto last_stats_time = std::chrono::steady_clock::now();
-        const auto now_stats_time = std::chrono::steady_clock::now();
-        if (now_stats_time - last_stats_time >= std::chrono::seconds(1)) {
-            last_stats_time = now_stats_time;
-            DO_WARN("BindingSetCache: entries={}", m_cache.size());
-        }
         Size_t h = reinterpret_cast<Size_t>(layout.Get());
         hash_combine(h, static_cast<Size_t>(layout_generation));
         hash_combine(h, desc.bindings.size());

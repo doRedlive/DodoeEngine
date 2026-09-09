@@ -43,6 +43,7 @@
 | [gpu-scene.md](gpu-scene.md) | GpuScene 与 GPU driven 剔除:数据模型与每 section 对象、CPU→GPU 同步、视锥剔除 compute、bucket/indirect 构建、generation 体系、绑定与结构体对齐约定、排障清单 |
 | [render-graph.md](render-graph.md) | RenderGraph 体系:资源/访问模型、Pass 两段式声明、编译(依赖/裁剪/屏障/分层)、执行(并行录制/资源实体化/瞬态池)、与管线集成 |
 | [lighting-ibl.md](lighting-ibl.md) | 光照与 IBL:Cook-Torrance 直接光、SkyLight cubemap 烘焙(GGX prefilter mip / SH9 irradiance / BRDF LUT)、UBO 布局与 CPU 接线、两条渲染路径的共享方式 |
+| [temporal-antialiasing.md](temporal-antialiasing.md) | TAA:相机抖动、Motion Vector Buffer、上一帧深度乒乓、Resolve 算法(YCoCg variance clipping / disocclusion / 自适应混合)、RDG 与 baseline 双路径集成 |
 | [resources.md](resources.md) | 资源体系:ResourceManager → TextureManager/Sprite/Mesh/Material 链路、PPtr 引用、渲染侧缓存(PSO/Framebuffer/BindingSet)、World 系统同步协议 |
 | [shader-system.md](shader-system.md) | Shader 体系:manifest 与 ShaderLibrary 加载、反射、Set/Binding 约定、声明式参数结构宏、Global/Material ShaderMap |
 | [material-system.md](material-system.md) | Material 体系:Material/MaterialAsset 资产层、MaterialSystem 模板/实例模型、resolve 与 invalidate 机制、渲染侧消费 |

@@ -33,11 +33,29 @@ namespace dodoe {
         Bool m_editor_only{false};
 #endif
         UInt32 m_instance_count{1};
-        DynamicArray<InstanceSceneData> m_instance_scene_data{};
+        mutable DynamicArray<InstanceSceneData> m_instance_scene_data{};
+        mutable DynamicArray<InstanceSceneData> m_prev_frame_instance_data{};
+        mutable UInt64 m_motion_frame_id{0};
 
     public:
         PrimitiveSceneInfo() = default;
         explicit PrimitiveSceneInfo(const RenderId id) : m_id(id) { }
+
+        static void beginMotionFrame() { ++s_motion_frame_counter; }
+
+        void advanceMotionFrame() const {
+            if (m_motion_frame_id == s_motion_frame_counter) {
+                return;
+            }
+            m_motion_frame_id = s_motion_frame_counter;
+            const Size_t prev_count = m_prev_frame_instance_data.size();
+            for (Size_t i = 0; i < m_instance_scene_data.size(); ++i) {
+                m_instance_scene_data[i].prev_model = (i < prev_count)
+                    ? m_prev_frame_instance_data[i].model
+                    : m_instance_scene_data[i].model;
+            }
+            m_prev_frame_instance_data = m_instance_scene_data;
+        }
 
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
         void setMaterials(const DynamicArray<PPtr<Material>>& materials) { m_materials = materials; }
@@ -88,6 +106,9 @@ namespace dodoe {
         }
         [[nodiscard]] UInt32 getInstanceCount() const { return m_instance_count; }
         [[nodiscard]] const DynamicArray<InstanceSceneData>& getInstanceSceneData() const { return m_instance_scene_data; }
+
+    private:
+        inline static UInt64 s_motion_frame_counter{0};
 
     };
 
