@@ -1,8 +1,11 @@
 // do@Redlive
 
 #include "gpu_driven_renderer.h"
+#include "runtime/core/math/math.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/shader/shader_parameter.h"
+
+#include <chrono>
 
 namespace dodoe {
 
@@ -19,12 +22,14 @@ namespace dodoe {
         for (auto& map_buffer : m_bucket_template_map_buffer) map_buffer = nullptr;
         for (auto& readback : m_bucket_ranges_readback_buffer) readback = nullptr;
         for (auto& map_history : m_template_map_history) map_history.clear();
+        for (auto& snapshots : m_bucket_draw_snapshots) snapshots.clear();
         for (auto& count_history : m_template_count_history) count_history = 0;
         m_bucket_ranges_buffer = nullptr;
         m_bucket_bases_buffer = nullptr;
         m_template_count = 0;
         m_generation_counter = 0;
         m_bucket_counts_buffer = nullptr;
+        m_bucket_counts_readback_buffer = nullptr;
         m_visible_count_readback_buffer = nullptr;
         m_culling_params_buffer = nullptr;
         m_visible_count_buffer = nullptr;
@@ -35,6 +40,8 @@ namespace dodoe {
         m_bucket_scan_pipeline = nullptr;
         m_bucket_count_binding_layout = nullptr;
         m_bucket_count_pipeline = nullptr;
+        m_frame_binding_sets.clear();
+        m_binding_sets_generation = 0;
         m_culling_binding_layout = nullptr;
         m_culling_pipeline = nullptr;
         m_shader_library = nullptr;
@@ -62,6 +69,15 @@ namespace dodoe {
                     .setCanHaveUAVs(true)
                     .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
                     .setDebugName("BucketCounts"));
+        }
+        if (!m_bucket_counts_readback_buffer) {
+            m_bucket_counts_readback_buffer = cmd_list.createBuffer(
+                GfxBufferDesc()
+                    .setByteSize(bucket_buffer_size)
+                    .setStructStride(sizeof(BucketCount))
+                    .setCpuAccess(GfxCpuAccessMode::Read)
+                    .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
+                    .setDebugName("BucketCountsReadback"));
         }
 
         for (auto& templates : m_bucket_templates_buffer) {
@@ -113,6 +129,7 @@ namespace dodoe {
                 indirect_args = cmd_list.createBuffer(
                     GfxBufferDesc()
                         .setByteSize(indirect_args_size)
+                        .setStructStride(sizeof(DrawIndexedIndirectArgs))
                         .setIsDrawIndirectArgs(true)
                         .setCanHaveUAVs(true)
                         .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
@@ -138,6 +155,12 @@ namespace dodoe {
                                            const Matrix4f& view_projection,
                                            UInt32 object_count) {
         if (!m_enabled || !m_shader_library || object_count == 0) return;
+        if (!scene_resources.object_meta || !scene_resources.transforms || !scene_resources.bounds) return;
+
+        if (m_binding_sets_generation != m_generation_counter) {
+            m_binding_sets_generation = m_generation_counter;
+            m_frame_binding_sets.clear();
+        }
 
         const auto cs = m_shader_library->getGpuCullingComputeShader();
         if (!cs) return;
@@ -146,7 +169,8 @@ namespace dodoe {
 
         if (!m_culling_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
-            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+            layout_desc.setVisibility(GfxShaderType::Compute)
+                .setRegisterSpaceIsDescriptorSet(true)
                 .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
                 .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
@@ -156,12 +180,20 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_UAV(5));
             m_culling_binding_layout = cmd_list.createBindingLayout(layout_desc);
         }
+        if (!m_culling_binding_layout) {
+            DO_ERROR("GpuCulling: failed to create culling binding layout");
+            return;
+        }
 
         if (!m_culling_pipeline) {
             GfxComputePipelineDesc pipeline_desc;
             pipeline_desc.setComputeShader(cs);
             pipeline_desc.addBindingLayout(m_culling_binding_layout);
             m_culling_pipeline = m_gfx->getDevice()->createComputePipeline(pipeline_desc);
+        }
+        if (!m_culling_pipeline) {
+            DO_ERROR("GpuCulling: failed to create culling compute pipeline");
+            return;
         }
 
         if (!m_culling_params_buffer) {
@@ -189,6 +221,7 @@ namespace dodoe {
             m_visible_count_buffer = cmd_list.createBuffer(
                 GfxBufferDesc()
                     .setByteSize(sizeof(UInt32))
+                    .setStructStride(sizeof(UInt32))
                     .setCanHaveUAVs(true)
                     .enableAutomaticStateTracking(GfxResourceStates::UnorderedAccess)
                     .setDebugName("VisibleCount"));
@@ -197,14 +230,30 @@ namespace dodoe {
         ensureReadbackBuffer(cmd_list);
 
         CullingParams params{};
-        const Matrix4f& m = view_projection;
-        params.frustum_planes[0] = Vector4f(m[3] + m[0]);
-        params.frustum_planes[1] = Vector4f(m[3] - m[0]);
-        params.frustum_planes[2] = Vector4f(m[3] + m[1]);
-        params.frustum_planes[3] = Vector4f(m[3] - m[1]);
-        params.frustum_planes[4] = Vector4f(m[3] + m[2]);
-        params.frustum_planes[5] = Vector4f(m[3] - m[2]);
+        const Matrix4f transposed = Math::Transpose(view_projection);
+        params.frustum_planes[0] = Vector4f(transposed[3] + transposed[0]);
+        params.frustum_planes[1] = Vector4f(transposed[3] - transposed[0]);
+        params.frustum_planes[2] = Vector4f(transposed[3] + transposed[1]);
+        params.frustum_planes[3] = Vector4f(transposed[3] - transposed[1]);
+        params.frustum_planes[4] = Vector4f(transposed[3] + transposed[2]);
+        params.frustum_planes[5] = Vector4f(transposed[3] - transposed[2]);
         params.object_count = effective_count;
+
+        static auto last_visible_log = std::chrono::steady_clock::now() - std::chrono::seconds(2);
+        const auto now = std::chrono::steady_clock::now();
+        if (now - last_visible_log >= std::chrono::seconds(1)) {
+            last_visible_log = now;
+            UInt32 visible = 0;
+            if (m_visible_count_readback_buffer) {
+                auto device = m_gfx->getDevice();
+                void* mapped = device->mapBuffer(m_visible_count_readback_buffer->getRHI(), GfxCpuAccessMode::Read);
+                if (mapped) {
+                    visible = *static_cast<const UInt32*>(mapped);
+                    device->unmapBuffer(m_visible_count_readback_buffer->getRHI());
+                }
+            }
+            DO_INFO("GpuCulling: visible={} / {}", visible, effective_count);
+        }
 
         cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::CopyDest);
         cmd_list.commitBarriers();
@@ -227,7 +276,10 @@ namespace dodoe {
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_visible_objects_buffer->getRHIHandle()));
         binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_visible_count_buffer->getRHIHandle()));
 
-        auto binding_set = cmd_list.createBindingSet(binding_desc, m_culling_binding_layout);
+        const auto& pipeline_layouts = m_culling_pipeline->getDesc().bindingLayouts;
+        auto binding_set = cmd_list.createBindingSet(binding_desc,
+            pipeline_layouts.empty() ? m_culling_binding_layout : pipeline_layouts.front());
+        m_frame_binding_sets.push_back(binding_set);
 
         GfxComputeState compute_state;
         compute_state.setPipeline(m_culling_pipeline);
@@ -265,7 +317,8 @@ namespace dodoe {
 
         if (!m_bucket_count_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
-            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+            layout_desc.setVisibility(GfxShaderType::Compute)
+                .setRegisterSpaceIsDescriptorSet(true)
                 .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(2))
@@ -285,7 +338,8 @@ namespace dodoe {
 
         if (!m_bucket_scan_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
-            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+            layout_desc.setVisibility(GfxShaderType::Compute)
+                .setRegisterSpaceIsDescriptorSet(true)
                 .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
                 .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
@@ -302,7 +356,8 @@ namespace dodoe {
 
         if (!m_bucket_fill_binding_layout) {
             GfxBindingLayoutDesc layout_desc;
-            layout_desc.setRegisterSpaceIsDescriptorSet(true)
+            layout_desc.setVisibility(GfxShaderType::Compute)
+                .setRegisterSpaceIsDescriptorSet(true)
                 .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
                 .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
                 .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(1))
@@ -335,7 +390,11 @@ namespace dodoe {
             cmd_list.commitBarriers();
 
             const UInt32 count_params[4] = {object_count, kMaxBuckets, m_template_count, 0};
+            cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::CopyDest);
+            cmd_list.commitBarriers();
             cmd_list.writeBuffer(m_culling_params_buffer, count_params, sizeof(count_params), 0);
+            cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::ConstantBuffer);
+            cmd_list.commitBarriers();
 
             GfxBindingSetDesc count_binding_desc;
             count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_objects_buffer->getRHIHandle()));
@@ -345,7 +404,10 @@ namespace dodoe {
             count_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
             count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_bucket_counts_buffer->getRHIHandle()));
 
-            auto count_binding_set = cmd_list.createBindingSet(count_binding_desc, m_bucket_count_binding_layout);
+            const auto& count_pipeline_layouts = m_bucket_count_pipeline->getDesc().bindingLayouts;
+            auto count_binding_set = cmd_list.createBindingSet(count_binding_desc,
+                count_pipeline_layouts.empty() ? m_bucket_count_binding_layout : count_pipeline_layouts.front());
+            m_frame_binding_sets.push_back(count_binding_set);
 
             GfxComputeState count_state;
             count_state.setPipeline(m_bucket_count_pipeline);
@@ -354,6 +416,12 @@ namespace dodoe {
 
             const UInt32 count_groups = (object_count + 63) / 64;
             cmd_list.dispatch(count_groups, 1, 1);
+
+            cmd_list.setBufferState(m_bucket_counts_buffer, GfxResourceStates::CopySource);
+            cmd_list.setBufferState(m_bucket_counts_readback_buffer, GfxResourceStates::CopyDest);
+            cmd_list.commitBarriers();
+            cmd_list.copyBuffer(m_bucket_counts_readback_buffer, 0,
+                m_bucket_counts_buffer, 0, kMaxBuckets * static_cast<UInt32>(sizeof(BucketCount)));
 
             cmd_list.setBufferState(m_bucket_counts_buffer, GfxResourceStates::ShaderResource);
             cmd_list.commitBarriers();
@@ -365,7 +433,10 @@ namespace dodoe {
             scan_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_bucket_counts_buffer->getRHIHandle()));
             scan_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(2, m_bucket_bases_buffer->getRHIHandle()));
 
-            auto scan_binding_set = cmd_list.createBindingSet(scan_binding_desc, m_bucket_scan_binding_layout);
+            const auto& scan_pipeline_layouts = m_bucket_scan_pipeline->getDesc().bindingLayouts;
+            auto scan_binding_set = cmd_list.createBindingSet(scan_binding_desc,
+                scan_pipeline_layouts.empty() ? m_bucket_scan_binding_layout : scan_pipeline_layouts.front());
+            m_frame_binding_sets.push_back(scan_binding_set);
 
             GfxComputeState scan_state;
             scan_state.setPipeline(m_bucket_scan_pipeline);
@@ -385,6 +456,15 @@ namespace dodoe {
             auto& ranges_readback = m_bucket_ranges_readback_buffer[generation];
             if (!indirect_args || !templates || !template_map || !ranges_readback) {
                 return;
+            }
+            {
+                static auto last_fill_info = std::chrono::steady_clock::now() - std::chrono::seconds(2);
+                const auto now = std::chrono::steady_clock::now();
+                if (now - last_fill_info >= std::chrono::seconds(1)) {
+                    last_fill_info = now;
+                    DO_INFO("GpuCulling: fill pass (objects={}, templates={}, generation={})",
+                        object_count, m_template_count, m_generation_counter);
+                }
             }
 
             const UInt64 indirect_size = std::max(object_count, 1u) *
@@ -418,7 +498,10 @@ namespace dodoe {
             fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(11, m_bucket_bases_buffer->getRHIHandle()));
             fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(12, m_bucket_ranges_buffer->getRHIHandle()));
 
-            auto fill_binding_set = cmd_list.createBindingSet(fill_binding_desc, m_bucket_fill_binding_layout);
+            const auto& fill_pipeline_layouts = m_bucket_fill_pipeline->getDesc().bindingLayouts;
+            auto fill_binding_set = cmd_list.createBindingSet(fill_binding_desc,
+                fill_pipeline_layouts.empty() ? m_bucket_fill_binding_layout : fill_pipeline_layouts.front());
+            m_frame_binding_sets.push_back(fill_binding_set);
 
             GfxComputeState fill_state;
             fill_state.setPipeline(m_bucket_fill_pipeline);
@@ -441,7 +524,9 @@ namespace dodoe {
 
     void GpuCulling::uploadBucketTemplates(DrawCommandList& cmd_list,
                                            const GpuBucketTemplateUpload* uploads,
-                                           const UInt32 upload_count) {
+                                           const UInt32 upload_count,
+                                           const GpuBucketDrawSnapshot* snapshots,
+                                           const UInt32 snapshot_count) {
         if (!uploads || upload_count == 0) {
             return;
         }
@@ -494,12 +579,63 @@ namespace dodoe {
         cmd_list.setBufferState(map_buffer, GfxResourceStates::ShaderResource);
         cmd_list.commitBarriers();
 
+        auto& snapshot_history = m_bucket_draw_snapshots[generation];
+        if (snapshots && snapshot_count == count) {
+            snapshot_history.assign(snapshots, snapshots + snapshot_count);
+        } else {
+            snapshot_history.clear();
+        }
+
         m_template_count = count;
+    }
+
+    void GpuCulling::debugLogGpuBuckets(DynamicArray<GpuBucketCpuDraw>& draws) {
+        static auto last_bucket_log = std::chrono::steady_clock::now() - std::chrono::seconds(2);
+        const auto now = std::chrono::steady_clock::now();
+        if (now - last_bucket_log < std::chrono::seconds(1)) {
+            return;
+        }
+        last_bucket_log = now;
+
+        UInt32 total = 0;
+        UInt32 nonzero = 0;
+        std::string detail;
+        if (m_bucket_counts_readback_buffer && m_gfx) {
+            auto device = m_gfx->getDevice();
+            void* mapped = device->mapBuffer(m_bucket_counts_readback_buffer->getRHI(), GfxCpuAccessMode::Read);
+            if (mapped) {
+                const auto* counts = static_cast<const BucketCount*>(mapped);
+                for (UInt32 bucket = 0; bucket < kMaxBuckets; ++bucket) {
+                    if (counts[bucket].instance_count == 0) continue;
+                    ++nonzero;
+                    total += counts[bucket].instance_count;
+                    if (nonzero <= 8) {
+                        detail += " [b" + std::to_string(bucket) +
+                            ":" + std::to_string(counts[bucket].instance_count) + "]";
+                    }
+                }
+                device->unmapBuffer(m_bucket_counts_readback_buffer->getRHI());
+            }
+        }
+        std::string draw_dump;
+        for (const auto& draw : draws) {
+            draw_dump += " [t" + std::to_string(draw.template_index) +
+                " arg" + std::to_string(draw.first_arg) +
+                " n" + std::to_string(draw.arg_count) + "]";
+        }
+        DO_INFO("GpuCulling gpu buckets: total={} nonzero={}{} | draws:{}", total, nonzero, detail, draw_dump);
     }
 
     Bool GpuCulling::acquireBucketDraws(DynamicArray<GpuBucketCpuDraw>& out_draws) {
         out_draws.clear();
         if (!m_gfx || m_generation_counter < 2) {
+            static auto last_gen_warn = std::chrono::steady_clock::now() - std::chrono::seconds(2);
+            const auto now = std::chrono::steady_clock::now();
+            if (now - last_gen_warn >= std::chrono::seconds(1)) {
+                last_gen_warn = now;
+                DO_WARN("GpuCulling: bucket draws pending warmup (generation={}, templates={})",
+                    m_generation_counter, m_template_count);
+            }
             return false;
         }
         const UInt32 generation = m_generation_counter - 2;
@@ -529,6 +665,7 @@ namespace dodoe {
             [](const GpuBucketCpuDraw& lhs, const GpuBucketCpuDraw& rhs) {
                 return lhs.template_index < rhs.template_index;
             });
+        debugLogGpuBuckets(out_draws);
         return !out_draws.empty();
     }
 

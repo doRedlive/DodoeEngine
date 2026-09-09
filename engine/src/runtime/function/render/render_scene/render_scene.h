@@ -97,6 +97,8 @@ namespace dodoe {
         UnorderedMap<UUID, Scope<PrimitiveRenderObject>> m_primitive_objects{};
         UnorderedMap<UUID, Scope<SpriteRenderObject>> m_sprite_objects{};
         UnorderedMap<UUID, GpuObjectHandle> m_cpu_to_gpu_map{};
+
+        UnorderedMap<UUID, DynamicArray<GpuObjectHandle>> m_primitive_gpu_handles{};
         Bool m_scene_data_dirty{true};
 
         UnorderedMap<RenderId, Size_t> m_primitive_scene_info_indices{};

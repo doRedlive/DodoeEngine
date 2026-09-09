@@ -86,7 +86,6 @@ namespace dodoe {
         }
 
         [[nodiscard]] const DynamicArray<MeshDrawGpuBucket>& getGpuBuckets(const Size_t view_index) const {
-            DO_ASSERT(view_index < m_draw_lists.size(), "MeshPassCommandStorage bucket view index out of range");
             static const DynamicArray<MeshDrawGpuBucket> empty_buckets{};
             return view_index < m_draw_lists.size() ? m_draw_lists[view_index].gpu_buckets : empty_buckets;
         }

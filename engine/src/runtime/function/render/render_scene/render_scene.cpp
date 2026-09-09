@@ -8,6 +8,7 @@
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/mesh_draw/mesh.h"
 #include "runtime/function/render/texture/texture.h"
+#include "runtime/function/render/material/material_system.h"
 #include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/resource_manager.h"
 
@@ -689,53 +690,102 @@ namespace dodoe {
     void RenderScene::syncPrimitiveGpuScene(const RenderSceneDelta& delta) {
         for (const auto& [id, update_type] : delta.primitive_updates) {
             if (HasAnyFlags(update_type, PrimitiveUpdateType::Removed) && m_primitive_objects.find(id) == m_primitive_objects.end()) {
-                auto it = m_cpu_to_gpu_map.find(id);
-                if (it != m_cpu_to_gpu_map.end()) {
-                    m_gpu_scene->unregisterObject(it->second);
-                    m_cpu_to_gpu_map.erase(it);
+                auto it = m_primitive_gpu_handles.find(id);
+                if (it != m_primitive_gpu_handles.end()) {
+                    for (const GpuObjectHandle handle : it->second) {
+                        m_gpu_scene->unregisterObject(handle);
+                    }
+                    m_primitive_gpu_handles.erase(it);
                 }
                 continue;
-            }
-
-            GpuObjectHandle handle;
-            auto it = m_cpu_to_gpu_map.find(id);
-            if (it == m_cpu_to_gpu_map.end()) {
-                GpuObjectMeta meta{};
-                meta.flags = kGpuObjectFlagValid;
-                meta.data_offset = 0;
-                meta.texture_id = 0;
-                meta.material_id = 0;
-                meta.bounds_id = 0;
-                handle = m_gpu_scene->registerObject(GpuObjectType::Primitive, meta);
-                m_cpu_to_gpu_map[id] = handle;
-            } else {
-                handle = it->second;
             }
 
             const auto* info = findPrimitiveSceneInfo(id);
             if (!info) continue;
 
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::TransformChanged | PrimitiveUpdateType::Added)) {
-                const Matrix4f& transform = info->getWorldTransform();
-                m_gpu_scene->updateTransform(handle, transform);
-                const Vector3f& bounds_min = info->getBoundsMin();
-                const Vector3f& bounds_max = info->getBoundsMax();
-                const Vector3f center = (bounds_min + bounds_max) * 0.5f;
-                const Vector3f extent = (bounds_max - bounds_min) * 0.5f;
-                m_gpu_scene->updateBounds(handle, center, extent);
+            const Size_t section_count = info->getSubMeshes().size();
+            if (section_count == 0) continue;
+
+            PrimitiveUpdateType effective_update = update_type;
+            auto it = m_primitive_gpu_handles.find(id);
+            if (it == m_primitive_gpu_handles.end() || it->second.size() != section_count) {
+                if (it != m_primitive_gpu_handles.end()) {
+                    for (const GpuObjectHandle handle : it->second) {
+                        m_gpu_scene->unregisterObject(handle);
+                    }
+                    m_primitive_gpu_handles.erase(it);
+                }
+                DynamicArray<GpuObjectHandle> handles;
+                handles.reserve(section_count);
+                for (Size_t index = 0; index < section_count; ++index) {
+                    GpuObjectMeta meta{};
+                    meta.flags = kGpuObjectFlagValid;
+                    handles.push_back(m_gpu_scene->registerObject(GpuObjectType::Primitive, meta));
+                }
+                it = m_primitive_gpu_handles.insert_or_assign(id, std::move(handles)).first;
+                effective_update |= PrimitiveUpdateType::Added;
             }
 
-            if (HasAnyFlags(update_type, PrimitiveUpdateType::Added | PrimitiveUpdateType::MeshChanged |
-                                           PrimitiveUpdateType::MaterialChanged | PrimitiveUpdateType::ProxyChanged |
-                                           PrimitiveUpdateType::StateChanged)) {
-                PrimitiveGpuData gpu_data{};
-                gpu_data.transform_index = handle.index();
-                gpu_data.mesh_id = 0;
-                gpu_data.section_start = 0;
-                gpu_data.section_count = static_cast<UInt32>(info->getSubMeshes().size());
-                gpu_data.material_start = 0;
-                gpu_data.material_count = static_cast<UInt32>(info->getMaterials().size());
-                m_gpu_scene->updatePrimitiveInstance(handle, gpu_data);
+            const auto& batches = info->getMeshBatches();
+            const auto& sections = info->getSubMeshes();
+            for (Size_t section_index = 0; section_index < it->second.size(); ++section_index) {
+                const GpuObjectHandle handle = it->second[section_index];
+
+                UInt32 material_id = 0;
+                if (section_index < batches.size()) {
+                    const auto* material = batches[section_index].getMaterialInstance();
+                    if (material) {
+                        material_id = static_cast<UInt32>(std::hash<String>{}(material->desc.name));
+                    }
+                }
+                m_gpu_scene->updateObjectMeta(handle, info->isVisible() ? kGpuObjectFlagValid : 0u, material_id);
+
+                if (HasAnyFlags(effective_update, PrimitiveUpdateType::TransformChanged | PrimitiveUpdateType::Added)) {
+                    const Matrix4f& transform = info->getWorldTransform();
+                    m_gpu_scene->updateTransform(handle, transform);
+                    const Vector3f& bounds_min = info->getBoundsMin();
+                    const Vector3f& bounds_max = info->getBoundsMax();
+                    const Vector3f local_center = (bounds_min + bounds_max) * 0.5f;
+                    const Vector3f local_extent = (bounds_max - bounds_min) * 0.5f;
+                    const Vector3f center = Vector3f(transform * Vector4f(local_center, 1.0f));
+                    const Matrix3f linear = Matrix3f(transform);
+                    const Matrix3f abs_linear(Math::Abs(linear[0]), Math::Abs(linear[1]), Math::Abs(linear[2]));
+                    const Vector3f extent = abs_linear * local_extent;
+                    m_gpu_scene->updateBounds(handle, center, extent);
+                }
+
+                if (HasAnyFlags(effective_update, PrimitiveUpdateType::Added | PrimitiveUpdateType::TransformChanged | PrimitiveUpdateType::MeshChanged |
+                                               PrimitiveUpdateType::MaterialChanged | PrimitiveUpdateType::ProxyChanged |
+                                               PrimitiveUpdateType::StateChanged)) {
+                    PrimitiveGpuData gpu_data{};
+                    gpu_data.transform_index = handle.index();
+                    if (section_index < sections.size()) {
+                        const auto& section = sections[section_index];
+                        gpu_data.index_count = section.index_count;
+                        gpu_data.start_index = section.index_offset;
+                        gpu_data.base_vertex = section.vertex_offset;
+                    }
+                    if (section_index < batches.size() &&
+                        !batches[section_index].getElements().empty()) {
+                        const auto& element = batches[section_index].getElements().front();
+                        gpu_data.mesh_id = static_cast<UInt32>(reinterpret_cast<Size_t>(element.vertex_buffer->getRHI()));
+                    }
+                    GpuPrimitiveRenderInstance render_instance{};
+                    if (!info->getInstanceSceneData().empty()) {
+                        const auto& source = info->getInstanceSceneData().front();
+                        render_instance.model = source.model;
+                        render_instance.color_tint = source.color_tint;
+                        render_instance.params = source.params;
+                    } else {
+                        render_instance.model = info->getWorldTransform();
+                    }
+                    m_gpu_scene->updatePrimitiveRenderInstance(handle, render_instance);
+                    gpu_data.section_start = section_index;
+                    gpu_data.section_count = static_cast<UInt32>(sections.size());
+                    gpu_data.material_start = section_index;
+                    gpu_data.material_count = static_cast<UInt32>(info->getMaterials().size());
+                    m_gpu_scene->updatePrimitiveInstance(handle, gpu_data);
+                }
             }
         }
     }
@@ -788,6 +838,9 @@ namespace dodoe {
             } else {
                 handle = it->second;
             }
+
+            m_gpu_scene->updateObjectMeta(handle, info->isVisible() ? kGpuObjectFlagValid : 0u,
+                info->getMaterialId(), resolveSpriteAtlasIndex(*info));
 
             if (HasAnyFlags(update_type, SpriteUpdateType::TransformChanged)) {
                 const Matrix4f& transform = info->getWorldTransform();
@@ -850,6 +903,7 @@ namespace dodoe {
 
             const auto* info = findLightSceneInfo(id);
             if (!info) continue;
+            m_gpu_scene->updateObjectMeta(handle, 0u);
 
             if (HasAnyFlags(update_type, LightUpdateType::Added | LightUpdateType::TransformChanged | LightUpdateType::DataChanged)) {
                 const Matrix4f& transform = info->getWorldTransform();

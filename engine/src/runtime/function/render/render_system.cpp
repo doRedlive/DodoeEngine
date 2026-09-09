@@ -39,7 +39,9 @@ namespace dodoe {
             init_pixel.x = std::max(init_pixel.x, 1);
             init_pixel.y = std::max(init_pixel.y, 1);
         }
-        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation, RenderFeatureSettings{}, window->isHostMode() ? window->getNativeHandle() : nullptr, static_cast<UInt32>(init_pixel.x), static_cast<UInt32>(init_pixel.y)});
+        m_gfx = GfxContext::Create({window->getNativeWindow(), backend_api, enable_validation,
+            RenderSettings::GetFeatureSettings(), window->isHostMode() ? window->getNativeHandle() : nullptr,
+            static_cast<UInt32>(init_pixel.x), static_cast<UInt32>(init_pixel.y)});
         GDrawCommandList.setDevice(*m_gfx);
 
         m_frame_scheduler = RenderFrameScheduler::Create({m_gfx->getDevice()});

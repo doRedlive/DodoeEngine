@@ -27,6 +27,7 @@ namespace dodoe {
         GfxBufferHandle bounds;
         GfxBufferHandle sprite_instance;
         GfxBufferHandle primitive_instance;
+        GfxBufferHandle primitive_render_instance;
         GfxBufferHandle light_instance;
         GfxBufferHandle quad_vb;
         GfxBufferHandle quad_ib;
@@ -44,6 +45,15 @@ namespace dodoe {
         UInt64 total_upload_bytes{0};
         UInt32 upload_ranges_count{0};
         UInt32 light_count{0};
+    };
+
+    struct GpuPrimitiveDebugInfo {
+        UInt32 object_index{0};
+        UInt32 flags{0};
+        UInt32 material_id{0};
+        UInt32 mesh_id{0};
+        UInt32 index_count{0};
+        UInt32 start_index{0};
     };
 
     class GpuScene : public Managed<GpuScene, GpuSceneCreateInfo> {
@@ -98,6 +108,7 @@ namespace dodoe {
         DirtyRange m_bounds_dirty_range{};
         DirtyRange m_sprite_instance_dirty_range{};
         DirtyRange m_primitive_instance_dirty_range{};
+        DirtyRange m_primitive_render_instance_dirty_range{};
         DirtyRange m_light_instance_dirty_range{};
 
         GfxBufferHandle m_object_meta_buffer{};
@@ -105,6 +116,7 @@ namespace dodoe {
         GfxBufferHandle m_bounds_buffer{};
         GfxBufferHandle m_sprite_instance_buffer{};
         GfxBufferHandle m_primitive_instance_buffer{};
+        GfxBufferHandle m_primitive_render_instance_buffer{};
         GfxBufferHandle m_light_instance_buffer{};
         GfxBufferHandle m_quad_vb{};
         GfxBufferHandle m_quad_ib{};
@@ -113,6 +125,7 @@ namespace dodoe {
         DynamicArray<GpuBounds> m_bounds_cpu{};
         DynamicArray<SpriteGpuData> m_sprite_instance_cpu{};
         DynamicArray<PrimitiveGpuData> m_primitive_instance_cpu{};
+        DynamicArray<GpuPrimitiveRenderInstance> m_primitive_render_instance_cpu{};
         DynamicArray<LightGpuData> m_light_instance_cpu{};
 
         UInt32 m_object_capacity{0};
@@ -120,6 +133,7 @@ namespace dodoe {
         UInt32 m_bounds_capacity{0};
         UInt32 m_sprite_instance_capacity{0};
         UInt32 m_primitive_instance_capacity{0};
+        UInt32 m_primitive_render_instance_capacity{0};
         UInt32 m_light_instance_capacity{0};
         Bool m_quad_buffers_ready{false};
 
@@ -129,6 +143,7 @@ namespace dodoe {
     public:
         GpuObjectHandle registerObject(GpuObjectType type, GpuObjectMeta meta);
         void unregisterObject(GpuObjectHandle handle);
+        void updateObjectMeta(GpuObjectHandle handle, UInt32 flags, UInt32 material_id = 0, UInt32 texture_id = 0);
 
         void markDirty(GpuObjectHandle handle, GpuObjectDirtyFlags flags);
 
@@ -136,13 +151,16 @@ namespace dodoe {
         void updateBounds(GpuObjectHandle handle, const Vector3f& center, const Vector3f& extent);
         void updateSpriteInstance(GpuObjectHandle handle, const SpriteGpuData& data);
         void updatePrimitiveInstance(GpuObjectHandle handle, const PrimitiveGpuData& data);
+        void updatePrimitiveRenderInstance(GpuObjectHandle handle, const GpuPrimitiveRenderInstance& data);
         void updateLightInstance(GpuObjectHandle handle, const LightGpuData& data);
 
         void applyDelta(const RenderSceneDelta& delta);
 
         void flushUpdates(DrawCommandList& cmd_list);
 
-        [[nodiscard]] UInt32 getObjectCount() const { return m_objects.occupiedCount(); }
+        [[nodiscard]] UInt32 getObjectCount() const { return m_objects.slotCount(); }
+
+        void getPrimitiveDebugInfos(DynamicArray<GpuPrimitiveDebugInfo>& out) const;
 
         GpuScenePassResources getPassResources() const;
         const DynamicArray<UploadRange>& getLastUploadRanges() const { return m_last_upload_ranges; }
@@ -157,6 +175,7 @@ namespace dodoe {
         void ensureBoundsBuffer(UInt32 capacity);
         void ensureSpriteInstanceBuffer(UInt32 capacity);
         void ensurePrimitiveInstanceBuffer(UInt32 capacity);
+        void ensurePrimitiveRenderInstanceBuffer(UInt32 capacity);
         void ensureLightInstanceBuffer(UInt32 capacity);
         void ensureQuadBuffers();
 

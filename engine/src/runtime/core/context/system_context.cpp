@@ -79,6 +79,10 @@ namespace dodoe {
         render_settings_init_info.enable_baseline_renderer = m_init_info.spec.render_settings.enable_baseline_renderer;
         render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
         render_settings_init_info.windowless = m_init_info.spec.render_settings.windowless;
+        render_settings_init_info.enable_gpu_driven = m_init_info.spec.render_settings.enable_gpu_driven;
+        render_settings_init_info.enable_async_compute = m_init_info.spec.render_settings.enable_async_compute;
+        render_settings_init_info.enable_bindless = m_init_info.spec.render_settings.enable_bindless;
+        render_settings_init_info.culling_path = m_init_info.spec.render_settings.culling_path;
         if (engine_mode == EngineMode::TwoD) {
             render_settings_init_info.pipeline = RenderingPipelineType::Only2D;
         } else if (engine_mode == EngineMode::GUI) {

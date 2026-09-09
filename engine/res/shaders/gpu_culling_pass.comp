@@ -44,7 +44,6 @@ layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT1) readonly b
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT2) readonly buffer BoundsBuffer     { GpuBounds bounds[]; };
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT3) buffer VisibleObjects { uint visible_objects[]; };
 layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT4) buffer VisibleCount   { uint visible_count[]; };
-layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT5) buffer VisibleFlags   { uint visible_flags[]; };
 
 bool testPlane(vec4 plane, vec3 center, vec3 extent)
 {
@@ -79,6 +78,5 @@ void main()
     {
         uint out_idx = atomicAdd(visible_count[0], 1u);
         visible_objects[out_idx] = idx;
-        visible_flags[idx] = 1u;
     }
 }

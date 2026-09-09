@@ -24,6 +24,7 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/utils/common.h"
 
+#include <chrono>
 #include <cstdlib>
 
 namespace dodoe {
@@ -53,6 +54,7 @@ namespace dodoe {
 	    addFeature<GBufferSceneFeature>();
 	    addFeature<ShadowSceneFeature>();
 	    addFeature<SkyboxFeature>();
+	    getFeature<GBufferSceneFeature>()->setGpuCulling(m_gpu_culling.get());
 
 	    addFeature<LightingFeature>();
 	    addFeature<PostProcessFeature>();
@@ -95,21 +97,20 @@ namespace dodoe {
 	    DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer GBufferSceneFeature is null");
 	    opaque_feature->setupMeshPassContexts(scene, view_family);
 
+	    auto* shadow_feature = getFeature<ShadowSceneFeature>();
+	    DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
+
 	    const auto culling_path = RenderSettings::GetFeatureSettings().culling_path;
+	    DO_PROFILE_MARK("DeferredRenderer::render.buildMeshDrawCommands", "frame");
+	    opaque_feature->buildMeshDrawCommands(view_family, out_commands, getThreadPool());
+
+	    DO_PROFILE_MARK("DeferredRenderer::render.buildShadowDrawCommands", "frame");
+	    shadow_feature->buildShadowDrawCommands(view_family, out_commands, getThreadPool());
+
 	    if (culling_path == CullingPath::GpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
 	       executeGpuCulling(view_family, scene, out_commands);
 	       buildGpuDrivenDrawCommands(scene, view_family, out_commands);
 	    }
-
-	    if (culling_path == CullingPath::CpuOnly || culling_path == CullingPath::CpuThenGpuVerify) {
-	       DO_PROFILE_MARK("DeferredRenderer::render.buildMeshDrawCommands", "frame");
-	       opaque_feature->buildMeshDrawCommands(view_family, out_commands, getThreadPool());
-	    }
-
-	    DO_PROFILE_MARK("DeferredRenderer::render.buildShadowDrawCommands", "frame");
-	    auto* shadow_feature = getFeature<ShadowSceneFeature>();
-	    DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
-	    shadow_feature->buildShadowDrawCommands(view_family, out_commands, getThreadPool());
 
 	    DO_PROFILE_MARK("DeferredRenderer::render.buildOrderedPasses", "frame");
 	    buildOrderedPasses(view_family, scene, swapchain_image_index, out_commands,
@@ -138,26 +139,78 @@ namespace dodoe {
 	        const auto* opaque_buckets = opaque_feature
 	            ? &opaque_feature->getGpuBuckets(view_index) : &empty_buckets;
 	        bucket_uploads.reserve(opaque_buckets->size());
+	        DynamicArray<GpuBucketDrawSnapshot> snapshots;
+	        snapshots.reserve(opaque_buckets->size());
+	        const auto& lit_sources = opaque_feature->getLitDrawLists()[view_index].sources;
 	        for (const auto& bucket : *opaque_buckets) {
 	            const auto& key = bucket.key;
 	            const auto& args = bucket.command.getDrawArguments();
-	            GpuBucketHashKey hash_key{};
-	            hash_key.type = static_cast<UInt32>(GpuObjectType::Primitive);
-	            hash_key.index_count = args.vertexCount;
-	            hash_key.start_index = args.startIndexLocation;
+                GpuBucketHashKey hash_key{};
+                hash_key.type = static_cast<UInt32>(GpuObjectType::Primitive);
+                hash_key.material_id = static_cast<UInt32>(key.material);
+                hash_key.mesh_id = static_cast<UInt32>(key.vertex_buffer);
 	            GpuBucketTemplateUpload upload{};
 	            upload.data = GpuBucketTemplate{
 	                static_cast<UInt64>(key.pipeline), static_cast<UInt64>(key.material),
 	                static_cast<UInt64>(key.binding_set), static_cast<UInt64>(key.vertex_buffer),
 	                static_cast<UInt64>(key.index_buffer), args.vertexCount,
                 args.startIndexLocation, static_cast<Int32>(args.startVertexLocation),
-                bucket.source_count};
+                bucket.source_count, ComputeGpuBucketHashRaw(hash_key), 0u};
 	            upload.hash_bucket = ComputeGpuBucketHash(hash_key, GpuCulling::kMaxBuckets);
 	            bucket_uploads.push_back(upload);
+	            GpuBucketDrawSnapshot snapshot{};
+	            const auto& bucket_cmd = bucket.command;
+	            snapshot.pipeline = bucket_cmd.getPipeline();
+	            for (const auto& binding_set : bucket_cmd.getBindingSets()) {
+	                if (binding_set) {
+	                    snapshot.binding_sets.push_back(binding_set);
+	                }
+	            }
+	            snapshot.vertex_bindings = bucket_cmd.getVertexBindings();
+	            snapshot.index_binding = bucket_cmd.getIndexBinding();
+	            if (bucket.first_source < lit_sources.size()) {
+	                snapshot.shader_data = lit_sources[bucket.first_source].shader_data;
+	            }
+	            snapshots.push_back(std::move(snapshot));
 	        }
 	        if (!bucket_uploads.empty()) {
 	            m_gpu_culling->uploadBucketTemplates(
-                cmd_list, bucket_uploads.data(), static_cast<UInt32>(bucket_uploads.size()));
+                cmd_list, bucket_uploads.data(), static_cast<UInt32>(bucket_uploads.size()),
+                snapshots.data(), static_cast<UInt32>(snapshots.size()));
+	        }
+	        static auto last_hash_dump = std::chrono::steady_clock::now() - std::chrono::seconds(2);
+	        const auto hash_dump_now = std::chrono::steady_clock::now();
+	        if (hash_dump_now - last_hash_dump >= std::chrono::seconds(1)) {
+	            last_hash_dump = hash_dump_now;
+	            std::string object_dump;
+	            DynamicArray<GpuPrimitiveDebugInfo> prim_infos;
+	            gpu_scene->getPrimitiveDebugInfos(prim_infos);
+	            UInt32 dumped_objects = 0;
+	            for (const auto& prim : prim_infos) {
+	                if (dumped_objects++ >= 12) break;
+	                GpuBucketHashKey key{};
+	                key.type = static_cast<UInt32>(GpuObjectType::Primitive);
+	                key.material_id = prim.material_id;
+	                key.mesh_id = prim.mesh_id;
+	                object_dump += " [o" + std::to_string(prim.object_index) +
+	                    " f" + std::to_string(prim.flags) +
+	                    " mat" + std::to_string(prim.material_id) +
+	                    " mesh" + std::to_string(prim.mesh_id) +
+	                    " ic" + std::to_string(prim.index_count) +
+	                    " si" + std::to_string(prim.start_index) +
+	                    " b" + std::to_string(ComputeGpuBucketHash(key, GpuCulling::kMaxBuckets)) + "]";
+	            }
+	            std::string template_dump;
+	            UInt32 dumped_templates = 0;
+	            for (const auto& upload : bucket_uploads) {
+	                if (dumped_templates++ >= 12) break;
+	                template_dump += " [b" + std::to_string(upload.hash_bucket) +
+	                    " mat" + std::to_string(static_cast<UInt32>(upload.data.material)) +
+	                    " mesh" + std::to_string(static_cast<UInt32>(upload.data.vertex_buffer)) +
+	                    " ic" + std::to_string(upload.data.index_count) +
+	                    " si" + std::to_string(upload.data.start_index) + "]";
+	            }
+	            DO_INFO("GpuCulling hash dump objects:{} templates:{}", object_dump, template_dump);
 	        }
 	        m_gpu_culling->executeCulling(cmd_list, scene_resources,
 	                                      view.getViewProjectionMatrix(), object_count);
@@ -175,137 +228,7 @@ namespace dodoe {
 	    if (!gpu_scene) {
 	        return;
 	    }
-
-	    const auto indirect_args = m_gpu_culling->getIndirectArgsBuffer(1);
-	    if (!indirect_args) {
-	        return;
-	    }
-
-	    auto* opaque_feature = getFeature<GBufferSceneFeature>();
-	    DO_ASSERT(opaque_feature != nullptr, "DeferredRenderer GBufferSceneFeature is null");
-	    auto* shadow_feature = getFeature<ShadowSceneFeature>();
-	    DO_ASSERT(shadow_feature != nullptr, "DeferredRenderer ShadowSceneFeature is null");
-	    const UInt32 object_count = gpu_scene->getObjectCount();
-
-	    for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
-	        auto& view = view_family.getView(view_index);
-	        auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
-
-	        const auto viewport = GfxViewportState()
-	            .addViewportAndScissorRect(GfxViewport(
-                static_cast<Float>(view.getViewportRect().z),
-                static_cast<Float>(view.getViewportRect().w)));
-
-	        const auto& gpu_buckets = opaque_feature->getGpuBuckets(view_index);
-	        DynamicArray<GpuBucketCpuDraw> gpu_draws;
-	        const Bool has_bucket_draws = !gpu_buckets.empty() && m_gpu_culling->acquireBucketDraws(gpu_draws);
-
-	        for (Size_t pass_idx = 0; pass_idx < static_cast<Size_t>(MeshPassType::Shadow) + 1; pass_idx++) {
-	            if (pass_idx == static_cast<Size_t>(MeshPassType::Opaque)) {
-	                if (!has_bucket_draws) {
-	                    continue;
-	                }
-	                for (const auto& draw : gpu_draws) {
-	                    if (draw.template_index >= gpu_buckets.size()) {
-	                        continue;
-	                    }
-	                    const auto& bucket_cmd = gpu_buckets[draw.template_index].command;
-	                    if (!bucket_cmd.getPipeline()) {
-	                        continue;
-	                    }
-
-	                    auto graphics_state = GfxGraphicsState()
-	                        .setViewport(viewport)
-	                        .setPipeline(bucket_cmd.getPipeline()->getRHIHandle());
-
-	                    ShaderParameterBinder binder;
-	                    binder.bind(graphics_state, bucket_cmd.getBindingSets());
-
-	                    for (const auto& vertex_binding : bucket_cmd.getVertexBindings()) {
-	                        graphics_state.addVertexBuffer(vertex_binding);
-	                    }
-
-	                    const auto gpu_scene_resources = gpu_scene->getPassResources();
-	                    if (gpu_scene_resources.primitive_instance && gpu_scene_resources.primitive_instance->getRHI()) {
-	                        graphics_state.addVertexBuffer(
-	                            GfxVertexBufferBinding()
-	                                .setBuffer(gpu_scene_resources.primitive_instance->getRHI())
-	                                .setSlot(1)
-	                                .setOffset(0)
-	                        );
-	                    }
-
-	                    graphics_state.setIndexBuffer(bucket_cmd.getIndexBinding());
-	                    cmd_list.setGraphicsState(graphics_state);
-
-	                    cmd_list.setBufferState(indirect_args, GfxResourceStates::IndirectArgument);
-	                    cmd_list.commitBarriers();
-	                    cmd_list.drawIndexedIndirect(
-	                        draw.first_arg * sizeof(DrawIndexedIndirectArgs), draw.arg_count);
-	                }
-	                continue;
-	            }
-
-	            const auto& draw_lists = shadow_feature->getShadowDrawLists();
-	            const auto& mesh_draw_cache = shadow_feature->getMeshDrawCache();
-	            const auto& instances = draw_lists[view_index].cached_instances;
-	            if (instances.empty()) {
-	                continue;
-	            }
-
-	            if (instances[0].cmd_index >= mesh_draw_cache.size()) {
-	                DO_ERROR("DeferredRenderer: cached mesh draw index out of range");
-	                continue;
-	            }
-	            const auto& cached_cmd = mesh_draw_cache.getCommand(instances[0].cmd_index);
-	            if (!cached_cmd.getPipeline()) {
-	                DO_ERROR("DeferredRenderer: cached mesh draw has no pipeline");
-	                continue;
-	            }
-
-	            const auto template_key = cached_cmd.getBucketKey();
-	            Bool compatible_templates = true;
-	            for (const auto& instance : instances) {
-	                if (instance.cmd_index >= mesh_draw_cache.size() ||
-	                    !(mesh_draw_cache.getCommand(instance.cmd_index).getBucketKey() == template_key)) {
-	                    compatible_templates = false;
-	                    break;
-	                }
-	            }
-	            if (!compatible_templates) {
-	                DO_WARN("DeferredRenderer: skipping GPU indirect draw with incompatible mesh bucket templates");
-	                continue;
-	            }
-
-	            auto graphics_state = GfxGraphicsState()
-	                .setViewport(viewport)
-	                .setPipeline(cached_cmd.getPipeline()->getRHIHandle());
-
-	            ShaderParameterBinder binder;
-	            binder.bind(graphics_state, cached_cmd.getBindingSets());
-
-	            for (const auto& vertex_binding : cached_cmd.getVertexBindings()) {
-	                graphics_state.addVertexBuffer(vertex_binding);
-	            }
-
-	            const auto gpu_scene_resources = gpu_scene->getPassResources();
-	            if (gpu_scene_resources.primitive_instance && gpu_scene_resources.primitive_instance->getRHI()) {
-	                graphics_state.addVertexBuffer(
-	                    GfxVertexBufferBinding()
-	                        .setBuffer(gpu_scene_resources.primitive_instance->getRHI())
-	                        .setSlot(1)
-	                        .setOffset(instances[0].instance_offset)
-	                );
-	            }
-
-	            graphics_state.setIndexBuffer(cached_cmd.getIndexBinding());
-	            cmd_list.setGraphicsState(graphics_state);
-
-	            cmd_list.setBufferState(indirect_args, GfxResourceStates::IndirectArgument);
-	            cmd_list.commitBarriers();
-	            cmd_list.drawIndexedIndirect(0, object_count);
-	        }
-	    }
-	}
-
+    (void)view_family;
+    (void)cmd_list;
+}
 } // dodoe

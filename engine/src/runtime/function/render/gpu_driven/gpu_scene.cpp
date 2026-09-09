@@ -19,6 +19,7 @@ namespace dodoe {
         m_quad_vb = nullptr;
         m_light_instance_buffer = nullptr;
         m_primitive_instance_buffer = nullptr;
+        m_primitive_render_instance_buffer = nullptr;
         m_sprite_instance_buffer = nullptr;
         m_bounds_buffer = nullptr;
         m_transforms_buffer = nullptr;
@@ -29,12 +30,14 @@ namespace dodoe {
         m_bounds_cpu.clear();
         m_sprite_instance_cpu.clear();
         m_primitive_instance_cpu.clear();
+        m_primitive_render_instance_cpu.clear();
         m_light_instance_cpu.clear();
         m_object_capacity = 0;
         m_transform_capacity = 0;
         m_bounds_capacity = 0;
         m_sprite_instance_capacity = 0;
         m_primitive_instance_capacity = 0;
+        m_primitive_render_instance_capacity = 0;
         m_light_instance_capacity = 0;
         m_quad_buffers_ready = false;
         m_last_upload_ranges.clear();
@@ -49,18 +52,19 @@ namespace dodoe {
         m_sprite_instance_dirty_range.clearBits();
         m_primitive_instance_dirty_range.reset();
         m_primitive_instance_dirty_range.clearBits();
+        m_primitive_render_instance_dirty_range.reset();
+        m_primitive_render_instance_dirty_range.clearBits();
         m_light_instance_dirty_range.reset();
         m_light_instance_dirty_range.clearBits();
     }
 
     GpuObjectHandle GpuScene::registerObject(const GpuObjectType type, GpuObjectMeta meta) {
         meta.type = static_cast<UInt32>(type);
-        const UInt32 idx = m_objects.occupiedCount();
+        auto handle = m_objects.insert(meta);
+        const UInt32 idx = handle.index();
         ensureObjectMetaBuffer(idx + 1);
         ensureTransformsBuffer(idx + 1);
         ensureBoundsBuffer(idx + 1);
-
-        auto handle = m_objects.insert(meta);
 
         while (m_dirty_flags.size() <= idx) {
             m_dirty_flags.push_back(GpuObjectDirtyFlags::None);
@@ -82,8 +86,11 @@ namespace dodoe {
             break;
         case GpuObjectType::Primitive:
             ensurePrimitiveInstanceBuffer(idx + 1);
+            ensurePrimitiveRenderInstanceBuffer(idx + 1);
             m_primitive_instance_dirty_range.expand(idx);
             m_primitive_instance_dirty_range.markBit(idx);
+            m_primitive_render_instance_dirty_range.expand(idx);
+            m_primitive_render_instance_dirty_range.markBit(idx);
             break;
         case GpuObjectType::Light:
             ensureLightInstanceBuffer(idx + 1);
@@ -106,6 +113,18 @@ namespace dodoe {
         if (idx < m_dirty_flags.size()) {
             m_dirty_flags[idx] = GpuObjectDirtyFlags::None;
         }
+    }
+
+    void GpuScene::updateObjectMeta(const GpuObjectHandle handle, const UInt32 flags,
+                                    const UInt32 material_id, const UInt32 texture_id) {
+        auto* meta = m_objects.get(handle);
+        if (!meta) return;
+        meta->flags = flags;
+        meta->material_id = material_id;
+        meta->texture_id = texture_id;
+        const UInt32 idx = handle.index();
+        m_meta_dirty_range.expand(idx);
+        m_meta_dirty_range.markBit(idx);
     }
 
     void GpuScene::markDirty(const GpuObjectHandle handle, const GpuObjectDirtyFlags flags) {
@@ -188,6 +207,16 @@ namespace dodoe {
         m_primitive_instance_cpu[idx] = data;
         m_primitive_instance_dirty_range.expand(idx);
         m_primitive_instance_dirty_range.markBit(idx);
+    }
+
+    void GpuScene::updatePrimitiveRenderInstance(const GpuObjectHandle handle, const GpuPrimitiveRenderInstance& data) {
+        const UInt32 idx = handle.index();
+        const auto* meta = m_objects.get(handle);
+        if (!meta || idx >= m_primitive_render_instance_capacity) return;
+        ensurePrimitiveRenderInstanceBuffer(idx + 1);
+        m_primitive_render_instance_cpu[idx] = data;
+        m_primitive_render_instance_dirty_range.expand(idx);
+        m_primitive_render_instance_dirty_range.markBit(idx);
     }
 
     void GpuScene::updateLightInstance(const GpuObjectHandle handle, const LightGpuData& data) {
@@ -290,7 +319,7 @@ namespace dodoe {
         ensureQuadBuffers();
 
         if (m_meta_dirty_range.valid() && m_object_meta_buffer) {
-            DynamicArray<GpuObjectMeta> metas(m_objects.slotCount());
+            DynamicArray<GpuObjectMeta> metas(m_object_capacity);
             m_objects.forEachOccupied([&](GpuObjectHandle h, const GpuObjectMeta& meta) {
                 if (h.index() < metas.size()) {
                     metas[h.index()] = meta;
@@ -363,6 +392,18 @@ namespace dodoe {
             }
         }
 
+        if (m_primitive_render_instance_dirty_range.valid() && m_primitive_render_instance_buffer) {
+            if (m_primitive_render_instance_dirty_range.hasBits()) {
+                flushSparseRange(cmd_list, m_primitive_render_instance_dirty_range, m_primitive_render_instance_buffer,
+                                GfxResourceStates::VertexBuffer, m_primitive_render_instance_cpu.data(),
+                                sizeof(GpuPrimitiveRenderInstance), static_cast<UInt32>(m_primitive_render_instance_cpu.size()));
+            } else {
+                flushDirtyRange(cmd_list, m_primitive_render_instance_dirty_range, m_primitive_render_instance_buffer,
+                               GfxResourceStates::VertexBuffer, m_primitive_render_instance_cpu.data(),
+                               sizeof(GpuPrimitiveRenderInstance));
+            }
+        }
+
         if (m_light_instance_dirty_range.valid() && m_light_instance_buffer) {
             m_last_stats.light_instance_dirty_count = m_light_instance_dirty_range.hasBits() ? m_light_instance_dirty_range.countBits() : (m_light_instance_dirty_range.end - m_light_instance_dirty_range.start);
             if (m_light_instance_dirty_range.hasBits()) {
@@ -381,7 +422,29 @@ namespace dodoe {
         for (const auto& r : m_last_upload_ranges) {
             m_last_stats.total_upload_bytes += r.size_bytes;
         }
-        m_last_stats.light_count = static_cast<UInt32>(m_light_instance_cpu.size());
+        m_last_stats.light_count = 0;
+        m_objects.forEachOccupied([&](GpuObjectHandle, const GpuObjectMeta& meta) {
+            if (meta.type == static_cast<UInt32>(GpuObjectType::Light)) {
+                ++m_last_stats.light_count;
+            }
+        });
+    }
+
+    void GpuScene::getPrimitiveDebugInfos(DynamicArray<GpuPrimitiveDebugInfo>& out) const {
+        out.clear();
+        m_objects.forEachOccupied([&](GpuObjectHandle handle, const GpuObjectMeta& meta) {
+            if (meta.type != static_cast<UInt32>(GpuObjectType::Primitive)) return;
+            if (handle.index() >= m_primitive_instance_cpu.size()) return;
+            const PrimitiveGpuData& data = m_primitive_instance_cpu[handle.index()];
+            GpuPrimitiveDebugInfo info{};
+            info.object_index = handle.index();
+            info.flags = meta.flags;
+            info.material_id = meta.material_id;
+            info.mesh_id = data.mesh_id;
+            info.index_count = data.index_count;
+            info.start_index = data.start_index;
+            out.push_back(info);
+        });
     }
 
     GpuScenePassResources GpuScene::getPassResources() const {
@@ -391,6 +454,7 @@ namespace dodoe {
         res.bounds = m_bounds_buffer;
         res.sprite_instance = m_sprite_instance_buffer;
         res.primitive_instance = m_primitive_instance_buffer;
+        res.primitive_render_instance = m_primitive_render_instance_buffer;
         res.light_instance = m_light_instance_buffer;
         res.quad_vb = m_quad_vb;
         res.quad_ib = m_quad_ib;
@@ -470,6 +534,7 @@ namespace dodoe {
         m_primitive_instance_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(new_cap * static_cast<UInt32>(sizeof(PrimitiveGpuData)))
+                .setStructStride(sizeof(PrimitiveGpuData))
                 .setIsVertexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
                 .setDebugName("GpuScene PrimitiveInstance"));
@@ -479,6 +544,23 @@ namespace dodoe {
         m_primitive_instance_dirty_range.clearBits();
         m_primitive_instance_dirty_range.expand(0);
         m_primitive_instance_dirty_range.expand(new_cap - 1);
+    }
+
+    void GpuScene::ensurePrimitiveRenderInstanceBuffer(const UInt32 capacity) {
+        if (capacity <= m_primitive_render_instance_capacity && m_primitive_render_instance_buffer) return;
+        const UInt32 new_cap = std::max(capacity, std::max(m_primitive_render_instance_capacity * 2, 64u));
+        m_primitive_render_instance_buffer = GDrawCommandList.createBuffer(
+            GfxBufferDesc()
+                .setByteSize(new_cap * static_cast<UInt32>(sizeof(GpuPrimitiveRenderInstance)))
+                .setIsVertexBuffer(true)
+                .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
+                .setDebugName("GpuScene PrimitiveRenderInstance"));
+        m_primitive_render_instance_cpu.resize(new_cap);
+        m_primitive_render_instance_capacity = new_cap;
+        m_primitive_render_instance_dirty_range.reset();
+        m_primitive_render_instance_dirty_range.clearBits();
+        m_primitive_render_instance_dirty_range.expand(0);
+        m_primitive_render_instance_dirty_range.expand(new_cap - 1);
     }
 
     void GpuScene::ensureLightInstanceBuffer(const UInt32 capacity) {

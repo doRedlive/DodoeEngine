@@ -10,6 +10,10 @@
         "present_mode": 1,
         "enable_single_thread": false,
         "enable_baseline_renderer": true,
-        "windowless": false
+        "windowless": false,
+        "enable_gpu_driven": false,
+        "enable_async_compute": false,
+        "enable_bindless": false,
+        "culling_path": 0
     }
 }

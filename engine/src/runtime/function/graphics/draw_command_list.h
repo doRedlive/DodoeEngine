@@ -98,7 +98,8 @@ namespace dodoe {
             const DynamicArray<GfxBindingSetHandle>& binding_sets,
             const GfxViewportState& viewport,
             const DynamicArray<GfxVertexBufferBinding>& vertex_buffers = {},
-            const GfxIndexBufferBinding& index_buffer = {});
+            const GfxIndexBufferBinding& index_buffer = {},
+            const GfxBufferHandle& indirect_params = {});
         void setGraphicsState(const GfxGraphicsState& state);
         void setComputeState(const GfxComputeState& state);
         void draw(const GfxDrawArguments& args);
@@ -197,8 +198,8 @@ namespace dodoe {
         GFX_DRAW_CMD(DispatchIndirectCommand) { UInt32 m_off{0}; explicit DispatchIndirectCommand(UInt32 o) : m_off(o) {} void execute(GfxCommandList&) const; };
 
         struct SetGraphicsStateCommand final : CommandImpl<SetGraphicsStateCommand> {
-            GfxFramebufferHandle m_fb{}; GfxGraphicsPipelineHandle m_pso{}; DynamicArray<GfxBindingSetHandle> m_bs{}; GfxViewportState m_vp{}; DynamicArray<GfxVertexBufferBinding> m_vb{}; GfxIndexBufferBinding m_ib{};
-            SetGraphicsStateCommand(const GfxFramebufferHandle& fb, const GfxGraphicsPipelineHandle& pso, const DynamicArray<GfxBindingSetHandle>& bs, const GfxViewportState& vp, const DynamicArray<GfxVertexBufferBinding>& vb, const GfxIndexBufferBinding& ib);
+            GfxFramebufferHandle m_fb{}; GfxGraphicsPipelineHandle m_pso{}; DynamicArray<GfxBindingSetHandle> m_bs{}; GfxViewportState m_vp{}; DynamicArray<GfxVertexBufferBinding> m_vb{}; GfxIndexBufferBinding m_ib{}; GfxBufferHandle m_indirect{};
+            SetGraphicsStateCommand(const GfxFramebufferHandle& fb, const GfxGraphicsPipelineHandle& pso, const DynamicArray<GfxBindingSetHandle>& bs, const GfxViewportState& vp, const DynamicArray<GfxVertexBufferBinding>& vb, const GfxIndexBufferBinding& ib, const GfxBufferHandle& indirect);
             void execute(GfxCommandList&) const;
         };
 

@@ -35,6 +35,12 @@ namespace dodoe {
         Immediate,
     };
 
+    enum class CullingPath {
+        CpuOnly = 0,
+        GpuOnly,
+        CpuThenGpuVerify,
+    };
+
     STRUCT(RenderSettingsInitInfo, WhiteListFields) {
         REFLECTION_BODY(RenderSettingsInitInfo)
 
@@ -50,19 +56,22 @@ namespace dodoe {
         PresentMode present_mode{ PresentMode::Mailbox };
         META(Enable)
         Bool windowless{ false };
+
+        META(Enable)
+        Bool enable_gpu_driven{ false };
+        META(Enable)
+        Bool enable_async_compute{ false };
+        META(Enable)
+        Bool enable_bindless{ false };
+        META(Enable)
+        CullingPath culling_path{ CullingPath::CpuOnly };
     };
 
-    struct DeviceCapabilities {
+    struct RenderDeviceCapabilities {
         Bool bindless_supported{false};
         Bool compute_queue_supported{false};
         Bool mesh_shader_supported{false};
         Bool ray_tracing_supported{false};
-    };
-
-    enum class CullingPath {
-        CpuOnly = 0,
-        GpuOnly,
-        CpuThenGpuVerify,
     };
 
     struct RenderFeatureSettings {
@@ -80,6 +89,19 @@ namespace dodoe {
     };
 
     class RenderSettings {
+    private:
+        inline static RenderBackendApiType m_api{ RenderBackendApiType::None };
+        inline static RenderingPipelineType m_pipeline{ RenderingPipelineType::None };
+        inline static Bool m_enable_single_thread{ false };
+        inline static Bool m_enable_baseline_renderer{ false };
+        inline static PresentMode m_present_mode{ PresentMode::Mailbox };
+        inline static Bool m_windowless{ false };
+        inline static Bool m_gpu_driven_supported{ false };
+
+        inline static RenderDeviceCapabilities m_device_caps{};
+        inline static RenderFeatureSettings m_feature_settings{};
+        inline static ResolvedRenderFeatures m_resolved_features{};
+
     public:
         [[nodiscard]] static Bool Initialize(const RenderSettingsInitInfo& info);
 
@@ -96,27 +118,15 @@ namespace dodoe {
 
         [[nodiscard]] static Bool IsBindlessActive() { return m_resolved_features.bindless_active; }
 
-        [[nodiscard]] static const DeviceCapabilities& GetDeviceCapabilities() { return m_device_caps; }
-        static void SetDeviceCapabilities(const DeviceCapabilities& caps) { m_device_caps = caps; }
+        [[nodiscard]] static const RenderDeviceCapabilities& GetDeviceCapabilities() { return m_device_caps; }
+        static void SetDeviceCapabilities(const RenderDeviceCapabilities& caps) { m_device_caps = caps; }
 
         [[nodiscard]] static const RenderFeatureSettings& GetFeatureSettings() { return m_feature_settings; }
 
         [[nodiscard]] static const ResolvedRenderFeatures& GetResolvedFeatures() { return m_resolved_features; }
 
         static void ResolveFeatures(const RenderFeatureSettings& settings);
-
-    private:
-        inline static RenderBackendApiType m_api{ RenderBackendApiType::None };
-        inline static RenderingPipelineType m_pipeline{ RenderingPipelineType::None };
-        inline static Bool m_enable_single_thread{ false };
-        inline static Bool m_enable_baseline_renderer{ false };
-        inline static PresentMode m_present_mode{ PresentMode::Mailbox };
-        inline static Bool m_windowless{ false };
-        inline static Bool m_gpu_driven_supported{ false };
-
-        inline static DeviceCapabilities m_device_caps{};
-        inline static RenderFeatureSettings m_feature_settings{};
-        inline static ResolvedRenderFeatures m_resolved_features{};
+        static void ResolveFeatures(const RenderFeatureSettings& settings, const RenderDeviceCapabilities& device_caps);
     };
 
 } // dodoe

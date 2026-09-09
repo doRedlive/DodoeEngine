@@ -30,7 +30,7 @@ namespace dodoe {
         UInt32 material_id, flags;
     };
 
-    struct alignas(16) PrimitiveGpuData {
+    struct PrimitiveGpuData {
         UInt32 transform_index;
         UInt32 mesh_id;
         UInt32 section_start, section_count;
@@ -40,6 +40,14 @@ namespace dodoe {
         UInt32 base_vertex;
         UInt32 _pad0;
     };
+
+    struct alignas(16) GpuPrimitiveRenderInstance {
+        Matrix4f model{1.0f};
+        Vector4f color_tint{1.0f, 1.0f, 1.0f, 1.0f};
+        Vector4f params{0.0f};
+    };
+
+    static_assert(sizeof(GpuPrimitiveRenderInstance) == sizeof(Matrix4f) + sizeof(Vector4f) * 2);
 
     struct alignas(16) GpuTransform {
         Matrix4f local_to_world;
@@ -82,8 +90,6 @@ namespace dodoe {
         UInt32 start_instance_location;
     };
 
-    static constexpr UInt32 kDrawIndexedIndirectArgsStride = static_cast<UInt32>(sizeof(DrawIndexedIndirectArgs));
-
     struct alignas(16) BucketKey {
         UInt64 pipeline;
         UInt64 material;
@@ -105,6 +111,8 @@ namespace dodoe {
         UInt32 start_index;
         Int32 base_vertex;
         UInt32 source_count;
+        UInt32 key_check;
+        UInt32 _pad0;
     };
 
     struct alignas(16) BucketCount {
@@ -127,12 +135,16 @@ namespace dodoe {
         UInt32 start_index{0};
     };
 
-    inline UInt32 ComputeGpuBucketHash(const GpuBucketHashKey& key, const UInt32 max_buckets) {
+    inline UInt32 ComputeGpuBucketHashRaw(const GpuBucketHashKey& key) {
         UInt32 value = key.type ^ (key.material_id * 16777619u);
         value ^= key.mesh_id * 2166136261u;
         value ^= key.index_count * 709607u;
         value ^= key.start_index * 1000003u;
-        return value % max_buckets;
+        return value;
+    }
+
+    inline UInt32 ComputeGpuBucketHash(const GpuBucketHashKey& key, const UInt32 max_buckets) {
+        return ComputeGpuBucketHashRaw(key) % max_buckets;
     }
 
     static constexpr UInt32 kInvalidBucketTemplateIndex = ~0u;

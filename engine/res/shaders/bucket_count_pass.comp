@@ -57,9 +57,7 @@ uint getBucketKey(GpuObjectMeta meta, PrimitiveGpuData primitive_data)
 {
     uint key = meta.type ^ (meta.material_id * 16777619u);
     key ^= primitive_data.mesh_id * 2166136261u;
-    key ^= primitive_data.index_count * 709607u;
-    key ^= primitive_data.start_index * 1000003u;
-    return key % max_buckets;
+    return key;
 }
 
 void main()
@@ -72,7 +70,7 @@ void main()
     GpuObjectMeta meta = object_meta[object_idx];
     PrimitiveGpuData primitive_data = primitive[object_idx];
 
-    uint bucket = getBucketKey(meta, primitive_data);
+    uint bucket = getBucketKey(meta, primitive_data) % max_buckets;
     if (bucket >= max_buckets)
         return;
 

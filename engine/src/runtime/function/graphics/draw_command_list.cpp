@@ -143,8 +143,8 @@ namespace dodoe {
         recordCommand<CommitBarriersCommand>();
     }
 
-    void DrawCommandList::setGraphicsState(const GfxFramebufferHandle& framebuffer, const GfxGraphicsPipelineHandle& pipeline, const DynamicArray<GfxBindingSetHandle>& binding_sets, const GfxViewportState& viewport, const DynamicArray<GfxVertexBufferBinding>& vertex_buffers, const GfxIndexBufferBinding& index_buffer) {
-        recordCommand<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer);
+    void DrawCommandList::setGraphicsState(const GfxFramebufferHandle& framebuffer, const GfxGraphicsPipelineHandle& pipeline, const DynamicArray<GfxBindingSetHandle>& binding_sets, const GfxViewportState& viewport, const DynamicArray<GfxVertexBufferBinding>& vertex_buffers, const GfxIndexBufferBinding& index_buffer, const GfxBufferHandle& indirect_params) {
+        recordCommand<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer, indirect_params);
     }
     void DrawCommandList::setGraphicsState(const GfxGraphicsState& state) {
         recordCommand<SetGraphicsStateByValueCommand>(state);
@@ -323,6 +323,7 @@ namespace dodoe {
         }
         for (auto& vb : m_vb) s.addVertexBuffer(vb);
         s.setIndexBuffer(m_ib);
+        if (m_indirect && m_indirect->isGpuReady()) s.setIndirectParams(m_indirect->getRHIHandle());
         cm.setGraphicsState(s);
     }
 
@@ -337,7 +338,8 @@ namespace dodoe {
         const DynamicArray<GfxBindingSetHandle>& bs,
         const GfxViewportState& vp,
         const DynamicArray<GfxVertexBufferBinding>& vb,
-        const GfxIndexBufferBinding& ib)
-        : m_fb(fb), m_pso(pso), m_bs(bs), m_vp(vp), m_vb(vb), m_ib(ib) {}
+        const GfxIndexBufferBinding& ib,
+        const GfxBufferHandle& indirect)
+        : m_fb(fb), m_pso(pso), m_bs(bs), m_vp(vp), m_vb(vb), m_ib(ib), m_indirect(indirect) {}
 
 } // dodoe

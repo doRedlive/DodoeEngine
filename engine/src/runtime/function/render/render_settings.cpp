@@ -14,15 +14,24 @@ namespace dodoe {
         m_enable_baseline_renderer = info.enable_baseline_renderer;
         m_present_mode = info.present_mode;
         m_windowless = info.windowless;
+        m_feature_settings.enable_gpu_driven = info.enable_gpu_driven;
+        m_feature_settings.enable_async_compute = info.enable_async_compute;
+        m_feature_settings.enable_bindless = info.enable_bindless;
+        m_feature_settings.culling_path = info.culling_path;
 
         return true;
     }
 
     void RenderSettings::ResolveFeatures(const RenderFeatureSettings& settings) {
+        ResolveFeatures(settings, m_device_caps);
+    }
+
+    void RenderSettings::ResolveFeatures(const RenderFeatureSettings& settings, const RenderDeviceCapabilities& device_caps) {
+        m_device_caps = device_caps;
         m_feature_settings = settings;
 
         ResolvedRenderFeatures resolved{};
-        const auto& caps = m_device_caps;
+        const RenderDeviceCapabilities& caps = device_caps;
 
         resolved.bindless_active = settings.enable_bindless && caps.bindless_supported;
         if (settings.enable_bindless && !caps.bindless_supported) {
@@ -30,7 +39,9 @@ namespace dodoe {
         }
 
         if (settings.enable_gpu_driven) {
-            if (!caps.bindless_supported) {
+            if (m_api != RenderBackendApiType::D3D12) {
+                resolved.gpu_driven_fallback_reason = "GPU-driven shaders are only available on D3D12";
+            } else if (!caps.bindless_supported) {
                 resolved.gpu_driven_fallback_reason = "bindless not supported by device";
             } else if (!caps.compute_queue_supported) {
                 resolved.gpu_driven_fallback_reason = "compute queue not supported by device";
@@ -43,6 +54,11 @@ namespace dodoe {
             }
         } else {
             resolved.gpu_driven_fallback_reason = "disabled by project settings";
+        }
+
+        if (!resolved.gpu_driven_active && m_feature_settings.culling_path != CullingPath::CpuOnly) {
+            DO_WARN("RenderSettings: requested GPU culling path is unavailable, forcing CpuOnly");
+            m_feature_settings.culling_path = CullingPath::CpuOnly;
         }
 
         resolved.async_compute_active = settings.enable_async_compute && caps.compute_queue_supported && resolved.gpu_driven_active;

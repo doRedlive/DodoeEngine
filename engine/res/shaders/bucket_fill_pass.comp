@@ -83,9 +83,7 @@ uint getBucketKey(GpuObjectMeta meta, PrimitiveGpuData primitive_data)
 {
     uint key = meta.type ^ (meta.material_id * 16777619u);
     key ^= primitive_data.mesh_id * 2166136261u;
-    key ^= primitive_data.index_count * 709607u;
-    key ^= primitive_data.start_index * 1000003u;
-    return key % max_buckets;
+    return key;
 }
 
 void main()
@@ -96,7 +94,8 @@ void main()
     uint object_idx = visible_objects[idx];
     GpuObjectMeta meta = object_meta[object_idx];
     PrimitiveGpuData primitive_data = primitive[object_idx];
-    uint bucket = getBucketKey(meta, primitive_data);
+    uint raw_key = getBucketKey(meta, primitive_data);
+    uint bucket = raw_key % max_buckets;
     if (bucket >= max_buckets)
         return;
 
@@ -104,15 +103,17 @@ void main()
     if (template_index >= template_count)
         return;
     BucketTemplateGpu tpl = templates[template_index];
+    if (tpl.data[14] != raw_key)
+        return;
 
     uint bucket_slot = atomicAdd(bucket_counts[bucket].current_offset, 1u);
     uint slot = bucket_bases[bucket] + bucket_slot;
 
     DrawIndexedIndirectArgs args;
-    args.index_count = tpl.data[10];
+    args.index_count = primitive_data.index_count;
     args.instance_count = 1u;
-    args.start_index_location = tpl.data[11];
-    args.base_vertex_location = int(tpl.data[12]);
+    args.start_index_location = primitive_data.start_index;
+    args.base_vertex_location = int(primitive_data.base_vertex);
     args.start_instance_location = object_idx;
 
     indirect_args[slot] = args;

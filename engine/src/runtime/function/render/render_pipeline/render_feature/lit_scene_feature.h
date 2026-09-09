@@ -18,9 +18,11 @@ namespace dodoe {
     class RenderViewFamily;
     class DrawCommandList;
     class ThreadPool;
+    class GpuCulling;
 
     class LitSceneFeature : public IRenderFeature {
         SharedRenderService* m_shared_render_service{nullptr};
+        GpuCulling* m_gpu_culling{nullptr};
 
     public:
         void initialize(SharedRenderService& resources) override;
@@ -30,10 +32,13 @@ namespace dodoe {
         void buildMeshDrawCommands(RenderViewFamily& view_family, DrawCommandList& cmd_list,
                                    ThreadPool* thread_pool = nullptr);
 
+        void setGpuCulling(GpuCulling* gpu_culling) { m_gpu_culling = gpu_culling; }
+
         [[nodiscard]] MeshPassProcessor* getMeshProcessor() const;
         [[nodiscard]] const MeshDrawCommandCache& getMeshDrawCache() const;
         [[nodiscard]] const DynamicArray<MeshDrawList>& getLitDrawLists() const;
         [[nodiscard]] const DynamicArray<MeshDrawGpuBucket>& getGpuBuckets(Size_t view_index) const;
+        [[nodiscard]] GpuCulling* getGpuCulling() const { return m_gpu_culling; }
 
     protected:
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_shared_render_service; }

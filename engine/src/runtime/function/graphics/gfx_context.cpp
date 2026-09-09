@@ -74,16 +74,16 @@ namespace dodoe {
         }
 
         if (m_device) {
-            DeviceCapabilities caps{};
+            RenderDeviceCapabilities caps{};
             caps.bindless_supported = m_device->queryFeatureSupport(cutie::Feature::HeapDirectlyIndexed);
             caps.compute_queue_supported = m_device->queryFeatureSupport(cutie::Feature::ComputeQueue);
-            RenderSettings::SetDeviceCapabilities(caps);
             DO_INFO("GfxContext: device capabilities (bindless={}, compute_queue={})",
                 caps.bindless_supported, caps.compute_queue_supported);
+            RenderSettings::ResolveFeatures(create_info.feature_settings, caps);
         } else {
             DO_ERROR("GfxContext: graphics device creation failed");
+            RenderSettings::ResolveFeatures(create_info.feature_settings, RenderDeviceCapabilities{});
         }
-        RenderSettings::ResolveFeatures(create_info.feature_settings);
         m_gpu_driven_supported = RenderSettings::GetResolvedFeatures().gpu_driven_active;
         DO_INFO("GfxContext: resolved gpu-driven rendering={}", m_gpu_driven_supported);
     }
@@ -181,6 +181,8 @@ namespace dodoe {
         device_desc.pGraphicsCommandQueue = d3d12_backend->getGraphicsQueue();
         device_desc.pComputeCommandQueue = d3d12_backend->getComputeQueue();
         device_desc.pCopyCommandQueue = d3d12_backend->getCopyQueue();
+        device_desc.enableHeapDirectlyIndexed = create_info.feature_settings.enable_bindless ||
+            create_info.feature_settings.enable_gpu_driven;
 
         m_device = d3d12::createDevice(device_desc);
         DO_ASSERT(m_device != nullptr, "GfxBackend::initializeD3D12: failed to create cutie d3d12 device.");

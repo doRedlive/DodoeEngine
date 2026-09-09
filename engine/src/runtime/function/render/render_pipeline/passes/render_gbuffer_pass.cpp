@@ -2,6 +2,8 @@
 
 #include "runtime/function/render/render_pipeline/passes/render_gbuffer_pass.h"
 
+#include <chrono>
+
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
 
@@ -18,6 +20,8 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_service/render_target_handle.h"
 #include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
+#include "runtime/function/render/gpu_driven/gpu_driven_renderer.h"
+#include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 
 namespace dodoe {
@@ -108,11 +112,64 @@ namespace dodoe {
 
                 auto* feature = static_cast<LitSceneFeature*>(m_owning_feature);
                 DO_ASSERT(feature != nullptr, "GBufferPass owning feature is null");
-                const auto& draw_list = feature->getLitDrawLists()[ctx.getViewIndex()];
-
                 const auto fb = ctx.getFramebuffer();
-                SubmitMeshDrawSources(draw_list.sources, processor->getPrimitiveConstantBuffer(),
-                    fb, viewport_state, resolved_psb, nullptr, command_list);
+
+                auto* gpu_culling = feature->getGpuCulling();
+                auto* gpu_scene = ctx.getScene() ? ctx.getScene()->getGpuScene() : nullptr;
+                const auto& gpu_scene_resources = gpu_scene ? gpu_scene->getPassResources() : GpuScenePassResources{};
+                const auto& gpu_buckets = feature->getGpuBuckets(ctx.getViewIndex());
+                DynamicArray<GpuBucketCpuDraw> gpu_draws;
+                const Bool gpu_active = RenderSettings::GetResolvedFeatures().gpu_driven_active;
+                Bool use_gpu_draws = false;
+                if (gpu_active) {
+                    const Bool has_culling = gpu_culling && gpu_culling->isEnabled();
+                    const Bool has_instance_buffer = gpu_scene_resources.primitive_render_instance
+                        && gpu_scene_resources.primitive_render_instance->getRHI();
+                    const Bool has_buckets = !gpu_buckets.empty();
+                    const Bool has_draws = has_culling && has_instance_buffer && has_buckets
+                        && gpu_culling->acquireBucketDraws(gpu_draws);
+                    use_gpu_draws = has_draws;
+                    if (!use_gpu_draws) {
+                        static auto last_fallback_warn = std::chrono::steady_clock::now() - std::chrono::seconds(2);
+                        const auto now = std::chrono::steady_clock::now();
+                        if (now - last_fallback_warn >= std::chrono::seconds(1)) {
+                            last_fallback_warn = now;
+                            DO_WARN("GBufferPass: gpu-driven fallback (culling={}, instance_buffer={}, buckets={}, draws={})",
+                                has_culling, has_instance_buffer, gpu_buckets.size(), gpu_draws.size());
+                        }
+                    }
+                }
+
+                if (use_gpu_draws) {
+                    const auto indirect_args = gpu_culling->getIndirectArgsBuffer(1);
+                    const auto instance_binding = GfxVertexBufferBinding()
+                        .setBuffer(gpu_scene_resources.primitive_render_instance->getRHI())
+                        .setSlot(1)
+                        .setOffset(0);
+                    const auto& draw_snapshots = gpu_culling->getBucketDrawSnapshots(1);
+                    for (const auto& draw : gpu_draws) {
+                        if (draw.template_index >= draw_snapshots.size()) {
+                            continue;
+                        }
+                        const auto& snapshot = draw_snapshots[draw.template_index];
+                        if (!snapshot.pipeline) {
+                            continue;
+                        }
+                        command_list.writeBuffer(processor->getPrimitiveConstantBuffer(), snapshot.shader_data);
+                        DynamicArray<GfxVertexBufferBinding> vertex_bindings = snapshot.vertex_bindings;
+                        vertex_bindings.push_back(instance_binding);
+                        command_list.setGraphicsState(fb, snapshot.pipeline, snapshot.binding_sets,
+                            viewport_state, vertex_bindings, snapshot.index_binding, indirect_args);
+                        command_list.setBufferState(indirect_args, GfxResourceStates::IndirectArgument);
+                        command_list.commitBarriers();
+                        command_list.drawIndexedIndirect(
+                            draw.first_arg * sizeof(DrawIndexedIndirectArgs), draw.arg_count);
+                    }
+                } else {
+                    const auto& draw_list = feature->getLitDrawLists()[ctx.getViewIndex()];
+                    SubmitMeshDrawSources(draw_list.sources, processor->getPrimitiveConstantBuffer(),
+                        fb, viewport_state, resolved_psb, nullptr, command_list);
+                }
             }
         );
     }
