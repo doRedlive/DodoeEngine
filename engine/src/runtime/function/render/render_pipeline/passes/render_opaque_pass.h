@@ -6,6 +6,7 @@
 
 #include "runtime/function/render/render_pipeline/render_pass.h"
 #include "runtime/function/render/render_pipeline/passes/render_pass_blackboard_keys.h"
+#include "runtime/function/render/render_pipeline/shadow/shadow_system.h"
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
 
@@ -16,13 +17,16 @@ namespace dodoe {
     class DrawCommandList;
     class BindingLayoutCache;
 
-    inline constexpr UInt64 kLitPassConstantBufferSize = 432;
+    inline constexpr UInt64 kLitPassConstantBufferSize = 656;
 
     struct LitPassConstantBuffer {
         Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f directional_color_intensity{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f directional_direction_flags{0.0f, 0.0f, 0.0f, 1.0f};
-        Matrix4f dir_light_view_projection{1.0f};
+        Vector4f camera_direction{0.0f, -1.0f, 0.0f, 0.0f};
+        StaticArray<Matrix4f, kShadowCascadeCount> dir_cascade_view_projections{
+            Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f)};
+        Vector4f dir_cascade_split_depths{0.0f};
         Vector4f shadow_params{0.0025f, 0.65f, 0.0f, 0.0f};
         Vector4f point_light_colors[4]{};
         Vector4f point_light_positions[4]{};

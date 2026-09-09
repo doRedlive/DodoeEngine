@@ -16,7 +16,7 @@
 namespace dodoe {
 
     namespace {
-        constexpr UInt64 kDeferredLightConstantBufferSize = 320;
+        constexpr UInt64 kDeferredLightConstantBufferSize = 544;
         constexpr Bool kDebugShadowSamplingView = false;
     }
 
@@ -24,8 +24,11 @@ namespace dodoe {
         Vector4f light_color_intensity{1.0f, 1.0f, 1.0f, 1.0f};
         Vector4f light_position_radius{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f light_direction_type{0.0f, 0.0f, 0.0f, 0.0f};
-        Matrix4f light_view_projection{1.0f};
-        Vector4f shadow_params{0.0025f, 0.65f, 0.0f, 0.0f};
+        StaticArray<Matrix4f, kShadowCascadeCount> cascade_view_projections{
+            Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f)};
+        Vector4f cascade_split_depths{0.0f};
+        Vector4f camera_direction{0.0f, -1.0f, 0.0f, 0.0f};
+        Vector4f shadow_params{0.002f, 0.0f, 0.0f, 2.0f};
         Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f irradiance_sh[9]{};
         Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
@@ -180,6 +183,7 @@ namespace dodoe {
         auto binding_set = m_device->createBindingSet(pass_desc, m_binding_layout.Get());
 
         const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(view);
+        const Vector3f camera_direction = rendering_pipeline_utils::ExtractCameraDirection(view);
 
         auto draw_fullscreen_light = [&](const DeferredLightPushConstants& push) {
             m_command_list->writeBuffer(m_light_cb.Get(), &push, sizeof(push));
@@ -218,9 +222,9 @@ namespace dodoe {
                 push.ibl_params = Vector4f(0.0f, 0.35f, static_cast<Float>(sky_max_mip), 2.0f);
                 push.light_color_intensity = Vector4f(data.color, data.irradiance);
                 push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
-                push.light_view_projection = shadow.has_shadow
-                    ? shadow.light_view_projection
-                    : rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
+                push.camera_direction = Vector4f(camera_direction, 0.0f);
+                push.cascade_view_projections = shadow.cascade_view_projections;
+                push.cascade_split_depths = shadow.cascade_split_depths;
                 push.shadow_params = shadow.shadow_params;
                 if (!emissive_applied) {
                     push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
@@ -260,9 +264,9 @@ namespace dodoe {
                 const auto& data = light_info.getDirectionalLightData();
                 push.light_color_intensity = Vector4f(data.color, data.irradiance);
                 push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
-                push.light_view_projection = shadow.has_shadow
-                    ? shadow.light_view_projection
-                    : rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
+                push.camera_direction = Vector4f(camera_direction, 0.0f);
+                push.cascade_view_projections = shadow.cascade_view_projections;
+                push.cascade_split_depths = shadow.cascade_split_depths;
                 push.shadow_params = shadow.shadow_params;
                 break;
             }

@@ -10,6 +10,7 @@
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/core/math/math.h"
+#include "runtime/function/render/render_pipeline/shadow/shadow_system.h"
 
 namespace dodoe {
 
@@ -31,6 +32,11 @@ namespace dodoe {
         BindingLayoutCache* binding_layout_cache{nullptr};
     };
 
+    struct MeshPassCascadeCullingData {
+        UInt32 count{0};
+        StaticArray<StaticArray<Vector4f, 6>, kShadowCascadeCount> planes{};
+    };
+
     struct MeshPassCommandBuildContext {
         const DynamicArray<const PrimitiveSceneInfo*>& visible_primitives;
         const DynamicArray<MeshPassRelevance>& primitive_mesh_pass_relevance;
@@ -40,6 +46,8 @@ namespace dodoe {
         const Matrix4f& view_matrix;
         const GfxGraphicsPipelineHandle& pipeline;
         DynamicArray<MeshDrawCommandSource>& command_sources;
+        const MeshPassCascadeCullingData* cascade_culling{nullptr};
+        const DynamicArray<UInt8>* primitive_cascade_masks{nullptr};
     };
 
     class MeshPassProcessor {
@@ -88,6 +96,7 @@ namespace dodoe {
         const GfxViewportState& viewport_state,
         const GfxBufferHandle& primitive_scene_buffer,
         const GfxBindingSetHandle* pass_binding_set,
-        DrawCommandList& command_list);
+        DrawCommandList& command_list,
+        UInt8 cascade_mask = 0);
 
 } // namespace dodoe

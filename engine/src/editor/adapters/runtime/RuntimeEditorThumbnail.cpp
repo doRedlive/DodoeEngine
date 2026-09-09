@@ -78,6 +78,28 @@ bool GetMeshThumbnailRgba(const dodoe::MeshAsset* mesh, std::vector<uint8_t>& rg
     const auto& verts = data->vertices;
     const auto& indices = data->indices;
     const int k = kThumbnailSize;
+
+    const size_t n = verts.size();
+    std::vector<dodoe::Vector3f> placed(n);
+    if (data->sections.empty()) {
+        for (size_t i = 0; i < n; ++i) {
+            placed[i] = verts[i].position;
+        }
+    } else {
+        for (const dodoe::MeshSection& section : data->sections) {
+            const size_t base = section.vertex_base;
+            const size_t count = section.vertex_count;
+            if (base >= n || count > n - base) {
+                continue;
+            }
+            for (size_t i = base; i < base + count; ++i) {
+                const dodoe::Vector3f& v = verts[i].position;
+                const dodoe::Vector4f p = section.world * dodoe::Vector4f(v.x, v.y, v.z, 1.0f);
+                placed[i] = dodoe::Vector3f(p.x, p.y, p.z);
+            }
+        }
+    }
+
     std::vector<float> zbuf(static_cast<size_t>(k) * k, -std::numeric_limits<float>::max());
     rgba.assign(static_cast<size_t>(k) * k * 4, 0);
 
@@ -86,19 +108,19 @@ bool GetMeshThumbnailRgba(const dodoe::MeshAsset* mesh, std::vector<uint8_t>& rg
     const float cx = std::cos(rx), sx = std::sin(rx);
     const float cy = std::cos(ry), sy = std::sin(ry);
 
-    const size_t n = verts.size();
-    std::vector<dodoe::Vector3f> view(n);
     float minX = std::numeric_limits<float>::max();
     float maxX = -std::numeric_limits<float>::max();
     float minY = std::numeric_limits<float>::max();
     float maxY = -std::numeric_limits<float>::max();
+    std::vector<dodoe::Vector3f> view;
+    view.reserve(n);
     for (size_t i = 0; i < n; ++i) {
-        const dodoe::Vector3f& v = verts[i].position;
+        const dodoe::Vector3f& v = placed[i];
         const float x = v.x * cy + v.z * sy;
         const float z = -v.x * sy + v.z * cy;
         const float y2 = v.y * cx - z * sx;
         const float z2 = v.y * sx + z * cx;
-        view[i] = dodoe::Vector3f(x, y2, z2);
+        view.push_back(dodoe::Vector3f(x, y2, z2));
         minX = std::min(minX, x);
         maxX = std::max(maxX, x);
         minY = std::min(minY, y2);

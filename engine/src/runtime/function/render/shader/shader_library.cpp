@@ -8,29 +8,64 @@
 
 namespace dodoe {
 
-    static DynamicArray<Char> InlineShaderIncludes(const DynamicArray<Char>& source) {
-        const String marker = "#include \"shader_parameter_sets.glsl\"";
-        String text(source.begin(), source.end());
-        const Size_t marker_pos = text.find(marker);
-        if (marker_pos == String::npos) {
-            return source;
-        }
-
-        const auto include_path = FileSystem::GetEngineResPath() / "shaders" / "shader_parameter_sets.glsl";
+    static String LoadShaderIncludeText(const String& include_name) {
+        const auto include_path = FileSystem::GetEngineResPath() / "shaders" / include_name;
         std::ifstream include_file(include_path);
-        if (include_file.is_open()) {
-            const String defines((std::istreambuf_iterator<char>(include_file)), std::istreambuf_iterator<char>());
-            const std::regex define_re(R"(#define\s+(DOE_\w+)\s+(\d+)\b)");
-            for (std::sregex_iterator it(defines.begin(), defines.end(), define_re), end; it != end; ++it) {
-                text = std::regex_replace(text, std::regex("\\b" + it->str(1) + "\\b"), it->str(2));
-            }
+        if (!include_file.is_open()) {
+            return {};
+        }
+        return String((std::istreambuf_iterator<char>(include_file)), std::istreambuf_iterator<char>());
+    }
+
+    static void ApplyParameterSetMacros(String& text) {
+        const String defines = LoadShaderIncludeText("shader_parameter_sets.glsl");
+        if (defines.empty()) {
+            return;
+        }
+        const std::regex define_re(R"(#define\s+(DOE_\w+)\s+(\d+)\b)");
+        for (std::sregex_iterator it(defines.begin(), defines.end(), define_re), end; it != end; ++it) {
+            text = std::regex_replace(text, std::regex("\\b" + it->str(1) + "\\b"), it->str(2));
+        }
+    }
+
+    static String ResolveShaderIncludes(String text, Int32 depth) {
+        static const std::regex include_re(R"(#include\s+\"([^\"]+)\")");
+        constexpr Int32 kMaxIncludeDepth = 8;
+        if (depth > kMaxIncludeDepth) {
+            return text;
+        }
+        if (text.find("#include") == String::npos) {
+            return text;
+        }
+        if (text.find("shader_parameter_sets.glsl") != String::npos) {
+            ApplyParameterSetMacros(text);
         }
 
         String result;
-        result.reserve(text.size() + 2048);
-        result.append(text, 0, marker_pos);
-        result.append(text, marker_pos + marker.size(), String::npos);
-        return DynamicArray<Char>(result.begin(), result.end());
+        result.reserve(text.size() + 4096);
+        Size_t last_pos = 0;
+        for (std::sregex_iterator it(text.begin(), text.end(), include_re), end; it != end; ++it) {
+            const auto& match = *it;
+            const Size_t match_pos = static_cast<Size_t>(match.position());
+            result.append(text, last_pos, match_pos - last_pos);
+            const String include_name(match[1].first, match[1].second);
+            String include_text = LoadShaderIncludeText(include_name);
+            if (include_text.empty()) {
+                DO_ERROR("ShaderLibrary: failed to resolve shader include '{}'", include_name);
+            } else {
+                include_text = ResolveShaderIncludes(std::move(include_text), depth + 1);
+                result.append(include_text);
+            }
+            last_pos = match_pos + static_cast<Size_t>(match.length());
+        }
+        result.append(text, last_pos, String::npos);
+        return result;
+    }
+
+    static DynamicArray<Char> InlineShaderIncludes(const DynamicArray<Char>& source) {
+        String text(source.begin(), source.end());
+        text = ResolveShaderIncludes(std::move(text), 0);
+        return DynamicArray<Char>(text.begin(), text.end());
     }
 
     Bool ShaderLibrary::initialize(const ShaderLibraryCreateInfo& info) {

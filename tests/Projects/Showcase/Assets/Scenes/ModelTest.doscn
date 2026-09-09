@@ -3,7 +3,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"height\":70.0,\"heightSensitivity\":0.30000001192092896,\"lookAtHeight\":12.0,\"maxHeight\":320.0,\"maxRadius\":480.0,\"minHeight\":12.0,\"minRadius\":80.0,\"mouseSensitivity\":0.25,\"orbitSpeed\":6.0,\"radius\":250.0,\"wheelZoomSpeed\":15.0}",
+                    "m_component": "{\"height\":70,\"heightSensitivity\":0.3,\"lookAtHeight\":12,\"maxHeight\":320,\"maxRadius\":480,\"minHeight\":12,\"minRadius\":80,\"mouseSensitivity\":0.25,\"orbitSpeed\":6,\"radius\":250,\"wheelZoomSpeed\":15}",
                     "m_type_name": "Showcase.ShowcaseCamera"
                 }
             ],
@@ -103,7 +103,7 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"active_self\":true}",
+                    "m_component": "{\"active_self\":false}",
                     "m_type_name": "ActiveComponent"
                 },
                 {
@@ -112,6 +112,38 @@
                 }
             ],
             "m_uuid": 2004
+        },
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"degreesPerSecond\":20}",
+                    "m_type_name": "Showcase.Turntable"
+                }
+            ],
+            "m_name": "Avocado",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2101,\"name\":\"Avocado\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"Avocado\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[-80.0,0.019999999552965164,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[430.0,430.0,430.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100005,\"legacy_path\":\"Models/Avocado/Avocado.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
+                    "m_type_name": "MeshRendererComponent"
+                }
+            ],
+            "m_uuid": 2101
         },
         {
             "m_managed_components": [],
@@ -130,7 +162,7 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"active_self\":true}",
+                    "m_component": "{\"active_self\":false}",
                     "m_type_name": "ActiveComponent"
                 },
                 {
@@ -157,7 +189,7 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"active_self\":true}",
+                    "m_component": "{\"active_self\":false}",
                     "m_type_name": "ActiveComponent"
                 },
                 {
@@ -197,39 +229,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":20.0}",
-                    "m_type_name": "Showcase.Turntable"
-                }
-            ],
-            "m_name": "Avocado",
-            "m_native_components": [
-                {
-                    "m_component": "{\"id\":2101,\"name\":\"Avocado\"}",
-                    "m_type_name": "IDComponent"
-                },
-                {
-                    "m_component": "{\"tag\":\"Avocado\"}",
-                    "m_type_name": "TagComponent"
-                },
-                {
-                    "m_component": "{\"position\":[-80.0,0.02,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[430.0,430.0,430.0]}",
-                    "m_type_name": "TransformComponent"
-                },
-                {
-                    "m_component": "{\"active_self\":true}",
-                    "m_type_name": "ActiveComponent"
-                },
-                {
-                    "m_component": "{\"cast_shadow\":true,\"mesh\":{\"asset_id\":660000000000100005,\"legacy_path\":\"Models/Avocado/Avocado.gltf\",\"sub_object_id\":0},\"mobility\":0,\"override_materials\":[],\"section_index\":-1,\"visible\":true}",
-                    "m_type_name": "MeshRendererComponent"
-                }
-            ],
-            "m_uuid": 2101
-        },
-        {
-            "m_managed_components": [
-                {
-                    "m_component": "{\"degreesPerSecond\":15.0}",
+                    "m_component": "{\"degreesPerSecond\":15}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -244,7 +244,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,-1.6,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[0.16,0.16,0.16]}",
+                    "m_component": "{\"position\":[0.0,-1.600000023841858,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[0.1599999964237213,0.1599999964237213,0.1599999964237213]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
@@ -261,7 +261,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_component": "{\"degreesPerSecond\":12}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -276,7 +276,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[80.0,9.8,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[10.0,10.0,10.0]}",
+                    "m_component": "{\"position\":[80.0,9.800000190734863,80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[10.0,10.0,10.0]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
@@ -293,7 +293,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":15.0}",
+                    "m_component": "{\"degreesPerSecond\":15}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -308,7 +308,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[-80.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[2.13,2.13,2.13]}",
+                    "m_component": "{\"position\":[-80.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[2.130000114440918,2.130000114440918,2.130000114440918]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
@@ -325,7 +325,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_component": "{\"degreesPerSecond\":12}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -357,7 +357,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":15.0}",
+                    "m_component": "{\"degreesPerSecond\":15}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -372,7 +372,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[80.0,13.1,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1340.0,1340.0,1340.0]}",
+                    "m_component": "{\"position\":[80.0,13.100000381469727,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1340.0,1340.0,1340.0]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
@@ -389,7 +389,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":10.0}",
+                    "m_component": "{\"degreesPerSecond\":10}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -404,7 +404,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[-80.0,7.7,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.55,5.55,5.55]}",
+                    "m_component": "{\"position\":[-80.0,7.699999809265137,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[5.550000190734863,5.550000190734863,5.550000190734863]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
@@ -421,7 +421,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_component": "{\"degreesPerSecond\":12}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -436,7 +436,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,13.5,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[103.7,103.7,103.7]}",
+                    "m_component": "{\"position\":[0.0,13.5,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[103.69999694824219,103.69999694824219,103.69999694824219]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
@@ -453,7 +453,7 @@
         {
             "m_managed_components": [
                 {
-                    "m_component": "{\"degreesPerSecond\":12.0}",
+                    "m_component": "{\"degreesPerSecond\":12}",
                     "m_type_name": "Showcase.Turntable"
                 }
             ],
@@ -468,7 +468,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[80.0,13.5,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.05,1.05,1.05]}",
+                    "m_component": "{\"position\":[80.0,13.5,-80.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0499999523162842,1.0499999523162842,1.0499999523162842]}",
                     "m_type_name": "TransformComponent"
                 },
                 {

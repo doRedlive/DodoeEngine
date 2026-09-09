@@ -47,6 +47,12 @@ namespace dodoe {
         [[nodiscard]] static auto Cos(Args&&... args) { return glm::cos(std::forward<Args>(args)...); }
 
         template <typename... Args>
+        [[nodiscard]] static auto Pow(Args&&... args) { return glm::pow(std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        [[nodiscard]] static auto Mix(Args&&... args) { return glm::mix(std::forward<Args>(args)...); }
+
+        template <typename... Args>
         [[nodiscard]] static auto Radians(Args&&... args) { return glm::radians(std::forward<Args>(args)...); }
 
         template <typename... Args>

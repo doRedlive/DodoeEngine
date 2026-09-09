@@ -105,7 +105,10 @@ namespace dodoe {
                 const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView());
                 LitPassConstantBuffer pass_cb{};
                 BuildLitPassConstantBuffer(pass_cb, *ctx.getScene(), camera_position);
-                pass_cb.dir_light_view_projection = mesh_ext->directional_shadow_view_projection;
+                pass_cb.camera_direction = Vector4f(
+                    rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
+                pass_cb.dir_cascade_view_projections = mesh_ext->directional_shadow_view_projections;
+                pass_cb.dir_cascade_split_depths = mesh_ext->directional_shadow_split_depths;
                 pass_cb.shadow_params = mesh_ext->directional_shadow_params;
 
                 auto* staging = ctx.getFrameStagingAllocator();

@@ -9,7 +9,9 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform Deferre
     vec4 u_LightColorIntensity;
     vec4 u_LightPositionRadius;
     vec4 u_LightDirectionType;
-    mat4 u_LightViewProjection;
+    mat4 u_CascadeViewProjections[4];
+    vec4 u_CascadeSplits;
+    vec4 u_CameraDirection;
     vec4 u_ShadowParams;
     vec4 u_CameraPosition;
     vec4 u_IrradianceSH[9];
@@ -27,125 +29,25 @@ layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT6) uniform texture2D 
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_SAMPLER) uniform sampler u_Sampler;
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT8) uniform texture2D u_Emissive;
 
-const vec2 poissonDisk[16] = vec2[](
-    vec2( -0.94201624, -0.39906216 ),
-    vec2( 0.94558609, -0.76890725 ),
-    vec2( -0.094184101, -0.92938870 ),
-    vec2( 0.34495938, 0.29387760 ),
-    vec2( -0.91588581, 0.45771432 ),
-    vec2( -0.81544232, -0.87912464 ),
-    vec2( -0.38277543, 0.27676845 ),
-    vec2( 0.97484398, 0.75648379 ),
-    vec2( 0.44323325, -0.97511554 ),
-    vec2( 0.53742981, -0.47373420 ),
-    vec2( -0.26496911, -0.41893023 ),
-    vec2( 0.79197514, 0.19090188 ),
-    vec2( -0.24188840, 0.99706507 ),
-    vec2( -0.81409955, 0.91437590 ),
-    vec2( 0.19984126, 0.78641367 ),
-    vec2( 0.14383161, -0.14100790 )
-);
-
-float rand_2to1(vec2 co) {
-    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-float findBlocker(vec2 uv, float zReceiver, float searchRadius) {
-    int blockers = 0;
-    float blockDepthSum = 0.0;
-    
-    float angle = rand_2to1(uv) * 6.2831853;
-    float s = sin(angle), c = cos(angle);
-    mat2 rot = mat2(c, -s, s, c);
-
-    for (int i = 0; i < 16; i++) {
-        vec2 sampleUV = uv + rot * poissonDisk[i] * searchRadius;
-        
-        if (sampleUV.x < 0.0 || sampleUV.x > 1.0 || sampleUV.y < 0.0 || sampleUV.y > 1.0) {
-            continue;
-        }
-        
-        float mapDepth = texture(sampler2D(u_ShadowMap, u_Sampler), sampleUV).r;
-        if (mapDepth < zReceiver) {
-            blockDepthSum += mapDepth;
-            blockers++;
-        }
-    }
-    
-    if (blockers == 0) return -1.0;
-    return blockDepthSum / float(blockers);
-}
-
-float PCF(vec2 uv, float zReceiver, float filterRadius) {
-    float sum = 0.0;
-    
-    float angle = rand_2to1(uv) * 6.2831853;
-    float s = sin(angle), c = cos(angle);
-    mat2 rot = mat2(c, -s, s, c);
-
-    for (int i = 0; i < 16; i++) {
-        vec2 sampleUV = uv + rot * poissonDisk[i] * filterRadius;
-        
-        if (sampleUV.x < 0.0 || sampleUV.x > 1.0 || sampleUV.y < 0.0 || sampleUV.y > 1.0) {
-            sum += 1.0;
-            continue;
-        }
-        
-        float mapDepth = texture(sampler2D(u_ShadowMap, u_Sampler), sampleUV).r;
-        sum += (zReceiver <= mapDepth) ? 1.0 : u_ShadowParams.y;
-    }
-    return sum / 16.0;
-}
-
-float computeShadow(vec3 world_position, vec3 normal, vec3 light_dir)
-{
-    vec2 texSize = vec2(textureSize(sampler2D(u_ShadowMap, u_Sampler), 0));
-    float texelSize = 1.0 / max(texSize.x, texSize.y);
-
-    // Keep a minimum normal offset in light clip depth units to suppress self-shadowing acne.
-    float normalOffset = max(u_ShadowParams.z, texelSize * 2.0);
-    vec3 shadow_position = world_position + normal * normalOffset;
-    vec4 light_clip = u_LightViewProjection * vec4(shadow_position, 1.0);
-    if (light_clip.w <= 0.0) {
-        return 1.0;
-    }
-
-    vec3 light_ndc = light_clip.xyz / light_clip.w;
-    vec2 shadow_uv = light_ndc.xy * 0.5 + 0.5;
-    float shadow_depth = light_ndc.z;
-
-    if (shadow_uv.x < 0.0 || shadow_uv.x > 1.0 || shadow_uv.y < 0.0 || shadow_uv.y > 1.0) {
-        return 1.0;
-    }
-
-    if (light_ndc.z < 0.0 || light_ndc.z > 1.0) {
-        return 1.0;
-    }
-
-    float ndotl = max(dot(normal, -light_dir), 0.0);
-    float bias = max(u_ShadowParams.x * (1.0 - ndotl), texelSize * 1.5);
-    float zReceiver = shadow_depth - bias;
-    
-    float lightSize = u_ShadowParams.w > 0.0 ? u_ShadowParams.w : 2.0;
-    float searchRadius = lightSize * texelSize * 2.0;
-
-    // STEP 1: Blocker Search
-    float avgBlockerDepth = findBlocker(shadow_uv, zReceiver, searchRadius);
-    
-    if (avgBlockerDepth < 0.0) {
-        return 1.0;
-    }
-
-    // STEP 2: Penumbra Estimation
-    float penumbraRatio = max(zReceiver - avgBlockerDepth, 0.0) * 15.0;
-    float filterRadius = max(penumbraRatio * lightSize * texelSize, texelSize);
-
-    // STEP 3: PCF Filtering
-    return PCF(shadow_uv, zReceiver, filterRadius);
-}
+#include "shadow_csm.glsl"
 
 const float PI = 3.14159265359;
 const float kIblMaxRadiance = 3.0;
+
+float computeShadow(vec3 world_position, vec3 normal, vec3 dir_to_light) {
+    ivec2 atlas_size = textureSize(sampler2D(u_ShadowMap, u_Sampler), 0);
+    float atlas_texel = 2.0 / float(max(atlas_size.x, atlas_size.y));
+    return CsmComputeDirectionalShadow(
+        atlas_texel,
+        world_position,
+        normal,
+        dir_to_light,
+        u_CameraPosition.xyz,
+        normalize(u_CameraDirection.xyz),
+        u_CascadeViewProjections,
+        u_CascadeSplits,
+        u_ShadowParams);
+}
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
@@ -209,7 +111,7 @@ vec3 applyDirectionalLight(vec3 albedo, vec3 normal, vec3 position, float metall
     vec3 v = normalize(u_CameraPosition.xyz - position);
     vec3 light_dir = normalize(-u_LightDirectionType.xyz);
     vec3 light_color = u_LightColorIntensity.rgb * u_LightColorIntensity.a;
-    float shadow = computeShadow(position, n, -light_dir);
+    float shadow = computeShadow(position, n, light_dir);
     return evaluateDirectPBR(albedo, n, v, light_dir, light_color * shadow, metallic, roughness);
 }
 
@@ -291,24 +193,7 @@ void main()
 
     if (u_LightDirectionType.w < 0.5) {
         vec3 light_dir = normalize(-u_LightDirectionType.xyz);
-        float cs_shadow = computeShadow(position, n, -light_dir);
-        if (u_IblParams.w > 0.5) {
-            float ndotl = max(dot(n, -(-light_dir)), 0.0);
-            vec2 tex_size = vec2(textureSize(sampler2D(u_ShadowMap, u_Sampler), 0));
-            float texel = 1.0 / max(tex_size.x, tex_size.y);
-            vec3 sp = position + n * max(u_ShadowParams.z, texel * 2.0);
-            vec4 lc = u_LightViewProjection * vec4(sp, 1.0);
-            vec3 lndc = lc.xyz / max(lc.w, 1e-5);
-            vec2 suv = lndc.xy * 0.5 + 0.5;
-            float in_range = (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) ? 0.0 : 1.0;
-            float map_depth = in_range > 0.5 ? texture(sampler2D(u_ShadowMap, u_Sampler), suv).r : 0.0;
-            float z_receiver = lndc.z - max(u_ShadowParams.x * (1.0 - ndotl), texel * 1.5);
-            float inline_lit = (lc.w <= 0.0 || lndc.z < 0.0 || lndc.z > 1.0)
-                ? 1.0
-                : ((z_receiver <= map_depth) ? 1.0 : 0.2);
-            o_Color = vec4(cs_shadow, inline_lit, clamp(z_receiver, 0.0, 1.0), 1.0);
-            return;
-        }
+        float cs_shadow = computeShadow(position, n, light_dir);
         color += evaluateDirectPBR(albedo, n, v, light_dir,
             u_LightColorIntensity.rgb * u_LightColorIntensity.a * cs_shadow, metallic, roughness);
         o_Color = vec4(color, 1.0);

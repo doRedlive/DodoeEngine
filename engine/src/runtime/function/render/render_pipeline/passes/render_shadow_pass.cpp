@@ -21,9 +21,25 @@
 
 namespace dodoe {
 
+    namespace {
+        GfxViewportState MakeCascadeViewport(UInt32 cascade,
+                                            UInt32 atlas_width, UInt32 atlas_height) {
+            const UInt32 column = cascade % 2u;
+            const UInt32 row = cascade / 2u;
+            const UInt32 quad_width = atlas_width / 2u;
+            const UInt32 quad_height = atlas_height / 2u;
+            const Float x0 = static_cast<Float>(column * quad_width);
+            const Float y0 = static_cast<Float>(row * quad_height);
+            const Float width = static_cast<Float>(column == 0u ? quad_width : atlas_width - quad_width);
+            const Float height = static_cast<Float>(row == 0u ? quad_height : atlas_height - quad_height);
+            return GfxViewportState().addViewportAndScissorRect(
+                GfxViewport(x0, x0 + width, y0, y0 + height, 0.0f, 1.0f));
+        }
+    }
+
     struct ShadowPassParameters {
         RenderGraphTextureHandle shadow_map{};
-        RenderGraphBufferHandle primitive_scene_buffer{};
+        RenderGraphBufferHandle caster_instance_buffer{};
         RenderTargetHandle* shadow_rt{nullptr};
     };
 
@@ -36,9 +52,6 @@ namespace dodoe {
             RenderGraphPassFlags::Raster,
             [view = &context.view, imports = context.graph_imports]
             (RenderGraphPassBuilder& pass_builder, ShadowPassParameters& parameters) {
-                const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
-                DO_ASSERT(scene_textures, "ShadowPass scene textures are missing");
-
                 DO_ASSERT(imports != nullptr, "ShadowPass graph imports are null");
                 parameters.shadow_rt = imports->require<ShadowMapRenderTargetKey>();
                 DO_ASSERT(parameters.shadow_rt != nullptr, "ShadowPass requires a ShadowMap RenderTargetHandle");
@@ -47,7 +60,20 @@ namespace dodoe {
                 depth_attach.load_op = LoadOp::Clear;
                 parameters.shadow_map = pass_builder.writeDepth(pass_builder.importTexture(
                     parameters.shadow_rt->getDepthTexture(), "ShadowMap"), depth_attach);
-                parameters.primitive_scene_buffer = pass_builder.read(scene_textures->instance_scene_data);
+
+                const auto* mesh_ext = view->getExtension<MeshViewExtension>();
+                const Size_t caster_instance_count = mesh_ext
+                    ? mesh_ext->shadow_caster_instance_data.size() : 0;
+
+                RenderGraphBufferDesc caster_instance_desc{};
+                caster_instance_desc.desc = GfxBufferDesc()
+                    .setByteSize(static_cast<UInt32>(std::max<Size_t>(caster_instance_count, 1) * sizeof(InstanceSceneData)))
+                    .setIsVertexBuffer(true)
+                    .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
+                    .setDebugName("RDG ShadowPass CasterInstanceBuffer");
+                parameters.caster_instance_buffer = pass_builder.write(pass_builder.createTransientBuffer(
+                    caster_instance_desc, "ShadowCasterInstanceBuffer"));
+                pass_builder.read(parameters.caster_instance_buffer);
 
                 pass_builder.blackboard().set<ShadowMapKey>(parameters.shadow_map);
             },
@@ -59,23 +85,32 @@ namespace dodoe {
 
                 const auto shadow_width = parameters.shadow_rt->getWidth();
                 const auto shadow_height = parameters.shadow_rt->getHeight();
-                const auto viewport_state = GfxViewportState().addViewportAndScissorRect(
-                    GfxViewport(0.0f, static_cast<Float>(shadow_width),
-                                0.0f, static_cast<Float>(shadow_height), 0.0f, 1.0f));
 
-                const auto resolved_psb = ctx.resolveBuffer(parameters.primitive_scene_buffer);
+                const auto resolved_instances = ctx.resolveBuffer(parameters.caster_instance_buffer);
+                command_list.setBufferState(resolved_instances, GfxResourceStates::CopyDest);
+                command_list.commitBarriers();
+                command_list.writeBuffer(resolved_instances,
+                    mesh_ext->shadow_caster_instance_data.data(),
+                    mesh_ext->shadow_caster_instance_data.size() * sizeof(InstanceSceneData));
+                command_list.setBufferState(resolved_instances, GfxResourceStates::VertexBuffer);
 
                 const auto global_data = GlobalMeshShaderData{mesh_ext->frame_time_data};
                 command_list.writeBuffer(processor->getGlobalConstantBuffer(), &global_data, sizeof(global_data));
-                const auto view_data = ViewMeshShaderData{
-                    Math::FlipClipSpaceY(mesh_ext->directional_shadow_view_projection)};
-                command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
-
+                const auto fb = ctx.getFramebuffer();
                 auto* feature = static_cast<ShadowSceneFeature*>(m_owning_feature);
                 const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];
 
-                const auto fb = ctx.getFramebuffer();
-                SubmitMeshDrawSources(draw_list.sources, {}, fb, viewport_state, resolved_psb, nullptr, command_list);
+                for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
+                    const ViewMeshShaderData view_data{Math::FlipClipSpaceY(
+                        mesh_ext->directional_shadow_view_projections[cascade])};
+                    command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
+
+                    const auto viewport_state = MakeCascadeViewport(
+                        cascade, shadow_width, shadow_height);
+                    SubmitMeshDrawSources(draw_list.sources, {}, fb, viewport_state,
+                        resolved_instances, nullptr, command_list,
+                        static_cast<UInt8>(1u << cascade));
+                }
             }
         );
     }

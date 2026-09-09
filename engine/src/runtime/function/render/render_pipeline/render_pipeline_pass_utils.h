@@ -42,6 +42,43 @@ namespace dodoe::rendering_pipeline_utils {
         return Vector3f(inverse_view[3]);
     }
 
+    [[nodiscard]] inline Vector3f ExtractCameraDirection(const RenderView& view) {
+        const Matrix4f inverse_view = Math::Inverse(view.getViewMatrix());
+        return Math::Normalize(-Vector3f(inverse_view[2]));
+    }
+
+    [[nodiscard]] inline StaticArray<Vector4f, 6> ExtractViewFrustumPlanes(const Matrix4f& view_projection) {
+        StaticArray<Vector4f, 6> planes{};
+        const Matrix4f transposed = Math::Transpose(view_projection);
+        planes[0] = transposed[3] + transposed[0];
+        planes[1] = transposed[3] - transposed[0];
+        planes[2] = transposed[3] + transposed[1];
+        planes[3] = transposed[3] - transposed[1];
+        planes[4] = transposed[3] + transposed[2];
+        planes[5] = transposed[3] - transposed[2];
+
+        for (auto& plane : planes) {
+            const Float length = Math::Length(Vector3f(plane));
+            if (length > std::numeric_limits<Float>::epsilon()) {
+                plane /= length;
+            }
+        }
+        return planes;
+    }
+
+    [[nodiscard]] inline Bool IntersectsAABBFrustum(const StaticArray<Vector4f, 6>& frustum_planes,
+                                                    const Vector3f& center, const Vector3f& extents) {
+        for (const auto& plane : frustum_planes) {
+            const Vector3f normal = Vector3f(plane);
+            const Float radius = Math::Dot(Math::Abs(normal), extents);
+            const Float distance = Math::Dot(normal, center) + plane.w;
+            if (distance + radius < 0.0f) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     [[nodiscard]] inline GfxViewportState BuildViewportState(const RenderView& view, const Vector2i& fallback_extent) {
         const auto viewport_rect = view.getViewportRect();
         const Float offset_x = static_cast<Float>(viewport_rect.x);

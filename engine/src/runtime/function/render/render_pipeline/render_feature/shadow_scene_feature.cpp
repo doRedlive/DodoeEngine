@@ -5,6 +5,7 @@
 
 #include "runtime/function/render/render_pipeline/passes/render_shadow_pass.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
 #include "runtime/function/render/mesh_draw/shadow_mesh_processor.h"
@@ -30,9 +31,9 @@ namespace dodoe {
     static RenderTargetDesc BuildShadowMapDesc() {
         RenderTargetDesc desc{};
         desc.name = "ShadowMap";
-        desc.scale_policy = RenderTargetScalePolicy::Relative;
-        desc.scale_x = 1.0f;
-        desc.scale_y = 1.0f;
+        desc.scale_policy = RenderTargetScalePolicy::Fixed;
+        desc.fixed_width = kShadowAtlasSize;
+        desc.fixed_height = kShadowAtlasSize;
 
         desc.has_depth = true;
         desc.depth_format = GfxFormat::D32;
@@ -180,10 +181,16 @@ namespace dodoe {
             auto& view = view_family.getView(view_index);
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
 
+            MeshPassCascadeCullingData cascade_culling{};
+            cascade_culling.count = kShadowCascadeCount;
+            for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
+                cascade_culling.planes[cascade] = rendering_pipeline_utils::ExtractViewFrustumPlanes(
+                    mesh_ext.directional_shadow_view_projections[cascade]);
+            }
+
             auto& shadow_list = command_storage->beginView(view_index);
 
-            const auto& primitive_indices =
-                mesh_ext.mesh_pass_primitive_indices[static_cast<size_t>(MeshPassType::Shadow)];
+            const auto& primitive_indices = mesh_ext.shadow_caster_primitive_indices;
             const Size_t chunk_size = 64;
             const Size_t chunk_count = (primitive_indices.size() + chunk_size - 1) / chunk_size;
             if (thread_pool && chunk_count > 1) {
@@ -196,19 +203,21 @@ namespace dodoe {
                         primitive_indices.begin() + begin, primitive_indices.begin() + end);
                     auto& local = local_storages[chunk_index];
                     const MeshPassCommandBuildContext context{
-                        mesh_ext.visible_primitives, mesh_ext.primitive_mesh_pass_relevance,
-                        chunk_indices, &mesh_ext.primitive_instance_offsets,
-                        mesh_ext.directional_shadow_view_projection, view.getViewMatrix(),
-                        shadow_pipeline, local.sources};
+                        mesh_ext.shadow_casters, mesh_ext.shadow_caster_pass_relevance,
+                        chunk_indices, &mesh_ext.shadow_caster_instance_offsets,
+                        mesh_ext.directional_shadow_view_projections[0], view.getViewMatrix(),
+                        shadow_pipeline, local.sources,
+                        &cascade_culling, &mesh_ext.shadow_caster_cascade_masks};
                     processor->buildMeshDrawCommands(context);
                 });
                 command_storage->mergeThreadLocal(view_index, local_storages);
             } else {
                 const MeshPassCommandBuildContext context{
-                    mesh_ext.visible_primitives, mesh_ext.primitive_mesh_pass_relevance,
-                    primitive_indices, &mesh_ext.primitive_instance_offsets,
-                    mesh_ext.directional_shadow_view_projection, view.getViewMatrix(),
-                    shadow_pipeline, shadow_list.sources};
+                    mesh_ext.shadow_casters, mesh_ext.shadow_caster_pass_relevance,
+                    primitive_indices, &mesh_ext.shadow_caster_instance_offsets,
+                    mesh_ext.directional_shadow_view_projections[0], view.getViewMatrix(),
+                    shadow_pipeline, shadow_list.sources,
+                    &cascade_culling, &mesh_ext.shadow_caster_cascade_masks};
                 processor->buildMeshDrawCommands(context);
             }
         }

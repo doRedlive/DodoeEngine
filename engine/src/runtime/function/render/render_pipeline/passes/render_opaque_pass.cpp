@@ -49,7 +49,8 @@ namespace dodoe {
                 const auto& data = light_info.getDirectionalLightData();
                 pass_cb.directional_color_intensity = Vector4f(data.color, data.irradiance);
                 pass_cb.directional_direction_flags = Vector4f(Math::Normalize(data.direction), 0.0f);
-                pass_cb.dir_light_view_projection = rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
+                pass_cb.dir_cascade_view_projections[0] =
+                    rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
                 pass_cb.shadow_params = Vector4f(0.005f, 0.2f, 0.005f, 2.0f);
                 break;
             }
@@ -236,8 +237,11 @@ namespace dodoe {
                 const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView());
                 LitPassConstantBuffer pass_cb{};
                 BuildLitPassConstantBuffer(pass_cb, *ctx.getScene(), camera_position);
+                pass_cb.camera_direction = Vector4f(
+                    rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
                 if (const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>()) {
-                    pass_cb.dir_light_view_projection = mesh_ext->directional_shadow_view_projection;
+                    pass_cb.dir_cascade_view_projections = mesh_ext->directional_shadow_view_projections;
+                    pass_cb.dir_cascade_split_depths = mesh_ext->directional_shadow_split_depths;
                     pass_cb.shadow_params = mesh_ext->directional_shadow_params;
                 }
 

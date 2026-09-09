@@ -26,15 +26,18 @@
 namespace dodoe {
 
     namespace {
-        constexpr UInt64 kDeferredLightConstantBufferSize = 320;
+        constexpr UInt64 kDeferredLightConstantBufferSize = 544;
     }
 
     struct DeferredLightPushConstants {
         Vector4f light_color_intensity{1.0f, 1.0f, 1.0f, 1.0f};
         Vector4f light_position_radius{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f light_direction_type{0.0f, 0.0f, 0.0f, 0.0f};
-        Matrix4f light_view_projection{1.0f};
-        Vector4f shadow_params{0.0025f, 0.65f, 0.0f, 0.0f};
+        StaticArray<Matrix4f, kShadowCascadeCount> cascade_view_projections{
+            Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f)};
+        Vector4f cascade_split_depths{0.0f};
+        Vector4f camera_direction{0.0f, -1.0f, 0.0f, 0.0f};
+        Vector4f shadow_params{0.002f, 0.0f, 0.0f, 2.0f};
         Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f irradiance_sh[9]{};
         Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
@@ -253,11 +256,12 @@ namespace dodoe {
                         const auto& data = light_info.getDirectionalLightData();
                         push.light_color_intensity = Vector4f(data.color, data.irradiance);
                         push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
+                        push.camera_direction = Vector4f(
+                            rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
                         const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
-                        push.light_view_projection = mesh_ext
-                            ? mesh_ext->directional_shadow_view_projection
-                            : rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
                         if (mesh_ext) {
+                            push.cascade_view_projections = mesh_ext->directional_shadow_view_projections;
+                            push.cascade_split_depths = mesh_ext->directional_shadow_split_depths;
                             push.shadow_params = mesh_ext->directional_shadow_params;
                         }
                         break;

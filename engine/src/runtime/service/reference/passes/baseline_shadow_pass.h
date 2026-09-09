@@ -6,6 +6,7 @@
 
 #include "../baseline_pass.h"
 #include "runtime/function/graphics/draw_command_list.h"
+#include "runtime/function/render/render_pipeline/shadow/shadow_system.h"
 
 namespace dodoe {
 
@@ -14,7 +15,9 @@ namespace dodoe {
 
     struct BaselineShadowResult {
         GfxTextureHandle shadow_map{};
-        Matrix4f light_view_projection{1.0f};
+        StaticArray<Matrix4f, kShadowCascadeCount> cascade_view_projections{
+            Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f)};
+        Vector4f cascade_split_depths{0.0f};
         Vector4f shadow_params{0.005f, 0.2f, 0.0f, 2.0f};
         Bool has_shadow{false};
     };

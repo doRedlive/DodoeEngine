@@ -173,6 +173,7 @@ namespace dodoe {
         CommandLifetime lifetime{CommandLifetime::Frame};
         MeshDrawCommandCacheKey cache_key{};
         Bool has_cache_key{false};
+        UInt8 cascade_mask{0xFF};
     };
 
 } // dodoe

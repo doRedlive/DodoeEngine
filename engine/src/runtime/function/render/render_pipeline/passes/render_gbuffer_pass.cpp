@@ -90,6 +90,7 @@ namespace dodoe {
                     .enableAutomaticStateTracking(GfxResourceStates::VertexBuffer)
                     .setDebugName("RDG GBufferPass PrimitiveSceneBuffer");
                 p.primitive_scene_buffer = b.write(b.createTransientBuffer(primitive_scene_buffer_desc, "GBufferPrimitiveSceneBuffer"));
+                b.read(p.primitive_scene_buffer);
 
                 SceneTextures gbuffer;
                 gbuffer.albedo   = p.albedo;

@@ -24,9 +24,9 @@ namespace dodoe {
 
 	        for (const auto& key_hash : pass->getConsumedKeys()) {
 	            DO_ASSERT(producers.find(key_hash) != producers.end(),
-	                      "Blackboard key consumed but never produced");
+	                    	"Blackboard key consumed but never produced");
 	            DO_ASSERT(producers[key_hash] < i,
-	                      "Blackboard key consumed before it is produced");
+	                    	"Blackboard key consumed before it is produced");
 	        }
 
 	        for (const auto& key_hash : pass->getProducedKeys()) {

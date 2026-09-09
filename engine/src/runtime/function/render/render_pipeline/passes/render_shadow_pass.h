@@ -14,7 +14,7 @@ namespace dodoe {
 	class ShadowPass : public IRenderPass {
 	public:
 	    using Produces = TypeList<ShadowMapKey>;
-	    using Consumes = TypeList<SceneTexturesKey>;
+	    using Consumes = TypeList<>;
 
         explicit ShadowPass(const MeshPassProcessor* processor = nullptr)
 	        : m_mesh_processor(processor) {}

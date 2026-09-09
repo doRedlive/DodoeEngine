@@ -7,8 +7,8 @@
 namespace dodoe {
 
 	enum class RenderPhase : UInt8 {
-	    Opaque,
 	    Shadow,
+	    Opaque,
 	    Skybox,
 	    Lighting,
 	    Decals,

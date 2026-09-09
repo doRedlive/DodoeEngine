@@ -17,6 +17,7 @@
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
 #include "runtime/function/render/mesh_draw/mesh_batch.h"
 #include "runtime/function/render/render_pipeline/shadow/shadow_system.h"
+#include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/core/math/math.h"
 
 namespace dodoe {
@@ -212,7 +213,8 @@ namespace dodoe {
         }
         result.has_shadow = true;
 
-        result.light_view_projection = shadow_data.light_view_projection;
+        result.cascade_view_projections = shadow_data.cascade_view_projections;
+        result.cascade_split_depths = shadow_data.cascade_split_depths;
         result.shadow_params = shadow_data.shadow_params;
         result.shadow_map = m_shadow_depth;
 
@@ -225,8 +227,6 @@ namespace dodoe {
 
         const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
         m_command_list->writeBuffer(m_global_cb.Get(), &global_data, sizeof(global_data));
-        const ViewMeshShaderData view_data{Math::FlipClipSpaceY(result.light_view_projection)};
-        m_command_list->writeBuffer(m_view_cb.Get(), &view_data, sizeof(view_data));
 
         m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::VertexBuffer);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
@@ -239,56 +239,83 @@ namespace dodoe {
             instance_prefix[i + 1] = instance_prefix[i] + instance_count;
         }
 
-        const auto viewport_state = GfxViewportState().addViewportAndScissorRect(
-            GfxViewport(0.0f, static_cast<Float>(kShadowMapSize), 0.0f, static_cast<Float>(kShadowMapSize), 0.0f, 1.0f));
+        StaticArray<StaticArray<Vector4f, 6>, kShadowCascadeCount> cascade_planes{};
+        for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
+            cascade_planes[cascade] = rendering_pipeline_utils::ExtractViewFrustumPlanes(
+                result.cascade_view_projections[cascade]);
+        }
 
         m_command_list->setTextureState(m_shadow_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthWrite);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->clearDepthStencilTexture(m_shadow_depth->getRHI(), cutie::AllSubresources, true, 1.0f, false, 0);
 
-        for (const UInt32 primitive_index : primitive_indices) {
-            if (primitive_index >= mesh_ext->visible_primitives.size()) {
-                continue;
-            }
-            const PrimitiveSceneInfo* draw_primitive = mesh_ext->visible_primitives[primitive_index];
-            if (!draw_primitive) {
-                continue;
-            }
-            const UInt64 instance_offset = static_cast<UInt64>(instance_prefix[primitive_index]) * sizeof(InstanceSceneData);
+        const Float quad_size = static_cast<Float>(kShadowMapSize / 2u);
+        for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
+            const UInt32 column = cascade % 2u;
+            const UInt32 row = cascade / 2u;
+            const Float x0 = static_cast<Float>(column) * quad_size;
+            const Float y0 = static_cast<Float>(row) * quad_size;
+            const auto cascade_viewport = GfxViewportState().addViewportAndScissorRect(
+                GfxViewport(x0, x0 + quad_size, y0, y0 + quad_size, 0.0f, 1.0f));
+            const ViewMeshShaderData view_data{
+                Math::FlipClipSpaceY(result.cascade_view_projections[cascade])};
+            m_command_list->writeBuffer(m_view_cb.Get(), &view_data, sizeof(view_data));
 
-            for (const MeshBatch& batch : draw_primitive->getMeshBatches()) {
-                if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.getElements().empty()) {
+            for (const UInt32 primitive_index : primitive_indices) {
+                if (primitive_index >= mesh_ext->visible_primitives.size()) {
                     continue;
                 }
-                const auto& element = batch.getElements()[0];
-                if (!element.isValid() || !element.vertex_buffer || !element.index_buffer ||
-                    !element.vertex_buffer->isGpuReady() || !element.index_buffer->isGpuReady()) {
+                const PrimitiveSceneInfo* draw_primitive = mesh_ext->visible_primitives[primitive_index];
+                if (!draw_primitive) {
                     continue;
                 }
+                const Vector3f local_center = (draw_primitive->getBoundsMin() + draw_primitive->getBoundsMax()) * 0.5f;
+                const Vector3f local_extents = (draw_primitive->getBoundsMax() - draw_primitive->getBoundsMin()) * 0.5f;
+                const Matrix4f& world_transform = draw_primitive->getWorldTransform();
+                const Vector3f world_center = Vector3f(world_transform * Vector4f(local_center, 1.0f));
+                const Matrix3f linear = Matrix3f(world_transform);
+                const Matrix3f abs_linear(Math::Abs(linear[0]), Math::Abs(linear[1]), Math::Abs(linear[2]));
+                const Vector3f world_extents = abs_linear * local_extents;
+                if (!rendering_pipeline_utils::IntersectsAABBFrustum(
+                        cascade_planes[cascade], world_center, world_extents)) {
+                    continue;
+                }
+                const UInt64 instance_offset = static_cast<UInt64>(instance_prefix[primitive_index]) * sizeof(InstanceSceneData);
 
-                cutie::GraphicsState graphics_state;
-                graphics_state.setPipeline(m_pipeline.Get());
-                graphics_state.setFramebuffer(m_shadow_framebuffer->getRHI());
-                graphics_state.setViewport(viewport_state);
-                graphics_state.addBindingSet(m_global_binding_set.Get());
-                graphics_state.addBindingSet(m_view_binding_set.Get());
-                graphics_state.addVertexBuffer(
-                    cutie::VertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
-                graphics_state.addVertexBuffer(
-                    cutie::VertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(instance_offset));
-                graphics_state.setIndexBuffer(
-                    cutie::IndexBufferBinding()
-                        .setBuffer(element.index_buffer->getRHI())
-                        .setFormat(GfxFormat::R32_UINT)
-                        .setOffset(0));
+                for (const MeshBatch& batch : draw_primitive->getMeshBatches()) {
+                    if (!batch.isValid() || !batch.isRelevant(MeshPassType::Shadow) || batch.getElements().empty()) {
+                        continue;
+                    }
+                    const auto& element = batch.getElements()[0];
+                    if (!element.isValid() || !element.vertex_buffer || !element.index_buffer ||
+                        !element.vertex_buffer->isGpuReady() || !element.index_buffer->isGpuReady()) {
+                        continue;
+                    }
 
-                m_command_list->setGraphicsState(graphics_state);
-                RenderFrameCounters::Self().addDrawCall(element.instance_count);
-                m_command_list->drawIndexed(GfxDrawArguments()
-                    .setVertexCount(element.index_count)
-                    .setInstanceCount(element.instance_count)
-                    .setStartIndexLocation(element.index_offset)
-                    .setStartVertexLocation(element.vertex_offset));
+                    cutie::GraphicsState graphics_state;
+                    graphics_state.setPipeline(m_pipeline.Get());
+                    graphics_state.setFramebuffer(m_shadow_framebuffer->getRHI());
+                    graphics_state.setViewport(cascade_viewport);
+                    graphics_state.addBindingSet(m_global_binding_set.Get());
+                    graphics_state.addBindingSet(m_view_binding_set.Get());
+                    graphics_state.addVertexBuffer(
+                        cutie::VertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
+                    graphics_state.addVertexBuffer(
+                        cutie::VertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(instance_offset));
+                    graphics_state.setIndexBuffer(
+                        cutie::IndexBufferBinding()
+                            .setBuffer(element.index_buffer->getRHI())
+                            .setFormat(GfxFormat::R32_UINT)
+                            .setOffset(0));
+
+                    m_command_list->setGraphicsState(graphics_state);
+                    RenderFrameCounters::Self().addDrawCall(element.instance_count);
+                    m_command_list->drawIndexed(GfxDrawArguments()
+                        .setVertexCount(element.index_count)
+                        .setInstanceCount(element.instance_count)
+                        .setStartIndexLocation(element.index_offset)
+                        .setStartVertexLocation(element.vertex_offset));
+                }
             }
         }
 

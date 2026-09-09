@@ -58,8 +58,8 @@ namespace dodoe {
     }
 
     Bool MeshPassProcessor::IsBatchFrustumCulled(const MeshBatch& batch,
-                                                   const PrimitiveSceneInfo* primitive,
-                                                   const StaticArray<Vector4f, 6>& frustum_planes) {
+                                                    const PrimitiveSceneInfo* primitive,
+                                                    const StaticArray<Vector4f, 6>& frustum_planes) {
         if (!batch.usesCustomBounds()) {
             return false;
         }
@@ -130,10 +130,41 @@ namespace dodoe {
             }
 
             const CommandLifetime lifetime = is_dynamic ? CommandLifetime::Frame : CommandLifetime::Cached;
+            const UInt8 cascade_mask = context.primitive_cascade_masks &&
+                primitive_index < context.primitive_cascade_masks->size()
+                ? (*context.primitive_cascade_masks)[primitive_index] : static_cast<UInt8>(0xFF);
 
             for (const auto& batch : primitive->getMeshBatches()) {
-                if (!batch.isValid() || !batch.isRelevant(m_pass_type) ||
-                    IsBatchFrustumCulled(batch, primitive, frustum_planes)) {
+                if (!batch.isValid() || !batch.isRelevant(m_pass_type)) {
+                    continue;
+                }
+
+                Bool batch_visible = true;
+                if (context.cascade_culling && context.cascade_culling->count > 0) {
+                    if (batch.usesCustomBounds()) {
+                        batch_visible = false;
+                        const Vector3f local_center =
+                            (batch.getBoundsMin() + batch.getBoundsMax()) * 0.5f;
+                        const Vector3f local_extents =
+                            (batch.getBoundsMax() - batch.getBoundsMin()) * 0.5f;
+                        const Matrix4f& world_transform = primitive->getWorldTransform();
+                        const Vector3f world_center =
+                            Vector3f(world_transform * Vector4f(local_center, 1.0f));
+                        const Matrix3f linear = Matrix3f(world_transform);
+                        const Matrix3f abs_linear(Math::Abs(linear[0]), Math::Abs(linear[1]), Math::Abs(linear[2]));
+                        const Vector3f world_extents = abs_linear * local_extents;
+                        for (UInt32 cascade = 0; cascade < context.cascade_culling->count; ++cascade) {
+                            if (IntersectsFrustum(context.cascade_culling->planes[cascade],
+                                                  world_center, world_extents)) {
+                                batch_visible = true;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    batch_visible = !IsBatchFrustumCulled(batch, primitive, frustum_planes);
+                }
+                if (!batch_visible) {
                     continue;
                 }
 
@@ -153,6 +184,7 @@ namespace dodoe {
 
                     MeshDrawCommandSource source{};
                     source.command = std::move(command);
+                    source.cascade_mask = cascade_mask;
                     const auto instance_range = element.getInstanceRange();
                     const UInt32 instance_base = primitive_first_instance +
                         (instance_range.explicit_range ? instance_range.first_instance : 0);
@@ -189,15 +221,20 @@ namespace dodoe {
         const GfxViewportState& viewport_state,
         const GfxBufferHandle& primitive_scene_buffer,
         const GfxBindingSetHandle* pass_binding_set,
-        DrawCommandList& command_list)
+        DrawCommandList& command_list,
+        UInt8 cascade_mask)
     {
         if (sources.empty()) {
             return;
         }
 
-        for (const auto& source : sources) {
+        for (Size_t source_index = 0; source_index < sources.size(); ++source_index) {
+            const auto& source = sources[source_index];
             const auto& cmd = source.command;
             if (!cmd.getPipeline()) {
+                continue;
+            }
+            if (cascade_mask != 0 && (source.cascade_mask & cascade_mask) == 0) {
                 continue;
             }
 
