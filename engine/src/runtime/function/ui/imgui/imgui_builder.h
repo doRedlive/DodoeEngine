@@ -58,7 +58,9 @@ namespace dodoe {
         static void SerializeImGuiDrawData(const ImDrawData* draw_data, ImGuiRenderPacket& out_packet);
 
         static ImGuiContext* GetContext() { return s_context; }
-        static const ImGuiRenderPacket& GetRenderPacket() { return s_packet; }
+        static const ImGuiRenderPacket& GetRenderPacket() { return s_active_packet ? *s_active_packet : s_empty_packet; }
+        static void SetActiveRenderPacket(const ImGuiRenderPacket* packet) { s_active_packet = packet; }
+        static ImGuiRenderPacket TakeRenderPacket() { return std::move(s_packet); }
         static Bool GetViewportsEnabled() { return s_viewports_enabled; }
         static DynamicArray<ImGuiViewportPacket> TakeViewportPackets();
 
@@ -66,6 +68,8 @@ namespace dodoe {
         static inline Bool s_glfwBackendInit = false;
         static inline ImGuiContext* s_context = nullptr;
         static inline ImGuiRenderPacket s_packet{};
+        static inline const ImGuiRenderPacket* s_active_packet = nullptr;
+        static inline ImGuiRenderPacket s_empty_packet{};
         static inline Bool s_viewports_enabled = false;
         static inline Scope<ImGuiDrawRenderer> s_viewport_renderer{nullptr};
         static inline DynamicArray<ImGuiViewportPacket> s_viewport_packets{};

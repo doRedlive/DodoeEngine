@@ -38,17 +38,15 @@ namespace dodoe {
         DO_INFO("Stopped.");
     }
 
-    void RenderThread::submitAndWait() {
-        DO_PROFILE_SCOPE_CATEGORY("RenderThread::submitAndWait", "frame");
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_has_pending_frame = true;
-            m_frame_completed = false;
-        }
-        m_cv.notify_all();
-
+    void RenderThread::submitFrame() {
+        DO_PROFILE_SCOPE_CATEGORY("RenderThread::submitFrame", "frame");
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return m_frame_completed; });
+        m_cv.wait(lock, [this] { return !m_running || m_in_flight_frames < kMaxFramesInFlight; });
+        if (!m_running) return;
+        ++m_pending_frames;
+        ++m_in_flight_frames;
+        lock.unlock();
+        m_cv.notify_all();
     }
 
     void RenderThread::executeFrameOnce() {
@@ -70,15 +68,15 @@ namespace dodoe {
 
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait(lock, [this] { return m_has_pending_frame || !m_running; });
-                if (!m_running && !m_has_pending_frame) {
+                m_cv.wait(lock, [this] { return m_pending_frames > 0 || !m_running; });
+                if (!m_running && m_pending_frames == 0) {
                     if (m_shutdown_task) {
                         m_shutdown_task();
                     }
                     Memory::ShutdownThread();
                     break;
                 }
-                m_has_pending_frame = false;
+                --m_pending_frames;
             }
 
             if (m_frame_task) {
@@ -88,7 +86,7 @@ namespace dodoe {
 
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
-                m_frame_completed = true;
+                --m_in_flight_frames;
             }
             m_cv.notify_all();
         }

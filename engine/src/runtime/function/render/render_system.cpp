@@ -68,8 +68,15 @@ namespace dodoe {
         }
         (void)acquireApplicationGraphicsContext();
         DO_PROFILE_MARK("RenderSystem::shutdown.releaseQueues", "shutdown");
-        m_resource_command_queue.close();
-        m_scene_command_queue.close();
+        RenderFramePacket leftover_packet;
+        while (m_frame_packet_queue.tryPop(leftover_packet)) {
+        }
+        m_frame_packet_queue.close();
+        {
+            std::lock_guard<std::mutex> lock(m_record_mutex);
+            m_recording_packet.resource_commands.clear();
+            m_recording_packet.scene_commands.clear();
+        }
         m_gfx->waitForIdle();
         RenderPipeline::Destroy(m_render_pipeline);
         RenderFrameScheduler::Destroy(m_frame_scheduler);
@@ -90,31 +97,13 @@ namespace dodoe {
     }
 
     void RenderSystem::enqueueResourceCommand(ResourceCommand&& cmd) {
-        {
-            std::lock_guard<std::mutex> lock(m_pending_mutex);
-            if (!m_pending_resource_commands.empty()) {
-                m_pending_resource_commands.push_back(std::move(cmd));
-                return;
-            }
-        }
-        if (!m_resource_command_queue.tryPush(std::move(cmd))) {
-            std::lock_guard<std::mutex> lock(m_pending_mutex);
-            m_pending_resource_commands.push_back(std::move(cmd));
-        }
+        std::lock_guard<std::mutex> lock(m_record_mutex);
+        m_recording_packet.resource_commands.push_back(std::move(cmd));
     }
 
     void RenderSystem::enqueueSceneCommand(SceneCommand&& cmd) {
-        {
-            std::lock_guard<std::mutex> lock(m_pending_mutex);
-            if (!m_pending_scene_commands.empty()) {
-                m_pending_scene_commands.push_back(std::move(cmd));
-                return;
-            }
-        }
-        if (!m_scene_command_queue.tryPush(std::move(cmd))) {
-            std::lock_guard<std::mutex> lock(m_pending_mutex);
-            m_pending_scene_commands.push_back(std::move(cmd));
-        }
+        std::lock_guard<std::mutex> lock(m_record_mutex);
+        m_recording_packet.scene_commands.push_back(std::move(cmd));
     }
 
     Bool RenderSystem::acquireApplicationGraphicsContext() {
@@ -139,10 +128,49 @@ namespace dodoe {
             ImGuiBuilder::RenderPlatformWindows();
         }
 #endif//DODOE_DEBUG_ENABLED
+
+        FrameCommand frame_command{};
+        if (auto window = m_window_manager->getWindow()) {
+            frame_command.window_size = Vector2i(window->getWidth(), window->getHeight());
+            frame_command.pixel_size = window->getPixelSize();
+        }
+        if (auto* time_sys = GetTimeSystem()) {
+            frame_command.frame_time = time_sys->getCurrentTime();
+            frame_command.frame_delta = time_sys->getDeltaTime();
+        }
+        for (auto& target : m_view_manager->getTargets()) {
+            auto* cam = target->getCamera();
+            FrameCommandTargetView entry{};
+            entry.target = target.get();
+            entry.view = cam ? cam->getView() : Matrix4f(1.0f);
+            entry.proj = cam ? cam->getProj() : Matrix4f(1.0f);
+#ifdef DODOE_EDITOR_ENABLED
+            entry.show_editor = cam && cam->isEditorCamera();
+#endif//DODOE_EDITOR_ENABLED
+            frame_command.targets.push_back(std::move(entry));
+        }
+
+        RenderFramePacket packet{};
+        packet.frame = std::move(frame_command);
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        if (!RenderSettings::IsEnableBaselineRender()) {
+            packet.imgui = ImGuiBuilder::TakeRenderPacket();
+            packet.viewport_packets = ImGuiBuilder::TakeViewportPackets();
+        }
+#endif
+        {
+            std::lock_guard<std::mutex> lock(m_record_mutex);
+            packet.resource_commands = std::move(m_recording_packet.resource_commands);
+            packet.scene_commands = std::move(m_recording_packet.scene_commands);
+            m_recording_packet.resource_commands.clear();
+            m_recording_packet.scene_commands.clear();
+        }
+        m_frame_packet_queue.push(std::move(packet));
+
         if (RenderSettings::IsSingleThread()) {
             m_render_thread->executeFrameOnce();
         } else {
-            m_render_thread->submitAndWait();
+            m_render_thread->submitFrame();
         }
     }
 
@@ -186,20 +214,29 @@ namespace dodoe {
         Memory::ResetFrame();
         RenderFrameCounters::Self().reset();
 
+        RenderFramePacket packet;
+        if (!m_frame_packet_queue.tryPop(packet)) {
+            packet.frame = m_last_frame_command;
+        } else {
+            m_last_frame_command = packet.frame;
+        }
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        ImGuiBuilder::SetActiveRenderPacket(&packet.imgui);
+#endif
+
         auto* gfx = m_gfx.get();
         auto* pipeline = m_render_pipeline.get();
-        auto* view_mgr = m_view_manager.get();
 
-        auto window = m_window_manager->getWindow();
-        Vector2i cur_window(window->getWidth(), window->getHeight());
-        Vector2i cur_pixel  = window->getPixelSize();
+        Vector2i cur_window = packet.frame.window_size;
+        Vector2i cur_pixel  = packet.frame.pixel_size;
 
         if (cur_pixel.x <= 0 || cur_pixel.y <= 0) {
             return;
         }
 
         Bool any_window_dirty = false;
-        for (auto& target : view_mgr->getTargets()) {
+        for (auto& entry : packet.frame.targets) {
+            auto* target = entry.target;
             const auto& vp = target->getViewport();
             if (vp.getWindowSize().x != cur_window.x || vp.getWindowSize().y != cur_window.y ||
                 vp.getPixelSize().x != cur_pixel.x || vp.getPixelSize().y != cur_pixel.y) {
@@ -221,33 +258,15 @@ namespace dodoe {
             m_gfx->clearGarbage();
         }
 
-        for (auto& target : view_mgr->getTargets()) {
-            target->clearGeometryDirty();
+        for (auto& entry : packet.frame.targets) {
+            entry.target->clearGeometryDirty();
         }
 
         auto* scene = m_render_scene.get();
 
         {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::realizeResourceCommands", "render-command");
-            ResourceCommand res_cmd;
-            while (m_resource_command_queue.tryPop(res_cmd)) {
-                realizeResourceCommand(res_cmd);
-            }
-
-            DynamicArray<ResourceCommand> res_batch;
-            {
-                std::lock_guard<std::mutex> lock(m_pending_mutex);
-                auto& pending = m_pending_resource_commands;
-                if (!pending.empty()) {
-                    const Size_t count = pending.size() < kPendingCommandsPerFrame ? pending.size() : kPendingCommandsPerFrame;
-                    res_batch.reserve(count);
-                    for (Size_t i = 0; i < count; ++i) {
-                        res_batch.push_back(std::move(pending[i]));
-                    }
-                    pending.erase(pending.begin(), pending.begin() + static_cast<std::ptrdiff_t>(count));
-                }
-            }
-            for (auto& cmd : res_batch) {
+            for (auto& cmd : packet.resource_commands) {
                 realizeResourceCommand(cmd);
             }
         }
@@ -266,25 +285,7 @@ namespace dodoe {
 
         {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::applySceneCommands", "render-command");
-            SceneCommand scene_cmd;
-            while (m_scene_command_queue.tryPop(scene_cmd)) {
-                applySceneCommand(*scene, scene_cmd);
-            }
-
-            DynamicArray<SceneCommand> scene_batch;
-            {
-                std::lock_guard<std::mutex> lock(m_pending_mutex);
-                auto& pending = m_pending_scene_commands;
-                if (!pending.empty()) {
-                    const Size_t count = pending.size() < kPendingCommandsPerFrame ? pending.size() : kPendingCommandsPerFrame;
-                    scene_batch.reserve(count);
-                    for (Size_t i = 0; i < count; ++i) {
-                        scene_batch.push_back(std::move(pending[i]));
-                    }
-                    pending.erase(pending.begin(), pending.begin() + static_cast<std::ptrdiff_t>(count));
-                }
-            }
-            for (auto& cmd : scene_batch) {
+            for (auto& cmd : packet.scene_commands) {
                 applySceneCommand(*scene, cmd);
             }
         }
@@ -302,9 +303,8 @@ namespace dodoe {
         m_shared_render_service->processDeferredDeletions(frame_ctx.frame_number);
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
 
-        auto* time_sys = GetTimeSystem();
-        const Float frame_time = time_sys->getCurrentTime();
-        const Float frame_delta = time_sys->getDeltaTime();
+        const Float frame_time = packet.frame.frame_time;
+        const Float frame_delta = packet.frame.frame_delta;
 
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
         if (RenderSettings::IsEnableBaselineRender() && RenderSettings::IsGpuDrivenSupported()) {
@@ -331,25 +331,18 @@ namespace dodoe {
                     static_cast<bool>(m_baseline_renderer_hook));
             }
             if (m_baseline_renderer_hook) {
-                for (auto& target : view_mgr->getTargets()) {
-                    auto* cam = target->getCamera();
-                    Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
-                    Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
-                    auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, false);
+                for (auto& entry : packet.frame.targets) {
+                    auto* target = entry.target;
+                    auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, false);
                     family.buildVisiblePrimitives(*scene);
                     m_baseline_renderer_hook(*gfx, frame_ctx.swapchain_image_index, family, *scene);
                 }
             }
         } else {
-            for (auto& target : view_mgr->getTargets()) {
-                auto* cam = target->getCamera();
-                Matrix4f view = cam ? cam->getView() : Matrix4f(1.0f);
-                Matrix4f proj = cam ? cam->getProj() : Matrix4f(1.0f);
-                Bool show_editor = false;
-#ifdef DODOE_EDITOR_ENABLED
-                show_editor = cam && cam->isEditorCamera();
-#endif//DODOE_EDITOR_ENABLED
-                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, view, proj, show_editor);
+            for (auto& entry : packet.frame.targets) {
+                auto* target = entry.target;
+                Bool show_editor = entry.show_editor;
+                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, show_editor);
                 pipeline->render(
                     family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
                     frame_ctx.staging, frame_ctx.transient_resource_pool);
@@ -391,7 +384,7 @@ namespace dodoe {
 
 #ifdef DODOE_DEBUG_ENABLED
         if (!RenderSettings::IsEnableBaselineRender()) {
-            for (auto& entry : ImGuiBuilder::TakeViewportPackets()) {
+            for (auto& entry : packet.viewport_packets) {
                 ImGuiViewportRenderer::RenderWindowOnRenderThread(entry.viewport, entry.packet);
             }
             m_gfx->acquireOpenGLContext();

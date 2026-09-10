@@ -13,11 +13,12 @@ namespace dodoe {
     using RenderFrameTask = std::function<void()>;
 
     class RenderThread {
+        static constexpr Size_t kMaxFramesInFlight = 2;
         RenderFrameTask m_frame_task;
         RenderFrameTask m_shutdown_task;
         std::thread m_thread{};
-        Bool m_has_pending_frame{false};
-        Bool m_frame_completed{true};
+        Size_t m_pending_frames{0};
+        Size_t m_in_flight_frames{0};
         Bool m_running{false};
         std::mutex m_mutex{};
         std::condition_variable m_cv{};
@@ -31,7 +32,7 @@ namespace dodoe {
 
         void start(Bool spawn_thread);
         void stop();
-        void submitAndWait();
+        void submitFrame();
         void executeFrameOnce();
 
     private:

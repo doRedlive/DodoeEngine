@@ -14,8 +14,12 @@
 #include "render_scene/render_scene.h"
 
 #include "runtime/function/window/window_manager.h"
-#include "runtime/core/container/mpmc_queue.h"
+#include "runtime/core/container/spsc_queue.h"
 #include "runtime/core/thread/render_thread.h"
+
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+#include "runtime/function/ui/imgui/imgui_builder.h"
+#endif
 
 #include <mutex>
 
@@ -27,9 +31,33 @@ namespace dodoe {
         WindowManager* window_manager;
     };
 
+    struct FrameCommandTargetView {
+        RenderViewTarget* target{nullptr};
+        Matrix4f view{1.0f};
+        Matrix4f proj{1.0f};
+        Bool show_editor{false};
+    };
+
+    struct FrameCommand {
+        Float frame_time{0.0f};
+        Float frame_delta{0.0f};
+        Vector2i window_size{1, 1};
+        Vector2i pixel_size{1, 1};
+        DynamicArray<FrameCommandTargetView> targets{};
+    };
+
+    struct RenderFramePacket {
+        FrameCommand frame{};
+        DynamicArray<ResourceCommand> resource_commands{};
+        DynamicArray<SceneCommand> scene_commands{};
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        ImGuiRenderPacket imgui{};
+        DynamicArray<ImGuiViewportPacket> viewport_packets{};
+#endif
+    };
+
     class RenderSystem : public Managed<RenderSystem, RenderSystemCreateInfo> {
-        static constexpr Size_t kGameCommandQueueCapacity = 256;
-        static constexpr Size_t kPendingCommandsPerFrame = 256;
+        static constexpr Size_t kFramePacketQueueCapacity = 4;
 
         Scope<GfxContext> m_gfx{nullptr};
         Scope<RenderFrameScheduler> m_frame_scheduler{nullptr};
@@ -44,12 +72,10 @@ namespace dodoe {
 
         std::function<void(GfxContext&, UInt32, RenderViewFamily&, RenderScene&)> m_baseline_renderer_hook{nullptr};
 
-        MpmcQueue<ResourceCommand, kGameCommandQueueCapacity> m_resource_command_queue;
-        MpmcQueue<SceneCommand, kGameCommandQueueCapacity> m_scene_command_queue;
-
-        std::mutex m_pending_mutex{};
-        DynamicArray<ResourceCommand> m_pending_resource_commands{};
-        DynamicArray<SceneCommand> m_pending_scene_commands{};
+        SpscQueue<RenderFramePacket, kFramePacketQueueCapacity> m_frame_packet_queue;
+        RenderFramePacket m_recording_packet{};
+        std::mutex m_record_mutex{};
+        FrameCommand m_last_frame_command{};
 
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:
