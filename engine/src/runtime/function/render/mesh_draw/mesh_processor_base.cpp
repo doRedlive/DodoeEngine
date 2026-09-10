@@ -141,24 +141,24 @@ namespace dodoe {
 
                 Bool batch_visible = true;
                 if (context.cascade_culling && context.cascade_culling->count > 0) {
-                    if (batch.usesCustomBounds()) {
-                        batch_visible = false;
-                        const Vector3f local_center =
-                            (batch.getBoundsMin() + batch.getBoundsMax()) * 0.5f;
-                        const Vector3f local_extents =
-                            (batch.getBoundsMax() - batch.getBoundsMin()) * 0.5f;
-                        const Matrix4f& world_transform = primitive->getWorldTransform();
-                        const Vector3f world_center =
-                            Vector3f(world_transform * Vector4f(local_center, 1.0f));
-                        const Matrix3f linear = Matrix3f(world_transform);
-                        const Matrix3f abs_linear(Math::Abs(linear[0]), Math::Abs(linear[1]), Math::Abs(linear[2]));
-                        const Vector3f world_extents = abs_linear * local_extents;
-                        for (UInt32 cascade = 0; cascade < context.cascade_culling->count; ++cascade) {
-                            if (IntersectsFrustum(context.cascade_culling->planes[cascade],
-                                                  world_center, world_extents)) {
-                                batch_visible = true;
-                                break;
-                            }
+                    const Vector3f local_center = batch.usesCustomBounds()
+                        ? (batch.getBoundsMin() + batch.getBoundsMax()) * 0.5f
+                        : (primitive->getBoundsMin() + primitive->getBoundsMax()) * 0.5f;
+                    const Vector3f local_extents = batch.usesCustomBounds()
+                        ? (batch.getBoundsMax() - batch.getBoundsMin()) * 0.5f
+                        : (primitive->getBoundsMax() - primitive->getBoundsMin()) * 0.5f;
+                    const Matrix4f& world_transform = primitive->getWorldTransform();
+                    const Vector3f world_center =
+                        Vector3f(world_transform * Vector4f(local_center, 1.0f));
+                    const Matrix3f linear = Matrix3f(world_transform);
+                    const Matrix3f abs_linear(Math::Abs(linear[0]), Math::Abs(linear[1]), Math::Abs(linear[2]));
+                    const Vector3f world_extents = abs_linear * local_extents;
+                    batch_visible = false;
+                    for (UInt32 cascade = 0; cascade < context.cascade_culling->count; ++cascade) {
+                        if (IntersectsFrustum(context.cascade_culling->planes[cascade],
+                                              world_center, world_extents)) {
+                            batch_visible = true;
+                            break;
                         }
                     }
                 } else {

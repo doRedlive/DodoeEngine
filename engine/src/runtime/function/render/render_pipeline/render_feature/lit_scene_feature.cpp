@@ -140,7 +140,7 @@ namespace dodoe {
             }
             ext.buildMeshPassPrimitiveIndices();
         }
-        ShadowSystem::setupView(scene, view_family);
+        ShadowSystem::SetupView(scene, view_family);
     }
 
     void LitSceneFeature::buildMeshDrawCommands(RenderViewFamily& view_family,

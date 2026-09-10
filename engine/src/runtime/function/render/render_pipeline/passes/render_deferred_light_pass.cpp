@@ -13,6 +13,7 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_view/shadow_view_extension.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
@@ -117,6 +118,14 @@ namespace dodoe {
                                              const RenderGraphPassContext& ctx,
                                              DrawCommandList& command_list) {
                 const auto& light_infos = ctx.getScene()->getLightSceneInfos();
+                RenderId shadow_directional_id{};
+                for (const auto& light_info : light_infos) {
+                    if (light_info.getLightType() == LightType::Directional &&
+                        light_info.isEnabled() && light_info.castsShadow()) {
+                        shadow_directional_id = light_info.getId();
+                        break;
+                    }
+                }
 
                 auto* staging = ctx.getFrameStagingAllocator();
                 if (!staging) {
@@ -258,11 +267,13 @@ namespace dodoe {
                         push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
                         push.camera_direction = Vector4f(
                             rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
-                        const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
-                        if (mesh_ext) {
-                            push.cascade_view_projections = mesh_ext->directional_shadow_view_projections;
-                            push.cascade_split_depths = mesh_ext->directional_shadow_split_depths;
-                            push.shadow_params = mesh_ext->directional_shadow_params;
+                        if (light_info.getId() == shadow_directional_id) {
+                            const auto* shadow_ext = ctx.getView()->getExtension<ShadowViewExtension>();
+                            if (shadow_ext && shadow_ext->getData().has_shadow) {
+                                push.cascade_view_projections = shadow_ext->getData().cascade_view_projections;
+                                push.cascade_split_depths = shadow_ext->getData().cascade_split_depths;
+                                push.shadow_params = shadow_ext->getData().shadow_params;
+                            }
                         }
                         break;
                     }

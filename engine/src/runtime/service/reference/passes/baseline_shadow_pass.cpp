@@ -202,7 +202,7 @@ namespace dodoe {
             return result;
         }
 
-        const ShadowFrameData shadow_data = ShadowSystem::buildFrameData(view, scene);
+        const ShadowViewData shadow_data = ShadowSystem::BuildFrameData(view, scene);
         if (!shadow_data.has_shadow) {
             return result;
         }
@@ -258,7 +258,7 @@ namespace dodoe {
             const auto cascade_viewport = GfxViewportState().addViewportAndScissorRect(
                 GfxViewport(x0, x0 + quad_size, y0, y0 + quad_size, 0.0f, 1.0f));
             const ViewMeshShaderData view_data{
-                Math::FlipClipSpaceY(result.cascade_view_projections[cascade])};
+                result.cascade_view_projections[cascade]};
             m_command_list->writeBuffer(m_view_cb.Get(), &view_data, sizeof(view_data));
 
             for (const UInt32 primitive_index : primitive_indices) {

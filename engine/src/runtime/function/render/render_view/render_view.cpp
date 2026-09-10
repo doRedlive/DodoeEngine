@@ -68,6 +68,13 @@ namespace dodoe {
         m_view_matrix = view_matrix;
         m_projection_matrix = projection_matrix;
         m_view_projection_matrix = projection_matrix * view_matrix;
+        m_unjittered_view_projection = m_view_projection_matrix;
+        m_jitter_ndc = Vector2f(0.0f, 0.0f);
+    }
+
+    void RenderView::setJitterData(const Vector2f& jitter_ndc, const Matrix4f& unjittered_view_projection) {
+        m_jitter_ndc = jitter_ndc;
+        m_unjittered_view_projection = unjittered_view_projection;
     }
 
     void RenderView::buildFromViewInfo(const ViewInfo& info) {

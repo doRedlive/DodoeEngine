@@ -9,6 +9,7 @@
 
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_view/shadow_view_extension.h"
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 
 #include "runtime/function/render/mesh_draw/shadow_mesh_processor.h"
@@ -61,9 +62,9 @@ namespace dodoe {
                 parameters.shadow_map = pass_builder.writeDepth(pass_builder.importTexture(
                     parameters.shadow_rt->getDepthTexture(), "ShadowMap"), depth_attach);
 
-                const auto* mesh_ext = view->getExtension<MeshViewExtension>();
-                const Size_t caster_instance_count = mesh_ext
-                    ? mesh_ext->shadow_caster_instance_data.size() : 0;
+                const auto* shadow_ext = view->getExtension<ShadowViewExtension>();
+                const Size_t caster_instance_count = shadow_ext
+                    ? shadow_ext->getData().shadow_caster_instance_data.size() : 0;
 
                 RenderGraphBufferDesc caster_instance_desc{};
                 caster_instance_desc.desc = GfxBufferDesc()
@@ -80,8 +81,9 @@ namespace dodoe {
             [this, processor = m_mesh_processor](const ShadowPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 DO_ASSERT(ctx.getView() != nullptr, "ShadowPass view is null");
 
+                const auto* shadow_ext = ctx.getView()->getExtension<ShadowViewExtension>();
+                if (!shadow_ext || !shadow_ext->getData().has_shadow) return;
                 const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>();
-                if (!mesh_ext) return;
 
                 const auto shadow_width = parameters.shadow_rt->getWidth();
                 const auto shadow_height = parameters.shadow_rt->getHeight();
@@ -90,19 +92,25 @@ namespace dodoe {
                 command_list.setBufferState(resolved_instances, GfxResourceStates::CopyDest);
                 command_list.commitBarriers();
                 command_list.writeBuffer(resolved_instances,
-                    mesh_ext->shadow_caster_instance_data.data(),
-                    mesh_ext->shadow_caster_instance_data.size() * sizeof(InstanceSceneData));
+                    shadow_ext->getData().shadow_caster_instance_data.data(),
+                    shadow_ext->getData().shadow_caster_instance_data.size() * sizeof(InstanceSceneData));
                 command_list.setBufferState(resolved_instances, GfxResourceStates::VertexBuffer);
 
-                const auto global_data = GlobalMeshShaderData{mesh_ext->frame_time_data};
+                const auto global_data = GlobalMeshShaderData{
+                    mesh_ext ? mesh_ext->frame_time_data : Vector4f(0.0f)};
                 command_list.writeBuffer(processor->getGlobalConstantBuffer(), &global_data, sizeof(global_data));
                 const auto fb = ctx.getFramebuffer();
                 auto* feature = static_cast<ShadowSceneFeature*>(m_owning_feature);
-                const auto& draw_list = feature->getShadowDrawLists()[ctx.getViewIndex()];
+                const auto& draw_lists = feature->getShadowDrawLists();
+                if (ctx.getViewIndex() >= draw_lists.size()) {
+                    DO_ERROR("ShadowPass draw list is missing for view {}", ctx.getViewIndex());
+                    return;
+                }
+                const auto& draw_list = draw_lists[ctx.getViewIndex()];
 
                 for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
-                    const ViewMeshShaderData view_data{Math::FlipClipSpaceY(
-                        mesh_ext->directional_shadow_view_projections[cascade])};
+                    const ViewMeshShaderData view_data{
+                        shadow_ext->getData().cascade_view_projections[cascade]};
                     command_list.writeBuffer(processor->getViewConstantBuffer(), &view_data, sizeof(view_data));
 
                     const auto viewport_state = MakeCascadeViewport(

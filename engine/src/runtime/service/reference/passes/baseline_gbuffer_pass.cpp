@@ -296,7 +296,8 @@ namespace dodoe {
         const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
         m_command_list->writeBuffer(m_global_cb.Get(), &global_data, sizeof(global_data));
         const auto* taa_extension = view.getExtension<TaaViewExtension>();
-        const Vector2f current_jitter_uv = taa_extension
+        const Bool taa_unjittered_valid = taa_extension && taa_extension->unjittered_valid;
+        const Vector2f current_jitter_uv = taa_unjittered_valid
             ? Vector2f(taa_extension->jitter_ndc.x * 0.5f, taa_extension->jitter_ndc.y * 0.5f)
             : Vector2f(0.0f, 0.0f);
         ViewMeshShaderData view_data{};
@@ -417,7 +418,7 @@ namespace dodoe {
             }
         }
 
-        if (taa_extension) {
+        if (taa_unjittered_valid) {
             m_prev_unjittered_view_projection = taa_extension->unjittered_view_projection;
         } else {
             m_prev_unjittered_view_projection = view.getViewProjectionMatrix();

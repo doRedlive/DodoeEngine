@@ -169,10 +169,12 @@ namespace dodoe {
 
         auto& view = family.createView(MakeIdentifier("main_view"));
         view.setMatrices(view_mat, jittered_proj);
+        view.setJitterData(jitter_ndc, proj_mat * view_mat);
 
         auto& taa_extension = view.getOrCreateExtension<TaaViewExtension>();
         taa_extension.jitter_ndc = jitter_ndc;
         taa_extension.unjittered_view_projection = proj_mat * view_mat;
+        taa_extension.unjittered_valid = true;
 
         view.setViewportRect(Vector4i(
             static_cast<int>(m_viewport.pos.x),

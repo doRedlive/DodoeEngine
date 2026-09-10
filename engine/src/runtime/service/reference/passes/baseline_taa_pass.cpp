@@ -247,13 +247,14 @@ namespace dodoe {
         }
 
         const auto* taa_extension = view.getExtension<TaaViewExtension>();
+        const Bool taa_unjittered_valid = taa_extension && taa_extension->unjittered_valid;
         TaaConstantsData cb_data{};
         cb_data.prev_view_projection = Math::FlipClipSpaceY(m_prev_unjittered_view_projection);
-        cb_data.current_view_projection = taa_extension
+        cb_data.current_view_projection = taa_unjittered_valid
             ? Math::FlipClipSpaceY(taa_extension->unjittered_view_projection)
             : Math::FlipClipSpaceY(view.getViewProjectionMatrix());
         Vector2f current_jitter_uv{0.0f, 0.0f};
-        if (taa_extension) {
+        if (taa_unjittered_valid) {
             current_jitter_uv = Vector2f(
                 taa_extension->jitter_ndc.x * 0.5f,
                 taa_extension->jitter_ndc.y * 0.5f);
@@ -275,7 +276,7 @@ namespace dodoe {
         RenderFrameCounters::Self().addDrawCall(1);
         m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
 
-        if (taa_extension) {
+        if (taa_unjittered_valid) {
             m_prev_unjittered_view_projection = taa_extension->unjittered_view_projection;
         } else {
             m_prev_unjittered_view_projection = view.getViewProjectionMatrix();

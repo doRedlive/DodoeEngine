@@ -70,35 +70,22 @@ float CsmPcf(vec2 atlas_origin, vec2 quadrant_uv,
             continue;
         }
         float map_depth = texture(sampler2D(u_ShadowMap, u_Sampler), atlas_origin + sample_uv * 0.5).r;
-        sum += (z_receiver <= map_depth) ? 1.0 : shadow_intensity;
+        // A zero depth is treated as invalid rather than an occluder. This
+        // protects against untouched/invalid atlas tiles appearing as a
+        // solid black cascade.
+        bool invalid_depth = map_depth <= 1e-5 || map_depth >= 0.99999;
+        sum += (invalid_depth || z_receiver <= map_depth) ? 1.0 : shadow_intensity;
     }
     return sum / 16.0;
 }
 
-float CsmComputeDirectionalShadow(float atlas_texel,
-                                  vec3 world_position,
-                                  vec3 normal,
-                                  vec3 dir_to_light,
-                                  vec3 camera_position,
-                                  vec3 camera_forward,
-                                  mat4 cascade_view_projections[4],
-                                  vec4 cascade_splits,
-                                  vec4 shadow_params) {
-    float view_depth = dot(world_position - camera_position, camera_forward);
-    if (view_depth < 0.0 || view_depth >= cascade_splits.w) {
-        return 1.0;
-    }
-
-    int cascade = 3;
-    if (view_depth < cascade_splits.x) {
-        cascade = 0;
-    } else if (view_depth < cascade_splits.y) {
-        cascade = 1;
-    } else if (view_depth < cascade_splits.z) {
-        cascade = 2;
-    }
-
-    mat4 cascade_vp = cascade_view_projections[cascade];
+float CsmSampleCascade(float atlas_texel,
+                       vec3 world_position,
+                       vec3 normal,
+                       vec3 dir_to_light,
+                       mat4 cascade_vp,
+                       int cascade,
+                       vec4 shadow_params) {
     float ortho_width = 2.0 / max(abs(cascade_vp[0][0]), 1e-8);
     float uv_per_world = 1.0 / max(ortho_width, 1e-8);
     float world_texel = ortho_width * atlas_texel;
@@ -125,21 +112,58 @@ float CsmComputeDirectionalShadow(float atlas_texel,
     float bias = world_texel * 1.5 * slope_scale * ndc_per_world;
     float z_receiver = light_ndc.z - bias;
 
-    float light_size = shadow_params.w > 0.0 ? shadow_params.w : 2.0;
-    float search_radius = clamp(light_size * uv_per_world, atlas_texel, atlas_texel * 32.0);
-
     vec2 atlas_origin = CsmCascadeAtlasOrigin(cascade);
-    float avg_blocker_depth = CsmFindBlocker(atlas_origin, quadrant_uv,
-                                             z_receiver, search_radius);
-    if (avg_blocker_depth < 0.0) {
+    // Use a bounded PCF radius for the base CSM path. The previous blocker
+    // search could classify an entire atlas quadrant as blocked when the
+    // receiver and caster depth ranges diverged, producing a solid black
+    // square. Keep the filter in texel units and let the bias handle acne.
+    float filter_radius = clamp(
+        (shadow_params.w > 0.0 ? shadow_params.w : 1.5) * atlas_texel,
+        atlas_texel, atlas_texel * 4.0);
+    float shadow = CsmPcf(atlas_origin, quadrant_uv, z_receiver,
+                          filter_radius, shadow_params.y);
+    return clamp(shadow, shadow_params.y, 1.0);
+}
+
+float CsmComputeDirectionalShadow(float atlas_texel,
+                                  vec3 world_position,
+                                  vec3 normal,
+                                  vec3 dir_to_light,
+                                  vec3 camera_position,
+                                  vec3 camera_forward,
+                                  mat4 cascade_view_projections[4],
+                                  vec4 cascade_splits,
+                                  vec4 shadow_params) {
+    float view_depth = dot(world_position - camera_position, camera_forward);
+    if (view_depth < 0.0 || view_depth >= cascade_splits.w) {
         return 1.0;
     }
 
-    float depth_diff_ndc = max(z_receiver - avg_blocker_depth, 0.0);
-    float penumbra_world = light_size * depth_diff_ndc / max(avg_blocker_depth, 1e-4);
-    float filter_radius = clamp(penumbra_world * uv_per_world, atlas_texel, atlas_texel * 8.0);
+    int cascade = 3;
+    if (view_depth < cascade_splits.x) {
+        cascade = 0;
+    } else if (view_depth < cascade_splits.y) {
+        cascade = 1;
+    } else if (view_depth < cascade_splits.z) {
+        cascade = 2;
+    }
 
-    return CsmPcf(atlas_origin, quadrant_uv, z_receiver, filter_radius, shadow_params.y);
+    float shadow = CsmSampleCascade(atlas_texel, world_position, normal, dir_to_light,
+                                    cascade_view_projections[cascade], cascade, shadow_params);
+    if (cascade < 3) {
+        float split = cascade_splits[cascade];
+        float previous_split = cascade == 0 ? 0.0 : cascade_splits[cascade - 1];
+        float blend_width = max((split - previous_split) * 0.1, 1.0);
+        float blend_start = split - blend_width;
+        if (view_depth > blend_start) {
+            float next_shadow = CsmSampleCascade(atlas_texel, world_position, normal, dir_to_light,
+                                                 cascade_view_projections[cascade + 1],
+                                                 cascade + 1, shadow_params);
+            float blend = clamp((view_depth - blend_start) / blend_width, 0.0, 1.0);
+            shadow = mix(shadow, next_shadow, blend);
+        }
+    }
+    return shadow;
 }
 
 #endif

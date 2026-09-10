@@ -17,6 +17,7 @@
 #include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_view/shadow_view_extension.h"
 #include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_processor_base.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_list.h"
@@ -107,9 +108,12 @@ namespace dodoe {
                 BuildLitPassConstantBuffer(pass_cb, *ctx.getScene(), camera_position);
                 pass_cb.camera_direction = Vector4f(
                     rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
-                pass_cb.dir_cascade_view_projections = mesh_ext->directional_shadow_view_projections;
-                pass_cb.dir_cascade_split_depths = mesh_ext->directional_shadow_split_depths;
-                pass_cb.shadow_params = mesh_ext->directional_shadow_params;
+                if (const auto* shadow_ext = ctx.getView()->getExtension<ShadowViewExtension>();
+                    shadow_ext && shadow_ext->getData().has_shadow) {
+                    pass_cb.dir_cascade_view_projections = shadow_ext->getData().cascade_view_projections;
+                    pass_cb.dir_cascade_split_depths = shadow_ext->getData().cascade_split_depths;
+                    pass_cb.shadow_params = shadow_ext->getData().shadow_params;
+                }
 
                 auto* staging = ctx.getFrameStagingAllocator();
                 if (!staging) {

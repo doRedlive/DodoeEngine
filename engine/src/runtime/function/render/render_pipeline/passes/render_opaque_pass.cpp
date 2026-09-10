@@ -18,6 +18,7 @@
 #include "runtime/function/render/render_pipeline/render_feature/lit_scene_feature.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_view/shadow_view_extension.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
 #include "runtime/function/render/mesh_draw/mesh_processor_base.h"
@@ -40,18 +41,32 @@ namespace dodoe {
                                                 const Vector3f& camera_position) {
         pass_cb.camera_position = Vector4f(camera_position, 0.0f);
         UInt32 point_count = 0;
+        RenderId shadow_directional_id{};
+        for (const auto& light_info : scene.getLightSceneInfos()) {
+            if (light_info.getLightType() == LightType::Directional &&
+                light_info.isEnabled() && light_info.castsShadow()) {
+                shadow_directional_id = light_info.getId();
+                break;
+            }
+        }
+        Bool directional_written = false;
         for (const auto& light_info : scene.getLightSceneInfos()) {
             if (!light_info.isEnabled()) {
                 continue;
             }
             switch (light_info.getLightType()) {
             case LightType::Directional: {
+                if (directional_written ||
+                    (shadow_directional_id.isValid() && light_info.getId() != shadow_directional_id)) {
+                    break;
+                }
                 const auto& data = light_info.getDirectionalLightData();
                 pass_cb.directional_color_intensity = Vector4f(data.color, data.irradiance);
                 pass_cb.directional_direction_flags = Vector4f(Math::Normalize(data.direction), 0.0f);
                 pass_cb.dir_cascade_view_projections[0] =
                     rendering_pipeline_utils::BuildDirectionalLightViewProjection(data.direction);
                 pass_cb.shadow_params = Vector4f(0.005f, 0.2f, 0.005f, 2.0f);
+                directional_written = true;
                 break;
             }
             case LightType::Point: {
@@ -239,10 +254,11 @@ namespace dodoe {
                 BuildLitPassConstantBuffer(pass_cb, *ctx.getScene(), camera_position);
                 pass_cb.camera_direction = Vector4f(
                     rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
-                if (const auto* mesh_ext = ctx.getView()->getExtension<MeshViewExtension>()) {
-                    pass_cb.dir_cascade_view_projections = mesh_ext->directional_shadow_view_projections;
-                    pass_cb.dir_cascade_split_depths = mesh_ext->directional_shadow_split_depths;
-                    pass_cb.shadow_params = mesh_ext->directional_shadow_params;
+                if (const auto* shadow_ext = ctx.getView()->getExtension<ShadowViewExtension>();
+                    shadow_ext && shadow_ext->getData().has_shadow) {
+                    pass_cb.dir_cascade_view_projections = shadow_ext->getData().cascade_view_projections;
+                    pass_cb.dir_cascade_split_depths = shadow_ext->getData().cascade_split_depths;
+                    pass_cb.shadow_params = shadow_ext->getData().shadow_params;
                 }
 
                 auto* staging = ctx.getFrameStagingAllocator();

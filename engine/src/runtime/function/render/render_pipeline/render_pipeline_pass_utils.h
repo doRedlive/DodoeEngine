@@ -66,6 +66,34 @@ namespace dodoe::rendering_pipeline_utils {
         return planes;
     }
 
+    [[nodiscard]] inline StaticArray<Vector4f, 6> ExtractViewFrustumPlanesZO(
+        const Matrix4f& view_projection) {
+        const Matrix4f transposed = Math::Transpose(view_projection);
+        StaticArray<Vector4f, 6> planes{
+            transposed[3] + transposed[0],
+            transposed[3] - transposed[0],
+            transposed[3] + transposed[1],
+            transposed[3] - transposed[1],
+            transposed[2],
+            transposed[3] - transposed[2]};
+
+        for (auto& plane : planes) {
+            const Float length = Math::Length(Vector3f(plane));
+            if (length > std::numeric_limits<Float>::epsilon()) {
+                plane /= length;
+            }
+        }
+        return planes;
+    }
+
+    [[nodiscard]] inline StaticArray<Vector4f, 6> ExpandFrustumDepthPlanes(
+        const StaticArray<Vector4f, 6>& planes, const Float distance) {
+        auto expanded = planes;
+        expanded[4].w += distance;
+        expanded[5].w += distance;
+        return expanded;
+    }
+
     [[nodiscard]] inline Bool IntersectsAABBFrustum(const StaticArray<Vector4f, 6>& frustum_planes,
                                                     const Vector3f& center, const Vector3f& extents) {
         for (const auto& plane : frustum_planes) {

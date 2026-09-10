@@ -16,6 +16,7 @@
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_view/render_view_family.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_view/shadow_view_extension.h"
 #include "runtime/function/render/render_scene/render_scene.h"
 #include "runtime/function/render/render_scene/primitive_render_object.h"
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
@@ -179,18 +180,25 @@ namespace dodoe {
 
         for (Size_t view_index = 0; view_index < view_family.getSize(); view_index++) {
             auto& view = view_family.getView(view_index);
-            auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
+            const auto* shadow_ext = view.getExtension<ShadowViewExtension>();
+
+            if (!shadow_ext || !shadow_ext->getData().has_shadow) {
+                command_storage->beginView(view_index);
+                continue;
+            }
 
             MeshPassCascadeCullingData cascade_culling{};
             cascade_culling.count = kShadowCascadeCount;
             for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
-                cascade_culling.planes[cascade] = rendering_pipeline_utils::ExtractViewFrustumPlanes(
-                    mesh_ext.directional_shadow_view_projections[cascade]);
+                const auto receiver_planes = rendering_pipeline_utils::ExtractViewFrustumPlanesZO(
+                    shadow_ext->getData().cascade_view_projections[cascade]);
+                cascade_culling.planes[cascade] = rendering_pipeline_utils::ExpandFrustumDepthPlanes(
+                    receiver_planes, kShadowCasterExtrusion);
             }
 
             auto& shadow_list = command_storage->beginView(view_index);
 
-            const auto& primitive_indices = mesh_ext.shadow_caster_primitive_indices;
+            const auto& primitive_indices = shadow_ext->getData().shadow_caster_primitive_indices;
             const Size_t chunk_size = 64;
             const Size_t chunk_count = (primitive_indices.size() + chunk_size - 1) / chunk_size;
             if (thread_pool && chunk_count > 1) {
@@ -203,21 +211,21 @@ namespace dodoe {
                         primitive_indices.begin() + begin, primitive_indices.begin() + end);
                     auto& local = local_storages[chunk_index];
                     const MeshPassCommandBuildContext context{
-                        mesh_ext.shadow_casters, mesh_ext.shadow_caster_pass_relevance,
-                        chunk_indices, &mesh_ext.shadow_caster_instance_offsets,
-                        mesh_ext.directional_shadow_view_projections[0], view.getViewMatrix(),
+                        shadow_ext->getData().shadow_casters, shadow_ext->getData().shadow_caster_pass_relevance,
+                        chunk_indices, &shadow_ext->getData().shadow_caster_instance_offsets,
+                        shadow_ext->getData().cascade_view_projections[0], view.getViewMatrix(),
                         shadow_pipeline, local.sources,
-                        &cascade_culling, &mesh_ext.shadow_caster_cascade_masks};
+                        &cascade_culling, &shadow_ext->getData().shadow_caster_cascade_masks};
                     processor->buildMeshDrawCommands(context);
                 });
                 command_storage->mergeThreadLocal(view_index, local_storages);
             } else {
                 const MeshPassCommandBuildContext context{
-                    mesh_ext.shadow_casters, mesh_ext.shadow_caster_pass_relevance,
-                    primitive_indices, &mesh_ext.shadow_caster_instance_offsets,
-                    mesh_ext.directional_shadow_view_projections[0], view.getViewMatrix(),
+                    shadow_ext->getData().shadow_casters, shadow_ext->getData().shadow_caster_pass_relevance,
+                    primitive_indices, &shadow_ext->getData().shadow_caster_instance_offsets,
+                    shadow_ext->getData().cascade_view_projections[0], view.getViewMatrix(),
                     shadow_pipeline, shadow_list.sources,
-                    &cascade_culling, &mesh_ext.shadow_caster_cascade_masks};
+                    &cascade_culling, &shadow_ext->getData().shadow_caster_cascade_masks};
                 processor->buildMeshDrawCommands(context);
             }
         }

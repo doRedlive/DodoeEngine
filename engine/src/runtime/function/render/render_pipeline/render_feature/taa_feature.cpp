@@ -129,7 +129,7 @@ namespace dodoe {
         frame_params.prev_unjittered_view_projection = m_prev_unjittered_view_projection;
         frame_params.prev_jitter_uv = m_prev_jitter_uv;
         const auto* taa_extension = view.getExtension<TaaViewExtension>();
-        if (taa_extension) {
+        if (taa_extension && taa_extension->unjittered_valid) {
             frame_params.current_jitter_uv = Vector2f(
                 taa_extension->jitter_ndc.x * 0.5f,
                 -taa_extension->jitter_ndc.y * 0.5f);
@@ -145,7 +145,7 @@ namespace dodoe {
         imports.publish<TaaPrevDepthWriteKey>(prev_depth_write);
         imports.publish<TaaFrameParamsKey>(frame_params);
 
-        if (taa_extension) {
+        if (taa_extension && taa_extension->unjittered_valid) {
             m_prev_unjittered_view_projection = taa_extension->unjittered_view_projection;
             m_prev_jitter_uv = frame_params.current_jitter_uv;
         } else {

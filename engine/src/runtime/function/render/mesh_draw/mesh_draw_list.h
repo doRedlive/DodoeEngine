@@ -78,6 +78,8 @@ namespace dodoe {
         DynamicArray<PrimitiveMeshDrawShaderData> cached_shader_data;
         DynamicArray<PrimitiveMeshDrawShaderData> dynamic_shader_data;
         const DynamicArray<MeshDrawCommand>* cached_commands{nullptr};
+        UInt32 pre_merge_source_count{0};
+        UInt32 merge_saved_count{0};
 
         void materializeSources(MeshDrawCommandCache& cache) {
             cached_instances.clear();
@@ -113,6 +115,8 @@ namespace dodoe {
             cached_shader_data.clear();
             dynamic_shader_data.clear();
             cached_commands = nullptr;
+            pre_merge_source_count = 0;
+            merge_saved_count = 0;
         }
 
         void sort() {
@@ -132,8 +136,11 @@ namespace dodoe {
                 for (UInt32 source_index = 0; source_index < sources.size(); ++source_index) {
                     sources[source_index].instance.cmd_index = source_index;
                 }
+                pre_merge_source_count = static_cast<UInt32>(sources.size());
+                merge_saved_count = 0;
                 if (sources.front().command.getPassType() == MeshPassType::Opaque) {
                     MergeOpaqueMeshDrawSources(sources);
+                    merge_saved_count = pre_merge_source_count - static_cast<UInt32>(sources.size());
                 }
             }
             gpu_buckets.clear();

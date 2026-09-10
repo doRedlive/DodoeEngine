@@ -58,6 +58,7 @@ namespace dodoe {
         [[nodiscard]] RenderPipeline* getRenderingPipeline() const { return m_render_pipeline.get(); }
         [[nodiscard]] RenderScene* getRenderScene() const { return m_render_scene.get(); }
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_shared_render_service.get(); }
+        [[nodiscard]] RenderFrameScheduler* getFrameScheduler() const { return m_frame_scheduler.get(); }
 
         void enqueueResourceCommand(ResourceCommand&& cmd);
         void enqueueSceneCommand(SceneCommand&& cmd);

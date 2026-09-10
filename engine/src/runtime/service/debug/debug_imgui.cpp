@@ -12,7 +12,9 @@
 #include "runtime/function/audio/audio_clip.h"
 #include "runtime/function/physics/physics_world.h"
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
+#include "runtime/function/render/render_graph/render_graph_debug.h"
 #include "runtime/function/render/render_graph/render_graph_transient_pool.h"
+#include "runtime/function/render/mesh_draw/mesh_pass_registry.h"
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/time/time_system.h"
 #include "runtime/function/world/components/hierarchy_component.h"
@@ -615,6 +617,191 @@ namespace dodoe {
             return String(buffer.data());
         }
 
+        const char* PipelineTypeName(RenderingPipelineType type) {
+            switch (type) {
+            case RenderingPipelineType::Forward: return "Forward";
+            case RenderingPipelineType::ForwardPlus: return "ForwardPlus";
+            case RenderingPipelineType::Deferred: return "Deferred";
+            case RenderingPipelineType::DeferredPlus: return "DeferredPlus";
+            case RenderingPipelineType::Only2D: return "Only2D";
+            case RenderingPipelineType::OnlyGUI: return "OnlyGUI";
+            default: return "None";
+            }
+        }
+
+        const char* CullingPathName(CullingPath path) {
+            switch (path) {
+            case CullingPath::CpuOnly: return "CpuOnly";
+            case CullingPath::GpuOnly: return "GpuOnly";
+            case CullingPath::CpuThenGpuVerify: return "CpuThenGpuVerify";
+            default: return "Unknown";
+            }
+        }
+
+        String ExportTelemetryJson(const RenderFrameScheduler& scheduler) {
+            const String sampled_at = CsvTimestamp();
+            FsPath out_path = std::filesystem::current_path()
+                / ("render_telemetry_" + sampled_at + ".json").c_str();
+            std::ofstream fout(out_path);
+            if (!fout.is_open()) {
+                return {};
+            }
+            const auto& collector = scheduler.getTelemetry();
+            const Size_t count = collector.getCount();
+            fout << "[";
+            for (Size_t i = 0; i < count; ++i) {
+                fout << collector.previous(static_cast<UInt32>(i)).toJSON();
+                if (i + 1 < count) fout << ",";
+            }
+            fout << "]";
+            fout.close();
+            return String(out_path.string().c_str());
+        }
+
+        void RenderRendererCompare() {
+            auto* render_system = GetRenderSystem();
+            if (!render_system) return;
+
+            if (!ImGui::CollapsingHeader("Renderer Compare", ImGuiTreeNodeFlags_DefaultOpen)) {
+                return;
+            }
+
+            const Bool baseline = RenderSettings::IsEnableBaselineRender();
+            ImGui::TextColored(baseline ? ImVec4(1.0f, 0.75f, 0.35f, 1.0f) : ImVec4(0.45f, 0.90f, 0.50f, 1.0f),
+                "Path: %s", baseline ? "BaselineRenderer" : "RenderGraph (MeshDraw)");
+            ImGui::Text("Backend: %s  Pipeline: %s", RenderSettings::GetRenderBackendApiTypeStr().c_str(),
+                PipelineTypeName(RenderSettings::GetRenderingPipelineType()));
+            const auto culling = RenderSettings::GetFeatureSettings().culling_path;
+            const auto& resolved = RenderSettings::GetResolvedFeatures();
+            ImGui::Text("Culling: %s  GpuDriven: %s  Bindless: %s  AsyncCompute: %s",
+                CullingPathName(culling),
+                resolved.gpu_driven_active ? "on" : "off",
+                resolved.bindless_active ? "on" : "off",
+                resolved.async_compute_active ? "on" : "off");
+            if (!resolved.gpu_driven_fallback_reason.empty()) {
+                ImGui::TextDisabled("GpuDriven fallback: %s", resolved.gpu_driven_fallback_reason.c_str());
+            }
+
+            ImGui::Separator();
+            ImGui::TextUnformatted("Frame Telemetry");
+            auto* scheduler = render_system->getFrameScheduler();
+            if (!scheduler) {
+                ImGui::TextDisabled("No frame scheduler");
+            }
+            else {
+                const auto& collector = scheduler->getTelemetry();
+                if (collector.getCount() == 0) {
+                    ImGui::TextDisabled("No samples (perf counters disabled?)");
+                }
+                else {
+                    Float sum = 0.0f;
+                    Float max_ms = 0.0f;
+                    for (Size_t i = 0; i < collector.getCount(); ++i) {
+                        const Float ms = collector.previous(static_cast<UInt32>(i)).render_thread_ms;
+                        sum += ms;
+                        if (ms > max_ms) max_ms = ms;
+                    }
+                    const FrameTelemetry& cur = collector.current();
+                    const Float avg = sum / static_cast<Float>(collector.getCount());
+                    ImGui::Text("Render ms: %.3f (avg %.3f / max %.3f, %d frames)",
+                        cur.render_thread_ms, avg, max_ms,
+                        static_cast<int>(collector.getCount()));
+                    ImGui::Text("Draw Calls: %u (indirect %u)  Dispatches: %u",
+                        cur.draw_call_count, cur.indirect_draw_call_count, cur.dispatch_count);
+                    ImGui::Text("Barriers: %u  Drawn Instances: %llu",
+                        cur.barrier_count,
+                        static_cast<unsigned long long>(cur.drawn_instance_count));
+                    ImGui::Text("Upload Bytes: %llu  Stalls: %u  Overflows: %u",
+                        static_cast<unsigned long long>(cur.upload_bytes),
+                        cur.upload_stall_count, cur.upload_overflow_count);
+                }
+            }
+
+            ImGui::Separator();
+            ImGui::TextUnformatted("MeshDraw Stats (MeshPassRegistry)");
+            if (auto* shared_service = render_system->getSharedRenderService()) {
+                if (auto* registry = shared_service->getMeshPassRegistry()) {
+                    static constexpr const char* kPassNames[] = {"Opaque", "Shadow", "Transparent"};
+                    if (ImGui::BeginTable("MeshDrawStatsTable", 6,
+                                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                        ImGui::TableSetupColumn("Pass");
+                        ImGui::TableSetupColumn("Raw");
+                        ImGui::TableSetupColumn("Draws");
+                        ImGui::TableSetupColumn("Cached");
+                        ImGui::TableSetupColumn("Dynamic");
+                        ImGui::TableSetupColumn("Buckets");
+                        ImGui::TableHeadersRow();
+                        for (Size_t t = 0; t < static_cast<Size_t>(MeshPassType::Count); ++t) {
+                            const auto* storage = registry->getCommandStorage(static_cast<MeshPassType>(t));
+                            if (!storage) continue;
+                            Size_t raw = 0;
+                            Size_t sources = 0;
+                            Size_t cached = 0;
+                            Size_t dynamic = 0;
+                            Size_t buckets = 0;
+                            for (const auto& draw_list : storage->getDrawLists()) {
+                                raw += draw_list.pre_merge_source_count;
+                                sources += draw_list.sources.size();
+                                cached += draw_list.cached_instances.size();
+                                dynamic += draw_list.dynamic_instances.size();
+                                buckets += draw_list.gpu_buckets.size();
+                            }
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(kPassNames[t]);
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%llu", static_cast<unsigned long long>(raw));
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%llu", static_cast<unsigned long long>(sources));
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%llu", static_cast<unsigned long long>(cached));
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%llu", static_cast<unsigned long long>(dynamic));
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%llu", static_cast<unsigned long long>(buckets));
+                        }
+                        ImGui::EndTable();
+                    }
+                }
+                else {
+                    ImGui::TextDisabled("No mesh pass registry");
+                }
+            }
+            else {
+                ImGui::TextDisabled("No shared render service");
+            }
+
+            if (!baseline) {
+                ImGui::Separator();
+                ImGui::TextUnformatted("RenderGraph Snapshot");
+                const auto snapshot = RenderGraphDebug::snapshot();
+                if (snapshot) {
+                    ImGui::Text("Passes: %u (culled %u)  Resources: %u  Levels: %u",
+                        snapshot->pass_count, snapshot->culled_count,
+                        snapshot->resource_count, snapshot->level_count);
+                }
+                else {
+                    ImGui::TextDisabled("No snapshot (open the Render Graph window to refresh)");
+                }
+            }
+
+            ImGui::Separator();
+            static Bool s_telemetry_export_ok = false;
+            static String s_telemetry_export_path{};
+            if (ImGui::Button("Dump Telemetry JSON") && scheduler) {
+                s_telemetry_export_path = ExportTelemetryJson(*scheduler);
+                s_telemetry_export_ok = !s_telemetry_export_path.empty();
+            }
+            if (!s_telemetry_export_path.empty()) {
+                if (s_telemetry_export_ok) {
+                    ImGui::Text("Dumped: %s", s_telemetry_export_path.c_str());
+                }
+                else {
+                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Dump failed");
+                }
+            }
+        }
+
         Bool ExportMemoryCsv() {
             const String sampled_at = CsvTimestamp();
             String filename = "memory_stats_" + sampled_at + ".csv";
@@ -999,6 +1186,8 @@ namespace dodoe {
         ImGui::Begin("Dodoe Debugger");
         ImGuiIO& io = ImGui::GetIO();
         ImGui::Text("FPS: %.1f (%.3f ms)", io.Framerate, 1000.0f / io.Framerate);
+
+        RenderRendererCompare();
 
         RenderWorldStateControls();
         ImGui::Separator();

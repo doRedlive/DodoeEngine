@@ -209,6 +209,16 @@ namespace dodoe {
             }
         }
 
+        auto propagatePassResources = [&](const Size_t pass_idx) {
+            const auto& pass = m_passes[pass_idx];
+            for (const auto& access : pass->getAccesses()) {
+                if (!reachable_resources[access.resource_index]) {
+                    reachable_resources[access.resource_index] = true;
+                    resource_queue.push_back(access.resource_index);
+                }
+            }
+        };
+
         while (!resource_queue.empty()) {
             const UInt32 res_idx = resource_queue.back();
             resource_queue.pop_back();
@@ -218,32 +228,15 @@ namespace dodoe {
                 const Size_t writer = static_cast<Size_t>(writer_idx);
                 if (!reachable_passes[writer]) {
                     reachable_passes[writer] = true;
-                    const auto& writer_pass = m_passes[writer];
-                    for (const auto& access : writer_pass->getAccesses()) {
-                        if (access.access_type != RenderGraphAccessType::Write &&
-                            access.access_type != RenderGraphAccessType::ReadWrite) {
-                            if (!reachable_resources[access.resource_index]) {
-                                reachable_resources[access.resource_index] = true;
-                                resource_queue.push_back(access.resource_index);
-                            }
-                        }
-                    }
+                    propagatePassResources(writer);
                 }
             }
 
             for (const auto reader_idx : resource.reader_passes) {
-                if (!reachable_passes[reader_idx]) {
-                    reachable_passes[reader_idx] = true;
-                    const auto& reader_pass = m_passes[reader_idx];
-                    for (const auto& access : reader_pass->getAccesses()) {
-                        if (access.access_type == RenderGraphAccessType::Write ||
-                            access.access_type == RenderGraphAccessType::ReadWrite) {
-                            if (!reachable_resources[access.resource_index]) {
-                                reachable_resources[access.resource_index] = true;
-                                resource_queue.push_back(access.resource_index);
-                            }
-                        }
-                    }
+                const Size_t reader = static_cast<Size_t>(reader_idx);
+                if (!reachable_passes[reader]) {
+                    reachable_passes[reader] = true;
+                    propagatePassResources(reader);
                 }
             }
         }
