@@ -265,6 +265,7 @@ namespace dodoe {
 
     void World::shutdown() {
         DO_PROFILE_SCOPE_CATEGORY("World::shutdown", "shutdown");
+        m_play_snapshots.clear();
         cleanupScenes();
         cleanupSystems();
         for (auto& scene : m_scenes) {
@@ -345,15 +346,45 @@ namespace dodoe {
         if (m_state == state) {
             return;
         }
-        const bool transition = m_state != WorldState::Pause && state != WorldState::Pause;
+        const WorldState previous = m_state;
+        const bool transition = previous != WorldState::Pause && state != WorldState::Pause;
         if (transition) {
+            if (previous == WorldState::Simulation && state == WorldState::Runtime) {
+                capturePlayState();
+            }
             leaveState();
             m_state = state;
+            if (previous == WorldState::Runtime && state == WorldState::Simulation) {
+                restorePlayState();
+            }
             enterState();
         } else {
             m_state = state;
+            if (previous == WorldState::Pause && state == WorldState::Simulation) {
+                restorePlayState();
+            }
         }
         syncFixedUpdateCallback();
+    }
+
+    void World::capturePlayState() {
+        m_play_snapshots.clear();
+        for (Scene* scene : m_active_scenes) {
+            if (scene) {
+                m_play_snapshots.emplace(scene, scene->serialize());
+            }
+        }
+    }
+
+    void World::restorePlayState() {
+        for (Scene* scene : m_active_scenes) {
+            if (!scene) continue;
+            const auto it = m_play_snapshots.find(scene);
+            if (it != m_play_snapshots.end()) {
+                scene->deserialize(it->second);
+            }
+        }
+        m_play_snapshots.clear();
     }
 
     void World::syncFixedUpdateCallback() {

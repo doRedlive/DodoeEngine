@@ -13,6 +13,7 @@
 
 #include "runtime/core/base.h"
 #include "runtime/core/async/task_graph.h"
+#include "runtime/resource/res_type/scene_res.h"
 #include "scene.h"
 #include "systems/system.h"
 #include "world_commands.h"
@@ -68,6 +69,8 @@ namespace dodoe {
         TaskGraph m_simulation_task_graph{};
         WorldCommands m_command_buffer{};
         Bool m_task_graph_dirty{true};
+
+        UnorderedMap<Scene*, SceneRes> m_play_snapshots{};
 
         static Bool s_force_sequential;
 
@@ -137,6 +140,8 @@ namespace dodoe {
 
         void enterState();
         void leaveState();
+        void capturePlayState();
+        void restorePlayState();
         void notifyFixedUpdate();
         void syncFixedUpdateCallback();
 

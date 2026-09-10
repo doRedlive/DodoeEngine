@@ -878,7 +878,6 @@ void RuntimeEditorBackend::shutdown()
     m_camera.reset();
     m_cameraProvider.reset();
     m_sceneTarget = nullptr;
-    m_playSnapshot.reset();
     m_selectedUuid = 0;
     m_booted = false;
     m_app.reset();
@@ -1076,16 +1075,11 @@ void RuntimeEditorBackend::setPlayAction(const std::string& action)
     if (!world) {
         return;
     }
-    Scene* scene = world->getActiveScene();
-    if (!scene) {
-        return;
-    }
 
     if (action == "play") {
         if (m_playState != "edit") {
             return;
         }
-        m_playSnapshot = std::make_unique<dodoe::SceneRes>(scene->serialize());
         world->setState(dodoe::WorldState::Runtime);
         m_playState = "playing";
     } else if (action == "pause") {
@@ -1105,10 +1099,6 @@ void RuntimeEditorBackend::setPlayAction(const std::string& action)
             return;
         }
         world->setState(dodoe::WorldState::Simulation);
-        if (m_playSnapshot) {
-            scene->deserialize(*m_playSnapshot);
-            m_playSnapshot.reset();
-        }
         m_playState = "edit";
     }
 }

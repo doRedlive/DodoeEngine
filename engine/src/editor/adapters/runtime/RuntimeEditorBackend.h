@@ -22,7 +22,6 @@ namespace dodoe {
     class Entity;
     class RenderViewTarget;
     class Scene;
-    class SceneRes;
     class World;
 }
 
@@ -103,7 +102,6 @@ private:
     ViewportMetrics m_pending;
     EditorDocument m_document;
     std::unique_ptr<AssetDatabase> m_assetDatabase;
-    std::unique_ptr<dodoe::SceneRes> m_playSnapshot;
     std::uint64_t m_selectedUuid = 0;
     std::string m_gizmoMode = "translate";
     std::string m_playState = "edit";
