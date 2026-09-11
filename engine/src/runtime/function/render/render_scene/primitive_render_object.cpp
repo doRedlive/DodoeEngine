@@ -155,7 +155,7 @@ namespace dodoe {
             batch.setMaterialIndex(static_cast<UInt32>(section_index));
             batch.setRelevant(MeshPassType::Opaque, m_visible && !m_transparent);
             batch.setRelevant(MeshPassType::Transparent, m_visible && m_transparent);
-            batch.setRelevant(MeshPassType::Shadow, m_visible && m_cast_shadow);
+            batch.setRelevant(MeshPassType::Shadow, m_visible && m_cast_shadow && !m_transparent);
             batch.addElement(std::move(element));
             mesh_batches.push_back(std::move(batch));
         }

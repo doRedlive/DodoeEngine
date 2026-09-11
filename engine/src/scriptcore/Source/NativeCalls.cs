@@ -112,6 +112,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_AnimatorComponent_speed_set;
         public delegate* unmanaged<ulong, bool> native_AnimatorComponent_play_on_awake_get;
         public delegate* unmanaged<ulong, bool, void> native_AnimatorComponent_play_on_awake_set;
+        public delegate* unmanaged<ulong, byte*> native_TagComponent_tag_get;
+        public delegate* unmanaged<ulong, byte*, void> native_TagComponent_tag_set;
         public delegate* unmanaged<ulong, float*, float*, void> native_BoxCollider2dComponent_offset_get;
         public delegate* unmanaged<ulong, float, float, void> native_BoxCollider2dComponent_offset_set;
         public delegate* unmanaged<ulong, float*, float*, void> native_BoxCollider2dComponent_size_get;
@@ -380,8 +382,6 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, float, void> native_SpriteRendererComponent_depth_set;
         public delegate* unmanaged<ulong, float*, float*, float*, float*, void> native_SpriteRendererComponent_color_get;
         public delegate* unmanaged<ulong, float, float, float, float, void> native_SpriteRendererComponent_color_set;
-        public delegate* unmanaged<ulong, byte*> native_TagComponent_tag_get;
-        public delegate* unmanaged<ulong, byte*, void> native_TagComponent_tag_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_TransformComponent_position_get;
         public delegate* unmanaged<ulong, float, float, float, void> native_TransformComponent_position_set;
         public delegate* unmanaged<ulong, float*, float*, float*, void> native_TransformComponent_rotation_get;
