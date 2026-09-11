@@ -38,7 +38,8 @@ namespace dodoe {
         float m_point_size{4.0f};
         DynamicArray<DebugLine> m_lines{};
         DynamicArray<DebugPoint> m_points{};
-        DynamicArray<UUID> m_submitted{};
+        DynamicArray<UUID> m_line_uuids{};
+        DynamicArray<UUID> m_point_uuids{};
 
         bool initialize(const PhysicsDebuggerCreateInfo& create_info);
         void shutdown();

@@ -112,10 +112,14 @@ namespace dodoe {
     }
 
     void PhysicsDebugger::shutdown() {
-        for (const UUID& uuid : m_submitted) {
+        for (const UUID& uuid : m_line_uuids) {
             RenderCommandQueue::RemovePrimitive(uuid);
         }
-        m_submitted.clear();
+        for (const UUID& uuid : m_point_uuids) {
+            RenderCommandQueue::RemovePrimitive(uuid);
+        }
+        m_line_uuids.clear();
+        m_point_uuids.clear();
         m_lines.clear();
         m_points.clear();
         m_line_thickness = 2.0f;
@@ -138,25 +142,28 @@ namespace dodoe {
     }
 
     void PhysicsDebugger::flush() {
-        for (const UUID& uuid : m_submitted) {
-            RenderCommandQueue::RemovePrimitive(uuid);
-        }
-        m_submitted.clear();
-
-        for (const DebugLine& line : m_lines) {
-            const UUID uuid = UUID();
-            auto object = buildLineObject(line);
-            object->setUUID(uuid);
+        for (Size_t i = 0; i < m_lines.size(); ++i) {
+            if (i >= m_line_uuids.size()) {
+                m_line_uuids.push_back(UUID::Generate());
+            }
+            auto object = buildLineObject(m_lines[i]);
+            object->setUUID(m_line_uuids[i]);
             RenderCommandQueue::AddPrimitive(std::move(object));
-            m_submitted.push_back(uuid);
+        }
+        for (Size_t i = m_lines.size(); i < m_line_uuids.size(); ++i) {
+            RenderCommandQueue::RemovePrimitive(m_line_uuids[i]);
         }
 
-        for (const DebugPoint& point : m_points) {
-            const UUID uuid = UUID();
-            auto object = buildPointObject(point);
-            object->setUUID(uuid);
+        for (Size_t i = 0; i < m_points.size(); ++i) {
+            if (i >= m_point_uuids.size()) {
+                m_point_uuids.push_back(UUID::Generate());
+            }
+            auto object = buildPointObject(m_points[i]);
+            object->setUUID(m_point_uuids[i]);
             RenderCommandQueue::AddPrimitive(std::move(object));
-            m_submitted.push_back(uuid);
+        }
+        for (Size_t i = m_points.size(); i < m_point_uuids.size(); ++i) {
+            RenderCommandQueue::RemovePrimitive(m_point_uuids[i]);
         }
 
         m_lines.clear();

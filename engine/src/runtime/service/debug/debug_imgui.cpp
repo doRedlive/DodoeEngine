@@ -1285,6 +1285,7 @@ namespace dodoe {
             ImGui::End();
             return;
         }
+        ValidateSelectedEntity(*scene);
         for (const EntityNode& root : BuildEntityTree(*scene)) RenderEntityTreeNode(root);
         ImGui::End();
     }
@@ -1335,6 +1336,15 @@ namespace dodoe {
         return roots;
     }
 
+    bool DebugImGui::ValidateSelectedEntity(Scene& scene) {
+        if (!s_selectedEntity.valid()) return false;
+        if (s_selectedEntity.getScene() != &scene || !scene.registry().valid(s_selectedEntity.handle())) {
+            s_selectedEntity = {};
+            return false;
+        }
+        return true;
+    }
+
     void DebugImGui::RenderEntityTreeNode(const EntityNode& node) {
         Entity entity = node.entity;
         if (!entity.valid()) return;
@@ -1356,7 +1366,8 @@ namespace dodoe {
 
     void DebugImGui::RenderInspectorPanel() {
         ImGui::Begin("Inspector");
-        if (!s_selectedEntity.valid()) {
+        Scene* scene = GetWorld()->getActiveScene();
+        if (!scene || !ValidateSelectedEntity(*scene)) {
             ImGui::TextUnformatted("No entity selected.");
             ImGui::End();
             return;

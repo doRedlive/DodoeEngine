@@ -14,9 +14,7 @@
 namespace dodoe {
 
     namespace {
-        constexpr Float kCascadeSplitLambda = 0.6f;
-        constexpr Float kMaxShadowDistance = 1000.0f;
-        constexpr Float kCascadeFitMargin = 0.05f;
+        constexpr Float kMaxShadowDistance = 5000.0f;
         constexpr Float kCasterLateralMargin = 25.0f;
         constexpr Float kMinOrthoNear = 0.05f;
         constexpr Float kMinOrthoFarGap = 0.1f;
@@ -56,19 +54,17 @@ namespace dodoe {
             }
         }
 
-        void BuildCascadeSplitDepths(Float near_plane, Float far_plane, Vector4f& split_depths) {
-            const Float max_distance = Math::Min(far_plane, kMaxShadowDistance);
-            if (!(max_distance > near_plane)) {
-                split_depths = Vector4f(max_distance);
+        void BuildCascadeSplitDepths(Float range_near, Float range_far, Vector4f& split_depths) {
+            split_depths = Vector4f(range_far);
+            if (!(range_far > range_near)) {
                 return;
             }
-            for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
-                const Float fraction =
-                    static_cast<Float>(cascade + 1) / static_cast<Float>(kShadowCascadeCount);
-                const Float log_split = near_plane * Math::Pow(max_distance / near_plane, fraction);
-                const Float uniform_split = near_plane + (max_distance - near_plane) * fraction;
-                split_depths[static_cast<Size_t>(cascade)] =
-                    Math::Mix(uniform_split, log_split, kCascadeSplitLambda);
+            const Float ratio = Math::Pow(
+                range_far / range_near, 1.0f / static_cast<Float>(kShadowCascadeCount));
+            Float split = range_near;
+            for (UInt32 cascade = 0; cascade + 1 < kShadowCascadeCount; ++cascade) {
+                split *= ratio;
+                split_depths[static_cast<Size_t>(cascade)] = split;
             }
         }
 
@@ -94,6 +90,8 @@ namespace dodoe {
                                             const StaticArray<Vector3f, 8>& slice_corners_world,
                                             UInt32 cascade_resolution,
                                             Bool has_casters,
+                                            const Vector2f& caster_xy_min,
+                                            const Vector2f& caster_xy_max,
                                             Float caster_z_min,
                                             Float caster_z_max) {
             StaticArray<Vector3f, 8> corners{};
@@ -107,30 +105,44 @@ namespace dodoe {
                 bounds_min = Math::Min(bounds_min, corners[i]);
                 bounds_max = Math::Max(bounds_max, corners[i]);
             }
+
+            Vector2f xy_min(bounds_min.x, bounds_min.y);
+            Vector2f xy_max(bounds_max.x, bounds_max.y);
+            if (has_casters) {
+                const Vector2f clipped_min = Math::Max(xy_min, caster_xy_min);
+                const Vector2f clipped_max = Math::Min(xy_max, caster_xy_max);
+                if (clipped_min.x < clipped_max.x && clipped_min.y < clipped_max.y) {
+                    xy_min = clipped_min;
+                    xy_max = clipped_max;
+                }
+            }
+            const Float span_x = Math::Max(xy_max.x - xy_min.x, 0.0f);
+            const Float span_y = Math::Max(xy_max.y - xy_min.y, 0.0f);
+            const Float margin_x = Math::Clamp(span_x * 0.25f, 1.0f, kCasterLateralMargin);
+            const Float margin_y = Math::Clamp(span_y * 0.25f, 1.0f, kCasterLateralMargin);
+            xy_min.x -= margin_x;
+            xy_max.x += margin_x;
+            xy_min.y -= margin_y;
+            xy_max.y += margin_y;
+
+            const Float raw_width = Math::Max(xy_max.x - xy_min.x, 0.0f);
+            const Float raw_height = Math::Max(xy_max.y - xy_min.y, 0.0f);
+            const Float texel_x = QuantizeTexelSize(raw_width, cascade_resolution);
+            const Float texel_y = QuantizeTexelSize(raw_height, cascade_resolution);
+            if (texel_x > 0.0f) {
+                xy_min.x = std::floor(xy_min.x / texel_x) * texel_x;
+                xy_max.x = xy_min.x + std::ceil(raw_width / texel_x) * texel_x;
+            }
+            if (texel_y > 0.0f) {
+                xy_min.y = std::floor(xy_min.y / texel_y) * texel_y;
+                xy_max.y = xy_min.y + std::ceil(raw_height / texel_y) * texel_y;
+            }
+
             bounds_min.z -= kShadowCasterExtrusion;
             bounds_max.z += kShadowCasterExtrusion;
             if (has_casters) {
                 bounds_min.z = Math::Min(bounds_min.z, caster_z_min - kShadowCasterExtrusion);
                 bounds_max.z = Math::Max(bounds_max.z, caster_z_max + kShadowCasterExtrusion);
-            }
-            bounds_min.x -= kCasterLateralMargin;
-            bounds_max.x += kCasterLateralMargin;
-            bounds_min.y -= kCasterLateralMargin;
-            bounds_max.y += kCasterLateralMargin;
-            bounds_min -= Vector3f(kCascadeFitMargin);
-            bounds_max += Vector3f(kCascadeFitMargin);
-
-            const Float raw_width = Math::Max(bounds_max.x - bounds_min.x, 0.0f);
-            const Float raw_height = Math::Max(bounds_max.y - bounds_min.y, 0.0f);
-            const Float texel_x = QuantizeTexelSize(raw_width, cascade_resolution);
-            const Float texel_y = QuantizeTexelSize(raw_height, cascade_resolution);
-            if (texel_x > 0.0f) {
-                bounds_min.x = std::floor(bounds_min.x / texel_x) * texel_x;
-                bounds_max.x = bounds_min.x + std::ceil(raw_width / texel_x) * texel_x;
-            }
-            if (texel_y > 0.0f) {
-                bounds_min.y = std::floor(bounds_min.y / texel_y) * texel_y;
-                bounds_max.y = bounds_min.y + std::ceil(raw_height / texel_y) * texel_y;
             }
 
             const Float z_span = Math::Max(bounds_max.z - bounds_min.z, kMinOrthoFarGap);
@@ -138,7 +150,7 @@ namespace dodoe {
             const Float ortho_far = ortho_near + z_span + kMinOrthoFarGap;
             const Matrix4f view_shift = Math::Translate(
                 Matrix4f(1.0f), Vector3f(0.0f, 0.0f, -ortho_near - bounds_max.z));
-            return Math::OrthoRH_ZO(bounds_min.x, bounds_max.x, bounds_min.y, bounds_max.y,
+            return Math::OrthoRH_ZO(xy_min.x, xy_max.x, xy_min.y, xy_max.y,
                                     ortho_near, ortho_far) * view_shift * light_view;
         }
 
@@ -203,7 +215,6 @@ namespace dodoe {
         Float near_plane = 0.1f;
         Float far_plane = 1000.0f;
         ExtractCameraNearFar(view.getProjectionMatrix(), near_plane, far_plane);
-        BuildCascadeSplitDepths(near_plane, far_plane, result.cascade_split_depths);
 
         const Matrix4f light_view = BuildLightView(result.light_direction);
         const Vector3f camera_position = rendering_pipeline_utils::ExtractCameraPosition(view);
@@ -227,8 +238,17 @@ namespace dodoe {
         Bool has_casters = false;
         Float caster_z_min = 0.0f;
         Float caster_z_max = 0.0f;
+        Float caster_view_min = 0.0f;
+        Float caster_view_max = 0.0f;
+        Vector2f caster_xy_min(0.0f);
+        Vector2f caster_xy_max(0.0f);
         {
+            const Vector3f light_row0(light_view[0].x, light_view[1].x, light_view[2].x);
+            const Vector3f light_row1(light_view[0].y, light_view[1].y, light_view[2].y);
+            const Float light_x_offset = light_view[3].x;
+            const Float light_y_offset = light_view[3].y;
             const Vector3f light_row = Math::Abs(result.light_direction);
+            const Vector3f forward_row = Math::Abs(camera_forward);
             for (const auto& primitive : scene.getPrimitiveSceneInfos()) {
                 if (!primitive.isVisible() || !primitive.castsShadow()) {
                     continue;
@@ -240,21 +260,47 @@ namespace dodoe {
                 const Float z_half = Math::Dot(light_row, world_extents);
                 const Float z_lo = z_center - z_half;
                 const Float z_hi = z_center + z_half;
+                const Float view_center = Math::Dot(world_center - camera_position, camera_forward);
+                const Float view_half = Math::Dot(forward_row, world_extents);
+                const Float view_lo = view_center - view_half;
+                const Float view_hi = view_center + view_half;
+                const Float x_center = Math::Dot(light_row0, world_center) + light_x_offset;
+                const Float x_half = Math::Dot(Math::Abs(light_row0), world_extents);
+                const Float y_center = Math::Dot(light_row1, world_center) + light_y_offset;
+                const Float y_half = Math::Dot(Math::Abs(light_row1), world_extents);
                 if (!has_casters) {
                     has_casters = true;
                     caster_z_min = z_lo;
                     caster_z_max = z_hi;
+                    caster_view_min = view_lo;
+                    caster_view_max = view_hi;
+                    caster_xy_min = Vector2f(x_center - x_half, y_center - y_half);
+                    caster_xy_max = Vector2f(x_center + x_half, y_center + y_half);
                 } else {
                     caster_z_min = Math::Min(caster_z_min, z_lo);
                     caster_z_max = Math::Max(caster_z_max, z_hi);
+                    caster_view_min = Math::Min(caster_view_min, view_lo);
+                    caster_view_max = Math::Max(caster_view_max, view_hi);
+                    caster_xy_min = Math::Min(caster_xy_min, Vector2f(x_center - x_half, y_center - y_half));
+                    caster_xy_max = Math::Max(caster_xy_max, Vector2f(x_center + x_half, y_center + y_half));
                 }
             }
         }
 
+        Float range_near = near_plane;
+        Float range_far = Math::Min(far_plane, kMaxShadowDistance);
+        if (has_casters) {
+            const Float pad = 0.1f * (caster_view_max - caster_view_min);
+            range_near = Math::Max(range_near, caster_view_min - pad);
+            range_far = Math::Clamp(caster_view_max + pad,
+                                    range_near + kMinOrthoFarGap, range_far);
+        }
+        BuildCascadeSplitDepths(range_near, range_far, result.cascade_split_depths);
+
         StaticArray<Vector3f, 8> slice_corners{};
         for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
             const Float split_near = cascade == 0
-                ? near_plane
+                ? range_near
                 : result.cascade_split_depths[static_cast<Size_t>(cascade - 1)];
             const Float split_far = Math::Max(
                 result.cascade_split_depths[static_cast<Size_t>(cascade)],
@@ -270,7 +316,7 @@ namespace dodoe {
             result.cascade_view_projections[cascade] = BuildCascadeViewProjection(
                 light_view, slice_corners,
                 static_cast<UInt32>(cascade_resolution),
-                has_casters, caster_z_min, caster_z_max);
+                has_casters, caster_xy_min, caster_xy_max, caster_z_min, caster_z_max);
         }
 
         StaticArray<StaticArray<Vector4f, 6>, kShadowCascadeCount> cascade_planes{};

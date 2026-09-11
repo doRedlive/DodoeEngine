@@ -44,6 +44,7 @@ namespace dodoe {
         };
         static DynamicArray<EntityNode> BuildEntityTree(Scene& scene);
         static void RenderEntityTreeNode(const EntityNode& node);
+        static bool ValidateSelectedEntity(Scene& scene);
 
 
         static inline bool  s_registered = false;
