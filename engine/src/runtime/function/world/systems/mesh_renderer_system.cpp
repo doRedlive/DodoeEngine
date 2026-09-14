@@ -1,3 +1,5 @@
+// do@Redlive
+
 #include "mesh_renderer_system.h"
 
 #include "runtime/core/context/system_context.h"
@@ -14,7 +16,7 @@
 namespace dodoe {
 
     namespace {
-        constexpr std::size_t kMaxHierarchyDepth = 256;
+        constexpr Size_t kMaxHierarchyDepth = 256;
     }
 
     MeshRendererSystem::~MeshRendererSystem() = default;
