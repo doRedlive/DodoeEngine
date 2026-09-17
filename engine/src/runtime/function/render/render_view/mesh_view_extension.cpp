@@ -15,6 +15,10 @@ namespace dodoe {
             indices.clear();
         }
         frame_time_data = Vector4f(0.0f);
+        opaque_shadow_map = {};
+        opaque_instance_buffer = {};
+        shadow_caster_instance_buffer = {};
+        transparent_override_color = {};
     }
 
     void MeshViewExtension::buildMeshPassPrimitiveIndices() {

@@ -3,12 +3,38 @@
 #include "renderer.h"
 
 #include "render_graph_import_registry.h"
+#include "srp/srp_bridge.h"
+#include "srp/managed_render_feature.h"
 
 #include "../render_graph/render_graph_builder.h"
 #include "../render_graph/render_graph_debug.h"
 #include "runtime/function/render/render_view/render_view.h"
 
 namespace dodoe {
+
+	void BaseRenderer::installManagedSrpFeatures() {
+	    if (m_managed_srp_installed) {
+	        return;
+	    }
+	    SrpBridge& bridge = SrpBridge::Self();
+	    bridge.attachRenderer(this);
+	    if (!bridge.ensurePipeline(this)) {
+	        return;
+	    }
+	    const Int32 feature_count = bridge.getFeatureCount();
+	    for (Int32 index = 0; index < feature_count; index++) {
+	        Int32 feature_id = 0;
+	        Int32 feature_phase = 0;
+	        if (!bridge.getFeature(index, feature_id, feature_phase)) {
+	            continue;
+	        }
+	        auto feature = create_scope<ManagedRenderFeature>(feature_id, static_cast<RenderPhase>(feature_phase));
+	        feature->initialize(*m_shared_render_service);
+	        m_features.push_back(std::move(feature));
+	    }
+	    m_managed_srp_installed = true;
+	    bakePasses();
+	}
 
 	void BaseRenderer::clearViewExtensions(RenderViewFamily& view_family) const {
 	    for (auto& view : view_family.getViews()) {
@@ -72,6 +98,7 @@ namespace dodoe {
 	    DO_PROFILE_SCOPE_CATEGORY("BaseRenderer::buildOrderedPasses", "frame");
 	    DO_ASSERT(transient_resource_pool != nullptr,
 	              "BaseRenderer requires a transient resource pool");
+	    SrpBridge::Self().beginFrame();
 	    DynamicArray<RenderGraphBuilder> graphs;
 	    graphs.reserve(view_family.getSize());
 

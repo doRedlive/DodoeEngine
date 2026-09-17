@@ -68,6 +68,11 @@ namespace dodoe {
         m_shared_render_service = nullptr;
     }
 
+    void LitSceneFeature::drawPhase(RenderGraphPassContext& context, DrawCommandList& command_list) {
+        (void)context;
+        (void)command_list;
+    }
+
     MeshPassProcessor* LitSceneFeature::getMeshProcessor() const {
         if (!m_shared_render_service || !m_shared_render_service->getMeshPassRegistry()) {
             return nullptr;

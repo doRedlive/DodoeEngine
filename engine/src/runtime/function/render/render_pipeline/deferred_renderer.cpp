@@ -3,6 +3,7 @@
 #include "deferred_renderer.h"
 
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_pipeline/srp/srp_bridge.h"
 #include "runtime/function/render/render_pipeline/render_feature/gbuffer_scene_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/shadow_scene_feature.h"
 #include "runtime/function/render/render_pipeline/render_feature/skybox_feature.h"
@@ -72,11 +73,14 @@ namespace dodoe {
 
 	    bakePasses();
 
+	    installManagedSrpFeatures();
+
 	    return true;
 	}
 
 	void DeferredRenderer::shutdown() {
 	    DO_PROFILE_SCOPE_CATEGORY("DeferredRenderer::shutdown", "shutdown");
+	    SrpBridge::Self().detachRenderer(this);
 	    GpuCulling::Destroy(m_gpu_culling);
 	    clearFeatures();
 	    m_shared_render_service = nullptr;

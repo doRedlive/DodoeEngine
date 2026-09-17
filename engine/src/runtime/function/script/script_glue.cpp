@@ -36,6 +36,9 @@
 #include "runtime/function/ui/ui_panel.h"
 #include "runtime/function/ui/ui_widget.h"
 #include "runtime/function/ui/ui_interactive.h"
+#include "runtime/function/render/render_pipeline/srp/srp_bridge.h"
+#include "runtime/function/render/render_view/render_view.h"
+#include "runtime/core/math/math.h"
 
 namespace dodoe {
 
@@ -1247,6 +1250,89 @@ namespace dodoe {
             return 0;
         }
 
+        static void native_srp_cmd_draw_renderers(const char* phase, int queue_min, int queue_max, int layer_mask) {
+            SrpMeshDrawSettings settings{};
+            settings.phase = phase;
+            settings.queue_min = queue_min;
+            settings.queue_max = queue_max;
+            settings.layer_mask = layer_mask;
+            SrpBridge::Self().drawRenderers(settings);
+        }
+        static void native_srp_cmd_draw_mesh(int mesh, int submesh, int material, const float* transform) {
+            (void)mesh; (void)submesh; (void)material; (void)transform;
+        }
+        static void native_srp_cmd_draw_procedural(int material) { (void)material; }
+        static void native_srp_cmd_clear_color(int slot, float r, float g, float b, float a) {
+            (void)slot; (void)r; (void)g; (void)b; (void)a;
+        }
+        static void native_srp_cmd_clear_depth(float depth, int stencil) { (void)depth; (void)stencil; }
+
+        static uint32_t native_srp_graph_create_texture(uint64_t graph, const char* name, uint32_t width,
+                                                        uint32_t height, int format, int depth, uint32_t sample_count) {
+            (void)graph;
+            return SrpBridge::Self().createGraphTexture(name ? name : "", width, height,
+                                                       static_cast<SrpFormat>(format), depth != 0, sample_count);
+        }
+        static uint32_t native_srp_graph_import_rt(uint64_t graph, int render_target, const char* name, int depth) {
+            (void)graph;
+            return SrpBridge::Self().importGraphTexture(render_target, name ? name : "", depth != 0);
+        }
+        static uint32_t native_srp_graph_import_backbuffer(uint64_t graph, const char* name) {
+            (void)graph;
+            return SrpBridge::Self().importGraphBackBuffer(name ? name : "");
+        }
+        static void native_srp_graph_add_raster_pass(uint64_t graph, const char* name, int phase, int execute_id,
+            const int* color_handles, const int* color_loads, const float* color_clears, int color_count,
+            int depth_handle, int depth_load, float depth_clear, const int* read_handles, int read_count) {
+            (void)graph;
+            SrpRasterPassDesc desc{};
+            desc.name = name ? name : "SrpRasterPass";
+            desc.phase = phase;
+            desc.execute_id = execute_id;
+            desc.color_handles = color_handles;
+            desc.color_loads = color_loads;
+            desc.color_clears = color_clears;
+            desc.color_count = color_count;
+            desc.depth_handle = depth_handle;
+            desc.depth_load = depth_load;
+            desc.depth_clear = depth_clear;
+            desc.read_texture_handles = read_handles;
+            desc.read_texture_count = read_count;
+            SrpBridge::Self().addRasterPass(desc);
+        }
+
+        static int native_srp_create_render_target(const char* name, int format, float scale_x, float scale_y) {
+            return SrpBridge::Self().createRenderTarget(name ? name : "", static_cast<SrpFormat>(format), scale_x, scale_y);
+        }
+        static int native_srp_find_render_target(const char* name) {
+            return SrpBridge::Self().findRenderTarget(name ? name : "");
+        }
+        static int native_srp_rt_is_valid(int id) {
+            return SrpBridge::Self().isRenderTargetValid(id) ? 1 : 0;
+        }
+        static void native_srp_rt_resize(int id, uint32_t width, uint32_t height) {
+            SrpBridge::Self().resizeRenderTarget(id, width, height);
+        }
+
+        static void native_srp_view_matrix(uint64_t view, int which, float* out) {
+            const auto& render_view = *reinterpret_cast<const RenderView*>(view);
+            const Matrix4f* matrix = &render_view.getViewProjectionMatrix();
+            if (which == 0) matrix = &render_view.getViewMatrix();
+            else if (which == 1) matrix = &render_view.getProjectionMatrix();
+            std::memcpy(out, matrix, sizeof(float) * 16);
+        }
+        static void native_srp_view_viewport(uint64_t view, int* out) {
+            const auto& render_view = *reinterpret_cast<const RenderView*>(view);
+            const auto& rect = render_view.getViewportRect();
+            out[0] = rect.x; out[1] = rect.y; out[2] = rect.z; out[3] = rect.w;
+        }
+        static void native_srp_view_position(uint64_t view, float* out) {
+            const auto& render_view = *reinterpret_cast<const RenderView*>(view);
+            const Matrix4f inverse_view = Math::Inverse(render_view.getViewMatrix());
+            const Vector3f position(inverse_view[3]);
+            out[0] = position.x; out[1] = position.y; out[2] = position.z;
+        }
+
 #define FOR_EACH_NATIVE_BINDING(X) \
     X(native_log, void, (const char* msg), msg) \
     X(native_entity_has_component, int, (uint64_t e, const char* type), e, type) \
@@ -1720,7 +1806,23 @@ X(native_SphereColliderComponent_offset_get, void, (uint64_t e, float* x, float*
     X(native_ui_UIPanel_background_color_get, void, (uint32_t id, float* r, float* g, float* b, float* a), id, r, g, b, a) \
     X(native_ui_UIPanel_background_color_set, void, (uint32_t id, float r, float g, float b, float a), id, r, g, b, a) \
     X(native_ui_UIPanel_clip_children_get, int, (uint32_t id), id) \
-    X(native_ui_UIPanel_clip_children_set, void, (uint32_t id, int v), id, v)
+    X(native_ui_UIPanel_clip_children_set, void, (uint32_t id, int v), id, v) \
+    X(native_srp_cmd_draw_renderers, void, (const char* phase, int queue_min, int queue_max, int layer_mask), phase, queue_min, queue_max, layer_mask) \
+    X(native_srp_cmd_draw_mesh, void, (int mesh, int submesh, int material, const float* transform), mesh, submesh, material, transform) \
+    X(native_srp_cmd_draw_procedural, void, (int material), material) \
+    X(native_srp_cmd_clear_color, void, (int slot, float r, float g, float b, float a), slot, r, g, b, a) \
+    X(native_srp_cmd_clear_depth, void, (float depth, int stencil), depth, stencil) \
+    X(native_srp_graph_create_texture, uint32_t, (uint64_t graph, const char* name, uint32_t width, uint32_t height, int format, int depth, uint32_t sample_count), graph, name, width, height, format, depth, sample_count) \
+    X(native_srp_graph_import_rt, uint32_t, (uint64_t graph, int render_target, const char* name, int depth), graph, render_target, name, depth) \
+    X(native_srp_graph_import_backbuffer, uint32_t, (uint64_t graph, const char* name), graph, name) \
+    X(native_srp_graph_add_raster_pass, void, (uint64_t graph, const char* name, int phase, int execute_id, const int* color_handles, const int* color_loads, const float* color_clears, int color_count, int depth_handle, int depth_load, float depth_clear, const int* read_handles, int read_count), graph, name, phase, execute_id, color_handles, color_loads, color_clears, color_count, depth_handle, depth_load, depth_clear, read_handles, read_count) \
+    X(native_srp_create_render_target, int, (const char* name, int format, float scale_x, float scale_y), name, format, scale_x, scale_y) \
+    X(native_srp_find_render_target, int, (const char* name), name) \
+    X(native_srp_rt_is_valid, int, (int id), id) \
+    X(native_srp_rt_resize, void, (int id, uint32_t width, uint32_t height), id, width, height) \
+    X(native_srp_view_matrix, void, (uint64_t view, int which, float* out), view, which, out) \
+    X(native_srp_view_viewport, void, (uint64_t view, int* out), view, out) \
+    X(native_srp_view_position, void, (uint64_t view, float* out), view, out)
 
 #include "_generated/script/script_glue.generated.cpp"
 
@@ -1767,6 +1869,7 @@ X(native_SphereColliderComponent_offset_get, void, (uint64_t e, float* x, float*
         if (!call) { DO_ERROR("ScriptGlue: ScriptHub_Call not available"); return; }
         void* args[1] = { &s_bindings };
         call("register_natives", args, nullptr);
+        SrpBridge::Self().setScriptCall(call);
     }
 
 } // dodoe

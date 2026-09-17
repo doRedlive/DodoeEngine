@@ -46,7 +46,7 @@ namespace dodoe {
         graph.addPass<GBufferPassParameters>(
             "GBufferPass",
             RenderGraphPassFlags::Raster,
-            [view = &context.view, imports = context.graph_imports]
+            [view = const_cast<RenderView*>(&context.view), imports = context.graph_imports]
             (RenderGraphPassBuilder& b, GBufferPassParameters& p) {
                 const auto* mesh_ext = view->getExtension<MeshViewExtension>();
                 const Size_t visible_instance_count = mesh_ext ? mesh_ext->instance_scene_data.size() : 0;
@@ -91,6 +91,10 @@ namespace dodoe {
                     .setDebugName("RDG GBufferPass PrimitiveSceneBuffer");
                 p.primitive_scene_buffer = b.write(b.createTransientBuffer(primitive_scene_buffer_desc, "GBufferPrimitiveSceneBuffer"));
                 b.read(p.primitive_scene_buffer);
+
+                if (auto* mesh_ext = view->getExtension<MeshViewExtension>()) {
+                    mesh_ext->opaque_instance_buffer = p.primitive_scene_buffer;
+                }
 
                 SceneTextures gbuffer;
                 gbuffer.albedo   = p.albedo;

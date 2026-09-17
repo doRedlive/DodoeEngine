@@ -6,6 +6,7 @@
 
 #include "view_extension.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
+#include "runtime/function/render/render_graph/render_graph_resource.h"
 
 namespace dodoe {
 
@@ -20,6 +21,11 @@ namespace dodoe {
         DynamicArray<UInt32> primitive_instance_offsets{};
         DynamicArray<InstanceSceneData> instance_scene_data{};
         Vector4f frame_time_data{0.0f};
+
+        RenderGraphTextureHandle opaque_shadow_map{};
+        RenderGraphBufferHandle opaque_instance_buffer{};
+        RenderGraphBufferHandle shadow_caster_instance_buffer{};
+        RenderGraphTextureHandle transparent_override_color{};
 
         void reset() override;
         void buildMeshPassPrimitiveIndices();

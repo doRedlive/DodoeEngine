@@ -46,6 +46,7 @@ namespace dodoe {
 	    DynamicArray<Scope<IRenderFeature>> m_features{};
 	    DynamicArray<Scope<IRenderPass>>    m_pass_storage{};
 	    DynamicArray<IRenderPass*>          m_ordered_passes{};
+	    Bool m_managed_srp_installed{false};
 
 	    void clearViewExtensions(RenderViewFamily& view_family) const;
 
@@ -107,6 +108,18 @@ namespace dodoe {
 	            feature->onResize(width, height);
 	        }
 	    }
+
+	    [[nodiscard]] IMeshPhaseProvider* findMeshPhaseProvider(MeshPassType pass_type) const {
+	        for (const auto& feature : m_features) {
+	            IMeshPhaseProvider* provider = feature->asMeshPhaseProvider();
+	            if (provider && provider->getProvidedMeshPass() == pass_type) {
+	                return provider;
+	            }
+	        }
+	        return nullptr;
+	    }
+
+	    void installManagedSrpFeatures();
 
 	    [[nodiscard]] GfxContext*          getGfx()           const { return m_gfx_context; }
 	    [[nodiscard]] SharedRenderService* getSharedService() const { return m_shared_render_service; }

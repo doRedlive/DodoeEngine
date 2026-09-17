@@ -20,7 +20,7 @@ namespace dodoe {
     class ThreadPool;
     class GpuCulling;
 
-    class LitSceneFeature : public IRenderFeature {
+    class LitSceneFeature : public IRenderFeature, public IMeshPhaseProvider {
         SharedRenderService* m_shared_render_service{nullptr};
         GpuCulling* m_gpu_culling{nullptr};
 
@@ -39,6 +39,10 @@ namespace dodoe {
         [[nodiscard]] const DynamicArray<MeshDrawList>& getLitDrawLists() const;
         [[nodiscard]] const DynamicArray<MeshDrawGpuBucket>& getGpuBuckets(Size_t view_index) const;
         [[nodiscard]] GpuCulling* getGpuCulling() const { return m_gpu_culling; }
+
+        [[nodiscard]] IMeshPhaseProvider* asMeshPhaseProvider() override { return this; }
+        [[nodiscard]] MeshPassType getProvidedMeshPass() const override { return getMeshPassType(); }
+        void drawPhase(RenderGraphPassContext& context, DrawCommandList& command_list) override;
 
     protected:
         [[nodiscard]] SharedRenderService* getSharedRenderService() const { return m_shared_render_service; }

@@ -48,6 +48,16 @@ public static partial class ScriptHub
             "input_action_event"    => DispatchInputEvent(args),
             "list_tool_actions"     => ListToolActions(args, result),
             "invoke_tool_action"    => InvokeToolAction(args, result),
+            "srp_create_pipeline"   => SrpCreatePipeline(args, result),
+            "srp_shutdown_pipeline" => SrpShutdownPipeline(args),
+            "srp_get_feature_count" => SrpGetFeatureCount(args, result),
+            "srp_get_feature"       => SrpGetFeature(args, result),
+            "srp_feature_initialize" => SrpFeatureInitialize(args),
+            "srp_feature_on_resize" => SrpFeatureOnResize(args),
+            "srp_feature_dispose"   => SrpFeatureDispose(args),
+            "srp_feature_add_passes" => SrpFeatureAddPasses(args),
+            "srp_execute"           => SrpExecute(args),
+            "srp_clear_execute_callbacks" => SrpClearExecuteCallbacks(args),
             _ => -1
         };
     }

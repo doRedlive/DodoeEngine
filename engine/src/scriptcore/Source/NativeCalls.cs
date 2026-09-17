@@ -484,6 +484,23 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<uint, float, float, float, float, void>                native_ui_UIPanel_background_color_set;
         public delegate* unmanaged<uint, int>                                             native_ui_UIPanel_clip_children_get;
         public delegate* unmanaged<uint, int, void>                                       native_ui_UIPanel_clip_children_set;
+        // === SRP Bindings ===
+        public delegate* unmanaged<byte*, int, int, int, void>                             native_srp_cmd_draw_renderers;
+        public delegate* unmanaged<int, int, int, float*, void>                            native_srp_cmd_draw_mesh;
+        public delegate* unmanaged<int, void>                                              native_srp_cmd_draw_procedural;
+        public delegate* unmanaged<int, float, float, float, float, void>                  native_srp_cmd_clear_color;
+        public delegate* unmanaged<float, int, void>                                       native_srp_cmd_clear_depth;
+        public delegate* unmanaged<ulong, byte*, uint, uint, int, int, uint, uint>         native_srp_graph_create_texture;
+        public delegate* unmanaged<ulong, int, byte*, int, uint>                           native_srp_graph_import_rt;
+        public delegate* unmanaged<ulong, byte*, uint>                                     native_srp_graph_import_backbuffer;
+        public delegate* unmanaged<ulong, byte*, int, int, int*, int*, float*, int, int, int, float, int*, int, void> native_srp_graph_add_raster_pass;
+        public delegate* unmanaged<byte*, int, float, float, int>                          native_srp_create_render_target;
+        public delegate* unmanaged<byte*, int>                                            native_srp_find_render_target;
+        public delegate* unmanaged<int, int>                                               native_srp_rt_is_valid;
+        public delegate* unmanaged<int, uint, uint, void>                                  native_srp_rt_resize;
+        public delegate* unmanaged<ulong, int, float*, void>                               native_srp_view_matrix;
+        public delegate* unmanaged<ulong, int*, void>                                      native_srp_view_viewport;
+        public delegate* unmanaged<ulong, float*, void>                                    native_srp_view_position;
     }
 
     private static NativeBindings* b;

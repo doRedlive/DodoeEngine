@@ -24,6 +24,8 @@ namespace dodoe {
 
         void collectPasses(PassCollector& collector) override;
 
+        void drawPhase(RenderGraphPassContext& context, DrawCommandList& command_list) override;
+
         [[nodiscard]] RenderTargetHandle* getGBuffer() const { return m_gbuffer.get(); }
 
     protected:
