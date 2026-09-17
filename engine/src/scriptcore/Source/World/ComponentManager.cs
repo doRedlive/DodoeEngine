@@ -6,6 +6,7 @@ using System.Collections.Generic;
 internal static class ComponentManager
 {
     private static readonly Dictionary<Type, bool> _isNativeCache = new();
+    private static readonly Dictionary<Type, int> _nativeTypeIdCache = new();
 
     public static bool IsNative(Type t)
     {
@@ -14,6 +15,16 @@ internal static class ComponentManager
         var result = typeof(NativeComponent).IsAssignableFrom(t);
         _isNativeCache[t] = result;
         return result;
+    }
+
+    public static int GetNativeTypeId(Type t)
+    {
+        if (_nativeTypeIdCache.TryGetValue(t, out var cached))
+            return cached;
+        var id = NativeCalls.Native_ComponentTypeId(GetNativeTypeName(t));
+        if (id >= 0)
+            _nativeTypeIdCache[t] = id;
+        return id;
     }
 
     public static string GetNativeTypeName(Type t)

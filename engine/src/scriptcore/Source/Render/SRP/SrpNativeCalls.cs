@@ -1,15 +1,28 @@
 namespace GreenCake;
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 internal static unsafe partial class NativeCalls
 {
+    private static readonly Dictionary<string, IntPtr> SrpUtf8Cache = new();
+
+    private static byte* SrpUtf8(string? value)
+    {
+        var key = value ?? string.Empty;
+        if (SrpUtf8Cache.TryGetValue(key, out var cached))
+        {
+            return (byte*)cached;
+        }
+        var allocated = Marshal.StringToCoTaskMemUTF8(key);
+        SrpUtf8Cache[key] = allocated;
+        return (byte*)allocated;
+    }
+
     internal static void SrpCmdDrawRenderers(string phase, int queueMin, int queueMax, int layerMask)
     {
-        var phasePtr = StrToPtr(phase);
-        try { b->native_srp_cmd_draw_renderers(phasePtr, queueMin, queueMax, layerMask); }
-        finally { Marshal.FreeCoTaskMem((IntPtr)phasePtr); }
+        b->native_srp_cmd_draw_renderers(SrpUtf8(phase), queueMin, queueMax, layerMask);
     }
 
     internal static void SrpCmdDrawMesh(int mesh, int subMesh, int material, float* transform)
@@ -34,53 +47,41 @@ internal static unsafe partial class NativeCalls
 
     internal static uint SrpGraphCreateTexture(ulong graph, string name, uint width, uint height, int format, bool depth, uint sampleCount)
     {
-        var namePtr = StrToPtr(name);
-        try { return b->native_srp_graph_create_texture(graph, namePtr, width, height, format, depth ? 1 : 0, sampleCount); }
-        finally { Marshal.FreeCoTaskMem((IntPtr)namePtr); }
+        return b->native_srp_graph_create_texture(graph, SrpUtf8(name), width, height, format, depth ? 1 : 0, sampleCount);
     }
 
     internal static uint SrpGraphImportRt(ulong graph, int renderTarget, string name, bool depth)
     {
-        var namePtr = StrToPtr(name);
-        try { return b->native_srp_graph_import_rt(graph, renderTarget, namePtr, depth ? 1 : 0); }
-        finally { Marshal.FreeCoTaskMem((IntPtr)namePtr); }
+        return b->native_srp_graph_import_rt(graph, renderTarget, SrpUtf8(name), depth ? 1 : 0);
     }
 
     internal static uint SrpGraphImportBackBuffer(ulong graph, string name)
     {
-        var namePtr = StrToPtr(name);
-        try { return b->native_srp_graph_import_backbuffer(graph, namePtr); }
-        finally { Marshal.FreeCoTaskMem((IntPtr)namePtr); }
+        return b->native_srp_graph_import_backbuffer(graph, SrpUtf8(name));
     }
 
     internal static void SrpGraphAddRasterPass(ulong graph, string name, int phase, int executeId,
         int[] colorHandles, int[] colorLoads, float[] colorClears, int colorCount,
         int depthHandle, int depthLoad, float depthClear, int[] readHandles, int readCount)
     {
-        var namePtr = StrToPtr(name);
         fixed (int* handles = colorHandles)
         fixed (int* loads = colorLoads)
         fixed (float* clears = colorClears)
         fixed (int* reads = readHandles)
         {
-            b->native_srp_graph_add_raster_pass(graph, namePtr, phase, executeId,
+            b->native_srp_graph_add_raster_pass(graph, SrpUtf8(name), phase, executeId,
                 handles, loads, clears, colorCount, depthHandle, depthLoad, depthClear, reads, readCount);
         }
-        Marshal.FreeCoTaskMem((IntPtr)namePtr);
     }
 
     internal static int SrpCreateRenderTarget(string name, int format, float scaleX, float scaleY)
     {
-        var namePtr = StrToPtr(name);
-        try { return b->native_srp_create_render_target(namePtr, format, scaleX, scaleY); }
-        finally { Marshal.FreeCoTaskMem((IntPtr)namePtr); }
+        return b->native_srp_create_render_target(SrpUtf8(name), format, scaleX, scaleY);
     }
 
     internal static int SrpFindRenderTarget(string name)
     {
-        var namePtr = StrToPtr(name);
-        try { return b->native_srp_find_render_target(namePtr); }
-        finally { Marshal.FreeCoTaskMem((IntPtr)namePtr); }
+        return b->native_srp_find_render_target(SrpUtf8(name));
     }
 
     internal static bool SrpRtIsValid(int id)

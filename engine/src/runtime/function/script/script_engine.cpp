@@ -166,6 +166,27 @@ namespace dodoe {
             return false;
         }
 
+        m_invoke_start = (ScriptLifecycleFn)m_native_host->loadManagedDelegate(
+            L"GreenCake.dll",
+            L"GreenCake.ScriptHub, GreenCake",
+            L"InvokeStart",
+            reinterpret_cast<const wchar_t*>(-1));
+        m_invoke_update = (ScriptLifecycleFn)m_native_host->loadManagedDelegate(
+            L"GreenCake.dll",
+            L"GreenCake.ScriptHub, GreenCake",
+            L"InvokeUpdate",
+            reinterpret_cast<const wchar_t*>(-1));
+        m_invoke_fixed_update = (ScriptLifecycleFn)m_native_host->loadManagedDelegate(
+            L"GreenCake.dll",
+            L"GreenCake.ScriptHub, GreenCake",
+            L"InvokeFixedUpdate",
+            reinterpret_cast<const wchar_t*>(-1));
+        m_invoke_finalize = (ScriptLifecycleFn)m_native_host->loadManagedDelegate(
+            L"GreenCake.dll",
+            L"GreenCake.ScriptHub, GreenCake",
+            L"InvokeFinalize",
+            reinterpret_cast<const wchar_t*>(-1));
+
         return true;
     }
 
@@ -176,9 +197,9 @@ namespace dodoe {
 
         if (m_call) {
             void* alc_arg = m_alc_gchandle;
-            m_call("unload_app", &alc_arg, nullptr);
+            m_call(ScriptCommand::UnloadApp, &alc_arg, nullptr);
             if (collect_garbage) {
-                m_call("gc_collect", nullptr, nullptr);
+                m_call(ScriptCommand::GcCollect, nullptr, nullptr);
             }
         }
 
@@ -228,7 +249,7 @@ namespace dodoe {
         };
 
         DO_PROFILE_MARK("ScriptEngine::loadAppAssembly.invokeManaged", "startup");
-        int rc = m_call("load_app_assembly", args, &result);
+        int rc = m_call(ScriptCommand::LoadAppAssembly, args, &result);
         if (rc != 1 || !result) {
             DO_ERROR("ScriptEngine: load_app_assembly failed");
             return false;

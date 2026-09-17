@@ -2,10 +2,9 @@
 
 #include "dopch.h"
 #include "native_host.h"
+#include "script_command.h"
 
 namespace dodoe {
-
-    using ScriptCallFn = int (*)(const char* method, void** args, void** result);
 
     struct ScriptEngineCreateInfo {
 
@@ -15,11 +14,19 @@ namespace dodoe {
         friend class Managed<ScriptEngine, ScriptEngineCreateInfo>;
         Scope<NativeHost> m_native_host;
         ScriptCallFn m_call{nullptr};
+        ScriptLifecycleFn m_invoke_start{nullptr};
+        ScriptLifecycleFn m_invoke_update{nullptr};
+        ScriptLifecycleFn m_invoke_fixed_update{nullptr};
+        ScriptLifecycleFn m_invoke_finalize{nullptr};
         void* m_alc_gchandle{nullptr};
         String m_script_sources_fingerprint{};
 
     public:
         [[nodiscard]] ScriptCallFn getCallFn() const { return m_call; }
+        [[nodiscard]] ScriptLifecycleFn getInvokeStartFn() const { return m_invoke_start; }
+        [[nodiscard]] ScriptLifecycleFn getInvokeUpdateFn() const { return m_invoke_update; }
+        [[nodiscard]] ScriptLifecycleFn getInvokeFixedUpdateFn() const { return m_invoke_fixed_update; }
+        [[nodiscard]] ScriptLifecycleFn getInvokeFinalizeFn() const { return m_invoke_finalize; }
         [[nodiscard]] void* getAlcHandle() const { return m_alc_gchandle; }
 
         bool onScriptSourcesChanged();

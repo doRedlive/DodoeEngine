@@ -6,6 +6,7 @@
 
 #include "srp_types.h"
 #include "runtime/function/render/mesh_draw/mesh_pass_type.h"
+#include "runtime/function/script/script_command.h"
 
 namespace dodoe {
 
@@ -19,10 +20,8 @@ namespace dodoe {
     class GfxContext;
     struct RenderPassBuildContext;
 
-    using SrpScriptCallFn = int (*)(const char* method, void** args, void** result);
-
     class SrpBridge {
-        SrpScriptCallFn m_call{nullptr};
+        ScriptCallFn m_call{nullptr};
         BaseRenderer* m_renderer{nullptr};
         SharedRenderService* m_services{nullptr};
         Bool m_pipeline_created{false};
@@ -42,7 +41,7 @@ namespace dodoe {
     public:
         static SrpBridge& Self();
 
-        void setScriptCall(SrpScriptCallFn call);
+        void setScriptCall(ScriptCallFn call);
         void attachRenderer(BaseRenderer* renderer);
         void detachRenderer(BaseRenderer* renderer);
 

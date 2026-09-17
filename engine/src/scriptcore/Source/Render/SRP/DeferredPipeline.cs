@@ -1,5 +1,7 @@
 namespace GreenCake;
 
+using System;
+
 public sealed class DeferredPipeline : RenderPipeline
 {
     public override void Initialize(RenderPipelineDefinition definition, PipelineServices services)
@@ -12,36 +14,51 @@ public sealed class ExampleOverlayFeature : RenderFeature
 {
     public static bool EnableDraw = false;
 
+    private readonly RasterPassDesc _desc = new();
+    private readonly Action<RasterCommandContext> _execute;
+
+    public ExampleOverlayFeature()
+    {
+        _execute = Execute;
+    }
+
     public override RenderPhase Phase => RenderPhase.PostProcess;
 
     public override void AddRenderPasses(RenderGraph graph, PassBuildContext context)
     {
-        var width = context.View.ViewportWidth;
-        var height = context.View.ViewportHeight;
-        if (width <= 0 || height <= 0)
+        var viewport = context.View.Viewport;
+        if (viewport.width <= 0 || viewport.height <= 0)
         {
             return;
         }
 
-        var overlay = graph.CreateTexture("SrpOverlayColor", width, height, SrpFormat.RGBA8_UNORM);
-        var desc = new RasterPassDesc()
-            .SetColorAttachment(overlay, 0, LoadAction.Clear, new Color(0.0f, 0.0f, 0.0f, 0.0f));
+        var overlay = graph.CreateTexture("SrpOverlayColor", viewport.width, viewport.height, SrpFormat.RGBA8_UNORM);
+        _desc.Reset();
+        _desc.SetColorAttachment(overlay, 0, LoadAction.Clear, new Color(0.0f, 0.0f, 0.0f, 0.0f));
+        graph.AddRasterPass("SrpOverlayPass", RenderPhase.PostProcess, _desc, _execute);
+    }
 
-        graph.AddRasterPass("SrpOverlayPass", RenderPhase.PostProcess, desc, cmd =>
+    private void Execute(RasterCommandContext cmd)
+    {
+        cmd.ClearColor(0, new Color(0.0f, 0.0f, 0.0f, 0.0f));
+        if (!EnableDraw)
         {
-            cmd.ClearColor(0, new Color(0.0f, 0.0f, 0.0f, 0.0f));
-            if (!EnableDraw)
-            {
-                return;
-            }
-            cmd.DrawRenderers(MeshDrawSettings.For("GBuffer").WithQueue(RenderQueueRange.Opaque));
-        });
+            return;
+        }
+        cmd.DrawRenderers(MeshDrawSettings.For("GBuffer").WithQueue(RenderQueueRange.Opaque));
     }
 }
 
 public sealed class MyOutlineFeature : RenderFeature
 {
     private RTHandle _outlineRT = null!;
+    private readonly RasterPassDesc _desc = new();
+    private readonly Action<RasterCommandContext> _execute;
+
+    public MyOutlineFeature()
+    {
+        _execute = Execute;
+    }
 
     public override RenderPhase Phase => RenderPhase.PostProcess;
 
@@ -58,11 +75,13 @@ public sealed class MyOutlineFeature : RenderFeature
     public override void AddRenderPasses(RenderGraph graph, PassBuildContext context)
     {
         var outline = graph.ImportTexture(_outlineRT, "SrpOutlineColor");
-        var desc = new RasterPassDesc()
-            .SetColorAttachment(outline, 0, LoadAction.Clear, new Color(0.0f, 0.0f, 0.0f, 0.0f));
-        graph.AddRasterPass("SrpOutlineMask", RenderPhase.PostProcess, desc, cmd =>
-        {
-            cmd.DrawRenderers(MeshDrawSettings.For("GBuffer").WithQueue(RenderQueueRange.Opaque));
-        });
+        _desc.Reset();
+        _desc.SetColorAttachment(outline, 0, LoadAction.Clear, new Color(0.0f, 0.0f, 0.0f, 0.0f));
+        graph.AddRasterPass("SrpOutlineMask", RenderPhase.PostProcess, _desc, _execute);
+    }
+
+    private void Execute(RasterCommandContext cmd)
+    {
+        cmd.DrawRenderers(MeshDrawSettings.For("GBuffer").WithQueue(RenderQueueRange.Opaque));
     }
 }

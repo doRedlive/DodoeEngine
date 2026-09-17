@@ -44,4 +44,17 @@ namespace dodoe {
         return false;
     }
 
+    Bool MeshPhaseRegistry::find(const char* name, MeshPassType& out_pass_type) const {
+        if (name == nullptr) {
+            return false;
+        }
+        for (const auto& phase : m_phases) {
+            if (phase.name == name) {
+                out_pass_type = phase.pass_type;
+                return true;
+            }
+        }
+        return false;
+    }
+
 } // dodoe

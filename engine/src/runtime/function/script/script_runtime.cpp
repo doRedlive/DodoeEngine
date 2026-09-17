@@ -25,13 +25,17 @@ namespace dodoe {
     bool ScriptRuntime::initialize(const ScriptRuntimeCreateInfo &info) {
         m_script_engine = info.script_engine;
         m_call = m_script_engine->getCallFn();
+        m_invoke_start = m_script_engine->getInvokeStartFn();
+        m_invoke_update = m_script_engine->getInvokeUpdateFn();
+        m_invoke_fixed_update = m_script_engine->getInvokeFixedUpdateFn();
+        m_invoke_finalize = m_script_engine->getInvokeFinalizeFn();
 
         if (!m_call) {
             DO_ERROR("ScriptRuntime: ScriptHub_Call not available");
             return false;
         }
 
-        m_call("reset_state", nullptr, nullptr);
+        m_call(ScriptCommand::ResetState, nullptr, nullptr);
 
         loadAssemblyClasses();
 
@@ -51,7 +55,7 @@ namespace dodoe {
         auto* alc = m_script_engine->getAlcHandle();
         void* args[1] = { alc };
         void* result = nullptr;
-        m_call("scan_types", args, &result);
+        m_call(ScriptCommand::ScanTypes, args, &result);
         if (!result) return;
 
         const CoTaskMemResult owned_result(result);
@@ -91,7 +95,7 @@ namespace dodoe {
                 (void*)type_info.name.c_str()
             };
             void* result = nullptr;
-            int rc = m_call("create_instance", args, &result);
+            int rc = m_call(ScriptCommand::CreateInstance, args, &result);
             if (rc == 1) {
                 m_system_instance_handles[full_name] = reinterpret_cast<i64>(result);
             }
@@ -105,7 +109,7 @@ namespace dodoe {
         m_system_class_umap.clear();
         m_system_instance_handles.clear();
         if (m_call) {
-            m_call("reset_state", nullptr, nullptr);
+            m_call(ScriptCommand::ResetState, nullptr, nullptr);
         }
     }
 
@@ -114,7 +118,7 @@ namespace dodoe {
         if (!m_call) return;
 
         void* result = nullptr;
-        m_call("snapshot", nullptr, &result);
+        m_call(ScriptCommand::Snapshot, nullptr, &result);
         if (!result) return;
 
         const CoTaskMemResult owned_result(result);
@@ -151,7 +155,7 @@ namespace dodoe {
         }
 
         args[0] = (void*)json_str.c_str();
-        m_call("restore", args, nullptr);
+        m_call(ScriptCommand::Restore, args, nullptr);
     }
 
     void ScriptRuntime::reloadAssemblyClasses() {
@@ -173,7 +177,7 @@ namespace dodoe {
         if (!m_call) return false;
 
         void* result = nullptr;
-        int rc = m_call("list_tool_actions", nullptr, &result);
+        int rc = m_call(ScriptCommand::ListToolActions, nullptr, &result);
         if (!result) return false;
         const CoTaskMemResult owned_result(result);
         if (rc != 1) return false;
@@ -198,7 +202,7 @@ namespace dodoe {
 
         void* args[1] = { (void*)action_name.c_str() };
         void* result = nullptr;
-        int rc = m_call("invoke_tool_action", args, &result);
+        int rc = m_call(ScriptCommand::InvokeToolAction, args, &result);
         if (!result) return false;
         const CoTaskMemResult owned_result(result);
         if (rc != 1) return false;
@@ -221,7 +225,7 @@ namespace dodoe {
         if (!m_call) return false;
 
         void* result = nullptr;
-        const int rc = m_call("gc_info", nullptr, &result);
+        const int rc = m_call(ScriptCommand::GcInfo, nullptr, &result);
         if (rc != 1 || !result) return false;
 
         const CoTaskMemResult owned_result(result);
@@ -250,7 +254,7 @@ namespace dodoe {
 
         void* args[1] = { &entity_uuid };
         void* result = nullptr;
-        m_call("get_entity_components", args, &result);
+        m_call(ScriptCommand::GetEntityComponents, args, &result);
         const CoTaskMemResult owned_result(result);
     }
 
@@ -261,7 +265,7 @@ namespace dodoe {
 
         void* args[1] = { &entity_uuid };
         void* result = nullptr;
-        const int rc = m_call("get_entity_component_data", args, &result);
+        const int rc = m_call(ScriptCommand::GetEntityComponentData, args, &result);
         if (!result) return false;
         const CoTaskMemResult owned_result(result);
         if (rc <= 0) return false;
@@ -286,7 +290,7 @@ namespace dodoe {
 
         const String json_str = fields.dump().c_str();
         void* args[3] = { &entity_uuid, (void*)full_name.c_str(), (void*)json_str.c_str() };
-        return m_call("set_entity_component_data", args, nullptr) == 1;
+        return m_call(ScriptCommand::SetEntityComponentData, args, nullptr) == 1;
     }
 
     bool ScriptRuntime::addEntityManagedComponentFromManaged(uint64_t entity_uuid, const String& full_name) {
@@ -294,7 +298,7 @@ namespace dodoe {
 
         void* args[2] = { &entity_uuid, (void*)full_name.c_str() };
         void* result = nullptr;
-        int rc = m_call("add_entity_component", args, &result);
+        int rc = m_call(ScriptCommand::AddEntityComponent, args, &result);
         return rc == 1;
     }
 
@@ -303,7 +307,7 @@ namespace dodoe {
 
         void* args[2] = { &entity_uuid, (void*)full_name.c_str() };
         void* result = nullptr;
-        int rc = m_call("remove_entity_component", args, &result);
+        int rc = m_call(ScriptCommand::RemoveEntityComponent, args, &result);
         return rc == 1;
     }
 
@@ -311,34 +315,42 @@ namespace dodoe {
         if (!m_call) return;
 
         void* args[1] = { &entity_uuid };
-        m_call("remove_entity", args, nullptr);
+        m_call(ScriptCommand::RemoveEntity, args, nullptr);
     }
 
     void ScriptRuntime::onRuntimeStart() {
         DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeStart", "script");
-        if (m_call) {
-            m_call("invoke_start", nullptr, nullptr);
+        if (m_invoke_start) {
+            m_invoke_start();
+        } else if (m_call) {
+            m_call(ScriptCommand::InvokeStart, nullptr, nullptr);
         }
     }
 
     void ScriptRuntime::onRuntimeUpdate() {
         DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeUpdate", "script");
-        if (m_call) {
-            m_call("invoke_update", nullptr, nullptr);
+        if (m_invoke_update) {
+            m_invoke_update();
+        } else if (m_call) {
+            m_call(ScriptCommand::InvokeUpdate, nullptr, nullptr);
         }
     }
 
     void ScriptRuntime::onRuntimeFixedUpdate() {
         DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeFixedUpdate", "script");
-        if (m_call) {
-            m_call("invoke_fixed_update", nullptr, nullptr);
+        if (m_invoke_fixed_update) {
+            m_invoke_fixed_update();
+        } else if (m_call) {
+            m_call(ScriptCommand::InvokeFixedUpdate, nullptr, nullptr);
         }
     }
 
     void ScriptRuntime::onRuntimeFinalize() {
         DO_PROFILE_SCOPE_CATEGORY("ScriptRuntime::onRuntimeFinalize", "script");
-        if (m_call) {
-            m_call("invoke_finalize", nullptr, nullptr);
+        if (m_invoke_finalize) {
+            m_invoke_finalize();
+        } else if (m_call) {
+            m_call(ScriptCommand::InvokeFinalize, nullptr, nullptr);
         }
     }
 

@@ -49,6 +49,10 @@ namespace dodoe {
         static std::unordered_map<String, std::function<int(Entity)>> s_EntityHasComponentFuncUmap;
         static std::unordered_map<String, std::function<void(Entity)>> s_EntityAddComponentFuncUmap;
         static std::unordered_map<String, std::function<void(Entity)>> s_EntityRemoveComponentFuncUmap;
+        static std::unordered_map<String, int> s_ComponentTypeIdByName;
+        static DynamicArray<std::function<int(Entity)>> s_EntityHasComponentById;
+        static DynamicArray<std::function<void(Entity)>> s_EntityAddComponentById;
+        static DynamicArray<std::function<void(Entity)>> s_EntityRemoveComponentById;
 
         template<typename... T> struct ComponentGroup { };
 
@@ -73,9 +77,26 @@ namespace dodoe {
         template<typename TC>
         static void RegisterNativeComponent() {
             auto name = ResolveManagedComponentName<TC>();
-            s_EntityHasComponentFuncUmap[name] = [](Entity e) { return e.hasComponent<TC>() ? 1 : 0; };
-            s_EntityAddComponentFuncUmap[name] = [](Entity e) { if (!e.hasComponent<TC>()) e.addComponent<TC>(); };
-            s_EntityRemoveComponentFuncUmap[name] = [](Entity e) { if (e.hasComponent<TC>()) e.removeComponent<TC>(); };
+            std::function<int(Entity)> has_fn = [](Entity e) { return e.hasComponent<TC>() ? 1 : 0; };
+            std::function<void(Entity)> add_fn = [](Entity e) { if (!e.hasComponent<TC>()) e.addComponent<TC>(); };
+            std::function<void(Entity)> remove_fn = [](Entity e) { if (e.hasComponent<TC>()) e.removeComponent<TC>(); };
+            s_EntityHasComponentFuncUmap[name] = has_fn;
+            s_EntityAddComponentFuncUmap[name] = add_fn;
+            s_EntityRemoveComponentFuncUmap[name] = remove_fn;
+
+            auto it = s_ComponentTypeIdByName.find(name);
+            if (it == s_ComponentTypeIdByName.end()) {
+                const int id = static_cast<int>(s_EntityHasComponentById.size());
+                s_ComponentTypeIdByName[name] = id;
+                s_EntityHasComponentById.push_back(has_fn);
+                s_EntityAddComponentById.push_back(add_fn);
+                s_EntityRemoveComponentById.push_back(remove_fn);
+            } else {
+                const int id = it->second;
+                s_EntityHasComponentById[static_cast<Size_t>(id)] = has_fn;
+                s_EntityAddComponentById[static_cast<Size_t>(id)] = add_fn;
+                s_EntityRemoveComponentById[static_cast<Size_t>(id)] = remove_fn;
+            }
         }
         template<typename... TC>
         static void RegisterNativeComponents() { (RegisterNativeComponent<TC>(), ...); }
@@ -196,6 +217,17 @@ namespace dodoe {
         static void native_entity_remove_component(uint64_t uuid, const char* type) {
             Entity e = TryGetEntityByUuid(uuid);
             if (e.valid() && type && s_EntityRemoveComponentFuncUmap.count(type)) s_EntityRemoveComponentFuncUmap.at(type)(e);
+        }
+
+        static int native_component_type_id(const char* type) {
+            if (!type) return -1;
+            auto it = s_ComponentTypeIdByName.find(type);
+            return it != s_ComponentTypeIdByName.end() ? it->second : -1;
+        }
+        static int native_entity_has_component_id(uint64_t uuid, int type_id) {
+            if (type_id < 0 || static_cast<Size_t>(type_id) >= s_EntityHasComponentById.size()) return 0;
+            Entity e = TryGetEntityByUuid(uuid);
+            return e.valid() ? s_EntityHasComponentById[static_cast<Size_t>(type_id)](e) : 0;
         }
 
         static int native_input_register_action_map(const char* map_name, int priority) {
@@ -374,7 +406,7 @@ namespace dodoe {
             else if (const auto* v = std::get_if<Vector2f>(&event.value)) { vtype = 2; v0 = v->x; v1 = v->y; }
             uint32_t action_id = event.action_id;
             void* args[6] = { &action_id, &phase, &vtype, &vbool, &v0, &v1 };
-            call("input_action_event", args, nullptr);
+            call(ScriptCommand::InputActionEvent, args, nullptr);
         }
         static uint64_t native_input_subscribe(const char* action_name, int phase) {
             if (!action_name) return 0;
@@ -1822,7 +1854,9 @@ X(native_SphereColliderComponent_offset_get, void, (uint64_t e, float* x, float*
     X(native_srp_rt_resize, void, (int id, uint32_t width, uint32_t height), id, width, height) \
     X(native_srp_view_matrix, void, (uint64_t view, int which, float* out), view, which, out) \
     X(native_srp_view_viewport, void, (uint64_t view, int* out), view, out) \
-    X(native_srp_view_position, void, (uint64_t view, float* out), view, out)
+    X(native_srp_view_position, void, (uint64_t view, float* out), view, out) \
+    X(native_component_type_id, int, (const char* type), type) \
+    X(native_entity_has_component_id, int, (uint64_t e, int type_id), e, type_id)
 
 #include "_generated/script/script_glue.generated.cpp"
 
@@ -1859,6 +1893,10 @@ X(native_SphereColliderComponent_offset_get, void, (uint64_t e, float* x, float*
         s_EntityHasComponentFuncUmap.clear();
         s_EntityAddComponentFuncUmap.clear();
         s_EntityRemoveComponentFuncUmap.clear();
+        s_ComponentTypeIdByName.clear();
+        s_EntityHasComponentById.clear();
+        s_EntityAddComponentById.clear();
+        s_EntityRemoveComponentById.clear();
         RegisterNativeComponents(NativeComponents{});
     }
 
@@ -1868,7 +1906,7 @@ X(native_SphereColliderComponent_offset_get, void, (uint64_t e, float* x, float*
         auto call = s_ScriptEngine->getCallFn();
         if (!call) { DO_ERROR("ScriptGlue: ScriptHub_Call not available"); return; }
         void* args[1] = { &s_bindings };
-        call("register_natives", args, nullptr);
+        call(ScriptCommand::RegisterNatives, args, nullptr);
         SrpBridge::Self().setScriptCall(call);
     }
 

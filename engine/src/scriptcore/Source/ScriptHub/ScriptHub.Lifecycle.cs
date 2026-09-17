@@ -1,7 +1,33 @@
 namespace GreenCake;
 
+using System.Runtime.InteropServices;
+
 public static partial class ScriptHub
 {
+    [UnmanagedCallersOnly(EntryPoint = "InvokeStart", CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static void InvokeStart()
+    {
+        SystemDispatcher.OnCreate();
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "InvokeUpdate", CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static void InvokeUpdate()
+    {
+        SystemDispatcher.OnUpdate();
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "InvokeFixedUpdate", CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static void InvokeFixedUpdate()
+    {
+        SystemDispatcher.OnFixedUpdate();
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "InvokeFinalize", CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static void InvokeFinalize()
+    {
+        SystemDispatcher.OnDestroy();
+    }
+
     private static unsafe int InvokeSystemOnCreate(void** args)
     {
         SystemDispatcher.OnCreate();

@@ -501,6 +501,8 @@ internal static unsafe partial class NativeCalls
         public delegate* unmanaged<ulong, int, float*, void>                               native_srp_view_matrix;
         public delegate* unmanaged<ulong, int*, void>                                      native_srp_view_viewport;
         public delegate* unmanaged<ulong, float*, void>                                    native_srp_view_position;
+        public delegate* unmanaged<byte*, int>                                             native_component_type_id;
+        public delegate* unmanaged<ulong, int, int>                                        native_entity_has_component_id;
     }
 
     private static NativeBindings* b;
@@ -530,9 +532,13 @@ internal static unsafe partial class NativeCalls
 
     internal static bool Native_EntityHasComponent(ulong entityId, Type componentType)
     {
-        var name = ComponentManager.GetNativeTypeName(componentType);
-        var ptr = StrToPtr(name);
-        try { return b->native_entity_has_component(entityId, ptr) != 0; }
+        return b->native_entity_has_component_id(entityId, ComponentManager.GetNativeTypeId(componentType)) != 0;
+    }
+
+    internal static int Native_ComponentTypeId(string typeName)
+    {
+        var ptr = StrToPtr(typeName);
+        try { return b->native_component_type_id(ptr); }
         finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
     }
 
@@ -916,10 +922,8 @@ internal static unsafe partial class NativeCalls
 
     internal static bool Native_ComponentExists(ulong entityId, Type componentType)
     {
-        var name = ComponentManager.GetNativeTypeName(componentType);
-        var ptr = StrToPtr(name);
-        try { return b->native_component_exists(entityId, ptr) != 0; }
-        finally { Marshal.FreeCoTaskMem((IntPtr)ptr); }
+        _ = entityId;
+        return ComponentManager.GetNativeTypeId(componentType) >= 0;
     }
 
     internal static float Native_TimeGetDeltaTime()

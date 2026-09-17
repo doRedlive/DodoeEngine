@@ -1,7 +1,6 @@
 namespace GreenCake;
 
 using System;
-using System.Collections.Generic;
 
 public struct RenderGraphTexture : IEquatable<RenderGraphTexture>
 {
@@ -31,32 +30,39 @@ public struct RenderGraphBuffer : IEquatable<RenderGraphBuffer>
 
 public sealed class RasterPassDesc
 {
-    internal readonly List<int> ColorHandles = new();
-    internal readonly List<int> ColorLoads = new();
-    internal readonly List<float> ColorClears = new();
-    internal readonly List<int> ReadHandles = new();
+    internal int[] ColorHandles = Array.Empty<int>();
+    internal int[] ColorLoads = Array.Empty<int>();
+    internal float[] ColorClears = Array.Empty<float>();
+    internal int ColorCount;
+    internal int[] ReadHandles = Array.Empty<int>();
+    internal int ReadCount;
 
     internal int DepthHandle = -1;
     internal int DepthLoad = (int)LoadAction.DontCare;
     internal float DepthClear = 1.0f;
 
+    public void Reset()
+    {
+        ColorCount = 0;
+        ReadCount = 0;
+        DepthHandle = -1;
+        DepthLoad = (int)LoadAction.DontCare;
+        DepthClear = 1.0f;
+    }
+
     public RasterPassDesc SetColorAttachment(RenderGraphTexture texture, int slot, LoadAction load, Color clear)
     {
-        while (ColorHandles.Count <= slot)
-        {
-            ColorHandles.Add(RenderGraphTexture.Invalid.index);
-            ColorLoads.Add((int)LoadAction.DontCare);
-            ColorClears.Add(0.0f);
-            ColorClears.Add(0.0f);
-            ColorClears.Add(0.0f);
-            ColorClears.Add(0.0f);
-        }
+        EnsureColorCapacity(slot + 1);
         ColorHandles[slot] = texture.index;
         ColorLoads[slot] = (int)load;
         ColorClears[slot * 4 + 0] = clear.r;
         ColorClears[slot * 4 + 1] = clear.g;
         ColorClears[slot * 4 + 2] = clear.b;
         ColorClears[slot * 4 + 3] = clear.a;
+        if (slot + 1 > ColorCount)
+        {
+            ColorCount = slot + 1;
+        }
         return this;
     }
 
@@ -70,12 +76,28 @@ public sealed class RasterPassDesc
 
     public RasterPassDesc ReadTexture(RenderGraphTexture texture)
     {
-        ReadHandles.Add(texture.index);
+        if (ReadCount == ReadHandles.Length)
+        {
+            Array.Resize(ref ReadHandles, Math.Max(ReadCount + 1, 4));
+        }
+        ReadHandles[ReadCount++] = texture.index;
         return this;
+    }
+
+    private void EnsureColorCapacity(int count)
+    {
+        if (ColorHandles.Length >= count)
+        {
+            return;
+        }
+        var capacity = Math.Max(count, 4);
+        Array.Resize(ref ColorHandles, capacity);
+        Array.Resize(ref ColorLoads, capacity);
+        Array.Resize(ref ColorClears, capacity * 4);
     }
 }
 
-public sealed class RenderGraph
+public readonly struct RenderGraph
 {
     internal ulong Handle { get; }
 
@@ -107,8 +129,8 @@ public sealed class RenderGraph
         var executeId = ScriptHub.RegisterExecuteCallback(execute);
         NativeCalls.SrpGraphAddRasterPass(
             Handle, name, (int)phase, executeId,
-            desc.ColorHandles.ToArray(), desc.ColorLoads.ToArray(), desc.ColorClears.ToArray(), desc.ColorHandles.Count,
+            desc.ColorHandles, desc.ColorLoads, desc.ColorClears, desc.ColorCount,
             desc.DepthHandle, desc.DepthLoad, desc.DepthClear,
-            desc.ReadHandles.ToArray(), desc.ReadHandles.Count);
+            desc.ReadHandles, desc.ReadCount);
     }
 }

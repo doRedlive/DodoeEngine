@@ -26,6 +26,7 @@ namespace dodoe {
         void registerPhase(const String& name, MeshPassType pass_type);
 
         [[nodiscard]] Bool find(const String& name, MeshPassType& out_pass_type) const;
+        [[nodiscard]] Bool find(const char* name, MeshPassType& out_pass_type) const;
         [[nodiscard]] const DynamicArray<MeshPhaseDesc>& getPhases() const { return m_phases; }
     };
 

@@ -25,6 +25,16 @@ public readonly struct ManagedRenderView
         }
     }
 
+    public unsafe (int x, int y, int width, int height) Viewport
+    {
+        get
+        {
+            int* rect = stackalloc int[4];
+            NativeCalls.SrpViewViewport(_handle, rect);
+            return (rect[0], rect[1], rect[2], rect[3]);
+        }
+    }
+
     public unsafe int ViewportX
     {
         get

@@ -8,10 +8,9 @@ public static partial class ScriptHub
 {
     private static readonly Dictionary<int, RenderPipeline> SrpPipelines = new();
     private static readonly Dictionary<int, RenderFeature> SrpFeatures = new();
-    private static readonly Dictionary<int, Action<RasterCommandContext>> SrpExecuteCallbacks = new();
+    private static readonly List<Action<RasterCommandContext>> SrpExecuteCallbacks = new();
     private static int SrpNextPipelineId = 1;
     private static int SrpNextFeatureId = 1;
-    private static int SrpNextExecuteId = 1;
 
     internal static int NextFeatureHandle()
     {
@@ -20,9 +19,8 @@ public static partial class ScriptHub
 
     internal static int RegisterExecuteCallback(Action<RasterCommandContext> callback)
     {
-        var id = SrpNextExecuteId++;
-        SrpExecuteCallbacks[id] = callback;
-        return id;
+        SrpExecuteCallbacks.Add(callback);
+        return SrpExecuteCallbacks.Count - 1;
     }
 
     private static unsafe int SrpCreatePipeline(void** args, void** result)
@@ -125,7 +123,6 @@ public static partial class ScriptHub
     private static unsafe int SrpClearExecuteCallbacks(void** args)
     {
         SrpExecuteCallbacks.Clear();
-        SrpNextExecuteId = 1;
         return 1;
     }
 }

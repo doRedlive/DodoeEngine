@@ -4,11 +4,11 @@
 
 #include "dopch.h"
 #include "runtime/core/utils/json.h"
+#include "script_command.h"
 
 namespace dodoe {
 
     class ScriptEngine;
-    using ScriptCallFn = int (*)(const char* method, void** args, void** result);
 
     struct ComponentTypeInfo {
         String full_name;
@@ -37,6 +37,10 @@ namespace dodoe {
         friend class Managed<ScriptRuntime, ScriptRuntimeCreateInfo>;
         ScriptEngine* m_script_engine{nullptr};
         ScriptCallFn m_call{nullptr};
+        ScriptLifecycleFn m_invoke_start{nullptr};
+        ScriptLifecycleFn m_invoke_update{nullptr};
+        ScriptLifecycleFn m_invoke_fixed_update{nullptr};
+        ScriptLifecycleFn m_invoke_finalize{nullptr};
 
         UnorderedMap<String, ComponentTypeInfo> m_system_class_umap;
         UnorderedMap<String, ComponentTypeInfo> m_component_class_umap;

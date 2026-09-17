@@ -41,7 +41,7 @@ namespace dodoe {
         return instance;
     }
 
-    void SrpBridge::setScriptCall(const SrpScriptCallFn call) {
+    void SrpBridge::setScriptCall(const ScriptCallFn call) {
         m_call = call;
         m_pipeline_created = false;
         if (m_renderer) {
@@ -77,13 +77,13 @@ namespace dodoe {
         Int32 pipeline_id = 0;
         void* create_args[1] = { const_cast<char*>(pipeline_type) };
         void* create_result[1] = { &pipeline_id };
-        m_call("srp_create_pipeline", create_args, create_result);
+        m_call(ScriptCommand::SrpCreatePipeline, create_args, create_result);
         m_pipeline_id = pipeline_id;
 
         Int32 feature_count = 0;
         void* count_args[1] = { &m_pipeline_id };
         void* count_result[1] = { &feature_count };
-        m_call("srp_get_feature_count", count_args, count_result);
+        m_call(ScriptCommand::SrpGetFeatureCount, count_args, count_result);
 
         m_feature_ids.clear();
         m_feature_phases.clear();
@@ -92,7 +92,7 @@ namespace dodoe {
             Int32 feature_phase = 0;
             void* feature_args[2] = { &m_pipeline_id, &index };
             void* feature_result[2] = { &feature_id, &feature_phase };
-            m_call("srp_get_feature", feature_args, feature_result);
+            m_call(ScriptCommand::SrpGetFeature, feature_args, feature_result);
             m_feature_ids.push_back(feature_id);
             m_feature_phases.push_back(feature_phase);
         }
@@ -106,7 +106,7 @@ namespace dodoe {
             return;
         }
         void* args[1] = { &m_pipeline_id };
-        m_call("srp_shutdown_pipeline", args, nullptr);
+        m_call(ScriptCommand::SrpShutdownPipeline, args, nullptr);
         m_pipeline_created = false;
         m_managed_installed = false;
         m_feature_ids.clear();
@@ -118,7 +118,7 @@ namespace dodoe {
         if (!m_call || !m_pipeline_created) {
             return;
         }
-        m_call("srp_clear_execute_callbacks", nullptr, nullptr);
+        m_call(ScriptCommand::SrpClearExecuteCallbacks, nullptr, nullptr);
     }
 
     Bool SrpBridge::getFeature(const Int32 index, Int32& out_id, Int32& out_phase) const {
@@ -135,7 +135,7 @@ namespace dodoe {
             return;
         }
         void* args[1] = { &feature_id };
-        m_call("srp_feature_initialize", args, nullptr);
+        m_call(ScriptCommand::SrpFeatureInitialize, args, nullptr);
     }
 
     void SrpBridge::featureOnResize(const Int32 feature_id, const UInt32 width, const UInt32 height) {
@@ -145,7 +145,7 @@ namespace dodoe {
         UInt32 w = width;
         UInt32 h = height;
         void* args[3] = { &feature_id, &w, &h };
-        m_call("srp_feature_on_resize", args, nullptr);
+        m_call(ScriptCommand::SrpFeatureOnResize, args, nullptr);
     }
 
     void SrpBridge::featureDispose(const Int32 feature_id) {
@@ -153,7 +153,7 @@ namespace dodoe {
             return;
         }
         void* args[1] = { &feature_id };
-        m_call("srp_feature_dispose", args, nullptr);
+        m_call(ScriptCommand::SrpFeatureDispose, args, nullptr);
     }
 
     void SrpBridge::featureAddPasses(const Int32 feature_id, RenderGraphBuilder& graph,
@@ -166,7 +166,7 @@ namespace dodoe {
         void* args[3] = { &feature_id, &graph_handle, &view_handle };
         m_current_graph = &graph;
         m_build_context = &context;
-        m_call("srp_feature_add_passes", args, nullptr);
+        m_call(ScriptCommand::SrpFeatureAddPasses, args, nullptr);
         m_current_graph = nullptr;
         m_build_context = nullptr;
     }
@@ -180,14 +180,14 @@ namespace dodoe {
         void* args[1] = { &id };
         m_pass_context = &context;
         m_command_list = &command_list;
-        m_call("srp_execute", args, nullptr);
+        m_call(ScriptCommand::SrpExecute, args, nullptr);
         m_pass_context = nullptr;
         m_command_list = nullptr;
     }
 
     void SrpBridge::drawRenderers(const SrpMeshDrawSettings& settings) {
         MeshPassType pass_type = MeshPassType::Opaque;
-        if (!MeshPhaseRegistry::Self().find(settings.phase ? settings.phase : "", pass_type)) {
+        if (!MeshPhaseRegistry::Self().find(settings.phase, pass_type)) {
             return;
         }
         IMeshPhaseProvider* provider = m_renderer->findMeshPhaseProvider(pass_type);
