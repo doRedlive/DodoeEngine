@@ -12,13 +12,37 @@ public class Object
     public int InstanceID { get; }
     public int Generation { get; }
 
+    private static int s_validationEpoch;
+    private int m_validationEpoch = -1;
+    private bool m_validationResult;
+
     internal Object(int instanceID, int generation = 1)
     {
         InstanceID = instanceID;
         Generation = generation;
     }
 
-    public bool IsValid => InstanceID != 0 && NativeCalls.Native_ObjectIsAlive(InstanceID, Generation);
+    public bool IsValid
+    {
+        get
+        {
+            if (InstanceID == 0)
+            {
+                return false;
+            }
+            if (m_validationEpoch != s_validationEpoch)
+            {
+                m_validationResult = NativeCalls.Native_ObjectIsAlive(InstanceID, Generation);
+                m_validationEpoch = s_validationEpoch;
+            }
+            return m_validationResult;
+        }
+    }
+
+    internal static void BeginValidationFrame()
+    {
+        s_validationEpoch++;
+    }
 
     public static void RegisterType<T>(string nativeTypeName, Func<int, int, Object> factory) where T : Object
     {
