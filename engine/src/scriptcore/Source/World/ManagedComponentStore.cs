@@ -7,40 +7,56 @@ internal static class ManagedComponentStore
 {
     private static readonly Dictionary<Type, ICakeComponentSet> _sets = new();
 
+    private static class Handle<T> where T : CakeComponent
+    {
+        internal static readonly bool IsNative = ComponentManager.IsNative(typeof(T));
+        private static ComponentSet<T>? _set;
+        internal static ComponentSet<T> Set => _set ??= Register();
+
+        private static ComponentSet<T> Register()
+        {
+            var set = new ComponentSet<T>();
+            _sets[typeof(T)] = set;
+            return set;
+        }
+    }
+
     public static void Add<T>(ulong entity, T component) where T : CakeComponent
     {
-        GetSet<T>().Add(entity, component);
+        Handle<T>.Set.Add(entity, component);
     }
 
     public static void AddOrReplace<T>(ulong entity, T component) where T : CakeComponent
     {
-        GetSet<T>().AddOrReplace(entity, component);
+        Handle<T>.Set.AddOrReplace(entity, component);
     }
 
     public static bool Has<T>(ulong entity) where T : CakeComponent
     {
-        if (ComponentManager.IsNative(typeof(T)))
+        if (Handle<T>.IsNative)
             return false;
-        return TryGetSet<T>(out var set) && set.Has(entity);
+        return Handle<T>.Set.Has(entity);
     }
 
     public static T Get<T>(ulong entity) where T : CakeComponent
     {
-        return TryGetSet<T>(out var set) ? set.Get(entity) : null;
+        return Handle<T>.IsNative ? null! : Handle<T>.Set.Get(entity);
     }
 
     public static bool TryGet<T>(ulong entity, out T component) where T : CakeComponent
     {
-        if (TryGetSet<T>(out var set))
-            return set.TryGet(entity, out component);
-        component = null;
-        return false;
+        if (Handle<T>.IsNative)
+        {
+            component = null!;
+            return false;
+        }
+        return Handle<T>.Set.TryGet(entity, out component);
     }
 
     public static void Remove<T>(ulong entity) where T : CakeComponent
     {
-        if (TryGetSet<T>(out var set))
-            set.Remove(entity);
+        if (!Handle<T>.IsNative)
+            Handle<T>.Set.Remove(entity);
     }
 
     public static void RemoveEntity(ulong entityId)
@@ -51,9 +67,9 @@ internal static class ManagedComponentStore
 
     public static IEnumerable<ulong> Query<T>() where T : CakeComponent
     {
-        if (!TryGetSet<T>(out var set))
+        if (Handle<T>.IsNative)
             yield break;
-        foreach (var entity in set.GetEntities())
+        foreach (var entity in Handle<T>.Set.GetEntities())
             yield return entity;
     }
 
@@ -125,30 +141,7 @@ internal static class ManagedComponentStore
 
     public static void Clear()
     {
-        _sets.Clear();
-    }
-
-    private static ComponentSet<T> GetSet<T>() where T : CakeComponent
-    {
-        var type = typeof(T);
-        if (!_sets.ContainsKey(type))
-            _sets[type] = new ComponentSet<T>();
-        return (ComponentSet<T>)_sets[type];
-    }
-
-    private static bool TryGetSet<T>(out ComponentSet<T> set) where T : CakeComponent
-    {
-        if (ComponentManager.IsNative(typeof(T)))
-        {
-            set = default!;
-            return false;
-        }
-        if (_sets.TryGetValue(typeof(T), out var rawSet))
-        {
-            set = (ComponentSet<T>)rawSet;
-            return true;
-        }
-        set = default!;
-        return false;
+        foreach (var set in _sets.Values)
+            set.Clear();
     }
 }

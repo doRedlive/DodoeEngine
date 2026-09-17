@@ -10,6 +10,7 @@ internal interface ICakeComponentSet
     bool Has(ulong entityId);
     IEnumerable<ulong> GetEntities();
     bool TryGetComponent(ulong entityId, out CakeComponent component);
+    void Clear();
 }
 
 internal class ComponentSet<T> : ICakeComponentSet where T : CakeComponent
@@ -156,6 +157,14 @@ internal class ComponentSet<T> : ICakeComponentSet where T : CakeComponent
             if (_dense[i] != null)
                 yield return _entities[i];
         }
+    }
+
+    public void Clear()
+    {
+        Array.Clear(_dense, 0, _count);
+        Array.Clear(_entities, 0, _count);
+        _sparse.Clear();
+        _count = 0;
     }
 
     private void EnsureCapacity(int required)
