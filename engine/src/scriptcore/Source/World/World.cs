@@ -107,11 +107,13 @@ public class World
     internal void RemoveEntityLocal(ulong entityId)
     {
         ManagedComponentStore.RemoveEntity(entityId);
+        NativeProxyFactory.RemoveEntity(entityId);
     }
 
     internal static void Reset()
     {
         ManagedComponentStore.Clear();
+        NativeProxyFactory.ClearCaches();
         _current = null;
     }
 }
