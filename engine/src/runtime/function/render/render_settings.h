@@ -57,6 +57,8 @@ namespace dodoe {
         META(Enable)
         Bool windowless{ false };
 
+        Bool create_default_view_target{ true };
+
         META(Enable)
         Bool enable_gpu_driven{ false };
         META(Enable)
@@ -96,6 +98,7 @@ namespace dodoe {
         inline static Bool m_enable_baseline_renderer{ false };
         inline static PresentMode m_present_mode{ PresentMode::Mailbox };
         inline static Bool m_windowless{ false };
+        inline static Bool m_create_default_view_target{ true };
         inline static Bool m_gpu_driven_supported{ false };
 
         inline static RenderDeviceCapabilities m_device_caps{};
@@ -111,6 +114,7 @@ namespace dodoe {
         [[nodiscard]] static Bool IsSingleThread() { return m_enable_single_thread; }
         [[nodiscard]] static PresentMode GetPresentMode() { return m_present_mode; }
         [[nodiscard]] static Bool IsWindowless() { return m_windowless; }
+        [[nodiscard]] static Bool IsCreateDefaultViewTarget() { return m_create_default_view_target; }
         [[nodiscard]] static Bool IsEnableBaselineRender() { return m_enable_baseline_renderer; }
 
         [[nodiscard]] static Bool IsGpuDrivenSupported() { return m_gpu_driven_supported; }

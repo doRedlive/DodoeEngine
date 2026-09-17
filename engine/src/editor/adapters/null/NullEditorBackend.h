@@ -15,6 +15,7 @@ public:
     bool execute(const EditorCommandMessage& command) override;
     void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
     bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;
+    bool bootEngine() override;
     void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
     bool detachSceneSurface() override;
     void tickAtSafePoint() override;

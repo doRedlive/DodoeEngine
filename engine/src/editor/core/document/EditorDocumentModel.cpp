@@ -105,6 +105,27 @@ EditorEntity* EditorDocumentModel::findEntity(std::uint64_t uuid) {
     return nullptr;
 }
 
+bool EditorDocumentModel::isDescendantOf(std::uint64_t uuid, std::uint64_t ancestorUuid) const {
+    const EditorEntity* entity = findEntity(uuid);
+    if (!entity || ancestorUuid == 0) {
+        return false;
+    }
+    std::uint64_t parent = entity->parent;
+    int depth = 0;
+    while (parent != 0 && depth < 256) {
+        if (parent == ancestorUuid) {
+            return true;
+        }
+        const EditorEntity* parentEntity = findEntity(parent);
+        if (!parentEntity) {
+            return false;
+        }
+        parent = parentEntity->parent;
+        ++depth;
+    }
+    return false;
+}
+
 const EditorEntity* EditorDocumentModel::findEntity(std::uint64_t uuid) const {
     for (const auto& entity : m_document.entities) {
         if (entity.uuid == uuid) {
@@ -112,6 +133,14 @@ const EditorEntity* EditorDocumentModel::findEntity(std::uint64_t uuid) const {
         }
     }
     return nullptr;
+}
+
+std::uint64_t EditorDocumentModel::generateEntityUuid() const {
+    std::uint64_t uuid = GenerateUuid();
+    while (findEntity(uuid) != nullptr) {
+        uuid = GenerateUuid();
+    }
+    return uuid;
 }
 
 std::uint64_t EditorDocumentModel::createEntity(const std::string& name, std::uint64_t preferredUuid) {
@@ -229,6 +258,14 @@ void EditorDocumentModel::replaceDocument(const EditorDocument& document) {
     notifyChanged();
 }
 
+void EditorDocumentModel::restoreDocument(const EditorDocument& document, bool dirty) {
+    m_document = document;
+    SyncHierarchyComponents(m_document);
+    m_hasDocument = true;
+    m_dirty = dirty;
+    notifyChanged();
+}
+
 void EditorDocumentModel::newScene(const std::string& name) {
     m_document = EditorDocument{};
     m_document.name = name.empty() ? std::string("Untitled") : name;
@@ -255,6 +292,18 @@ bool EditorDocumentModel::insertComponent(std::uint64_t uuid, std::size_t index,
         return false;
     }
     entity->nativeComponents.insert(entity->nativeComponents.begin() + static_cast<std::ptrdiff_t>(index), component);
+    m_dirty = true;
+    notifyChanged();
+    return true;
+}
+
+bool EditorDocumentModel::moveComponent(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex) {
+    EditorEntity* entity = findEntity(uuid);
+    if (!entity || fromIndex >= entity->nativeComponents.size() ||
+        toIndex >= entity->nativeComponents.size() || fromIndex == toIndex) {
+        return false;
+    }
+    std::swap(entity->nativeComponents[fromIndex], entity->nativeComponents[toIndex]);
     m_dirty = true;
     notifyChanged();
     return true;

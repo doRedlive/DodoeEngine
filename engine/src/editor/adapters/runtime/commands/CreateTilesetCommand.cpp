@@ -42,29 +42,29 @@ CreateTilesetCommand::CreateTilesetCommand(dodoe::UUID tilemap, dodoe::String im
     , m_spacing(spacing)
 {}
 
-void CreateTilesetCommand::execute(EditorDocumentModel& model)
+bool CreateTilesetCommand::execute(EditorDocumentModel& model)
 {
     auto* scene = ActiveScene();
-    if (!scene) return;
+    if (!scene) return false;
     auto tilemapEntity = ResolveEntity(scene, m_tilemap);
-    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::TilemapComponent>()) return;
+    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::TilemapComponent>()) return false;
 
     auto& resourceManager = dodoe::ResourceManager::Self();
     auto* assetManager = resourceManager.getAssetManager();
-    if (!assetManager) return;
+    if (!assetManager) return false;
 
     const std::filesystem::path imageAbs(m_imagePath.c_str());
     const std::filesystem::path assetDir(assetManager->getAssetDir().string());
-    if (!std::filesystem::exists(imageAbs) || assetDir.empty()) return;
+    if (!std::filesystem::exists(imageAbs) || assetDir.empty()) return false;
 
     const dodoe::ObjectID imageRef = assetManager->ensureImported(m_imagePath);
-    if (!imageRef.isValid()) return;
+    if (!imageRef.isValid()) return false;
     auto* texture = resourceManager.loadObjectByPath<dodoe::Texture2D>(dodoe::FileID(m_imagePath));
-    if (!texture || texture->getWidth() <= 0 || texture->getHeight() <= 0) return;
+    if (!texture || texture->getWidth() <= 0 || texture->getHeight() <= 0) return false;
 
     const dodoe::Int32 imageW = texture->getWidth();
     const dodoe::Int32 imageH = texture->getHeight();
-    if (m_tileWidth == 0 || m_tileHeight == 0) return;
+    if (m_tileWidth == 0 || m_tileHeight == 0) return false;
 
     dodoe::UInt32 columns = 0;
     dodoe::UInt32 rows = 0;
@@ -78,7 +78,7 @@ void CreateTilesetCommand::execute(EditorDocumentModel& model)
         rows = static_cast<dodoe::UInt32>(
             (static_cast<dodoe::Int32>(imageH) - static_cast<dodoe::Int32>(m_margin * 2) + static_cast<dodoe::Int32>(m_spacing)) / static_cast<dodoe::Int32>(stepH));
     }
-    if (columns == 0 || rows == 0) return;
+    if (columns == 0 || rows == 0) return false;
     const dodoe::UInt32 tileCount = columns * rows;
 
     dodoe::UInt32 firstGid = 1;
@@ -92,7 +92,7 @@ void CreateTilesetCommand::execute(EditorDocumentModel& model)
 
     std::error_code ec;
     const std::filesystem::path relImage = std::filesystem::relative(imageAbs, assetDir, ec);
-    if (ec || relImage.empty() || relImage.string().starts_with("..")) return;
+    if (ec || relImage.empty() || relImage.string().starts_with("..")) return false;
     const std::string imageUrl = relImage.generic_string();
 
     const std::string baseName = imageAbs.stem().string();
@@ -109,18 +109,18 @@ void CreateTilesetCommand::execute(EditorDocumentModel& model)
     tsx["TextureId"] = 0;
     {
         std::ofstream file(tsxPath);
-        if (!file.is_open()) return;
+        if (!file.is_open()) return false;
         file << tsx.dump(4);
         file.flush();
     }
 
     const dodoe::ObjectID tilesetRef = assetManager->ensureTilesetImported(
         dodoe::String(tsxPath.generic_string().c_str()));
-    if (!tilesetRef.isValid()) return;
+    if (!tilesetRef.isValid()) return false;
     m_createdAssetId = tilesetRef.asset_id;
 
     dodoe::Tileset* tileset = resourceManager.loadObject<dodoe::Tileset>(m_createdAssetId, 0);
-    if (!tileset) return;
+    if (!tileset) return false;
     tileset->name = dodoe::String(baseName.c_str());
     tileset->first_gid = firstGid;
     tileset->tile_width = m_tileWidth;
@@ -139,6 +139,7 @@ void CreateTilesetCommand::execute(EditorDocumentModel& model)
         });
     }
     m_created = true;
+    return true;
 }
 
 void CreateTilesetCommand::revert(EditorDocumentModel& model)

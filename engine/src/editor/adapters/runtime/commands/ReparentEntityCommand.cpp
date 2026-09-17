@@ -33,9 +33,9 @@ ReparentEntityCommand::ReparentEntityCommand(dodoe::UUID entity, dodoe::UUID old
     , m_newParent(newParent)
 {}
 
-void ReparentEntityCommand::execute(EditorDocumentModel& model)
+bool ReparentEntityCommand::execute(EditorDocumentModel& model)
 {
-    doReparent(model, m_newParent);
+    return doReparent(model, m_newParent);
 }
 
 void ReparentEntityCommand::revert(EditorDocumentModel& model)
@@ -43,51 +43,51 @@ void ReparentEntityCommand::revert(EditorDocumentModel& model)
     doReparent(model, m_oldParent);
 }
 
-void ReparentEntityCommand::doReparent(EditorDocumentModel& model, dodoe::UUID newParent)
+bool ReparentEntityCommand::doReparent(EditorDocumentModel& model, dodoe::UUID newParent)
 {
     auto* scene = ActiveScene();
-    if (scene) {
-        auto entity = ResolveEntity(scene, m_entity);
-        if (entity.valid()) {
-            if (!entity.hasComponent<dodoe::HierarchyComponent>()) {
-                entity.addComponent<dodoe::HierarchyComponent>();
+    if (!scene) return false;
+    auto entity = ResolveEntity(scene, m_entity);
+    if (!entity.valid()) return false;
+
+    if (!entity.hasComponent<dodoe::HierarchyComponent>()) {
+        entity.addComponent<dodoe::HierarchyComponent>();
+    }
+
+    auto& hc = entity.getComponent<dodoe::HierarchyComponent>();
+
+    if (hc.parent.valid() && hc.parent.hasComponent<dodoe::HierarchyComponent>()) {
+        auto& oldParentHC = hc.parent.getComponent<dodoe::HierarchyComponent>();
+        auto& siblings = oldParentHC.children;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), entity), siblings.end());
+        oldParentHC.child_count = static_cast<int>(siblings.size());
+        oldParentHC.dirty = true;
+    }
+
+    hc.parent = {};
+    hc.parent_uuid = dodoe::UUID(0);
+
+    if (newParent.isValid()) {
+        auto parentEntity = ResolveEntity(scene, newParent);
+        if (parentEntity.valid()) {
+            if (!parentEntity.hasComponent<dodoe::HierarchyComponent>()) {
+                parentEntity.addComponent<dodoe::HierarchyComponent>();
             }
-
-            auto& hc = entity.getComponent<dodoe::HierarchyComponent>();
-
-            if (hc.parent.valid() && hc.parent.hasComponent<dodoe::HierarchyComponent>()) {
-                auto& oldParentHC = hc.parent.getComponent<dodoe::HierarchyComponent>();
-                auto& siblings = oldParentHC.children;
-                siblings.erase(std::remove(siblings.begin(), siblings.end(), entity), siblings.end());
-                oldParentHC.child_count = static_cast<int>(siblings.size());
-                oldParentHC.dirty = true;
-            }
-
-            hc.parent = {};
-            hc.parent_uuid = dodoe::UUID(0);
-
-            if (newParent.isValid()) {
-                auto parentEntity = ResolveEntity(scene, newParent);
-                if (parentEntity.valid()) {
-                    if (!parentEntity.hasComponent<dodoe::HierarchyComponent>()) {
-                        parentEntity.addComponent<dodoe::HierarchyComponent>();
-                    }
-                    hc.parent = parentEntity;
-                    hc.parent_uuid = parentEntity.uuid();
-                    hc.dirty = true;
-
-                    auto& parentHC = parentEntity.getComponent<dodoe::HierarchyComponent>();
-                    parentHC.children.push_back(entity);
-                    parentHC.child_count = static_cast<int>(parentHC.children.size());
-                    parentHC.dirty = true;
-                }
-            }
+            hc.parent = parentEntity;
+            hc.parent_uuid = parentEntity.uuid();
             hc.dirty = true;
+
+            auto& parentHC = parentEntity.getComponent<dodoe::HierarchyComponent>();
+            parentHC.children.push_back(entity);
+            parentHC.child_count = static_cast<int>(parentHC.children.size());
+            parentHC.dirty = true;
         }
     }
+    hc.dirty = true;
 
     model.reparentEntity(static_cast<std::uint64_t>(m_entity),
                          static_cast<std::uint64_t>(newParent));
+    return true;
 }
 
 std::string ReparentEntityCommand::label() const

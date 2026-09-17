@@ -14,7 +14,7 @@ class ImportMeshCommand final : public EditorCommand {
 public:
     ImportMeshCommand(std::string name, nlohmann::json meshValue, nlohmann::json position);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
     std::uint64_t createdUuid() const { return m_createdUuid; }

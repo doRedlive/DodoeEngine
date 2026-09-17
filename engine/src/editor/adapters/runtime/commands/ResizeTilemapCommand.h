@@ -15,7 +15,7 @@ class ResizeTilemapCommand final : public EditorCommand {
 public:
     ResizeTilemapCommand(dodoe::UUID tilemap, dodoe::UInt32 newWidth, dodoe::UInt32 newHeight);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 

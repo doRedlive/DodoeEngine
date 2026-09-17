@@ -13,12 +13,12 @@ class ReorderTileLayerCommand final : public EditorCommand {
 public:
     ReorderTileLayerCommand(dodoe::UUID tilemap, dodoe::UUID layer, bool moveUp);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 
 private:
-    void swapInScene(EditorDocumentModel& model, bool reverse);
+    bool swapInScene(EditorDocumentModel& model, bool reverse);
 
     dodoe::UUID m_tilemap;
     dodoe::UUID m_layer;

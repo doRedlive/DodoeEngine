@@ -2,6 +2,8 @@
 
 #include "RuntimeEditorBackend.h"
 
+#include "adapters/runtime/services/PrefabService.h"
+
 #include "runtime/core/asserts.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/debug/instrumentor.h"
@@ -11,6 +13,8 @@
 #include "runtime/function/script/script_system.h"
 #include "runtime/function/world/components/hierarchy_component.h"
 #include "runtime/function/world/components/id_component.h"
+#include "runtime/function/world/components/prefab_instance_component.h"
+#include "runtime/function/world/components/prefab_node_component.h"
 #include "runtime/function/world/components/tag_component.h"
 #include "runtime/function/world/components/tilemap/tilemap_component.h"
 #include "runtime/function/world/scene.h"
@@ -132,8 +136,18 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
     DO_INFO("Cakery reconcile: {} entities synced", document.entities.size());
 
     for (Entity sceneEntity : scene->getEntities()) {
+        if (sceneEntity.valid() && sceneEntity.hasComponent<PrefabInstanceComponent>() &&
+            !sceneEntity.hasComponent<PrefabNodeComponent>()) {
+            ExpandPrefabInstance(sceneEntity);
+        }
+    }
+
+    for (Entity sceneEntity : scene->getEntities()) {
         if (sceneEntity.hasComponent<TagComponent>() &&
             sceneEntity.getComponent<TagComponent>().tag == "PrimaryCamera") {
+            continue;
+        }
+        if (sceneEntity.hasComponent<PrefabNodeComponent>()) {
             continue;
         }
         bool keep = false;
@@ -179,6 +193,12 @@ void RuntimeEditorBackend::rebuildHierarchy(dodoe::Scene& scene, const EditorDoc
             parentEntity.addComponent<HierarchyComponent>();
         }
         auto& parentHC = parentEntity.getComponent<HierarchyComponent>();
+        std::vector<Entity> prefabChildren;
+        for (Entity child : parentHC.children) {
+            if (child.valid() && child.hasComponent<PrefabNodeComponent>()) {
+                prefabChildren.push_back(child);
+            }
+        }
         parentHC.children.clear();
 
         std::vector<const EditorEntity*> ordered = children;
@@ -233,6 +253,9 @@ void RuntimeEditorBackend::rebuildHierarchy(dodoe::Scene& scene, const EditorDoc
             childHC.parent = parentEntity;
             childHC.parent_uuid = parentEntity.uuid();
             childHC.dirty = true;
+            parentHC.children.push_back(child);
+        }
+        for (Entity child : prefabChildren) {
             parentHC.children.push_back(child);
         }
         parentHC.child_count = static_cast<int>(parentHC.children.size());

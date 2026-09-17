@@ -59,6 +59,7 @@ private:
     std::string m_currentMessage;
     int m_commandCount = 0;
     size_t m_undoCountAtBegin = 0;
+    ScopedConnection m_historySubscription;
 
     std::vector<TransactionInfo> m_transactions;
     std::vector<CheckpointInfo> m_checkpoints;

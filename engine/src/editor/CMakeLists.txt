@@ -104,6 +104,10 @@ set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapWithTilesetCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportTiledMapCommand.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportTiledMapCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/InstantiatePrefabCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/InstantiatePrefabCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/PrefabService.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/PrefabService.cpp
 )
 add_library(EditorRuntimeBackend STATIC ${EDITOR_RUNTIME_BACKEND_SOURCES})
 target_link_libraries(EditorRuntimeBackend PRIVATE EditorCore EditorServices DodoeRuntime)

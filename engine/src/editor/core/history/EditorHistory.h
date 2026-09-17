@@ -27,8 +27,8 @@ public:
     const std::vector<std::unique_ptr<EditorCommand>>& undoStack() const { return m_undoStack; }
     const std::vector<std::unique_ptr<EditorCommand>>& redoStack() const { return m_redoStack; }
 
-    void beginMerge() { m_merging = true; }
-    void endMerge() { m_merging = false; m_lastMergeable = nullptr; }
+    void beginMerge() { m_merging = true; m_mergeGroup.clear(); }
+    void endMerge() { m_merging = false; m_mergeGroup.clear(); }
 
     std::string undoLabel() const;
     std::string redoLabel() const;
@@ -41,7 +41,7 @@ private:
     std::vector<std::unique_ptr<EditorCommand>> m_undoStack;
     std::vector<std::unique_ptr<EditorCommand>> m_redoStack;
     bool m_merging = false;
-    EditorCommand* m_lastMergeable = nullptr;
+    std::vector<EditorCommand*> m_mergeGroup;
     Signal<> m_changed;
 };
 

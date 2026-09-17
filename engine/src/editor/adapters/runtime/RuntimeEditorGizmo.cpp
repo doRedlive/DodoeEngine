@@ -4,6 +4,7 @@
 
 #include "EditorCamera.h"
 #include "adapters/runtime/services/UuidResolve.h"
+#include "core/EditorSession.h"
 
 #include "runtime/core/channel/gizmo_channel.h"
 #include "runtime/core/context/system_context.h"
@@ -143,6 +144,13 @@ void GenerateTranslateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f
     }
 
     data.has_data = true;
+}
+
+[[nodiscard]] float SnapToStep(float value, float step) {
+    if (step <= 1e-6f) {
+        return value;
+    }
+    return std::round(value / step) * step;
 }
 
 float PointDistanceSq(float px, float py, const dodoe::Vector2f& a) {
@@ -377,9 +385,7 @@ void RuntimeEditorBackend::pickAt(float screenX, float screenY)
         return;
     }
     m_selectedUuid = static_cast<std::uint64_t>(entity.uuid());
-    if (m_eventCallback) {
-        m_eventCallback(BackendEventMessage{"selection_changed", std::to_string(m_selectedUuid)});
-    }
+    m_eventCallback(BackendEventMessage{"selection_changed", std::to_string(m_selectedUuid)});
 }
 
 dodoe::Entity RuntimeEditorBackend::selectedSceneEntity() const
@@ -394,6 +400,20 @@ dodoe::Entity RuntimeEditorBackend::selectedSceneEntity() const
         return {};
     }
     return scene->tryGetEntityByUUID(dodoe::UUID(m_selectedUuid));
+}
+
+dodoe::Entity RuntimeEditorBackend::dragEntityByUuid(std::uint64_t uuid) const
+{
+    SystemContext* ctx = m_app ? &m_app->context() : nullptr;
+    World* world = ctx ? ctx->getWorld() : nullptr;
+    if (!world) {
+        return {};
+    }
+    Scene* scene = world->getActiveScene();
+    if (!scene) {
+        return {};
+    }
+    return scene->tryGetEntityByUUID(dodoe::UUID(uuid));
 }
 
 int RuntimeEditorBackend::hitTestGizmo(float screenX, float screenY)
@@ -456,10 +476,31 @@ void RuntimeEditorBackend::beginDrag(int axis, float screenX, float screenY)
     m_dragStartPosition = transform.getPosition();
     m_dragStartRotation = transform.getRotation();
     m_dragStartScale = transform.getScale();
+    m_dragEntities.clear();
+
+    if (m_session) {
+        World* world = m_app ? m_app->context().getWorld() : nullptr;
+        Scene* scene = world ? world->getActiveScene() : nullptr;
+        if (scene) {
+            for (const std::uint64_t uuid : m_session->selection().selectedAll()) {
+                if (uuid == m_selectedUuid) {
+                    continue;
+                }
+                dodoe::Entity other = scene->tryGetEntityByUUID(dodoe::UUID(uuid));
+                if (!other.valid() || !other.hasComponent<dodoe::TransformComponent>()) {
+                    continue;
+                }
+                auto& otherTransform = other.getComponent<dodoe::TransformComponent>();
+                m_dragEntities.push_back({uuid, otherTransform.getPosition(),
+                                          otherTransform.getRotation(), otherTransform.getScale()});
+            }
+        }
+    }
 
     if (!m_camera) {
         m_dragAxis = -1;
         m_dragMode.clear();
+        m_dragEntities.clear();
         return;
     }
 
@@ -469,6 +510,7 @@ void RuntimeEditorBackend::beginDrag(int axis, float screenX, float screenY)
         if (!RayPlaneIntersect(origin, dir, m_dragStartPosition, m_camera->forwardDirection(), m_dragPlanePoint)) {
             m_dragAxis = -1;
             m_dragMode.clear();
+            m_dragEntities.clear();
             return;
         }
     }
@@ -484,6 +526,7 @@ void RuntimeEditorBackend::beginDrag(int axis, float screenX, float screenY)
         if (axisLengthSq < 1e-6f) {
             m_dragAxis = -1;
             m_dragMode.clear();
+            m_dragEntities.clear();
             return;
         }
         const dodoe::Vector2f mouseOffset{screenX - start.x, screenY - start.y};
@@ -495,9 +538,7 @@ void RuntimeEditorBackend::beginDrag(int axis, float screenX, float screenY)
         m_dragStartAngle = std::atan2(screenY - centerScreen.y, screenX - centerScreen.x);
     }
 
-    if (m_eventCallback) {
-        m_eventCallback(BackendEventMessage{"transform_drag_begin", ""});
-    }
+    m_eventCallback(BackendEventMessage{"transform_drag_begin", ""});
 }
 
 void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
@@ -507,6 +548,7 @@ void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
         return;
     }
     auto& transform = entity.getComponent<dodoe::TransformComponent>();
+    const bool snapping = m_snapEnabled || m_ctrlHeld;
 
     if (m_dragMode == "translate") {
         dodoe::Vector3f origin, dir;
@@ -515,18 +557,50 @@ void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
         if (!RayPlaneIntersect(origin, dir, m_dragStartPosition, m_camera->forwardDirection(), planePoint)) {
             return;
         }
-        const float movement = dodoe::Math::Dot(planePoint - m_dragPlanePoint, kAxes[m_dragAxis]);
+        float movement = dodoe::Math::Dot(planePoint - m_dragPlanePoint, kAxes[m_dragAxis]);
+        if (snapping) {
+            movement = SnapToStep(movement, m_translateSnap);
+        }
         const dodoe::Vector3f newPosition = m_dragStartPosition + kAxes[m_dragAxis] * movement;
+        const dodoe::Vector3f delta = newPosition - m_dragStartPosition;
         transform.setPosition(newPosition);
-        emitTransformChange(newPosition, transform.getRotation(), transform.getScale());
+
+        std::vector<TransformUpdate> updates;
+        updates.push_back({m_selectedUuid, newPosition, transform.getRotation(), transform.getScale()});
+        for (const TransformUpdate& start : m_dragEntities) {
+            dodoe::Entity other = dragEntityByUuid(start.uuid);
+            if (!other.valid() || !other.hasComponent<dodoe::TransformComponent>()) {
+                continue;
+            }
+            const dodoe::Vector3f otherPosition = start.position + delta;
+            other.getComponent<dodoe::TransformComponent>().setPosition(otherPosition);
+            updates.push_back({start.uuid, otherPosition, start.rotation, start.scale});
+        }
+        emitTransformChanges(updates);
     } else if (m_dragMode == "rotate") {
         const dodoe::Vector2f centerScreen = m_camera->projectToScreen(m_dragStartPosition);
         const float angle = std::atan2(screenY - centerScreen.y, screenX - centerScreen.x);
-        const float deltaDegrees = (angle - m_dragStartAngle) * 180.0f / 3.14159265f;
+        float deltaDegrees = (angle - m_dragStartAngle) * 180.0f / 3.14159265f;
+        if (snapping) {
+            deltaDegrees = SnapToStep(deltaDegrees, m_rotateSnap);
+        }
         dodoe::Vector3f newRotation = m_dragStartRotation;
         newRotation[m_dragAxis] += deltaDegrees;
         transform.setRotation(newRotation);
-        emitTransformChange(transform.getPosition(), newRotation, transform.getScale());
+
+        std::vector<TransformUpdate> updates;
+        updates.push_back({m_selectedUuid, m_dragStartPosition, newRotation, m_dragStartScale});
+        for (const TransformUpdate& start : m_dragEntities) {
+            dodoe::Entity other = dragEntityByUuid(start.uuid);
+            if (!other.valid() || !other.hasComponent<dodoe::TransformComponent>()) {
+                continue;
+            }
+            dodoe::Vector3f otherRotation = start.rotation;
+            otherRotation[m_dragAxis] += deltaDegrees;
+            other.getComponent<dodoe::TransformComponent>().setRotation(otherRotation);
+            updates.push_back({start.uuid, start.position, otherRotation, start.scale});
+        }
+        emitTransformChanges(updates);
     } else if (m_dragMode == "scale") {
         const dodoe::Vector2f start = m_camera->projectToScreen(m_dragStartPosition);
         const dodoe::Vector2f end = m_camera->projectToScreen(
@@ -540,10 +614,30 @@ void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
         const float axisParam = (mouseOffset.x * axisScreen.x + mouseOffset.y * axisScreen.y) / axisLengthSq;
         const float movement = axisParam - m_dragStartAxisParam;
         dodoe::Vector3f newScale = m_dragStartScale;
-        newScale[m_dragAxis] = std::max(0.01f,
-            m_dragStartScale[m_dragAxis] + movement * kHandleLength);
+        float primaryScale = m_dragStartScale[m_dragAxis] + movement * kHandleLength;
+        if (snapping) {
+            primaryScale = SnapToStep(primaryScale, m_scaleSnap);
+        }
+        newScale[m_dragAxis] = std::max(0.01f, primaryScale);
         transform.setScale(newScale);
-        emitTransformChange(transform.getPosition(), transform.getRotation(), newScale);
+
+        std::vector<TransformUpdate> updates;
+        updates.push_back({m_selectedUuid, m_dragStartPosition, m_dragStartRotation, newScale});
+        for (const TransformUpdate& dragStart : m_dragEntities) {
+            dodoe::Entity other = dragEntityByUuid(dragStart.uuid);
+            if (!other.valid() || !other.hasComponent<dodoe::TransformComponent>()) {
+                continue;
+            }
+            dodoe::Vector3f otherScale = dragStart.scale;
+            float otherAxis = dragStart.scale[m_dragAxis] + movement * kHandleLength;
+            if (snapping) {
+                otherAxis = SnapToStep(otherAxis, m_scaleSnap);
+            }
+            otherScale[m_dragAxis] = std::max(0.01f, otherAxis);
+            other.getComponent<dodoe::TransformComponent>().setScale(otherScale);
+            updates.push_back({dragStart.uuid, dragStart.position, dragStart.rotation, otherScale});
+        }
+        emitTransformChanges(updates);
     }
 
     if (m_camera) {
@@ -555,16 +649,14 @@ void RuntimeEditorBackend::endDrag()
 {
     m_dragAxis = -1;
     m_dragMode.clear();
-    if (m_eventCallback) {
-        m_eventCallback(BackendEventMessage{"transform_drag_end", ""});
-    }
+    m_eventCallback(BackendEventMessage{"transform_drag_end", ""});
 }
 
 void RuntimeEditorBackend::emitTransformChange(const dodoe::Vector3f& position,
                                                const dodoe::Vector3f& rotation,
                                                const dodoe::Vector3f& scale)
 {
-    if (!m_eventCallback || m_playState != "edit") {
+    if (m_playState != "edit") {
         return;
     }
     nlohmann::json payload = {
@@ -575,6 +667,30 @@ void RuntimeEditorBackend::emitTransformChange(const dodoe::Vector3f& position,
             {"scale", {scale.x, scale.y, scale.z}},
         }},
     };
+    m_eventCallback(BackendEventMessage{"transform_changed", payload.dump()});
+}
+
+void RuntimeEditorBackend::emitTransformChanges(const std::vector<TransformUpdate>& updates)
+{
+    if (m_playState != "edit") {
+        return;
+    }
+    if (updates.size() == 1) {
+        emitTransformChange(updates[0].position, updates[0].rotation, updates[0].scale);
+        return;
+    }
+    nlohmann::json entities = nlohmann::json::array();
+    for (const TransformUpdate& update : updates) {
+        entities.push_back({
+            {"uuid", update.uuid},
+            {"value", {
+                {"position", {update.position.x, update.position.y, update.position.z}},
+                {"rotation", {update.rotation.x, update.rotation.y, update.rotation.z}},
+                {"scale", {update.scale.x, update.scale.y, update.scale.z}},
+            }},
+        });
+    }
+    nlohmann::json payload = {{"entities", std::move(entities)}};
     m_eventCallback(BackendEventMessage{"transform_changed", payload.dump()});
 }
 

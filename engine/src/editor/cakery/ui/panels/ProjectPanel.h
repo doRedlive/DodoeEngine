@@ -12,6 +12,7 @@
 
 #include <QHash>
 #include <QPixmap>
+#include <QStringList>
 
 class QPoint;
 class QTreeWidget;
@@ -45,14 +46,24 @@ private:
     void addDirectory(QTreeWidgetItem* parentItem, const std::filesystem::path& directory);
     bool filterTreeItem(QTreeWidgetItem* item, const QString& filter);
     std::filesystem::path selectedDirectory() const;
+    QStringList selectedTreePaths() const;
+    QStringList selectedGridPaths() const;
+    QStringList findAssetReferenceHolders(std::uint64_t guid) const;
     void onContextMenu(const QPoint& pos);
+    void onGridContextMenu(const QPoint& pos);
+    void openAssetMenu(const QStringList& paths, const QPoint& globalPos);
     void onNewScene();
     void onNewFolder();
     void onImportAsset();
-    void onReimportAsset();
-    void onRenameAsset();
-    void onDeleteAsset();
-    void onRevealAsset();
+    void handleAssetDrop(const QStringList& paths, const QStringList& externalFiles,
+                         const QString& targetDir);
+    void moveAssetsTo(const QStringList& paths, const std::filesystem::path& targetDir);
+    void importExternalFiles(const QStringList& files, const std::filesystem::path& targetDir);
+    void reimportAssets(const QStringList& paths);
+    void duplicateAssets(const QStringList& paths);
+    void renameAsset(const QString& path);
+    void deleteAssets(const QStringList& paths);
+    void revealAssets(const QStringList& paths);
     void onDocumentDoubleClicked(QTreeWidgetItem* item, int column);
     void updatePreview(QTreeWidgetItem* item);
     void populateAssetGrid(const std::filesystem::path& directory);
@@ -70,6 +81,7 @@ private:
     bool m_refreshPending = false;
     ScopedConnection m_assetDbSubscription;
     std::filesystem::path m_root;
+    std::filesystem::path m_gridDirectory;
     std::vector<AssetBrowserEntry> m_assets;
     QHash<QString, QPair<qint64, QPixmap>> m_thumbnailCache;
 };

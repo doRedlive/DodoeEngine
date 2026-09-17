@@ -39,6 +39,7 @@
 #include <QByteArray>
 #include <QDir>
 #include <QDialog>
+#include <QDoubleSpinBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFile>
@@ -59,6 +60,7 @@
 #include <QPaintEvent>
 #include <QPixmap>
 #include <QProgressDialog>
+#include <QPushButton>
 #include <QResizeEvent>
 #include <QRegularExpression>
 #include <QStyle>
@@ -422,11 +424,13 @@ protected:
             QWidget::mousePressEvent(event);
             return;
         }
-        const QString payload = QStringLiteral("%1,%2,%3,%4")
+        const QString payload = QStringLiteral("%1,%2,%3,%4,%5,%6")
             .arg(event->position().x())
             .arg(event->position().y())
             .arg(toCameraButton(event->button()))
-            .arg(event->modifiers().testFlag(Qt::AltModifier) ? 1 : 0);
+            .arg(event->modifiers().testFlag(Qt::AltModifier) ? 1 : 0)
+            .arg(event->modifiers().testFlag(Qt::ControlModifier) ? 1 : 0)
+            .arg(event->modifiers().testFlag(Qt::ShiftModifier) ? 1 : 0);
         m_context.session().execute(EditorCommandMessage{"scene_mouse_down", payload.toStdString()});
         QWidget::mousePressEvent(event);
     }
@@ -437,9 +441,12 @@ protected:
             QWidget::mouseMoveEvent(event);
             return;
         }
-        const QString payload = QStringLiteral("%1,%2")
+        const QString payload = QStringLiteral("%1,%2,%3,%4,%5")
             .arg(event->position().x())
-            .arg(event->position().y());
+            .arg(event->position().y())
+            .arg(event->modifiers().testFlag(Qt::ControlModifier) ? 1 : 0)
+            .arg(event->modifiers().testFlag(Qt::ShiftModifier) ? 1 : 0)
+            .arg(event->modifiers().testFlag(Qt::AltModifier) ? 1 : 0);
         m_context.session().execute(EditorCommandMessage{"scene_mouse_move", payload.toStdString()});
         QWidget::mouseMoveEvent(event);
     }
@@ -614,6 +621,18 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
                     is2d ? QStringLiteral("viewport-2d.svg") : QStringLiteral("viewport-3d.svg")));
             }
         }));
+
+    m_missingAssetRefsSubscription = ScopedConnection(
+        m_context.session().missingAssetReferencesDetected,
+        m_context.session().missingAssetReferencesDetected.connect([this](std::size_t count) {
+            if (count == 0 || !m_console) {
+                return;
+            }
+            m_console->append(ConsoleLogLevel::Warning,
+                              tr("%1 scene asset reference(s) could not be resolved. "
+                                 "Check the Inspector for missing references.").arg(count),
+                              QStringLiteral("Assets"));
+        }));
 }
 
 EditorWindow::~EditorWindow()
@@ -681,9 +700,7 @@ void EditorWindow::createMenus()
     });
     auto* stop = runtime->addAction(tr("Stop"));
     stop->setEnabled(sim);
-    connect(stop, &QAction::triggered, this, [this]() {
-        m_context.session().execute(EditorCommandMessage{"stop", ""});
-    });
+    connect(stop, &QAction::triggered, this, &EditorWindow::stopPlayWithPrompt);
     if (!sim) {
         for (QAction* action : runtime->actions()) {
             action->setToolTip(tr("Runtime backend is unavailable in Editor-Only mode"));
@@ -959,6 +976,10 @@ void EditorWindow::createToolbar()
             button->setToolTip(tr("Runtime scene tools are unavailable in Editor-Only mode"));
         }
         connect(button, &QToolButton::clicked, this, [this, command = runtimeButton.command]() {
+            if (std::string(command) == "stop") {
+                stopPlayWithPrompt();
+                return;
+            }
             m_context.session().execute(EditorCommandMessage{command, ""});
         });
         m_editorToolbar->addWidget(button);
@@ -1175,6 +1196,47 @@ void EditorWindow::createDocks()
         });
     }
 
+    sceneToolbar->addSeparator();
+
+    auto* snapAction = sceneToolbar->addAction(editorThemedIcon(QStringLiteral("grid.svg")), QString());
+    snapAction->setCheckable(true);
+    snapAction->setEnabled(sim);
+    snapAction->setToolTip(tr("Toggle snapping (hold Ctrl while dragging to snap temporarily)"));
+    connect(snapAction, &QAction::triggered, this, [this](bool checked) {
+        m_context.session().execute(EditorCommandMessage{"gizmo_snap", checked ? "1" : "0"});
+    });
+
+    const auto makeStepBox = [&](const QString& prefix, double value, double step, const QString& tooltip) {
+        auto* box = new QDoubleSpinBox(sceneToolbar);
+        box->setToolTip(tooltip);
+        box->setPrefix(prefix + QLatin1Char(' '));
+        box->setRange(0.0, 1000.0);
+        box->setDecimals(3);
+        box->setSingleStep(step);
+        box->setValue(value);
+        box->setFixedWidth(78);
+        box->setEnabled(sim);
+        return box;
+    };
+    QDoubleSpinBox* translateStep = makeStepBox(QStringLiteral("T"), 0.25, 0.05, tr("Translate snap step"));
+    QDoubleSpinBox* rotateStep = makeStepBox(QStringLiteral("R"), 15.0, 1.0, tr("Rotate snap step (degrees)"));
+    QDoubleSpinBox* scaleStep = makeStepBox(QStringLiteral("S"), 0.1, 0.05, tr("Scale snap step"));
+    sceneToolbar->addWidget(translateStep);
+    sceneToolbar->addWidget(rotateStep);
+    sceneToolbar->addWidget(scaleStep);
+
+    const auto pushSnapSteps = [this, translateStep, rotateStep, scaleStep]() {
+        const QString payload = QStringLiteral("%1,%2,%3")
+            .arg(translateStep->value())
+            .arg(rotateStep->value())
+            .arg(scaleStep->value());
+        m_context.session().execute(EditorCommandMessage{"gizmo_snap_step", payload.toStdString()});
+    };
+    for (QDoubleSpinBox* box : {translateStep, rotateStep, scaleStep}) {
+        connect(box, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+                [pushSnapSteps](double) { pushSnapSteps(); });
+    }
+
     sceneLayout->addWidget(sceneToolbar);
 
     m_sceneSurface = new SceneSurface(m_context, sceneBody);
@@ -1209,10 +1271,13 @@ void EditorWindow::createPanels()
     m_projectDock->setObjectName(QStringLiteral("Project"));
     m_projectPanel = new ProjectPanel(m_context, m_projectDock);
     m_projectDock->setWidget(m_projectPanel);
-    connect(m_projectPanel, &ProjectPanel::assetSelected,
-            m_inspector, &InspectorPanel::setSelectedAsset);
-    connect(m_projectPanel, &ProjectPanel::assetSelectionCleared,
-            m_inspector, &InspectorPanel::clearSelectedAsset);
+    connect(m_projectPanel, &ProjectPanel::assetSelected, m_inspector,
+            [this](const AssetBrowserEntry& asset) {
+        m_context.session().selection().setAsset(asset.uuid);
+    });
+    connect(m_projectPanel, &ProjectPanel::assetSelectionCleared, m_inspector, [this]() {
+        m_context.session().selection().clear();
+    });
     m_projectDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_projectDock, m_hierarchyDock->dockAreaWidget());
 
@@ -1299,6 +1364,35 @@ void EditorWindow::startSafePointTimer()
     m_safePointTimer->start();
 }
 
+void EditorWindow::stopPlayWithPrompt()
+{
+    EditorSession& session = m_context.session();
+    if (session.playState() == PlayState::Edit) {
+        return;
+    }
+    bool keepPlayChanges = false;
+    if (session.playDocumentEdited()) {
+        QMessageBox box(this);
+        box.setIcon(QMessageBox::Question);
+        box.setWindowTitle(tr("Stop Play Mode"));
+        box.setText(tr("The scene was modified while playing."));
+        box.setInformativeText(tr("Discard runtime changes or keep them in the scene?"));
+        QPushButton* discard = box.addButton(tr("Discard"), QMessageBox::DestructiveRole);
+        QPushButton* keep = box.addButton(tr("Keep"), QMessageBox::AcceptRole);
+        box.addButton(tr("Cancel"), QMessageBox::RejectRole);
+        box.setDefaultButton(keep);
+        box.exec();
+        if (box.clickedButton() == discard) {
+            keepPlayChanges = false;
+        } else if (box.clickedButton() == keep) {
+            keepPlayChanges = true;
+        } else {
+            return;
+        }
+    }
+    session.stopPlay(keepPlayChanges);
+}
+
 void EditorWindow::refreshUndoRedoActions()
 {
     if (m_undoAction) m_undoAction->setEnabled(m_context.session().history().canUndo());
@@ -1370,6 +1464,14 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
     }
     if (m_sceneSurface) {
         m_sceneSurface->attach();
+        if (!m_context.session().bootEngine()) {
+            if (m_console) {
+                m_console->append(ConsoleLogLevel::Error,
+                                  QString::fromStdString(m_context.diagnostic()),
+                                  QStringLiteral("Backend"));
+            }
+            return false;
+        }
     }
     return true;
 }

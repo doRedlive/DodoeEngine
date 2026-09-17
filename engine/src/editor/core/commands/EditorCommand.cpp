@@ -16,8 +16,9 @@ CreateEntityCommand::CreateEntityCommand(std::string name)
 {
 }
 
-void CreateEntityCommand::execute(EditorDocumentModel& model) {
+bool CreateEntityCommand::execute(EditorDocumentModel& model) {
     m_createdUuid = model.createEntity(m_name, m_createdUuid);
+    return m_createdUuid != 0;
 }
 
 void CreateEntityCommand::revert(EditorDocumentModel& model) {
@@ -33,7 +34,10 @@ DeleteEntityCommand::DeleteEntityCommand(std::uint64_t uuid)
 {
 }
 
-void DeleteEntityCommand::execute(EditorDocumentModel& model) {
+bool DeleteEntityCommand::execute(EditorDocumentModel& model) {
+    if (!model.findEntity(m_uuid)) {
+        return false;
+    }
     if (!m_captured) {
         const std::vector<EditorEntity>& entities = model.entities();
         std::unordered_set<std::uint64_t> subtree{m_uuid};
@@ -54,6 +58,7 @@ void DeleteEntityCommand::execute(EditorDocumentModel& model) {
         m_captured = true;
     }
     model.deleteEntity(m_uuid);
+    return true;
 }
 
 void DeleteEntityCommand::revert(EditorDocumentModel& model) {
@@ -71,15 +76,16 @@ RenameEntityCommand::RenameEntityCommand(std::uint64_t uuid, std::string newName
 {
 }
 
-void RenameEntityCommand::execute(EditorDocumentModel& model) {
+bool RenameEntityCommand::execute(EditorDocumentModel& model) {
     const EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity) {
-        return;
+        return false;
     }
     if (m_oldName.empty()) {
         m_oldName = entity->name;
     }
     model.renameEntity(m_uuid, m_newName);
+    return true;
 }
 
 void RenameEntityCommand::revert(EditorDocumentModel& model) {
@@ -95,13 +101,14 @@ AddComponentCommand::AddComponentCommand(std::uint64_t uuid, EditorComponent com
 {
 }
 
-void AddComponentCommand::execute(EditorDocumentModel& model) {
+bool AddComponentCommand::execute(EditorDocumentModel& model) {
     const EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity) {
-        return;
+        return false;
     }
     m_index = entity->nativeComponents.size();
     model.addComponent(m_uuid, m_component);
+    return true;
 }
 
 void AddComponentCommand::revert(EditorDocumentModel& model) {
@@ -117,16 +124,17 @@ RemoveComponentCommand::RemoveComponentCommand(std::uint64_t uuid, std::size_t n
 {
 }
 
-void RemoveComponentCommand::execute(EditorDocumentModel& model) {
+bool RemoveComponentCommand::execute(EditorDocumentModel& model) {
     const EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity || m_index >= entity->nativeComponents.size()) {
-        return;
+        return false;
     }
     if (!m_saved) {
         m_savedComponent = entity->nativeComponents[m_index];
         m_saved = true;
     }
     model.removeComponent(m_uuid, m_index);
+    return true;
 }
 
 void RemoveComponentCommand::revert(EditorDocumentModel& model) {
@@ -142,15 +150,16 @@ UpdateComponentCommand::UpdateComponentCommand(std::uint64_t uuid, std::size_t n
 {
 }
 
-void UpdateComponentCommand::execute(EditorDocumentModel& model) {
+bool UpdateComponentCommand::execute(EditorDocumentModel& model) {
     const EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity || m_index >= entity->nativeComponents.size()) {
-        return;
+        return false;
     }
     if (m_oldValue.is_null()) {
         m_oldValue = entity->nativeComponents[m_index].value;
     }
     model.updateComponent(m_uuid, m_index, m_newValue);
+    return true;
 }
 
 void UpdateComponentCommand::revert(EditorDocumentModel& model) {
@@ -174,16 +183,17 @@ RemoveManagedComponentCommand::RemoveManagedComponentCommand(std::uint64_t uuid,
 {
 }
 
-void RemoveManagedComponentCommand::execute(EditorDocumentModel& model) {
+bool RemoveManagedComponentCommand::execute(EditorDocumentModel& model) {
     const EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity || m_index >= entity->managedComponents.size()) {
-        return;
+        return false;
     }
     if (!m_saved) {
         m_savedComponent = entity->managedComponents[m_index];
         m_saved = true;
     }
     model.removeManagedComponent(m_uuid, m_index);
+    return true;
 }
 
 void RemoveManagedComponentCommand::revert(EditorDocumentModel& model) {
@@ -200,15 +210,16 @@ UpdateManagedComponentCommand::UpdateManagedComponentCommand(
 {
 }
 
-void UpdateManagedComponentCommand::execute(EditorDocumentModel& model) {
+bool UpdateManagedComponentCommand::execute(EditorDocumentModel& model) {
     const EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity || m_index >= entity->managedComponents.size()) {
-        return;
+        return false;
     }
     if (m_oldValue.is_null()) {
         m_oldValue = entity->managedComponents[m_index].value;
     }
     model.updateManagedComponent(m_uuid, m_index, m_newValue);
+    return true;
 }
 
 void UpdateManagedComponentCommand::revert(EditorDocumentModel& model) {
@@ -233,15 +244,15 @@ SetFieldValueCommand::SetFieldValueCommand(std::uint64_t uuid, std::size_t nativ
 {
 }
 
-void SetFieldValueCommand::execute(EditorDocumentModel& model) {
+bool SetFieldValueCommand::execute(EditorDocumentModel& model) {
     EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity || m_index >= entity->nativeComponents.size()) {
-        return;
+        return false;
     }
     nlohmann::json& compValue = entity->nativeComponents[m_index].value;
     std::vector<std::string> keys = splitPath(m_fieldPath);
     if (keys.empty()) {
-        return;
+        return false;
     }
     if (m_oldValue.is_null()) {
         const nlohmann::json* node = &compValue;
@@ -262,6 +273,7 @@ void SetFieldValueCommand::execute(EditorDocumentModel& model) {
     }
     *target = m_newValue;
     model.updateComponent(m_uuid, m_index, updated);
+    return true;
 }
 
 void SetFieldValueCommand::revert(EditorDocumentModel& model) {
@@ -295,16 +307,17 @@ ReparentDocumentCommand::ReparentDocumentCommand(std::uint64_t uuid, std::uint64
 {
 }
 
-void ReparentDocumentCommand::execute(EditorDocumentModel& model) {
+bool ReparentDocumentCommand::execute(EditorDocumentModel& model) {
     const EditorEntity* entity = model.findEntity(m_uuid);
     if (!entity) {
-        return;
+        return false;
     }
     if (!m_captured) {
         m_oldParent = entity->parent;
         m_captured = true;
     }
     model.reparentEntity(m_uuid, m_newParent);
+    return true;
 }
 
 void ReparentDocumentCommand::revert(EditorDocumentModel& model) {
@@ -313,6 +326,64 @@ void ReparentDocumentCommand::revert(EditorDocumentModel& model) {
 
 std::string ReparentDocumentCommand::label() const {
     return "Reparent GameObject";
+}
+
+MoveComponentCommand::MoveComponentCommand(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex)
+    : m_uuid(uuid)
+    , m_fromIndex(fromIndex)
+    , m_toIndex(toIndex)
+{
+}
+
+bool MoveComponentCommand::execute(EditorDocumentModel& model) {
+    return model.moveComponent(m_uuid, m_fromIndex, m_toIndex);
+}
+
+void MoveComponentCommand::revert(EditorDocumentModel& model) {
+    model.moveComponent(m_uuid, m_toIndex, m_fromIndex);
+}
+
+std::string MoveComponentCommand::label() const {
+    return "Move Component";
+}
+
+InsertEntitiesCommand::InsertEntitiesCommand(std::vector<EditorEntity> entities)
+    : m_entities(std::move(entities))
+{
+}
+
+bool InsertEntitiesCommand::execute(EditorDocumentModel& model) {
+    if (m_executed || m_entities.empty()) {
+        return false;
+    }
+    m_uuids.clear();
+    m_uuids.reserve(m_entities.size());
+    for (const EditorEntity& entity : m_entities) {
+        if (model.findEntity(entity.uuid) || !model.insertEntity(model.entities().size(), entity)) {
+            for (auto it = m_uuids.rbegin(); it != m_uuids.rend(); ++it) {
+                model.deleteEntity(*it);
+            }
+            m_uuids.clear();
+            return false;
+        }
+        m_uuids.push_back(entity.uuid);
+    }
+    m_executed = true;
+    return true;
+}
+
+void InsertEntitiesCommand::revert(EditorDocumentModel& model) {
+    if (!m_executed) {
+        return;
+    }
+    for (auto it = m_uuids.rbegin(); it != m_uuids.rend(); ++it) {
+        model.deleteEntity(*it);
+    }
+    m_executed = false;
+}
+
+std::string InsertEntitiesCommand::label() const {
+    return m_entities.size() == 1 ? "Duplicate GameObject" : "Duplicate GameObjects";
 }
 
 std::vector<std::string> SetFieldValueCommand::splitPath(const std::string& path) {

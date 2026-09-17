@@ -35,25 +35,26 @@ void PaintTilesCommand::addCell(int x, int y, dodoe::UInt32 before, dodoe::UInt3
     m_cells.push_back({x, y, before, after});
 }
 
-void PaintTilesCommand::execute(EditorDocumentModel& model)
+bool PaintTilesCommand::execute(EditorDocumentModel& model)
 {
     auto* scene = ActiveScene();
-    if (scene) {
-        auto layerEntity = ResolveEntity(scene, m_layer);
-        if (layerEntity.valid() && layerEntity.hasComponent<dodoe::TileLayerComponent>()) {
-            auto& layer = layerEntity.getComponent<dodoe::TileLayerComponent>();
-            for (auto& cell : m_cells) {
-                layer.setTile(cell.x, cell.y, cell.after);
-            }
-        }
+    if (!scene) return false;
+    auto layerEntity = ResolveEntity(scene, m_layer);
+    if (!layerEntity.valid() || !layerEntity.hasComponent<dodoe::TileLayerComponent>()) {
+        return false;
+    }
+    auto& layer = layerEntity.getComponent<dodoe::TileLayerComponent>();
+    for (auto& cell : m_cells) {
+        layer.setTile(cell.x, cell.y, cell.after);
+    }
 
-        auto tilemapEntity = ResolveEntity(scene, m_tilemap);
-        if (tilemapEntity.valid() && tilemapEntity.hasComponent<dodoe::TilemapComponent>()) {
-            tilemapEntity.getComponent<dodoe::TilemapComponent>().dirty = true;
-        }
+    auto tilemapEntity = ResolveEntity(scene, m_tilemap);
+    if (tilemapEntity.valid() && tilemapEntity.hasComponent<dodoe::TilemapComponent>()) {
+        tilemapEntity.getComponent<dodoe::TilemapComponent>().dirty = true;
     }
 
     mirrorDocument(model);
+    return true;
 }
 
 void PaintTilesCommand::revert(EditorDocumentModel& model)

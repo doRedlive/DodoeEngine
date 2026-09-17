@@ -14,7 +14,7 @@ public:
     CreateTilesetCommand(dodoe::UUID tilemap, dodoe::String imagePath, dodoe::UInt32 tileWidth,
                          dodoe::UInt32 tileHeight, dodoe::UInt32 margin, dodoe::UInt32 spacing);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 

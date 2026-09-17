@@ -90,6 +90,11 @@ bool NullEditorBackend::attachSceneSurface(const SceneSurfaceDescriptor& surface
     return m_surfaceAttached;
 }
 
+bool NullEditorBackend::bootEngine()
+{
+    return true;
+}
+
 void NullEditorBackend::requestSceneSurfaceResize(const ViewportMetrics& metrics)
 {
     (void)metrics;

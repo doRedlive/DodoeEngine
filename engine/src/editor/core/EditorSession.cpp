@@ -2,10 +2,14 @@
 
 #include "EditorSession.h"
 #include "core/console/CommandRegistry.h"
+#include "core/commands/CompositeCommand.h"
 #include "core/document/EditorDocumentSerializer.h"
 
 #include <cstdlib>
 #include <fstream>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace cakery {
@@ -23,6 +27,11 @@ EditorSession::EditorSession(std::unique_ptr<IEditorBackend> backend)
     m_backend->setEditorSession(this);
     m_editHistory.changed.connect([this]() {
         notifyDocumentChanged();
+    });
+    m_playDocumentSubscription = m_documentModel.subscribe([this]() {
+        if (m_playState == PlayState::Playing || m_playState == PlayState::Paused) {
+            m_playDocumentEdited = true;
+        }
     });
     m_selectionSubscription = m_selection.subscribe([this]() {
         if (!m_backend || (m_state != EditorSessionState::Ready &&
@@ -177,6 +186,15 @@ bool EditorSession::attachSceneSurface(SceneSurfaceDescriptor surface)
         m_hasPendingViewportMetrics = false;
     }
     return m_surfaceAttached;
+}
+
+bool EditorSession::bootEngine()
+{
+    if (!m_backend || (m_state != EditorSessionState::Ready &&
+                       m_state != EditorSessionState::Degraded)) {
+        return false;
+    }
+    return m_backend->bootEngine();
 }
 
 void EditorSession::submitViewportMetrics(ViewportMetrics metrics)
@@ -381,6 +399,183 @@ bool EditorSession::deleteEntity(std::uint64_t uuid)
     return true;
 }
 
+bool EditorSession::deleteEntities(const std::vector<std::uint64_t>& uuids)
+{
+    if (!canEditDocument() || uuids.empty()) {
+        return false;
+    }
+    std::vector<std::uint64_t> targets;
+    for (const std::uint64_t uuid : uuids) {
+        if (!m_documentModel.findEntity(uuid)) {
+            continue;
+        }
+        bool covered = false;
+        for (const std::uint64_t other : uuids) {
+            if (other != uuid && m_documentModel.isDescendantOf(uuid, other)) {
+                covered = true;
+                break;
+            }
+        }
+        if (!covered) {
+            targets.push_back(uuid);
+        }
+    }
+    if (targets.empty()) {
+        return false;
+    }
+    if (targets.size() == 1) {
+        return deleteEntity(targets.front());
+    }
+    auto composite = std::make_unique<CompositeCommand>();
+    for (const std::uint64_t uuid : targets) {
+        composite->addCommand(std::make_unique<DeleteEntityCommand>(uuid));
+    }
+    if (!m_history.execute(std::move(composite), m_documentModel)) {
+        return false;
+    }
+    for (const std::uint64_t selected : m_selection.selectedAll()) {
+        if (!m_documentModel.findEntity(selected)) {
+            m_selection.remove(selected);
+        }
+    }
+    notifyDocumentChanged();
+    return true;
+}
+
+std::vector<EditorEntity> EditorSession::snapshotEntitySubtrees(
+    const std::vector<std::uint64_t>& roots) const
+{
+    std::vector<std::uint64_t> topMost;
+    for (const std::uint64_t uuid : roots) {
+        if (!m_documentModel.findEntity(uuid)) {
+            continue;
+        }
+        bool covered = false;
+        for (const std::uint64_t other : roots) {
+            if (other != uuid && m_documentModel.isDescendantOf(uuid, other)) {
+                covered = true;
+                break;
+            }
+        }
+        if (!covered) {
+            topMost.push_back(uuid);
+        }
+    }
+    if (topMost.empty()) {
+        return {};
+    }
+
+    std::unordered_set<std::uint64_t> subtree;
+    std::vector<std::uint64_t> stack = topMost;
+    while (!stack.empty()) {
+        const std::uint64_t uuid = stack.back();
+        stack.pop_back();
+        if (!subtree.insert(uuid).second) {
+            continue;
+        }
+        for (const EditorEntity& entity : m_documentModel.entities()) {
+            if (entity.parent == uuid) {
+                stack.push_back(entity.uuid);
+            }
+        }
+    }
+
+    std::vector<EditorEntity> snapshot;
+    for (const EditorEntity& entity : m_documentModel.entities()) {
+        if (subtree.contains(entity.uuid)) {
+            snapshot.push_back(entity);
+        }
+    }
+    return snapshot;
+}
+
+std::vector<EditorEntity> EditorSession::remapEntityClones(
+    const std::vector<EditorEntity>& snapshot, bool keepExternalParent) const
+{
+    std::unordered_map<std::uint64_t, std::uint64_t> uuidMap;
+    uuidMap.reserve(snapshot.size());
+    for (const EditorEntity& entity : snapshot) {
+        std::uint64_t uuid = m_documentModel.generateEntityUuid();
+        while (uuidMap.contains(uuid) || uuid == 0) {
+            uuid = m_documentModel.generateEntityUuid();
+        }
+        uuidMap.emplace(entity.uuid, uuid);
+    }
+
+    std::vector<EditorEntity> clones;
+    clones.reserve(snapshot.size());
+    for (const EditorEntity& source : snapshot) {
+        EditorEntity clone = source;
+        clone.uuid = uuidMap.at(source.uuid);
+        const auto parentIt = uuidMap.find(source.parent);
+        clone.parent = parentIt != uuidMap.end()
+            ? parentIt->second
+            : (keepExternalParent ? source.parent : 0);
+        for (EditorComponent& component : clone.nativeComponents) {
+            if (component.typeName == "IDComponent") {
+                component.value["id"] = clone.uuid;
+            }
+        }
+        clones.push_back(std::move(clone));
+    }
+    return clones;
+}
+
+bool EditorSession::copyEntities(const std::vector<std::uint64_t>& uuids)
+{
+    if (!canEditDocument() || uuids.empty()) {
+        return false;
+    }
+    m_clipboard = snapshotEntitySubtrees(uuids);
+    return !m_clipboard.empty();
+}
+
+bool EditorSession::cutEntities(const std::vector<std::uint64_t>& uuids)
+{
+    return copyEntities(uuids) && deleteEntities(uuids);
+}
+
+bool EditorSession::pasteEntities()
+{
+    if (!canEditDocument() || m_clipboard.empty()) {
+        return false;
+    }
+    std::vector<EditorEntity> clones = remapEntityClones(m_clipboard, false);
+    std::vector<std::uint64_t> inserted;
+    inserted.reserve(clones.size());
+    for (const EditorEntity& clone : clones) {
+        inserted.push_back(clone.uuid);
+    }
+    if (!m_history.execute(std::make_unique<InsertEntitiesCommand>(std::move(clones)), m_documentModel)) {
+        return false;
+    }
+    m_selection.selectMany(std::move(inserted));
+    notifyDocumentChanged();
+    return true;
+}
+
+bool EditorSession::duplicateEntities(const std::vector<std::uint64_t>& uuids)
+{
+    if (!canEditDocument() || uuids.empty()) {
+        return false;
+    }
+    std::vector<EditorEntity> clones = remapEntityClones(snapshotEntitySubtrees(uuids), true);
+    if (clones.empty()) {
+        return false;
+    }
+    std::vector<std::uint64_t> inserted;
+    inserted.reserve(clones.size());
+    for (const EditorEntity& clone : clones) {
+        inserted.push_back(clone.uuid);
+    }
+    if (!m_history.execute(std::make_unique<InsertEntitiesCommand>(std::move(clones)), m_documentModel)) {
+        return false;
+    }
+    m_selection.selectMany(std::move(inserted));
+    notifyDocumentChanged();
+    return true;
+}
+
 bool EditorSession::renameEntity(std::uint64_t uuid, const std::string& name)
 {
     if (!canEditDocument() || !m_documentModel.findEntity(uuid)) {
@@ -417,6 +612,28 @@ bool EditorSession::addComponent(std::uint64_t uuid, const EditorComponent& comp
     return true;
 }
 
+bool EditorSession::moveComponent(std::uint64_t uuid, std::size_t nativeIndex, int delta)
+{
+    if (!canEditDocument() || delta == 0) {
+        return false;
+    }
+    const EditorEntity* entity = m_documentModel.findEntity(uuid);
+    if (!entity || nativeIndex >= entity->nativeComponents.size()) {
+        return false;
+    }
+    const long target = static_cast<long>(nativeIndex) + delta;
+    if (target < 0 || target >= static_cast<long>(entity->nativeComponents.size())) {
+        return false;
+    }
+    if (!m_history.execute(
+            std::make_unique<MoveComponentCommand>(uuid, nativeIndex, static_cast<std::size_t>(target)),
+            m_documentModel)) {
+        return false;
+    }
+    notifyDocumentChanged();
+    return true;
+}
+
 bool EditorSession::removeComponent(std::uint64_t uuid, std::size_t nativeIndex)
 {
     if (!canEditDocument()) {
@@ -441,6 +658,41 @@ bool EditorSession::updateComponent(std::uint64_t uuid, std::size_t nativeIndex,
         return false;
     }
     m_history.execute(std::make_unique<UpdateComponentCommand>(uuid, nativeIndex, value), m_documentModel);
+    notifyDocumentChanged();
+    return true;
+}
+
+bool EditorSession::updateComponentOnEntities(const std::vector<std::uint64_t>& uuids,
+                                              const std::string& typeName,
+                                              const nlohmann::json& value,
+                                              bool managed)
+{
+    if (!canEditDocument() || uuids.empty() || typeName.empty()) {
+        return false;
+    }
+    auto composite = std::make_unique<CompositeCommand>();
+    for (const std::uint64_t uuid : uuids) {
+        const EditorEntity* entity = m_documentModel.findEntity(uuid);
+        if (!entity) {
+            continue;
+        }
+        const std::vector<EditorComponent>& components =
+            managed ? entity->managedComponents : entity->nativeComponents;
+        for (std::size_t i = 0; i < components.size(); ++i) {
+            if (components[i].typeName != typeName) {
+                continue;
+            }
+            if (managed) {
+                composite->addCommand(std::make_unique<UpdateManagedComponentCommand>(uuid, i, value));
+            } else {
+                composite->addCommand(std::make_unique<UpdateComponentCommand>(uuid, i, value));
+            }
+            break;
+        }
+    }
+    if (composite->empty() || !m_history.execute(std::move(composite), m_documentModel)) {
+        return false;
+    }
     notifyDocumentChanged();
     return true;
 }
@@ -507,10 +759,13 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
 {
     if (event.name == "transform_drag_begin") {
         m_history.beginMerge();
+        m_transformDragging = true;
         return;
     }
     if (event.name == "transform_drag_end") {
         m_history.endMerge();
+        m_transformDragging = false;
+        notifyDocumentChanged();
         return;
     }
     if (event.name == "selection_changed") {
@@ -525,9 +780,20 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
     if (event.name == "transform_changed") {
         try {
             const nlohmann::json payload = nlohmann::json::parse(event.payload);
-            applyTransformChange(
-                payload.value("uuid", std::uint64_t(0)),
-                payload.value("value", nlohmann::json::object()));
+            if (payload.contains("entities") && payload["entities"].is_array()) {
+                for (const auto& entry : payload["entities"]) {
+                    applyTransformChange(
+                        entry.value("uuid", std::uint64_t(0)),
+                        entry.value("value", nlohmann::json::object()));
+                }
+            } else {
+                applyTransformChange(
+                    payload.value("uuid", std::uint64_t(0)),
+                    payload.value("value", nlohmann::json::object()));
+            }
+            if (!m_transformDragging) {
+                notifyDocumentChanged();
+            }
         } catch (const nlohmann::json::exception&) {
         }
         return;
@@ -546,6 +812,75 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
         assetDatabaseChanged.fire();
         return;
     }
+    if (event.name == "play_state_changed") {
+        onPlayStateChanged(event.payload);
+        return;
+    }
+    if (event.name == "asset_references_missing") {
+        std::size_t count = 0;
+        try {
+            const nlohmann::json payload = nlohmann::json::parse(event.payload);
+            count = payload.is_array() ? payload.size() : payload.get<std::size_t>();
+        } catch (const nlohmann::json::exception&) {
+            count = 0;
+        }
+        missingAssetReferencesDetected.fire(count);
+        return;
+    }
+}
+
+bool EditorSession::findMissingAssetReferences(std::vector<std::uint64_t>& out) const
+{
+    out.clear();
+    return m_backend && m_backend->findMissingAssetReferences(out);
+}
+
+bool EditorSession::stopPlay(bool keepPlayChanges)
+{
+    if (!m_backend) {
+        return false;
+    }
+    if (m_playState == PlayState::Edit) {
+        return true;
+    }
+    m_pendingStopKeep = keepPlayChanges;
+    return execute(EditorCommandMessage{"stop", ""});
+}
+
+void EditorSession::onPlayStateChanged(const std::string& state)
+{
+    const PlayState previous = m_playState;
+    PlayState next = PlayState::Edit;
+    if (state == "playing") {
+        next = PlayState::Playing;
+    } else if (state == "paused") {
+        next = PlayState::Paused;
+    }
+    m_playState = next;
+
+    if (next == PlayState::Playing && previous == PlayState::Edit) {
+        m_hasPlaySnapshot = m_documentModel.hasDocument();
+        if (m_hasPlaySnapshot) {
+            m_playSnapshot = m_documentModel.document();
+            m_playSnapshotDirty = m_documentModel.isDirty();
+        }
+        m_playDocumentEdited = false;
+    }
+
+    if (next == PlayState::Edit && previous != PlayState::Edit && m_hasPlaySnapshot) {
+        const bool keepPlayChanges = m_pendingStopKeep;
+        m_hasPlaySnapshot = false;
+        m_playDocumentEdited = false;
+        if (keepPlayChanges) {
+            notifyDocumentChanged();
+        } else {
+            m_documentModel.restoreDocument(m_playSnapshot, m_playSnapshotDirty);
+            m_history.clear();
+            notifyDocumentChanged();
+        }
+    }
+    m_pendingStopKeep = false;
+    playStateChanged.fire(m_playState);
 }
 
 bool EditorSession::isAssetRefreshPending() const
@@ -572,7 +907,6 @@ void EditorSession::applyTransformChange(std::uint64_t uuid, const nlohmann::jso
             continue;
         }
         m_history.execute(std::make_unique<UpdateComponentCommand>(uuid, i, value), m_documentModel);
-        notifyDocumentChanged();
         return;
     }
 }

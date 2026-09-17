@@ -26,7 +26,7 @@ namespace dodoe {
         auto window = m_window_manager->getWindow();
         auto backend_api = RenderSettings::GetRenderBackendApiType();
         DO_INFO("Render Backend API is {}.", RenderSettings::GetRenderBackendApiTypeStr());
-        m_view_manager = RenderViewManager::Create({m_window_manager});
+        m_view_manager = RenderViewManager::Create({m_window_manager, RenderSettings::IsCreateDefaultViewTarget()});
 
         const bool enable_validation =
 #ifdef DODOE_DEBUG_ENABLED

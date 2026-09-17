@@ -4,6 +4,7 @@
 
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "cakery/ui/EditorIcons.h"
+#include "core/document/EditorDocumentModel.h"
 
 #include <QApplication>
 #include <QByteArray>
@@ -32,6 +33,9 @@
 #include <QSplitter>
 #include <QFrame>
 #include <QDesktopServices>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
 #include <QDebug>
 #include <QUrl>
 #include <QTreeWidget>
@@ -45,10 +49,13 @@
 #include <QAbstractItemView>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QShortcut>
+#include <QKeySequence>
 
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -89,6 +96,9 @@ class AssetTreeWidget final : public QTreeWidget {
 public:
     using QTreeWidget::QTreeWidget;
 
+    std::function<void(const QStringList& paths, const QStringList& externalFiles,
+                       const QString& targetDir)> dropHandler;
+
 protected:
     void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const override {
         DrawTreeBranchIndicator(this, painter, rect, index);
@@ -100,29 +110,102 @@ protected:
 
     QMimeData* mimeData(const QList<QTreeWidgetItem*>& items) const override {
         auto* data = new QMimeData();
-        if (items.size() != 1) {
-            return data;
+        QStringList entries;
+        QList<QUrl> urls;
+        for (const QTreeWidgetItem* item : items) {
+            if (item->data(0, Qt::UserRole + 1).toBool()) {
+                continue;
+            }
+            const QString path = item->data(0, Qt::UserRole).toString();
+            const QString guid = item->data(0, Qt::UserRole + 3).toString();
+            if (path.isEmpty()) {
+                continue;
+            }
+            urls.append(QUrl::fromLocalFile(path));
+            if (!guid.isEmpty()) {
+                entries << guid << path;
+            }
         }
-        const auto* item = items.front();
-        if (item->data(0, Qt::UserRole + 1).toBool()) {
-            return data;
+        if (!entries.isEmpty()) {
+            data->setData("application/x-cakery-asset", entries.join('\n').toUtf8());
         }
-        const QString path = item->data(0, Qt::UserRole).toString();
-        const QString guid = item->data(0, Qt::UserRole + 3).toString();
-        if (!guid.isEmpty()) {
-            data->setData("application/x-cakery-asset", (guid + "\n" + path).toUtf8());
-        }
-        if (!path.isEmpty()) {
-            data->setUrls({QUrl::fromLocalFile(path)});
-            data->setText(path);
+        if (!urls.isEmpty()) {
+            data->setUrls(urls);
+            data->setText(urls.first().toLocalFile());
         }
         return data;
+    }
+
+    void dragEnterEvent(QDragEnterEvent* event) override {
+        if (IsAssetDrag(event->mimeData())) {
+            event->acceptProposedAction();
+            return;
+        }
+        QTreeWidget::dragEnterEvent(event);
+    }
+
+    void dragMoveEvent(QDragMoveEvent* event) override {
+        if (IsAssetDrag(event->mimeData())) {
+            event->acceptProposedAction();
+            return;
+        }
+        QTreeWidget::dragMoveEvent(event);
+    }
+
+    void dropEvent(QDropEvent* event) override {
+        const QMimeData* mime = event->mimeData();
+        if (!IsAssetDrag(mime)) {
+            QTreeWidget::dropEvent(event);
+            return;
+        }
+        QString targetDir;
+        if (QTreeWidgetItem* item = itemAt(event->position().toPoint())) {
+            const QString path = item->data(0, Qt::UserRole).toString();
+            if (item->data(0, Qt::UserRole + 1).toBool()) {
+                targetDir = path;
+            } else if (!path.isEmpty()) {
+                targetDir = QFileInfo(path).absolutePath();
+            }
+        }
+        if (targetDir.isEmpty() && topLevelItemCount() > 0) {
+            targetDir = topLevelItem(0)->data(0, Qt::UserRole).toString();
+        }
+        QStringList paths;
+        QStringList externalFiles;
+        if (mime->hasFormat(QStringLiteral("application/x-cakery-asset"))) {
+            const QList<QByteArray> parts = mime->data(
+                QStringLiteral("application/x-cakery-asset")).split('\n');
+            for (int i = 1; i < parts.size(); i += 2) {
+                const QString path = QString::fromUtf8(parts[i]);
+                if (!path.isEmpty()) {
+                    paths.append(path);
+                }
+            }
+        } else {
+            for (const QUrl& url : mime->urls()) {
+                if (url.isLocalFile()) {
+                    externalFiles.append(url.toLocalFile());
+                }
+            }
+        }
+        if (!targetDir.isEmpty() && dropHandler) {
+            dropHandler(paths, externalFiles, targetDir);
+        }
+        event->acceptProposedAction();
+    }
+
+private:
+    static bool IsAssetDrag(const QMimeData* mime) {
+        return mime->hasFormat(QStringLiteral("application/x-cakery-asset")) || mime->hasUrls();
     }
 };
 
 class AssetGridWidget final : public QListWidget {
 public:
     using QListWidget::QListWidget;
+
+    std::function<void(const QStringList& paths, const QStringList& externalFiles,
+                       const QString& targetDir)> dropHandler;
 
 protected:
     QStringList mimeTypes() const override {
@@ -131,20 +214,85 @@ protected:
 
     QMimeData* mimeData(const QList<QListWidgetItem*>& items) const override {
         auto* data = new QMimeData();
-        if (items.size() != 1) {
-            return data;
+        QStringList entries;
+        QList<QUrl> urls;
+        for (const QListWidgetItem* item : items) {
+            const QString path = item->data(Qt::UserRole).toString();
+            const QString guid = item->data(Qt::UserRole + 1).toString();
+            if (path.isEmpty() || QFileInfo(path).isDir()) {
+                continue;
+            }
+            urls.append(QUrl::fromLocalFile(path));
+            if (!guid.isEmpty()) {
+                entries << guid << path;
+            }
         }
-        const auto* item = items.front();
-        const QString path = item->data(Qt::UserRole).toString();
-        const QString guid = item->data(Qt::UserRole + 1).toString();
-        if (!guid.isEmpty()) {
-            data->setData("application/x-cakery-asset", (guid + "\n" + path).toUtf8());
+        if (!entries.isEmpty()) {
+            data->setData("application/x-cakery-asset", entries.join('\n').toUtf8());
         }
-        if (!path.isEmpty()) {
-            data->setUrls({QUrl::fromLocalFile(path)});
-            data->setText(path);
+        if (!urls.isEmpty()) {
+            data->setUrls(urls);
+            data->setText(urls.first().toLocalFile());
         }
         return data;
+    }
+
+    void dragEnterEvent(QDragEnterEvent* event) override {
+        if (IsAssetDrag(event->mimeData())) {
+            event->acceptProposedAction();
+            return;
+        }
+        QListWidget::dragEnterEvent(event);
+    }
+
+    void dragMoveEvent(QDragMoveEvent* event) override {
+        if (IsAssetDrag(event->mimeData())) {
+            event->acceptProposedAction();
+            return;
+        }
+        QListWidget::dragMoveEvent(event);
+    }
+
+    void dropEvent(QDropEvent* event) override {
+        const QMimeData* mime = event->mimeData();
+        if (!IsAssetDrag(mime)) {
+            QListWidget::dropEvent(event);
+            return;
+        }
+        QString targetDir;
+        if (QListWidgetItem* item = itemAt(event->position().toPoint())) {
+            const QString path = item->data(Qt::UserRole).toString();
+            if (!path.isEmpty() && QFileInfo(path).isDir()) {
+                targetDir = path;
+            }
+        }
+        QStringList paths;
+        QStringList externalFiles;
+        if (mime->hasFormat(QStringLiteral("application/x-cakery-asset"))) {
+            const QList<QByteArray> parts = mime->data(
+                QStringLiteral("application/x-cakery-asset")).split('\n');
+            for (int i = 1; i < parts.size(); i += 2) {
+                const QString path = QString::fromUtf8(parts[i]);
+                if (!path.isEmpty() && !QFileInfo(path).isDir()) {
+                    paths.append(path);
+                }
+            }
+        } else {
+            for (const QUrl& url : mime->urls()) {
+                if (url.isLocalFile()) {
+                    externalFiles.append(url.toLocalFile());
+                }
+            }
+        }
+        if (dropHandler) {
+            dropHandler(paths, externalFiles, targetDir);
+        }
+        event->acceptProposedAction();
+    }
+
+private:
+    static bool IsAssetDrag(const QMimeData* mime) {
+        return mime->hasFormat(QStringLiteral("application/x-cakery-asset")) || mime->hasUrls();
     }
 };
 
@@ -382,12 +530,19 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_tree->setIndentation(16);
     m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
     m_tree->setDragEnabled(true);
-    m_tree->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_tree->setAcceptDrops(true);
+    m_tree->setDropIndicatorShown(true);
+    m_tree->setDragDropMode(QAbstractItemView::DragDrop);
+    m_tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_tree->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_tree->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_tree->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     m_tree->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
     m_tree->setFocusPolicy(Qt::StrongFocus);
+    static_cast<AssetTreeWidget*>(m_tree)->dropHandler =
+        [this](const QStringList& paths, const QStringList& externalFiles, const QString& targetDir) {
+            handleAssetDrop(paths, externalFiles, targetDir);
+        };
     m_assetGrid = new AssetGridWidget(this);
     m_assetGrid->setObjectName(QStringLiteral("projectAssetGrid"));
     m_assetGrid->setViewMode(QListView::IconMode);
@@ -399,7 +554,14 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_assetGrid->setGridSize(QSize(104, 110));
     m_assetGrid->setSpacing(6);
     m_assetGrid->setDragEnabled(true);
-    m_assetGrid->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_assetGrid->setAcceptDrops(true);
+    m_assetGrid->setDragDropMode(QAbstractItemView::DragDrop);
+    m_assetGrid->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_assetGrid->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    static_cast<AssetGridWidget*>(m_assetGrid)->dropHandler =
+        [this](const QStringList& paths, const QStringList& externalFiles, const QString& targetDir) {
+            handleAssetDrop(paths, externalFiles, targetDir);
+        };
 
     auto* contentSplitter = new QSplitter(Qt::Horizontal, this);
     contentSplitter->setObjectName(QStringLiteral("projectContentSplitter"));
@@ -455,6 +617,7 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
         }
     });
     connect(m_tree, &QTreeWidget::customContextMenuRequested, this, &ProjectPanel::onContextMenu);
+    connect(m_assetGrid, &QListWidget::customContextMenuRequested, this, &ProjectPanel::onGridContextMenu);
     connect(m_filter, &QLineEdit::textChanged, this, [this](const QString& text) {
         if (m_tree->topLevelItemCount() > 0) {
             filterTreeItem(m_tree->topLevelItem(0), text);
@@ -466,6 +629,14 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
             filterTreeItem(m_tree->topLevelItem(0), m_filter ? m_filter->text() : QString());
         }
     });
+    const auto addSelectAllShortcut = [](QWidget* target, auto&& slot) {
+        auto* shortcut = new QShortcut(QKeySequence::SelectAll, target);
+        shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+        QObject::connect(shortcut, &QShortcut::activated, target, slot);
+    };
+    addSelectAllShortcut(m_tree, &QTreeWidget::selectAll);
+    addSelectAllShortcut(m_assetGrid, &QListWidget::selectAll);
+
     m_assetDbSubscription = ScopedConnection(
         m_context.session().assetDatabaseChanged,
         m_context.session().assetDatabaseChanged.connect([this]() { reloadAssets(); }));
@@ -653,30 +824,110 @@ std::filesystem::path ProjectPanel::selectedDirectory() const
     return m_root;
 }
 
+QStringList ProjectPanel::selectedTreePaths() const
+{
+    QStringList paths;
+    const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
+    for (QTreeWidgetItem* item : selected) {
+        if (item->data(0, Qt::UserRole + 1).toBool()) {
+            continue;
+        }
+        const QString path = item->data(0, Qt::UserRole).toString();
+        if (!path.isEmpty()) {
+            paths << path;
+        }
+    }
+    return paths;
+}
+
+QStringList ProjectPanel::selectedGridPaths() const
+{
+    QStringList paths;
+    const QList<QListWidgetItem*> selected = m_assetGrid->selectedItems();
+    for (QListWidgetItem* item : selected) {
+        const QString path = item->data(Qt::UserRole).toString();
+        if (!path.isEmpty() && !QFileInfo(path).isDir()) {
+            paths << path;
+        }
+    }
+    return paths;
+}
+
+QStringList ProjectPanel::findAssetReferenceHolders(std::uint64_t guid) const
+{
+    const std::string needle = "\"asset_id\":" + std::to_string(guid);
+    QStringList holders;
+    for (const EditorEntity& entity : m_context.session().documentModel().entities()) {
+        bool references = false;
+        for (const EditorComponent& component : entity.nativeComponents) {
+            if (component.value.dump().find(needle) != std::string::npos) {
+                references = true;
+                break;
+            }
+        }
+        if (!references) {
+            for (const EditorComponent& component : entity.managedComponents) {
+                if (component.value.dump().find(needle) != std::string::npos) {
+                    references = true;
+                    break;
+                }
+            }
+        }
+        if (references) {
+            holders << QString::fromStdString(entity.name);
+        }
+    }
+    return holders;
+}
+
 void ProjectPanel::onContextMenu(const QPoint& pos)
 {
     QTreeWidgetItem* item = m_tree->itemAt(pos);
-    if (item) {
+    if (item && !item->isSelected()) {
+        m_tree->clearSelection();
         m_tree->setCurrentItem(item);
+        item->setSelected(true);
     }
+    openAssetMenu(selectedTreePaths(), m_tree->viewport()->mapToGlobal(pos));
+}
+
+void ProjectPanel::onGridContextMenu(const QPoint& pos)
+{
+    QListWidgetItem* item = m_assetGrid->itemAt(pos);
+    if (item && !item->isSelected()) {
+        m_assetGrid->clearSelection();
+        m_assetGrid->setCurrentItem(item);
+        item->setSelected(true);
+    }
+    openAssetMenu(selectedGridPaths(), m_assetGrid->viewport()->mapToGlobal(pos));
+}
+
+void ProjectPanel::openAssetMenu(const QStringList& paths, const QPoint& globalPos)
+{
     QMenu menu(this);
     QAction* newSceneAction = menu.addAction(tr("New Scene"));
     QAction* newFolderAction = menu.addAction(tr("New Folder"));
     QAction* importAssetAction = menu.addAction(tr("Import Asset..."));
     menu.addSeparator();
     QAction* reimportAssetAction = nullptr;
+    QAction* duplicateAssetAction = nullptr;
     QAction* renameAssetAction = nullptr;
     QAction* deleteAssetAction = nullptr;
     QAction* revealAssetAction = nullptr;
-    if (item && !item->data(0, Qt::UserRole + 1).toBool()) {
-        reimportAssetAction = menu.addAction(tr("Reimport Asset"));
+    const bool hasAssets = !paths.isEmpty();
+    if (hasAssets) {
+        reimportAssetAction = menu.addAction(paths.size() > 1 ? tr("Reimport Assets") : tr("Reimport Asset"));
+        duplicateAssetAction = menu.addAction(paths.size() > 1 ? tr("Duplicate Assets") : tr("Duplicate"));
         renameAssetAction = menu.addAction(tr("Rename"));
-        deleteAssetAction = menu.addAction(tr("Delete"));
+        deleteAssetAction = menu.addAction(paths.size() > 1 ? tr("Delete Assets") : tr("Delete"));
         revealAssetAction = menu.addAction(tr("Show in Explorer"));
         menu.addSeparator();
     }
     QAction* refreshAction = menu.addAction(tr("Refresh"));
-    QAction* chosen = menu.exec(m_tree->viewport()->mapToGlobal(pos));
+    QAction* chosen = menu.exec(globalPos);
+    if (!chosen) {
+        return;
+    }
     if (chosen == newSceneAction) {
         onNewScene();
     } else if (chosen == newFolderAction) {
@@ -684,74 +935,265 @@ void ProjectPanel::onContextMenu(const QPoint& pos)
     } else if (chosen == importAssetAction) {
         onImportAsset();
     } else if (chosen == reimportAssetAction) {
-        onReimportAsset();
+        reimportAssets(paths);
+    } else if (chosen == duplicateAssetAction) {
+        duplicateAssets(paths);
     } else if (chosen == renameAssetAction) {
-        onRenameAsset();
+        renameAsset(paths.first());
     } else if (chosen == deleteAssetAction) {
-        onDeleteAsset();
+        deleteAssets(paths);
     } else if (chosen == revealAssetAction) {
-        onRevealAsset();
+        revealAssets(paths);
     } else if (chosen == refreshAction) {
         refresh();
     }
 }
 
-void ProjectPanel::onRenameAsset()
+void ProjectPanel::handleAssetDrop(const QStringList& paths, const QStringList& externalFiles,
+                                   const QString& targetDir)
 {
-    const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
-    if (selected.isEmpty()) return;
-    const QString oldPath = selected.first()->data(0, Qt::UserRole).toString();
-    if (oldPath.isEmpty()) return;
-    const QFileInfo oldInfo(oldPath);
+    std::filesystem::path dir = targetDir.isEmpty()
+        ? m_gridDirectory : std::filesystem::path(targetDir.toStdString());
+    if (dir.empty()) {
+        dir = m_root;
+    }
+    if (!paths.isEmpty()) {
+        moveAssetsTo(paths, dir);
+    }
+    if (!externalFiles.isEmpty()) {
+        importExternalFiles(externalFiles, dir);
+    }
+}
+
+void ProjectPanel::moveAssetsTo(const QStringList& paths, const std::filesystem::path& targetDir)
+{
+    if (paths.isEmpty() || targetDir.empty()) {
+        return;
+    }
+    const std::string target = normalizedPath(targetDir);
+    bool moved = false;
+    for (const QString& path : paths) {
+        QFileInfo info(path);
+        if (!info.isFile()) {
+            continue;
+        }
+        if (normalizedPath(std::filesystem::path(info.absolutePath().toStdString())) == target) {
+            continue;
+        }
+        const QString newPath = QString::fromStdString(
+            (targetDir / info.fileName().toStdString()).string());
+        if (QFileInfo::exists(newPath)) {
+            continue;
+        }
+        const QString oldMeta = path + QStringLiteral(".meta");
+        const QString newMeta = newPath + QStringLiteral(".meta");
+        const bool hasMeta = QFileInfo::exists(oldMeta);
+        if (hasMeta && QFileInfo::exists(newMeta)) {
+            continue;
+        }
+        if (!QFile::rename(path, newPath)) {
+            continue;
+        }
+        if (hasMeta) {
+            QFile::rename(oldMeta, newMeta);
+        }
+        m_context.session().execute({"asset.import", newPath.toStdString()});
+        moved = true;
+    }
+    if (moved) {
+        refresh();
+    }
+}
+
+void ProjectPanel::importExternalFiles(const QStringList& files, const std::filesystem::path& targetDir)
+{
+    if (files.isEmpty() || targetDir.empty()) {
+        return;
+    }
+    bool imported = false;
+    for (const QString& source : files) {
+        QFileInfo info(source);
+        if (!info.isFile()) {
+            continue;
+        }
+        const QString destination = QString::fromStdString(
+            (targetDir / info.fileName().toStdString()).string());
+        if (info.absoluteFilePath() == QFileInfo(destination).absoluteFilePath()) {
+            m_context.session().execute({"asset.import", destination.toStdString()});
+            imported = true;
+            continue;
+        }
+        if (QFileInfo::exists(destination)) {
+            continue;
+        }
+        QFile sourceFile(source);
+        QSaveFile destinationFile(destination);
+        if (sourceFile.open(QIODevice::ReadOnly) && destinationFile.open(QIODevice::WriteOnly) &&
+            destinationFile.write(sourceFile.readAll()) >= 0 && destinationFile.commit()) {
+            m_context.session().execute({"asset.import", destination.toStdString()});
+            imported = true;
+        }
+    }
+    if (imported) {
+        refresh();
+    }
+}
+
+void ProjectPanel::reimportAssets(const QStringList& paths)
+{
+    bool reimported = false;
+    for (const QString& path : paths) {
+        if (!m_context.session().execute({"asset.reimport", path.toStdString()})) {
+            QMessageBox::warning(this, tr("Reimport Asset"),
+                                 tr("The asset could not be reimported:\n%1").arg(path));
+        } else {
+            reimported = true;
+        }
+    }
+    if (reimported) {
+        refresh();
+    }
+}
+
+void ProjectPanel::duplicateAssets(const QStringList& paths)
+{
+    bool duplicated = false;
+    for (const QString& path : paths) {
+        QFileInfo info(path);
+        if (!info.isFile()) {
+            continue;
+        }
+        const QString suffix = info.completeSuffix().isEmpty()
+            ? QString()
+            : QStringLiteral(".") + info.completeSuffix();
+        const QString base = info.completeBaseName();
+        QString target;
+        for (int index = 1; index < 1000; ++index) {
+            const QString candidate = info.absoluteDir().filePath(
+                base + QStringLiteral(" ") + QString::number(index) + suffix);
+            if (!QFileInfo::exists(candidate)) {
+                target = candidate;
+                break;
+            }
+        }
+        if (target.isEmpty() || !QFile::copy(path, target)) {
+            continue;
+        }
+        m_context.session().execute({"asset.import", target.toStdString()});
+        duplicated = true;
+    }
+    if (duplicated) {
+        refresh();
+    }
+}
+
+void ProjectPanel::renameAsset(const QString& path)
+{
+    if (path.isEmpty()) {
+        return;
+    }
+    const QFileInfo oldInfo(path);
     bool ok = false;
     const QString name = QInputDialog::getText(
         this, tr("Rename Asset"), tr("Asset name:"), QLineEdit::Normal,
         oldInfo.completeBaseName(), &ok).trimmed();
-    if (!ok || name.isEmpty()) return;
+    if (!ok || name.isEmpty()) {
+        return;
+    }
     const QString suffix = oldInfo.completeSuffix().isEmpty()
         ? QString()
         : QStringLiteral(".") + oldInfo.completeSuffix();
     const QString newPath = oldInfo.absoluteDir().filePath(name + suffix);
-    if (QFileInfo::exists(newPath) || !QFile::rename(oldPath, newPath)) {
+    if (newPath == path) {
+        return;
+    }
+    if (QFileInfo::exists(newPath) || !QFile::rename(path, newPath)) {
         QMessageBox::warning(this, tr("Rename Asset"), tr("Could not rename the asset."));
         return;
     }
-    const QString oldMeta = oldPath + QStringLiteral(".meta");
+    const QString oldMeta = path + QStringLiteral(".meta");
     const QString newMeta = newPath + QStringLiteral(".meta");
-    if (QFileInfo::exists(oldMeta)) {
-        QFile::rename(oldMeta, newMeta);
+    const bool metaMoved = QFileInfo::exists(oldMeta) && QFile::rename(oldMeta, newMeta);
+    if (!m_context.session().execute({"asset.import", newPath.toStdString()})) {
+        QFile::rename(newPath, path);
+        if (metaMoved) {
+            QFile::rename(newMeta, oldMeta);
+        }
+        QMessageBox::warning(this, tr("Rename Asset"),
+                             tr("The asset importer rejected the renamed file; the rename was reverted."));
+        return;
     }
-    m_context.session().execute({"asset.import", newPath.toStdString()});
     refresh();
 }
 
-void ProjectPanel::onDeleteAsset()
+void ProjectPanel::deleteAssets(const QStringList& paths)
 {
-    const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
-    if (selected.isEmpty()) return;
-    const QString path = selected.first()->data(0, Qt::UserRole).toString();
-    if (path.isEmpty()) return;
-    if (QMessageBox::question(this, tr("Delete Asset"),
-                              tr("Delete the selected asset from the project?"),
+    if (paths.isEmpty()) {
+        return;
+    }
+    QStringList referenced;
+    for (const QString& path : paths) {
+        const auto normalized = normalizedPath(std::filesystem::path(path.toStdString()));
+        for (const auto& asset : m_assets) {
+            if (normalizedPath(std::filesystem::path(asset.path)) != normalized) {
+                continue;
+            }
+            const QStringList holders = findAssetReferenceHolders(asset.uuid);
+            if (!holders.isEmpty()) {
+                referenced << tr("%1 (used by: %2)")
+                    .arg(QString::fromStdString(asset.name), holders.join(QStringLiteral(", ")));
+            }
+            break;
+        }
+    }
+    QString message = paths.size() == 1
+        ? tr("Delete the selected asset from the project?")
+        : tr("Delete %1 selected assets from the project?").arg(paths.size());
+    if (!referenced.isEmpty()) {
+        message += QStringLiteral("\n\n") + tr("Referenced assets will break:") +
+                   QStringLiteral("\n") + referenced.join(QStringLiteral("\n"));
+    }
+    if (QMessageBox::question(this, tr("Delete Asset"), message,
                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) {
         return;
     }
-    if (!QFile::remove(path)) {
-        QMessageBox::warning(this, tr("Delete Asset"), tr("Could not delete the asset."));
-        return;
+    QStringList failed;
+    for (const QString& path : paths) {
+        if (!QFile::remove(path)) {
+            failed << path;
+            continue;
+        }
+        const QString metaPath = path + QStringLiteral(".meta");
+        if (QFileInfo::exists(metaPath)) {
+            QFile::remove(metaPath);
+        }
     }
-    const QString metaPath = path + QStringLiteral(".meta");
-    if (QFileInfo::exists(metaPath)) {
-        QFile::remove(metaPath);
+    if (!failed.isEmpty()) {
+        QMessageBox::warning(this, tr("Delete Asset"),
+                             tr("Could not delete:\n%1").arg(failed.join(QStringLiteral("\n"))));
     }
     refresh();
+}
+
+void ProjectPanel::revealAssets(const QStringList& paths)
+{
+    QStringList revealed;
+    for (const QString& path : paths) {
+        const QString dir = QFileInfo(path).absolutePath();
+        if (dir.isEmpty() || revealed.contains(dir)) {
+            continue;
+        }
+        revealed << dir;
+        QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+    }
 }
 
 void ProjectPanel::onImportAsset()
 {
     const QString source = QFileDialog::getOpenFileName(
         this, tr("Import Asset"), QString(),
-        tr("Images and Models (*.png *.jpg *.jpeg *.bmp *.obj *.fbx *.gltf *.glb);;All Files (*)"));
+        tr("Assets (*.png *.jpg *.jpeg *.bmp *.gif *.tga *.psd *.hdr *.obj *.fbx *.gltf *.glb "
+           "*.tmj *.tsx *.wav *.ogg *.mp3 *.flac *.shader *.cs *.prefab);;All Files (*)"));
     if (source.isEmpty() || m_root.empty()) {
         return;
     }
@@ -794,33 +1236,6 @@ void ProjectPanel::onImportAsset()
     refresh();
 }
 
-void ProjectPanel::onReimportAsset()
-{
-    const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
-    if (selected.isEmpty()) {
-        return;
-    }
-    const QString path = selected.first()->data(0, Qt::UserRole).toString();
-    if (!path.isEmpty()) {
-        if (!m_context.session().execute({"asset.reimport", path.toStdString()})) {
-            QMessageBox::warning(this, tr("Reimport Asset"), tr("The selected asset could not be reimported."));
-        }
-        refresh();
-    }
-}
-
-void ProjectPanel::onRevealAsset()
-{
-    const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
-    if (selected.isEmpty()) {
-        return;
-    }
-    const QString path = selected.first()->data(0, Qt::UserRole).toString();
-    if (!path.isEmpty()) {
-        QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
-    }
-}
-
 void ProjectPanel::updatePreview(QTreeWidgetItem* item)
 {
     if (!item) {
@@ -837,6 +1252,7 @@ void ProjectPanel::populateAssetGrid(const std::filesystem::path& directory)
     if (!m_assetGrid) {
         return;
     }
+    m_gridDirectory = directory;
     m_assetGrid->clear();
     std::error_code ec;
     for (auto it = std::filesystem::directory_iterator(directory, ec);

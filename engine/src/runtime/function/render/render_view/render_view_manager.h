@@ -12,7 +12,8 @@ namespace dodoe {
     class WindowManager;
 
     struct RenderViewManagerCreateInfo {
-        WindowManager* window_manager{nullptr};
+        WindowManager* window_manager{ nullptr };
+        Bool create_default_view_target{ true };
     };
 
     class DODOE_API RenderViewManager : public Managed<RenderViewManager, RenderViewManagerCreateInfo> {

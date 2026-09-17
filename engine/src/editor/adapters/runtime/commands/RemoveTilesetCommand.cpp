@@ -32,22 +32,22 @@ RemoveTilesetCommand::RemoveTilesetCommand(dodoe::UUID tilemap, dodoe::UUID asse
     , m_assetId(assetId)
 {}
 
-void RemoveTilesetCommand::execute(EditorDocumentModel& model)
+bool RemoveTilesetCommand::execute(EditorDocumentModel& model)
 {
     auto* scene = ActiveScene();
-    if (scene) {
-        auto tilemapEntity = ResolveEntity(scene, m_tilemap);
-        if (tilemapEntity.valid() && tilemapEntity.hasComponent<dodoe::TilemapComponent>()) {
-            auto& tm = tilemapEntity.getComponent<dodoe::TilemapComponent>();
-            auto& tilesets = tm.tilesets;
-            tilesets.erase(
-                std::remove_if(tilesets.begin(), tilesets.end(), [this](const dodoe::PPtr<dodoe::Tileset>& ref) {
-                    return ref.getObjectID().asset_id == m_assetId;
-                }),
-                tilesets.end());
-            tm.dirty = true;
-        }
-    }
+    if (!scene) return false;
+    auto tilemapEntity = ResolveEntity(scene, m_tilemap);
+    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::TilemapComponent>()) return false;
+
+    auto& tm = tilemapEntity.getComponent<dodoe::TilemapComponent>();
+    auto& tilesets = tm.tilesets;
+    const auto it = std::find_if(tilesets.begin(), tilesets.end(),
+        [this](const dodoe::PPtr<dodoe::Tileset>& ref) {
+            return ref.getObjectID().asset_id == m_assetId;
+        });
+    if (it == tilesets.end()) return false;
+    tilesets.erase(it);
+    tm.dirty = true;
 
     if (nlohmann::json* tilesets = FindTilemapTilesetsArray(model, m_tilemap)) {
         tilesets->erase(
@@ -58,6 +58,7 @@ void RemoveTilesetCommand::execute(EditorDocumentModel& model)
             tilesets->end());
     }
     m_removed = true;
+    return true;
 }
 
 void RemoveTilesetCommand::revert(EditorDocumentModel& model)

@@ -6,13 +6,22 @@
 
 namespace cakery {
 
-void CompositeCommand::execute(EditorDocumentModel& model)
+bool CompositeCommand::execute(EditorDocumentModel& model)
 {
+    std::vector<EditorCommand*> executed;
     for (auto& cmd : m_commands) {
-        if (cmd) {
-            cmd->execute(model);
+        if (!cmd) {
+            continue;
         }
+        if (!cmd->execute(model)) {
+            for (auto it = executed.rbegin(); it != executed.rend(); ++it) {
+                (*it)->revert(model);
+            }
+            return false;
+        }
+        executed.push_back(cmd.get());
     }
+    return true;
 }
 
 void CompositeCommand::revert(EditorDocumentModel& model)

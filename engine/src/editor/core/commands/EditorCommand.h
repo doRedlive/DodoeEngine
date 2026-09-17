@@ -16,7 +16,7 @@ class EditorDocumentModel;
 class EditorCommand {
 public:
     virtual ~EditorCommand() = default;
-    virtual void execute(EditorDocumentModel& model) = 0;
+    virtual bool execute(EditorDocumentModel& model) = 0;
     virtual void revert(EditorDocumentModel& model) = 0;
 
     virtual std::string label() const { return "Command"; }
@@ -26,7 +26,7 @@ public:
 class CreateEntityCommand final : public EditorCommand {
 public:
     explicit CreateEntityCommand(std::string name);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
     std::uint64_t createdUuid() const { return m_createdUuid; }
@@ -39,7 +39,7 @@ private:
 class DeleteEntityCommand final : public EditorCommand {
 public:
     explicit DeleteEntityCommand(std::uint64_t uuid);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 
@@ -57,7 +57,7 @@ private:
 class RenameEntityCommand final : public EditorCommand {
 public:
     RenameEntityCommand(std::uint64_t uuid, std::string newName);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 
@@ -70,7 +70,7 @@ private:
 class AddComponentCommand final : public EditorCommand {
 public:
     AddComponentCommand(std::uint64_t uuid, EditorComponent component);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 
@@ -83,7 +83,7 @@ private:
 class RemoveComponentCommand final : public EditorCommand {
 public:
     RemoveComponentCommand(std::uint64_t uuid, std::size_t nativeIndex);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 
@@ -97,7 +97,7 @@ private:
 class UpdateComponentCommand final : public EditorCommand {
 public:
     UpdateComponentCommand(std::uint64_t uuid, std::size_t nativeIndex, nlohmann::json newValue);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
     bool mergeWith(const EditorCommand& next) override;
@@ -112,7 +112,7 @@ private:
 class RemoveManagedComponentCommand final : public EditorCommand {
 public:
     RemoveManagedComponentCommand(std::uint64_t uuid, std::size_t index);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 
@@ -126,7 +126,7 @@ private:
 class UpdateManagedComponentCommand final : public EditorCommand {
 public:
     UpdateManagedComponentCommand(std::uint64_t uuid, std::size_t index, nlohmann::json newValue);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
     bool mergeWith(const EditorCommand& next) override;
@@ -141,7 +141,7 @@ private:
 class SetFieldValueCommand final : public EditorCommand {
 public:
     SetFieldValueCommand(std::uint64_t uuid, std::size_t nativeIndex, std::string fieldPath, nlohmann::json newValue);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
     bool mergeWith(const EditorCommand& next) override;
@@ -159,7 +159,7 @@ private:
 class ReparentDocumentCommand final : public EditorCommand {
 public:
     ReparentDocumentCommand(std::uint64_t uuid, std::uint64_t newParent);
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 
@@ -168,6 +168,34 @@ private:
     std::uint64_t m_newParent = 0;
     std::uint64_t m_oldParent = 0;
     bool m_captured = false;
+};
+
+class MoveComponentCommand final : public EditorCommand {
+public:
+    MoveComponentCommand(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex);
+    bool execute(EditorDocumentModel& model) override;
+    void revert(EditorDocumentModel& model) override;
+    std::string label() const override;
+
+private:
+    std::uint64_t m_uuid = 0;
+    std::size_t m_fromIndex = 0;
+    std::size_t m_toIndex = 0;
+};
+
+class InsertEntitiesCommand final : public EditorCommand {
+public:
+    explicit InsertEntitiesCommand(std::vector<EditorEntity> entities);
+    bool execute(EditorDocumentModel& model) override;
+    void revert(EditorDocumentModel& model) override;
+    std::string label() const override;
+
+    const std::vector<std::uint64_t>& insertedUuids() const { return m_uuids; }
+
+private:
+    std::vector<EditorEntity> m_entities;
+    std::vector<std::uint64_t> m_uuids;
+    bool m_executed = false;
 };
 
 } // namespace cakery

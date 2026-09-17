@@ -55,34 +55,34 @@ ImportTiledMapCommand::ImportTiledMapCommand(dodoe::String name, dodoe::UUID til
 {
 }
 
-void ImportTiledMapCommand::execute(EditorDocumentModel& model)
+bool ImportTiledMapCommand::execute(EditorDocumentModel& model)
 {
     auto* scene = ActiveScene();
-    if (!scene) return;
+    if (!scene) return false;
 
     auto& resourceManager = dodoe::ResourceManager::Self();
     auto* assetManager = resourceManager.getAssetManager();
-    if (!assetManager) return;
+    if (!assetManager) return false;
 
     dodoe::TiledMapAsset* tiledMap =
         assetManager->loadAssetSync<dodoe::TiledMapAsset>(m_tiledMapAssetId);
-    if (!tiledMap) return;
+    if (!tiledMap) return false;
 
     const dodoe::UInt32 mapW = tiledMap->getMapWidth();
     const dodoe::UInt32 mapH = tiledMap->getMapHeight();
     const dodoe::UInt32 tileW = tiledMap->getTileWidth();
     const dodoe::UInt32 tileH = tiledMap->getTileHeight();
-    if (mapW == 0 || mapH == 0 || tileW == 0 || tileH == 0) return;
+    if (mapW == 0 || mapH == 0 || tileW == 0 || tileH == 0) return false;
 
     const std::filesystem::path tmjAbs(tiledMap->getSourcePath().c_str());
     const std::filesystem::path assetDir(assetManager->getAssetDir().string());
-    if (tmjAbs.empty() || assetDir.empty()) return;
+    if (tmjAbs.empty() || assetDir.empty()) return false;
 
     dodoe::Entity tilemapEntity = ResolveEntity(scene, m_createdUuid);
     if (!tilemapEntity.valid()) {
         dodoe::UUID uuid = m_createdUuid.isValid() ? m_createdUuid : dodoe::UUID::Generate();
         tilemapEntity = scene->createEntity(uuid, m_name);
-        if (!tilemapEntity.valid()) return;
+        if (!tilemapEntity.valid()) return false;
         m_createdUuid = tilemapEntity.uuid();
 
         auto& tm = tilemapEntity.addComponent<dodoe::TilemapComponent>();
@@ -253,6 +253,7 @@ void ImportTiledMapCommand::execute(EditorDocumentModel& model)
         }
         m_created = true;
     }
+    return true;
 }
 
 void ImportTiledMapCommand::revert(EditorDocumentModel& model)

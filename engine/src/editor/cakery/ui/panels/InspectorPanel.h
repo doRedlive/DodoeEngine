@@ -26,11 +26,10 @@ class InspectorPanel : public QWidget {
     Q_OBJECT
 public:
     explicit InspectorPanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
-    void setSelectedAsset(const AssetBrowserEntry& asset);
-    void clearSelectedAsset();
 
 private:
     void refresh();
+    void syncSelectedAsset();
     void onDocumentChanged();
     void onRenameEntity(const QString& name);
     void addComponent(const std::string& typeName);
@@ -44,6 +43,8 @@ private:
     std::vector<bool> m_managedComponentExpanded;
     bool m_editing = false;
     std::optional<AssetBrowserEntry> m_selectedAsset;
+    std::string m_componentClipboardType;
+    nlohmann::json m_componentClipboardValue;
     ScopedConnection m_documentSubscription;
     ScopedConnection m_selectionSubscription;
 };

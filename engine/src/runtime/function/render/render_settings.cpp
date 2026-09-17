@@ -14,6 +14,7 @@ namespace dodoe {
         m_enable_baseline_renderer = info.enable_baseline_renderer;
         m_present_mode = info.present_mode;
         m_windowless = info.windowless;
+        m_create_default_view_target = info.create_default_view_target;
         m_feature_settings.enable_gpu_driven = info.enable_gpu_driven;
         m_feature_settings.enable_async_compute = info.enable_async_compute;
         m_feature_settings.enable_bindless = info.enable_bindless;

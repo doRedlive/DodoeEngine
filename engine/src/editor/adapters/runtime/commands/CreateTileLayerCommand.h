@@ -13,7 +13,7 @@ class CreateTileLayerCommand final : public EditorCommand {
 public:
     CreateTileLayerCommand(dodoe::UUID tilemap, dodoe::String name, dodoe::UInt32 width, dodoe::UInt32 height);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 

@@ -7,6 +7,8 @@
 #include "cakery/ui/inspector/EditorJsonWidget.h"
 #include "core/document/EditorDocumentModel.h"
 
+#include <set>
+
 #include <QAction>
 #include <QAbstractButton>
 #include <QCheckBox>
@@ -73,6 +75,16 @@ const std::vector<ComponentTemplate>& ComponentTemplates() {
     return templates;
 }
 
+const nlohmann::json* DefaultComponentValue(const std::string& typeName)
+{
+    for (const ComponentTemplate& entry : ComponentTemplates()) {
+        if (typeName == entry.typeName) {
+            return &entry.defaultValue;
+        }
+    }
+    return nullptr;
+}
+
 QString inspectorSectionName(const QString& typeName)
 {
     QString name = typeName;
@@ -112,7 +124,7 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     m_documentSubscription = m_context.session().documentModel().subscribe([this]() { onDocumentChanged(); });
     m_selectionSubscription = m_context.session().selection().subscribe([this]() {
-        m_selectedAsset.reset();
+        syncSelectedAsset();
         refresh();
     });
     refresh();
@@ -225,11 +237,47 @@ void InspectorPanel::refresh()
     std::vector<AssetBrowserEntry> assets;
     m_context.session().listAssets(assets);
 
+    std::vector<std::uint64_t> multiUuids;
+    for (const std::uint64_t selectedUuid : m_context.session().selection().selectedAll()) {
+        if (selectedUuid != uuid && m_context.session().documentModel().findEntity(selectedUuid)) {
+            multiUuids.push_back(selectedUuid);
+        }
+    }
+    std::set<std::string> commonTypes;
+    if (!multiUuids.empty()) {
+        for (const EditorComponent& component : entity->nativeComponents) {
+            bool common = true;
+            for (const std::uint64_t otherUuid : multiUuids) {
+                const EditorEntity* other = m_context.session().documentModel().findEntity(otherUuid);
+                bool found = false;
+                for (const EditorComponent& otherComponent : other->nativeComponents) {
+                    if (otherComponent.typeName == component.typeName) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    common = false;
+                    break;
+                }
+            }
+            if (common) {
+                commonTypes.insert(component.typeName);
+            }
+        }
+        auto* multiLabel = new QLabel(tr("%1 GameObjects selected").arg(multiUuids.size() + 1), this);
+        multiLabel->setObjectName(QStringLiteral("inspectorMultiSelection"));
+        m_layout->addWidget(multiLabel);
+    }
+
     std::vector<QWidget*> componentSections;
 
     const auto addComponentSection = [&](const EditorComponent& component,
                                           std::size_t index, bool managed) {
         if (!managed && component.typeName == "IDComponent") {
+            return;
+        }
+        if (!multiUuids.empty() && !managed && !commonTypes.contains(component.typeName)) {
             return;
         }
         const QString componentName = inspectorSectionName(QString::fromStdString(component.typeName));
@@ -259,6 +307,50 @@ void InspectorPanel::refresh()
         headerRowLayout->addWidget(header, 1);
 
         auto* sectionMenu = new QMenu(section);
+        QAction* copyAction = sectionMenu->addAction(tr("Copy Component"));
+        QAction* pasteAction = sectionMenu->addAction(tr("Paste Component Values"));
+        pasteAction->setEnabled(!component.typeName.empty() &&
+                                m_componentClipboardType == component.typeName);
+        connect(pasteAction, &QAction::triggered, this, [this, uuid, index, managed, typeName = component.typeName]() {
+            if (m_componentClipboardType != typeName) {
+                return;
+            }
+            commitComponentValue(uuid, index, m_componentClipboardValue, managed);
+        });
+        connect(copyAction, &QAction::triggered, this, [this, typeName = component.typeName,
+                                                        value = component.value]() {
+            m_componentClipboardType = typeName;
+            m_componentClipboardValue = value;
+        });
+        sectionMenu->addSeparator();
+        QAction* resetAction = sectionMenu->addAction(tr("Reset to Default"));
+        const nlohmann::json* defaultValues = DefaultComponentValue(component.typeName);
+        resetAction->setEnabled(defaultValues != nullptr);
+        if (defaultValues) {
+            connect(resetAction, &QAction::triggered, this,
+                    [this, uuid, index, managed, defaultValue = *defaultValues]() {
+                        commitComponentValue(uuid, index, defaultValue, managed);
+                    });
+        }
+        if (!managed) {
+            sectionMenu->addSeparator();
+            QAction* moveUpAction = sectionMenu->addAction(tr("Move Up"));
+            moveUpAction->setEnabled(index > 0);
+            connect(moveUpAction, &QAction::triggered, this, [this, uuid, index]() {
+                if (m_context.session().moveComponent(uuid, index, -1) &&
+                    index > 0 && index < m_componentExpanded.size()) {
+                    std::swap(m_componentExpanded[index], m_componentExpanded[index - 1]);
+                }
+            });
+            QAction* moveDownAction = sectionMenu->addAction(tr("Move Down"));
+            connect(moveDownAction, &QAction::triggered, this, [this, uuid, index]() {
+                if (m_context.session().moveComponent(uuid, index, 1) &&
+                    index + 1 < m_componentExpanded.size()) {
+                    std::swap(m_componentExpanded[index], m_componentExpanded[index + 1]);
+                }
+            });
+        }
+        sectionMenu->addSeparator();
         QAction* removeAction = sectionMenu->addAction(
             managed ? tr("Remove Managed Component") : tr("Remove Component"));
         connect(removeAction, &QAction::triggered, this, [this, uuid, index, managed]() {
@@ -409,19 +501,27 @@ void InspectorPanel::refresh()
     m_layout->addStretch();
 }
 
-void InspectorPanel::setSelectedAsset(const AssetBrowserEntry& asset)
+void InspectorPanel::syncSelectedAsset()
 {
-    m_selectedAsset = asset;
-    refresh();
-}
-
-void InspectorPanel::clearSelectedAsset()
-{
-    if (!m_selectedAsset) {
+    const EditorSelection& selection = m_context.session().selection();
+    if (selection.target() != EditorSelection::Target::Asset) {
+        m_selectedAsset.reset();
+        return;
+    }
+    if (m_selectedAsset && m_selectedAsset->uuid == selection.selected()) {
         return;
     }
     m_selectedAsset.reset();
-    refresh();
+    std::vector<AssetBrowserEntry> entries;
+    if (!m_context.session().listAssets(entries)) {
+        return;
+    }
+    for (const AssetBrowserEntry& entry : entries) {
+        if (entry.uuid == selection.selected()) {
+            m_selectedAsset = entry;
+            return;
+        }
+    }
 }
 
 void InspectorPanel::onDocumentChanged()
@@ -467,7 +567,15 @@ void InspectorPanel::commitComponentValue(std::uint64_t uuid, std::size_t index,
                                            const nlohmann::json& value, bool managed)
 {
     m_editing = true;
-    if (managed) {
+    const EditorSelection& selection = m_context.session().selection();
+    const EditorEntity* primary = m_context.session().documentModel().findEntity(uuid);
+    if (selection.selectedAll().size() > 1 && uuid == selection.selected() && primary) {
+        const std::vector<EditorComponent>& components =
+            managed ? primary->managedComponents : primary->nativeComponents;
+        const std::string typeName = index < components.size()
+            ? components[index].typeName : std::string();
+        m_context.session().updateComponentOnEntities(selection.selectedAll(), typeName, value, managed);
+    } else if (managed) {
         m_context.session().updateManagedComponent(uuid, index, value);
     } else {
         m_context.session().updateComponent(uuid, index, value);

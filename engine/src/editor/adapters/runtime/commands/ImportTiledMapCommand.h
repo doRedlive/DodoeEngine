@@ -15,7 +15,7 @@ class ImportTiledMapCommand final : public EditorCommand {
 public:
     ImportTiledMapCommand(dodoe::String name, dodoe::UUID tiledMapAssetId, nlohmann::json position);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 

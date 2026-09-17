@@ -14,7 +14,7 @@ public:
     CreateTilemapCommand(dodoe::String name, dodoe::UInt32 width, dodoe::UInt32 height,
                          dodoe::UInt32 tileWidth = 16, dodoe::UInt32 tileHeight = 16);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 

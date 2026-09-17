@@ -175,6 +175,12 @@ public:
         out = nullptr;
         return false;
     }
+    // Collects the asset ids referenced by the current document that the asset
+    // database cannot resolve. Returns false when the backend has no document.
+    virtual bool findMissingAssetReferences(std::vector<std::uint64_t>& out) const {
+        out.clear();
+        return false;
+    }
     virtual void setEventCallback(std::function<void(const BackendEventMessage&)> callback) = 0;
     virtual bool assetRefreshPending() const { return false; }
     virtual void assetRefreshProgress(std::size_t& done, std::size_t& total) const {
@@ -182,6 +188,7 @@ public:
         total = 0;
     }
     virtual bool attachSceneSurface(const SceneSurfaceDescriptor& surface) = 0;
+    virtual bool bootEngine() = 0;
     virtual void requestSceneSurfaceResize(const ViewportMetrics& metrics) = 0;
     virtual bool detachSceneSurface() = 0;
     virtual void tickAtSafePoint() = 0;

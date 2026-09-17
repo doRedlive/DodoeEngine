@@ -25,20 +25,25 @@ public:
     const std::string& name() const;
     const std::filesystem::path& path() const { return m_path; }
     const std::vector<EditorEntity>& entities() const { return m_document.entities; }
+    const EditorDocument& document() const { return m_document; }
 
     EditorEntity* findEntity(std::uint64_t uuid);
     const EditorEntity* findEntity(std::uint64_t uuid) const;
+    bool isDescendantOf(std::uint64_t uuid, std::uint64_t ancestorUuid) const;
 
     std::uint64_t createEntity(const std::string& name, std::uint64_t preferredUuid = 0);
+    std::uint64_t generateEntityUuid() const;
     bool deleteEntity(std::uint64_t uuid);
     bool renameEntity(std::uint64_t uuid, const std::string& name);
     bool reparentEntity(std::uint64_t uuid, std::uint64_t newParent);
     bool insertEntity(std::size_t index, const EditorEntity& entity);
     void replaceDocument(const EditorDocument& document);
+    void restoreDocument(const EditorDocument& document, bool dirty);
     void newScene(const std::string& name);
 
     bool addComponent(std::uint64_t uuid, const EditorComponent& component);
     bool insertComponent(std::uint64_t uuid, std::size_t index, const EditorComponent& component);
+    bool moveComponent(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex);
     bool removeComponent(std::uint64_t uuid, std::size_t nativeIndex);
     bool updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value);
     bool insertManagedComponent(std::uint64_t uuid, std::size_t index, const EditorComponent& component);

@@ -17,28 +17,35 @@ ImportMeshCommand::ImportMeshCommand(std::string name, nlohmann::json meshValue,
 {
 }
 
-void ImportMeshCommand::execute(EditorDocumentModel& model)
+bool ImportMeshCommand::execute(EditorDocumentModel& model)
 {
     if (!m_built) {
         m_createEntity = std::make_unique<CreateEntityCommand>(m_name);
-        m_createEntity->execute(model);
+        if (!m_createEntity->execute(model)) {
+            return false;
+        }
         m_createdUuid = m_createEntity->createdUuid();
         m_addMesh = std::make_unique<AddComponentCommand>(
             m_createdUuid, EditorComponent{"MeshRendererComponent", m_meshValue});
-        m_addMesh->execute(model);
+        if (!m_addMesh->execute(model)) {
+            m_createEntity->revert(model);
+            return false;
+        }
         nlohmann::json transform;
         transform["position"] = m_position;
         transform["rotation"] = nlohmann::json::array({0.0, 0.0, 0.0});
         transform["scale"] = nlohmann::json::array({1.0, 1.0, 1.0});
         m_setTransform = std::make_unique<UpdateComponentCommand>(m_createdUuid, 2, std::move(transform));
-        m_setTransform->execute(model);
+        if (!m_setTransform->execute(model)) {
+            m_addMesh->revert(model);
+            m_createEntity->revert(model);
+            return false;
+        }
         m_built = true;
-        return;
+        return true;
     }
 
-    m_createEntity->execute(model);
-    m_addMesh->execute(model);
-    m_setTransform->execute(model);
+    return m_createEntity->execute(model) && m_addMesh->execute(model) && m_setTransform->execute(model);
 }
 
 void ImportMeshCommand::revert(EditorDocumentModel& model)

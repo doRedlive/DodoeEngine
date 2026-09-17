@@ -372,9 +372,7 @@ bool RuntimeEditorBackend::queryTilemapState(const std::string& tilemapUuid, nlo
 
 void RuntimeEditorBackend::emitTilemapEditMode(bool active)
 {
-    if (m_eventCallback) {
-        m_eventCallback(BackendEventMessage{"tilemap_edit_mode", active ? "1" : "0"});
-    }
+    m_eventCallback(BackendEventMessage{"tilemap_edit_mode", active ? "1" : "0"});
 }
 
 void RuntimeEditorBackend::updateTileEditFromSelection()
@@ -433,9 +431,7 @@ void RuntimeEditorBackend::activateTilemapEdit(const dodoe::UUID& tilemapUuid, c
             m_camera->setMode(EditorCamera::Mode::Ortho2D);
         }
     }
-    if (m_eventCallback) {
-        m_eventCallback(BackendEventMessage{"camera_mode_changed", "2d"});
-    }
+    m_eventCallback(BackendEventMessage{"camera_mode_changed", "2d"});
     emitTilemapEditMode(true);
 }
 

@@ -14,7 +14,7 @@ class ImportSpriteCommand final : public EditorCommand {
 public:
     ImportSpriteCommand(std::string name, nlohmann::json spriteValue, nlohmann::json position);
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
     std::uint64_t createdUuid() const { return m_createdUuid; }

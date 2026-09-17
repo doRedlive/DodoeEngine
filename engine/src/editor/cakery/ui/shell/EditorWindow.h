@@ -66,6 +66,7 @@ private:
     void setupPanelToggle(ads::CDockWidget* dock);
     void setupFloatingDockWindow(ads::CFloatingDockContainer* floating);
     void startSafePointTimer();
+    void stopPlayWithPrompt();
     void updateAssetImportProgress();
     void refreshUndoRedoActions();
     void resetLayout();
@@ -118,6 +119,7 @@ private:
     QString m_layoutStatePath;
     ScopedConnection m_historySubscription;
     ScopedConnection m_cameraModeSubscription;
+    ScopedConnection m_missingAssetRefsSubscription;
 };
 
 } // namespace cakery

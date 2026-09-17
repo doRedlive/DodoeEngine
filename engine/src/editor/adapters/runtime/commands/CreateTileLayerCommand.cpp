@@ -34,17 +34,17 @@ CreateTileLayerCommand::CreateTileLayerCommand(dodoe::UUID tilemap, dodoe::Strin
     , m_height(height)
 {}
 
-void CreateTileLayerCommand::execute(EditorDocumentModel& model)
+bool CreateTileLayerCommand::execute(EditorDocumentModel& model)
 {
     auto* scene = ActiveScene();
-    if (!scene) return;
+    if (!scene) return false;
 
     auto tilemapEntity = ResolveEntity(scene, m_tilemap);
-    if (!tilemapEntity.valid()) return;
+    if (!tilemapEntity.valid()) return false;
 
     dodoe::UUID uuid = m_createdUuid.isValid() ? m_createdUuid : dodoe::UUID::Generate();
     dodoe::Entity layerEntity = scene->createEntity(uuid, dodoe::String(m_name.c_str()));
-    if (!layerEntity.valid()) return;
+    if (!layerEntity.valid()) return false;
     m_createdUuid = layerEntity.uuid();
 
     auto& layer = layerEntity.addComponent<dodoe::TileLayerComponent>();
@@ -93,6 +93,7 @@ void CreateTileLayerCommand::execute(EditorDocumentModel& model)
             order->push_back(static_cast<std::uint64_t>(m_createdUuid));
         }
     }
+    return true;
 }
 
 void CreateTileLayerCommand::revert(EditorDocumentModel& model)

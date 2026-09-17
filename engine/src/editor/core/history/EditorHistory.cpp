@@ -17,7 +17,9 @@ EditorCommand* EditorHistory::execute(std::unique_ptr<EditorCommand> command, Ed
         model.name(),
         model.entities(),
     };
-    command->execute(model);
+    if (!command->execute(model)) {
+        return nullptr;
+    }
     const EditorDocument after{
         model.name(),
         model.entities(),
@@ -26,11 +28,17 @@ EditorCommand* EditorHistory::execute(std::unique_ptr<EditorCommand> command, Ed
         return nullptr;
     }
 
-    if (m_merging && m_lastMergeable && m_lastMergeable->mergeWith(*command)) {
-        return nullptr;
+    if (m_merging) {
+        for (auto it = m_mergeGroup.rbegin(); it != m_mergeGroup.rend(); ++it) {
+            if ((*it)->mergeWith(*command)) {
+                return nullptr;
+            }
+        }
     }
 
-    m_lastMergeable = command.get();
+    if (m_merging) {
+        m_mergeGroup.push_back(command.get());
+    }
     m_undoStack.push_back(std::move(command));
     m_redoStack.clear();
     emitChanged();
@@ -41,7 +49,7 @@ bool EditorHistory::undo(EditorDocumentModel& model) {
     if (m_undoStack.empty()) {
         return false;
     }
-    m_lastMergeable = nullptr;
+    m_mergeGroup.clear();
     std::unique_ptr<EditorCommand> command = std::move(m_undoStack.back());
     m_undoStack.pop_back();
     const EditorDocument before{
@@ -66,14 +74,17 @@ bool EditorHistory::redo(EditorDocumentModel& model) {
     if (m_redoStack.empty()) {
         return false;
     }
-    m_lastMergeable = nullptr;
+    m_mergeGroup.clear();
     std::unique_ptr<EditorCommand> command = std::move(m_redoStack.back());
     m_redoStack.pop_back();
     const EditorDocument before{
         model.name(),
         model.entities(),
     };
-    command->execute(model);
+    if (!command->execute(model)) {
+        m_redoStack.push_back(std::move(command));
+        return false;
+    }
     const EditorDocument after{
         model.name(),
         model.entities(),
@@ -90,7 +101,7 @@ bool EditorHistory::redo(EditorDocumentModel& model) {
 void EditorHistory::clear() {
     m_undoStack.clear();
     m_redoStack.clear();
-    m_lastMergeable = nullptr;
+    m_mergeGroup.clear();
     emitChanged();
 }
 

@@ -19,7 +19,7 @@ public:
     void addCell(int x, int y, dodoe::UInt32 before, dodoe::UInt32 after);
     bool empty() const { return m_cells.empty(); }
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
     bool mergeWith(const EditorCommand& next) override;

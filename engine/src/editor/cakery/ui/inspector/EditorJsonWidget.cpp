@@ -795,12 +795,19 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const std::string& path,
             break;
         }
     }
-    const auto setPresentation = [field, clear](const AssetBrowserEntry* asset) {
-        clear->setVisible(asset != nullptr);
+    const bool hasStoredReference = guid != 0 || !storedPath.isEmpty();
+    const auto setPresentation = [field, clear](const AssetBrowserEntry* asset, bool hasReference) {
+        clear->setVisible(asset != nullptr || hasReference);
         if (!asset) {
-            field->setText(QObject::tr("None"));
             field->setIcon(QIcon());
-            field->setToolTip(QString());
+            if (hasReference) {
+                field->setText(QObject::tr("Missing"));
+                field->setIcon(field->style()->standardIcon(QStyle::SP_MessageBoxWarning));
+                field->setToolTip(QObject::tr("Missing asset reference."));
+            } else {
+                field->setText(QObject::tr("None"));
+                field->setToolTip(QString());
+            }
             return;
         }
         field->setText(QString::fromStdString(asset->name));
@@ -814,7 +821,7 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const std::string& path,
             field->setIcon(QIcon());
         }
     };
-    setPresentation(selected);
+    setPresentation(selected, hasStoredReference);
 
     const QString targetType = AssetReferenceTargetType(metadata.typeName);
     QPointer<EditorJsonWidget> owner(this);
@@ -832,10 +839,10 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const std::string& path,
         }
         if (assetId == 0 || !asset) {
             owner->valueAt(path) = nlohmann::json{{"asset_id", 0}, {"sub_object_id", 0}};
-            setPresentation(nullptr);
+            setPresentation(nullptr, false);
         } else if (IsAssetCompatible(*asset, targetType)) {
             owner->valueAt(path) = nlohmann::json{{"asset_id", assetId}, {"sub_object_id", 0}};
-            setPresentation(asset);
+            setPresentation(asset, true);
         } else {
             return;
         }

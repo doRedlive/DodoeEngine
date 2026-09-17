@@ -18,7 +18,7 @@ public:
     bool empty() const { return m_commands.empty(); }
     size_t count() const { return m_commands.size(); }
 
-    void execute(EditorDocumentModel& model) override;
+    bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     std::string label() const override;
 

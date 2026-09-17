@@ -9,15 +9,13 @@
 #include "commands/ImportMeshCommand.h"
 #include "commands/ImportSpriteCommand.h"
 #include "commands/ImportTiledMapCommand.h"
+#include "commands/InstantiatePrefabCommand.h"
 #include "commands/ReparentEntityCommand.h"
 #include "core/document/EditorDocumentSerializer.h"
 
 #include "runtime/core/application.h"
-#include "runtime/core/asserts.h"
-#include "runtime/core/async/task_scheduler.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/debug/instrumentor.h"
-#include "runtime/core/event/event_system.h"
 #include "runtime/core/log/log_system.h"
 #include "runtime/core/meta/component_db.h"
 #include "runtime/core/project/project.h"
@@ -31,6 +29,7 @@
 #include "runtime/function/render/pixel2d/sprite.h"
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/function/world/scene.h"
+#include "runtime/service/world/scene_importer.h"
 #include "runtime/function/world/world.h"
 #include "runtime/resource/res_type/scene_res.h"
 #include "runtime/resource/asset/importer/import_settings_io.h"
@@ -117,6 +116,26 @@ dodoe::Vector3f ScreenToWorldDropPosition(const EditorCamera* camera, float x, f
         }
     }
     return {origin.x, origin.y, 0.0f};
+}
+
+void CollectAssetIds(const nlohmann::json& value, std::vector<std::uint64_t>& out)
+{
+    if (value.is_object()) {
+        for (auto it = value.begin(); it != value.end(); ++it) {
+            if (it.key() == "asset_id" && it.value().is_number_unsigned()) {
+                const std::uint64_t id = it.value().get<std::uint64_t>();
+                if (id != 0) {
+                    out.push_back(id);
+                }
+            } else {
+                CollectAssetIds(it.value(), out);
+            }
+        }
+    } else if (value.is_array()) {
+        for (const auto& item : value) {
+            CollectAssetIds(item, out);
+        }
+    }
 }
 
 } // anonymous namespace
@@ -242,6 +261,32 @@ bool RuntimeEditorBackend::listAssets(std::vector<AssetBrowserEntry>& entries) c
     return true;
 }
 
+bool RuntimeEditorBackend::findMissingAssetReferences(std::vector<std::uint64_t>& out) const
+{
+    out.clear();
+    if (!m_assetDatabase) {
+        return false;
+    }
+    std::vector<std::uint64_t> ids;
+    for (const EditorEntity& entity : m_document.entities) {
+        for (const EditorComponent& component : entity.nativeComponents) {
+            CollectAssetIds(component.value, ids);
+        }
+        for (const EditorComponent& component : entity.managedComponents) {
+            CollectAssetIds(component.value, ids);
+        }
+    }
+    for (const std::uint64_t id : ids) {
+        if (std::find(out.begin(), out.end(), id) != out.end()) {
+            continue;
+        }
+        if (!m_assetDatabase->findByGuid(dodoe::UUID(id)).has_value()) {
+            out.push_back(id);
+        }
+    }
+    return true;
+}
+
 bool RuntimeEditorBackend::assetRefreshPending() const
 {
     return m_assetDatabase && m_assetDatabase->refreshPending();
@@ -284,7 +329,6 @@ bool RuntimeEditorBackend::openProject(const ProjectDescriptor& project)
     }
     m_project = project;
 
-    TaskScheduler::Self();
     std::filesystem::path projectFile(project.projectFile);
     if (projectFile.empty()) {
         const std::filesystem::path projectRoot(project.rootPath);
@@ -331,6 +375,9 @@ bool RuntimeEditorBackend::openDocument(const std::string& documentId)
         return false;
     }
     m_diagnostic = "Runtime backend: scene synced from document '" + m_document.name + "'.";
+    if (m_booted) {
+        reportMissingAssetReferences();
+    }
     return true;
 }
 
@@ -359,8 +406,11 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
 
     if (command.name == "scene_mouse_down") {
         float x = 0.0f, y = 0.0f;
-        int button = 0, alt = 0;
-        if (std::sscanf(command.payload.c_str(), "%f,%f,%d,%d", &x, &y, &button, &alt) >= 3) {
+        int button = 0, alt = 0, ctrl = 0, shift = 0;
+        if (std::sscanf(command.payload.c_str(), "%f,%f,%d,%d,%d,%d", &x, &y, &button, &alt, &ctrl, &shift) >= 3) {
+            m_altHeld = alt != 0;
+            m_ctrlHeld = ctrl != 0;
+            m_shiftHeld = shift != 0;
             const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget() &&
                                       m_tilePaint->tool() != TileTool::Select &&
                                       button == 0 && alt == 0;
@@ -394,7 +444,11 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
 
     if (command.name == "scene_mouse_move") {
         float x = 0.0f, y = 0.0f;
-        if (std::sscanf(command.payload.c_str(), "%f,%f", &x, &y) >= 2) {
+        int ctrl = 0, shift = 0, alt = 0;
+        if (std::sscanf(command.payload.c_str(), "%f,%f,%d,%d,%d", &x, &y, &ctrl, &shift, &alt) >= 2) {
+            m_ctrlHeld = ctrl != 0;
+            m_shiftHeld = shift != 0;
+            m_altHeld = alt != 0;
             if (m_tilePaintActive) {
                 int cx = 0, cy = 0;
                 if (screenToCell(x, y, cx, cy)) {
@@ -472,15 +526,59 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
         return true;
     }
 
+    if (command.name == "gizmo_snap") {
+        if (command.payload.empty()) {
+            return false;
+        }
+        if (command.payload == "1" || command.payload == "true") {
+            m_snapEnabled = true;
+            return true;
+        }
+        if (command.payload == "0" || command.payload == "false") {
+            m_snapEnabled = false;
+            return true;
+        }
+        try {
+            const nlohmann::json payload = nlohmann::json::parse(command.payload);
+            if (!payload.is_object()) {
+                return false;
+            }
+            if (payload.contains("enabled")) {
+                m_snapEnabled = payload.at("enabled").get<bool>();
+            }
+            if (payload.contains("translate")) {
+                m_translateSnap = std::max(0.0f, payload.at("translate").get<float>());
+            }
+            if (payload.contains("rotate")) {
+                m_rotateSnap = std::max(0.0f, payload.at("rotate").get<float>());
+            }
+            if (payload.contains("scale")) {
+                m_scaleSnap = std::max(0.0f, payload.at("scale").get<float>());
+            }
+        } catch (const nlohmann::json::exception&) {
+            return false;
+        }
+        return true;
+    }
+
+    if (command.name == "gizmo_snap_step") {
+        float translate = m_translateSnap, rotate = m_rotateSnap, scale = m_scaleSnap;
+        if (std::sscanf(command.payload.c_str(), "%f,%f,%f", &translate, &rotate, &scale) < 1) {
+            return false;
+        }
+        m_translateSnap = std::max(0.0f, translate);
+        m_rotateSnap = std::max(0.0f, rotate);
+        m_scaleSnap = std::max(0.0f, scale);
+        return true;
+    }
+
     if (command.name == "camera_mode") {
         if (!m_camera) {
             return false;
         }
         const bool is2d = command.payload == "2d";
         m_camera->setMode(is2d ? EditorCamera::Mode::Ortho2D : EditorCamera::Mode::Orbit);
-        if (m_eventCallback) {
-            m_eventCallback(BackendEventMessage{"camera_mode_changed", is2d ? "2d" : "3d"});
-        }
+        m_eventCallback(BackendEventMessage{"camera_mode_changed", is2d ? "2d" : "3d"});
         return true;
     }
 
@@ -488,143 +586,60 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
         if (!m_booted || !m_app || !m_session || !m_camera || command.payload.empty()) {
             return false;
         }
-        std::string line1;
-        std::string guidText;
-        std::string assetPath;
+        std::vector<std::string> lines;
         {
             std::istringstream stream(command.payload);
-            std::getline(stream, line1);
-            std::getline(stream, guidText);
-            std::getline(stream, assetPath);
+            std::string line;
+            while (std::getline(stream, line)) {
+                lines.push_back(line);
+            }
+        }
+        if (lines.size() < 3) {
+            return false;
         }
         float dropX = 0.0f;
         float dropY = 0.0f;
-        if (std::sscanf(line1.c_str(), "%f,%f", &dropX, &dropY) < 2 || assetPath.empty()) {
+        if (std::sscanf(lines[0].c_str(), "%f,%f", &dropX, &dropY) < 2) {
             return false;
         }
-        std::error_code ec;
-        const std::filesystem::path absPath = std::filesystem::absolute(assetPath).lexically_normal();
-        const std::string absStr = absPath.generic_string();
-        const std::string ext = absPath.extension().generic_string();
-        std::string lowerExt = ext;
-        std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        const std::string name = absPath.stem().string();
-        if (name.empty() || lowerExt.empty()) {
-            return false;
-        }
-
         dodoe::Vector3f worldPos = ScreenToWorldDropPosition(m_camera.get(), dropX, dropY);
         nlohmann::json position = {worldPos.x, worldPos.y, worldPos.z};
+        bool importedAny = false;
+        for (std::size_t i = 1; i + 1 < lines.size(); i += 2) {
+            importedAny = importDroppedAsset(lines[i + 1], position) || importedAny;
+        }
+        return importedAny;
+    }
 
-        auto& resourceManager = dodoe::ResourceManager::Self();
-        auto* assetManager = resourceManager.getAssetManager();
-        if (!assetManager) {
+    if (command.name == "prefab.export") {
+        if (!m_booted || !m_app || command.payload.empty()) {
             return false;
         }
-
-        if (lowerExt == ".tsx") {
-            const dodoe::ObjectID tilesetRef =
-                assetManager->ensureTilesetImported(dodoe::String(absStr.c_str()));
-            if (!tilesetRef.isValid()) {
-                return false;
-            }
-            auto command2 = std::make_unique<CreateTilemapWithTilesetCommand>(
-                dodoe::String(name.c_str()), tilesetRef.asset_id, std::move(position));
-            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
-            m_session->notifyDocumentChanged();
-            if (executed) {
-                const dodoe::UUID created =
-                    static_cast<CreateTilemapWithTilesetCommand*>(executed)->created();
-                if (created.isValid()) {
-                    m_session->selection().set(static_cast<std::uint64_t>(created));
-                }
-            }
-            return true;
-        }
-
-        if (lowerExt == ".tmj") {
-            const dodoe::ObjectID mapRef =
-                assetManager->ensureImported(dodoe::String(absStr.c_str()));
-            if (!mapRef.isValid()) {
-                return false;
-            }
-            auto command2 = std::make_unique<ImportTiledMapCommand>(
-                dodoe::String(name.c_str()), mapRef.asset_id, std::move(position));
-            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
-            m_session->notifyDocumentChanged();
-            if (executed) {
-                const dodoe::UUID created =
-                    static_cast<ImportTiledMapCommand*>(executed)->created();
-                if (created.isValid()) {
-                    m_session->selection().set(static_cast<std::uint64_t>(created));
-                }
-            }
-            return true;
-        }
-
-        if (lowerExt == ".doscn") {
-            return openDocument(absStr);
-        }
-
-        const dodoe::ObjectID imported = assetManager->ensureImported(dodoe::String(absStr.c_str()));
-        if (!imported.isValid()) {
+        std::istringstream stream(command.payload);
+        std::string uuidText;
+        std::string path;
+        std::getline(stream, uuidText, ',');
+        std::getline(stream, path);
+        const std::uint64_t uuid = std::strtoull(uuidText.c_str(), nullptr, 10);
+        if (uuid == 0 || path.empty()) {
             return false;
         }
-
-        if (lowerExt == ".obj" || lowerExt == ".fbx" || lowerExt == ".gltf" || lowerExt == ".glb") {
-            nlohmann::json meshValue;
-            meshValue["mesh"] = {
-                {"asset_id", static_cast<std::uint64_t>(imported.asset_id)},
-                {"sub_object_id", 0},
-            };
-            meshValue["section_index"] = 0;
-            meshValue["override_materials"] = nlohmann::json::array();
-            meshValue["visible"] = true;
-            meshValue["cast_shadow"] = true;
-            meshValue["mobility"] = 0;
-            auto command2 = std::make_unique<ImportMeshCommand>(name, std::move(meshValue), std::move(position));
-            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
-            m_session->notifyDocumentChanged();
-            if (executed) {
-                const std::uint64_t created =
-                    static_cast<ImportMeshCommand*>(executed)->createdUuid();
-                if (created != 0) {
-                    m_session->selection().set(created);
-                }
-            }
-            return true;
+        World* world = m_app->context().getWorld();
+        Scene* scene = world ? world->getActiveScene() : nullptr;
+        if (!scene) {
+            return false;
         }
-
-        if (lowerExt == ".png" || lowerExt == ".jpg" || lowerExt == ".jpeg" ||
-            lowerExt == ".bmp" || lowerExt == ".gif" || lowerExt == ".tga" ||
-            lowerExt == ".psd" || lowerExt == ".hdr") {
-            const dodoe::ObjectID spriteRef = EnsureSpriteSubObject(absStr);
-            if (!spriteRef.isValid()) {
-                return false;
-            }
-            nlohmann::json spriteValue;
-            spriteValue["sprite"] = {
-                {"asset_id", static_cast<std::uint64_t>(spriteRef.asset_id)},
-                {"sub_object_id", spriteRef.local_id},
-            };
-            spriteValue["flip"] = false;
-            spriteValue["pivot"] = {0.0, 0.0};
-            spriteValue["depth"] = 0.0;
-            spriteValue["color"] = {1.0, 1.0, 1.0, 1.0};
-            auto command2 = std::make_unique<ImportSpriteCommand>(name, std::move(spriteValue), std::move(position));
-            auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
-            m_session->notifyDocumentChanged();
-            if (executed) {
-                const std::uint64_t created =
-                    static_cast<ImportSpriteCommand*>(executed)->createdUuid();
-                if (created != 0) {
-                    m_session->selection().set(created);
-                }
-            }
-            return true;
+        dodoe::Entity root = scene->tryGetEntityByUUID(dodoe::UUID(uuid));
+        if (!root.valid()) {
+            return false;
         }
-
+        const dodoe::ObjectID ref = dodoe::SceneImporter::ExportPrefab(dodoe::String(path.c_str()), root);
+        if (!ref.isValid()) {
+            return false;
+        }
+        if (m_assetDatabase) {
+            m_assetDatabase->refresh();
+        }
         return true;
     }
 
@@ -764,6 +779,145 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
     return false;
 }
 
+bool RuntimeEditorBackend::importDroppedAsset(const std::string& assetPath, const nlohmann::json& position)
+{
+    const std::filesystem::path absPath = std::filesystem::absolute(assetPath).lexically_normal();
+    const std::string absStr = absPath.generic_string();
+    const std::string ext = absPath.extension().generic_string();
+    std::string lowerExt = ext;
+    std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    const std::string name = absPath.stem().string();
+    if (name.empty() || lowerExt.empty()) {
+        return false;
+    }
+
+    auto& resourceManager = dodoe::ResourceManager::Self();
+    auto* assetManager = resourceManager.getAssetManager();
+    if (!assetManager) {
+        return false;
+    }
+
+    if (lowerExt == ".tsx") {
+        const dodoe::ObjectID tilesetRef =
+            assetManager->ensureTilesetImported(dodoe::String(absStr.c_str()));
+        if (!tilesetRef.isValid()) {
+            return false;
+        }
+        auto command2 = std::make_unique<CreateTilemapWithTilesetCommand>(
+            dodoe::String(name.c_str()), tilesetRef.asset_id, position);
+        auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+        m_session->notifyDocumentChanged();
+        if (executed) {
+            const dodoe::UUID created =
+                static_cast<CreateTilemapWithTilesetCommand*>(executed)->created();
+            if (created.isValid()) {
+                m_session->selection().set(static_cast<std::uint64_t>(created));
+            }
+        }
+        return true;
+    }
+
+    if (lowerExt == ".tmj") {
+        const dodoe::ObjectID mapRef =
+            assetManager->ensureImported(dodoe::String(absStr.c_str()));
+        if (!mapRef.isValid()) {
+            return false;
+        }
+        auto command2 = std::make_unique<ImportTiledMapCommand>(
+            dodoe::String(name.c_str()), mapRef.asset_id, position);
+        auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+        m_session->notifyDocumentChanged();
+        if (executed) {
+            const dodoe::UUID created =
+                static_cast<ImportTiledMapCommand*>(executed)->created();
+            if (created.isValid()) {
+                m_session->selection().set(static_cast<std::uint64_t>(created));
+            }
+        }
+        return true;
+    }
+
+    if (lowerExt == ".prefab") {
+        auto command2 = std::make_unique<InstantiatePrefabCommand>(
+            name, absPath, position);
+        auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+        m_session->notifyDocumentChanged();
+        if (executed) {
+            const dodoe::UUID created =
+                static_cast<InstantiatePrefabCommand*>(executed)->created();
+            if (created.isValid()) {
+                m_session->selection().set(static_cast<std::uint64_t>(created));
+            }
+        }
+        return executed != nullptr;
+    }
+
+    if (lowerExt == ".doscn") {
+        return openDocument(absStr);
+    }
+
+    const dodoe::ObjectID imported = assetManager->ensureImported(dodoe::String(absStr.c_str()));
+    if (!imported.isValid()) {
+        return false;
+    }
+
+    if (lowerExt == ".obj" || lowerExt == ".fbx" || lowerExt == ".gltf" || lowerExt == ".glb") {
+        nlohmann::json meshValue;
+        meshValue["mesh"] = {
+            {"asset_id", static_cast<std::uint64_t>(imported.asset_id)},
+            {"sub_object_id", 0},
+        };
+        meshValue["section_index"] = 0;
+        meshValue["override_materials"] = nlohmann::json::array();
+        meshValue["visible"] = true;
+        meshValue["cast_shadow"] = true;
+        meshValue["mobility"] = 0;
+        auto command2 = std::make_unique<ImportMeshCommand>(name, std::move(meshValue), position);
+        auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+        m_session->notifyDocumentChanged();
+        if (executed) {
+            const std::uint64_t created =
+                static_cast<ImportMeshCommand*>(executed)->createdUuid();
+            if (created != 0) {
+                m_session->selection().set(created);
+            }
+        }
+        return true;
+    }
+
+    if (lowerExt == ".png" || lowerExt == ".jpg" || lowerExt == ".jpeg" ||
+        lowerExt == ".bmp" || lowerExt == ".gif" || lowerExt == ".tga" ||
+        lowerExt == ".psd" || lowerExt == ".hdr") {
+        const dodoe::ObjectID spriteRef = EnsureSpriteSubObject(absStr);
+        if (!spriteRef.isValid()) {
+            return false;
+        }
+        nlohmann::json spriteValue;
+        spriteValue["sprite"] = {
+            {"asset_id", static_cast<std::uint64_t>(spriteRef.asset_id)},
+            {"sub_object_id", spriteRef.local_id},
+        };
+        spriteValue["flip"] = false;
+        spriteValue["pivot"] = {0.0, 0.0};
+        spriteValue["depth"] = 0.0;
+        spriteValue["color"] = {1.0, 1.0, 1.0, 1.0};
+        auto command2 = std::make_unique<ImportSpriteCommand>(name, std::move(spriteValue), position);
+        auto* executed = m_session->history().execute(std::move(command2), m_session->documentModel());
+        m_session->notifyDocumentChanged();
+        if (executed) {
+            const std::uint64_t created =
+                static_cast<ImportSpriteCommand*>(executed)->createdUuid();
+            if (created != 0) {
+                m_session->selection().set(created);
+            }
+        }
+        return true;
+    }
+
+    return true;
+}
+
 void RuntimeEditorBackend::setEventCallback(std::function<void(const BackendEventMessage&)> callback)
 {
     m_eventCallback = std::move(callback);
@@ -785,17 +939,31 @@ bool RuntimeEditorBackend::attachSceneSurface(const SceneSurfaceDescriptor& surf
         m_pending.nativeHandle = m_surface.nativeHandle;
         m_hasPendingMetrics = true;
     }
-    if (!m_booted && !bootRuntime()) {
+    if (m_booted) {
+        applyPendingMetrics();
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::bootEngine()
+{
+    if (m_booted) {
+        return true;
+    }
+    if (m_surface.nativeHandle == 0) {
+        m_state = BackendState::Failed;
+        m_diagnostic = "Runtime backend: engine boot requires an attached scene surface.";
         return false;
     }
-    DO_ASSERT(m_booted, "Cakery backend: runtime did not boot on surface attach");
+    if (!bootRuntime()) {
+        return false;
+    }
     applyPendingMetrics();
     if (m_hasDocument && !reconcileScene(m_document)) {
+        m_diagnostic = "Runtime backend: scene reconcile failed after engine boot.";
         return false;
     }
-    if (m_camera) {
-        m_camera->commitToRenderChannel();
-    }
+    m_camera->commitToRenderChannel();
     return true;
 }
 
@@ -827,53 +995,42 @@ void RuntimeEditorBackend::tickAtSafePoint()
         applyPendingMetrics();
     }
 
-    if (m_assetDatabase && m_assetDatabase->refreshPending() && m_assetDatabase->refreshFinished()) {
+    if (m_assetDatabase->refreshPending() && m_assetDatabase->refreshFinished()) {
         m_assetDatabase->finalize();
         DO_INFO("Cakery backend: asset database refreshed");
-        if (m_eventCallback) {
-            m_eventCallback(BackendEventMessage{"asset_database_changed", ""});
-        }
+        m_eventCallback(BackendEventMessage{"asset_database_changed", ""});
+        reportMissingAssetReferences();
     }
 
-    const auto now = std::chrono::steady_clock::now();
-    const float dt = std::min(0.05f, std::chrono::duration<float>(now - m_lastTick).count());
-    m_lastTick = now;
-
-    EventSystem::Publish<BeforeOneTickEvent>();
-    if (auto* time_system = m_app->context().getTimeSystem()) {
-        time_system->updateTime();
-    }
-    if (auto* input = m_app->context().getInputManager()) {
-        input->beginFrame();
-    }
-    EventSystem::Poll();
-    EventSystem::Handle();
-    if (auto* input = m_app->context().getInputManager()) {
-        input->update(dt);
-    }
-    if (m_camera) {
+    m_app->stepFrame([this](const float dt) {
         m_camera->update(dt);
         m_camera->commitToRenderChannel();
+        updateGizmo();
+    });
+}
+
+void RuntimeEditorBackend::reportMissingAssetReferences()
+{
+    if (!m_hasDocument || !m_assetDatabase || m_assetDatabase->refreshPending()) {
+        return;
     }
-    updateGizmo();
-    m_app->context().tickOneFrame();
-    EventSystem::Publish<AfterOneTickEvent>();
+    std::vector<std::uint64_t> missing;
+    findMissingAssetReferences(missing);
+    const nlohmann::json payload = missing;
+    m_eventCallback(BackendEventMessage{"asset_references_missing", payload.dump()});
 }
 
 void RuntimeEditorBackend::shutdown()
 {
-    if (!m_booted && !m_app) {
+    if (!m_app) {
         return;
     }
     if (m_assetDatabase) {
         m_assetDatabase->cancelAndWait();
     }
-    if (m_booted && m_app) {
-        SystemContext& ctx = m_app->context();
-        ctx.getLayerStack().detach();
-        ctx.stopRuntime();
-        EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(m_app.get());
-        ctx.finalizeModules();
+    if (m_modulesInitialized) {
+        m_app->teardown();
+        m_modulesInitialized = false;
     }
     m_camera.reset();
     m_cameraProvider.reset();
@@ -975,25 +1132,27 @@ bool RuntimeEditorBackend::bootRuntime()
     spec.host_handle = reinterpret_cast<void*>(m_surface.nativeHandle);
     spec.render_settings.api = RenderBackendApiType::D3D12;
     spec.render_settings.pipeline = RenderingPipelineType::Deferred;
+    spec.render_settings.create_default_view_target = false;
 
     m_app = std::make_unique<Application>(spec);
-    DO_ASSERT(m_app, "Cakery backend: Application failed to create");
+    m_app->startup();
+    m_modulesInitialized = true;
+
     SystemContext& ctx = m_app->context();
-
-    EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(m_app.get());
-
-    ctx.initializeModules();
-    DO_ASSERT(ctx.getRenderSystem(), "Cakery backend: render system missing after module init");
-    DO_INFO("Cakery backend: runtime modules initialized");
-    ctx.startRuntime();
-    DO_ASSERT(ctx.getWorld(), "Cakery backend: world missing after startRuntime");
-    DO_INFO("Cakery backend: runtime started");
-    ctx.getLayerStack().attach();
-    DO_INFO("Cakery backend: layer stack attached");
-
-    if (m_assetDatabase) {
-        m_assetDatabase->cancelAndWait();
+    if (!ctx.getRenderSystem()) {
+        shutdown();
+        m_state = BackendState::Failed;
+        m_diagnostic = "Runtime backend: render system missing after startup.";
+        return false;
     }
+    if (!ctx.getWorld()) {
+        shutdown();
+        m_state = BackendState::Failed;
+        m_diagnostic = "Runtime backend: world missing after startup.";
+        return false;
+    }
+    DO_INFO("Cakery backend: runtime started");
+
     m_assetDatabase = std::make_unique<AssetDatabase>();
     m_assetDatabase->refresh();
     DO_INFO("Cakery backend: asset database refresh started");
@@ -1001,39 +1160,30 @@ bool RuntimeEditorBackend::bootRuntime()
     m_camera = std::make_unique<EditorCamera>();
     m_cameraProvider = std::make_unique<dodoe::EditorCameraProvider>();
 
-    auto* renderSys = ctx.getRenderSystem();
-    auto* viewMgr = renderSys ? renderSys->getViewManager() : nullptr;
-    if (viewMgr) {
-        auto& targets = viewMgr->getTargets();
-        if (!targets.empty()) {
-            viewMgr->destroyViewTarget(targets[0].get());
-        }
-        dodoe::RenderViewTargetCreateInfo info;
-        info.camera = m_cameraProvider.get();
-        info.logical = dodoe::Vector2f(bootW, bootH);
-        info.window  = dodoe::Vector2i(static_cast<int>(bootW), static_cast<int>(bootH));
-        info.pixel   = dodoe::Vector2i(bootPixelW, bootPixelH);
-        m_sceneTarget = viewMgr->createViewTarget(info);
+    auto* viewMgr = ctx.getRenderSystem()->getViewManager();
+    dodoe::RenderViewTargetCreateInfo info;
+    info.camera = m_cameraProvider.get();
+    info.logical = dodoe::Vector2f(bootW, bootH);
+    info.window  = dodoe::Vector2i(static_cast<int>(bootW), static_cast<int>(bootH));
+    info.pixel   = dodoe::Vector2i(bootPixelW, bootPixelH);
+    m_sceneTarget = viewMgr->createViewTarget(info);
+    if (!m_sceneTarget) {
+        shutdown();
+        m_state = BackendState::Failed;
+        m_diagnostic = "Runtime backend: scene view target failed to create.";
+        return false;
     }
-    DO_ASSERT(m_sceneTarget, "Cakery backend: scene view target failed to create");
     DO_INFO("Cakery backend: scene view target created");
 
-    if (m_camera) {
-        m_camera->setViewportSize(bootW, bootH);
-    }
+    m_camera->setViewportSize(bootW, bootH);
 
-    if (auto* window = ctx.getWindowManager()->getWindow()) {
-        window->setPixelSize(bootPixelW, bootPixelH);
-    }
+    ctx.getWindowManager()->getWindow()->setPixelSize(bootPixelW, bootPixelH);
 
-    m_lastTick = std::chrono::steady_clock::now();
     m_booted = true;
     m_state = BackendState::Ready;
     m_diagnostic = "Runtime backend booted.";
     DO_INFO("Cakery backend: runtime boot complete");
-    if (m_eventCallback) {
-        m_eventCallback(BackendEventMessage{"camera_mode_changed", "3d"});
-    }
+    m_eventCallback(BackendEventMessage{"camera_mode_changed", "3d"});
     return true;
 }
 
@@ -1042,14 +1192,8 @@ void RuntimeEditorBackend::applyPendingMetrics()
     if (!m_booted || !m_hasPendingMetrics) {
         return;
     }
-    SystemContext* ctx = m_app ? &m_app->context() : nullptr;
-    if (!ctx || !ctx->getWindowManager()) {
-        return;
-    }
-    auto* window = ctx->getWindowManager()->getWindow();
-    if (!window) {
-        return;
-    }
+    SystemContext& ctx = m_app->context();
+    auto* window = ctx.getWindowManager()->getWindow();
 
     const int logicalW = m_pending.logicalWidth;
     const int logicalH = m_pending.logicalHeight;
@@ -1058,13 +1202,9 @@ void RuntimeEditorBackend::applyPendingMetrics()
     window->setSize(logicalW, logicalH);
     window->setPixelSize(pixelW, pixelH);
 
-    if (m_sceneTarget) {
-        m_sceneTarget->setLogicalSize(Vector2f(static_cast<float>(logicalW), static_cast<float>(logicalH)));
-        m_sceneTarget->resize(Vector2i(logicalW, logicalH), Vector2i(pixelW, pixelH));
-    }
-    if (m_camera) {
-        m_camera->setViewportSize(static_cast<float>(logicalW), static_cast<float>(logicalH));
-    }
+    m_sceneTarget->setLogicalSize(Vector2f(static_cast<float>(logicalW), static_cast<float>(logicalH)));
+    m_sceneTarget->resize(Vector2i(logicalW, logicalH), Vector2i(pixelW, pixelH));
+    m_camera->setViewportSize(static_cast<float>(logicalW), static_cast<float>(logicalH));
     m_hasPendingMetrics = false;
 }
 
@@ -1100,7 +1240,10 @@ void RuntimeEditorBackend::setPlayAction(const std::string& action)
         }
         world->setState(dodoe::WorldState::Simulation);
         m_playState = "edit";
+    } else {
+        return;
     }
+    m_eventCallback(BackendEventMessage{"play_state_changed", m_playState});
 }
 
 } // namespace cakery

@@ -11,6 +11,11 @@ namespace cakery {
 EditHistory::EditHistory(EditorHistory& history, EditorDocumentModel& document)
     : m_history(history), m_document(document)
 {
+    m_historySubscription = m_history.subscribe([this]() {
+        if (m_inTransaction) {
+            ++m_commandCount;
+        }
+    });
 }
 
 void EditHistory::beginTransaction(Author who, std::string message) {

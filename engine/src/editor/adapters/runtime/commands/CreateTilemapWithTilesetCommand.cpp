@@ -39,22 +39,22 @@ CreateTilemapWithTilesetCommand::CreateTilemapWithTilesetCommand(dodoe::String n
 {
 }
 
-void CreateTilemapWithTilesetCommand::execute(EditorDocumentModel& model)
+bool CreateTilemapWithTilesetCommand::execute(EditorDocumentModel& model)
 {
     auto* scene = ActiveScene();
     if (!scene) {
-        return;
+        return false;
     }
 
     auto& resourceManager = dodoe::ResourceManager::Self();
     auto* assetManager = resourceManager.getAssetManager();
     if (!assetManager) {
-        return;
+        return false;
     }
 
     dodoe::Tileset* tileset = resourceManager.loadObject<dodoe::Tileset>(m_tilesetAssetId, 0);
     if (!tileset) {
-        return;
+        return false;
     }
     const dodoe::UInt32 tileW = tileset->tile_width > 0 ? tileset->tile_width : 16;
     const dodoe::UInt32 tileH = tileset->tile_height > 0 ? tileset->tile_height : 16;
@@ -66,7 +66,7 @@ void CreateTilemapWithTilesetCommand::execute(EditorDocumentModel& model)
         dodoe::UUID uuid = m_createdUuid.isValid() ? m_createdUuid : dodoe::UUID::Generate();
         tilemapEntity = scene->createEntity(uuid, m_name);
         if (!tilemapEntity.valid()) {
-            return;
+            return false;
         }
         m_createdUuid = tilemapEntity.uuid();
 
@@ -120,7 +120,7 @@ void CreateTilemapWithTilesetCommand::execute(EditorDocumentModel& model)
         m_layerUuid = layerCmd.created();
         if (!m_layerUuid.isValid()) {
             scene->destroyEntity(tilemapEntity);
-            return;
+            return false;
         }
     }
 
@@ -139,6 +139,7 @@ void CreateTilemapWithTilesetCommand::execute(EditorDocumentModel& model)
         }
         m_created = true;
     }
+    return true;
 }
 
 void CreateTilemapWithTilesetCommand::revert(EditorDocumentModel& model)

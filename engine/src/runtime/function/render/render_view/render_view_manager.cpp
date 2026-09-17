@@ -9,8 +9,10 @@ namespace dodoe {
 
     Bool RenderViewManager::initialize(const RenderViewManagerCreateInfo& info) {
         m_default_provider = create_scope<IndexedCameraProvider>(0);
-        auto window = info.window_manager->getWindow();
-        createDefaultViewTarget(window);
+        if (info.create_default_view_target) {
+            auto window = info.window_manager->getWindow();
+            createDefaultViewTarget(window);
+        }
         return true;
     }
 

@@ -4,6 +4,8 @@
 
 #include "runtime/dopch.h"
 
+#include <functional>
+
 #include "runtime/function/render/render_settings.h"
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/json.h"
@@ -98,6 +100,9 @@ namespace dodoe {
         [[nodiscard]] const EngineMode& getEngineMode() const { return m_app_spec.engine_mode; }
 
         void run();
+        void startup();
+        void stepFrame(const std::function<void(Float)>& preTick = {});
+        void teardown();
         void quit();
     };
 

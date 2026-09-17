@@ -33,12 +33,12 @@ ResizeTilemapCommand::ResizeTilemapCommand(dodoe::UUID tilemap, dodoe::UInt32 ne
     , m_newHeight(newHeight)
 {}
 
-void ResizeTilemapCommand::execute(EditorDocumentModel& model)
+bool ResizeTilemapCommand::execute(EditorDocumentModel& model)
 {
     auto* scene = ActiveScene();
-    if (!scene) return;
+    if (!scene) return false;
     auto tilemapEntity = ResolveEntity(scene, m_tilemap);
-    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::TilemapComponent>()) return;
+    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::TilemapComponent>()) return false;
 
     auto& tm = tilemapEntity.getComponent<dodoe::TilemapComponent>();
     m_oldWidth = tm.map_width;
@@ -61,6 +61,7 @@ void ResizeTilemapCommand::execute(EditorDocumentModel& model)
     }
 
     applyDims(model, m_newWidth, m_newHeight);
+    return true;
 }
 
 void ResizeTilemapCommand::revert(EditorDocumentModel& model)

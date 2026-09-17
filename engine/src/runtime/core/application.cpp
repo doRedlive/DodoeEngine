@@ -12,6 +12,7 @@
 #include "runtime/core/async/task_scheduler.h"
 #include "runtime/resource/file/file_system.h"
 
+#include <algorithm>
 #include <charconv>
 #include <filesystem>
 #include <fstream>
@@ -132,9 +133,7 @@ namespace dodoe {
         return *m_context;
     }
 
-    void Application::run() {
-        DO_PROFILE_SCOPE_CATEGORY("Application::run", "runtime");
-        DO_PROFILE_THREAD_NAME("MainThread");
+    void Application::startup() {
         TaskScheduler::Self();
 
         EventSystem::Subscribe<ApplicationQuitEvent, &Application::quit>(this);
@@ -144,26 +143,50 @@ namespace dodoe {
         m_context->startRuntime();
 
         m_context->getLayerStack().attach();
+    }
+
+    void Application::stepFrame(const std::function<void(Float)>& preTick) {
+        EventSystem::Publish<BeforeOneTickEvent>();
+
+        m_context->getTimeSystem()->updateTime();
+        const Float delta = std::min(0.05f, m_context->getTimeSystem()->getDeltaTime());
+        const Float unscaledDelta = std::min(0.05f, m_context->getTimeSystem()->getUnscaledDeltaTime());
+
+        if (auto* input_manager = m_context->getInputManager()) {
+            input_manager->beginFrame();
+        }
+        EventSystem::Poll();
+        EventSystem::Handle();
+        if (auto* input_manager = m_context->getInputManager()) {
+            input_manager->update(delta);
+        }
+        if (preTick) {
+            preTick(unscaledDelta);
+        }
+        m_context->tickOneFrame();
+        DO_PROFILE_FRAME();
+        EventSystem::Publish<AfterOneTickEvent>();
+    }
+
+    void Application::teardown() {
+        m_context->getLayerStack().detach();
+
+        m_context->stopRuntime();
+        m_context->finalizeModules();
+        EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
+        m_context->postShutdown();
+    }
+
+    void Application::run() {
+        DO_PROFILE_SCOPE_CATEGORY("Application::run", "runtime");
+        DO_PROFILE_THREAD_NAME("MainThread");
+        startup();
 
 #ifndef DODOE_SHIPPING
         UInt32 frames_run = 0;
 #endif
         while (m_running) {
-            EventSystem::Publish<BeforeOneTickEvent>();
-            if (auto* time_system = m_context->getTimeSystem()) {
-                time_system->updateTime();
-            }
-            if (auto* input_manager = m_context->getInputManager()) {
-                input_manager->beginFrame();
-            }
-            EventSystem::Poll();
-            EventSystem::Handle();
-            if (auto* input_manager = m_context->getInputManager()) {
-                input_manager->update(m_context->getTimeSystem()->getDeltaTime());
-            }
-            m_context->tickOneFrame();
-            DO_PROFILE_FRAME();
-            EventSystem::Publish<AfterOneTickEvent>();
+            stepFrame();
 #ifndef DODOE_SHIPPING
             if (m_smoke_frames > 0 && ++frames_run >= m_smoke_frames) {
                 DO_INFO("Smoke test mode: exiting after {} frames.", frames_run);
@@ -175,12 +198,7 @@ namespace dodoe {
             }
         }
 
-        m_context->getLayerStack().detach();
-
-        m_context->stopRuntime();
-        m_context->finalizeModules();
-        EventSystem::Unsubscribe<ApplicationQuitEvent, &Application::quit>(this);
-        m_context->postShutdown();
+        teardown();
     }
 
     void Application::quit() {

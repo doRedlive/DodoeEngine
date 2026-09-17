@@ -43,20 +43,20 @@ ReorderTileLayerCommand::ReorderTileLayerCommand(dodoe::UUID tilemap, dodoe::UUI
     , m_moveUp(moveUp)
 {}
 
-void ReorderTileLayerCommand::swapInScene(EditorDocumentModel& model, bool reverse)
+bool ReorderTileLayerCommand::swapInScene(EditorDocumentModel& model, bool reverse)
 {
     auto* scene = ActiveScene();
-    if (!scene) return;
+    if (!scene) return false;
 
     bool up = reverse ? !m_moveUp : m_moveUp;
     auto tilemapEntity = ResolveEntity(scene, m_tilemap);
-    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::HierarchyComponent>()) return;
+    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::HierarchyComponent>()) return false;
     auto& hierarchy = tilemapEntity.getComponent<dodoe::HierarchyComponent>();
 
     const int index = FindChildIndex(hierarchy, m_layer);
-    if (index < 0) return;
+    if (index < 0) return false;
     const int other = up ? index - 1 : index + 1;
-    if (other < 0 || other >= static_cast<int>(hierarchy.children.size())) return;
+    if (other < 0 || other >= static_cast<int>(hierarchy.children.size())) return false;
 
     auto& children = hierarchy.children;
     dodoe::Entity otherEntity = children[static_cast<std::size_t>(other)];
@@ -86,12 +86,16 @@ void ReorderTileLayerCommand::swapInScene(EditorDocumentModel& model, bool rever
             }
         }
     }
+    return true;
 }
 
-void ReorderTileLayerCommand::execute(EditorDocumentModel& model)
+bool ReorderTileLayerCommand::execute(EditorDocumentModel& model)
 {
-    swapInScene(model, false);
+    if (!swapInScene(model, false)) {
+        return false;
+    }
     m_swapped = true;
+    return true;
 }
 
 void ReorderTileLayerCommand::revert(EditorDocumentModel& model)
