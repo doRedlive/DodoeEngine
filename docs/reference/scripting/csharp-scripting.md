@@ -35,7 +35,7 @@ GameObject player = GameObject.Find("Player");
 
 所有组件继承 `CakeComponent`（只有一个 `Entity` 属性）。分两类：
 
-- **NativeComponent**：由 C++ ECS pool 持有，引擎内置。例如 `TransformComponent`、`TagComponent`、`MeshRendererComponent`、`SpriteRendererComponent`、`Rigidbody2dComponent`、`BoxCollider2dComponent`、`AnimatorComponent` 等。`GetComponent<T>()` 每次返回一个新代理对象，不要跨帧缓存后持有。
+- **NativeComponent**：由 C++ ECS pool 持有，引擎内置。例如 `TransformComponent`、`TagComponent`、`MeshRendererComponent`、`SpriteRendererComponent`、`Rigidbody2dComponent`、`BoxCollider2dComponent`、`AnimatorComponent` 等。`GetComponent<T>()` 返回按 (entity, type) 复用的只读代理——同一实体同一类型返回同一实例；代理不持有原生状态，实体销毁后读取会得到默认值，不要把它当作独立对象跨帧缓存。
 - **托管组件**：直接继承 `CakeComponent` 的 C# 组件，由托管 store 持有。`CakeBehaviour` 是其中带生命周期回调的一类。
 
 ```csharp
