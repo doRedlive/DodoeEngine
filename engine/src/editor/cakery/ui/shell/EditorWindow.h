@@ -6,6 +6,9 @@
 #include <QByteArray>
 #include <QString>
 
+#include <utility>
+#include <vector>
+
 #include "core/Signal.h"
 
 class QAction;
@@ -63,6 +66,9 @@ private:
     void createPanels();
     void createWindowMenu();
     void populatePanelMenus();
+    void refreshEditorWindowsMenu();
+    void openEditorWindow(const QString& id, const QString& title);
+    void refreshEditorWindows();
     void setupPanelToggle(ads::CDockWidget* dock);
     void setupFloatingDockWindow(ads::CFloatingDockContainer* floating);
     void startSafePointTimer();
@@ -106,6 +112,9 @@ private:
     QMenu* m_settingsMenu = nullptr;
     QMenu* m_windowMenu = nullptr;
     QMenu* m_toolsMenu = nullptr;
+    QMenu* m_editorWindowsMenu = nullptr;
+    QTimer* m_editorWindowTimer = nullptr;
+    std::vector<std::pair<QString, ads::CDockWidget*>> m_editorWindowDocks;
     QAction* m_resetLayoutAction = nullptr;
     QToolButton* m_maxButton = nullptr;
     QAction* m_undoAction = nullptr;

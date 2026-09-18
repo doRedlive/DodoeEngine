@@ -4,6 +4,7 @@
 
 #include "EditorCamera.h"
 #include "core/EditorSession.h"
+#include "adapters/runtime/script/EditorScriptBridge.h"
 #include "adapters/runtime/services/FieldAttributes.h"
 #include "commands/CreateTilemapWithTilesetCommand.h"
 #include "commands/ImportMeshCommand.h"
@@ -1025,6 +1026,7 @@ void RuntimeEditorBackend::shutdown()
     if (!m_app) {
         return;
     }
+    EditorScriptBridge::Shutdown();
     if (m_assetDatabase) {
         m_assetDatabase->cancelAndWait();
     }
@@ -1108,6 +1110,28 @@ bool RuntimeEditorBackend::invokeToolAction(const std::string& path)
     return true;
 }
 
+bool RuntimeEditorBackend::getCustomInspectorUI(const std::string& typeName, nlohmann::json& out) const
+{
+    return EditorScriptBridge::GetCustomInspectorUI(typeName, out);
+}
+
+bool RuntimeEditorBackend::listEditorWindows(std::vector<std::pair<std::string, std::string>>& out) const
+{
+    return EditorScriptBridge::ListEditorWindows(out);
+}
+
+bool RuntimeEditorBackend::getEditorWindowUI(const std::string& id, nlohmann::json& out) const
+{
+    return EditorScriptBridge::GetEditorWindowUI(id, out);
+}
+
+bool RuntimeEditorBackend::dispatchEditorEvent(const std::string& owner, const std::string& ownerId,
+                                               const std::string& controlId, const std::string& eventName,
+                                               const nlohmann::json& value)
+{
+    return EditorScriptBridge::DispatchEditorEvent(owner, ownerId, controlId, eventName, value);
+}
+
 bool RuntimeEditorBackend::bootRuntime()
 {
     if (m_booted) {
@@ -1137,6 +1161,8 @@ bool RuntimeEditorBackend::bootRuntime()
     m_app = std::make_unique<Application>(spec);
     m_app->startup();
     m_modulesInitialized = true;
+
+    EditorScriptBridge::Initialize(m_session);
 
     SystemContext& ctx = m_app->context();
     if (!ctx.getRenderSystem()) {

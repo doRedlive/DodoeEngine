@@ -66,6 +66,8 @@ set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorGizmo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorTilemap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorThumbnail.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/script/EditorScriptBridge.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/script/EditorScriptBridge.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/AssetDatabase.h
@@ -133,6 +135,8 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/shell/EditorWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorRemoteWidget.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorRemoteWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ConsolePanel.h

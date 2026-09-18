@@ -69,6 +69,12 @@ public:
     bool clearLogs();
     bool listToolActions(std::vector<std::string>& actions) const;
     bool invokeToolAction(const std::string& path);
+    bool getCustomInspectorUI(const std::string& typeName, nlohmann::json& out) const;
+    bool listEditorWindows(std::vector<std::pair<std::string, std::string>>& out) const;
+    bool getEditorWindowUI(const std::string& id, nlohmann::json& out) const;
+    bool dispatchEditorEvent(const std::string& owner, const std::string& ownerId,
+                             const std::string& controlId, const std::string& eventName,
+                             const nlohmann::json& value);
 
     EditorDocumentModel& documentModel() { return m_documentModel; }
     const EditorDocumentModel& documentModel() const { return m_documentModel; }

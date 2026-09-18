@@ -5,6 +5,7 @@
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "cakery/ui/EditorIcons.h"
 #include "cakery/ui/inspector/EditorJsonWidget.h"
+#include "cakery/ui/inspector/EditorRemoteWidget.h"
 #include "core/document/EditorDocumentModel.h"
 
 #include <set>
@@ -397,13 +398,37 @@ void InspectorPanel::refresh()
         if (!managed) {
             m_context.session().inspectComponent(component.typeName, reflectedFields);
         }
-        auto* editor = reflectedFields.empty()
-            ? new EditorJsonWidget(component.value, body)
-            : new EditorJsonWidget(component.value, std::move(reflectedFields), assets, body);
-        connect(editor, &EditorJsonWidget::valueChanged, this, [this, uuid, index, managed, editor]() {
-            commitComponentValue(uuid, index, editor->value(), managed);
-        });
-        bodyLayout->addWidget(editor);
+
+        nlohmann::json customUI;
+        if (!managed && m_context.session().getCustomInspectorUI(component.typeName, customUI)) {
+            const std::string typeName = component.typeName;
+            EditorRemoteWidget::PropertyContext property;
+            property.value = component.value;
+            property.fields = reflectedFields;
+            property.onChanged = [this, uuid, index, managed](const nlohmann::json& value) {
+                commitComponentValue(uuid, index, value, managed);
+            };
+            auto* remote = new EditorRemoteWidget(
+                [this, typeName](nlohmann::json& out) {
+                    return m_context.session().getCustomInspectorUI(typeName, out);
+                },
+                [this, typeName](const std::string& controlId, const std::string& eventName,
+                                 const nlohmann::json& value) {
+                    m_context.session().dispatchEditorEvent("inspector", typeName, controlId,
+                                                            eventName, value);
+                },
+                std::move(property),
+                body);
+            bodyLayout->addWidget(remote);
+        } else {
+            auto* editor = reflectedFields.empty()
+                ? new EditorJsonWidget(component.value, body)
+                : new EditorJsonWidget(component.value, std::move(reflectedFields), assets, body);
+            connect(editor, &EditorJsonWidget::valueChanged, this, [this, uuid, index, managed, editor]() {
+                commitComponentValue(uuid, index, editor->value(), managed);
+            });
+            bodyLayout->addWidget(editor);
+        }
 
         sectionLayout->addWidget(body);
         connect(header, &QPushButton::toggled, this, [this, index, managed, header, body](bool expanded) {

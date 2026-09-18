@@ -50,6 +50,12 @@ namespace dodoe {
         SrpFeatureAddPasses,
         SrpExecute,
         SrpClearExecuteCallbacks,
+
+        RegisterEditorNatives,
+        EditorGetInspectorUI,
+        EditorListWindows,
+        EditorGetWindowUI,
+        EditorDispatchEvent,
     };
 
     using ScriptCallFn = int (*)(ScriptCommand command, void** args, void** result);

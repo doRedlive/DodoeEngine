@@ -1,6 +1,10 @@
 #include "script_glue.h"
 
+#include <algorithm>
 #include <cstring>
+#include <functional>
+#include <utility>
+#include <vector>
 
 #include "runtime/core/application.h"
 #include "runtime/core/context/system_context.h"
@@ -45,6 +49,13 @@ namespace dodoe {
     namespace {
 
         static ScriptEngine* s_ScriptEngine = nullptr;
+
+        struct HostExtension {
+            void* token = nullptr;
+            ScriptGlue::HostExtensionFn fn = nullptr;
+        };
+
+        static std::vector<HostExtension> s_hostExtensions;
 
         static std::unordered_map<String, std::function<int(Entity)>> s_EntityHasComponentFuncUmap;
         static std::unordered_map<String, std::function<void(Entity)>> s_EntityAddComponentFuncUmap;
@@ -1878,6 +1889,7 @@ X(native_SphereColliderComponent_offset_get, void, (uint64_t e, float* x, float*
 
     void ScriptGlue::Shutdown() {
         s_ScriptEngine = nullptr;
+        s_hostExtensions.clear();
         s_EntityHasComponentFuncUmap.clear();
         s_EntityAddComponentFuncUmap.clear();
         s_EntityRemoveComponentFuncUmap.clear();
@@ -1887,6 +1899,34 @@ X(native_SphereColliderComponent_offset_get, void, (uint64_t e, float* x, float*
         if (!s_ScriptEngine) return;
         RegisterComponents(); 
         RegisterNativeBindings();
+
+        ScriptCallFn call = s_ScriptEngine->getCallFn();
+        if (!call) return;
+        for (const HostExtension& extension : s_hostExtensions) {
+            if (extension.fn) {
+                extension.fn(call);
+            }
+        }
+    }
+
+    void ScriptGlue::AddHostExtension(void* token, HostExtensionFn fn) {
+        RemoveHostExtension(token);
+        if (!fn) return;
+
+        s_hostExtensions.push_back(HostExtension{token, std::move(fn)});
+        if (!s_ScriptEngine) return;
+
+        ScriptCallFn call = s_ScriptEngine->getCallFn();
+        if (call) {
+            s_hostExtensions.back().fn(call);
+        }
+    }
+
+    void ScriptGlue::RemoveHostExtension(void* token) {
+        s_hostExtensions.erase(
+            std::remove_if(s_hostExtensions.begin(), s_hostExtensions.end(),
+                           [token](const HostExtension& extension) { return extension.token == token; }),
+            s_hostExtensions.end());
     }
 
     void ScriptGlue::RegisterComponents() {

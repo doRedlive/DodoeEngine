@@ -45,4 +45,10 @@ internal enum ScriptCommand : ushort
     SrpFeatureAddPasses,
     SrpExecute,
     SrpClearExecuteCallbacks,
+
+    RegisterEditorNatives,
+    EditorGetInspectorUI,
+    EditorListWindows,
+    EditorGetWindowUI,
+    EditorDispatchEvent,
 }

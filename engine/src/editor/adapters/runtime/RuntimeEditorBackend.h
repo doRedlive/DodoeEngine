@@ -50,6 +50,12 @@ public:
     bool clearLogs() override;
     bool listToolActions(std::vector<std::string>& actions) const override;
     bool invokeToolAction(const std::string& path) override;
+    bool getCustomInspectorUI(const std::string& typeName, nlohmann::json& out) const override;
+    bool listEditorWindows(std::vector<std::pair<std::string, std::string>>& out) const override;
+    bool getEditorWindowUI(const std::string& id, nlohmann::json& out) const override;
+    bool dispatchEditorEvent(const std::string& owner, const std::string& ownerId,
+                             const std::string& controlId, const std::string& eventName,
+                             const nlohmann::json& value) override;
     void setEventCallback(std::function<void(const BackendEventMessage&)>) override;
     void setEditorSession(EditorSession* session) override;
     bool assetRefreshPending() const override;

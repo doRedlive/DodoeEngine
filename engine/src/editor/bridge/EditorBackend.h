@@ -164,6 +164,23 @@ public:
         return false;
     }
     virtual bool invokeToolAction(const std::string& path) { return false; }
+    virtual bool getCustomInspectorUI(const std::string& /*typeName*/, nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
+    virtual bool listEditorWindows(std::vector<std::pair<std::string, std::string>>& out) const {
+        out.clear();
+        return false;
+    }
+    virtual bool getEditorWindowUI(const std::string& /*id*/, nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
+    virtual bool dispatchEditorEvent(const std::string& /*owner*/, const std::string& /*ownerId*/,
+                                     const std::string& /*controlId*/, const std::string& /*eventName*/,
+                                     const nlohmann::json& /*value*/) {
+        return false;
+    }
     virtual void setEditorSession(EditorSession* /*session*/) {}
     virtual bool queryTilemapState(const std::string& /*tilemapUuid*/, nlohmann::json& out) const {
         out = nullptr;

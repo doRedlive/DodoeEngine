@@ -365,6 +365,40 @@ bool EditorSession::invokeToolAction(const std::string& path)
     return m_backend && m_backend->invokeToolAction(path);
 }
 
+bool EditorSession::getCustomInspectorUI(const std::string& typeName, nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->getCustomInspectorUI(typeName, out);
+}
+
+bool EditorSession::listEditorWindows(std::vector<std::pair<std::string, std::string>>& out) const
+{
+    if (!m_backend) {
+        out.clear();
+        return false;
+    }
+    return m_backend->listEditorWindows(out);
+}
+
+bool EditorSession::getEditorWindowUI(const std::string& id, nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->getEditorWindowUI(id, out);
+}
+
+bool EditorSession::dispatchEditorEvent(const std::string& owner, const std::string& ownerId,
+                                        const std::string& controlId, const std::string& eventName,
+                                        const nlohmann::json& value)
+{
+    return m_backend && m_backend->dispatchEditorEvent(owner, ownerId, controlId, eventName, value);
+}
+
 bool EditorSession::canEditDocument() const
 {
     return m_documentModel.hasDocument() &&

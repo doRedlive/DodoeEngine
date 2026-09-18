@@ -57,6 +57,11 @@ public static partial class ScriptHub
             ScriptCommand.SrpFeatureAddPasses   => SrpFeatureAddPasses(args),
             ScriptCommand.SrpExecute            => SrpExecute(args),
             ScriptCommand.SrpClearExecuteCallbacks => SrpClearExecuteCallbacks(args),
+            ScriptCommand.RegisterEditorNatives => RegisterEditorNatives(args),
+            ScriptCommand.EditorGetInspectorUI => EditorGetInspectorUI(args, result),
+            ScriptCommand.EditorListWindows => EditorListWindows(args, result),
+            ScriptCommand.EditorGetWindowUI => EditorGetWindowUI(args, result),
+            ScriptCommand.EditorDispatchEvent => EditorDispatchEvent(args, result),
             _ => -1
         };
     }

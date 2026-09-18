@@ -25,6 +25,9 @@
 #include "cakery/ui/panels/SettingsPanel.h"
 #include "cakery/ui/panels/TileLayersPanel.h"
 #include "cakery/ui/panels/TilePalettePanel.h"
+#include "cakery/ui/inspector/EditorRemoteWidget.h"
+
+#include <algorithm>
 
 #include <DockAreaWidget.h>
 #include <DockManager.h>
@@ -798,6 +801,16 @@ void EditorWindow::createWindowMenu()
             }
         });
     }
+    m_editorWindowsMenu = m_windowMenu->addMenu(tr("Editor Windows"));
+    connect(m_editorWindowsMenu, &QMenu::aboutToShow, this, [this]() {
+        refreshEditorWindowsMenu();
+    });
+
+    m_editorWindowTimer = new QTimer(this);
+    m_editorWindowTimer->setInterval(150);
+    connect(m_editorWindowTimer, &QTimer::timeout, this, &EditorWindow::refreshEditorWindows);
+    m_editorWindowTimer->start();
+
     populatePanelMenus();
 }
 
@@ -823,6 +836,77 @@ void EditorWindow::populatePanelMenus()
     if (m_settingsMenu) {
         if (m_gameSettingsDock) m_settingsMenu->addAction(m_gameSettingsDock->toggleViewAction());
         if (m_engineSettingsDock) m_settingsMenu->addAction(m_engineSettingsDock->toggleViewAction());
+    }
+}
+
+void EditorWindow::refreshEditorWindowsMenu()
+{
+    if (!m_editorWindowsMenu) {
+        return;
+    }
+    m_editorWindowsMenu->clear();
+
+    std::vector<std::pair<std::string, std::string>> windows;
+    if (!m_context.session().listEditorWindows(windows) || windows.empty()) {
+        auto* unavailable = m_editorWindowsMenu->addAction(tr("No script windows available"));
+        unavailable->setEnabled(false);
+        return;
+    }
+
+    for (const auto& [id, title] : windows) {
+        auto* action = m_editorWindowsMenu->addAction(QString::fromStdString(title));
+        connect(action, &QAction::triggered, this, [this, id, title]() {
+            openEditorWindow(QString::fromStdString(id), QString::fromStdString(title));
+        });
+    }
+}
+
+void EditorWindow::openEditorWindow(const QString& id, const QString& title)
+{
+    for (auto& [existingId, dock] : m_editorWindowDocks) {
+        if (existingId == id && dock) {
+            dock->toggleView(true);
+            return;
+        }
+    }
+
+    auto* dock = new ads::CDockWidget(title);
+    dock->setObjectName(QStringLiteral("ScriptWindow_") + id);
+    const std::string windowId = id.toStdString();
+    auto* remote = new EditorRemoteWidget(
+        [this, windowId](nlohmann::json& out) {
+            return m_context.session().getEditorWindowUI(windowId, out);
+        },
+        [this, windowId](const std::string& controlId, const std::string& eventName,
+                         const nlohmann::json& value) {
+            m_context.session().dispatchEditorEvent("window", windowId, controlId, eventName, value);
+        },
+        dock);
+    dock->setWidget(remote);
+    dock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::RightDockWidgetArea, dock);
+    m_editorWindowDocks.emplace_back(id, dock);
+
+    connect(dock, &QObject::destroyed, this, [this, id]() {
+        m_editorWindowDocks.erase(
+            std::remove_if(m_editorWindowDocks.begin(), m_editorWindowDocks.end(),
+                           [&id](const std::pair<QString, ads::CDockWidget*>& entry) {
+                               return entry.first == id;
+                           }),
+            m_editorWindowDocks.end());
+    });
+}
+
+void EditorWindow::refreshEditorWindows()
+{
+    for (auto& [id, dock] : m_editorWindowDocks) {
+        if (!dock) {
+            continue;
+        }
+        auto* remote = qobject_cast<EditorRemoteWidget*>(dock->widget());
+        if (remote) {
+            remote->rebuildIfChanged();
+        }
     }
 }
 

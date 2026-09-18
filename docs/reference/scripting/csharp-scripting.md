@@ -183,6 +183,116 @@ public static class MyTools
 
 其他可用于编辑器与序列化的特性：`[SerializeField]`、`[Header]`、`[TextArea]`、`[RequireComponent]`、`[DisallowMultipleComponent]`、`[Serializable]`。
 
+## 编辑器 API（GreenCake.Editor）
+
+`GreenCake.Editor` 是 C# 反向操作编辑器的绑定层，等价于 Unity 的 `UnityEditor`。它只在 Cakery 编辑器进程内可用；在沙盒/运行时下 `EditorApplication.IsAvailable` 为 `false`，所有调用返回空结果。
+
+```csharp
+using GreenCake.Editor;
+
+ulong[] selected = Selection.Get();
+Selection.Set(uuid);                    // 单选
+Selection.Set(uuidA, uuidB);            // 多选
+Selection.Clear();
+
+EntityInfo[] entities = EditorScene.GetEntities();
+if (EditorScene.TryFind("Player", out var player)) { }
+
+ulong created = EditorApplication.CreateEntity("Enemy");
+EditorApplication.RenameEntity(created, "Enemy 2");
+EditorApplication.ReparentEntity(created, player.Uuid);
+EditorApplication.DeleteEntity(created);
+
+EditorApplication.Undo();
+EditorApplication.Redo();
+```
+
+| 类型 | 说明 |
+|---|---|
+| `EditorApplication` | `IsAvailable` / `IsReady` / `State` / `IsPlaying` / `ProjectRoot`；`Execute` / `Undo` / `Redo`；`CreateEntity` / `DeleteEntity` / `RenameEntity` / `ReparentEntity` |
+| `Selection` | `Get` / `Active` / `IsEmpty` / `Contains` / `Set` / `Clear` |
+| `EditorScene` | `Name` / `EntityCount` / `GetEntities` / `TryFind` |
+| `EntityInfo` | `Uuid` / `Parent` / `Name` |
+| `PlayState` | `Edit` / `Playing` / `Paused` |
+
+约束：
+
+- 所有操作与编辑器文档一致，走 `EditorHistory`，因此可撤销。
+- 结构变更（创建/删除/重命名/重父级）会触发文档同步，不要在原生系统同一帧内高频调用。
+- 绑定由 `EditorScriptBridge` 在运行时启动时注册，随脚本热重载自动重发；未打开项目（运行时代理未启动）时 `IsReady` 为 `false`。
+
+## 自定义编辑器 UI
+
+C# 可以声明式地扩展编辑器界面：`[CustomEditor]` 替换组件在 Inspector 中的绘制，`[EditorWindow]` 注册一个可停靠窗口。两者都用 `EditorGUI` 构造控件树，由 Qt 侧渲染，事件回传到 C#。
+
+```csharp
+using GreenCake.Editor;
+
+[CustomEditor(typeof(TransformComponent))]
+public sealed class TransformEditor : Editor
+{
+    public override void OnInspectorGUI(EditorGUI gui)
+    {
+        ulong uuid = Selection.Active;
+        gui.Help("Transform 由 C# 自定义编辑器绘制");
+        gui.BeginRow();
+        gui.Button("reset", "Reset Position");
+        gui.EndRow();
+    }
+
+    public override void OnEvent(EditorEvent e)
+    {
+        if (e.ControlId == "reset")
+            Debug.Log("reset clicked");
+    }
+}
+
+[EditorWindow("Tuning")]
+public sealed class TuningWindow : EditorWindow
+{
+    private bool _enabled = true;
+    private float _speed = 1.0f;
+
+    public override void OnGUI(EditorGUI gui)
+    {
+        gui.Toggle("enabled", "Enabled", _enabled);
+        gui.Float("speed", "Speed", _speed, 0.0f, 10.0f);
+        gui.Button("spawn", "Spawn Cube");
+    }
+
+    public override void OnEvent(EditorEvent e)
+    {
+        if (e.ControlId == "enabled") _enabled = e.Value == "true";
+        if (e.ControlId == "spawn") EditorApplication.CreateEntity("Cube");
+    }
+}
+```
+
+`EditorGUI` 控件：`Label` / `Button` / `Toggle` / `Float` / `Int` / `Text` / `Vector3` / `Color` / `Object` / `Asset` / `Separator` / `Space` / `Help` / `Property`，容器：`BeginRow`/`EndRow`、`BeginColumn`/`EndColumn`、`BeginFoldout`/`EndFoldout`。
+
+`Property` 把控件绑定到当前组件字段，写入走 `EditorSession::updateComponent`（可撤销），控件类型由 `inspectComponent` 元数据或 JSON 值推断：
+
+```csharp
+[CustomEditor(typeof(TransformComponent))]
+public sealed class TransformEditor : Editor
+{
+    public override void OnInspectorGUI(EditorGUI gui)
+    {
+        gui.Property("position");                 // 使用元数据渲染向量控件
+        gui.Property("rotation", "Rotation");     // 自定义标签
+        gui.Property("scale");
+    }
+}
+```
+
+约束与现状：
+
+- `Property` 只在自定义 Inspector 生效（编辑器窗口没有组件上下文，会显示 `(unbound)`）。
+- Inspector 自定义编辑器在选中实体刷新时重建；`[EditorWindow]` 窗口由定时器（约 150ms）轮询 C# `OnGUI` 并在控件树变化时重建，输入焦点在窗口内时跳过重建。
+- 自定义编辑器与窗口在脚本热重载时自动重新扫描。
+
+
+
 ## 编写模式示例
 
 ```csharp

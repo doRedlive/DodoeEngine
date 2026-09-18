@@ -77,6 +77,7 @@ public static partial class ScriptHub
         alc?.Unload();
         AppAlc = null;
         ClearToolActionCache();
+        ClearEditorRegistry();
         return 1;
     }
 
@@ -90,6 +91,7 @@ public static partial class ScriptHub
         World.Reset();
         SceneManager.Reset();
         ClearToolActionCache();
+        ClearEditorRegistry();
         return 1;
     }
 
