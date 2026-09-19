@@ -2,8 +2,6 @@
 
 #include "runtime/function/render/render_pipeline/passes/render_gbuffer_pass.h"
 
-#include <chrono>
-
 #include "runtime/function/graphics/gfx.h"
 #include "runtime/function/graphics/gfx_context.h"
 
@@ -150,10 +148,10 @@ namespace dodoe {
                         && gpu_culling->acquireBucketDraws(gpu_draws);
                     use_gpu_draws = has_draws;
                     if (!use_gpu_draws) {
-                        static auto last_fallback_warn = std::chrono::steady_clock::now() - std::chrono::seconds(2);
-                        const auto now = std::chrono::steady_clock::now();
-                        if (now - last_fallback_warn >= std::chrono::seconds(1)) {
-                            last_fallback_warn = now;
+                        static Float last_fallback_warn_time = -2.0f;
+                        const Float current_time = mesh_ext->frame_time_data.x;
+                        if (current_time - last_fallback_warn_time >= 1.0f) {
+                            last_fallback_warn_time = current_time;
                             DO_WARN("GBufferPass: gpu-driven fallback (culling={}, instance_buffer={}, buckets={}, draws={})",
                                 has_culling, has_instance_buffer, gpu_buckets.size(), gpu_draws.size());
                         }
