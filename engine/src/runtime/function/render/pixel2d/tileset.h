@@ -9,6 +9,8 @@
 
 namespace dodoe {
 
+    using TilePropertyMap = UnorderedMap<UInt32, UnorderedMap<String, String>>;
+
     class DODOE_API Tileset : public Object {
     public:
         static constexpr UInt32 kLocalId = 0;
@@ -19,8 +21,11 @@ namespace dodoe {
         UInt32 tile_height{16};
         UInt32 columns{0};
         UInt32 tile_count{0};
+        UInt32 margin{0};
+        UInt32 spacing{0};
         String image_path{};
         Identifier texture_id{0};
+        TilePropertyMap tile_properties{};
 
         Tileset() = default;
         explicit Tileset(const ObjectID& id)
@@ -35,8 +40,11 @@ namespace dodoe {
             tile_height = 16;
             columns = 0;
             tile_count = 0;
+            margin = 0;
+            spacing = 0;
             image_path.clear();
             texture_id = 0;
+            tile_properties.clear();
         }
 
         [[nodiscard]] Bool loadFromJson(const String& absolute_path);

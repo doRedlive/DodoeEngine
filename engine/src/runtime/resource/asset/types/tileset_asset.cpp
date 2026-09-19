@@ -4,8 +4,10 @@
 
 #include "runtime/core/utils/json.h"
 
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
+#include <string>
 
 namespace dodoe {
 
@@ -43,11 +45,34 @@ namespace dodoe {
         if (json.contains("TileCount")) {
             m_tile_count = json["TileCount"].get<UInt32>();
         }
+        if (json.contains("Margin")) {
+            m_margin = json["Margin"].get<UInt32>();
+        }
+        if (json.contains("Spacing")) {
+            m_spacing = json["Spacing"].get<UInt32>();
+        }
         if (json.contains("ImagePath")) {
             m_image_path = json["ImagePath"].get<String>();
         }
         if (json.contains("TextureId")) {
             m_texture_id = json["TextureId"].get<UInt32>();
+        }
+        if (json.contains("TileProperties") && json["TileProperties"].is_object()) {
+            for (auto tileIt = json["TileProperties"].begin(); tileIt != json["TileProperties"].end(); ++tileIt) {
+                if (!tileIt.value().is_object()) continue;
+                char* end = nullptr;
+                const unsigned long localId = std::strtoul(tileIt.key().c_str(), &end, 10);
+                if (!end || *end != '\0') continue;
+                UnorderedMap<String, String> properties;
+                for (auto propIt = tileIt.value().begin(); propIt != tileIt.value().end(); ++propIt) {
+                    if (propIt.value().is_string()) {
+                        properties.emplace(String(propIt.key().c_str()), propIt.value().get<String>());
+                    }
+                }
+                if (!properties.empty()) {
+                    m_tile_properties.emplace(static_cast<UInt32>(localId), std::move(properties));
+                }
+            }
         }
 
         m_meta.source_path = absolute_source_path;
@@ -72,8 +97,21 @@ namespace dodoe {
         json["TileHeight"] = m_tile_height;
         json["Columns"] = m_columns;
         json["TileCount"] = m_tile_count;
+        json["Margin"] = m_margin;
+        json["Spacing"] = m_spacing;
         json["ImagePath"] = m_image_path;
         json["TextureId"] = m_texture_id;
+        if (!m_tile_properties.empty()) {
+            Json properties = Json::object();
+            for (const auto& [localId, props] : m_tile_properties) {
+                Json entry = Json::object();
+                for (const auto& [key, value] : props) {
+                    entry[std::string(key.c_str())] = value;
+                }
+                properties[std::to_string(localId)] = std::move(entry);
+            }
+            json["TileProperties"] = std::move(properties);
+        }
 
         file << json.dump(4);
         file.flush();

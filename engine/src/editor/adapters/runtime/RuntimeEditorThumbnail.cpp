@@ -290,7 +290,7 @@ bool GetTiledMapThumbnailRgba(const dodoe::TiledMapAsset* map, const dodoe::FsPa
         for (uint32_t ty = 0; ty < layerHeight; ++ty) {
             for (uint32_t tx = 0; tx < layerWidth; ++tx) {
                 const uint32_t gid =
-                    layer.tiles[static_cast<size_t>(ty) * layerWidth + tx];
+                    layer.tiles[static_cast<size_t>(ty) * layerWidth + tx] & 0x0FFFFFFFu;
                 if (gid == 0) {
                     continue;
                 }
@@ -304,8 +304,8 @@ bool GetTiledMapThumbnailRgba(const dodoe::TiledMapAsset* map, const dodoe::FsPa
                         tileset.data->columns == 0 ? 1 : tileset.data->columns;
                     const uint32_t col = index % columns;
                     const uint32_t row = index / columns;
-                    const uint32_t srcX = col * tileset.data->tile_width;
-                    const uint32_t srcY = row * tileset.data->tile_height;
+                    const uint32_t srcX = tileset.data->margin + col * (tileset.data->tile_width + tileset.data->spacing);
+                    const uint32_t srcY = tileset.data->margin + row * (tileset.data->tile_height + tileset.data->spacing);
                     BlitTileIntoCanvas(rgba, k, tileset.pixels, tileset.imageWidth,
                                        tileset.imageHeight, srcX, srcY,
                                        tileset.data->tile_width, tileset.data->tile_height,
@@ -364,17 +364,21 @@ bool GetTilesetThumbnailRgba(const dodoe::TilesetAsset* tileset, const dodoe::Fs
     }
 
     if (tileset->getTileWidth() > 0 && tileset->getTileHeight() > 0) {
-        const int tileW = static_cast<int>(static_cast<float>(tileset->getTileWidth()) * scale);
-        const int tileH = static_cast<int>(static_cast<float>(tileset->getTileHeight()) * scale);
-        if (tileW > 0) {
-            for (int x = tileW; x < k; x += tileW) {
+        const int stepX = static_cast<int>(
+            static_cast<float>(tileset->getTileWidth() + tileset->getSpacing()) * scale);
+        const int stepY = static_cast<int>(
+            static_cast<float>(tileset->getTileHeight() + tileset->getSpacing()) * scale);
+        const int originX = static_cast<int>(static_cast<float>(tileset->getMargin()) * scale);
+        const int originY = originX;
+        if (stepX > 0) {
+            for (int x = originX + stepX; x < k; x += stepX) {
                 for (int py = 0; py < k; ++py) {
                     DrawGridPixel(rgba, k, x, py);
                 }
             }
         }
-        if (tileH > 0) {
-            for (int y = tileH; y < k; y += tileH) {
+        if (stepY > 0) {
+            for (int y = originY + stepY; y < k; y += stepY) {
                 for (int px = 0; px < k; ++px) {
                     DrawGridPixel(rgba, k, px, y);
                 }

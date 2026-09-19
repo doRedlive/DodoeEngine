@@ -292,6 +292,7 @@ void HierarchyPanel::onContextMenu(const QPoint& pos)
     }
     QMenu menu(this);
     QAction* create = menu.addAction(tr("Create GameObject"));
+    QAction* newTilemap = menu.addAction(tr("New Tilemap..."));
     QAction* createChild = nullptr;
     QAction* cut = nullptr;
     QAction* copy = nullptr;
@@ -327,6 +328,8 @@ void HierarchyPanel::onContextMenu(const QPoint& pos)
     }
     if (chosen == create) {
         onCreateEntity();
+    } else if (chosen == newTilemap) {
+        emit newTilemapRequested();
     } else if (chosen == createChild) {
         onCreateChildEntity(ItemUuid(item));
     } else if (chosen == cut) {

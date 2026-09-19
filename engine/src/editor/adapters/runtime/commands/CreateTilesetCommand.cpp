@@ -105,6 +105,8 @@ bool CreateTilesetCommand::execute(EditorDocumentModel& model)
     tsx["TileHeight"] = m_tileHeight;
     tsx["Columns"] = columns;
     tsx["TileCount"] = tileCount;
+    tsx["Margin"] = m_margin;
+    tsx["Spacing"] = m_spacing;
     tsx["ImagePath"] = imageUrl;
     tsx["TextureId"] = 0;
     {
@@ -127,6 +129,8 @@ bool CreateTilesetCommand::execute(EditorDocumentModel& model)
     tileset->tile_height = m_tileHeight;
     tileset->columns = columns;
     tileset->tile_count = tileCount;
+    tileset->margin = m_margin;
+    tileset->spacing = m_spacing;
     tileset->image_path = dodoe::String(imageUrl.c_str());
 
     tm.tilesets.push_back(dodoe::PPtr<dodoe::Tileset>(tileset));

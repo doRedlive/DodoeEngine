@@ -18,6 +18,12 @@ namespace dodoe {
         UInt32 MakeLayerSortingKey(const Size_t layer_index) {
             return static_cast<UInt32>(layer_index) + 1;
         }
+
+        struct AtlasInfo {
+            UInt32 slot{0};
+            Int32 width{0};
+            Int32 height{0};
+        };
     }
 
     TilemapRendererSystem::~TilemapRendererSystem() = default;
@@ -67,7 +73,7 @@ namespace dodoe {
         submitted.clear();
 
         DynamicArray<PPtr<Texture2D>> batch_atlases{};
-        UnorderedMap<const Tileset*, UInt32> atlas_indices{};
+        UnorderedMap<const Tileset*, AtlasInfo> atlas_indices{};
         atlas_indices.reserve(tm.tilesets.size());
         for (auto& tileset_ref : tm.tilesets) {
             if (!tileset_ref.get() && tileset_ref.getObjectID().isValid()) {
@@ -79,12 +85,14 @@ namespace dodoe {
             const auto* tileset = tileset_ref.get();
             if (!tileset) continue;
             if (atlas_indices.find(tileset) != atlas_indices.end()) continue;
-            UInt32 atlas_slot = 0;
+            AtlasInfo info;
             if (auto* tex = ResourceManager::Self().loadObjectByPath<Texture2D>(FileID(tileset->image_path))) {
-                atlas_slot = static_cast<UInt32>(batch_atlases.size());
+                info.slot = static_cast<UInt32>(batch_atlases.size());
+                info.width = tex->getWidth();
+                info.height = tex->getHeight();
                 batch_atlases.push_back(PPtr<Texture2D>(tex));
             }
-            atlas_indices.emplace(tileset, atlas_slot);
+            atlas_indices.emplace(tileset, info);
         }
 
         Size_t layer_index = 0;
@@ -120,10 +128,12 @@ namespace dodoe {
                             if (index >= layer.tiles.size()) continue;
                             const UInt32 gid = layer.tiles[index];
                             if (gid == 0) continue;
-                            const Tileset* tileset = tm.findTilesetByGid(gid);
+                            const UInt32 tile_id = TileIdOfGid(gid);
+                            if (tile_id == 0) continue;
+                            const Tileset* tileset = tm.findTilesetByGid(tile_id);
                             if (!tileset || tileset->columns == 0 || tileset->tile_count == 0) continue;
 
-                            const UInt32 local_gid = gid - tileset->first_gid;
+                            const UInt32 local_gid = tile_id - tileset->first_gid;
                             const UInt32 col = local_gid % tileset->columns;
                             const UInt32 row = local_gid / tileset->columns;
                             const UInt32 total_rows = (tileset->tile_count + tileset->columns - 1) / tileset->columns;
@@ -131,18 +141,48 @@ namespace dodoe {
 
                             const auto atlas_it = atlas_indices.find(tileset);
                             if (atlas_it == atlas_indices.end()) continue;
+                            const AtlasInfo& atlas = atlas_it->second;
+
+                            Float uv_min_x = 0.0f;
+                            Float uv_min_y = 0.0f;
+                            Float uv_max_x = 1.0f;
+                            Float uv_max_y = 1.0f;
+                            if (atlas.width > 0 && atlas.height > 0) {
+                                const Float tex_w = static_cast<Float>(atlas.width);
+                                const Float tex_h = static_cast<Float>(atlas.height);
+                                const Float px0 = static_cast<Float>(tileset->margin + col * (tileset->tile_width + tileset->spacing));
+                                const Float py0 = static_cast<Float>(tileset->margin + row * (tileset->tile_height + tileset->spacing));
+                                uv_min_x = px0 / tex_w;
+                                uv_min_y = py0 / tex_h;
+                                uv_max_x = (px0 + static_cast<Float>(tileset->tile_width)) / tex_w;
+                                uv_max_y = (py0 + static_cast<Float>(tileset->tile_height)) / tex_h;
+                            } else {
+                                uv_min_x = static_cast<Float>(col) / tileset->columns;
+                                uv_min_y = static_cast<Float>(row) / total_rows;
+                                uv_max_x = static_cast<Float>(col + 1) / tileset->columns;
+                                uv_max_y = static_cast<Float>(row + 1) / total_rows;
+                            }
+
+                            UInt32 flags = 0;
+                            if (gid & kTileFlipHorizontal) flags |= kSpriteFlagFlipX;
+                            if (gid & kTileFlipVertical) flags |= kSpriteFlagFlipY;
+                            if (gid & kTileFlipDiagonal) {
+                                std::swap(uv_min_x, uv_min_y);
+                                std::swap(uv_max_x, uv_max_y);
+                            }
 
                             SpriteInstance instance{};
                             instance.position_x = static_cast<Float>(tx * tm.tile_width + layer.offset_x);
                             instance.position_y = static_cast<Float>(ty * tm.tile_height + layer.offset_y);
                             instance.scale_x = static_cast<Float>(tm.tile_width);
                             instance.scale_y = static_cast<Float>(tm.tile_height);
-                            instance.atlas_index = atlas_it->second;
-                            instance.uv_min_x = static_cast<Float>(col) / tileset->columns;
-                            instance.uv_min_y = static_cast<Float>(row) / total_rows;
-                            instance.uv_max_x = static_cast<Float>(col + 1) / tileset->columns;
-                            instance.uv_max_y = static_cast<Float>(row + 1) / total_rows;
+                            instance.atlas_index = atlas.slot;
+                            instance.uv_min_x = uv_min_x;
+                            instance.uv_min_y = uv_min_y;
+                            instance.uv_max_x = uv_max_x;
+                            instance.uv_max_y = uv_max_y;
                             instance.color = 0xFFFFFFFF;
+                            instance.flags = flags;
                             instance.sorting_key = MakeLayerSortingKey(layer_index);
                             instances.push_back(instance);
                         }

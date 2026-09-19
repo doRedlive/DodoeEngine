@@ -280,7 +280,7 @@ dodoe::Entity RuntimeEditorBackend::activeTilemapEntity() const
 
 void RuntimeEditorBackend::updateTileOverlay()
 {
-    if (!m_tilePaint || !m_tilePaint->hasTarget() || m_tilePaint->tool() == TileTool::Select) return;
+    if (!m_tilePaint || !m_tilePaint->hasTarget()) return;
     dodoe::Entity tm = activeTilemapEntity();
     if (!tm.valid() || !tm.hasComponent<TilemapComponent>()) return;
 
@@ -291,8 +291,21 @@ void RuntimeEditorBackend::updateTileOverlay()
     const dodoe::Color borderColor{1.0f, 1.0f, 1.0f, 0.9f};
     const dodoe::Color gridColor{1.0f, 1.0f, 1.0f, 0.10f};
     const dodoe::Color ghostColor{0.25f, 1.0f, 0.35f, 1.0f};
+    const dodoe::Color selectColor{1.0f, 0.82f, 0.3f, 1.0f};
 
     auto& data = GetGizmoChannel().get<dodoe::GizmoChannelData>();
+
+    auto addCellRect = [&data, &comp](int cellX, int cellY, int cellsW, int cellsH,
+                                      const dodoe::Color& color) {
+        const float x0 = static_cast<float>(cellX * comp.tile_width);
+        const float y0 = static_cast<float>(cellY * comp.tile_height);
+        const float x1 = x0 + static_cast<float>(cellsW * comp.tile_width);
+        const float y1 = y0 + static_cast<float>(cellsH * comp.tile_height);
+        AddLine(data, dodoe::Vector3f(x0, y0, 0.0f), dodoe::Vector3f(x1, y0, 0.0f), color);
+        AddLine(data, dodoe::Vector3f(x1, y0, 0.0f), dodoe::Vector3f(x1, y1, 0.0f), color);
+        AddLine(data, dodoe::Vector3f(x1, y1, 0.0f), dodoe::Vector3f(x0, y1, 0.0f), color);
+        AddLine(data, dodoe::Vector3f(x0, y1, 0.0f), dodoe::Vector3f(x0, y0, 0.0f), color);
+    };
 
     AddLine(data, dodoe::Vector3f(0.0f, 0.0f, 0.0f), dodoe::Vector3f(mapW, 0.0f, 0.0f), borderColor);
     AddLine(data, dodoe::Vector3f(mapW, 0.0f, 0.0f), dodoe::Vector3f(mapW, mapH, 0.0f), borderColor);
@@ -312,16 +325,58 @@ void RuntimeEditorBackend::updateTileOverlay()
         }
     }
 
-    if (m_tilePaint->hasHover()) {
-        const TileBrush& brush = m_tilePaint->brush();
-        const float x0 = static_cast<float>(m_tilePaint->hoverX() * comp.tile_width);
-        const float y0 = static_cast<float>(m_tilePaint->hoverY() * comp.tile_height);
-        const float x1 = x0 + static_cast<float>(brush.w * comp.tile_width);
-        const float y1 = y0 + static_cast<float>(brush.h * comp.tile_height);
-        AddLine(data, dodoe::Vector3f(x0, y0, 0.0f), dodoe::Vector3f(x1, y0, 0.0f), ghostColor);
-        AddLine(data, dodoe::Vector3f(x1, y0, 0.0f), dodoe::Vector3f(x1, y1, 0.0f), ghostColor);
-        AddLine(data, dodoe::Vector3f(x1, y1, 0.0f), dodoe::Vector3f(x0, y1, 0.0f), ghostColor);
-        AddLine(data, dodoe::Vector3f(x0, y1, 0.0f), dodoe::Vector3f(x0, y0, 0.0f), ghostColor);
+    const TileTool tool = m_tilePaint->tool();
+    if (tool == TileTool::Select) {
+        if (m_tilePaint->isMoving() && m_tilePaint->hasAnchor()) {
+            addCellRect(m_tilePaint->selectionX(), m_tilePaint->selectionY(),
+                        m_tilePaint->selectionW(), m_tilePaint->selectionH(), gridColor);
+            addCellRect(m_tilePaint->selectionX() + m_tilePaint->moveDeltaX(),
+                        m_tilePaint->selectionY() + m_tilePaint->moveDeltaY(),
+                        m_tilePaint->selectionW(), m_tilePaint->selectionH(), selectColor);
+        } else if (m_tilePaint->isSelecting() && m_tilePaint->hasAnchor()) {
+            const int x0 = std::min(m_tilePaint->anchorX(), m_tilePaint->lastX());
+            const int y0 = std::min(m_tilePaint->anchorY(), m_tilePaint->lastY());
+            const int w = std::abs(m_tilePaint->lastX() - m_tilePaint->anchorX()) + 1;
+            const int h = std::abs(m_tilePaint->lastY() - m_tilePaint->anchorY()) + 1;
+            addCellRect(x0, y0, w, h, selectColor);
+        } else if (m_tilePaint->hasSelection()) {
+            addCellRect(m_tilePaint->selectionX(), m_tilePaint->selectionY(),
+                        m_tilePaint->selectionW(), m_tilePaint->selectionH(), selectColor);
+        }
+        data.has_data = true;
+        return;
+    }
+
+    const TileBrush& brush = m_tilePaint->brush();
+    if (m_tilePaint->hasAnchor() && (tool == TileTool::Line || tool == TileTool::Rect)) {
+        const int ax = m_tilePaint->anchorX();
+        const int ay = m_tilePaint->anchorY();
+        const int lx = m_tilePaint->lastX();
+        const int ly = m_tilePaint->lastY();
+        if (tool == TileTool::Rect) {
+            const int x0 = std::min(ax, lx);
+            const int y0 = std::min(ay, ly);
+            const int w = std::abs(lx - ax) + brush.w;
+            const int h = std::abs(ly - ay) + brush.h;
+            addCellRect(x0, y0, w, h, ghostColor);
+        } else {
+            int x = ax;
+            int y = ay;
+            const int dx = lx > ax ? lx - ax : ax - lx;
+            const int dy = ly > ay ? ly - ay : ay - ly;
+            const int sx = ax < lx ? 1 : -1;
+            const int sy = ay < ly ? 1 : -1;
+            int err = dx - dy;
+            for (;;) {
+                addCellRect(x, y, brush.w, brush.h, ghostColor);
+                if (x == lx && y == ly) break;
+                const int e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x += sx; }
+                if (e2 < dx)  { err += dx; y += sy; }
+            }
+        }
+    } else if (m_tilePaint->hasHover()) {
+        addCellRect(m_tilePaint->hoverX(), m_tilePaint->hoverY(), brush.w, brush.h, ghostColor);
     }
 
     data.has_data = true;
@@ -332,8 +387,7 @@ void RuntimeEditorBackend::updateGizmo()
     DO_PROFILE_SCOPE_CATEGORY("Cakery::updateGizmo", "frame");
     dodoe::GizmoChannelData& channel_data = dodoe::GetGizmoChannel().get<dodoe::GizmoChannelData>();
     channel_data.clear();
-    const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget() &&
-                              m_tilePaint->tool() != TileTool::Select;
+    const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget();
     updateTileOverlay();
     if (tilePainting || m_gizmoMode == "none" || m_selectedUuid == 0) {
         return;

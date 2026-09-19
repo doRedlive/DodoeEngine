@@ -168,8 +168,21 @@ bool ImportTiledMapCommand::execute(EditorDocumentModel& model)
             tsx["TileHeight"] = ts.tile_height;
             tsx["Columns"] = columns;
             tsx["TileCount"] = tileCount;
+            tsx["Margin"] = ts.margin;
+            tsx["Spacing"] = ts.spacing;
             tsx["ImagePath"] = imageUrl;
             tsx["TextureId"] = 0;
+            if (!ts.tile_properties.empty()) {
+                nlohmann::json properties = nlohmann::json::object();
+                for (const auto& [localId, props] : ts.tile_properties) {
+                    nlohmann::json entry = nlohmann::json::object();
+                    for (const auto& [key, value] : props) {
+                        entry[key.c_str()] = std::string(value.c_str());
+                    }
+                    properties[std::to_string(localId)] = std::move(entry);
+                }
+                tsx["TileProperties"] = std::move(properties);
+            }
             {
                 std::ofstream file(tsxPath);
                 if (!file.is_open()) continue;
@@ -189,7 +202,10 @@ bool ImportTiledMapCommand::execute(EditorDocumentModel& model)
             tileset->tile_height = ts.tile_height;
             tileset->columns = columns;
             tileset->tile_count = tileCount;
+            tileset->margin = ts.margin;
+            tileset->spacing = ts.spacing;
             tileset->image_path = dodoe::String(imageUrl.c_str());
+            tileset->tile_properties = ts.tile_properties;
 
             auto& tm = tilemapEntity.getComponent<dodoe::TilemapComponent>();
             tm.tilesets.push_back(dodoe::PPtr<dodoe::Tileset>(tileset));

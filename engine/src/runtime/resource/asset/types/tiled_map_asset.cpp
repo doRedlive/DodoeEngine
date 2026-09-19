@@ -6,16 +6,47 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <unordered_map>
 
 namespace dodoe {
 
     namespace {
 
-        constexpr UInt32 kFlipHorizontal = 0x80000000u;
-        constexpr UInt32 kFlipVertical = 0x40000000u;
-        constexpr UInt32 kFlipDiagonal = 0x20000000u;
-        constexpr UInt32 kFlipMask = kFlipHorizontal | kFlipVertical | kFlipDiagonal;
+        constexpr UInt32 kHexRotation120Flag = 0x10000000u;
+
+        void ParseTileProperties(const Json& tileset_json,
+                                 UnorderedMap<UInt32, UnorderedMap<String, String>>& out) {
+            if (!tileset_json.contains("tiles") || !tileset_json["tiles"].is_array()) {
+                return;
+            }
+            for (const auto& tile : tileset_json["tiles"]) {
+                if (!tile.is_object() || !tile.contains("id") || !tile["id"].is_number()) continue;
+                if (!tile.contains("properties") || !tile["properties"].is_array()) continue;
+                UnorderedMap<String, String> properties;
+                for (const auto& prop : tile["properties"]) {
+                    if (!prop.is_object() || !prop.contains("name") || !prop["name"].is_string()) continue;
+                    if (!prop.contains("value")) continue;
+                    const String name = prop["name"].get<String>();
+                    String value;
+                    if (prop["value"].is_string()) {
+                        value = prop["value"].get<String>();
+                    } else if (prop["value"].is_boolean()) {
+                        value = String(prop["value"].get<bool>() ? "true" : "false");
+                    } else if (prop["value"].is_number_integer()) {
+                        value = String(std::to_string(prop["value"].get<long long>()).c_str());
+                    } else if (prop["value"].is_number_float()) {
+                        value = String(std::to_string(prop["value"].get<double>()).c_str());
+                    } else {
+                        continue;
+                    }
+                    properties.emplace(std::move(name), std::move(value));
+                }
+                if (!properties.empty()) {
+                    out.emplace(tile["id"].get<UInt32>(), std::move(properties));
+                }
+            }
+        }
 
         Bool ParseUInt32(const Json& json, const char* key, UInt32& out) {
             if (json.contains(key) && json[key].is_number()) {
@@ -92,7 +123,7 @@ namespace dodoe {
                     (static_cast<UInt32>(bytes[i + 1]) << 8) |
                     (static_cast<UInt32>(bytes[i + 2]) << 16) |
                     (static_cast<UInt32>(bytes[i + 3]) << 24);
-                tiles.push_back(gid & ~kFlipMask);
+                tiles.push_back(gid & ~kHexRotation120Flag);
             }
             return true;
         }
@@ -173,6 +204,7 @@ namespace dodoe {
             if (json.contains("image") && json["image"].is_string()) {
                 data.image_path = json["image"].get<String>();
             }
+            ParseTileProperties(json, data.tile_properties);
             return true;
         }
 
@@ -231,6 +263,7 @@ namespace dodoe {
             if (ts.contains("image") && ts["image"].is_string()) {
                 data.image_path = ts["image"].get<String>();
             }
+            ParseTileProperties(ts, data.tile_properties);
         }
 
         Bool LoadExternalTileset(const FsPath& absolute_path, TiledMapTilesetData& data) {
@@ -326,7 +359,7 @@ namespace dodoe {
                     data.tiles.reserve(layer["data"].size());
                     for (const auto& gid : layer["data"]) {
                         if (gid.is_number_unsigned()) {
-                            data.tiles.push_back(gid.get<UInt32>() & ~kFlipMask);
+                            data.tiles.push_back(gid.get<UInt32>() & ~kHexRotation120Flag);
                         } else {
                             data.tiles.push_back(0);
                         }

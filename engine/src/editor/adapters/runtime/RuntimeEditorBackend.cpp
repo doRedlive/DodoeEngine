@@ -412,10 +412,9 @@ bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
             m_altHeld = alt != 0;
             m_ctrlHeld = ctrl != 0;
             m_shiftHeld = shift != 0;
-            const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget() &&
-                                      m_tilePaint->tool() != TileTool::Select &&
-                                      button == 0 && alt == 0;
-            if (tilePainting) {
+            const bool tileEditing = m_tilePaint && m_tilePaint->hasTarget() &&
+                                     button == 0 && alt == 0;
+            if (tileEditing) {
                 int cx = 0, cy = 0;
                 if (screenToCell(x, y, cx, cy)) {
                     m_tilePaint->setHoverCell(cx, cy);

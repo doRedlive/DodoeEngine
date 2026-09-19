@@ -18,6 +18,7 @@ namespace dodoe {
         UInt32 margin{0};
         UInt32 spacing{0};
         String image_path{};
+        UnorderedMap<UInt32, UnorderedMap<String, String>> tile_properties{};
     };
 
     struct TiledMapLayerData {

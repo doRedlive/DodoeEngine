@@ -18,7 +18,9 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <map>
 #include <memory>
+#include <random>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,29 +29,61 @@ namespace cakery {
 
 namespace {
 
+std::mt19937& Rng() {
+    static std::mt19937 rng{std::random_device{}()};
+    return rng;
+}
+
 dodoe::Scene* ActiveScene() {
     dodoe::World* world = dodoe::GetWorld();
     return world ? world->getActiveScene() : nullptr;
 }
 
-dodoe::UInt32 readTile(dodoe::UUID layerEntity, int x, int y) {
+dodoe::TileLayerComponent* ActiveLayer(dodoe::UUID layerEntity) {
     auto* scene = ActiveScene();
-    if (!scene) return 0;
+    if (!scene) return nullptr;
     auto entity = ResolveEntity(scene, layerEntity);
-    if (!entity.valid()) return 0;
-    auto* layer = entity.hasComponent<dodoe::TileLayerComponent>()
-                      ? &entity.getComponent<dodoe::TileLayerComponent>()
-                      : nullptr;
+    if (!entity.valid()) return nullptr;
+    return entity.hasComponent<dodoe::TileLayerComponent>()
+               ? &entity.getComponent<dodoe::TileLayerComponent>()
+               : nullptr;
+}
+
+bool CellInLayer(const dodoe::TileLayerComponent& layer, int x, int y) {
+    return x >= 0 && y >= 0 &&
+           x < static_cast<int>(layer.layer_width) &&
+           y < static_cast<int>(layer.layer_height);
+}
+
+dodoe::UInt32 readTile(dodoe::UUID layerEntity, int x, int y) {
+    auto* layer = ActiveLayer(layerEntity);
     if (!layer) return 0;
     return layer->getTile(x, y);
 }
 
-void applyBrush(PaintTilesCommand* cmd, dodoe::UUID layerEntity, int cx, int cy, const TileBrush& brush) {
+dodoe::UInt32 RandomBrushGid(const TileBrush& brush) {
+    dodoe::UInt32 picked = 0;
+    std::size_t nonzero = 0;
+    for (dodoe::UInt32 gid : brush.gids) {
+        if (gid == 0) continue;
+        ++nonzero;
+        std::uniform_int_distribution<std::size_t> dist(1, nonzero);
+        if (dist(Rng()) == 1) {
+            picked = gid;
+        }
+    }
+    return picked;
+}
+
+void applyBrush(PaintTilesCommand* cmd, dodoe::UUID layerEntity, int cx, int cy,
+                const TileBrush& brush, bool random = false) {
     for (int by = 0; by < brush.h; ++by) {
         for (int bx = 0; bx < brush.w; ++bx) {
             int gx = cx + bx;
             int gy = cy + by;
-            dodoe::UInt32 gid = brush.gids[by * brush.w + bx];
+            dodoe::UInt32 gid = random
+                ? RandomBrushGid(brush)
+                : brush.gids[static_cast<std::size_t>(by * brush.w + bx)];
             dodoe::UInt32 before = readTile(layerEntity, gx, gy);
             if (before != gid) {
                 cmd->addCell(gx, gy, before, gid);
@@ -59,7 +93,7 @@ void applyBrush(PaintTilesCommand* cmd, dodoe::UUID layerEntity, int cx, int cy,
 }
 
 void TraceLine(PaintTilesCommand* cmd, dodoe::UUID layerEntity, int x0, int y0, int x1, int y1,
-               const TileBrush& brush) {
+               const TileBrush& brush, bool random = false) {
     int dx = x1 > x0 ? x1 - x0 : x0 - x1;
     int dy = y1 > y0 ? y1 - y0 : y0 - y1;
     int sx = x0 < x1 ? 1 : -1;
@@ -67,12 +101,35 @@ void TraceLine(PaintTilesCommand* cmd, dodoe::UUID layerEntity, int x0, int y0, 
     int err = dx - dy;
 
     for (;;) {
-        applyBrush(cmd, layerEntity, x0, y0, brush);
+        applyBrush(cmd, layerEntity, x0, y0, brush, random);
         if (x0 == x1 && y0 == y1) break;
         int e2 = 2 * err;
         if (e2 > -dy) { err -= dy; x0 += sx; }
         if (e2 < dx)  { err += dx; y0 += sy; }
     }
+}
+
+dodoe::UInt32 RotateGidCW(dodoe::UInt32 gid) {
+    const dodoe::UInt32 id = dodoe::TileIdOfGid(gid);
+    const bool h = (gid & dodoe::kTileFlipHorizontal) != 0;
+    const bool v = (gid & dodoe::kTileFlipVertical) != 0;
+    const bool d = (gid & dodoe::kTileFlipDiagonal) != 0;
+    bool nh, nv, nd;
+    switch ((h ? 4 : 0) | (v ? 2 : 0) | (d ? 1 : 0)) {
+    case 0: nh = true;  nv = false; nd = true;  break;
+    case 1: nh = true;  nv = false; nd = false; break;
+    case 2: nh = false; nv = false; nd = true;  break;
+    case 3: nh = false; nv = false; nd = false; break;
+    case 4: nh = true;  nv = true;  nd = true;  break;
+    case 5: nh = true;  nv = true;  nd = false; break;
+    case 6: nh = false; nv = true;  nd = true;  break;
+    default: nh = false; nv = true; nd = false; break;
+    }
+    dodoe::UInt32 result = id;
+    if (nh) result |= dodoe::kTileFlipHorizontal;
+    if (nv) result |= dodoe::kTileFlipVertical;
+    if (nd) result |= dodoe::kTileFlipDiagonal;
+    return result;
 }
 
 } // namespace
@@ -107,8 +164,77 @@ void TilePaintService::setActiveEntity(dodoe::UUID entity) {
     }
 }
 
+void TilePaintService::setTool(TileTool t) {
+    m_tool = t;
+    m_hasAnchor = false;
+    clearSelection();
+}
+
+void TilePaintService::flipBrushX() {
+    TileBrush next = m_brush;
+    next.gids.assign(m_brush.gids.size(), 0);
+    for (int y = 0; y < m_brush.h; ++y) {
+        for (int x = 0; x < m_brush.w; ++x) {
+            const dodoe::UInt32 gid =
+                m_brush.gids[static_cast<std::size_t>(y * m_brush.w + (m_brush.w - 1 - x))];
+            next.gids[static_cast<std::size_t>(y * m_brush.w + x)] =
+                gid ^ dodoe::kTileFlipHorizontal;
+        }
+    }
+    m_brush = std::move(next);
+}
+
+void TilePaintService::flipBrushY() {
+    TileBrush next = m_brush;
+    next.gids.assign(m_brush.gids.size(), 0);
+    for (int y = 0; y < m_brush.h; ++y) {
+        for (int x = 0; x < m_brush.w; ++x) {
+            const dodoe::UInt32 gid =
+                m_brush.gids[static_cast<std::size_t>((m_brush.h - 1 - y) * m_brush.w + x)];
+            next.gids[static_cast<std::size_t>(y * m_brush.w + x)] =
+                gid ^ dodoe::kTileFlipVertical;
+        }
+    }
+    m_brush = std::move(next);
+}
+
+void TilePaintService::rotateBrushCW() {
+    TileBrush next;
+    next.w = m_brush.h;
+    next.h = m_brush.w;
+    next.gids.assign(m_brush.gids.size(), 0);
+    for (int y = 0; y < m_brush.h; ++y) {
+        for (int x = 0; x < m_brush.w; ++x) {
+            const dodoe::UInt32 gid =
+                m_brush.gids[static_cast<std::size_t>(y * m_brush.w + x)];
+            const int nx = m_brush.h - 1 - y;
+            const int ny = x;
+            next.gids[static_cast<std::size_t>(ny * next.w + nx)] = RotateGidCW(gid);
+        }
+    }
+    m_brush = std::move(next);
+}
+
 void TilePaintService::onCellDown(int cx, int cy) {
-    if (!hasTarget() || m_tool == TileTool::Select) return;
+    if (!hasTarget()) return;
+
+    if (m_tool == TileTool::Select) {
+        if (m_hasSelection && cx >= m_selX && cx < m_selX + m_selW &&
+            cy >= m_selY && cy < m_selY + m_selH) {
+            m_moving = true;
+            m_selecting = false;
+            m_moveSnapshot = snapshotSelection();
+        } else {
+            m_moving = false;
+            m_selecting = true;
+            m_hasSelection = false;
+            m_moveSnapshot.clear();
+        }
+        m_anchorX = m_lastX = cx;
+        m_anchorY = m_lastY = cy;
+        m_hasAnchor = true;
+        return;
+    }
 
     if (m_tool == TileTool::Line || m_tool == TileTool::Rect) {
         m_anchorX = m_lastX = cx;
@@ -122,7 +248,7 @@ void TilePaintService::onCellDown(int cx, int cy) {
     auto cmd = std::make_unique<PaintTilesCommand>(m_tilemap, m_layer);
 
     if (m_tool == TileTool::Brush) {
-        applyBrush(cmd.get(), m_layer, cx, cy, m_brush);
+        applyBrush(cmd.get(), m_layer, cx, cy, m_brush, m_randomBrush);
     } else if (m_tool == TileTool::Erase) {
         TileBrush eraser;
         eraser.w = m_brush.w;
@@ -191,9 +317,9 @@ void TilePaintService::onCellDown(int cx, int cy) {
 }
 
 void TilePaintService::onCellDrag(int cx, int cy) {
-    if (!hasTarget() || m_tool == TileTool::Select) return;
+    if (!hasTarget()) return;
 
-    if (m_tool == TileTool::Line || m_tool == TileTool::Rect) {
+    if (m_tool == TileTool::Select || m_tool == TileTool::Line || m_tool == TileTool::Rect) {
         m_lastX = cx;
         m_lastY = cy;
         return;
@@ -202,7 +328,7 @@ void TilePaintService::onCellDrag(int cx, int cy) {
     auto cmd = std::make_unique<PaintTilesCommand>(m_tilemap, m_layer);
 
     if (m_tool == TileTool::Brush) {
-        applyBrush(cmd.get(), m_layer, cx, cy, m_brush);
+        applyBrush(cmd.get(), m_layer, cx, cy, m_brush, m_randomBrush);
     } else if (m_tool == TileTool::Erase) {
         TileBrush eraser;
         eraser.w = m_brush.w;
@@ -218,13 +344,39 @@ void TilePaintService::onCellDrag(int cx, int cy) {
 }
 
 void TilePaintService::onCellUp() {
-    if (!hasTarget() || m_tool == TileTool::Select) return;
+    if (!hasTarget()) return;
+
+    if (m_tool == TileTool::Select) {
+        if (m_moving) {
+            const int dx = m_lastX - m_anchorX;
+            const int dy = m_lastY - m_anchorY;
+            if (dx != 0 || dy != 0) {
+                applySelectionMove(dx, dy);
+            }
+        } else if (m_selecting) {
+            const int x0 = std::min(m_anchorX, m_lastX);
+            const int y0 = std::min(m_anchorY, m_lastY);
+            const int w = std::abs(m_lastX - m_anchorX) + 1;
+            const int h = std::abs(m_lastY - m_anchorY) + 1;
+            m_selX = x0;
+            m_selY = y0;
+            m_selW = w;
+            m_selH = h;
+            m_hasSelection = true;
+        }
+        m_moving = false;
+        m_selecting = false;
+        m_hasAnchor = false;
+        m_moveSnapshot.clear();
+        return;
+    }
 
     if (m_tool == TileTool::Line || m_tool == TileTool::Rect) {
         if (m_hasAnchor) {
             auto cmd = std::make_unique<PaintTilesCommand>(m_tilemap, m_layer);
             if (m_tool == TileTool::Line) {
-                TraceLine(cmd.get(), m_layer, m_anchorX, m_anchorY, m_lastX, m_lastY, m_brush);
+                TraceLine(cmd.get(), m_layer, m_anchorX, m_anchorY, m_lastX, m_lastY, m_brush,
+                          m_randomBrush);
             } else {
                 int x0 = m_anchorX < m_lastX ? m_anchorX : m_lastX;
                 int x1 = m_anchorX > m_lastX ? m_anchorX : m_lastX;
@@ -232,7 +384,7 @@ void TilePaintService::onCellUp() {
                 int y1 = m_anchorY > m_lastY ? m_anchorY : m_lastY;
                 for (int y = y0; y <= y1; ++y) {
                     for (int x = x0; x <= x1; ++x) {
-                        applyBrush(cmd.get(), m_layer, x, y, m_brush);
+                        applyBrush(cmd.get(), m_layer, x, y, m_brush, m_randomBrush);
                     }
                 }
             }
@@ -246,6 +398,97 @@ void TilePaintService::onCellUp() {
     }
 
     m_session.history().endMerge();
+}
+
+std::vector<dodoe::UInt32> TilePaintService::snapshotSelection() const {
+    std::vector<dodoe::UInt32> snapshot;
+    if (!m_hasSelection || m_selW <= 0 || m_selH <= 0) {
+        return snapshot;
+    }
+    snapshot.resize(static_cast<std::size_t>(m_selW) * m_selH, 0);
+    for (int y = 0; y < m_selH; ++y) {
+        for (int x = 0; x < m_selW; ++x) {
+            snapshot[static_cast<std::size_t>(y * m_selW + x)] = readTile(m_layer, m_selX + x, m_selY + y);
+        }
+    }
+    return snapshot;
+}
+
+void TilePaintService::applySelectionMove(int dx, int dy) {
+    if (!m_hasSelection || m_moveSnapshot.size() != static_cast<std::size_t>(m_selW) * m_selH) {
+        return;
+    }
+    const dodoe::TileLayerComponent* layer = ActiveLayer(m_layer);
+    if (!layer) return;
+
+    std::map<std::pair<int, int>, dodoe::UInt32> finalCells;
+    for (int y = 0; y < m_selH; ++y) {
+        for (int x = 0; x < m_selW; ++x) {
+            finalCells[{m_selX + x, m_selY + y}] = 0;
+        }
+    }
+    for (int y = 0; y < m_selH; ++y) {
+        for (int x = 0; x < m_selW; ++x) {
+            const int tx = m_selX + x + dx;
+            const int ty = m_selY + y + dy;
+            if (!CellInLayer(*layer, tx, ty)) continue;
+            finalCells[{tx, ty}] =
+                m_moveSnapshot[static_cast<std::size_t>(y * m_selW + x)];
+        }
+    }
+
+    auto cmd = std::make_unique<PaintTilesCommand>(m_tilemap, m_layer);
+    for (const auto& [cell, after] : finalCells) {
+        const dodoe::UInt32 before = readTile(m_layer, cell.first, cell.second);
+        if (before != after) {
+            cmd->addCell(cell.first, cell.second, before, after);
+        }
+    }
+    if (!cmd->empty()) {
+        m_session.history().execute(std::move(cmd), m_session.documentModel());
+        m_session.notifyDocumentChanged();
+    }
+    m_selX += dx;
+    m_selY += dy;
+}
+
+void TilePaintService::deleteSelection() {
+    if (!hasTarget() || !m_hasSelection) return;
+    auto cmd = std::make_unique<PaintTilesCommand>(m_tilemap, m_layer);
+    for (int y = 0; y < m_selH; ++y) {
+        for (int x = 0; x < m_selW; ++x) {
+            const int gx = m_selX + x;
+            const int gy = m_selY + y;
+            const dodoe::UInt32 before = readTile(m_layer, gx, gy);
+            if (before != 0) {
+                cmd->addCell(gx, gy, before, 0);
+            }
+        }
+    }
+    if (!cmd->empty()) {
+        m_session.history().execute(std::move(cmd), m_session.documentModel());
+        m_session.notifyDocumentChanged();
+    }
+}
+
+void TilePaintService::copySelection() {
+    if (!m_hasSelection) return;
+    m_clipboard.w = m_selW;
+    m_clipboard.h = m_selH;
+    m_clipboard.gids = snapshotSelection();
+}
+
+void TilePaintService::pasteClipboard() {
+    if (m_clipboard.gids.empty()) return;
+    setTool(TileTool::Brush);
+    m_brush = m_clipboard;
+}
+
+void TilePaintService::clearSelection() {
+    m_hasSelection = false;
+    m_selecting = false;
+    m_moving = false;
+    m_moveSnapshot.clear();
 }
 
 void TilePaintService::RegisterCommands()

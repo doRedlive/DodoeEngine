@@ -30,7 +30,9 @@ class EditorWorkspaceContext;
 class TileTilesetView final : public QWidget {
 public:
     TileTilesetView(QPixmap image, std::uint32_t tileWidth, std::uint32_t tileHeight,
-                    std::uint32_t columns, std::uint32_t firstGid, QWidget* parent = nullptr);
+                    std::uint32_t columns, std::uint32_t firstGid,
+                    std::uint32_t margin = 0, std::uint32_t spacing = 0,
+                    QWidget* parent = nullptr);
 
     void setSelection(int cellX, int cellY, int cellW, int cellH);
     QSize minimumSizeHint() const override;
@@ -39,8 +41,12 @@ public:
     [[nodiscard]] std::uint32_t firstGid() const { return m_firstGid; }
     [[nodiscard]] std::uint32_t columns() const { return m_columns; }
     [[nodiscard]] std::uint32_t tileCount() const {
-        if (m_columns == 0) return 0;
-        return static_cast<std::uint32_t>(m_image.height()) / m_tileHeight * m_columns;
+        if (m_columns == 0 || m_tileHeight + m_spacing == 0) return 0;
+        const std::uint32_t stepH = m_tileHeight + m_spacing;
+        const std::uint32_t rows = static_cast<std::uint32_t>(m_image.height()) >= m_margin * 2
+            ? (static_cast<std::uint32_t>(m_image.height()) - m_margin * 2 + stepH - 1) / stepH
+            : 0;
+        return rows * m_columns;
     }
 
     std::function<void(int w, int h, std::vector<std::uint32_t> gids)> onBrushSelected;
@@ -53,6 +59,8 @@ protected:
 
 private:
     QRect selectionRect() const;
+    int cellAtX(const QPoint& pos) const;
+    int cellAtY(const QPoint& pos) const;
     void emitBrush();
 
     QPixmap m_image;
@@ -60,6 +68,8 @@ private:
     std::uint32_t m_tileHeight;
     std::uint32_t m_columns;
     std::uint32_t m_firstGid;
+    std::uint32_t m_margin;
+    std::uint32_t m_spacing;
     QPoint m_selectStart;
     QPoint m_selectEnd;
     QPoint m_selectionCell;
@@ -80,6 +90,8 @@ public:
 private:
     void onAddTileset();
     void onRemoveTileset();
+    void onEditTileset();
+    void onResizeTilemap();
     void applyBrushHighlight();
     void rebuildTargetOptions(std::uint64_t activeUuid);
     void updateToolState(bool active);
@@ -98,6 +110,9 @@ private:
     QToolButton* m_newTilemapButton = nullptr;
     QToolButton* m_addTilesetButton = nullptr;
     QToolButton* m_removeTilesetButton = nullptr;
+    QToolButton* m_editTilesetButton = nullptr;
+    QToolButton* m_resizeTilemapButton = nullptr;
+    QToolButton* m_randomBrushButton = nullptr;
     std::vector<TileTilesetView*> m_tilesetViews;
     nlohmann::json m_state;
     std::uint64_t m_activeTarget = 0;

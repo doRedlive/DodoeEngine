@@ -94,6 +94,8 @@ set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReorderTileLayerCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ResizeTilemapCommand.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ResizeTilemapCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/UpdateTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/UpdateTilesetCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/TilemapDocumentRefs.h
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/TilemapDocumentRefs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReparentEntityCommand.h
@@ -153,6 +155,8 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TileLayersPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilePalettePanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilePalettePanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilesetPreviewDialog.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilesetPreviewDialog.cpp
 )
 set_source_files_properties(
     ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_en.ts

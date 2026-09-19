@@ -4,6 +4,7 @@
 
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "cakery/ui/EditorIcons.h"
+#include "cakery/ui/panels/TilesetPreviewDialog.h"
 #include "core/document/EditorDocumentModel.h"
 
 #include <QApplication>
@@ -612,8 +613,15 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
             return;
         }
         const QString path = item->data(Qt::UserRole).toString();
-        if (QFileInfo(path).suffix().compare(QLatin1String("doscn"), Qt::CaseInsensitive) == 0) {
+        const QString suffix = QFileInfo(path).suffix().toLower();
+        if (suffix == QLatin1String("doscn")) {
             m_context.session().openDocument(path.toStdString());
+        } else if (suffix == QLatin1String("tsx") || suffix == QLatin1String("tmj") ||
+                   suffix == QLatin1String("tmx")) {
+            auto* dialog = new TilesetPreviewDialog(
+                path, QString::fromStdString(m_context.session().assetRoot().string()), this);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog->show();
         }
     });
     connect(m_tree, &QTreeWidget::customContextMenuRequested, this, &ProjectPanel::onContextMenu);
@@ -1405,8 +1413,15 @@ void ProjectPanel::onDocumentDoubleClicked(QTreeWidgetItem* item, int column)
     if (path.isEmpty()) {
         return;
     }
-    if (QFileInfo(path).suffix().compare(QLatin1String("doscn"), Qt::CaseInsensitive) == 0) {
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    if (suffix == QLatin1String("doscn")) {
         m_context.session().openDocument(path.toStdString());
+    } else if (suffix == QLatin1String("tsx") || suffix == QLatin1String("tmj") ||
+               suffix == QLatin1String("tmx")) {
+        auto* dialog = new TilesetPreviewDialog(
+            path, QString::fromStdString(m_context.session().assetRoot().string()), this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
     }
 }
 

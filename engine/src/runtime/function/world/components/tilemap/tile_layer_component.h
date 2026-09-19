@@ -11,6 +11,14 @@ REFLECTION_TYPE(TileLayerComponent)
 
 namespace dodoe {
 
+    constexpr UInt32 kTileFlipHorizontal = 0x80000000u;
+    constexpr UInt32 kTileFlipVertical = 0x40000000u;
+    constexpr UInt32 kTileFlipDiagonal = 0x20000000u;
+    constexpr UInt32 kTileFlipMask = kTileFlipHorizontal | kTileFlipVertical | kTileFlipDiagonal;
+    constexpr UInt32 kTileGidMask = ~kTileFlipMask;
+
+    constexpr UInt32 TileIdOfGid(UInt32 gid) { return gid & kTileGidMask; }
+
     STRUCT(TileLayerComponent, WhiteListFields, ScriptBind) {
         REFLECTION_BODY(TileLayerComponent)
 

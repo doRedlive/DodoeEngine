@@ -21,6 +21,9 @@ class HierarchyPanel : public QWidget {
 public:
     explicit HierarchyPanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
 
+signals:
+    void newTilemapRequested();
+
 private:
     void refresh();
     void refreshSelection();

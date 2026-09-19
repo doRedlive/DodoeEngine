@@ -12,6 +12,7 @@
 #include "commands/RemoveTilesetCommand.h"
 #include "commands/ReorderTileLayerCommand.h"
 #include "commands/ResizeTilemapCommand.h"
+#include "commands/UpdateTilesetCommand.h"
 #include "core/commands/EditorCommand.h"
 #include "core/document/EditorDocumentModel.h"
 #include "core/history/EditorHistory.h"
@@ -108,6 +109,66 @@ bool RuntimeEditorBackend::executeTilemapCommand(const EditorCommandMessage& com
         else if (command.payload == "line") tool = TileTool::Line;
         else if (command.payload == "picker") tool = TileTool::Picker;
         m_tilePaint->setTool(tool);
+        return true;
+    }
+
+    if (command.name == "tilemap.brush_flip") {
+        if (!m_tilePaint) return false;
+        if (command.payload == "x") m_tilePaint->flipBrushX();
+        else if (command.payload == "y") m_tilePaint->flipBrushY();
+        else return false;
+        return true;
+    }
+
+    if (command.name == "tilemap.brush_rotate") {
+        if (!m_tilePaint) return false;
+        m_tilePaint->rotateBrushCW();
+        return true;
+    }
+
+    if (command.name == "tilemap.random_brush") {
+        if (!m_tilePaint) return false;
+        m_tilePaint->setRandomBrush(command.payload == "1");
+        return true;
+    }
+
+    if (command.name == "tilemap.selection_delete") {
+        if (!m_tilePaint) return false;
+        m_tilePaint->deleteSelection();
+        return true;
+    }
+
+    if (command.name == "tilemap.selection_copy") {
+        if (!m_tilePaint) return false;
+        m_tilePaint->copySelection();
+        return true;
+    }
+
+    if (command.name == "tilemap.selection_paste") {
+        if (!m_tilePaint) return false;
+        m_tilePaint->pasteClipboard();
+        return true;
+    }
+
+    if (command.name == "tilemap.edit_tileset") {
+        if (!m_session || !m_tilePaint) return false;
+        const dodoe::UUID tilemapUuid = m_tilePaint->activeTilemap();
+        if (!tilemapUuid.isValid()) return false;
+        try {
+            const nlohmann::json payload = nlohmann::json::parse(command.payload);
+            const std::uint64_t assetId = payload.value("asset_id", std::uint64_t(0));
+            const dodoe::UInt32 tw = payload.value("tile_width", 16u);
+            const dodoe::UInt32 th = payload.value("tile_height", 16u);
+            const dodoe::UInt32 margin = payload.value("margin", 0u);
+            const dodoe::UInt32 spacing = payload.value("spacing", 0u);
+            if (assetId == 0 || tw == 0 || th == 0) return false;
+            auto command2 = std::make_unique<UpdateTilesetCommand>(
+                tilemapUuid, dodoe::UUID(assetId), tw, th, margin, spacing);
+            m_session->history().execute(std::move(command2), m_session->documentModel());
+            m_session->notifyDocumentChanged();
+        } catch (const nlohmann::json::exception&) {
+            return false;
+        }
         return true;
     }
 
@@ -350,6 +411,8 @@ bool RuntimeEditorBackend::queryTilemapState(const std::string& tilemapUuid, nlo
         item["columns"] = tileset->columns;
         item["tile_count"] = tileset->tile_count;
         item["first_gid"] = tileset->first_gid;
+        item["margin"] = tileset->margin;
+        item["spacing"] = tileset->spacing;
         tilesets.push_back(std::move(item));
     }
 
@@ -367,6 +430,7 @@ bool RuntimeEditorBackend::queryTilemapState(const std::string& tilemapUuid, nlo
     out["tilesets"] = std::move(tilesets);
     out["tool"] = TileToolName(m_tilePaint->tool());
     out["brush"] = std::move(brush);
+    out["random_brush"] = m_tilePaint->randomBrush();
     return true;
 }
 

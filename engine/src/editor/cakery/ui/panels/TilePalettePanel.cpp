@@ -6,6 +6,7 @@
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "core/document/EditorDocument.h"
 
+#include <QAction>
 #include <QActionGroup>
 #include <QComboBox>
 #include <QDialog>
@@ -111,33 +112,111 @@ nlohmann::json addTilesetDialog(QWidget* parent)
         return nlohmann::json();
     }
 
-    SizeFieldsDialog tileSize(QObject::tr("Tileset Tile Size"), QObject::tr("Tile width (px):"),
-                              QObject::tr("Tile height (px):"), 16, 16, parent);
-    if (tileSize.exec() != QDialog::Accepted) {
+    QDialog dialog(parent);
+    dialog.setWindowTitle(QObject::tr("Tileset Tile Size"));
+    auto* form = new QFormLayout(&dialog);
+    auto* widthSpin = new QSpinBox(&dialog);
+    widthSpin->setRange(1, 1024);
+    widthSpin->setValue(16);
+    auto* heightSpin = new QSpinBox(&dialog);
+    heightSpin->setRange(1, 1024);
+    heightSpin->setValue(16);
+    auto* marginSpin = new QSpinBox(&dialog);
+    marginSpin->setRange(0, 256);
+    marginSpin->setValue(0);
+    auto* spacingSpin = new QSpinBox(&dialog);
+    spacingSpin->setRange(0, 256);
+    spacingSpin->setValue(0);
+    form->addRow(QObject::tr("Tile width (px):"), widthSpin);
+    form->addRow(QObject::tr("Tile height (px):"), heightSpin);
+    form->addRow(QObject::tr("Margin (px):"), marginSpin);
+    form->addRow(QObject::tr("Spacing (px):"), spacingSpin);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted) {
         return nlohmann::json();
     }
 
     nlohmann::json payload;
     payload["image"] = image.toStdString();
-    payload["tile_width"] = static_cast<unsigned int>(tileSize.width());
-    payload["tile_height"] = static_cast<unsigned int>(tileSize.height());
-    payload["margin"] = 0;
-    payload["spacing"] = 0;
+    payload["tile_width"] = static_cast<unsigned int>(widthSpin->value());
+    payload["tile_height"] = static_cast<unsigned int>(heightSpin->value());
+    payload["margin"] = static_cast<unsigned int>(marginSpin->value());
+    payload["spacing"] = static_cast<unsigned int>(spacingSpin->value());
+    return payload;
+}
+
+nlohmann::json editTilesetDialog(QWidget* parent, const nlohmann::json& entry)
+{
+    QDialog dialog(parent);
+    dialog.setWindowTitle(QObject::tr("Edit Tileset"));
+    auto* form = new QFormLayout(&dialog);
+    auto* widthSpin = new QSpinBox(&dialog);
+    widthSpin->setRange(1, 1024);
+    widthSpin->setValue(entry.value("tile_width", 16));
+    auto* heightSpin = new QSpinBox(&dialog);
+    heightSpin->setRange(1, 1024);
+    heightSpin->setValue(entry.value("tile_height", 16));
+    auto* marginSpin = new QSpinBox(&dialog);
+    marginSpin->setRange(0, 256);
+    marginSpin->setValue(entry.value("margin", 0));
+    auto* spacingSpin = new QSpinBox(&dialog);
+    spacingSpin->setRange(0, 256);
+    spacingSpin->setValue(entry.value("spacing", 0));
+    form->addRow(QObject::tr("Tile width (px):"), widthSpin);
+    form->addRow(QObject::tr("Tile height (px):"), heightSpin);
+    form->addRow(QObject::tr("Margin (px):"), marginSpin);
+    form->addRow(QObject::tr("Spacing (px):"), spacingSpin);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted) {
+        return nlohmann::json();
+    }
+
+    nlohmann::json payload;
+    payload["asset_id"] = entry.value("asset_id", std::uint64_t(0));
+    payload["tile_width"] = static_cast<unsigned int>(widthSpin->value());
+    payload["tile_height"] = static_cast<unsigned int>(heightSpin->value());
+    payload["margin"] = static_cast<unsigned int>(marginSpin->value());
+    payload["spacing"] = static_cast<unsigned int>(spacingSpin->value());
     return payload;
 }
 
 } // namespace
 
 TileTilesetView::TileTilesetView(QPixmap image, std::uint32_t tileWidth, std::uint32_t tileHeight,
-                                 std::uint32_t columns, std::uint32_t firstGid, QWidget* parent)
+                                  std::uint32_t columns, std::uint32_t firstGid,
+                                  std::uint32_t margin, std::uint32_t spacing, QWidget* parent)
     : QWidget(parent)
     , m_image(std::move(image))
     , m_tileWidth(tileWidth)
     , m_tileHeight(tileHeight)
     , m_columns(columns)
     , m_firstGid(firstGid)
+    , m_margin(margin)
+    , m_spacing(spacing)
 {
     setMouseTracking(true);
+}
+
+int TileTilesetView::cellAtX(const QPoint& pos) const
+{
+    const int step = static_cast<int>(m_tileWidth + m_spacing);
+    if (step <= 0) return 0;
+    const int cell = (static_cast<int>(pos.x()) - static_cast<int>(m_margin)) / step;
+    return cell < 0 ? 0 : cell;
+}
+
+int TileTilesetView::cellAtY(const QPoint& pos) const
+{
+    const int step = static_cast<int>(m_tileHeight + m_spacing);
+    if (step <= 0) return 0;
+    const int cell = (static_cast<int>(pos.y()) - static_cast<int>(m_margin)) / step;
+    return cell < 0 ? 0 : cell;
 }
 
 QSize TileTilesetView::minimumSizeHint() const
@@ -160,10 +239,12 @@ void TileTilesetView::setSelection(int cellX, int cellY, int cellW, int cellH)
 
 QRect TileTilesetView::selectionRect() const
 {
-    const int x = m_selectionCell.x() * static_cast<int>(m_tileWidth);
-    const int y = m_selectionCell.y() * static_cast<int>(m_tileHeight);
-    const int w = m_selectionW * static_cast<int>(m_tileWidth);
-    const int h = m_selectionH * static_cast<int>(m_tileHeight);
+    const int stepX = static_cast<int>(m_tileWidth + m_spacing);
+    const int stepY = static_cast<int>(m_tileHeight + m_spacing);
+    const int x = static_cast<int>(m_margin) + m_selectionCell.x() * stepX;
+    const int y = static_cast<int>(m_margin) + m_selectionCell.y() * stepY;
+    const int w = m_selectionW * static_cast<int>(m_tileWidth) + (m_selectionW - 1) * static_cast<int>(m_spacing);
+    const int h = m_selectionH * static_cast<int>(m_tileHeight) + (m_selectionH - 1) * static_cast<int>(m_spacing);
     return QRect(x, y, w, h);
 }
 
@@ -181,15 +262,25 @@ void TileTilesetView::paintEvent(QPaintEvent* event)
 
     painter.drawPixmap(0, 0, m_image);
 
-    painter.setPen(QPen(QColor(0, 0, 0, 60), 1));
-    for (std::uint32_t x = 1; x < m_columns; ++x) {
-        painter.drawLine(static_cast<int>(x * m_tileWidth), 0,
-                         static_cast<int>(x * m_tileWidth), m_image.height());
-    }
-    const std::uint32_t rows = static_cast<std::uint32_t>(m_image.height()) / m_tileHeight;
-    for (std::uint32_t y = 1; y < rows; ++y) {
-        painter.drawLine(0, static_cast<int>(y * m_tileHeight),
-                         m_image.width(), static_cast<int>(y * m_tileHeight));
+    const int stepX = static_cast<int>(m_tileWidth + m_spacing);
+    const int stepY = static_cast<int>(m_tileHeight + m_spacing);
+    const int gridW = static_cast<int>(m_image.width());
+    const int gridH = static_cast<int>(m_image.height());
+    const int marginX = static_cast<int>(m_margin);
+    const int marginY = static_cast<int>(m_margin);
+    if (stepX > 0 && stepY > 0) {
+        painter.setPen(QPen(QColor(0, 0, 0, 60), 1));
+        for (std::uint32_t x = 1; x < m_columns; ++x) {
+            const int px = marginX + static_cast<int>(x) * stepX - static_cast<int>(m_spacing) / 2;
+            if (px <= 0 || px >= gridW) continue;
+            painter.drawLine(px, 0, px, gridH);
+        }
+        const std::uint32_t rows = tileCount() / (m_columns == 0 ? 1 : m_columns);
+        for (std::uint32_t y = 1; y < rows; ++y) {
+            const int py = marginY + static_cast<int>(y) * stepY - static_cast<int>(m_spacing) / 2;
+            if (py <= 0 || py >= gridH) continue;
+            painter.drawLine(0, py, gridW, py);
+        }
     }
 
     const QRect selection = selectionRect();
@@ -206,8 +297,8 @@ void TileTilesetView::mousePressEvent(QMouseEvent* event)
         QWidget::mousePressEvent(event);
         return;
     }
-    const int cx = event->position().x() / static_cast<int>(m_tileWidth);
-    const int cy = event->position().y() / static_cast<int>(m_tileHeight);
+    const int cx = cellAtX(event->position().toPoint());
+    const int cy = cellAtY(event->position().toPoint());
     m_selectStart = QPoint(cx, cy);
     m_selectEnd = m_selectStart;
     m_selecting = true;
@@ -221,8 +312,8 @@ void TileTilesetView::mouseMoveEvent(QMouseEvent* event)
         QWidget::mouseMoveEvent(event);
         return;
     }
-    const int cx = event->position().x() / static_cast<int>(m_tileWidth);
-    const int cy = event->position().y() / static_cast<int>(m_tileHeight);
+    const int cx = cellAtX(event->position().toPoint());
+    const int cy = cellAtY(event->position().toPoint());
     m_selectEnd = QPoint(cx, cy);
     const int x0 = std::min(m_selectStart.x(), m_selectEnd.x());
     const int y0 = std::min(m_selectStart.y(), m_selectEnd.y());
@@ -345,6 +436,18 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
     m_removeTilesetButton->setAutoRaise(true);
     connect(m_removeTilesetButton, &QToolButton::clicked, this, &TilePalettePanel::onRemoveTileset);
     toolbarLayout->addWidget(m_removeTilesetButton);
+
+    m_resizeTilemapButton = new QToolButton(toolbar);
+    m_resizeTilemapButton->setText(tr("Resize Map"));
+    m_resizeTilemapButton->setAutoRaise(true);
+    connect(m_resizeTilemapButton, &QToolButton::clicked, this, &TilePalettePanel::onResizeTilemap);
+    toolbarLayout->addWidget(m_resizeTilemapButton);
+
+    m_editTilesetButton = new QToolButton(toolbar);
+    m_editTilesetButton->setText(tr("Edit Tileset"));
+    m_editTilesetButton->setAutoRaise(true);
+    connect(m_editTilesetButton, &QToolButton::clicked, this, &TilePalettePanel::onEditTileset);
+    toolbarLayout->addWidget(m_editTilesetButton);
     toolbarLayout->addStretch();
     layout->addWidget(toolbar);
 
@@ -356,7 +459,62 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
     m_brushLabel->setObjectName(QStringLiteral("tilePaletteBrushInspector"));
     brushLayout->addWidget(m_brushLabel);
     brushLayout->addStretch();
+
+    auto* flipXButton = new QToolButton(brushRow);
+    flipXButton->setText(QStringLiteral("H"));
+    flipXButton->setAutoRaise(true);
+    flipXButton->setToolTip(tr("Flip Brush Horizontally (X)"));
+    brushLayout->addWidget(flipXButton);
+
+    auto* flipYButton = new QToolButton(brushRow);
+    flipYButton->setText(QStringLiteral("V"));
+    flipYButton->setAutoRaise(true);
+    flipYButton->setToolTip(tr("Flip Brush Vertically (Y)"));
+    brushLayout->addWidget(flipYButton);
+
+    auto* rotateButton = new QToolButton(brushRow);
+    rotateButton->setText(QStringLiteral("R"));
+    rotateButton->setAutoRaise(true);
+    rotateButton->setToolTip(tr("Rotate Brush (Z)"));
+    brushLayout->addWidget(rotateButton);
+
+    m_randomBrushButton = new QToolButton(brushRow);
+    m_randomBrushButton->setText(tr("Rand"));
+    m_randomBrushButton->setAutoRaise(true);
+    m_randomBrushButton->setCheckable(true);
+    m_randomBrushButton->setToolTip(tr("Random Brush"));
+    brushLayout->addWidget(m_randomBrushButton);
     layout->addWidget(brushRow);
+
+    const auto addBrushAction = [this](const QKeySequence& key, const char* command,
+                                       const char* payload) {
+        auto* action = new QAction(this);
+        action->setShortcut(key);
+        action->setToolTip(QString::fromLatin1(command));
+        connect(action, &QAction::triggered, this, [this, command, payload]() {
+            m_context.session().execute(EditorCommandMessage{command, payload});
+        });
+    };
+    addBrushAction(QKeySequence(Qt::Key_X), "tilemap.brush_flip", "x");
+    addBrushAction(QKeySequence(Qt::Key_Y), "tilemap.brush_flip", "y");
+    addBrushAction(QKeySequence(Qt::Key_Z), "tilemap.brush_rotate", "");
+    addBrushAction(QKeySequence(Qt::Key_Delete), "tilemap.selection_delete", "");
+    addBrushAction(QKeySequence::Copy, "tilemap.selection_copy", "");
+    addBrushAction(QKeySequence::Paste, "tilemap.selection_paste", "");
+
+    connect(flipXButton, &QToolButton::clicked, this, [this]() {
+        m_context.session().execute(EditorCommandMessage{"tilemap.brush_flip", "x"});
+    });
+    connect(flipYButton, &QToolButton::clicked, this, [this]() {
+        m_context.session().execute(EditorCommandMessage{"tilemap.brush_flip", "y"});
+    });
+    connect(rotateButton, &QToolButton::clicked, this, [this]() {
+        m_context.session().execute(EditorCommandMessage{"tilemap.brush_rotate", ""});
+    });
+    connect(m_randomBrushButton, &QToolButton::toggled, this, [this](bool checked) {
+        m_context.session().execute(
+            EditorCommandMessage{"tilemap.random_brush", checked ? "1" : "0"});
+    });
 
     m_statusLabel = new QLabel(this);
     m_statusLabel->setStyleSheet(QStringLiteral("color: #A0A0A0; padding: 4px;"));
@@ -399,6 +557,10 @@ void TilePalettePanel::refresh()
         m_state = nlohmann::json();
         rebuildTargetOptions(0);
         updateToolState(false);
+        if (m_randomBrushButton) {
+            const QSignalBlocker blocker(m_randomBrushButton);
+            m_randomBrushButton->setChecked(false);
+        }
         if (m_brushLabel) {
             m_brushLabel->setText(tr("Active Brush: None"));
         }
@@ -412,6 +574,10 @@ void TilePalettePanel::refresh()
         : 0;
     rebuildTargetOptions(activeUuid);
     updateToolState(activeUuid != 0);
+    if (m_randomBrushButton) {
+        const QSignalBlocker blocker(m_randomBrushButton);
+        m_randomBrushButton->setChecked(m_state.value("random_brush", false));
+    }
     if (m_brushLabel) {
         const nlohmann::json brush = m_state.contains("brush") && m_state["brush"].is_object()
             ? m_state["brush"] : nlohmann::json::object();
@@ -474,6 +640,12 @@ void TilePalettePanel::updateToolState(bool active)
     if (m_removeTilesetButton) {
         m_removeTilesetButton->setEnabled(active);
     }
+    if (m_editTilesetButton) {
+        m_editTilesetButton->setEnabled(active);
+    }
+    if (m_resizeTilemapButton) {
+        m_resizeTilemapButton->setEnabled(active);
+    }
     if (m_targetCombo) {
         m_targetCombo->setEnabled(m_targetCombo->count() > 1);
     }
@@ -519,9 +691,11 @@ void TilePalettePanel::rebuildTilesets()
         const std::uint32_t tileH = entry.value("tile_height", 16u);
         const std::uint32_t columns = entry.value("columns", 0u);
         const std::uint32_t firstGid = entry.value("first_gid", 1u);
+        const std::uint32_t margin = entry.value("margin", 0u);
+        const std::uint32_t spacing = entry.value("spacing", 0u);
         const std::string name = entry.value("name", std::string());
 
-        auto* view = new TileTilesetView(pixmap, tileW, tileH, columns, firstGid);
+        auto* view = new TileTilesetView(pixmap, tileW, tileH, columns, firstGid, margin, spacing);
         view->setToolTip(QString::fromStdString(name));
         auto* label = new QLabel(QString::fromStdString(name), m_scroll);
         label->setStyleSheet(QStringLiteral("color: #C8C8C8; font-weight: bold; padding-top: 4px;"));
@@ -551,7 +725,8 @@ void TilePalettePanel::applyBrushHighlight()
         m_state["brush"]["gids"].empty()) {
         return;
     }
-    const std::uint32_t firstGid = m_state["brush"]["gids"][0].get<std::uint32_t>();
+    const std::uint32_t firstGid =
+        m_state["brush"]["gids"][0].get<std::uint32_t>() & 0x0FFFFFFFu;
     const int brushW = m_state["brush"].value("w", 1);
     const int brushH = m_state["brush"].value("h", 1);
 
@@ -638,6 +813,61 @@ void TilePalettePanel::onRemoveTileset()
             break;
         }
     }
+}
+
+void TilePalettePanel::onEditTileset()
+{
+    if (!m_state.contains("tilesets") || m_state["tilesets"].empty()) {
+        QMessageBox::information(this, tr("Edit Tileset"), tr("The tilemap has no tilesets."));
+        return;
+    }
+    QStringList names;
+    for (const auto& entry : m_state["tilesets"]) {
+        names << QString::fromStdString(entry.value("name", std::string()));
+    }
+    bool ok = false;
+    const QString selected = QInputDialog::getItem(this, tr("Edit Tileset"), tr("Tileset:"),
+                                                   names, 0, false, &ok);
+    if (!ok || selected.isEmpty()) {
+        return;
+    }
+    for (const auto& entry : m_state["tilesets"]) {
+        if (QString::fromStdString(entry.value("name", std::string())) == selected) {
+            const nlohmann::json payload = editTilesetDialog(this, entry);
+            if (!payload.is_null()) {
+                m_context.session().execute(EditorCommandMessage{"tilemap.edit_tileset",
+                                                                  payload.dump()});
+            }
+            break;
+        }
+    }
+}
+
+void TilePalettePanel::onResizeTilemap()
+{
+    if (!m_state.contains("tilemap")) {
+        QMessageBox::information(this, tr("Resize Tilemap"), tr("Select a tilemap first."));
+        return;
+    }
+    const nlohmann::json& tilemap = m_state["tilemap"];
+    const std::uint64_t uuid = tilemap.value("uuid", std::uint64_t(0));
+    if (uuid == 0) {
+        return;
+    }
+    const int currentW = tilemap.value("map_width", 1);
+    const int currentH = tilemap.value("map_height", 1);
+    SizeFieldsDialog dialog(tr("Resize Tilemap"), tr("Map width (tiles):"),
+                            tr("Map height (tiles):"), currentW, currentH, this);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+    if (dialog.width() == currentW && dialog.height() == currentH) {
+        return;
+    }
+    m_context.session().execute(EditorCommandMessage{
+        "tilemap.resize",
+        std::to_string(uuid) + "," + std::to_string(dialog.width()) + "," +
+            std::to_string(dialog.height())});
 }
 
 } // namespace cakery

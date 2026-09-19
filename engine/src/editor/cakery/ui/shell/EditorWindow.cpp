@@ -1410,6 +1410,11 @@ void EditorWindow::createPanels()
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_tileLayersDock, m_tilePaletteDock->dockAreaWidget());
 
+    if (m_hierarchy && m_tilePalette) {
+        connect(m_hierarchy, &HierarchyPanel::newTilemapRequested,
+                m_tilePalette, &TilePalettePanel::onNewTilemap);
+    }
+
     m_gameSettingsPanel = new SettingsPanel(nullptr);
     m_gameSettingsDock = new ads::CDockWidget(tr("Game Settings"));
     m_gameSettingsDock->setObjectName(QStringLiteral("Game Settings"));
