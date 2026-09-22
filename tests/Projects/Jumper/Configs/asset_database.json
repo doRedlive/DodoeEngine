@@ -1,0 +1,19 @@
+{
+    "assets": {
+        "8563892044875938951": {
+            "asset_file_mtime": 0,
+            "asset_id": 8563892044875938951,
+            "dependencies": [],
+            "import_signature": 0,
+            "is_builtin": false,
+            "meta_file_mtime": 13433856405,
+            "name": "Gameplay",
+            "source_file_mtime": 0,
+            "source_path": "Scenes/Gameplay.doscn",
+            "sub_object_id": 0,
+            "tags": [],
+            "type": "Scene"
+        }
+    },
+    "version": 1
+}
