@@ -3,8 +3,6 @@
 
 #include "render_system.h"
 
-#include <chrono>
-
 #include "render_settings.h"
 #include "runtime/core/memory/memory.h"
 #include "runtime/function/graphics/draw_command_list.h"
@@ -297,7 +295,7 @@ namespace dodoe {
         DO_PROFILE_MARK("RenderSystem::renderFrame.swapchainAcquired", "swapchain");
 #ifdef DODOE_PERF_ENABLED
         const auto render_frame_start = std::chrono::steady_clock::now();
-#endif
+#endif//DODOE_PERF_ENABLED
 
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
         m_shared_render_service->processDeferredDeletions(frame_ctx.frame_number);

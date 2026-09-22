@@ -4,6 +4,8 @@
 
 #include "dopch.h"
 
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+
 #include "render_graph.h"
 
 namespace dodoe {
@@ -49,15 +51,17 @@ namespace dodoe {
 
     class RenderGraphDebug {
     public:
-        static void publish(const RenderGraph& graph);
-        static void requestRefresh();
-        static void setAutoRefresh(const Bool enabled);
-        static void setRefreshIntervalMs(const UInt32 milliseconds);
+        static void Publish(const RenderGraph& graph);
+        static void RequestRefresh();
+        static void SetAutoRefresh(const Bool enabled);
+        static void SetRefreshIntervalMs(const UInt32 milliseconds);
 
-        [[nodiscard]] static std::shared_ptr<const RenderGraphDebugSnapshot> snapshot();
+        [[nodiscard]] static Ref<RenderGraphDebugSnapshot> Snapshot();
 
     private:
-        [[nodiscard]] static std::shared_ptr<RenderGraphDebugSnapshot> capture(const RenderGraph& graph);
+        [[nodiscard]] static Ref<RenderGraphDebugSnapshot> Capture(const RenderGraph& graph);
     };
 
 } // dodoe
+
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED

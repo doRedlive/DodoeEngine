@@ -2,7 +2,7 @@
 
 #include "render_graph_panel.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 
 #include "imgui/imgui.h"
 #include "imnodes.h"
@@ -430,13 +430,13 @@ namespace dodoe {
     }
 
     void RenderGraphPanel::OnImGuiRender() {
-        const auto snap = RenderGraphDebug::snapshot();
+        const auto snap = RenderGraphDebug::Snapshot();
         if (!snap) return;
 
         ImGui::Begin("Render Graph");
 
-        RenderGraphDebug::setAutoRefresh(s_auto_refresh);
-        RenderGraphDebug::setRefreshIntervalMs(static_cast<UInt32>(s_refresh_interval_ms));
+        RenderGraphDebug::SetAutoRefresh(s_auto_refresh);
+        RenderGraphDebug::SetRefreshIntervalMs(static_cast<UInt32>(s_refresh_interval_ms));
 
         ImGui::Checkbox("Auto Refresh", &s_auto_refresh);
         ImGui::SameLine();
@@ -444,7 +444,7 @@ namespace dodoe {
         ImGui::SliderInt("##interval", &s_refresh_interval_ms, 100, 2000, "%d ms");
         ImGui::SameLine();
         if (ImGui::Button("Refresh Now")) {
-            RenderGraphDebug::requestRefresh();
+            RenderGraphDebug::RequestRefresh();
         }
         ImGui::Checkbox("Show Resources", &s_show_resources);
         ImGui::SameLine();
@@ -492,4 +492,4 @@ namespace dodoe {
 
 } // dodoe
 
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED

@@ -774,7 +774,7 @@ namespace dodoe {
             if (!baseline) {
                 ImGui::Separator();
                 ImGui::TextUnformatted("RenderGraph Snapshot");
-                const auto snapshot = RenderGraphDebug::snapshot();
+                const auto snapshot = RenderGraphDebug::Snapshot();
                 if (snapshot) {
                     ImGui::Text("Passes: %u (culled %u)  Resources: %u  Levels: %u",
                         snapshot->pass_count, snapshot->culled_count,

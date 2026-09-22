@@ -7,7 +7,9 @@
 #include "srp/managed_render_feature.h"
 
 #include "../render_graph/render_graph_builder.h"
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "../render_graph/render_graph_debug.h"
+#endif
 #include "runtime/function/render/render_view/render_view.h"
 
 namespace dodoe {
@@ -120,7 +122,9 @@ namespace dodoe {
 	            pass->build(graph, build_ctx);
 	        }
         graph.compile();
-        RenderGraphDebug::publish(graph.graph());
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        RenderGraphDebug::Publish(graph.graph());
+#endif
         graphs.push_back(std::move(graph));
 	    }
 

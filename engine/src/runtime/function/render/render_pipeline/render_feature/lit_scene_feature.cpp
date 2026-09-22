@@ -27,38 +27,42 @@
 
 namespace dodoe {
 
-    static DynamicArray<GfxVertexAttributeDesc> BuildMeshVertexAttributes() {
-        constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
-        constexpr Size_t kInstanceStride = sizeof(InstanceSceneData);
-        return {
-            GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
-            GfxVertexAttributeDesc().setName("a_Normal").setFormat(GfxFormat::RGBA8_SNORM).setOffset(sizeof(Vector3f)).setElementStride(kVertexStride),
-            GfxVertexAttributeDesc().setName("a_UV").setFormat(GfxFormat::RG32_FLOAT).setOffset(sizeof(Vector3f) + sizeof(UInt32)).setElementStride(kVertexStride),
-            GfxVertexAttributeDesc().setName("TEXCOORD3").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(0).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD4").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD5").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("a_InstanceColorTint").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f)).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("a_InstanceParams").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD9").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD10").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD11").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
-            GfxVertexAttributeDesc().setName("TEXCOORD12").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2 + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
-        };
-    }
+    namespace {
 
-    static MeshPassRelevance BuildPrimitiveMeshPassRelevance(const PrimitiveSceneInfo& primitive) {
-        MeshPassRelevance relevance{};
-        if (!primitive.isVisible()) {
+        static DynamicArray<GfxVertexAttributeDesc> BuildMeshVertexAttributes() {
+            constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
+            constexpr Size_t kInstanceStride = sizeof(InstanceSceneData);
+            return {
+                GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
+                GfxVertexAttributeDesc().setName("a_Normal").setFormat(GfxFormat::RGBA8_SNORM).setOffset(sizeof(Vector3f)).setElementStride(kVertexStride),
+                GfxVertexAttributeDesc().setName("a_UV").setFormat(GfxFormat::RG32_FLOAT).setOffset(sizeof(Vector3f) + sizeof(UInt32)).setElementStride(kVertexStride),
+                GfxVertexAttributeDesc().setName("TEXCOORD3").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(0).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD4").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD5").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("a_InstanceColorTint").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("a_InstanceParams").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD9").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD10").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD11").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD12").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2 + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+            };
+        }
+
+        static MeshPassRelevance BuildPrimitiveMeshPassRelevance(const PrimitiveSceneInfo& primitive) {
+            MeshPassRelevance relevance{};
+            if (!primitive.isVisible()) {
+                return relevance;
+            }
+
+            for (UInt32 pass_index = 0; pass_index < static_cast<UInt32>(MeshPassType::Count); pass_index++) {
+                const auto pass_type = static_cast<MeshPassType>(pass_index);
+                relevance.setRelevant(pass_type, primitive.hasRelevantBatch(pass_type));
+            }
             return relevance;
         }
 
-        for (UInt32 pass_index = 0; pass_index < static_cast<UInt32>(MeshPassType::Count); pass_index++) {
-            const auto pass_type = static_cast<MeshPassType>(pass_index);
-            relevance.setRelevant(pass_type, primitive.hasRelevantBatch(pass_type));
-        }
-        return relevance;
-    }
+    } // namespace
 
     void LitSceneFeature::initialize(SharedRenderService& resources) {
         m_shared_render_service = &resources;
@@ -107,16 +111,14 @@ namespace dodoe {
 
     void LitSceneFeature::setupMeshPassContexts(const RenderScene& scene,
                                                 RenderViewFamily& view_family) const {
-        PrimitiveSceneInfo::beginMotionFrame();
+        PrimitiveSceneInfo::BeginMotionFrame();
         for (auto& view : view_family.getViews()) {
             auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
             mesh_ext.frame_time_data = Vector4f(view_family.getTimeSeconds(),
-                                                 view_family.getDeltaSeconds(), 0.0f, 0.0f);
+                view_family.getDeltaSeconds(), 0.0f, 0.0f);
             Size_t total_instance_count = 0;
             for (const auto* primitive : mesh_ext.visible_primitives) {
-                if (primitive) {
-                    primitive->advanceMotionFrame();
-                }
+                if (primitive) { primitive->advanceMotionFrame(); }
                 total_instance_count += primitive ? primitive->getInstanceCount() : 1;
             }
             mesh_ext.instance_scene_data.reserve(total_instance_count);

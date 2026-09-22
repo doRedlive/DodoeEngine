@@ -88,13 +88,17 @@ namespace dodoe {
             return mesh;
         }
 
+        Scope<Mesh> s_unit_box;
+        UnorderedMap<UInt32, Scope<Material>> s_materials;
+
         const Mesh* GetUnitBoxMesh() {
-            static Scope<Mesh> s_unit_box = BuildUnitBoxMesh();
+            if (!s_unit_box) {
+                s_unit_box = BuildUnitBoxMesh();
+            }
             return s_unit_box.get();
         }
 
         PPtr<Material> GetColorMaterial(const UInt32 rgba) {
-            static UnorderedMap<UInt32, Scope<Material>> s_materials;
             Scope<Material>& material = s_materials[rgba];
             if (!material) {
                 material = create_scope<Material>(ObjectID{UUID::Generate(), 0});
@@ -124,6 +128,9 @@ namespace dodoe {
         m_points.clear();
         m_line_thickness = 2.0f;
         m_point_size = 4.0f;
+
+        s_unit_box.reset();
+        s_materials.clear();
     }
 
     void PhysicsDebugger::drawLine(const Vector3f& start, const Vector3f& end, const UInt32 color) {

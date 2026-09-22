@@ -95,6 +95,36 @@ namespace dodoe {
             stream.read(reinterpret_cast<char*>(buffer.data()), size);
             return buffer;
         }
+
+#ifndef DODOE_SHIPPING
+        FsPath ScriptFingerprintCachePath() {
+            const auto active_project = Project::ActiveProject();
+            return Project::BinariesDirectory() / (active_project->config().name + ".fingerprint");
+        }
+
+        Bool ReadFingerprintCache(const FsPath& cache_path, String& out_fingerprint) {
+            if (!fs::exists(cache_path)) {
+                return false;
+            }
+
+            std::ifstream stream(cache_path, std::ios::binary);
+            if (!stream.is_open()) {
+                return false;
+            }
+
+            std::ostringstream buffer;
+            buffer << stream.rdbuf();
+            out_fingerprint = buffer.str();
+            return true;
+        }
+
+        void WriteFingerprintCache(const FsPath& cache_path, const String& fingerprint) {
+            std::ofstream stream(cache_path, std::ios::binary | std::ios::trunc);
+            if (stream.is_open()) {
+                stream << fingerprint;
+            }
+        }
+#endif
     }
 
     Bool ScriptEngine::onScriptSourcesChanged() {
@@ -120,6 +150,11 @@ namespace dodoe {
     void ScriptEngine::commitScriptFingerprint() {
         m_script_sources_fingerprint = std::move(m_pending_fingerprint);
         m_pending_fingerprint.clear();
+#ifndef DODOE_SHIPPING
+        if (Project::ActiveProject() && !m_script_sources_fingerprint.empty()) {
+            WriteFingerprintCache(ScriptFingerprintCachePath(), m_script_sources_fingerprint);
+        }
+#endif
     }
 
     Bool ScriptEngine::initialize(const ScriptEngineCreateInfo& info) {
@@ -130,8 +165,19 @@ namespace dodoe {
             return false;
         }
 
+#ifndef DODOE_SHIPPING
+        if (!autoBuildAppAssembly()) {
+            DO_ERROR("ScriptEngine: auto build script assembly failed");
+            return false;
+        }
+#endif
+
         if (!loadCoreAssembly()) return false;
         if (!loadAppAssembly()) return false;
+
+#ifndef DODOE_SHIPPING
+        commitScriptFingerprint();
+#endif
         return true;
     }
 
@@ -153,6 +199,36 @@ namespace dodoe {
         DO_ERROR("ScriptEngine build script assembly failed!");
         return false;
     }
+
+#ifndef DODOE_SHIPPING
+    Bool ScriptEngine::autoBuildAppAssembly() {
+        const auto active_project = Project::ActiveProject();
+        if (!active_project) {
+            return true;
+        }
+
+        String fingerprint;
+        if (!BuildScriptSourceFingerprint(Project::AssetDirectory(), fingerprint)) {
+            return true;
+        }
+
+        const FsPath assembly_path = Project::ScriptAssemblyPath();
+        String cached_fingerprint;
+        const Bool has_cached = ReadFingerprintCache(ScriptFingerprintCachePath(), cached_fingerprint);
+        if (fs::exists(assembly_path) && has_cached && cached_fingerprint == fingerprint) {
+            m_pending_fingerprint = std::move(fingerprint);
+            return true;
+        }
+
+        DO_INFO("ScriptEngine: building script assembly '{}'", active_project->config().name);
+        if (!buildAppAssembly()) {
+            return false;
+        }
+
+        m_pending_fingerprint = std::move(fingerprint);
+        return true;
+    }
+#endif
 
     Bool ScriptEngine::loadCoreAssembly() {
         m_call = (ScriptCallFn)m_native_host->loadManagedDelegate(

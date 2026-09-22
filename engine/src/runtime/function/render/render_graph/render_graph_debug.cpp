@@ -5,11 +5,13 @@
 #include <chrono>
 #include <mutex>
 
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+
 namespace dodoe {
 
     namespace {
         std::mutex s_mutex;
-        std::shared_ptr<const RenderGraphDebugSnapshot> s_snapshot;
+        Ref<RenderGraphDebugSnapshot> s_snapshot;
         Bool s_auto_refresh{true};
         UInt32 s_refresh_interval_ms{500};
         UInt64 s_last_publish_ms{0};
@@ -23,7 +25,7 @@ namespace dodoe {
         }
     }
 
-    void RenderGraphDebug::publish(const RenderGraph& graph) {
+    void RenderGraphDebug::Publish(const RenderGraph& graph) {
         const UInt64 now = now_ms();
         {
             std::lock_guard<std::mutex> lock(s_mutex);
@@ -35,7 +37,7 @@ namespace dodoe {
             s_last_publish_ms = now;
         }
 
-        auto snap = capture(graph);
+        auto snap = Capture(graph);
 
         std::lock_guard<std::mutex> lock(s_mutex);
         static UInt64 s_sequence{0};
@@ -43,28 +45,28 @@ namespace dodoe {
         s_snapshot = std::move(snap);
     }
 
-    void RenderGraphDebug::requestRefresh() {
+    void RenderGraphDebug::RequestRefresh() {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_force_publish = true;
     }
 
-    void RenderGraphDebug::setAutoRefresh(const Bool enabled) {
+    void RenderGraphDebug::SetAutoRefresh(const Bool enabled) {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_auto_refresh = enabled;
     }
 
-    void RenderGraphDebug::setRefreshIntervalMs(const UInt32 milliseconds) {
+    void RenderGraphDebug::SetRefreshIntervalMs(const UInt32 milliseconds) {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_refresh_interval_ms = milliseconds;
     }
 
-    std::shared_ptr<const RenderGraphDebugSnapshot> RenderGraphDebug::snapshot() {
+    Ref<RenderGraphDebugSnapshot> RenderGraphDebug::Snapshot() {
         std::lock_guard<std::mutex> lock(s_mutex);
         return s_snapshot;
     }
 
-    std::shared_ptr<RenderGraphDebugSnapshot> RenderGraphDebug::capture(const RenderGraph& graph) {
-        auto snap = std::make_shared<RenderGraphDebugSnapshot>();
+    Ref<RenderGraphDebugSnapshot> RenderGraphDebug::Capture(const RenderGraph& graph) {
+        auto snap = create_ref<RenderGraphDebugSnapshot>();
 
         const auto& passes = graph.getPasses();
         const auto& resources = graph.getResources();
@@ -130,3 +132,5 @@ namespace dodoe {
     }
 
 } // dodoe
+
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED

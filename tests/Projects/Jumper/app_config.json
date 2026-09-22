@@ -1,6 +1,6 @@
 {
     "name": "Jumper",
-    "app_mode": 2,
+    "app_mode": 1,
     "width": 1280,
     "height": 720,
     "window_resizeable": true,
@@ -9,7 +9,7 @@
         "pipeline": 5,
         "present_mode": 1,
         "enable_single_thread": false,
-        "enable_baseline_renderer": true,
+        "enable_baseline_renderer": false,
         "windowless": false,
         "enable_gpu_driven": false,
         "enable_async_compute": false,

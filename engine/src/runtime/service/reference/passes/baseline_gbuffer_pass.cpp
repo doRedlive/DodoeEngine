@@ -226,7 +226,7 @@ namespace dodoe {
     void BaselineGBufferPass::setupView(RenderView& view, RenderViewFamily& view_family) {
         auto& mesh_ext = view.getOrCreateExtension<MeshViewExtension>();
         mesh_ext.frame_time_data = Vector4f(view_family.getTimeSeconds(), view_family.getDeltaSeconds(), 0.0f, 0.0f);
-        PrimitiveSceneInfo::beginMotionFrame();
+        PrimitiveSceneInfo::BeginMotionFrame();
 
         // Entity selected in the debug ImGui hierarchy panel is highlighted this frame.
         UInt64 selected_uuid = 0;

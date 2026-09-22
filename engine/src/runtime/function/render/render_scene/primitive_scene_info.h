@@ -37,25 +37,15 @@ namespace dodoe {
         mutable DynamicArray<InstanceSceneData> m_prev_frame_instance_data{};
         mutable UInt64 m_motion_frame_id{0};
 
+        inline static UInt64 s_motion_frame_counter{0};
+
     public:
         PrimitiveSceneInfo() = default;
         explicit PrimitiveSceneInfo(const RenderId id) : m_id(id) { }
 
-        static void beginMotionFrame() { ++s_motion_frame_counter; }
+        static void BeginMotionFrame() { ++s_motion_frame_counter; }
 
-        void advanceMotionFrame() const {
-            if (m_motion_frame_id == s_motion_frame_counter) {
-                return;
-            }
-            m_motion_frame_id = s_motion_frame_counter;
-            const Size_t prev_count = m_prev_frame_instance_data.size();
-            for (Size_t i = 0; i < m_instance_scene_data.size(); ++i) {
-                m_instance_scene_data[i].prev_model = (i < prev_count)
-                    ? m_prev_frame_instance_data[i].model
-                    : m_instance_scene_data[i].model;
-            }
-            m_prev_frame_instance_data = m_instance_scene_data;
-        }
+        void advanceMotionFrame() const;
 
         void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
         void setMaterials(const DynamicArray<PPtr<Material>>& materials) { m_materials = materials; }
@@ -65,9 +55,7 @@ namespace dodoe {
         void setVisible(const Bool visible) { m_visible = visible; }
         void setCastShadow(const Bool cast_shadow) { m_cast_shadow = cast_shadow; }
         void setBounds(const Vector3f& bounds_min, const Vector3f& bounds_max) {
-            m_bounds_min = bounds_min;
-            m_bounds_max = bounds_max;
-        }
+            m_bounds_min = bounds_min; m_bounds_max = bounds_max; }
         void setInstanceCount(const UInt32 count) { m_instance_count = count; }
         void setInstanceSceneData(const DynamicArray<InstanceSceneData>& data) { m_instance_scene_data = data; }
 
@@ -108,7 +96,6 @@ namespace dodoe {
         [[nodiscard]] const DynamicArray<InstanceSceneData>& getInstanceSceneData() const { return m_instance_scene_data; }
 
     private:
-        inline static UInt64 s_motion_frame_counter{0};
 
     };
 

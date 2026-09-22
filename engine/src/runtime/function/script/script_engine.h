@@ -31,6 +31,7 @@ namespace dodoe {
 
         bool onScriptSourcesChanged();
         bool buildAppAssembly();
+        bool autoBuildAppAssembly();
         void unloadAppAssembly(Bool collect_garbage = true);
         bool loadAppAssembly();
         void commitScriptFingerprint();
