@@ -61,10 +61,10 @@ public static partial class ScriptHub
 
     private static unsafe int CreateInstance(void** args, void** result)
     {
-        var ns = Marshal.PtrToStringUTF8((IntPtr)args[0]);
-        var name = Marshal.PtrToStringUTF8((IntPtr)args[1]);
+        var ns = Marshal.PtrToStringUTF8((IntPtr)args[0]) ?? string.Empty;
+        var name = Marshal.PtrToStringUTF8((IntPtr)args[1]) ?? string.Empty;
 
-        Type type = null;
+        Type? type = null;
         var fullName = string.IsNullOrEmpty(ns) ? name : $"{ns}.{name}";
         if (SystemTypeCache.TryGetValue(fullName, out type))
         {

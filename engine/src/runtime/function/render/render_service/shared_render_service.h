@@ -15,6 +15,7 @@
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
 #include "runtime/function/render/render_service/input_layout_cache.h"
+#include "runtime/function/render/render_service/render_resource_service.h"
 #include "runtime/function/render/material/material_system.h"
 #include "runtime/function/render/mesh_draw/mesh_pass_registry.h"
 #include "runtime/function/graphics/gfx_context.h"
@@ -29,6 +30,7 @@ namespace dodoe {
         friend class Managed<SharedRenderService, SharedRenderServiceCreateInfo>;
 
         GfxContext* m_gfx_context{nullptr};
+        Scope<RenderResourceService> m_resource_service{nullptr};
         Scope<DescriptorTableManager> m_descriptor_table{nullptr};
         Scope<TextureManager> m_texture_manager{nullptr};
         Scope<DeferredDeletionQueue> m_deletion_queue{nullptr};
@@ -45,6 +47,7 @@ namespace dodoe {
     public:
 
         [[nodiscard]] GfxContext* getGfxContext() const { return m_gfx_context; }
+        [[nodiscard]] RenderResourceService* getResourceService() const { return m_resource_service.get(); }
         [[nodiscard]] DescriptorTableManager* getDescriptorTable() const { return m_descriptor_table.get(); }
         [[nodiscard]] TextureManager* getTextureManager() const { return m_texture_manager.get(); }
         [[nodiscard]] DeferredDeletionQueue* getDeletionQueue() const { return m_deletion_queue.get(); }

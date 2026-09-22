@@ -12,7 +12,7 @@ public static partial class ScriptHub
         var handle = *(long*)args[0];
         var fieldName = Marshal.PtrToStringUTF8((IntPtr)args[1]);
 
-        if (!ObjectRegistry.TryGetValue(handle, out var obj))
+        if (fieldName == null || !ObjectRegistry.TryGetValue(handle, out var obj))
             return 0;
 
         var field = obj.GetType().GetField(fieldName,
@@ -60,7 +60,7 @@ public static partial class ScriptHub
         var handle = *(long*)args[0];
         var fieldName = Marshal.PtrToStringUTF8((IntPtr)args[1]);
 
-        if (!ObjectRegistry.TryGetValue(handle, out var obj))
+        if (fieldName == null || !ObjectRegistry.TryGetValue(handle, out var obj))
             return 0;
 
         var field = obj.GetType().GetField(fieldName,

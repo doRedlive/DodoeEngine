@@ -20,7 +20,7 @@ public struct MeshDrawSettings
     public string Phase;
     public RenderQueueRange Queue;
     public int LayerMask;
-    public MeshHandle MaterialOverride;
+    public MaterialHandle MaterialOverride;
     public bool EnableInstancing;
 
     public static MeshDrawSettings For(string phase)

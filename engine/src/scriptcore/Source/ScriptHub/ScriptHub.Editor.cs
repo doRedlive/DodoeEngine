@@ -63,7 +63,7 @@ public static partial class ScriptHub
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
-                    types = ex.Types ?? Array.Empty<Type>();
+                    types = (ex.Types ?? Array.Empty<Type>())!;
                 }
                 catch
                 {
@@ -79,7 +79,7 @@ public static partial class ScriptHub
                     {
                         var customEditor = type.GetCustomAttribute<CustomEditorAttribute>();
                         if (customEditor != null && customEditor.TargetType != null &&
-                            typeof(Editor).IsAssignableFrom(type))
+                            typeof(global::GreenCake.Editor.Editor).IsAssignableFrom(type))
                         {
                             string full = customEditor.TargetType.FullName ?? string.Empty;
                             string simple = customEditor.TargetType.Name;
@@ -127,7 +127,7 @@ public static partial class ScriptHub
             return null;
         try
         {
-            var editor = (Editor)GetEditorInstance(type);
+            var editor = (global::GreenCake.Editor.Editor)GetEditorInstance(type);
             var gui = new EditorGUI();
             editor.OnInspectorGUI(gui);
             return gui.ToJson();
@@ -190,7 +190,7 @@ public static partial class ScriptHub
             if (owner == "inspector")
             {
                 if (ownerId != null && s_inspectorEditors.TryGetValue(ownerId, out var type))
-                    ((Editor)GetEditorInstance(type)).OnEvent(editorEvent);
+                    ((global::GreenCake.Editor.Editor)GetEditorInstance(type)).OnEvent(editorEvent);
             }
             else if (owner == "window")
             {

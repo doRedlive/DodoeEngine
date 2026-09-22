@@ -10,20 +10,19 @@
 
 namespace dodoe {
 
-    class GfxContext;
+    class RenderResourceService;
     struct ResourceCommand;
 
     struct TextureManagerCreateInfo {
-        GfxContext* gfx{nullptr};
         DescriptorTableManager* descriptor_table{nullptr};
+        RenderResourceService* resource_service{nullptr};
     };
 
     class TextureManager : public Managed<TextureManager, TextureManagerCreateInfo> {
         friend class Managed<TextureManager, TextureManagerCreateInfo>;
 
-        GfxContext* m_gfx{nullptr};
         DescriptorTableManager* m_descriptor_table{nullptr};
-        GfxDeviceHandle m_device{};
+        RenderResourceService* m_resource_service{nullptr};
         Scope<Texture2D> m_fallback{};
         Scope<TextureCubemap> m_fallback_cubemap{};
         Scope<Texture2D> m_brdf_lut{};
@@ -35,8 +34,8 @@ namespace dodoe {
         Bool initialize(const TextureManagerCreateInfo& info);
         void shutdown();
 
-        void createFallbackTexture();
-        void createBrdfLookupTexture();
+        Bool createFallbackTexture();
+        Bool createBrdfLookupTexture();
 
     public:
         [[nodiscard]] Texture2D* realizeTexture(ResourceCommand& cmd);

@@ -11,7 +11,6 @@ public class Coroutine
     internal object Current;
     internal float WaitUntilTime;
     internal bool Finished;
-    internal bool Paused;
 }
 
 public abstract class YieldInstruction { }

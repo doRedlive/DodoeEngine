@@ -12,8 +12,9 @@ namespace dodoe {
         const auto device = GDrawCommandList.getDevice();
         DO_ASSERT(device != nullptr, "SharedRenderService requires valid device");
 
+        m_resource_service = RenderResourceService::Create({m_gfx_context});
         m_descriptor_table = DescriptorTableManager::Create({m_gfx_context});
-        m_texture_manager = TextureManager::Create({m_gfx_context, m_descriptor_table.get()});
+        m_texture_manager = TextureManager::Create({m_descriptor_table.get(), m_resource_service.get()});
 
         m_deletion_queue = create_scope<DeferredDeletionQueue>();
         m_shader_library = ShaderLibrary::Create({m_gfx_context});
@@ -32,7 +33,8 @@ namespace dodoe {
             m_mesh_pass_registry->initialize(m_descriptor_table.get(), *m_binding_layout_cache,
                 *m_binding_set_cache);
 
-        const Bool initialized = m_descriptor_table != nullptr
+        const Bool initialized = m_resource_service != nullptr
+            && m_descriptor_table != nullptr
             && m_texture_manager != nullptr
             && m_deletion_queue != nullptr
             && m_shader_library != nullptr
@@ -89,6 +91,7 @@ namespace dodoe {
         }
         TextureManager::Destroy(m_texture_manager);
         DescriptorTableManager::Destroy(m_descriptor_table);
+        RenderResourceService::Destroy(m_resource_service);
         m_gfx_context = nullptr;
     }
 

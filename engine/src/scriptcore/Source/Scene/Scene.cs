@@ -23,11 +23,11 @@ public class Scene
     public bool IsLoaded => _isLoaded;
     public bool IsStarted => _isStarted;
 
-    public event Action<Scene> OnSceneLoad;
-    public event Action<Scene> OnSceneStart;
-    public event Action<Scene, float> OnSceneUpdate;
-    public event Action<Scene> OnSceneStop;
-    public event Action<Scene> OnSceneUnload;
+    public event Action<Scene>? OnSceneLoad;
+    public event Action<Scene>? OnSceneStart;
+    public event Action<Scene, float>? OnSceneUpdate;
+    public event Action<Scene>? OnSceneStop;
+    public event Action<Scene>? OnSceneUnload;
 
     internal Scene(string name)
     {
@@ -95,13 +95,13 @@ public class Scene
             if (go.Name == name)
                 return go;
         }
-        return null;
+        return null!;
     }
 
     public GameObject FindByID(ulong id)
     {
         _gameObjects.TryGetValue(id, out var go);
-        return go;
+        return go!;
     }
 
     public GameObject FindByTag(string tag)
@@ -115,7 +115,7 @@ public class Scene
                 if (go != null) return go;
             }
         }
-        return null;
+        return null!;
     }
 
     public List<GameObject> FindAllByTag(string tag)
@@ -202,7 +202,7 @@ public class Scene
             if (_gameObjects.TryGetValue(parentId, out var parentGo))
                 return parentGo;
         }
-        return null;
+        return null!;
     }
 
     internal int GetChildCount(ulong entityId)
@@ -222,7 +222,7 @@ public class Scene
                     return childGo;
             }
         }
-        return null;
+        return null!;
     }
 
     private void ProcessLifecycle(float dt)

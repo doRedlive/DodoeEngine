@@ -78,13 +78,13 @@ internal static class ComponentManager
         if (IsNative(typeof(T)))
         {
             if (!NativeCalls.Native_EntityHasComponent(e.ID, typeof(T)))
-                return null;
+                return null!;
             return (T)(object)NativeProxyFactory.Create(typeof(T), e);
         }
 
         if (ManagedComponentStore.TryGet<T>(e.ID, out var component))
             return component;
-        return null;
+        return null!;
     }
 
     public static bool Has<T>(Entity e) where T : CakeComponent
@@ -123,7 +123,7 @@ internal static class ComponentManager
 
     public static bool TryGetUserComponent<T>(Entity e, out T component) where T : CakeComponent
     {
-        component = null;
+        component = null!;
         if (IsNative(typeof(T)))
             return false;
 

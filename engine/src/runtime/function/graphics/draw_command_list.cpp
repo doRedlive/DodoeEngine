@@ -124,7 +124,7 @@ namespace dodoe {
             DO_WARN("DrawCommandList::writeTexture: texture not realized, deferring upload");
         }
         const auto& desc = texture->getDesc();
-        UInt32 effective_mip_height = desc.height >> array_slice;
+        UInt32 effective_mip_height = desc.height >> mip_level;
         if (effective_mip_height == 0) {
             effective_mip_height = 1;
         }

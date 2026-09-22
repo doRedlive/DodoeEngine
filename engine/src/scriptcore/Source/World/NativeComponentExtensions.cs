@@ -6,8 +6,8 @@ public static class NativeComponentExtensions
 {
     public static GameObject GetGameObject(this NativeComponent c)
     {
-        if (c?.Entity == null) return null;
-        return SceneManager.ActiveScene?.FindByID(c.Entity.ID);
+        if (c?.Entity == null) return null!;
+        return SceneManager.ActiveScene?.FindByID(c.Entity.ID)!;
     }
 
     public static bool GetIsSensor(this BoxCollider2dComponent c)

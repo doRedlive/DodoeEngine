@@ -246,7 +246,7 @@ public static class FlowerSea
         try
         {
             using var doc = JsonDocument.Parse(json);
-            var parentOf = new Dictionary<string, string>();
+            var parentOf = new Dictionary<string, string?>();
             foreach (var element in doc.RootElement.EnumerateArray())
             {
                 if (!element.TryGetProperty("uuid", out var uuidProp)) continue;
@@ -256,7 +256,7 @@ public static class FlowerSea
 
             foreach (var pair in parentOf)
             {
-                string p = pair.Value;
+                string? p = pair.Value;
                 while (p != null)
                 {
                     if (p == topUuid)

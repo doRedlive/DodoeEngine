@@ -14,6 +14,7 @@ public sealed class ExampleOverlayFeature : RenderFeature
 {
     public static bool EnableDraw = false;
 
+    private RTHandle _overlayRT;
     private readonly RasterPassDesc _desc = new();
     private readonly Action<RasterCommandContext> _execute;
 
@@ -24,15 +25,19 @@ public sealed class ExampleOverlayFeature : RenderFeature
 
     public override RenderPhase Phase => RenderPhase.PostProcess;
 
+    public override void Initialize(PipelineServices services)
+    {
+        _overlayRT = services.CreateRenderTarget("SrpOverlayColor", SrpFormat.RGBA8_UNORM);
+    }
+
+    public override void OnResize(int width, int height)
+    {
+        _overlayRT.Resize(width, height);
+    }
+
     public override void AddRenderPasses(RenderGraph graph, PassBuildContext context)
     {
-        var viewport = context.View.Viewport;
-        if (viewport.width <= 0 || viewport.height <= 0)
-        {
-            return;
-        }
-
-        var overlay = graph.CreateTexture("SrpOverlayColor", viewport.width, viewport.height, SrpFormat.RGBA8_UNORM);
+        var overlay = graph.ImportTexture(_overlayRT, "SrpOverlayColor");
         _desc.Reset();
         _desc.SetColorAttachment(overlay, 0, LoadAction.Clear, new Color(0.0f, 0.0f, 0.0f, 0.0f));
         graph.AddRasterPass("SrpOverlayPass", RenderPhase.PostProcess, _desc, _execute);
@@ -51,7 +56,7 @@ public sealed class ExampleOverlayFeature : RenderFeature
 
 public sealed class MyOutlineFeature : RenderFeature
 {
-    private RTHandle _outlineRT = null!;
+    private RTHandle _outlineRT;
     private readonly RasterPassDesc _desc = new();
     private readonly Action<RasterCommandContext> _execute;
 

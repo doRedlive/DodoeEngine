@@ -13,7 +13,7 @@ public enum LoadSceneMode
 public static class SceneManager
 {
     private static readonly Dictionary<string, Scene> _scenes = new();
-    private static Scene _activeScene;
+    private static Scene? _activeScene;
 
     public static Scene ActiveScene
     {
@@ -21,7 +21,7 @@ public static class SceneManager
         {
             var sceneName = NativeCalls.Native_WorldGetActiveSceneName();
             if (string.IsNullOrEmpty(sceneName))
-                return null;
+                return null!;
 
             if (!_scenes.TryGetValue(sceneName, out var scene))
             {
@@ -41,9 +41,9 @@ public static class SceneManager
     }
     public static int SceneCount => _scenes.Count;
 
-    public static event Action<Scene> OnSceneLoaded;
-    public static event Action<Scene> OnSceneUnloaded;
-    public static event Action<Scene, Scene> OnActiveSceneChanged;
+    public static event Action<Scene>? OnSceneLoaded;
+    public static event Action<Scene>? OnSceneUnloaded;
+    public static event Action<Scene?, Scene?>? OnActiveSceneChanged;
 
     public static Scene LoadScene(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
     {
@@ -149,7 +149,7 @@ public static class SceneManager
         OnSceneUnloaded?.Invoke(scene);
     }
 
-    public static Scene GetScene(string name)
+    public static Scene? GetScene(string name)
     {
         _scenes.TryGetValue(name, out var scene);
         return scene;
@@ -162,7 +162,7 @@ public static class SceneManager
         return result;
     }
 
-    public static void SetActiveScene(Scene scene)
+    public static void SetActiveScene(Scene? scene)
     {
         if (scene == _activeScene)
             return;

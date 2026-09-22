@@ -10,12 +10,12 @@ public static partial class ScriptHub
 {
     private static unsafe int SnapshotAll(void** args, void** result)
     {
-        var snapshot = new Dictionary<long, Dictionary<string, object>>();
+        var snapshot = new Dictionary<long, Dictionary<string, object?>>();
         foreach (var (handle, obj) in ObjectRegistry)
         {
             var fields = obj.GetType().GetFields(
                 BindingFlags.Public | BindingFlags.Instance);
-            var values = new Dictionary<string, object>();
+            var values = new Dictionary<string, object?>();
             foreach (var f in fields)
             {
                 try { values[f.Name] = f.GetValue(obj); }

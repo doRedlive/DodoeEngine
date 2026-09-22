@@ -174,7 +174,7 @@ namespace dodoe {
             GfxTextureHandle m_t{}; UInt32 m_m{0}, m_s{0}; Size_t m_p{0}, m_ds{0};
             WriteTextureCommand(const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, Size_t pi, Size_t sz) : VarCmd(CalcSize(sz)), m_t(tx), m_m(mi), m_s(sl), m_p(pi), m_ds(sz) {}
             static WriteTextureCommand& Create(DrawCommandList& cl, const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, const void* d, Size_t pi, Size_t sz) { auto& c=VarCmd::Create(cl,sz,d,tx,mi,sl,pi); return c; }
-            void execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.writeTexture(m_t->getRHIHandle(), m_m, m_s, data(), m_p); }
+            void execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.writeTexture(m_t->getRHIHandle(), m_s, m_m, data(), m_p); }
         };
 
         struct PushConstantsCommand final : VarCmd<PushConstantsCommand> {

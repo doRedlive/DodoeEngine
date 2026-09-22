@@ -7,7 +7,7 @@ using System.Runtime.Loader;
 
 public static partial class ScriptHub
 {
-    private static AssemblyLoadContext AppAlc;
+    private static AssemblyLoadContext? AppAlc;
 
     private sealed class ScriptAssemblyLoadContext : AssemblyLoadContext
     {
@@ -19,7 +19,7 @@ public static partial class ScriptHub
             _resolver = new AssemblyDependencyResolver(assemblyPath);
         }
 
-        protected override System.Reflection.Assembly Load(System.Reflection.AssemblyName assemblyName)
+        protected override System.Reflection.Assembly? Load(System.Reflection.AssemblyName assemblyName)
         {
             var sharedAssembly = AppDomain.CurrentDomain.GetAssemblies()
                 .FirstOrDefault(asm => asm.GetName().Name == assemblyName.Name);
@@ -72,7 +72,7 @@ public static partial class ScriptHub
         var gcHandle = (GCHandle)((IntPtr)args[0]);
         if (!gcHandle.IsAllocated) return 0;
 
-        var alc = (AssemblyLoadContext)gcHandle.Target;
+        var alc = (AssemblyLoadContext?)gcHandle.Target;
         gcHandle.Free();
         alc?.Unload();
         AppAlc = null;

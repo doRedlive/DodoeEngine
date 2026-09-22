@@ -11,12 +11,12 @@ public static partial class ScriptHub
 {
     private sealed class ToolActionEntry
     {
-        public string Path;
-        public MethodInfo Method;
+        public required string Path;
+        public required MethodInfo Method;
     }
 
     private static readonly object ToolActionsLock = new();
-    private static List<ToolActionEntry> s_toolActions;
+    private static List<ToolActionEntry>? s_toolActions;
 
     private static void ClearToolActionCache()
     {
@@ -57,7 +57,7 @@ public static partial class ScriptHub
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
-                    types = ex.Types ?? Array.Empty<Type>();
+                    types = (ex.Types ?? Array.Empty<Type>())!;
                 }
                 catch
                 {
@@ -99,7 +99,7 @@ public static partial class ScriptHub
 
             actions.Sort((a, b) => string.CompareOrdinal(a.Path, b.Path));
             s_toolActions = actions;
-            return s_toolActions;
+            return actions;
         }
     }
 
@@ -134,7 +134,7 @@ public static partial class ScriptHub
         string json;
         try
         {
-            ToolActionEntry target = null;
+            ToolActionEntry? target = null;
             var actions = EnsureToolActionsLoaded();
             foreach (var entry in actions)
             {
@@ -158,7 +158,7 @@ public static partial class ScriptHub
 
             var method = target.Method;
             if (method.GetParameters().Length == 1)
-                method.Invoke(null, new object[] { name });
+                method.Invoke(null, new object?[] { name });
             else
                 method.Invoke(null, null);
 

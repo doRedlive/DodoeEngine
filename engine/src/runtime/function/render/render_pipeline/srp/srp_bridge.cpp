@@ -134,7 +134,8 @@ namespace dodoe {
         if (!m_call) {
             return;
         }
-        void* args[1] = { &feature_id };
+        Int32 id = feature_id;
+        void* args[1] = { &id };
         m_call(ScriptCommand::SrpFeatureInitialize, args, nullptr);
     }
 
@@ -144,7 +145,8 @@ namespace dodoe {
         }
         UInt32 w = width;
         UInt32 h = height;
-        void* args[3] = { &feature_id, &w, &h };
+        Int32 id = feature_id;
+        void* args[3] = { &id, &w, &h };
         m_call(ScriptCommand::SrpFeatureOnResize, args, nullptr);
     }
 
@@ -152,7 +154,8 @@ namespace dodoe {
         if (!m_call) {
             return;
         }
-        void* args[1] = { &feature_id };
+        Int32 id = feature_id;
+        void* args[1] = { &id };
         m_call(ScriptCommand::SrpFeatureDispose, args, nullptr);
     }
 
@@ -163,7 +166,8 @@ namespace dodoe {
         }
         UInt64 graph_handle = reinterpret_cast<UInt64>(&graph);
         UInt64 view_handle = reinterpret_cast<UInt64>(&context.view);
-        void* args[3] = { &feature_id, &graph_handle, &view_handle };
+        Int32 id = feature_id;
+        void* args[3] = { &id, &graph_handle, &view_handle };
         m_current_graph = &graph;
         m_build_context = &context;
         m_call(ScriptCommand::SrpFeatureAddPasses, args, nullptr);
@@ -286,7 +290,7 @@ namespace dodoe {
                 for (Int32 index = 0; index < desc.read_texture_count; index++) {
                     RenderGraphTextureHandle handle{};
                     handle.index = static_cast<UInt32>(desc.read_texture_handles[index]);
-                    builder.readTexture(handle);
+                    builder.readTexture(handle, RenderGraphPipelineStage::PixelShader);
                 }
             },
             [](const SrpRasterPassParameters& parameters, const RenderGraphPassContext& context,

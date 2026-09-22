@@ -12,9 +12,9 @@
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/parser/texture_blob.h"
-#include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/render/render_command.h"
 #include "runtime/function/render/render_settings.h"
+#include "runtime/function/render/render_service/render_resource_service.h"
 
 #include <algorithm>
 #include <cmath>
@@ -225,23 +225,20 @@ namespace dodoe {
 
     Bool TextureManager::initialize(const TextureManagerCreateInfo& info) {
         DO_PROFILE_SCOPE_CATEGORY("TextureManager::initialize", "startup");
-        m_gfx = info.gfx;
         m_descriptor_table = info.descriptor_table;
-        if (!m_gfx) {
-            DO_ERROR("TextureManager::initialize: graphics context is unavailable");
-            return false;
-        }
-        m_device = m_gfx->getDevice();
-        if (!m_device) {
-            DO_ERROR("TextureManager::initialize: graphics device is unavailable");
+        m_resource_service = info.resource_service;
+        if (!m_resource_service) {
+            DO_ERROR("TextureManager::initialize: render resource service is unavailable");
             return false;
         }
         if (RenderSettings::IsBindlessActive() && !m_descriptor_table) {
             DO_ERROR("TextureManager::initialize: bindless descriptor table is unavailable");
             return false;
         }
-        createFallbackTexture();
-        createBrdfLookupTexture();
+        if (!createFallbackTexture() || !createBrdfLookupTexture()) {
+            shutdown();
+            return false;
+        }
         DO_INFO("TextureManager: initialized (bindless={})", RenderSettings::IsBindlessActive());
         return true;
     }
@@ -257,9 +254,8 @@ namespace dodoe {
         m_fallback = {};
         m_fallback_cubemap = {};
         m_brdf_lut = {};
-        m_device = nullptr;
+        m_resource_service = nullptr;
         m_descriptor_table = nullptr;
-        m_gfx = nullptr;
     }
 
     Texture* TextureManager::findTexture(const InstanceID id) {
@@ -313,8 +309,8 @@ namespace dodoe {
             return nullptr;
         }
         const String texture_path = texture->getPath();
-        if (!m_device) {
-            DO_ERROR("TextureManager::realizeTexture: graphics device is unavailable for '{}'", texture_path);
+        if (!m_resource_service) {
+            DO_ERROR("TextureManager::realizeTexture: render resource service is unavailable for '{}'", texture_path);
             return nullptr;
         }
         if (RenderSettings::IsBindlessActive() && !m_descriptor_table) {
@@ -334,13 +330,19 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName(texture->getPath().c_str());
 
-        auto handle = create_ref<GfxTexture>(texture_desc);
-        handle->initializeGpu(m_device);
+        auto handle = m_resource_service->createTexture(texture_desc);
+        if (!handle) {
+            DO_ERROR("TextureManager::realizeTexture: texture creation failed for '{}'", texture_path);
+            return nullptr;
+        }
 
         if (!cmd.resource_data.empty()) {
             const UInt32 bpp = cmd.texture_is_hdr ? 16u : 4u;
             const Size_t row_pitch = static_cast<Size_t>(width) * bpp;
-            GDrawCommandList.writeTexture(handle, 0, 0, cmd.resource_data.data(), row_pitch);
+            if (!m_resource_service->enqueueTextureUpload(
+                    GDrawCommandList, {handle, 0, 0, cmd.resource_data.data(), row_pitch})) {
+                return nullptr;
+            }
         }
         texture->setGpuHandle(handle);
 
@@ -349,12 +351,13 @@ namespace dodoe {
         texture->setSlot(slot);
 
         if (RenderSettings::IsBindlessActive()) {
-            DescriptorIndex desc_idx = static_cast<DescriptorIndex>(m_descriptor_table->allocateSlot());
+            const DescriptorIndex desc_idx = m_descriptor_table->createDescriptor(
+                GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle()));
+            if (desc_idx < 0) {
+                DO_ERROR("TextureManager::realizeTexture: descriptor allocation failed for '{}'", texture_path);
+                return nullptr;
+            }
             DO_ASSERT(static_cast<UInt32>(desc_idx) == slot);
-            auto item = GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle());
-            item.slot = desc_idx;
-            handle->getRHIHandle()->AddRef();
-            m_device->writeDescriptorTable(m_descriptor_table->getDescriptorTable(), item);
             texture->setDescriptorIndex(desc_idx);
         }
 
@@ -375,7 +378,7 @@ namespace dodoe {
         return texture->getSlot();
     }
 
-    void TextureManager::createFallbackTexture() {
+    Bool TextureManager::createFallbackTexture() {
         DO_PROFILE_SCOPE_CATEGORY("TextureManager::createFallbackTexture", "startup");
         auto texture_desc = GfxTextureDesc()
             .setDimension(GfxTextureDimension::Texture2D)
@@ -388,14 +391,11 @@ namespace dodoe {
 
         const UByte white[4] = {255, 255, 255, 255};
 
-        auto upload_cmd = m_device->createCommandList();
-        upload_cmd->open();
-        auto handle_rhi = m_device->createTexture(texture_desc);
-        upload_cmd->writeTexture(handle_rhi, 0, 0, white, 4);
-        upload_cmd->close();
-        m_device->executeCommandList(upload_cmd);
-
-        auto handle = create_ref<GfxTexture>(handle_rhi, texture_desc, "Render TextureManager Fallback");
+        auto handle = m_resource_service->createTexture(texture_desc);
+        if (!handle) {
+            DO_ERROR("TextureManager: fallback texture creation failed");
+            return false;
+        }
 
         auto fb_scope = create_scope<Texture2D>(ObjectID{UUID(0), 1});
         Texture2D* fb = fb_scope.get();
@@ -406,14 +406,6 @@ namespace dodoe {
         const UInt32 slot = static_cast<UInt32>(m_slot_lut.size());
         m_slot_lut.push_back(fb->getInstanceID());
         fb->setSlot(slot);
-
-        if (RenderSettings::IsBindlessActive()) {
-            auto fallback_item = GfxBindingSetItem::Texture_SRV(0, handle_rhi);
-            DescriptorIndex fallback_descriptor_index = m_descriptor_table->createDescriptor(fallback_item);
-            fb->setDescriptorIndex(fallback_descriptor_index);
-        }
-
-        m_fallback = std::move(fb_scope);
 
         const auto cube_desc = GfxTextureDesc()
             .setDimension(GfxTextureDimension::TextureCube)
@@ -427,24 +419,41 @@ namespace dodoe {
 
         const UByte black[4] = {0, 0, 0, 0};
 
-        auto cube_upload = m_device->createCommandList();
-        cube_upload->open();
-        auto cube_rhi = m_device->createTexture(cube_desc);
-        for (UInt32 face = 0; face < 6; ++face) {
-            cube_upload->writeTexture(cube_rhi, face, 0, black, 4);
+        auto cube_handle = m_resource_service->createTexture(cube_desc);
+        if (!cube_handle) {
+            DO_ERROR("TextureManager: fallback cubemap creation failed");
+            return false;
         }
-        cube_upload->close();
-        m_device->executeCommandList(cube_upload);
+        DynamicArray<TextureUploadData> startup_uploads{};
+        startup_uploads.push_back({handle, 0, 0, white, 4});
+        for (UInt32 face = 0; face < 6; ++face) {
+            startup_uploads.push_back({cube_handle, 0, face, black, 4});
+        }
+        if (!m_resource_service->submitStartupUploads(startup_uploads)) {
+            DO_ERROR("TextureManager: fallback texture upload failed");
+            return false;
+        }
 
-        auto cube_handle = create_ref<GfxTexture>(cube_rhi, cube_desc, "Render TextureManager Fallback Cubemap");
+        if (RenderSettings::IsBindlessActive()) {
+            const DescriptorIndex fallback_descriptor_index = m_descriptor_table->createDescriptor(
+                GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle()));
+            if (fallback_descriptor_index < 0) {
+                DO_ERROR("TextureManager: fallback descriptor allocation failed");
+                return false;
+            }
+            fb->setDescriptorIndex(fallback_descriptor_index);
+        }
+
         auto cb_scope = create_scope<TextureCubemap>(ObjectID{UUID(0), 2});
         cb_scope->setFaceSize(1);
         cb_scope->setGpuHandle(cube_handle);
+        m_fallback = std::move(fb_scope);
         m_fallback_cubemap = std::move(cb_scope);
         DO_INFO("TextureManager: fallback 2D texture and cubemap created");
+        return true;
     }
 
-    void TextureManager::createBrdfLookupTexture() {
+    Bool TextureManager::createBrdfLookupTexture() {
         DO_PROFILE_SCOPE_CATEGORY("TextureManager::createBrdfLookupTexture", "startup");
         constexpr UInt32 kLutSize = 128;
         constexpr UInt32 kSampleCount = 512;
@@ -506,21 +515,25 @@ namespace dodoe {
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName("Render BRDF Lookup");
 
-        auto upload_cmd = m_device->createCommandList();
-        upload_cmd->open();
-        auto handle_rhi = m_device->createTexture(texture_desc);
-        upload_cmd->writeTexture(handle_rhi, 0, 0, lut.data(),
-            static_cast<Size_t>(kLutSize) * 4u * sizeof(Float));
-        upload_cmd->close();
-        m_device->executeCommandList(upload_cmd);
-
-        auto handle = create_ref<GfxTexture>(handle_rhi, texture_desc, "Render BRDF Lookup");
+        auto handle = m_resource_service->createTexture(texture_desc);
+        if (!handle) {
+            DO_ERROR("TextureManager: BRDF lookup texture creation failed");
+            return false;
+        }
+        DynamicArray<TextureUploadData> startup_uploads{};
+        startup_uploads.push_back({handle, 0, 0, lut.data(),
+            static_cast<Size_t>(kLutSize) * 4u * sizeof(Float)});
+        if (!m_resource_service->submitStartupUploads(startup_uploads)) {
+            DO_ERROR("TextureManager: BRDF lookup texture upload failed");
+            return false;
+        }
         auto lut_scope = create_scope<Texture2D>(ObjectID{UUID(0), 3});
         lut_scope->setName("<brdf_lut>");
         lut_scope->setDimensions(static_cast<Int32>(kLutSize), static_cast<Int32>(kLutSize));
         lut_scope->setGpuHandle(handle);
         m_brdf_lut = std::move(lut_scope);
         DO_INFO("TextureManager: BRDF lookup texture created ({}x{})", kLutSize, kLutSize);
+        return true;
     }
 
     TextureCubemap* TextureManager::loadCubemapTexture(const DynamicArray<String>& face_paths) {
@@ -577,7 +590,7 @@ namespace dodoe {
             .setFormat(GfxFormat::RGBA32_FLOAT)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
             .setDebugName("SkyLight Cubemap");
-        auto cubemap = cmd_list.createTexture(desc);
+        auto cubemap = m_resource_service->createTexture(desc);
         if (!cubemap) {
             DO_ERROR("TextureManager::loadCubemapTexture: failed to create GPU cubemap");
             return nullptr;
@@ -614,7 +627,10 @@ namespace dodoe {
                     transformed[di + 3] = src[si + 3];
                 }
             }
-            cmd_list.writeTexture(cubemap, i, 0, transformed.data(), rp);
+            if (!m_resource_service->enqueueTextureUpload(
+                    cmd_list, {cubemap, 0, i, transformed.data(), rp})) {
+                return nullptr;
+            }
 
             for (ui32 y = 0; y < h; ++y) {
                 for (ui32 x = 0; x < w; ++x) {
@@ -655,7 +671,10 @@ namespace dodoe {
                 cur_faces[face].resize(static_cast<Size_t>(dst_size) * dst_size * 4u);
                 PrefilterFaceGGX(cur_faces[face].data(), filtered_faces, src_size, face, dst_size, roughness);
                 const Size_t dst_rp = static_cast<Size_t>(dst_size) * 4u * sizeof(Float);
-                cmd_list.writeTexture(cubemap, face, mip, cur_faces[face].data(), dst_rp);
+                if (!m_resource_service->enqueueTextureUpload(
+                        cmd_list, {cubemap, mip, face, cur_faces[face].data(), dst_rp})) {
+                    return nullptr;
+                }
             }
             for (ui32 face = 0; face < kFaceCount; ++face) {
                 filtered_faces[face] = std::move(cur_faces[face]);

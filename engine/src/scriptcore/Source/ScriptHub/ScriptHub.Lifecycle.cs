@@ -1,5 +1,6 @@
 namespace GreenCake;
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 public static partial class ScriptHub

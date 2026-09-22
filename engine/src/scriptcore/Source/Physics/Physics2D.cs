@@ -6,13 +6,9 @@ using System.Collections.Generic;
 public static class Physics2D
 {
     [ThreadStatic]
-    private static List<ulong> _contactRegistryKeys;
+    private static float[]? _rayHitBuffer;
     [ThreadStatic]
-    private static List<List<ulong>> _contactRegistryValues;
-    [ThreadStatic]
-    private static float[] _rayHitBuffer;
-    [ThreadStatic]
-    private static uint[] _overlapIdBuffer;
+    private static uint[]? _overlapIdBuffer;
 
     public static Vector2f gravity
     {
@@ -339,8 +335,6 @@ public static class Physics2D
             normal = dir.y < 0 ? Vector2f.Up : Vector2f.Down;
         return true;
     }
-
-    internal static event Action<CollisionEventKind, ulong, ulong, bool, Vector2f, Vector2f, float> OnRawCollision;
 
     public static void ProcessEvents()
     {

@@ -22,7 +22,7 @@ public static partial class ScriptHub
         EntityComponentHandles.Remove(entityId);
     }
 
-    private static Type FindComponentType(string fullName)
+    private static Type? FindComponentType(string? fullName)
     {
         if (string.IsNullOrWhiteSpace(fullName)) return null;
 
@@ -92,13 +92,13 @@ public static partial class ScriptHub
         var entityId = *(ulong*)args[0];
         if (World.Current is null) return 0;
 
-        var components = new Dictionary<string, Dictionary<string, object>>();
+        var components = new Dictionary<string, Dictionary<string, object?>>();
         foreach (var type in World.Current.GetManagedComponentTypes(entityId))
         {
             if (NativeCalls.Native_ComponentExists(entityId, type)) continue;
             if (!World.Current.TryGetComponent(entityId, type, out var component)) continue;
 
-            var fields = new Dictionary<string, object>();
+            var fields = new Dictionary<string, object?>();
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
                 try { fields[field.Name] = field.GetValue(component); }
@@ -150,7 +150,7 @@ public static partial class ScriptHub
         if (World.Current is null || string.IsNullOrWhiteSpace(fullName))
             return 0;
 
-        Type componentType = FindComponentType(fullName);
+        Type? componentType = FindComponentType(fullName);
 
         if (componentType is null || !typeof(CakeComponent).IsAssignableFrom(componentType))
             return 0;
