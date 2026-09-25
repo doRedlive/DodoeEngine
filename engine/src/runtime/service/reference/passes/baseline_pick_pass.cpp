@@ -211,18 +211,18 @@ namespace dodoe {
             m_command_list->writeBuffer(m_primitive_cb.Get(), &shader_data, sizeof(shader_data));
             out_pick_ids.push_back(primitive->getId().value());
 
-            cutie::GraphicsState graphics_state;
+            GfxGraphicsState graphics_state;
             graphics_state.setPipeline(m_pipeline.Get());
             graphics_state.setFramebuffer(framebuffer);
             graphics_state.setViewport(viewport_state);
             graphics_state.addBindingSet(m_view_binding_set.Get());
             graphics_state.addBindingSet(m_primitive_binding_set.Get());
             graphics_state.addVertexBuffer(
-                cutie::VertexBufferBinding().setBuffer(picked_element->vertex_buffer->getRHI()).setSlot(0).setOffset(0));
+                GfxVertexBufferBinding().setBuffer(picked_element->vertex_buffer->getRHI()).setSlot(0).setOffset(0));
             graphics_state.addVertexBuffer(
-                cutie::VertexBufferBinding().setBuffer(instance_buffer).setSlot(1).setOffset(instance_offset));
+                GfxVertexBufferBinding().setBuffer(instance_buffer).setSlot(1).setOffset(instance_offset));
             graphics_state.setIndexBuffer(
-                cutie::IndexBufferBinding()
+                GfxIndexBufferBinding()
                     .setBuffer(picked_element->index_buffer->getRHI())
                     .setFormat(GfxFormat::R32_UINT)
                     .setOffset(0));

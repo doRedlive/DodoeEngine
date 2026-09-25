@@ -75,7 +75,7 @@ namespace dodoe {
                 .addItem(GfxBindingSetItem::Sampler(9, m_sampler.Get())),
             m_binding_layout.Get());
 
-        cutie::GraphicsState graphics_state;
+        GfxGraphicsState graphics_state;
         graphics_state.setPipeline(m_pipeline.Get());
         graphics_state.setFramebuffer(framebuffer);
         graphics_state.setViewport(viewport_state);

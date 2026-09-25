@@ -87,9 +87,9 @@ namespace dodoe {
         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(view, extent);
 
         // Tone mapping: HDR -> LDR
-        m_command_list->setTextureState(tone_map_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
+        m_command_list->setTextureState(tone_map_color->getRHI(), GfxAllSubresources, GfxResourceStates::RenderTarget);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
-        m_command_list->clearTextureFloat(tone_map_color->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
+        m_command_list->clearTextureFloat(tone_map_color->getRHI(), GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
 
         if (m_tone_map_pipeline) {
             auto binding_set = m_device->createBindingSet(
@@ -97,7 +97,7 @@ namespace dodoe {
                     .addItem(GfxBindingSetItem::Texture_SRV(1, hdr_color->getRHIHandle().Get()))
                     .addItem(GfxBindingSetItem::Sampler(9, m_sampler.Get())),
                 m_binding_layout.Get());
-            cutie::GraphicsState graphics_state;
+            GfxGraphicsState graphics_state;
             graphics_state.setPipeline(m_tone_map_pipeline.Get());
             graphics_state.setFramebuffer(tone_map_framebuffer);
             graphics_state.setViewport(viewport_state);
@@ -107,10 +107,10 @@ namespace dodoe {
         }
 
         // FXAA: LDR (tone mapped) -> LDR (anti-aliased)
-        m_command_list->setTextureState(tone_map_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
-        m_command_list->setTextureState(fxaa_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
+        m_command_list->setTextureState(tone_map_color->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
+        m_command_list->setTextureState(fxaa_color->getRHI(), GfxAllSubresources, GfxResourceStates::RenderTarget);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
-        m_command_list->clearTextureFloat(fxaa_color->getRHI(), cutie::AllSubresources, cutie::Color(0.0f, 0.0f, 0.0f, 1.0f));
+        m_command_list->clearTextureFloat(fxaa_color->getRHI(), GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
 
         if (m_fxaa_pipeline) {
             auto binding_set = m_device->createBindingSet(
@@ -118,7 +118,7 @@ namespace dodoe {
                     .addItem(GfxBindingSetItem::Texture_SRV(1, tone_map_color->getRHIHandle().Get()))
                     .addItem(GfxBindingSetItem::Sampler(9, m_sampler.Get())),
                 m_binding_layout.Get());
-            cutie::GraphicsState graphics_state;
+            GfxGraphicsState graphics_state;
             graphics_state.setPipeline(m_fxaa_pipeline.Get());
             graphics_state.setFramebuffer(fxaa_framebuffer);
             graphics_state.setViewport(viewport_state);
@@ -127,7 +127,7 @@ namespace dodoe {
             RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         }
 
-        m_command_list->setTextureState(fxaa_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
+        m_command_list->setTextureState(fxaa_color->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
     }
 

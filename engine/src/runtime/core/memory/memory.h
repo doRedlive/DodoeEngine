@@ -169,6 +169,14 @@ namespace dodoe {
 
 } // namespace dodoe
 
+extern "C" {
+
+	DODOE_API void* dodoe_alloc(dodoe::Size_t size);
+	DODOE_API void* dodoe_alloc_aligned(dodoe::Size_t size, dodoe::Size_t align);
+	DODOE_API void  dodoe_free(void* p);
+
+} // extern "C"
+
 #define DODOE_NEW(T, cat, ...) \
     ([&]() -> T* { \
         void* memory = dodoe::Memory::Allocate(sizeof(T), alignof(T), cat, #T); \

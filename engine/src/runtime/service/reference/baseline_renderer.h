@@ -36,8 +36,8 @@ namespace dodoe {
         friend class Managed<BaselineRenderer, BaselineRendererCreateInfo>;
 
         GfxDeviceHandle m_device{};
-        cutie::CommandListHandle m_command_list{};
-        cutie::SamplerHandle m_sampler{};
+        GfxCommandListHandle m_command_list{};
+        GfxSamplerHandle m_sampler{};
         const ShaderLibrary* m_shader_library{nullptr};
         SharedRenderService* m_shared_render_service{nullptr};
         Scope<GpuCulling> m_gpu_culling{};
@@ -59,7 +59,7 @@ namespace dodoe {
         Scope<BaselineImGuiPass> m_imgui_pass{};
         Scope<BaselinePickPass> m_pick_pass{};
 #endif
-        cutie::StagingTextureHandle m_pick_staging{};
+        GfxStagingTextureHandle m_pick_staging{};
         DynamicArray<UInt64> m_pick_ids{};
         Scope<BaselinePresentPass> m_present_pass{};
 

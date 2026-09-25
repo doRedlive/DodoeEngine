@@ -20,7 +20,9 @@
 #include "runtime/function/render/shader/descriptor_table_manager.h"
 #include "runtime/function/render/render_view/taa_view_extension.h"
 #include "runtime/core/math/math.h"
+#ifdef DODOE_DEBUG_ENABLED
 #include "runtime/service/debug/debug_imgui.h"
+#endif
 
 namespace dodoe {
 
@@ -230,10 +232,12 @@ namespace dodoe {
 
         // Entity selected in the debug ImGui hierarchy panel is highlighted this frame.
         UInt64 selected_uuid = 0;
+#ifdef DODOE_DEBUG_ENABLED
         Entity selected_entity = DebugImGui::GetSelectedEntity();
         if (selected_entity.valid()) {
             selected_uuid = static_cast<UInt64>(selected_entity.uuid());
         }
+#endif
 
         Size_t total_instance_count = 0;
         for (const auto* primitive : mesh_ext.visible_primitives) {
@@ -288,7 +292,7 @@ namespace dodoe {
         }
         ensureInstanceCapacity(static_cast<UInt32>(mesh_ext->instance_scene_data.size()));
 
-        m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::CopyDest);
+        m_command_list->setBufferState(m_instance_buffer.Get(), GfxResourceStates::CopyDest);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->writeBuffer(m_instance_buffer.Get(), mesh_ext->instance_scene_data.data(),
             mesh_ext->instance_scene_data.size() * sizeof(InstanceSceneData));
@@ -308,7 +312,7 @@ namespace dodoe {
         view_data.prev_jitter_uv = Vector4f(m_prev_jitter_uv.x, m_prev_jitter_uv.y, 0.0f, 0.0f);
         m_command_list->writeBuffer(m_view_cb.Get(), &view_data, sizeof(view_data));
 
-        m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::VertexBuffer);
+        m_command_list->setBufferState(m_instance_buffer.Get(), GfxResourceStates::VertexBuffer);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         DynamicArray<UInt32> instance_prefix(mesh_ext->visible_primitives.size() + 1, 0);
@@ -387,7 +391,7 @@ namespace dodoe {
                         ? static_cast<Float>(descriptor_indices[3]) + 1.0f : 0.0f);
                 m_command_list->writeBuffer(m_primitive_cb.Get(), &shader_data, sizeof(shader_data));
 
-                cutie::GraphicsState graphics_state;
+                GfxGraphicsState graphics_state;
                 graphics_state.setPipeline(m_pipeline.Get());
                 graphics_state.setFramebuffer(framebuffer);
                 graphics_state.setViewport(viewport_state);
@@ -399,11 +403,11 @@ namespace dodoe {
                 }
                 graphics_state.addBindingSet(m_primitive_binding_set.Get());
                 graphics_state.addVertexBuffer(
-                    cutie::VertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
+                    GfxVertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
                 graphics_state.addVertexBuffer(
-                    cutie::VertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(instance_offset));
+                    GfxVertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(instance_offset));
                 graphics_state.setIndexBuffer(
-                    cutie::IndexBufferBinding()
+                    GfxIndexBufferBinding()
                         .setBuffer(element.index_buffer->getRHI())
                         .setFormat(GfxFormat::R32_UINT)
                         .setOffset(0));

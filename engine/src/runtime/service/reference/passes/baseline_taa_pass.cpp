@@ -163,7 +163,7 @@ namespace dodoe {
             return;
         }
 
-        cutie::GraphicsState copy_state;
+        GfxGraphicsState copy_state;
         copy_state.setPipeline(m_copy_pipeline.Get());
         copy_state.setFramebuffer(prev_depth_write_framebuffer);
         copy_state.setViewport(viewport_state);
@@ -219,12 +219,12 @@ namespace dodoe {
 
         if (m_prev_depth_a && m_prev_depth_b && gbuffer_depth) {
             const GfxTextureHandle prev_depth_write = depth_flip ? m_prev_depth_a : m_prev_depth_b;
-            m_command_list->setTextureState(prev_depth_write->getRHI(), cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
-            m_command_list->setTextureState(prev_depth_read->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
-            m_command_list->setTextureState(gbuffer_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
+            m_command_list->setTextureState(prev_depth_write->getRHI(), GfxAllSubresources, GfxResourceStates::RenderTarget);
+            m_command_list->setTextureState(prev_depth_read->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
+            m_command_list->setTextureState(gbuffer_depth->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
             RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
             renderPrevDepthCopy(gbuffer_depth, prev_depth_write_framebuffer, viewport_state);
-            m_command_list->setTextureState(prev_depth_read->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
+            m_command_list->setTextureState(prev_depth_read->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
             RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         }
 
@@ -267,7 +267,7 @@ namespace dodoe {
         cb_data.prev_params = Vector4f(m_prev_jitter_uv.x, m_prev_jitter_uv.y, 0.0f, 0.0f);
         m_command_list->writeBuffer(m_taa_cb.Get(), &cb_data, sizeof(cb_data));
 
-        cutie::GraphicsState graphics_state;
+        GfxGraphicsState graphics_state;
         graphics_state.setPipeline(m_pipeline.Get());
         graphics_state.setFramebuffer(history_write_framebuffer);
         graphics_state.setViewport(viewport_state);

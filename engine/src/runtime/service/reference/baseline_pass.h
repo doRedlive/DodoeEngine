@@ -13,10 +13,10 @@ namespace dodoe {
 
     struct BaselinePassContext {
         GfxDeviceHandle device{};
-        cutie::CommandListHandle command_list{};
+        GfxCommandListHandle command_list{};
         const ShaderLibrary* shader_library{nullptr};
         SharedRenderService* shared_render_service{nullptr};
-        cutie::SamplerHandle sampler{};
+        GfxSamplerHandle sampler{};
     };
 
     // Deferred render targets shared across passes (UE-style GBuffer pipeline).

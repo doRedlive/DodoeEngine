@@ -102,9 +102,9 @@ namespace dodoe {
             color_attachment = textures[swapchain_image_index]->getRHI();
         }
 
-        m_command_list->setTextureState(scene_color->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
+        m_command_list->setTextureState(scene_color->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
         if (color_attachment) {
-            m_command_list->setTextureState(color_attachment, cutie::AllSubresources, cutie::ResourceStates::RenderTarget);
+            m_command_list->setTextureState(color_attachment, GfxAllSubresources, GfxResourceStates::RenderTarget);
         }
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
@@ -119,7 +119,7 @@ namespace dodoe {
                 0.0f, static_cast<Float>(extent.x),
                 0.0f, static_cast<Float>(extent.y),
                 0.0f, 1.0f));
-            cutie::GraphicsState present_state;
+            GfxGraphicsState present_state;
             present_state.setPipeline(m_pipeline.Get());
             present_state.setFramebuffer(framebuffer->getRHI());
             present_state.setViewport(present_viewport);
@@ -135,7 +135,7 @@ namespace dodoe {
 #endif
 
         if (color_attachment) {
-            m_command_list->setTextureState(color_attachment, cutie::AllSubresources, cutie::ResourceStates::Present);
+            m_command_list->setTextureState(color_attachment, GfxAllSubresources, GfxResourceStates::Present);
         }
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
     }

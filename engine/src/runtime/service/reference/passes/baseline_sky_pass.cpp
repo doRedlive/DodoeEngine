@@ -123,7 +123,7 @@ namespace dodoe {
         cb_data.inv_view_projection = Math::Inverse(Math::FlipClipSpaceY(view.getViewProjectionMatrix()));
         m_command_list->writeBuffer(m_sky_cb.Get(), &cb_data, sizeof(cb_data));
 
-        cutie::GraphicsState graphics_state;
+        GfxGraphicsState graphics_state;
         graphics_state.setPipeline(m_pipeline.Get());
         graphics_state.setFramebuffer(framebuffer);
         graphics_state.setViewport(viewport_state);

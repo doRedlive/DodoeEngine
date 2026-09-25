@@ -14,12 +14,12 @@ namespace dodoe {
     // Reads the HDR scene color, writes the LDR scene color (ping-pong).
     class BaselinePostProcessPass final : public BaselineRenderPass {
         GfxDeviceHandle m_device{};
-        cutie::CommandListHandle m_command_list{};
+        GfxCommandListHandle m_command_list{};
         const ShaderLibrary* m_shader_library{nullptr};
         SharedRenderService* m_shared_render_service{nullptr};
-        cutie::SamplerHandle m_sampler{};
+        GfxSamplerHandle m_sampler{};
 
-        cutie::BindingLayoutHandle m_binding_layout{};
+        GfxBindingLayoutHandle m_binding_layout{};
         cutie::GraphicsPipelineHandle m_tone_map_pipeline{};
         cutie::GraphicsPipelineHandle m_fxaa_pipeline{};
 

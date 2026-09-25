@@ -14,15 +14,15 @@ namespace dodoe {
 
     class BaselineSpritePass final : public BaselineRenderPass {
         GfxDeviceHandle m_device{};
-        cutie::CommandListHandle m_command_list{};
+        GfxCommandListHandle m_command_list{};
         const ShaderLibrary* m_shader_library{nullptr};
         SharedRenderService* m_shared_render_service{nullptr};
-        cutie::SamplerHandle m_sampler{};
+        GfxSamplerHandle m_sampler{};
 
         cutie::GraphicsPipelineHandle m_pipeline{};
-        cutie::BindingLayoutHandle m_cb_binding_layout{};
-        cutie::BindingLayoutHandle m_material_binding_layout{};
-        cutie::InputLayoutHandle m_input_layout{};
+        GfxBindingLayoutHandle m_cb_binding_layout{};
+        GfxBindingLayoutHandle m_material_binding_layout{};
+        GfxInputLayoutHandle m_input_layout{};
         cutie::BufferHandle m_instance_buffer{};
         cutie::BufferHandle m_vp_buffer{};
         UInt32 m_instance_capacity{0};

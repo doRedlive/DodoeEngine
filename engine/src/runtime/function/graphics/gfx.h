@@ -36,6 +36,7 @@ namespace dodoe {
     using GfxBindingLayoutHandle = cutie::BindingLayoutHandle;
     using GfxComputePipelineHandle = cutie::ComputePipelineHandle;
     using GfxDescriptorTableHandle = cutie::DescriptorTableHandle;
+    using GfxStagingTextureHandle = cutie::StagingTextureHandle;
 
     using GfxFormat = cutie::Format;
     using GfxColor = cutie::Color;
@@ -63,6 +64,7 @@ namespace dodoe {
     using GfxBlendState = cutie::BlendState;
     using GfxDepthStencilState = cutie::DepthStencilState;
     using GfxTextureSubresourceSet = cutie::TextureSubresourceSet;
+    using GfxTextureSlice = cutie::TextureSlice;
     using GfxResourceStates = cutie::ResourceStates;
     using GfxPrimitiveType = cutie::PrimitiveType;
     using GfxTextureDimension = cutie::TextureDimension;

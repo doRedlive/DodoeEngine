@@ -209,18 +209,18 @@ namespace dodoe {
             return;
         }
 
-        m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::CopyDest);
-        m_command_list->setBufferState(m_vp_buffer.Get(), cutie::ResourceStates::CopyDest);
+        m_command_list->setBufferState(m_instance_buffer.Get(), GfxResourceStates::CopyDest);
+        m_command_list->setBufferState(m_vp_buffer.Get(), GfxResourceStates::CopyDest);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->writeBuffer(m_instance_buffer.Get(), instances.data(),
             instances.size() * sizeof(SpriteInstance));
         const Matrix4f view_projection = Math::FlipClipSpaceY(view.getViewProjectionMatrix());
         m_command_list->writeBuffer(m_vp_buffer.Get(), &view_projection, sizeof(view_projection));
 
-        m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::VertexBuffer);
-        m_command_list->setBufferState(m_vp_buffer.Get(), cutie::ResourceStates::ConstantBuffer);
-        m_command_list->setBufferState(scene_resources.quad_vb->getRHI(), cutie::ResourceStates::VertexBuffer);
-        m_command_list->setBufferState(scene_resources.quad_ib->getRHI(), cutie::ResourceStates::IndexBuffer);
+        m_command_list->setBufferState(m_instance_buffer.Get(), GfxResourceStates::VertexBuffer);
+        m_command_list->setBufferState(m_vp_buffer.Get(), GfxResourceStates::ConstantBuffer);
+        m_command_list->setBufferState(scene_resources.quad_vb->getRHI(), GfxResourceStates::VertexBuffer);
+        m_command_list->setBufferState(scene_resources.quad_ib->getRHI(), GfxResourceStates::IndexBuffer);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         Size_t start = 0;
@@ -246,18 +246,18 @@ namespace dodoe {
                     .addItem(GfxBindingSetItem::Sampler(1, m_sampler.Get())),
                 m_material_binding_layout.Get());
 
-            cutie::GraphicsState graphics_state;
+            GfxGraphicsState graphics_state;
             graphics_state.setPipeline(m_pipeline.Get());
             graphics_state.setFramebuffer(framebuffer);
             graphics_state.setViewport(viewport_state);
             graphics_state.addBindingSet(cb_binding_set.Get());
             graphics_state.addBindingSet(material_binding_set.Get());
             graphics_state.addVertexBuffer(
-                cutie::VertexBufferBinding().setBuffer(scene_resources.quad_vb->getRHI()).setSlot(0).setOffset(0));
+                GfxVertexBufferBinding().setBuffer(scene_resources.quad_vb->getRHI()).setSlot(0).setOffset(0));
             graphics_state.addVertexBuffer(
-                cutie::VertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(0));
+                GfxVertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(0));
             graphics_state.setIndexBuffer(
-                cutie::IndexBufferBinding()
+                GfxIndexBufferBinding()
                     .setBuffer(scene_resources.quad_ib->getRHI())
                     .setFormat(GfxFormat::R16_UINT)
                     .setOffset(0));

@@ -12,14 +12,14 @@ namespace dodoe {
 
     class BaselinePickPass final : public BaselineRenderPass {
         GfxDeviceHandle m_device{};
-        cutie::CommandListHandle m_command_list{};
+        GfxCommandListHandle m_command_list{};
         const ShaderLibrary* m_shader_library{nullptr};
         SharedRenderService* m_shared_render_service{nullptr};
 
         cutie::GraphicsPipelineHandle m_pipeline{};
-        cutie::InputLayoutHandle m_input_layout{};
-        cutie::BindingLayoutHandle m_view_binding_layout{};
-        cutie::BindingLayoutHandle m_primitive_binding_layout{};
+        GfxInputLayoutHandle m_input_layout{};
+        GfxBindingLayoutHandle m_view_binding_layout{};
+        GfxBindingLayoutHandle m_primitive_binding_layout{};
         cutie::BufferHandle m_view_cb{};
         cutie::BufferHandle m_primitive_cb{};
         cutie::BindingSetHandle m_view_binding_set{};

@@ -162,9 +162,9 @@ namespace dodoe {
             return;
         }
 
-        m_command_list->setBufferState(m_vertex_buffer.Get(), cutie::ResourceStates::CopyDest);
-        m_command_list->setBufferState(m_index_buffer.Get(), cutie::ResourceStates::CopyDest);
-        m_command_list->setBufferState(m_constant_buffer.Get(), cutie::ResourceStates::CopyDest);
+        m_command_list->setBufferState(m_vertex_buffer.Get(), GfxResourceStates::CopyDest);
+        m_command_list->setBufferState(m_index_buffer.Get(), GfxResourceStates::CopyDest);
+        m_command_list->setBufferState(m_constant_buffer.Get(), GfxResourceStates::CopyDest);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         UInt32 vertex_offset = 0;
@@ -200,9 +200,9 @@ namespace dodoe {
             RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL ? 1.0f : -1.0f};
         m_command_list->writeBuffer(m_constant_buffer.Get(), &push_data, sizeof(push_data));
 
-        m_command_list->setBufferState(m_vertex_buffer.Get(), cutie::ResourceStates::VertexBuffer);
-        m_command_list->setBufferState(m_index_buffer.Get(), cutie::ResourceStates::IndexBuffer);
-        m_command_list->setBufferState(m_constant_buffer.Get(), cutie::ResourceStates::ConstantBuffer);
+        m_command_list->setBufferState(m_vertex_buffer.Get(), GfxResourceStates::VertexBuffer);
+        m_command_list->setBufferState(m_index_buffer.Get(), GfxResourceStates::IndexBuffer);
+        m_command_list->setBufferState(m_constant_buffer.Get(), GfxResourceStates::ConstantBuffer);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         UInt32 global_vertex_offset = 0;
@@ -241,15 +241,15 @@ namespace dodoe {
                     static_cast<Int32>(clip_x), static_cast<Int32>(clip_z),
                     static_cast<Int32>(clip_y), static_cast<Int32>(clip_w)));
 
-                cutie::GraphicsState graphics_state;
+                GfxGraphicsState graphics_state;
                 graphics_state.setPipeline(m_pipeline.Get());
                 graphics_state.setFramebuffer(framebuffer);
                 graphics_state.setViewport(viewport_state);
                 graphics_state.addBindingSet(binding_set.Get());
                 graphics_state.addVertexBuffer(
-                    cutie::VertexBufferBinding().setBuffer(m_vertex_buffer.Get()).setSlot(0).setOffset(global_vertex_offset));
+                    GfxVertexBufferBinding().setBuffer(m_vertex_buffer.Get()).setSlot(0).setOffset(global_vertex_offset));
                 graphics_state.setIndexBuffer(
-                    cutie::IndexBufferBinding()
+                    GfxIndexBufferBinding()
                         .setBuffer(m_index_buffer.Get())
                         .setFormat(GfxFormat::R32_UINT)
                         .setOffset(global_index_offset));

@@ -31,12 +31,12 @@ namespace dodoe {
 
     private:
         GfxDeviceHandle m_device{};
-        cutie::CommandListHandle m_command_list{};
+        GfxCommandListHandle m_command_list{};
         const ShaderLibrary* m_shader_library{nullptr};
         SharedRenderService* m_shared_render_service{nullptr};
-        cutie::SamplerHandle m_sampler{};
-        cutie::BindingLayoutHandle m_binding_layout{};
-        cutie::BindingLayoutHandle m_copy_binding_layout{};
+        GfxSamplerHandle m_sampler{};
+        GfxBindingLayoutHandle m_binding_layout{};
+        GfxBindingLayoutHandle m_copy_binding_layout{};
         cutie::GraphicsPipelineHandle m_pipeline{};
         cutie::GraphicsPipelineHandle m_copy_pipeline{};
         cutie::BufferHandle m_taa_cb{};

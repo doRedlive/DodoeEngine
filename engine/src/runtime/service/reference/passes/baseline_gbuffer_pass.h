@@ -24,17 +24,17 @@ namespace dodoe {
 
     class BaselineGBufferPass final : public BaselineRenderPass {
         GfxDeviceHandle m_device{};
-        cutie::CommandListHandle m_command_list{};
+        GfxCommandListHandle m_command_list{};
         const ShaderLibrary* m_shader_library{nullptr};
         SharedRenderService* m_shared_render_service{nullptr};
 
         cutie::GraphicsPipelineHandle m_pipeline{};
-        cutie::InputLayoutHandle m_input_layout{};
-        cutie::BindingLayoutHandle m_global_binding_layout{};
-        cutie::BindingLayoutHandle m_view_binding_layout{};
-        cutie::BindingLayoutHandle m_material_binding_layout{};
-        cutie::BindingLayoutHandle m_primitive_binding_layout{};
-        cutie::BindingLayoutHandle m_bindless_binding_layout{};
+        GfxInputLayoutHandle m_input_layout{};
+        GfxBindingLayoutHandle m_global_binding_layout{};
+        GfxBindingLayoutHandle m_view_binding_layout{};
+        GfxBindingLayoutHandle m_material_binding_layout{};
+        GfxBindingLayoutHandle m_primitive_binding_layout{};
+        GfxBindingLayoutHandle m_bindless_binding_layout{};
         cutie::BufferHandle m_global_cb{};
         cutie::BufferHandle m_view_cb{};
         cutie::BufferHandle m_primitive_cb{};
@@ -51,8 +51,8 @@ namespace dodoe {
         Bool m_has_prev_frame{false};
 
         cutie::GraphicsPipelineHandle m_pipeline_gpu{};
-        cutie::InputLayoutHandle m_input_layout_gpu{};
-        cutie::BindingLayoutHandle m_view_gpu_binding_layout{};
+        GfxInputLayoutHandle m_input_layout_gpu{};
+        GfxBindingLayoutHandle m_view_gpu_binding_layout{};
         cutie::BindingSetHandle m_view_gpu_binding_set{};
         cutie::IBuffer* m_view_gpu_transforms_rhi{nullptr};
         GfxBufferHandle m_gpu_instance_buffer{};

@@ -188,7 +188,7 @@ namespace dodoe {
         auto draw_fullscreen_light = [&](const DeferredLightPushConstants& push) {
             m_command_list->writeBuffer(m_light_cb.Get(), &push, sizeof(push));
 
-            cutie::GraphicsState graphics_state;
+            GfxGraphicsState graphics_state;
             graphics_state.setPipeline(m_pipeline.Get());
             graphics_state.setFramebuffer(framebuffer);
             graphics_state.setViewport(viewport_state);

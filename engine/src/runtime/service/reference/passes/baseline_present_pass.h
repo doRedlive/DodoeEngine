@@ -13,13 +13,13 @@ namespace dodoe {
 
     class BaselinePresentPass final : public BaselineRenderPass {
         GfxDeviceHandle m_device{};
-        cutie::CommandListHandle m_command_list{};
+        GfxCommandListHandle m_command_list{};
         const ShaderLibrary* m_shader_library{nullptr};
         SharedRenderService* m_shared_render_service{nullptr};
-        cutie::SamplerHandle m_sampler{};
+        GfxSamplerHandle m_sampler{};
 
         cutie::GraphicsPipelineHandle m_pipeline{};
-        cutie::BindingLayoutHandle m_binding_layout{};
+        GfxBindingLayoutHandle m_binding_layout{};
 #ifdef DODOE_DEBUG_ENABLED
         BaselineImGuiPass* m_imgui_pass{nullptr};
 #endif

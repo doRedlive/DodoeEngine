@@ -327,3 +327,23 @@ namespace dodoe {
 	}
 
 } // namespace dodoe
+
+extern "C" {
+
+	void* dodoe_alloc(dodoe::Size_t size) {
+		return dodoe::Memory::AllocatePersistent(size, alignof(std::max_align_t), dodoe::AllocTag::Misc);
+	}
+
+	void* dodoe_alloc_aligned(dodoe::Size_t size, dodoe::Size_t align) {
+		if (align == 0) {
+			align = alignof(std::max_align_t);
+		}
+		return dodoe::Memory::AllocatePersistent(size, align, dodoe::AllocTag::Misc);
+	}
+
+	void dodoe_free(void* p) {
+		if (!p) return;
+		dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+	}
+
+} // extern "C"

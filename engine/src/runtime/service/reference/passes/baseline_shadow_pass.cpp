@@ -220,7 +220,7 @@ namespace dodoe {
 
         ensureInstanceCapacity(static_cast<UInt32>(mesh_ext->instance_scene_data.size()));
 
-        m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::CopyDest);
+        m_command_list->setBufferState(m_instance_buffer.Get(), GfxResourceStates::CopyDest);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         m_command_list->writeBuffer(m_instance_buffer.Get(), mesh_ext->instance_scene_data.data(),
             mesh_ext->instance_scene_data.size() * sizeof(InstanceSceneData));
@@ -228,7 +228,7 @@ namespace dodoe {
         const GlobalMeshShaderData global_data{mesh_ext->frame_time_data};
         m_command_list->writeBuffer(m_global_cb.Get(), &global_data, sizeof(global_data));
 
-        m_command_list->setBufferState(m_instance_buffer.Get(), cutie::ResourceStates::VertexBuffer);
+        m_command_list->setBufferState(m_instance_buffer.Get(), GfxResourceStates::VertexBuffer);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
 
         DynamicArray<UInt32> instance_prefix(mesh_ext->visible_primitives.size() + 1, 0);
@@ -245,9 +245,9 @@ namespace dodoe {
                 result.cascade_view_projections[cascade]);
         }
 
-        m_command_list->setTextureState(m_shadow_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::DepthWrite);
+        m_command_list->setTextureState(m_shadow_depth->getRHI(), GfxAllSubresources, GfxResourceStates::DepthWrite);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
-        m_command_list->clearDepthStencilTexture(m_shadow_depth->getRHI(), cutie::AllSubresources, true, 1.0f, false, 0);
+        m_command_list->clearDepthStencilTexture(m_shadow_depth->getRHI(), GfxAllSubresources, true, 1.0f, false, 0);
 
         const Float quad_size = static_cast<Float>(kShadowMapSize / 2u);
         for (UInt32 cascade = 0; cascade < kShadowCascadeCount; ++cascade) {
@@ -292,18 +292,18 @@ namespace dodoe {
                         continue;
                     }
 
-                    cutie::GraphicsState graphics_state;
+                    GfxGraphicsState graphics_state;
                     graphics_state.setPipeline(m_pipeline.Get());
                     graphics_state.setFramebuffer(m_shadow_framebuffer->getRHI());
                     graphics_state.setViewport(cascade_viewport);
                     graphics_state.addBindingSet(m_global_binding_set.Get());
                     graphics_state.addBindingSet(m_view_binding_set.Get());
                     graphics_state.addVertexBuffer(
-                        cutie::VertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
+                        GfxVertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
                     graphics_state.addVertexBuffer(
-                        cutie::VertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(instance_offset));
+                        GfxVertexBufferBinding().setBuffer(m_instance_buffer.Get()).setSlot(1).setOffset(instance_offset));
                     graphics_state.setIndexBuffer(
-                        cutie::IndexBufferBinding()
+                        GfxIndexBufferBinding()
                             .setBuffer(element.index_buffer->getRHI())
                             .setFormat(GfxFormat::R32_UINT)
                             .setOffset(0));
@@ -319,7 +319,7 @@ namespace dodoe {
             }
         }
 
-        m_command_list->setTextureState(m_shadow_depth->getRHI(), cutie::AllSubresources, cutie::ResourceStates::ShaderResource);
+        m_command_list->setTextureState(m_shadow_depth->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         return result;
     }
