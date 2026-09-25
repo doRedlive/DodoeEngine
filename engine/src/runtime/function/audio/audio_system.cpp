@@ -12,7 +12,7 @@ namespace dodoe {
         AudioBackendInitInfo backend_info;
         backend_info.master_volume = create_info.master_volume;
         if (!m_backend->initialize(backend_info)) {
-            delete m_backend;
+            DODOE_DELETE(m_backend, AudioBackend, AllocCategory::Object);
             m_backend = nullptr;
             return false;
         }
@@ -24,7 +24,7 @@ namespace dodoe {
             return;
         }
         m_backend->shutdown();
-        delete m_backend;
+        DODOE_DELETE(m_backend, AudioBackend, AllocCategory::Object);
         m_backend = nullptr;
     }
 

@@ -28,10 +28,10 @@ GlobalShaderMap                MaterialShaderMap        ShaderReflector
 
 | 内容 | 说明 |
 |---|---|
-| `shader_manifest.json` | 全部 shader 的清单:name / source(不含扩展名)/ entry_point / stage / platforms |
-| `*_pass.vert/.frag/.geom/.comp` | GLSL 源码(OpenGL 后端直接使用) |
-| `bin/*.spv` `bin/*.dxil` | 离线编译产物(Vulkan/D3D12 使用;`.spv` 同时作为所有后端的反射字节码来源) |
-| `shader_parameter_sets.glsl` | set/binding 宏约定(见 §4) |
+| `shader_manifest.json` | 全部 shader 的清单:name / source(不含扩展名,可带子目录)/ entry_point / stage / platforms |
+| `mesh/ shadow/ post/ skybox/ compute/ ui/ editor/ reference/` | GLSL 源码,按管线用途分目录(OpenGL 后端直接使用) |
+| `common/` | 跨 shader 共享的 include 库(`shader_parameter_sets.glsl`、`shadow_csm.glsl`) |
+| `bin/**/*.spv` `bin/**/*.dxil` | 离线编译产物,目录结构与源码一致(Vulkan/D3D12 使用;`.spv` 同时作为所有后端的反射字节码来源) |
 
 `ShaderManifest`(shader_manifest.h):`loadFromFile` 解析清单,按 name 建索引;`StageToExtension` 把 stage 映射为 `.vert/.frag/.geom/.comp` 扩展名。`ReadShaderFile` 以引擎 res 目录为根读二进制文件。
 
@@ -45,7 +45,7 @@ m_manifest.loadFromFile("shaders/shader_manifest.json")
   → 逐条目:
       platforms 过滤(当前后端不在列表则跳过)
       非 bindless 模式跳过 GBufferPS / SpritePS / UIPS / ForwardLitPS
-      OpenGL:读源码并 InlineShaderIncludes(内联 shader_parameter_sets.glsl,
+      OpenGL:读源码并 InlineShaderIncludes(内联 common/shader_parameter_sets.glsl,
               正则把 #define DOE_XXX n 展开为字面量)
       其他后端:读 shaders/bin/<source><ext><backend_ext>
       GDrawCommandList.createShader → m_shaders[name]

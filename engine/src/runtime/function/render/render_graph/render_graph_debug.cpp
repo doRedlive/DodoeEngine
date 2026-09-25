@@ -2,7 +2,8 @@
 
 #include "render_graph_debug.h"
 
-#include <chrono>
+#include "runtime/function/time/time_system.h"
+
 #include <mutex>
 
 #if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
@@ -16,17 +17,10 @@ namespace dodoe {
         UInt32 s_refresh_interval_ms{500};
         UInt64 s_last_publish_ms{0};
         Bool s_force_publish{true};
-
-        UInt64 now_ms() {
-            return static_cast<UInt64>(
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now().time_since_epoch())
-                    .count());
-        }
     }
 
     void RenderGraphDebug::Publish(const RenderGraph& graph) {
-        const UInt64 now = now_ms();
+        const UInt64 now = TimeSystem::GetSteadyTimeMs();
         {
             std::lock_guard<std::mutex> lock(s_mutex);
             if (!s_force_publish) {

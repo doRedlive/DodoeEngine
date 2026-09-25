@@ -29,6 +29,25 @@ if(MSVC)
     add_compile_definitions(_ENABLE_EXTENDED_ALIGNED_STORAGE)
 endif()
 
+if(WIN32 AND NOT DEFINED CMAKE_PREFIX_PATH AND NOT DEFINED Qt6_DIR)
+    file(GLOB DODOE_QT_CANDIDATES
+        "C:/Qt/[0-9]*/*/lib/cmake/Qt6"
+        "D:/Qt/[0-9]*/*/lib/cmake/Qt6"
+        "E:/Qt/[0-9]*/*/lib/cmake/Qt6"
+        "$ENV{USERPROFILE}/Library/Qt/[0-9]*/*/lib/cmake/Qt6"
+    )
+    if(DODOE_QT_CANDIDATES)
+        list(SORT DODOE_QT_CANDIDATES)
+        list(GET DODOE_QT_CANDIDATES -1 DODOE_QT_LATEST)
+        get_filename_component(DODOE_QT_PREFIX "${DODOE_QT_LATEST}/../../.." ABSOLUTE)
+        list(APPEND CMAKE_PREFIX_PATH "${DODOE_QT_PREFIX}")
+        message(STATUS "Dodoe: auto-detected Qt at ${DODOE_QT_PREFIX}")
+    endif()
+    unset(DODOE_QT_CANDIDATES)
+    unset(DODOE_QT_LATEST)
+    unset(DODOE_QT_PREFIX)
+endif()
+
 add_subdirectory(engine)
 
 option(DODOE_BUILD_TESTS "Build Dodoe tests" ON)

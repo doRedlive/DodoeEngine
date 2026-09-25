@@ -81,7 +81,7 @@ namespace dodoe {
 		static std::atomic<UInt64> s_frame_epoch;
 		static std::vector<ThreadAllocator*> s_thread_allocators;
 		static std::mutex s_thread_allocators_mutex;
-		static PoolAllocator* s_pools[static_cast<int>(AllocTag::Count)];
+		static std::atomic<PoolAllocator*> s_pools[static_cast<int>(AllocTag::Count)];
 		static std::mutex s_pools_mutex;
 
 	public:
@@ -94,6 +94,7 @@ namespace dodoe {
 
 		static void* AllocatePersistent(Size_t size, Size_t align, AllocTag tag = AllocTag::Object);
 		static void  DeallocatePersistent(void* p, Size_t size, AllocTag tag = AllocTag::Object);
+		static Size_t UsableSize(const void* p);
 		static void* AllocateFrame(Size_t size, Size_t align, AllocTag tag = AllocTag::RenderCmd);
 		static void* AllocateScratch(Size_t size, Size_t align);
 
@@ -132,7 +133,36 @@ namespace dodoe {
 	public:
 		virtual ~MemoryTrackedObject() = default;
 
+		static void* operator new(std::size_t size) {
+			void* p = Memory::AllocatePersistent(static_cast<Size_t>(size), alignof(std::max_align_t), AllocTag::Object);
+			if (!p) {
+				throw std::bad_alloc();
+			}
+			return p;
+		}
+
+		static void* operator new[](std::size_t size) {
+			void* p = Memory::AllocatePersistent(static_cast<Size_t>(size), alignof(std::max_align_t), AllocTag::Object);
+			if (!p) {
+				throw std::bad_alloc();
+			}
+			return p;
+		}
+
+		static void* operator new(std::size_t size, void* where) noexcept {
+			(void)size;
+			return where;
+		}
+
+		static void operator delete(void* ptr, void*) noexcept {
+			(void)ptr;
+		}
+
 		static void operator delete(void* ptr, std::size_t size) noexcept {
+			Memory::DeallocatePersistent(ptr, size, AllocTag::Object);
+		}
+
+		static void operator delete[](void* ptr, std::size_t size) noexcept {
 			Memory::DeallocatePersistent(ptr, size, AllocTag::Object);
 		}
 	};
@@ -143,7 +173,7 @@ namespace dodoe {
     ([&]() -> T* { \
         void* memory = dodoe::Memory::Allocate(sizeof(T), alignof(T), cat, #T); \
         if (!memory) throw std::bad_alloc{}; \
-        return new (memory) T(__VA_ARGS__); \
+        return ::new (memory) T(__VA_ARGS__); \
     }())
 
 #define DODOE_DELETE(p, T, cat) \

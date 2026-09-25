@@ -24,6 +24,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SANDBOX_ALL_SOURCES})
 
 target_link_libraries(${TARGET_NAME}
         PRIVATE DodoeRuntime
+        PRIVATE DodoeNewDelete
 )
 
 if(TARGET GreenCakeBuild)

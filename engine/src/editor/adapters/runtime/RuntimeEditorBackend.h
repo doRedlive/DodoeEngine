@@ -13,6 +13,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace dodoe {
     class Application;
@@ -73,6 +75,30 @@ public:
     std::string diagnostic() const override;
 
 private:
+    using CommandHandler = bool (RuntimeEditorBackend::*)(const EditorCommandMessage&);
+
+    void registerCommandHandlers();
+    bool handleDocumentChanged(const EditorCommandMessage& command);
+    bool handleSceneMouseDown(const EditorCommandMessage& command);
+    bool handleSceneMouseMove(const EditorCommandMessage& command);
+    bool handleSceneMouseUp(const EditorCommandMessage& command);
+    bool handleSceneMouseWheel(const EditorCommandMessage& command);
+    bool handleSceneKey(const EditorCommandMessage& command);
+    bool handleSelectionChanged(const EditorCommandMessage& command);
+    bool handleGizmoMode(const EditorCommandMessage& command);
+    bool handleGizmoSnap(const EditorCommandMessage& command);
+    bool handleGizmoSnapStep(const EditorCommandMessage& command);
+    bool handleCameraMode(const EditorCommandMessage& command);
+    bool handleSceneImportAsset(const EditorCommandMessage& command);
+    bool handlePrefabExport(const EditorCommandMessage& command);
+    bool handlePlayAction(const EditorCommandMessage& command);
+    bool handleAssetSaveAll(const EditorCommandMessage& command);
+    bool handleAssetRefresh(const EditorCommandMessage& command);
+    bool handleAssetImport(const EditorCommandMessage& command);
+    bool handleAssetReimport(const EditorCommandMessage& command);
+    bool handleScriptToolAction(const EditorCommandMessage& command);
+    bool handleAssetUpdateSettings(const EditorCommandMessage& command);
+
     bool bootRuntime();
     bool executeTilemapCommand(const EditorCommandMessage& command);
     void applyPendingMetrics();
@@ -89,6 +115,12 @@ private:
     void beginDrag(int axis, float screenX, float screenY);
     void updateDrag(float screenX, float screenY);
     void endDrag();
+    struct TransformUpdate {
+        std::uint64_t uuid = 0;
+        dodoe::Vector3f position;
+        dodoe::Vector3f rotation;
+        dodoe::Vector3f scale;
+    };
     void emitTransformChange(const dodoe::Vector3f& position, const dodoe::Vector3f& rotation,
                              const dodoe::Vector3f& scale);
     void emitTransformChanges(const std::vector<TransformUpdate>& updates);
@@ -103,6 +135,7 @@ private:
     void reportMissingAssetReferences();
 
     std::unique_ptr<dodoe::Application> m_app;
+    std::unordered_map<std::string, CommandHandler> m_commandHandlers;
     std::unique_ptr<EditorCamera> m_camera;
     std::unique_ptr<dodoe::EditorCameraProvider> m_cameraProvider;
     dodoe::RenderViewTarget* m_sceneTarget = nullptr;
@@ -127,12 +160,6 @@ private:
     bool m_tilePaintActive = false;
     int m_dragAxis = -1;
     std::string m_dragMode;
-    struct TransformUpdate {
-        std::uint64_t uuid = 0;
-        dodoe::Vector3f position;
-        dodoe::Vector3f rotation;
-        dodoe::Vector3f scale;
-    };
     std::vector<TransformUpdate> m_dragEntities;
     dodoe::Vector3f m_dragStartPosition{0.0f, 0.0f, 0.0f};
     dodoe::Vector3f m_dragStartRotation{0.0f, 0.0f, 0.0f};

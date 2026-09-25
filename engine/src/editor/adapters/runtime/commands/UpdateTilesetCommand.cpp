@@ -112,11 +112,11 @@ bool UpdateTilesetCommand::execute(EditorDocumentModel& model)
     return apply(next);
 }
 
-bool UpdateTilesetCommand::revert(EditorDocumentModel& model)
+void UpdateTilesetCommand::revert(EditorDocumentModel& model)
 {
     (void)model;
-    if (!m_captured) return true;
-    return apply(m_previous);
+    if (!m_captured) return;
+    apply(m_previous);
 }
 
 bool UpdateTilesetCommand::apply(const State& state)

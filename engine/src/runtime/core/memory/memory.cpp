@@ -21,7 +21,7 @@ namespace dodoe {
 	std::atomic<UInt64> Memory::s_frame_epoch{0};
 	std::vector<ThreadAllocator*> Memory::s_thread_allocators{};
 	std::mutex Memory::s_thread_allocators_mutex{};
-	PoolAllocator* Memory::s_pools[static_cast<int>(AllocTag::Count)]{};
+	std::atomic<PoolAllocator*> Memory::s_pools[static_cast<int>(AllocTag::Count)]{};
 	std::mutex Memory::s_pools_mutex{};
 
 	void TierStats::recordAlloc(Size_t size) {
@@ -49,9 +49,10 @@ namespace dodoe {
 
 	void Memory::Shutdown() {
 		std::lock_guard<std::mutex> lock(s_pools_mutex);
-		for (auto*& pool : s_pools) {
+		for (auto& slot : s_pools) {
+			PoolAllocator* pool = slot.load(std::memory_order_acquire);
 			delete pool;
-			pool = nullptr;
+			slot.store(nullptr, std::memory_order_release);
 		}
 	}
 
@@ -94,7 +95,7 @@ namespace dodoe {
 
 		switch (tier) {
 		case AllocTier::Persistent:
-			if (PoolAllocator* pool = s_pools[tag_idx]) {
+			if (PoolAllocator* pool = s_pools[tag_idx].load(std::memory_order_acquire)) {
 				p = pool->allocate(size, align);
 				if (!p) {
 					p = s_fallback.allocate(size, align);
@@ -132,7 +133,8 @@ namespace dodoe {
 		switch (tier) {
 		case AllocTier::Persistent: {
 			bool released = false;
-			for (auto* pool : s_pools) {
+			for (auto& slot : s_pools) {
+				PoolAllocator* pool = slot.load(std::memory_order_acquire);
 				if (pool && pool->owns(p)) {
 					pool->deallocate(p, size);
 					released = true;
@@ -168,6 +170,17 @@ namespace dodoe {
 		Deallocate(AllocTier::Persistent, p, size, tag);
 	}
 
+	Size_t Memory::UsableSize(const void* p) {
+		if (!p) return 0;
+		for (auto& slot : s_pools) {
+			PoolAllocator* pool = slot.load(std::memory_order_acquire);
+			if (pool && pool->owns(p)) {
+				return pool->blockSize();
+			}
+		}
+		return static_cast<Size_t>(mi_malloc_size(p));
+	}
+
 	void* Memory::AllocateFrame(Size_t size, Size_t align, AllocTag tag) {
 		return Allocate(AllocTier::Frame, size, align, tag);
 	}
@@ -179,11 +192,11 @@ namespace dodoe {
 	void Memory::RegisterPool(AllocTag tag, Size_t block_size, Size_t block_align) {
 		const int idx = static_cast<int>(tag);
 		std::lock_guard<std::mutex> lock(s_pools_mutex);
-		if (s_pools[idx]) {
+		if (s_pools[idx].load(std::memory_order_acquire)) {
 			DO_WARN("Memory::RegisterPool: pool already registered for tag {}", static_cast<int>(tag));
 			return;
 		}
-		s_pools[idx] = new PoolAllocator(block_size, block_align);
+		s_pools[idx].store(new PoolAllocator(block_size, block_align), std::memory_order_release);
 	}
 
 	const TierStats& Memory::GetStats(AllocTier tier, AllocTag tag) {
@@ -219,7 +232,7 @@ namespace dodoe {
 		PoolRuntimeStats stats;
 		const int idx = static_cast<int>(tag);
 		std::lock_guard<std::mutex> lock(s_pools_mutex);
-		PoolAllocator* pool = s_pools[idx];
+		PoolAllocator* pool = s_pools[idx].load(std::memory_order_acquire);
 		if (!pool) {
 				return stats;
 		}

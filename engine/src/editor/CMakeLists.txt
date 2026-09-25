@@ -114,7 +114,7 @@ set(EDITOR_RUNTIME_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/PrefabService.cpp
 )
 add_library(EditorRuntimeBackend STATIC ${EDITOR_RUNTIME_BACKEND_SOURCES})
-target_link_libraries(EditorRuntimeBackend PRIVATE EditorCore EditorServices DodoeRuntime)
+target_link_libraries(EditorRuntimeBackend PUBLIC DodoeRuntime PRIVATE EditorCore EditorServices)
 target_include_directories(EditorRuntimeBackend PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ENGINE_ROOT_DIR}/src
@@ -189,11 +189,13 @@ function(setup_cakery_product product_target copy_runtime)
         AUTOMOC ON
         WIN32_EXECUTABLE ON
         VS_DEBUGGER_WORKING_DIRECTORY "${BINARY_ROOT_DIR}"
+        VS_DEBUGGER_COMMAND "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:${product_target}>"
         FOLDER "Apps"
     )
     set(POST_BUILD_COMMANDS
         COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${product_target}>" "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:${product_target}>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_PDB_FILE:${product_target}>" "${BINARY_ROOT_DIR}/"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:qtadvanceddocking-qt6>" "${BINARY_ROOT_DIR}/$<TARGET_FILE_NAME:qtadvanceddocking-qt6>"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}/resources/editor"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res/editor" "${BINARY_ROOT_DIR}/resources/editor"
@@ -223,6 +225,7 @@ qt_add_executable(${TARGET_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/products/cakery/mai
 target_link_libraries(${TARGET_NAME}
     PRIVATE EditorUI
     PRIVATE EditorRuntimeBackend
+    PRIVATE DodoeNewDelete
     PRIVATE Qt6::Widgets
 )
 target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

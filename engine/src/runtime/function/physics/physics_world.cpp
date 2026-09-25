@@ -214,6 +214,27 @@ namespace dodoe {
 
         class EntityGroupFilter final : public JPH::GroupFilter {
         public:
+            static void* operator new(std::size_t size) {
+                void* p = Memory::AllocatePersistent(static_cast<Size_t>(size), alignof(std::max_align_t), AllocTag::Object);
+                if (!p) {
+                    throw std::bad_alloc();
+                }
+                return p;
+            }
+
+            static void* operator new(std::size_t size, void* where) noexcept {
+                (void)size;
+                return where;
+            }
+
+            static void operator delete(void* ptr, void*) noexcept {
+                (void)ptr;
+            }
+
+            static void operator delete(void* ptr, std::size_t size) noexcept {
+                Memory::DeallocatePersistent(ptr, static_cast<Size_t>(size), AllocTag::Object);
+            }
+
             ui64 m_entity_key{0};
             bool CanCollide(const JPH::CollisionGroup& inGroup1, const JPH::CollisionGroup& inGroup2) const override {
                 (void)inGroup1;

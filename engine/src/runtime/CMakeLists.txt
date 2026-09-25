@@ -22,6 +22,10 @@ file(GLOB_RECURSE HEADER_FILES
 
 set(DODOE_ALL_SOURCES ${SOURCE_FILES} ${HEADER_FILES})
 
+set(DODOE_GLOBAL_NEW_DELETE ${CMAKE_CURRENT_SOURCE_DIR}/core/memory/global_new_delete.cpp)
+list(REMOVE_ITEM SOURCE_FILES ${DODOE_GLOBAL_NEW_DELETE})
+set(DODOE_ALL_SOURCES ${SOURCE_FILES} ${HEADER_FILES})
+
 set(_DODOE_RUNTIME_HEADS "")
 foreach(_header_file IN LISTS HEADER_FILES)
     file(RELATIVE_PATH _rel "${ENGINE_ROOT_DIR}/src" "${_header_file}")
@@ -32,6 +36,28 @@ list(REMOVE_DUPLICATES _DODOE_RUNTIME_HEADS)
 set(DODOE_RUNTIME_HEADS "${_DODOE_RUNTIME_HEADS}" CACHE STRING "Runtime headers for DodoePreCompile" FORCE)
 
 add_library(${TARGET_NAME} SHARED ${DODOE_ALL_SOURCES})
+
+add_library(DodoeNewDelete OBJECT ${DODOE_GLOBAL_NEW_DELETE})
+target_compile_definitions(DodoeNewDelete PRIVATE DODOE_MEMORY_GLOBAL_NEW_DELETE=$<BOOL:${DODOE_MEMORY_GLOBAL_NEW_DELETE}>)
+target_include_directories(DodoeNewDelete
+        PUBLIC
+                $<BUILD_INTERFACE:${ENGINE_ROOT_DIR}/src>
+                ${ENGINE_ROOT_DIR}/external/spdlog/include
+                ${ENGINE_ROOT_DIR}/external/glfw/include
+                ${ENGINE_ROOT_DIR}/external/dear-imgui
+                ${ENGINE_ROOT_DIR}/external/stb_image
+                ${ENGINE_ROOT_DIR}/external/glm
+                ${ENGINE_ROOT_DIR}/external/entt/src
+                ${ENGINE_ROOT_DIR}/external/box2d/include
+                ${ENGINE_ROOT_DIR}/external/JoltPhysics
+                ${ENGINE_ROOT_DIR}/external/vulkanmemoryallocator/include
+                ${ENGINE_ROOT_DIR}/external/json/include
+                ${ENGINE_ROOT_DIR}/external/assimp/include
+                ${ENGINE_ROOT_DIR}/external/cutie-rhi/include
+                ${ENGINE_ROOT_DIR}/external/miniaudio
+)
+target_link_libraries(DodoeNewDelete PRIVATE mimalloc::mimalloc)
+target_link_libraries(${TARGET_NAME} PUBLIC DodoeNewDelete)
 
 target_sources(${TARGET_NAME} PRIVATE
     ${ENGINE_ROOT_DIR}/src/_generated/script/py_bindings_components.generated.cpp
@@ -98,7 +124,7 @@ target_link_libraries(${TARGET_NAME}
         PUBLIC ${Vulkan_LIBRARIES}
         PUBLIC d3d12
         PUBLIC dxgi
-        PUBLIC mimalloc::mimalloc
+        PRIVATE mimalloc::mimalloc
         PUBLIC spirv-cross-core
         PUBLIC spirv-cross-glsl
         PUBLIC spirv-cross-reflect

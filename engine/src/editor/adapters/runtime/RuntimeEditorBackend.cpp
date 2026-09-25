@@ -145,6 +145,7 @@ RuntimeEditorBackend::RuntimeEditorBackend()
 {
     TilePaintService::RegisterCommands();
     RegisterReparentCommand();
+    registerCommandHandlers();
 }
 
 RuntimeEditorBackend::~RuntimeEditorBackend()
@@ -382,401 +383,450 @@ bool RuntimeEditorBackend::openDocument(const std::string& documentId)
     return true;
 }
 
+void RuntimeEditorBackend::registerCommandHandlers()
+{
+    m_commandHandlers = {
+        {"document_changed", &RuntimeEditorBackend::handleDocumentChanged},
+        {"scene_mouse_down", &RuntimeEditorBackend::handleSceneMouseDown},
+        {"scene_mouse_move", &RuntimeEditorBackend::handleSceneMouseMove},
+        {"scene_mouse_up", &RuntimeEditorBackend::handleSceneMouseUp},
+        {"scene_mouse_wheel", &RuntimeEditorBackend::handleSceneMouseWheel},
+        {"scene_key", &RuntimeEditorBackend::handleSceneKey},
+        {"selection_changed", &RuntimeEditorBackend::handleSelectionChanged},
+        {"gizmo_mode", &RuntimeEditorBackend::handleGizmoMode},
+        {"gizmo_snap", &RuntimeEditorBackend::handleGizmoSnap},
+        {"gizmo_snap_step", &RuntimeEditorBackend::handleGizmoSnapStep},
+        {"camera_mode", &RuntimeEditorBackend::handleCameraMode},
+        {"scene.import_asset", &RuntimeEditorBackend::handleSceneImportAsset},
+        {"prefab.export", &RuntimeEditorBackend::handlePrefabExport},
+        {"play", &RuntimeEditorBackend::handlePlayAction},
+        {"pause", &RuntimeEditorBackend::handlePlayAction},
+        {"resume", &RuntimeEditorBackend::handlePlayAction},
+        {"stop", &RuntimeEditorBackend::handlePlayAction},
+        {"asset.save_all", &RuntimeEditorBackend::handleAssetSaveAll},
+        {"asset.refresh", &RuntimeEditorBackend::handleAssetRefresh},
+        {"asset.import", &RuntimeEditorBackend::handleAssetImport},
+        {"asset.reimport", &RuntimeEditorBackend::handleAssetReimport},
+        {"script.tool_action", &RuntimeEditorBackend::handleScriptToolAction},
+        {"asset.update_settings", &RuntimeEditorBackend::handleAssetUpdateSettings},
+    };
+}
+
 bool RuntimeEditorBackend::execute(const EditorCommandMessage& command)
 {
-    if (command.name == "document_changed") {
-        if (command.payload.empty()) {
-            return false;
-        }
-        try {
-            const nlohmann::json snapshot = nlohmann::json::parse(command.payload);
-            EditorDocument document;
-            if (!EditorDocumentSerializer::fromJson(snapshot, document)) {
-                return false;
-            }
-            m_document = std::move(document);
-            m_hasDocument = true;
-            if (m_booted && !reconcileScene(m_document)) {
-                return false;
-            }
-        } catch (const nlohmann::json::exception&) {
-            return false;
-        }
-        return true;
+    const auto it = m_commandHandlers.find(command.name);
+    if (it != m_commandHandlers.end()) {
+        return (this->*(it->second))(command);
     }
-
-    if (command.name == "scene_mouse_down") {
-        float x = 0.0f, y = 0.0f;
-        int button = 0, alt = 0, ctrl = 0, shift = 0;
-        if (std::sscanf(command.payload.c_str(), "%f,%f,%d,%d,%d,%d", &x, &y, &button, &alt, &ctrl, &shift) >= 3) {
-            m_altHeld = alt != 0;
-            m_ctrlHeld = ctrl != 0;
-            m_shiftHeld = shift != 0;
-            const bool tileEditing = m_tilePaint && m_tilePaint->hasTarget() &&
-                                     button == 0 && alt == 0;
-            if (tileEditing) {
-                int cx = 0, cy = 0;
-                if (screenToCell(x, y, cx, cy)) {
-                    m_tilePaint->setHoverCell(cx, cy);
-                    m_tilePaint->onCellDown(cx, cy);
-                } else {
-                    m_tilePaint->clearHover();
-                }
-                m_tilePaintActive = true;
-                return true;
-            }
-            if (button == 0 && alt == 0 && m_selectedUuid != 0 && m_gizmoMode != "none") {
-                const int axis = hitTestGizmo(x, y);
-                if (axis >= 0) {
-                    beginDrag(axis, x, y);
-                    return true;
-                }
-            }
-            if (m_camera) {
-                m_camera->onMouseDown(x, y, button, alt != 0);
-            }
-            if (button == 0 && alt == 0 && m_camera) {
-                pickAt(x, y);
-            }
-        }
-        return true;
-    }
-
-    if (command.name == "scene_mouse_move") {
-        float x = 0.0f, y = 0.0f;
-        int ctrl = 0, shift = 0, alt = 0;
-        if (std::sscanf(command.payload.c_str(), "%f,%f,%d,%d,%d", &x, &y, &ctrl, &shift, &alt) >= 2) {
-            m_ctrlHeld = ctrl != 0;
-            m_shiftHeld = shift != 0;
-            m_altHeld = alt != 0;
-            if (m_tilePaintActive) {
-                int cx = 0, cy = 0;
-                if (screenToCell(x, y, cx, cy)) {
-                    m_tilePaint->setHoverCell(cx, cy);
-                    m_tilePaint->onCellDrag(cx, cy);
-                } else {
-                    m_tilePaint->clearHover();
-                }
-                return true;
-            }
-            if (m_tilePaint && m_tilePaint->hasTarget() && m_tilePaint->tool() != TileTool::Select) {
-                int cx = 0, cy = 0;
-                if (screenToCell(x, y, cx, cy)) {
-                    m_tilePaint->setHoverCell(cx, cy);
-                } else {
-                    m_tilePaint->clearHover();
-                }
-            }
-            if (m_dragAxis >= 0) {
-                updateDrag(x, y);
-            } else if (m_camera) {
-                m_camera->onMouseMove(x, y);
-            }
-        }
-        return true;
-    }
-
-    if (command.name == "scene_mouse_up") {
-        int button = 0;
-        if (std::sscanf(command.payload.c_str(), "%d", &button) >= 1) {
-            if (m_tilePaintActive && button == 0) {
-                m_tilePaint->onCellUp();
-                m_tilePaintActive = false;
-                return true;
-            }
-            if (m_dragAxis >= 0 && button == 0) {
-                endDrag();
-            } else if (m_camera) {
-                m_camera->onMouseUp(button);
-            }
-        }
-        return true;
-    }
-
-    if (command.name == "scene_mouse_wheel") {
-        float delta = 0.0f;
-        if (std::sscanf(command.payload.c_str(), "%f", &delta) >= 1) {
-            if (m_camera) {
-                m_camera->onScroll(delta);
-            }
-        }
-        return true;
-    }
-
-    if (command.name == "scene_key") {
-        int key = 0, down = 0;
-        if (std::sscanf(command.payload.c_str(), "%d,%d", &key, &down) >= 2) {
-            if (m_camera) {
-                m_camera->onKey(key, down != 0);
-            }
-        }
-        return true;
-    }
-
-    if (command.name == "selection_changed") {
-        m_selectedUuid = command.payload.empty()
-            ? 0
-            : static_cast<std::uint64_t>(std::strtoull(command.payload.c_str(), nullptr, 10));
-        updateTileEditFromSelection();
-        return true;
-    }
-
-    if (command.name == "gizmo_mode") {
-        m_gizmoMode = command.payload.empty() ? "none" : command.payload;
-        return true;
-    }
-
-    if (command.name == "gizmo_snap") {
-        if (command.payload.empty()) {
-            return false;
-        }
-        if (command.payload == "1" || command.payload == "true") {
-            m_snapEnabled = true;
-            return true;
-        }
-        if (command.payload == "0" || command.payload == "false") {
-            m_snapEnabled = false;
-            return true;
-        }
-        try {
-            const nlohmann::json payload = nlohmann::json::parse(command.payload);
-            if (!payload.is_object()) {
-                return false;
-            }
-            if (payload.contains("enabled")) {
-                m_snapEnabled = payload.at("enabled").get<bool>();
-            }
-            if (payload.contains("translate")) {
-                m_translateSnap = std::max(0.0f, payload.at("translate").get<float>());
-            }
-            if (payload.contains("rotate")) {
-                m_rotateSnap = std::max(0.0f, payload.at("rotate").get<float>());
-            }
-            if (payload.contains("scale")) {
-                m_scaleSnap = std::max(0.0f, payload.at("scale").get<float>());
-            }
-        } catch (const nlohmann::json::exception&) {
-            return false;
-        }
-        return true;
-    }
-
-    if (command.name == "gizmo_snap_step") {
-        float translate = m_translateSnap, rotate = m_rotateSnap, scale = m_scaleSnap;
-        if (std::sscanf(command.payload.c_str(), "%f,%f,%f", &translate, &rotate, &scale) < 1) {
-            return false;
-        }
-        m_translateSnap = std::max(0.0f, translate);
-        m_rotateSnap = std::max(0.0f, rotate);
-        m_scaleSnap = std::max(0.0f, scale);
-        return true;
-    }
-
-    if (command.name == "camera_mode") {
-        if (!m_camera) {
-            return false;
-        }
-        const bool is2d = command.payload == "2d";
-        m_camera->setMode(is2d ? EditorCamera::Mode::Ortho2D : EditorCamera::Mode::Orbit);
-        m_eventCallback(BackendEventMessage{"camera_mode_changed", is2d ? "2d" : "3d"});
-        return true;
-    }
-
-    if (command.name == "scene.import_asset") {
-        if (!m_booted || !m_app || !m_session || !m_camera || command.payload.empty()) {
-            return false;
-        }
-        std::vector<std::string> lines;
-        {
-            std::istringstream stream(command.payload);
-            std::string line;
-            while (std::getline(stream, line)) {
-                lines.push_back(line);
-            }
-        }
-        if (lines.size() < 3) {
-            return false;
-        }
-        float dropX = 0.0f;
-        float dropY = 0.0f;
-        if (std::sscanf(lines[0].c_str(), "%f,%f", &dropX, &dropY) < 2) {
-            return false;
-        }
-        dodoe::Vector3f worldPos = ScreenToWorldDropPosition(m_camera.get(), dropX, dropY);
-        nlohmann::json position = {worldPos.x, worldPos.y, worldPos.z};
-        bool importedAny = false;
-        for (std::size_t i = 1; i + 1 < lines.size(); i += 2) {
-            importedAny = importDroppedAsset(lines[i + 1], position) || importedAny;
-        }
-        return importedAny;
-    }
-
-    if (command.name == "prefab.export") {
-        if (!m_booted || !m_app || command.payload.empty()) {
-            return false;
-        }
-        std::istringstream stream(command.payload);
-        std::string uuidText;
-        std::string path;
-        std::getline(stream, uuidText, ',');
-        std::getline(stream, path);
-        const std::uint64_t uuid = std::strtoull(uuidText.c_str(), nullptr, 10);
-        if (uuid == 0 || path.empty()) {
-            return false;
-        }
-        World* world = m_app->context().getWorld();
-        Scene* scene = world ? world->getActiveScene() : nullptr;
-        if (!scene) {
-            return false;
-        }
-        dodoe::Entity root = scene->tryGetEntityByUUID(dodoe::UUID(uuid));
-        if (!root.valid()) {
-            return false;
-        }
-        const dodoe::ObjectID ref = dodoe::SceneImporter::ExportPrefab(dodoe::String(path.c_str()), root);
-        if (!ref.isValid()) {
-            return false;
-        }
-        if (m_assetDatabase) {
-            m_assetDatabase->refresh();
-        }
-        return true;
-    }
-
     if (command.name.rfind("tilemap.", 0) == 0) {
-        // Tilemap commands operate on the hosted scene. The editor window can
-        // dispatch commands before its scene surface has booted the runtime.
         if (!m_booted || !m_app) {
             return false;
         }
         return executeTilemapCommand(command);
     }
+    return false;
+}
 
-    if (command.name == "play" || command.name == "pause" ||
-        command.name == "resume" || command.name == "stop") {
-        setPlayAction(command.name);
-        return true;
+bool RuntimeEditorBackend::handleDocumentChanged(const EditorCommandMessage& command)
+{
+    if (command.payload.empty()) {
+        return false;
     }
-
-    if (command.name == "asset.save_all") {
-        if (m_assetDatabase) {
-            m_assetDatabase->saveAllDirty();
-        }
-        return true;
-    }
-
-    if (command.name == "asset.refresh") {
-        if (m_assetDatabase) {
-            m_assetDatabase->refresh();
-        }
-        return true;
-    }
-
-    if (command.name == "asset.import") {
-        if (command.payload.empty()) {
+    try {
+        const nlohmann::json snapshot = nlohmann::json::parse(command.payload);
+        EditorDocument document;
+        if (!EditorDocumentSerializer::fromJson(snapshot, document)) {
             return false;
         }
-        auto& resourceManager = dodoe::ResourceManager::Self();
-        auto* assetManager = resourceManager.getAssetManager();
+        m_document = std::move(document);
+        m_hasDocument = true;
+        if (m_booted && !reconcileScene(m_document)) {
+            return false;
+        }
+    } catch (const nlohmann::json::exception&) {
+        return false;
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleSceneMouseDown(const EditorCommandMessage& command)
+{
+    float x = 0.0f, y = 0.0f;
+    int button = 0, alt = 0, ctrl = 0, shift = 0;
+    if (std::sscanf(command.payload.c_str(), "%f,%f,%d,%d,%d,%d", &x, &y, &button, &alt, &ctrl, &shift) >= 3) {
+        m_altHeld = alt != 0;
+        m_ctrlHeld = ctrl != 0;
+        m_shiftHeld = shift != 0;
+        const bool tileEditing = m_tilePaint && m_tilePaint->hasTarget() &&
+                                 button == 0 && alt == 0;
+        if (tileEditing) {
+            int cx = 0, cy = 0;
+            if (screenToCell(x, y, cx, cy)) {
+                m_tilePaint->setHoverCell(cx, cy);
+                m_tilePaint->onCellDown(cx, cy);
+            } else {
+                m_tilePaint->clearHover();
+            }
+            m_tilePaintActive = true;
+            return true;
+        }
+        if (button == 0 && alt == 0 && m_selectedUuid != 0 && m_gizmoMode != "none") {
+            const int axis = hitTestGizmo(x, y);
+            if (axis >= 0) {
+                beginDrag(axis, x, y);
+                return true;
+            }
+        }
+        if (m_camera) {
+            m_camera->onMouseDown(x, y, button, alt != 0);
+        }
+        if (button == 0 && alt == 0 && m_camera) {
+            pickAt(x, y);
+        }
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleSceneMouseMove(const EditorCommandMessage& command)
+{
+    float x = 0.0f, y = 0.0f;
+    int ctrl = 0, shift = 0, alt = 0;
+    if (std::sscanf(command.payload.c_str(), "%f,%f,%d,%d,%d", &x, &y, &ctrl, &shift, &alt) >= 2) {
+        m_ctrlHeld = ctrl != 0;
+        m_shiftHeld = shift != 0;
+        m_altHeld = alt != 0;
+        if (m_tilePaintActive) {
+            int cx = 0, cy = 0;
+            if (screenToCell(x, y, cx, cy)) {
+                m_tilePaint->setHoverCell(cx, cy);
+                m_tilePaint->onCellDrag(cx, cy);
+            } else {
+                m_tilePaint->clearHover();
+            }
+            return true;
+        }
+        if (m_tilePaint && m_tilePaint->hasTarget() && m_tilePaint->tool() != TileTool::Select) {
+            int cx = 0, cy = 0;
+            if (screenToCell(x, y, cx, cy)) {
+                m_tilePaint->setHoverCell(cx, cy);
+            } else {
+                m_tilePaint->clearHover();
+            }
+        }
+        if (m_dragAxis >= 0) {
+            updateDrag(x, y);
+        } else if (m_camera) {
+            m_camera->onMouseMove(x, y);
+        }
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleSceneMouseUp(const EditorCommandMessage& command)
+{
+    int button = 0;
+    if (std::sscanf(command.payload.c_str(), "%d", &button) >= 1) {
+        if (m_tilePaintActive && button == 0) {
+            m_tilePaint->onCellUp();
+            m_tilePaintActive = false;
+            return true;
+        }
+        if (m_dragAxis >= 0 && button == 0) {
+            endDrag();
+        } else if (m_camera) {
+            m_camera->onMouseUp(button);
+        }
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleSceneMouseWheel(const EditorCommandMessage& command)
+{
+    float delta = 0.0f;
+    if (std::sscanf(command.payload.c_str(), "%f", &delta) >= 1) {
+        if (m_camera) {
+            m_camera->onScroll(delta);
+        }
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleSceneKey(const EditorCommandMessage& command)
+{
+    int key = 0, down = 0;
+    if (std::sscanf(command.payload.c_str(), "%d,%d", &key, &down) >= 2) {
+        if (m_camera) {
+            m_camera->onKey(key, down != 0);
+        }
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleSelectionChanged(const EditorCommandMessage& command)
+{
+    m_selectedUuid = command.payload.empty()
+        ? 0
+        : static_cast<std::uint64_t>(std::strtoull(command.payload.c_str(), nullptr, 10));
+    updateTileEditFromSelection();
+    return true;
+}
+
+bool RuntimeEditorBackend::handleGizmoMode(const EditorCommandMessage& command)
+{
+    m_gizmoMode = command.payload.empty() ? "none" : command.payload;
+    return true;
+}
+
+bool RuntimeEditorBackend::handleGizmoSnap(const EditorCommandMessage& command)
+{
+    if (command.payload.empty()) {
+        return false;
+    }
+    if (command.payload == "1" || command.payload == "true") {
+        m_snapEnabled = true;
+        return true;
+    }
+    if (command.payload == "0" || command.payload == "false") {
+        m_snapEnabled = false;
+        return true;
+    }
+    try {
+        const nlohmann::json payload = nlohmann::json::parse(command.payload);
+        if (!payload.is_object()) {
+            return false;
+        }
+        if (payload.contains("enabled")) {
+            m_snapEnabled = payload.at("enabled").get<bool>();
+        }
+        if (payload.contains("translate")) {
+            m_translateSnap = std::max(0.0f, payload.at("translate").get<float>());
+        }
+        if (payload.contains("rotate")) {
+            m_rotateSnap = std::max(0.0f, payload.at("rotate").get<float>());
+        }
+        if (payload.contains("scale")) {
+            m_scaleSnap = std::max(0.0f, payload.at("scale").get<float>());
+        }
+    } catch (const nlohmann::json::exception&) {
+        return false;
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleGizmoSnapStep(const EditorCommandMessage& command)
+{
+    float translate = m_translateSnap, rotate = m_rotateSnap, scale = m_scaleSnap;
+    if (std::sscanf(command.payload.c_str(), "%f,%f,%f", &translate, &rotate, &scale) < 1) {
+        return false;
+    }
+    m_translateSnap = std::max(0.0f, translate);
+    m_rotateSnap = std::max(0.0f, rotate);
+    m_scaleSnap = std::max(0.0f, scale);
+    return true;
+}
+
+bool RuntimeEditorBackend::handleCameraMode(const EditorCommandMessage& command)
+{
+    if (!m_camera) {
+        return false;
+    }
+    const bool is2d = command.payload == "2d";
+    m_camera->setMode(is2d ? EditorCamera::Mode::Ortho2D : EditorCamera::Mode::Orbit);
+    m_eventCallback(BackendEventMessage{"camera_mode_changed", is2d ? "2d" : "3d"});
+    return true;
+}
+
+bool RuntimeEditorBackend::handleSceneImportAsset(const EditorCommandMessage& command)
+{
+    if (!m_booted || !m_app || !m_session || !m_camera || command.payload.empty()) {
+        return false;
+    }
+    std::vector<std::string> lines;
+    {
+        std::istringstream stream(command.payload);
+        std::string line;
+        while (std::getline(stream, line)) {
+            lines.push_back(line);
+        }
+    }
+    if (lines.size() < 3) {
+        return false;
+    }
+    float dropX = 0.0f;
+    float dropY = 0.0f;
+    if (std::sscanf(lines[0].c_str(), "%f,%f", &dropX, &dropY) < 2) {
+        return false;
+    }
+    dodoe::Vector3f worldPos = ScreenToWorldDropPosition(m_camera.get(), dropX, dropY);
+    nlohmann::json position = {worldPos.x, worldPos.y, worldPos.z};
+    bool importedAny = false;
+    for (std::size_t i = 1; i + 1 < lines.size(); i += 2) {
+        importedAny = importDroppedAsset(lines[i + 1], position) || importedAny;
+    }
+    return importedAny;
+}
+
+bool RuntimeEditorBackend::handlePrefabExport(const EditorCommandMessage& command)
+{
+    if (!m_booted || !m_app || command.payload.empty()) {
+        return false;
+    }
+    std::istringstream stream(command.payload);
+    std::string uuidText;
+    std::string path;
+    std::getline(stream, uuidText, ',');
+    std::getline(stream, path);
+    const std::uint64_t uuid = std::strtoull(uuidText.c_str(), nullptr, 10);
+    if (uuid == 0 || path.empty()) {
+        return false;
+    }
+    World* world = m_app->context().getWorld();
+    Scene* scene = world ? world->getActiveScene() : nullptr;
+    if (!scene) {
+        return false;
+    }
+    dodoe::Entity root = scene->tryGetEntityByUUID(dodoe::UUID(uuid));
+    if (!root.valid()) {
+        return false;
+    }
+    const dodoe::ObjectID ref = dodoe::SceneImporter::ExportPrefab(dodoe::String(path.c_str()), root);
+    if (!ref.isValid()) {
+        return false;
+    }
+    if (m_assetDatabase) {
+        m_assetDatabase->refresh();
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handlePlayAction(const EditorCommandMessage& command)
+{
+    setPlayAction(command.name);
+    return true;
+}
+
+bool RuntimeEditorBackend::handleAssetSaveAll(const EditorCommandMessage&)
+{
+    if (m_assetDatabase) {
+        m_assetDatabase->saveAllDirty();
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleAssetRefresh(const EditorCommandMessage&)
+{
+    if (m_assetDatabase) {
+        m_assetDatabase->refresh();
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleAssetImport(const EditorCommandMessage& command)
+{
+    if (command.payload.empty()) {
+        return false;
+    }
+    auto& resourceManager = dodoe::ResourceManager::Self();
+    auto* assetManager = resourceManager.getAssetManager();
+    if (!assetManager) {
+        return false;
+    }
+    const std::filesystem::path source(command.payload);
+    const dodoe::ObjectID imported = assetManager->ensureImported(
+        dodoe::String(source.is_absolute()
+            ? source.lexically_normal().string().c_str()
+            : std::filesystem::absolute(source).lexically_normal().string().c_str()));
+    if (!imported.isValid()) {
+        return false;
+    }
+    if (m_assetDatabase) {
+        m_assetDatabase->refresh();
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleAssetReimport(const EditorCommandMessage& command)
+{
+    if (command.payload.empty()) {
+        return false;
+    }
+    auto& resourceManager = dodoe::ResourceManager::Self();
+    auto* assetManager = resourceManager.getAssetManager();
+    if (!assetManager) {
+        return false;
+    }
+    std::error_code ec;
+    const std::filesystem::path absolutePath = std::filesystem::absolute(command.payload).lexically_normal();
+    const std::filesystem::path relativePath = std::filesystem::relative(
+        absolutePath, std::filesystem::path(assetManager->getAssetDir().string()), ec);
+    if (ec || relativePath.empty() || relativePath.string().starts_with("..")) {
+        return false;
+    }
+    auto* database = assetManager->getDatabase();
+    if (!database) {
+        return false;
+    }
+    dodoe::UUID assetId;
+    const std::string normalizedRelative = relativePath.generic_string();
+    for (const auto& objectId : database->getAllAssetIDs()) {
+        const dodoe::AssetMetaData metadata = database->getMetaData(objectId);
+        if (std::filesystem::path(metadata.source_path.c_str()).generic_string() == normalizedRelative) {
+            assetId = objectId.asset_id;
+            break;
+        }
+    }
+    if (!assetId.isValid() || !assetManager->reimportAsset(assetId)) {
+        return false;
+    }
+    if (m_assetDatabase) {
+        m_assetDatabase->refresh();
+    }
+    return true;
+}
+
+bool RuntimeEditorBackend::handleScriptToolAction(const EditorCommandMessage& command)
+{
+    return !command.payload.empty() && invokeToolAction(command.payload);
+}
+
+bool RuntimeEditorBackend::handleAssetUpdateSettings(const EditorCommandMessage& command)
+{
+    try {
+        const dodoe::Json payload = dodoe::Json::parse(command.payload);
+        if (!payload.contains("path") || !payload["path"].is_string() ||
+            !payload.contains("settings") || !payload["settings"].is_object()) {
+            return false;
+        }
+        auto* assetManager = dodoe::ResourceManager::Self().getAssetManager();
         if (!assetManager) {
             return false;
         }
-        const std::filesystem::path source(command.payload);
-        const dodoe::ObjectID imported = assetManager->ensureImported(
-            dodoe::String(source.is_absolute()
-                ? source.lexically_normal().string().c_str()
-                : std::filesystem::absolute(source).lexically_normal().string().c_str()));
-        if (!imported.isValid()) {
-            return false;
-        }
-        if (m_assetDatabase) {
-            m_assetDatabase->refresh();
-        }
-        return true;
-    }
-
-    if (command.name == "asset.reimport") {
-        if (command.payload.empty()) {
-            return false;
-        }
-        auto& resourceManager = dodoe::ResourceManager::Self();
-        auto* assetManager = resourceManager.getAssetManager();
-        if (!assetManager) {
-            return false;
-        }
+        const std::filesystem::path sourcePath = std::filesystem::absolute(
+            payload["path"].get<std::string>()).lexically_normal();
         std::error_code ec;
-        const std::filesystem::path absolutePath = std::filesystem::absolute(command.payload).lexically_normal();
         const std::filesystem::path relativePath = std::filesystem::relative(
-            absolutePath, std::filesystem::path(assetManager->getAssetDir().string()), ec);
+            sourcePath, std::filesystem::path(assetManager->getAssetDir().string()), ec);
         if (ec || relativePath.empty() || relativePath.string().starts_with("..")) {
             return false;
         }
-        auto* database = assetManager->getDatabase();
-        if (!database) {
+        dodoe::ImportSettings importSettings;
+        if (!dodoe::ImportSettingsIO::Load(dodoe::FsPath(sourcePath.string()), importSettings)) {
             return false;
         }
-        dodoe::UUID assetId;
-        const std::string normalizedRelative = relativePath.generic_string();
-        for (const auto& objectId : database->getAllAssetIDs()) {
-            const dodoe::AssetMetaData metadata = database->getMetaData(objectId);
-            if (std::filesystem::path(metadata.source_path.c_str()).generic_string() == normalizedRelative) {
-                assetId = objectId.asset_id;
-                break;
-            }
+        importSettings.settings = payload["settings"];
+        if (!dodoe::ImportSettingsIO::Save(dodoe::FsPath(sourcePath.string()), importSettings)) {
+            return false;
         }
-        if (!assetId.isValid() || !assetManager->reimportAsset(assetId)) {
+        if (importSettings.guid.isValid() && !assetManager->reimportAsset(importSettings.guid)) {
             return false;
         }
         if (m_assetDatabase) {
             m_assetDatabase->refresh();
         }
         return true;
+    } catch (const dodoe::Json::exception&) {
+        return false;
     }
-
-    if (command.name == "script.tool_action") {
-        return !command.payload.empty() && invokeToolAction(command.payload);
-    }
-
-    if (command.name == "asset.update_settings") {
-        try {
-            const dodoe::Json payload = dodoe::Json::parse(command.payload);
-            if (!payload.contains("path") || !payload["path"].is_string() ||
-                !payload.contains("settings") || !payload["settings"].is_object()) {
-                return false;
-            }
-            auto* assetManager = dodoe::ResourceManager::Self().getAssetManager();
-            if (!assetManager) {
-                return false;
-            }
-            const std::filesystem::path sourcePath = std::filesystem::absolute(
-                payload["path"].get<std::string>()).lexically_normal();
-            std::error_code ec;
-            const std::filesystem::path relativePath = std::filesystem::relative(
-                sourcePath, std::filesystem::path(assetManager->getAssetDir().string()), ec);
-            if (ec || relativePath.empty() || relativePath.string().starts_with("..")) {
-                return false;
-            }
-            dodoe::ImportSettings importSettings;
-            if (!dodoe::ImportSettingsIO::Load(dodoe::FsPath(sourcePath.string()), importSettings)) {
-                return false;
-            }
-            importSettings.settings = payload["settings"];
-            if (!dodoe::ImportSettingsIO::Save(dodoe::FsPath(sourcePath.string()), importSettings)) {
-                return false;
-            }
-            if (importSettings.guid.isValid() && !assetManager->reimportAsset(importSettings.guid)) {
-                return false;
-            }
-            if (m_assetDatabase) {
-                m_assetDatabase->refresh();
-            }
-            return true;
-        } catch (const dodoe::Json::exception&) {
-            return false;
-        }
-    }
-
-    return false;
 }
 
 bool RuntimeEditorBackend::importDroppedAsset(const std::string& assetPath, const nlohmann::json& position)

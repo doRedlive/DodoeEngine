@@ -132,8 +132,8 @@ nlohmann::json addTilesetDialog(QWidget* parent)
     form->addRow(QObject::tr("Margin (px):"), marginSpin);
     form->addRow(QObject::tr("Spacing (px):"), spacingSpin);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted) {
         return nlohmann::json();
@@ -170,8 +170,8 @@ nlohmann::json editTilesetDialog(QWidget* parent, const nlohmann::json& entry)
     form->addRow(QObject::tr("Margin (px):"), marginSpin);
     form->addRow(QObject::tr("Spacing (px):"), spacingSpin);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted) {
         return nlohmann::json();

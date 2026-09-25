@@ -3,6 +3,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake/DodoeCommon.cmake)
 
 option(DODOE_EDITOR "Build the Cakery editor" ON)
 
+if(DODOE_EDITOR)
+    set(DODOE_DEFAULT_MEMORY_GLOBAL_NEW_DELETE OFF)
+else()
+    set(DODOE_DEFAULT_MEMORY_GLOBAL_NEW_DELETE ON)
+endif()
+option(DODOE_MEMORY_GLOBAL_NEW_DELETE "Route global operator new/delete through the dodoe memory system (requires a process without foreign DLLs)" ${DODOE_DEFAULT_MEMORY_GLOBAL_NEW_DELETE})
+
 add_subdirectory(external)
 
 if(TARGET Tracy::TracyClient)

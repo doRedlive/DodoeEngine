@@ -37,7 +37,7 @@ RenderGraph 在 [GBufferPass::build](../../../engine/src/runtime/function/render
 
 ## 2. Shader 接口约定
 
-所有 GBuffer Shader 都包含 [shader_parameter_sets.glsl](../../../engine/res/shaders/shader_parameter_sets.glsl)。项目把 descriptor set 分成：
+所有 GBuffer Shader 都包含 [shader_parameter_sets.glsl](../../../engine/res/shaders/common/shader_parameter_sets.glsl)。项目把 descriptor set 分成：
 
 | Set 宏 | 数字 | 用途 |
 |---|---:|---|
@@ -61,7 +61,7 @@ RenderGraph 在 [GBufferPass::build](../../../engine/src/runtime/function/render
 
 ## 3. 模块一：lit_pass.vert / LitVS
 
-文件：[lit_pass.vert](../../../engine/res/shaders/lit_pass.vert)
+文件：[lit_pass.vert](../../../engine/res/shaders/mesh/lit_pass.vert)
 
 Manifest 中 GBufferVS 和 LitVS 都指向该文件：[shader_manifest.json](../../../engine/res/shaders/shader_manifest.json:3)。因此它既服务 GBuffer，也服务前向不透明路径。
 
@@ -117,7 +117,7 @@ applyFoliageWind() 只在 instance_params.w > 0.5 时启用。它使用时间、
 
 ## 4. 模块二：lit_gpu_scene.vert / LitGpuSceneVS
 
-文件：[lit_gpu_scene.vert](../../../engine/res/shaders/lit_gpu_scene.vert)
+文件：[lit_gpu_scene.vert](../../../engine/res/shaders/mesh/lit_gpu_scene.vert)
 
 这是 GPU-driven 绘制路径使用的顶点 Shader。它和 lit_pass.vert 的输出接口保持一致，因此可以复用 GBuffer 像素 Shader。
 
@@ -150,7 +150,7 @@ GPU-driven 结构当前只提供当前 transform，没有上一帧 transform，�
 
 ## 5. 模块三：gbuffer_pass.frag / GBufferPS
 
-文件：[gbuffer_pass.frag](../../../engine/res/shaders/gbuffer_pass.frag)
+文件：[gbuffer_pass.frag](../../../engine/res/shaders/mesh/gbuffer_pass.frag)
 
 这是 bindless 模式下的 GBuffer 像素 Shader。ShaderLibrary 在 [getGBufferPixelShader](../../../engine/src/runtime/function/render/shader/shader_library.h:33) 中根据 RenderSettings::IsBindlessActive() 选择它。
 
@@ -233,7 +233,7 @@ GBufferMotionVector 会被后续 TAA pass 使用。
 
 ## 6. 模块四：gbuffer_pass_nobindless.frag / GBufferNoBindlessPS
 
-文件：[gbuffer_pass_nobindless.frag](../../../engine/res/shaders/gbuffer_pass_nobindless.frag)
+文件：[gbuffer_pass_nobindless.frag](../../../engine/res/shaders/mesh/gbuffer_pass_nobindless.frag)
 
 它和 bindless 版本的输出完全一致，区别只在纹理取得方式。
 
@@ -253,7 +253,7 @@ Non-bindless 版本在 DOE_SET_MATERIAL 中固定绑定：
 
 ## 7. 模块五：fullscreen.vert / FullscreenVS
 
-文件：[fullscreen.vert](../../../engine/res/shaders/fullscreen.vert)
+文件：[fullscreen.vert](../../../engine/res/shaders/post/fullscreen.vert)
 
 DeferredLightPass 不绘制模型，而是绘制覆盖全屏的矩形，不需要 vertex buffer：
 
@@ -269,7 +269,7 @@ CPU 侧使用 6 个顶点组成两个三角形，同时生成屏幕 UV：
 
 ## 8. 模块六：deferred_light_pass.frag / DeferredLightPS
 
-文件：[deferred_light_pass.frag](../../../engine/res/shaders/deferred_light_pass.frag)
+文件：[deferred_light_pass.frag](../../../engine/res/shaders/mesh/deferred_light_pass.frag)
 
 CPU 侧由 [DeferredLightPass::build](../../../engine/src/runtime/function/render/render_pipeline/passes/render_deferred_light_pass.cpp:61) 创建 fullscreen pipeline，并为每个光源调用 draw_fullscreen_light()。
 
@@ -351,7 +351,7 @@ Directional 光使用方向和阴影；Point 光根据距离、半径和 range �
 
 ### 8.5 阴影
 
-computeShadow() 调用 [shadow_csm.glsl](../../../engine/res/shaders/shadow_csm.glsl) 中的 CsmComputeDirectionalShadow()：
+computeShadow() 调用 [shadow_csm.glsl](../../../engine/res/shaders/common/shadow_csm.glsl) 中的 CsmComputeDirectionalShadow()：
 
     世界坐标
       → 根据相机深度选择 cascade
@@ -459,13 +459,13 @@ CPU 侧在 GBufferPass 执行时把当前 ViewProjection、上一帧未抖动 Vi
 
 | 文件 | 职责 |
 |---|---|
-| [lit_pass.vert](../../../engine/res/shaders/lit_pass.vert) | CPU/实例化路径顶点变换、法线、motion 输入 |
-| [lit_gpu_scene.vert](../../../engine/res/shaders/lit_gpu_scene.vert) | GPU-driven 顶点路径 |
-| [gbuffer_pass.frag](../../../engine/res/shaders/gbuffer_pass.frag) | Bindless GBuffer 像素输出 |
-| [gbuffer_pass_nobindless.frag](../../../engine/res/shaders/gbuffer_pass_nobindless.frag) | 传统固定材质槽 GBuffer 输出 |
-| [fullscreen.vert](../../../engine/res/shaders/fullscreen.vert) | 全屏矩形生成 |
-| [deferred_light_pass.frag](../../../engine/res/shaders/deferred_light_pass.frag) | GBuffer 采样、PBR、IBL、阴影、HDR 合成 |
-| [shadow_csm.glsl](../../../engine/res/shaders/shadow_csm.glsl) | CSM 阴影采样辅助函数 |
+| [lit_pass.vert](../../../engine/res/shaders/mesh/lit_pass.vert) | CPU/实例化路径顶点变换、法线、motion 输入 |
+| [lit_gpu_scene.vert](../../../engine/res/shaders/mesh/lit_gpu_scene.vert) | GPU-driven 顶点路径 |
+| [gbuffer_pass.frag](../../../engine/res/shaders/mesh/gbuffer_pass.frag) | Bindless GBuffer 像素输出 |
+| [gbuffer_pass_nobindless.frag](../../../engine/res/shaders/mesh/gbuffer_pass_nobindless.frag) | 传统固定材质槽 GBuffer 输出 |
+| [fullscreen.vert](../../../engine/res/shaders/post/fullscreen.vert) | 全屏矩形生成 |
+| [deferred_light_pass.frag](../../../engine/res/shaders/mesh/deferred_light_pass.frag) | GBuffer 采样、PBR、IBL、阴影、HDR 合成 |
+| [shadow_csm.glsl](../../../engine/res/shaders/common/shadow_csm.glsl) | CSM 阴影采样辅助函数 |
 | [render_gbuffer_pass.cpp](../../../engine/src/runtime/function/render/render_pipeline/passes/render_gbuffer_pass.cpp) | GBuffer RenderGraph pass 和 draw 提交 |
 | [render_deferred_light_pass.cpp](../../../engine/src/runtime/function/render/render_pipeline/passes/render_deferred_light_pass.cpp) | DeferredLight fullscreen draw 和绑定 |
 | [shader_library.h](../../../engine/src/runtime/function/render/shader/shader_library.h) | Shader 名称到实际变体的选择 |

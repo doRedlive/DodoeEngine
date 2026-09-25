@@ -67,14 +67,7 @@ namespace dodoe {
         [[nodiscard]] const DynamicArray<SubMesh>& getSubMeshes() const { return m_sub_meshes; }
         [[nodiscard]] DynamicArray<MeshBatch>& getMeshBatches() { return m_mesh_batches; }
         [[nodiscard]] const DynamicArray<MeshBatch>& getMeshBatches() const { return m_mesh_batches; }
-        [[nodiscard]] Bool hasRelevantBatch(const MeshPassType pass_type) const {
-            for (const auto& batch : m_mesh_batches) {
-                if (batch.isValid() && batch.isRelevant(pass_type)) {
-                    return true;
-                }
-            }
-            return false;
-        }
+        [[nodiscard]] Bool hasRelevantBatch(const MeshPassType pass_type) const;
         [[nodiscard]] PrimitiveMobility getMobility() const { return m_mobility; }
         [[nodiscard]] Bool isVisible() const { return m_visible; }
         [[nodiscard]] Bool castsShadow() const { return m_cast_shadow; }

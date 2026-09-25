@@ -24,6 +24,7 @@ namespace dodoe {
         [[nodiscard]] int   getTargetFps() const;
         [[nodiscard]] int   getFps() const;
         [[nodiscard]] float getUnscaledDeltaTime() const;
+        [[nodiscard]] static UInt64 GetSteadyTimeMs();
 
         void setTimeScale(float time_scale);
         void setTargetFps(int target_fps);

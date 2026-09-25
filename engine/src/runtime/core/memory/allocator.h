@@ -5,7 +5,6 @@
 #include "runtime/core/base.h"
 
 #include <cstdlib>
-#include <mimalloc.h>
 #include <mutex>
 #include <new>
 
@@ -41,15 +40,10 @@ namespace dodoe {
             Size_t offset{0};
 
             Block() = default;
-            explicit Block(Size_t sz) : data(static_cast<UInt8*>(mi_malloc(sz))), size(sz), offset(0) {}
-            ~Block() { mi_free(data); data = nullptr; }
-            Block(Block&& other) noexcept : data(other.data), size(other.size), offset(other.offset) {
-                other.data = nullptr; other.size = 0; other.offset = 0;
-            }
-            Block& operator=(Block&& other) noexcept {
-                if (this != &other) { mi_free(data); data = other.data; size = other.size; offset = other.offset; other.data = nullptr; other.size = 0; other.offset = 0; }
-                return *this;
-            }
+            explicit Block(Size_t sz);
+            ~Block();
+            Block(Block&& other) noexcept;
+            Block& operator=(Block&& other) noexcept;
             Block(const Block&) = delete;
             Block& operator=(const Block&) = delete;
         };

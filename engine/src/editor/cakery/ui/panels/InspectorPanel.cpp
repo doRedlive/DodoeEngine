@@ -340,14 +340,18 @@ void InspectorPanel::refresh()
             connect(moveUpAction, &QAction::triggered, this, [this, uuid, index]() {
                 if (m_context.session().moveComponent(uuid, index, -1) &&
                     index > 0 && index < m_componentExpanded.size()) {
-                    std::swap(m_componentExpanded[index], m_componentExpanded[index - 1]);
+                    const bool expanded = m_componentExpanded[index];
+                    m_componentExpanded[index] = m_componentExpanded[index - 1];
+                    m_componentExpanded[index - 1] = expanded;
                 }
             });
             QAction* moveDownAction = sectionMenu->addAction(tr("Move Down"));
             connect(moveDownAction, &QAction::triggered, this, [this, uuid, index]() {
                 if (m_context.session().moveComponent(uuid, index, 1) &&
                     index + 1 < m_componentExpanded.size()) {
-                    std::swap(m_componentExpanded[index], m_componentExpanded[index + 1]);
+                    const bool expanded = m_componentExpanded[index];
+                    m_componentExpanded[index] = m_componentExpanded[index + 1];
+                    m_componentExpanded[index + 1] = expanded;
                 }
             });
         }

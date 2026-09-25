@@ -14,7 +14,7 @@ namespace dodoe {
 
     void* MallocAllocator::allocate(Size_t size, Size_t align) {
         if (align > alignof(std::max_align_t)) {
-            return mi_aligned_alloc(align, size);
+            return mi_malloc_aligned(size, align);
         }
         return mi_malloc(size);
     }
@@ -22,6 +22,34 @@ namespace dodoe {
     void MallocAllocator::deallocate(void* p, Size_t size) {
         (void)size;
         mi_free(p);
+    }
+
+    LinearAllocator::Block::Block(Size_t sz)
+        : data(static_cast<UInt8*>(mi_malloc(sz))), size(sz), offset(0) {}
+
+    LinearAllocator::Block::~Block() {
+        mi_free(data);
+        data = nullptr;
+    }
+
+    LinearAllocator::Block::Block(Block&& other) noexcept
+        : data(other.data), size(other.size), offset(other.offset) {
+        other.data = nullptr;
+        other.size = 0;
+        other.offset = 0;
+    }
+
+    LinearAllocator::Block& LinearAllocator::Block::operator=(Block&& other) noexcept {
+        if (this != &other) {
+            mi_free(data);
+            data = other.data;
+            size = other.size;
+            offset = other.offset;
+            other.data = nullptr;
+            other.size = 0;
+            other.offset = 0;
+        }
+        return *this;
     }
 
     LinearAllocator::LinearAllocator(LinearAllocator&& other) noexcept {
@@ -254,8 +282,7 @@ namespace dodoe {
     }
 
     void* PoolAllocator::allocate(Size_t size, Size_t align) {
-        (void)align;
-        if (size > m_block_size) {
+        if (size > m_block_size || align > m_block_align) {
             return nullptr;
         }
 

@@ -238,6 +238,7 @@ namespace dodoe {
     void SystemContext::postShutdown() {
         TypeMetaRegister::MetaUnregister();
         EventSystem::Shutdown();
+        Memory::Shutdown();
     }
 
     void SystemContext::tickOneFrame() {

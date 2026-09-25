@@ -771,7 +771,7 @@ namespace dodoe {
     void InputManager::shutdown() {
         if (m_backend_) {
             m_backend_->shutdown();
-            delete m_backend_;
+            DODOE_DELETE(m_backend_, InputBackend, AllocCategory::Object);
             m_backend_ = nullptr;
         }
         m_raw_state_.keys.clear();

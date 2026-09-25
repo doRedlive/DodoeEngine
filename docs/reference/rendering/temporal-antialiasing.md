@@ -170,10 +170,10 @@ reset 帧(CPU 下发 `params.z = 1, params.w = 0`)时跳过自适应逻辑,直�
 
 | 文件 | 职责 |
 |---|---|
-| `engine/res/shaders/taa_pass.frag` | Resolve 着色器(重投影/disocclusion/variance clip/自适应/锐化) |
-| `engine/res/shaders/taa_depth_copy.frag` | 深度拷贝 |
-| `engine/res/shaders/lit_pass.vert` | prev_model 输入 + v_Motion 计算(同时服务 GBuffer 与 forward opaque) |
-| `engine/res/shaders/lit_gpu_scene.vert` | GPU-driven 路径 v_Motion 输出 0(link 兼容,无速度,回退静态重投影) |
+| `engine/res/shaders/post/taa_pass.frag` | Resolve 着色器(重投影/disocclusion/variance clip/自适应/锐化) |
+| `engine/res/shaders/post/taa_depth_copy.frag` | 深度拷贝 |
+| `engine/res/shaders/mesh/lit_pass.vert` | prev_model 输入 + v_Motion 计算(同时服务 GBuffer 与 forward opaque) |
+| `engine/res/shaders/mesh/lit_gpu_scene.vert` | GPU-driven 路径 v_Motion 输出 0(link 兼容,无速度,回退静态重投影) |
 | `render_pipeline/render_feature/taa_feature.cpp` | history + prev-depth 乒乓、TaaFrameParams(跨帧 VP/jitter) |
 | `render_pipeline/render_feature/gbuffer_scene_feature.cpp` | GBuffer 6 attachment 定义 |
 | `render_pipeline/passes/render_taa_pass.cpp` | TAA pass(绑定/常量) |

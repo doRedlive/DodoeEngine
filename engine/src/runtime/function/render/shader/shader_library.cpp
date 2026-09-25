@@ -18,7 +18,7 @@ namespace dodoe {
     }
 
     static void ApplyParameterSetMacros(String& text) {
-        const String defines = LoadShaderIncludeText("shader_parameter_sets.glsl");
+        const String defines = LoadShaderIncludeText("common/shader_parameter_sets.glsl");
         if (defines.empty()) {
             return;
         }

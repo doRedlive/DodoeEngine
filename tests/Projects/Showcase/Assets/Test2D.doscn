@@ -1,0 +1,33 @@
+{
+    "m_entities": [
+        {
+            "m_managed_components": [],
+            "m_name": "New GameObject",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":1455446171250473886,\"name\":\"New GameObject\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.0,0.0],\"sprite\":{\"asset_id\":469319320667056875,\"sub_object_id\":0}}",
+                    "m_type_name": "SpriteRendererComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 1455446171250473886
+        }
+    ],
+    "m_name": "Test2D"
+}

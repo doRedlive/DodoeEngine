@@ -12,8 +12,7 @@
       "cacheVariables": {
         "CMAKE_CXX_STANDARD": "20",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "BUILD_SHARED_LIBS": "OFF",
-        "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/msvc2022_64"
+        "BUILD_SHARED_LIBS": "OFF"
       }
     },
     {
