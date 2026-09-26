@@ -29,6 +29,7 @@ public:
 
 signals:
     void valueChanged();
+    void fieldChanged(const QString& path);
 
 private:
     void rebuild();

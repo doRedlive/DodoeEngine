@@ -19,6 +19,11 @@ QTreeWidget, QListWidget, QTableWidget, QTreeView, QListView, QScrollArea { back
 QTreeWidget::item:hover, QListWidget::item:hover { background: #343746; }
 ads--CDockWidget { background: #282a36; border-color: #44475a; }
 ads--CDockAreaTabBar, ads--CDockAreaTitleBar { background: #21222c; border-color: #44475a; }
+ads--CDockWidgetTab { color: #6272a4; }
+ads--CDockWidgetTab QLabel { color: #6272a4; }
+ads--CDockWidgetTab[activeTab="true"] { background: #44475a; color: #f8f8f2; border: 1px solid #6272a4; }
+ads--CDockWidgetTab[activeTab="true"] QLabel { color: #f8f8f2; }
+ads--CDockWidgetTab:hover:!activeTab { background: #343746; color: #bd93f9; }
 ads--CAutoHideDockContainer, ads--CAutoHideDockContainer #autoHideDockArea, ads--CAutoHideDockContainer ads--CDockWidget { background: #282a36; }
 ads--CAutoHideDockContainer { border-color: #44475a; }
 ads--CAutoHideDockContainer ads--CDockAreaTitleBar { background: #21222c; border-bottom-color: #44475a; }

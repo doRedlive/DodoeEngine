@@ -14,6 +14,52 @@
 
 namespace cakery {
 
+namespace {
+
+const nlohmann::json* FindJsonPath(const nlohmann::json& root, const std::string& path)
+{
+    const nlohmann::json* node = &root;
+    std::size_t start = 0;
+    while (start <= path.size()) {
+        const std::size_t dot = path.find('.', start);
+        const std::size_t end = dot == std::string::npos ? path.size() : dot;
+        if (!node->is_object()) {
+            return nullptr;
+        }
+        const auto it = node->find(path.substr(start, end - start));
+        if (it == node->end()) {
+            return nullptr;
+        }
+        node = &(*it);
+        if (dot == std::string::npos) {
+            break;
+        }
+        start = dot + 1;
+    }
+    return node;
+}
+
+nlohmann::json* ResolveJsonPath(nlohmann::json& root, const std::string& path)
+{
+    nlohmann::json* node = &root;
+    std::size_t start = 0;
+    while (start <= path.size()) {
+        const std::size_t dot = path.find('.', start);
+        const std::size_t end = dot == std::string::npos ? path.size() : dot;
+        if (!node->is_object()) {
+            return nullptr;
+        }
+        node = &(*node)[path.substr(start, end - start)];
+        if (dot == std::string::npos) {
+            break;
+        }
+        start = dot + 1;
+    }
+    return node;
+}
+
+} // namespace
+
 EditorSession::EditorSession(std::unique_ptr<IEditorBackend> backend)
     : m_backend(std::move(backend))
 {
@@ -731,6 +777,50 @@ bool EditorSession::updateComponentOnEntities(const std::vector<std::uint64_t>& 
     return true;
 }
 
+bool EditorSession::updateComponentFieldOnEntities(const std::vector<std::uint64_t>& uuids,
+                                                   const std::string& typeName,
+                                                   const std::string& fieldPath,
+                                                   const nlohmann::json& value,
+                                                   bool managed)
+{
+    if (!canEditDocument() || uuids.empty() || typeName.empty() || fieldPath.empty()) {
+        return false;
+    }
+    const nlohmann::json* leaf = FindJsonPath(value, fieldPath);
+    if (!leaf) {
+        return false;
+    }
+    auto composite = std::make_unique<CompositeCommand>();
+    for (const std::uint64_t uuid : uuids) {
+        const EditorEntity* entity = m_documentModel.findEntity(uuid);
+        if (!entity) {
+            continue;
+        }
+        const std::vector<EditorComponent>& components =
+            managed ? entity->managedComponents : entity->nativeComponents;
+        for (std::size_t i = 0; i < components.size(); ++i) {
+            if (components[i].typeName != typeName) {
+                continue;
+            }
+            nlohmann::json merged = components[i].value;
+            if (nlohmann::json* target = ResolveJsonPath(merged, fieldPath)) {
+                *target = *leaf;
+                if (managed) {
+                    composite->addCommand(std::make_unique<UpdateManagedComponentCommand>(uuid, i, merged));
+                } else {
+                    composite->addCommand(std::make_unique<UpdateComponentCommand>(uuid, i, merged));
+                }
+            }
+            break;
+        }
+    }
+    if (composite->empty() || !m_history.execute(std::move(composite), m_documentModel)) {
+        return false;
+    }
+    notifyDocumentChanged();
+    return true;
+}
+
 bool EditorSession::removeManagedComponent(std::uint64_t uuid, std::size_t index)
 {
     if (!canEditDocument()) {
@@ -835,6 +925,10 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
     if (event.name == "camera_mode_changed") {
         m_cameraMode = event.payload.empty() ? "3d" : event.payload;
         cameraModeChanged.fire(m_cameraMode);
+        return;
+    }
+    if (event.name == "gizmo_mode_changed") {
+        gizmoModeChanged.fire(event.payload.empty() ? std::string("none") : event.payload);
         return;
     }
     if (event.name == "tilemap_edit_mode") {

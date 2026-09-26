@@ -16,6 +16,7 @@
 #include <QPainterPath>
 #include <QPalette>
 #include <QPen>
+#include <QScrollBar>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QTimer>
@@ -27,6 +28,7 @@
 #include <functional>
 #include <system_error>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -165,6 +167,14 @@ void HierarchyPanel::refresh()
     const auto& entities = m_context.session().documentModel().entities();
     const auto& selection = m_context.session().selection();
 
+    std::unordered_set<std::uint64_t> expanded;
+    for (QTreeWidgetItemIterator it(m_tree); *it; ++it) {
+        if ((*it)->isExpanded(0)) {
+            expanded.insert(ItemUuid(*it));
+        }
+    }
+    const int scrollPosition = m_tree->verticalScrollBar()->value();
+
     QSignalBlocker blocker(m_tree);
     m_tree->clear();
     std::unordered_map<std::uint64_t, std::vector<const EditorEntity*>> children;
@@ -183,6 +193,9 @@ void HierarchyPanel::refresh()
         item->setData(0, Qt::UserRole, QString::number(entity.uuid));
         item->setFlags(item->flags() | Qt::ItemIsEditable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
         item->setSelected(selection.isSelected(entity.uuid));
+        if (expanded.contains(entity.uuid)) {
+            item->setExpanded(true);
+        }
         const auto childIt = children.find(entity.uuid);
         if (childIt != children.end() && !childIt->second.empty()) {
             item->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
@@ -194,6 +207,12 @@ void HierarchyPanel::refresh()
     for (const EditorEntity* root : roots) {
         addItem(addItem, *root, nullptr);
     }
+    for (QTreeWidgetItemIterator it(m_tree); *it; ++it) {
+        if ((*it)->isSelected()) {
+            m_tree->setCurrentItem(*it);
+            break;
+        }
+    }
     blocker.unblock();
 
     for (std::uint64_t uuid : selection.selectedAll()) {
@@ -202,6 +221,7 @@ void HierarchyPanel::refresh()
         }
     }
     applyFilter();
+    m_tree->verticalScrollBar()->setValue(scrollPosition);
 }
 
 void HierarchyPanel::applyFilter()

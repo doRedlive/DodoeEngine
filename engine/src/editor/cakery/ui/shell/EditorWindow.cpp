@@ -17,6 +17,7 @@
 #include "services/EditorConfig.h"
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "cakery/ui/EditorIcons.h"
+#include "core/document/EditorDocumentModel.h"
 #include "cakery/ui/panels/ConsolePanel.h"
 #include "cakery/ui/panels/HierarchyPanel.h"
 #include "cakery/ui/panels/HistoryPanel.h"
@@ -66,6 +67,8 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QRegularExpression>
+#include <QScrollBar>
+#include <QSignalBlocker>
 #include <QStyle>
 #include <QGridLayout>
 #include <QTimer>
@@ -614,6 +617,32 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     m_historySubscription = m_context.session().history().subscribe([this]() { refreshUndoRedoActions(); });
     refreshUndoRedoActions();
 
+    m_context.confirmUnsavedChanges = [this]() { return promptUnsavedChanges(); };
+
+    m_playStateSubscription = ScopedConnection(
+        m_context.session().playStateChanged,
+        m_context.session().playStateChanged.connect([this](PlayState) {
+            updateRuntimeControls();
+        }));
+
+    m_documentSubscription = m_context.session().documentModel().subscribe(
+        [this]() { updateWindowTitle(); });
+    updateWindowTitle();
+
+    m_gizmoModeSubscription = ScopedConnection(
+        m_context.session().gizmoModeChanged,
+        m_context.session().gizmoModeChanged.connect([this](const std::string& mode) {
+            const std::array<const char*, 4> modes = {"none", "translate", "rotate", "scale"};
+            for (std::size_t i = 0; i < modes.size(); ++i) {
+                if (m_sceneToolActions[i]) {
+                    QSignalBlocker blocker(m_sceneToolActions[i]);
+                    m_sceneToolActions[i]->setChecked(mode == modes[i]);
+                }
+            }
+        }));
+
+    updateRuntimeControls();
+
     m_cameraModeSubscription = ScopedConnection(
         m_context.session().cameraModeChanged,
         m_context.session().cameraModeChanged.connect([this](const std::string& mode) {
@@ -622,6 +651,9 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
                 m_camera2DAction->setChecked(is2d);
                 m_camera2DAction->setIcon(editorThemedIcon(
                     is2d ? QStringLiteral("viewport-2d.svg") : QStringLiteral("viewport-3d.svg")));
+                m_camera2DAction->setToolTip(is2d
+                    ? tr("Switch to 3D view (perspective)")
+                    : tr("Switch to 2D view (orthographic)"));
             }
         }));
 
@@ -662,7 +694,14 @@ void EditorWindow::createMenus()
         if (!m_context.session().documentModel().hasDocument()) {
             return;
         }
-        m_context.session().saveDocument(std::string());
+        if (!m_context.session().saveDocument(std::string())) {
+            QMessageBox::warning(this, tr("Save Scene"),
+                                 tr("Could not save the scene to '%1'.")
+                                     .arg(QString::fromStdString(
+                                         m_context.session().documentModel().path().string())));
+            return;
+        }
+        updateWindowTitle();
     });
 
     auto* saveAs = file->addAction(tr("Save Scene As..."));
@@ -672,9 +711,15 @@ void EditorWindow::createMenus()
         }
         const QString path = QFileDialog::getSaveFileName(
             this, tr("Save Scene As"), QString(), tr("Dodoe Scene (*.doscn)"));
-        if (!path.isEmpty()) {
-            m_context.session().saveDocument(path.toStdString());
+        if (path.isEmpty()) {
+            return;
         }
+        if (!m_context.session().saveDocument(path.toStdString())) {
+            QMessageBox::warning(this, tr("Save Scene"),
+                                 tr("Could not save the scene to '%1'.").arg(path));
+            return;
+        }
+        updateWindowTitle();
     });
 
     file->addSeparator();
@@ -691,19 +736,23 @@ void EditorWindow::createMenus()
 
     auto* runtime = m_menuBar->addMenu(tr("Runtime"));
     const bool sim = m_context.capabilities().simulation;
-    auto* play = runtime->addAction(tr("Play"));
-    play->setEnabled(sim);
-    connect(play, &QAction::triggered, this, [this]() {
+    m_runtimeMenuActions[0] = runtime->addAction(tr("Play"));
+    m_runtimeMenuActions[0]->setEnabled(sim);
+    connect(m_runtimeMenuActions[0], &QAction::triggered, this, [this]() {
         m_context.session().execute(EditorCommandMessage{"play", ""});
     });
-    auto* pause = runtime->addAction(tr("Pause"));
-    pause->setEnabled(sim);
-    connect(pause, &QAction::triggered, this, [this]() {
-        m_context.session().execute(EditorCommandMessage{"pause", ""});
+    m_runtimeMenuActions[1] = runtime->addAction(tr("Pause"));
+    m_runtimeMenuActions[1]->setEnabled(sim);
+    connect(m_runtimeMenuActions[1], &QAction::triggered, this, [this]() {
+        if (m_context.session().playState() == PlayState::Paused) {
+            m_context.session().execute(EditorCommandMessage{"resume", ""});
+        } else {
+            m_context.session().execute(EditorCommandMessage{"pause", ""});
+        }
     });
-    auto* stop = runtime->addAction(tr("Stop"));
-    stop->setEnabled(sim);
-    connect(stop, &QAction::triggered, this, &EditorWindow::stopPlayWithPrompt);
+    m_runtimeMenuActions[2] = runtime->addAction(tr("Stop"));
+    m_runtimeMenuActions[2]->setEnabled(sim);
+    connect(m_runtimeMenuActions[2], &QAction::triggered, this, &EditorWindow::stopPlayWithPrompt);
     if (!sim) {
         for (QAction* action : runtime->actions()) {
             action->setToolTip(tr("Runtime backend is unavailable in Editor-Only mode"));
@@ -1064,8 +1113,23 @@ void EditorWindow::createToolbar()
                 stopPlayWithPrompt();
                 return;
             }
+            if (std::string(command) == "pause") {
+                if (m_context.session().playState() == PlayState::Paused) {
+                    m_context.session().execute(EditorCommandMessage{"resume", ""});
+                } else {
+                    m_context.session().execute(EditorCommandMessage{"pause", ""});
+                }
+                return;
+            }
             m_context.session().execute(EditorCommandMessage{command, ""});
         });
+        if (std::string(runtimeButton.command) == "play") {
+            m_playButton = button;
+        } else if (std::string(runtimeButton.command) == "pause") {
+            m_pauseButton = button;
+        } else {
+            m_stopButton = button;
+        }
         m_editorToolbar->addWidget(button);
     }
 
@@ -1161,7 +1225,10 @@ bool EditorWindow::nativeEvent(const QByteArray& eventType, void* message, qintp
         if (msg->message == WM_NCHITTEST) {
             const int x = GET_X_LPARAM(msg->lParam);
             const int y = GET_Y_LPARAM(msg->lParam);
-            const QPoint pos = mapFromGlobal(QPoint(x, y));
+            const qreal dpr = devicePixelRatioF();
+            const QPoint pos = mapFromGlobal(QPoint(
+                static_cast<int>(std::lround(static_cast<qreal>(x) / dpr)),
+                static_cast<int>(std::lround(static_cast<qreal>(y) / dpr))));
             const int border = 6;
             const bool resizable = !isMaximized() && !isFullScreen();
             const bool left = pos.x() < border;
@@ -1245,7 +1312,7 @@ void EditorWindow::createDocks()
         editorThemedIcon(QStringLiteral("viewport-3d.svg")), QString());
     m_camera2DAction->setCheckable(true);
     m_camera2DAction->setChecked(false);
-    m_camera2DAction->setToolTip(tr("Toggle 2D/3D view mode"));
+    m_camera2DAction->setToolTip(tr("Switch to 2D view (orthographic)"));
     connect(m_camera2DAction, &QAction::triggered, this, [this](bool checked) {
         m_context.session().execute(EditorCommandMessage{
             "camera_mode", checked ? std::string("2d") : std::string("3d")});
@@ -1265,6 +1332,7 @@ void EditorWindow::createDocks()
         {tr("Scale"), QStringLiteral("scale-3d.svg"), "scale"},
     };
     const bool sim = m_context.capabilities().simulation;
+    int toolIndex = 0;
     for (const SceneTool& sceneTool : sceneTools) {
         auto* action = sceneToolbar->addAction(editorThemedIcon(sceneTool.icon), QString());
         if (auto* toolButton = sceneToolbar->widgetForAction(action)) {
@@ -1274,10 +1342,14 @@ void EditorWindow::createDocks()
         action->setEnabled(sim);
         action->setToolTip(sceneTool.tooltip);
         toolGroup->addAction(action);
-        if (sceneTool.mode[0] == 'n') action->setChecked(true);
+        if (toolIndex < 4) {
+            m_sceneToolActions[toolIndex] = action;
+        }
+        if (std::string(sceneTool.mode) == "translate") action->setChecked(true);
         connect(action, &QAction::triggered, this, [this, mode = sceneTool.mode]() {
             m_context.session().execute(EditorCommandMessage{"gizmo_mode", mode});
         });
+        ++toolIndex;
     }
 
     sceneToolbar->addSeparator();
@@ -1482,6 +1554,91 @@ void EditorWindow::stopPlayWithPrompt()
     session.stopPlay(keepPlayChanges);
 }
 
+void EditorWindow::updateRuntimeControls()
+{
+    const bool sim = m_context.capabilities().simulation;
+    const PlayState state = m_context.session().playState();
+    if (m_playButton) {
+        m_playButton->setEnabled(sim && state == PlayState::Edit);
+        m_playButton->setToolTip(sim
+            ? tr("Play") : tr("Runtime scene tools are unavailable in Editor-Only mode"));
+    }
+    if (m_pauseButton) {
+        const bool paused = state == PlayState::Paused;
+        m_pauseButton->setEnabled(sim && state != PlayState::Edit);
+        m_pauseButton->setIcon(editorIcon(
+            paused ? QStringLiteral("play.svg") : QStringLiteral("pause.svg")));
+        m_pauseButton->setToolTip(sim
+            ? (paused ? tr("Resume") : tr("Pause"))
+            : tr("Runtime scene tools are unavailable in Editor-Only mode"));
+    }
+    if (m_stopButton) {
+        m_stopButton->setEnabled(sim && state != PlayState::Edit);
+        m_stopButton->setToolTip(sim
+            ? tr("Stop") : tr("Runtime scene tools are unavailable in Editor-Only mode"));
+    }
+    if (m_runtimeMenuActions[0]) {
+        m_runtimeMenuActions[0]->setEnabled(sim && state == PlayState::Edit);
+    }
+    if (m_runtimeMenuActions[1]) {
+        const bool paused = state == PlayState::Paused;
+        m_runtimeMenuActions[1]->setText(paused ? tr("Resume") : tr("Pause"));
+        m_runtimeMenuActions[1]->setEnabled(sim && state != PlayState::Edit);
+    }
+    if (m_runtimeMenuActions[2]) {
+        m_runtimeMenuActions[2]->setEnabled(sim && state != PlayState::Edit);
+    }
+}
+
+void EditorWindow::updateWindowTitle()
+{
+    const EditorDocumentModel& model = m_context.session().documentModel();
+    if (!model.hasDocument()) {
+        setWindowTitle(QApplication::applicationName());
+        return;
+    }
+    const QString scene = QString::fromStdString(model.name());
+    const QString marker = model.isDirty() ? QStringLiteral(" *") : QString();
+    setWindowTitle(QStringLiteral("%1 - %2%3")
+                       .arg(QApplication::applicationName(), scene, marker));
+}
+
+bool EditorWindow::promptUnsavedChanges()
+{
+    EditorSession& session = m_context.session();
+    if (!session.documentModel().hasDocument() || !session.documentModel().isDirty()) {
+        return true;
+    }
+    UnsavedChangesDialog dialog(this);
+    dialog.adjustSize();
+    dialog.move(frameGeometry().center() - dialog.rect().center());
+    dialog.exec();
+    const auto choice = dialog.result();
+    if (choice == QMessageBox::Cancel) {
+        return false;
+    }
+    if (choice == QMessageBox::Save) {
+        std::string target;
+        if (session.documentModel().path().empty()) {
+            const QString path = QFileDialog::getSaveFileName(
+                this, tr("Save Scene As"), QString(), tr("Dodoe Scene (*.doscn)"));
+            if (path.isEmpty()) {
+                return false;
+            }
+            target = path.toStdString();
+        }
+        if (!session.saveDocument(target)) {
+            QMessageBox::warning(this, tr("Save Scene"),
+                                 tr("Could not save the scene to '%1'.")
+                                     .arg(QString::fromStdString(
+                                         session.documentModel().path().string())));
+            return false;
+        }
+        updateWindowTitle();
+    }
+    return true;
+}
+
 void EditorWindow::refreshUndoRedoActions()
 {
     if (m_undoAction) m_undoAction->setEnabled(m_context.session().history().canUndo());
@@ -1579,32 +1736,9 @@ void EditorWindow::closeEvent(QCloseEvent* event)
         event->accept();
         return;
     }
-    if (m_context.session().documentModel().isDirty()) {
-        UnsavedChangesDialog dialog(this);
-        dialog.adjustSize();
-        dialog.move(frameGeometry().center() - dialog.rect().center());
-        dialog.exec();
-        const auto choice = dialog.result();
-        if (choice == QMessageBox::Cancel) {
-            event->ignore();
-            return;
-        }
-        if (choice == QMessageBox::Save) {
-            std::string target;
-            if (m_context.session().documentModel().path().empty()) {
-                const QString path = QFileDialog::getSaveFileName(
-                    this, tr("Save Scene As"), QString(), tr("Dodoe Scene (*.doscn)"));
-                if (path.isEmpty()) {
-                    event->ignore();
-                    return;
-                }
-                target = path.toStdString();
-            }
-            if (!m_context.session().saveDocument(target)) {
-                event->ignore();
-                return;
-            }
-        }
+    if (!promptUnsavedChanges()) {
+        event->ignore();
+        return;
     }
     m_closed = true;
     saveLayoutState();

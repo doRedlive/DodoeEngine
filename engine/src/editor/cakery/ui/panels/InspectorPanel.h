@@ -16,6 +16,7 @@
 #include <nlohmann/json.hpp>
 
 class QLineEdit;
+class QScrollArea;
 class QVBoxLayout;
 
 namespace cakery {
@@ -34,10 +35,16 @@ private:
     void onRenameEntity(const QString& name);
     void addComponent(const std::string& typeName);
     void commitComponentValue(std::uint64_t uuid, std::size_t index,
-                              const nlohmann::json& value, bool managed);
+                              const nlohmann::json& value, bool managed,
+                              const QString& fieldPath = QString());
 
     EditorWorkspaceContext& m_context;
     QVBoxLayout* m_layout = nullptr;
+    QScrollArea* m_scroll = nullptr;
+    QLineEdit* m_filter = nullptr;
+    QString m_filterText;
+    bool m_filterFocused = false;
+    int m_scrollPosition = 0;
     QLineEdit* m_nameEdit = nullptr;
     std::vector<bool> m_componentExpanded;
     std::vector<bool> m_managedComponentExpanded;

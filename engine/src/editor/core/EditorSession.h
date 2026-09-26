@@ -101,6 +101,9 @@ public:
     bool updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value);
     bool updateComponentOnEntities(const std::vector<std::uint64_t>& uuids, const std::string& typeName,
                                    const nlohmann::json& value, bool managed);
+    bool updateComponentFieldOnEntities(const std::vector<std::uint64_t>& uuids,
+                                        const std::string& typeName, const std::string& fieldPath,
+                                        const nlohmann::json& value, bool managed);
     bool removeManagedComponent(std::uint64_t uuid, std::size_t index);
     bool updateManagedComponent(std::uint64_t uuid, std::size_t index, const nlohmann::json& value);
     bool undo();
@@ -109,6 +112,7 @@ public:
 
     const std::string& cameraMode() const { return m_cameraMode; }
     Signal<std::string> cameraModeChanged;
+    Signal<std::string> gizmoModeChanged;
 
     PlayState playState() const { return m_playState; }
     bool playDocumentEdited() const { return m_playDocumentEdited; }

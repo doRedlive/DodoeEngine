@@ -6,6 +6,7 @@
 #include "adapters/runtime/services/TilePaintService.h"
 #include "bridge/EditorBackend.h"
 #include "core/document/EditorDocument.h"
+#include "runtime/core/channel/gizmo_channel.h"
 #include "runtime/core/math/math.h"
 #include "runtime/core/utils/uuid.h"
 
@@ -106,6 +107,8 @@ private:
     void rebuildHierarchy(dodoe::Scene& scene, const EditorDocument& document);
     void updateGizmo();
     void updateTileOverlay();
+    float computeGizmoScale(const dodoe::Vector3f& position) const;
+    void drawSelectionHighlight(dodoe::GizmoChannelData& data);
     void pickAt(float screenX, float screenY);
     bool importDroppedAsset(const std::string& assetPath, const nlohmann::json& position);
     void setPlayAction(const std::string& action);
@@ -147,6 +150,8 @@ private:
     std::unique_ptr<AssetDatabase> m_assetDatabase;
     std::uint64_t m_selectedUuid = 0;
     std::string m_gizmoMode = "translate";
+    float m_gizmoScale = 1.0f;
+    int m_hoverAxis = -1;
     bool m_snapEnabled = false;
     float m_translateSnap = 0.25f;
     float m_rotateSnap = 15.0f;

@@ -7,6 +7,7 @@
 #include "services/EditorResourceLocator.h"
 
 #include <filesystem>
+#include <functional>
 #include <string>
 
 namespace cakery {
@@ -15,6 +16,8 @@ class EditorWorkspaceContext {
 public:
     EditorWorkspaceContext(EditorSession& session, EditorResourceLocator& resources)
         : m_session(session), m_resources(resources) {}
+
+    std::function<bool()> confirmUnsavedChanges;
 
     EditorSession& session() { return m_session; }
     const EditorSession& session() const { return m_session; }

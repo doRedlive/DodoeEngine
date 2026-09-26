@@ -35,6 +35,7 @@ public:
 
     dodoe::Vector2f projectToScreen(const dodoe::Vector3f& worldPos) const;
     dodoe::Vector3f forwardDirection() const;
+    float pixelsToWorld(const dodoe::Vector3f& worldPos, float pixelSize) const;
 
     dodoe::Vector3f pivot() const { return m_pivot; }
     float distance() const { return m_distance; }

@@ -148,7 +148,7 @@ void EditorCamera::onMouseMove(float x, float y)
 
     if (m_mode == Mode::Ortho2D) {
         float panSpeed = m_orthoZoom / m_vpH;
-        if (m_mouseDown[0] || m_mouseDown[1]) {
+        if (m_mouseDown[1] || (m_mouseDown[0] && m_altDown)) {
             m_orthoPan.x -= dx * panSpeed;
             m_orthoPan.y += dy * panSpeed;
         }
@@ -282,6 +282,20 @@ dodoe::Vector3f EditorCamera::forwardDirection() const
         return {0.0f, 0.0f, -1.0f};
     }
     return forward();
+}
+
+float EditorCamera::pixelsToWorld(const dodoe::Vector3f& worldPos, float pixelSize) const
+{
+    float worldPerPx = 1.0f;
+    if (m_mode == Mode::Ortho2D) {
+        worldPerPx = (m_vpH > 0.0f) ? (m_orthoZoom / m_vpH) : 1.0f;
+    } else {
+        const float dist = std::max(glm::length(worldPos - m_position), 0.1f);
+        worldPerPx = (m_vpH > 0.0f)
+            ? (2.0f * dist * std::tan(glm::radians(m_fov * 0.5f)) / m_vpH)
+            : 1.0f;
+    }
+    return worldPerPx * pixelSize;
 }
 
 } // namespace cakery

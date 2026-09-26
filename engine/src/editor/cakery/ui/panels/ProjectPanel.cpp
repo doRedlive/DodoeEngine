@@ -615,7 +615,9 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
         const QString path = item->data(Qt::UserRole).toString();
         const QString suffix = QFileInfo(path).suffix().toLower();
         if (suffix == QLatin1String("doscn")) {
-            m_context.session().openDocument(path.toStdString());
+            if (!m_context.confirmUnsavedChanges || m_context.confirmUnsavedChanges()) {
+                m_context.session().openDocument(path.toStdString());
+            }
         } else if (suffix == QLatin1String("tsx") || suffix == QLatin1String("tmj") ||
                    suffix == QLatin1String("tmx")) {
             auto* dialog = new TilesetPreviewDialog(
@@ -1415,7 +1417,9 @@ void ProjectPanel::onDocumentDoubleClicked(QTreeWidgetItem* item, int column)
     }
     const QString suffix = QFileInfo(path).suffix().toLower();
     if (suffix == QLatin1String("doscn")) {
-        m_context.session().openDocument(path.toStdString());
+        if (!m_context.confirmUnsavedChanges || m_context.confirmUnsavedChanges()) {
+            m_context.session().openDocument(path.toStdString());
+        }
     } else if (suffix == QLatin1String("tsx") || suffix == QLatin1String("tmj") ||
                suffix == QLatin1String("tmx")) {
         auto* dialog = new TilesetPreviewDialog(

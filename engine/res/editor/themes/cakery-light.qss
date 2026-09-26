@@ -19,6 +19,13 @@ QTreeWidget, QListWidget, QTableWidget, QTreeView, QListView, QScrollArea { back
 QTreeWidget::item:hover, QListWidget::item:hover { background: #e2eef8; }
 ads--CDockWidget { background: #f4f7fb; border-color: #c5d4e4; }
 ads--CDockAreaTabBar, ads--CDockAreaTitleBar { background: #eaf1f8; border-color: #c5d4e4; }
+ads--CDockWidgetTab { color: #52667c; }
+ads--CDockWidgetTab QLabel { color: #52667c; }
+ads--CDockWidgetTab[activeTab="true"] { background: #ffffff; color: #17324d; border: 1px solid #78aeda; }
+ads--CDockWidgetTab[activeTab="true"] QLabel { color: #17324d; }
+ads--CDockWidgetTab:hover:!activeTab { background: #dceaf6; color: #263447; }
+QSplitter::handle:horizontal, ads--CDockSplitter::handle:horizontal { background: #d5e2ef; }
+QSplitter::handle:vertical, ads--CDockSplitter::handle:vertical { background: #d5e2ef; }
 ads--CAutoHideDockContainer, ads--CAutoHideDockContainer #autoHideDockArea, ads--CAutoHideDockContainer ads--CDockWidget { background: #f4f7fb; }
 ads--CAutoHideDockContainer { border-color: #c5d4e4; }
 ads--CAutoHideDockContainer ads--CDockAreaTitleBar { background: #eaf1f8; border-bottom-color: #c5d4e4; }

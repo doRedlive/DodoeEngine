@@ -477,6 +477,7 @@ bool RuntimeEditorBackend::handleSceneMouseDown(const EditorCommandMessage& comm
                 return true;
             }
         }
+        m_hoverAxis = -1;
         if (m_camera) {
             m_camera->onMouseDown(x, y, button, alt != 0);
         }
@@ -515,8 +516,12 @@ bool RuntimeEditorBackend::handleSceneMouseMove(const EditorCommandMessage& comm
         }
         if (m_dragAxis >= 0) {
             updateDrag(x, y);
-        } else if (m_camera) {
-            m_camera->onMouseMove(x, y);
+        } else {
+            if (m_camera) {
+                m_camera->onMouseMove(x, y);
+            }
+            m_hoverAxis = (!m_tilePaintActive && m_selectedUuid != 0 && m_gizmoMode != "none")
+                ? hitTestGizmo(x, y) : -1;
         }
     }
     return true;
@@ -574,6 +579,8 @@ bool RuntimeEditorBackend::handleSelectionChanged(const EditorCommandMessage& co
 bool RuntimeEditorBackend::handleGizmoMode(const EditorCommandMessage& command)
 {
     m_gizmoMode = command.payload.empty() ? "none" : command.payload;
+    m_hoverAxis = -1;
+    m_eventCallback(BackendEventMessage{"gizmo_mode_changed", m_gizmoMode});
     return true;
 }
 
@@ -1259,6 +1266,7 @@ bool RuntimeEditorBackend::bootRuntime()
     m_diagnostic = "Runtime backend booted.";
     DO_INFO("Cakery backend: runtime boot complete");
     m_eventCallback(BackendEventMessage{"camera_mode_changed", "3d"});
+    m_eventCallback(BackendEventMessage{"gizmo_mode_changed", m_gizmoMode});
     return true;
 }
 

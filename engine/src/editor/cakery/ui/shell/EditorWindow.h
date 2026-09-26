@@ -73,6 +73,9 @@ private:
     void setupFloatingDockWindow(ads::CFloatingDockContainer* floating);
     void startSafePointTimer();
     void stopPlayWithPrompt();
+    void updateRuntimeControls();
+    void updateWindowTitle();
+    bool promptUnsavedChanges();
     void updateAssetImportProgress();
     void refreshUndoRedoActions();
     void resetLayout();
@@ -120,6 +123,11 @@ private:
     QAction* m_undoAction = nullptr;
     QAction* m_redoAction = nullptr;
     QAction* m_camera2DAction = nullptr;
+    QAction* m_sceneToolActions[4] = {nullptr, nullptr, nullptr, nullptr};
+    QAction* m_runtimeMenuActions[3] = {nullptr, nullptr, nullptr};
+    QToolButton* m_playButton = nullptr;
+    QToolButton* m_pauseButton = nullptr;
+    QToolButton* m_stopButton = nullptr;
     QTimer* m_safePointTimer = nullptr;
     QTimer* m_assetImportTimer = nullptr;
     QProgressDialog* m_assetImportDialog = nullptr;
@@ -128,6 +136,9 @@ private:
     QString m_layoutStatePath;
     ScopedConnection m_historySubscription;
     ScopedConnection m_cameraModeSubscription;
+    ScopedConnection m_gizmoModeSubscription;
+    ScopedConnection m_playStateSubscription;
+    ScopedConnection m_documentSubscription;
     ScopedConnection m_missingAssetRefsSubscription;
 };
 

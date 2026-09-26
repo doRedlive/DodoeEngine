@@ -14,6 +14,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QShortcut>
+#include <QScrollBar>
 #include <QToolButton>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -95,6 +96,10 @@ void ConsolePanel::append(ConsoleLogLevel level, const QString& message, const Q
 
 void ConsolePanel::refresh()
 {
+    QScrollBar* scrollbar = m_list->verticalScrollBar();
+    const bool atBottom = scrollbar->value() >= scrollbar->maximum() - 4;
+    const int scrollPosition = scrollbar->value();
+
     const QString needle = m_search->text().trimmed();
     const int selectedLevel = m_levelFilter->currentData().toInt();
     m_list->clear();
@@ -119,6 +124,12 @@ void ConsolePanel::refresh()
     }
     for (const Entry& entry : m_backendEntries) {
         addEntry(entry);
+    }
+
+    if (atBottom) {
+        scrollbar->setValue(scrollbar->maximum());
+    } else {
+        scrollbar->setValue(scrollPosition);
     }
 }
 

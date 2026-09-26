@@ -596,6 +596,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
             if (index < 0) return;
             valueAt(path) = combo->itemData(index).toInt();
             emit valueChanged();
+            emit fieldChanged(QString::fromStdString(path));
         });
         form->addRow(label, combo);
         return;
@@ -635,6 +636,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
             connect(spin, &QSpinBox::editingFinished, this, [this, path, spin]() {
                 valueAt(path) = spin->value();
                 emit valueChanged();
+                emit fieldChanged(QString::fromStdString(path));
             });
             form->addRow(label, spin);
             return;
@@ -652,6 +654,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
             connect(spin, &QSpinBox::editingFinished, this, [this, path, spin]() {
                 valueAt(path) = spin->value();
                 emit valueChanged();
+                emit fieldChanged(QString::fromStdString(path));
             });
             form->addRow(label, spin);
         } else {
@@ -670,6 +673,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
         connect(spin, &QDoubleSpinBox::editingFinished, this, [this, path, spin]() {
             valueAt(path) = spin->value();
             emit valueChanged();
+            emit fieldChanged(QString::fromStdString(path));
         });
         form->addRow(label, spin);
         return;
@@ -698,10 +702,12 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
             connect(combo, &QComboBox::textActivated, this, [this, path](const QString& text) {
                 valueAt(path) = text.toStdString();
                 emit valueChanged();
+                emit fieldChanged(QString::fromStdString(path));
             });
             connect(combo->lineEdit(), &QLineEdit::editingFinished, this, [this, path, combo]() {
                 valueAt(path) = combo->currentText().toStdString();
                 emit valueChanged();
+                emit fieldChanged(QString::fromStdString(path));
             });
             form->addRow(label, combo);
             return;
@@ -711,6 +717,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
         connect(edit, &QLineEdit::editingFinished, this, [this, path, edit]() {
             valueAt(path) = edit->text().toStdString();
             emit valueChanged();
+            emit fieldChanged(QString::fromStdString(path));
         });
         form->addRow(label, edit);
         return;
@@ -847,6 +854,7 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const std::string& path,
             return;
         }
         emit owner->valueChanged();
+        emit owner->fieldChanged(QString::fromStdString(path));
     };
     connect(clear, &QToolButton::clicked, this, [assign]() { assign(0, QString()); });
     connect(field, &QToolButton::clicked, this, [this, field, targetType, assign]() {
@@ -888,6 +896,7 @@ QWidget* EditorJsonWidget::buildVectorField(const std::string& path, const nlohm
             }
             valueAt(path) = array;
             emit valueChanged();
+            emit fieldChanged(QString::fromStdString(path));
         });
     }
     return container;
@@ -923,6 +932,7 @@ QWidget* EditorJsonWidget::buildColorField(const std::string& path, const nlohma
         }
         valueAt(path) = array;
         emit valueChanged();
+        emit fieldChanged(QString::fromStdString(path));
     });
     return container;
 }
@@ -930,16 +940,23 @@ QWidget* EditorJsonWidget::buildColorField(const std::string& path, const nlohma
 QWidget* EditorJsonWidget::buildBoolField(const std::string& path, const nlohmann::json& value) {
     auto* container = new QWidget();
     container->setObjectName(QStringLiteral("inspectorBoolField"));
+    container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    container->setMinimumHeight(28);
     auto* hbox = new QHBoxLayout(container);
     hbox->setContentsMargins(6, 1, 6, 1);
     hbox->setSpacing(6);
     auto* check = new QCheckBox(container);
+    check->setCursor(Qt::PointingHandCursor);
+    check->setMinimumHeight(24);
+    check->setText(value.get<bool>() ? QObject::tr("On") : QObject::tr("Off"));
     check->setChecked(value.get<bool>());
     hbox->addWidget(check);
     hbox->addStretch();
     connect(check, &QCheckBox::toggled, this, [this, path, check](bool on) {
+        check->setText(on ? QObject::tr("On") : QObject::tr("Off"));
         valueAt(path) = on;
         emit valueChanged();
+        emit fieldChanged(QString::fromStdString(path));
     });
     return container;
 }
@@ -959,6 +976,7 @@ QWidget* EditorJsonWidget::buildLayerField(const std::string& key, const std::st
                     if (index >= 0) {
                         valueAt(path) = combo->itemData(index).toUInt();
                         emit valueChanged();
+                        emit fieldChanged(QString::fromStdString(path));
                     }
                 });
         return combo;
@@ -1001,6 +1019,7 @@ QWidget* EditorJsonWidget::buildLayerField(const std::string& key, const std::st
             updateText();
             valueAt(path) = *bits;
             emit valueChanged();
+            emit fieldChanged(QString::fromStdString(path));
         });
     }
     button->setMenu(menu);

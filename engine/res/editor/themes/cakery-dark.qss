@@ -839,19 +839,19 @@ QStatusBar {
 }
 
 QSplitter, ads--CDockSplitter {
-    qproperty-handleWidth: 1;
+    qproperty-handleWidth: 5;
 }
 
 QSplitter::handle:horizontal,
 ads--CDockSplitter::handle:horizontal {
     background: #151515;
-    width: 1px;
+    width: 5px;
 }
 
 QSplitter::handle:vertical,
 ads--CDockSplitter::handle:vertical {
     background: #151515;
-    height: 1px;
+    height: 5px;
 }
 
 QSplitter::handle:hover,

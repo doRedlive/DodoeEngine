@@ -16,17 +16,20 @@
 #include <QComboBox>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QImage>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
+#include <QPainter>
+#include <QPaintEvent>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QSize>
 #include <QToolButton>
-#include <QImage>
-#include <QPixmap>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidgetAction>
 
@@ -42,6 +45,46 @@ namespace {
 struct ComponentTemplate {
     const char* typeName;
     nlohmann::json defaultValue;
+};
+
+class AssetImagePreview final : public QWidget {
+public:
+    explicit AssetImagePreview(QImage image, QWidget* parent = nullptr)
+        : QWidget(parent), m_image(std::move(image))
+    {
+        setObjectName(QStringLiteral("inspectorAssetPreview"));
+        setMinimumHeight(200);
+        setToolTip(QStringLiteral("%1 x %2 px").arg(m_image.width()).arg(m_image.height()));
+    }
+
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QWidget::paintEvent(event);
+        QPainter painter(this);
+        painter.fillRect(rect(), QColor(34, 34, 34));
+        constexpr int cell = 8;
+        painter.setPen(Qt::NoPen);
+        for (int y = 0; y < height(); y += cell) {
+            for (int x = 0; x < width(); x += cell) {
+                if (((x / cell) + (y / cell)) % 2 == 0) {
+                    painter.fillRect(x, y, cell, cell, QColor(56, 56, 56));
+                }
+            }
+        }
+        if (m_image.isNull()) {
+            return;
+        }
+        QSize target = m_image.size();
+        if (target.width() > width() || target.height() > height()) {
+            target.scale(QSize(width(), height()), Qt::KeepAspectRatio);
+        }
+        const QPoint topLeft((width() - target.width()) / 2, (height() - target.height()) / 2);
+        painter.drawImage(QRect(topLeft, target), m_image);
+    }
+
+private:
+    QImage m_image;
 };
 
 const std::vector<ComponentTemplate>& ComponentTemplates() {
@@ -115,6 +158,7 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scroll->setAlignment(Qt::AlignTop | Qt::AlignLeft);
     scroll->setFrameShape(QFrame::NoFrame);
+    m_scroll = scroll;
     auto* container = new QWidget();
     container->setObjectName(QStringLiteral("inspectorContent"));
     m_layout = new QVBoxLayout(container);
@@ -133,6 +177,27 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
 
 void InspectorPanel::refresh()
 {
+    if (m_filter) {
+        m_filterText = m_filter->text();
+        m_filterFocused = m_filter->hasFocus();
+    }
+    if (m_scroll) {
+        m_scrollPosition = m_scroll->verticalScrollBar()->value();
+    }
+    const auto restoreViewState = [this]() {
+        if (m_scrollPosition <= 0 && !m_filterFocused) {
+            return;
+        }
+        QTimer::singleShot(0, this, [this]() {
+            if (m_scroll && m_scrollPosition > 0) {
+                m_scroll->verticalScrollBar()->setValue(m_scrollPosition);
+            }
+            if (m_filterFocused && m_filter) {
+                m_filter->setFocus(Qt::OtherFocusReason);
+            }
+        });
+    };
+
     QLayoutItem* child = nullptr;
     while ((child = m_layout->takeAt(0)) != nullptr) {
         if (child->widget()) {
@@ -149,11 +214,7 @@ void InspectorPanel::refresh()
 
         QImage image(QString::fromStdString(asset.path));
         if (!image.isNull()) {
-            auto* preview = new QLabel(this);
-            preview->setObjectName(QStringLiteral("inspectorAssetPreview"));
-            preview->setAlignment(Qt::AlignCenter);
-            preview->setPixmap(QPixmap::fromImage(image).scaled(
-                QSize(220, 180), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            auto* preview = new AssetImagePreview(std::move(image), this);
             m_layout->addWidget(preview);
         }
 
@@ -186,6 +247,7 @@ void InspectorPanel::refresh()
             m_layout->addWidget(importGroup);
         }
         m_layout->addStretch();
+        restoreViewState();
         return;
     }
 
@@ -196,6 +258,7 @@ void InspectorPanel::refresh()
         label->setStyleSheet(QStringLiteral("color: #A0A0A0;"));
         m_layout->addWidget(label);
         m_layout->addStretch();
+        restoreViewState();
         return;
     }
 
@@ -233,6 +296,10 @@ void InspectorPanel::refresh()
     auto* filter = new QLineEdit(this);
     filter->setObjectName(QStringLiteral("inspectorFilter"));
     filter->setPlaceholderText(tr("Filter properties"));
+    if (!m_filterText.isEmpty()) {
+        filter->setText(m_filterText);
+    }
+    m_filter = filter;
     m_layout->addWidget(filter);
 
     std::vector<AssetBrowserEntry> assets;
@@ -431,6 +498,10 @@ void InspectorPanel::refresh()
             connect(editor, &EditorJsonWidget::valueChanged, this, [this, uuid, index, managed, editor]() {
                 commitComponentValue(uuid, index, editor->value(), managed);
             });
+            connect(editor, &EditorJsonWidget::fieldChanged, this,
+                    [this, uuid, index, managed, editor](const QString& path) {
+                commitComponentValue(uuid, index, editor->value(), managed, path);
+            });
             bodyLayout->addWidget(editor);
         }
 
@@ -528,6 +599,7 @@ void InspectorPanel::refresh()
     m_layout->addWidget(addBtn);
 
     m_layout->addStretch();
+    restoreViewState();
 }
 
 void InspectorPanel::syncSelectedAsset()
@@ -593,7 +665,8 @@ void InspectorPanel::addComponent(const std::string& typeName)
 }
 
 void InspectorPanel::commitComponentValue(std::uint64_t uuid, std::size_t index,
-                                           const nlohmann::json& value, bool managed)
+                                           const nlohmann::json& value, bool managed,
+                                           const QString& fieldPath)
 {
     m_editing = true;
     const EditorSelection& selection = m_context.session().selection();
@@ -603,7 +676,12 @@ void InspectorPanel::commitComponentValue(std::uint64_t uuid, std::size_t index,
             managed ? primary->managedComponents : primary->nativeComponents;
         const std::string typeName = index < components.size()
             ? components[index].typeName : std::string();
-        m_context.session().updateComponentOnEntities(selection.selectedAll(), typeName, value, managed);
+        if (!fieldPath.isEmpty()) {
+            m_context.session().updateComponentFieldOnEntities(
+                selection.selectedAll(), typeName, fieldPath.toStdString(), value, managed);
+        } else {
+            m_context.session().updateComponentOnEntities(selection.selectedAll(), typeName, value, managed);
+        }
     } else if (managed) {
         m_context.session().updateManagedComponent(uuid, index, value);
     } else {

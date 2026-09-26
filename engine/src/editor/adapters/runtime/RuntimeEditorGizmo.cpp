@@ -42,6 +42,12 @@ const dodoe::Vector3f kAxes[3] = {
     {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}
 };
 const dodoe::Color kColors[3] = {kAxisRed, kAxisGreen, kAxisBlue};
+const dodoe::Color kHoverColors[3] = {
+    {1.0f, 0.62f, 0.35f, 1.0f},
+    {0.55f, 1.0f, 0.45f, 1.0f},
+    {0.45f, 0.72f, 1.0f, 1.0f},
+};
+const dodoe::Color kSelectionColor{1.0f, 0.82f, 0.25f, 0.95f};
 
 [[nodiscard]] dodoe::GizmoVertex MakeVertex(const dodoe::Vector3f& pos, const dodoe::Color& color) {
     return {pos.x, pos.y, pos.z, color.r, color.g, color.b, color.a};
@@ -64,7 +70,7 @@ void AddLine(dodoe::GizmoChannelData& data, const dodoe::Vector3f& start, const 
 }
 
 void AddArrowHead(dodoe::GizmoChannelData& data, const dodoe::Vector3f& tip, const dodoe::Vector3f& axis,
-                  const dodoe::Color& color) {
+                  const dodoe::Color& color, float headLength, float headRadius) {
     const UInt32 base_vertex = static_cast<UInt32>(data.vertices.size());
     const UInt32 base_index  = static_cast<UInt32>(data.indices.size());
 
@@ -76,12 +82,12 @@ void AddArrowHead(dodoe::GizmoChannelData& data, const dodoe::Vector3f& tip, con
     }
     perp2 = dodoe::Math::Normalize(dodoe::Math::Cross(axis, perp1));
 
-    const dodoe::Vector3f base_center = tip - axis * kArrowHeadLength;
+    const dodoe::Vector3f base_center = tip - axis * headLength;
 
     data.vertices.push_back(MakeVertex(tip, color));
     for (UInt32 i = 0; i < kArrowHeadSegments; ++i) {
         const Float angle = static_cast<Float>(i) * 2.0f * 3.14159265f / static_cast<Float>(kArrowHeadSegments);
-        const dodoe::Vector3f offset = (perp1 * std::cos(angle) + perp2 * std::sin(angle)) * kArrowHeadRadius;
+        const dodoe::Vector3f offset = (perp1 * std::cos(angle) + perp2 * std::sin(angle)) * headRadius;
         data.vertices.push_back(MakeVertex(base_center + offset, color));
     }
     data.vertices.push_back(MakeVertex(base_center, color));
@@ -111,19 +117,21 @@ void AddArrowHead(dodoe::GizmoChannelData& data, const dodoe::Vector3f& tip, con
 }
 
 void AddArrow(dodoe::GizmoChannelData& data, const dodoe::Vector3f& origin, const dodoe::Vector3f& axis,
-              const dodoe::Color& color) {
-    const dodoe::Vector3f tip = origin + axis * kHandleLength;
-    const dodoe::Vector3f shaft_end = tip - axis * kArrowHeadLength;
+              const dodoe::Color& color, float scale) {
+    const dodoe::Vector3f tip = origin + axis * (kHandleLength * scale);
+    const dodoe::Vector3f shaft_end = tip - axis * (kArrowHeadLength * scale);
     AddLine(data, origin, shaft_end, color);
-    AddArrowHead(data, tip, axis, color);
+    AddArrowHead(data, tip, axis, color, kArrowHeadLength * scale, kArrowHeadRadius * scale);
 }
 
-void GenerateTranslateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position) {
+void GenerateTranslateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position,
+                            float scale, int hoverAxis) {
     const dodoe::Matrix4f translation = dodoe::Math::Translate(dodoe::Matrix4f(1.0f), position);
 
     for (Int32 i = 0; i < 3; ++i) {
         dodoe::GizmoChannelData axis_data;
-        AddArrow(axis_data, dodoe::Vector3f(0.0f), kAxes[i], kColors[i]);
+        const dodoe::Color& color = (i == hoverAxis) ? kHoverColors[i] : kColors[i];
+        AddArrow(axis_data, dodoe::Vector3f(0.0f), kAxes[i], color, scale);
 
         const UInt32 vertex_base = static_cast<UInt32>(data.vertices.size());
         const UInt32 index_base  = static_cast<UInt32>(data.indices.size());
@@ -234,8 +242,11 @@ void AddCube(dodoe::GizmoChannelData& data, const dodoe::Vector3f& center, float
     data.commands.push_back(cmd);
 }
 
-void GenerateRotateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position) {
+void GenerateRotateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position,
+                         float scale, int hoverAxis) {
+    const Float ringRadius = kRingRadius * scale;
     for (Int32 axis = 0; axis < 3; ++axis) {
+        const dodoe::Color& color = (axis == hoverAxis) ? kHoverColors[axis] : kColors[axis];
         for (UInt32 i = 0; i < kRingSegments; ++i) {
             const Float a0 = static_cast<Float>(i) * 2.0f * 3.14159265f / static_cast<Float>(kRingSegments);
             const Float a1 = static_cast<Float>(i + 1) * 2.0f * 3.14159265f / static_cast<Float>(kRingSegments);
@@ -243,28 +254,52 @@ void GenerateRotateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& p
             const Float c1 = std::cos(a1), s1 = std::sin(a1);
             dodoe::Vector3f p0, p1;
             if (axis == 0) {
-                p0 = position + dodoe::Vector3f(0.0f, c0, s0) * kRingRadius;
-                p1 = position + dodoe::Vector3f(0.0f, c1, s1) * kRingRadius;
+                p0 = position + dodoe::Vector3f(0.0f, c0, s0) * ringRadius;
+                p1 = position + dodoe::Vector3f(0.0f, c1, s1) * ringRadius;
             } else if (axis == 1) {
-                p0 = position + dodoe::Vector3f(c0, 0.0f, s0) * kRingRadius;
-                p1 = position + dodoe::Vector3f(c1, 0.0f, s1) * kRingRadius;
+                p0 = position + dodoe::Vector3f(c0, 0.0f, s0) * ringRadius;
+                p1 = position + dodoe::Vector3f(c1, 0.0f, s1) * ringRadius;
             } else {
-                p0 = position + dodoe::Vector3f(c0, s0, 0.0f) * kRingRadius;
-                p1 = position + dodoe::Vector3f(c1, s1, 0.0f) * kRingRadius;
+                p0 = position + dodoe::Vector3f(c0, s0, 0.0f) * ringRadius;
+                p1 = position + dodoe::Vector3f(c1, s1, 0.0f) * ringRadius;
             }
-            AddLine(data, p0, p1, kColors[axis]);
+            AddLine(data, p0, p1, color);
         }
     }
     data.has_data = true;
 }
 
-void GenerateScaleGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position) {
+void GenerateScaleGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position,
+                        float scale, int hoverAxis) {
     for (Int32 i = 0; i < 3; ++i) {
-        const dodoe::Vector3f tip = position + kAxes[i] * kHandleLength;
-        AddLine(data, position, tip, kColors[i]);
-        AddCube(data, tip, kCubeHalfSize, kColors[i]);
+        const dodoe::Vector3f tip = position + kAxes[i] * (kHandleLength * scale);
+        const dodoe::Color& color = (i == hoverAxis) ? kHoverColors[i] : kColors[i];
+        AddLine(data, position, tip, color);
+        AddCube(data, tip, kCubeHalfSize * scale, color);
     }
     data.has_data = true;
+}
+
+void DrawSelectionBox(dodoe::GizmoChannelData& data, const dodoe::Vector3f& center,
+                      const dodoe::Vector3f& halfExtents) {
+    const float x0 = center.x - halfExtents.x;
+    const float x1 = center.x + halfExtents.x;
+    const float y0 = center.y - halfExtents.y;
+    const float y1 = center.y + halfExtents.y;
+    const float z0 = center.z - halfExtents.z;
+    const float z1 = center.z + halfExtents.z;
+    const dodoe::Vector3f corners[8] = {
+        {x0, y0, z0}, {x1, y0, z0}, {x1, y1, z0}, {x0, y1, z0},
+        {x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1},
+    };
+    const UInt32 edges[12][2] = {
+        {0, 1}, {1, 2}, {2, 3}, {3, 0},
+        {4, 5}, {5, 6}, {6, 7}, {7, 4},
+        {0, 4}, {1, 5}, {2, 6}, {3, 7},
+    };
+    for (const auto& edge : edges) {
+        AddLine(data, corners[edge[0]], corners[edge[1]], kSelectionColor);
+    }
 }
 
 } // anonymous namespace
@@ -389,7 +424,7 @@ void RuntimeEditorBackend::updateGizmo()
     channel_data.clear();
     const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget();
     updateTileOverlay();
-    if (tilePainting || m_gizmoMode == "none" || m_selectedUuid == 0) {
+    if (tilePainting || m_selectedUuid == 0) {
         return;
     }
     SystemContext* ctx = m_app ? &m_app->context() : nullptr;
@@ -405,14 +440,41 @@ void RuntimeEditorBackend::updateGizmo()
     if (!entity || !entity.hasComponent<dodoe::TransformComponent>()) {
         return;
     }
-    const dodoe::Vector3f position = entity.getComponent<dodoe::TransformComponent>().getPosition();
-    if (m_gizmoMode == "translate") {
-        GenerateTranslateGizmo(channel_data, position);
-    } else if (m_gizmoMode == "rotate") {
-        GenerateRotateGizmo(channel_data, position);
-    } else if (m_gizmoMode == "scale") {
-        GenerateScaleGizmo(channel_data, position);
+    const dodoe::TransformComponent& transform = entity.getComponent<dodoe::TransformComponent>();
+    const dodoe::Vector3f position = transform.getPosition();
+    drawSelectionHighlight(channel_data);
+    if (m_gizmoMode == "none") {
+        return;
     }
+    m_gizmoScale = std::max(computeGizmoScale(position), 1e-3f);
+    if (m_gizmoMode == "translate") {
+        GenerateTranslateGizmo(channel_data, position, m_gizmoScale, m_hoverAxis);
+    } else if (m_gizmoMode == "rotate") {
+        GenerateRotateGizmo(channel_data, position, m_gizmoScale, m_hoverAxis);
+    } else if (m_gizmoMode == "scale") {
+        GenerateScaleGizmo(channel_data, position, m_gizmoScale, m_hoverAxis);
+    }
+}
+
+float RuntimeEditorBackend::computeGizmoScale(const dodoe::Vector3f& position) const
+{
+    if (!m_camera) {
+        return 1.0f;
+    }
+    return m_camera->pixelsToWorld(position, 90.0f);
+}
+
+void RuntimeEditorBackend::drawSelectionHighlight(dodoe::GizmoChannelData& data)
+{
+    dodoe::Entity entity = selectedSceneEntity();
+    if (!entity || !entity.hasComponent<dodoe::TransformComponent>()) {
+        return;
+    }
+    const dodoe::TransformComponent& transform = entity.getComponent<dodoe::TransformComponent>();
+    const dodoe::Vector3f& p = transform.getPosition();
+    const dodoe::Vector3f& s = transform.getScale();
+    const dodoe::Vector3f half{0.5f * std::fabs(s.x), 0.5f * std::fabs(s.y), 0.5f * std::fabs(s.z)};
+    DrawSelectionBox(data, p, half);
 }
 
 void RuntimeEditorBackend::pickAt(float screenX, float screenY)
@@ -433,12 +495,15 @@ void RuntimeEditorBackend::pickAt(float screenX, float screenY)
     m_camera->screenToRay(screenX, screenY, origin, dir);
     dodoe::Entity entity = dodoe::PickingBackend::RaycastNearest(*scene, origin, dir);
     if (!entity.valid()) {
-        // A miss in the current lightweight picker is not proof that the user
-        // intended to clear the selection. Keep the Inspector stable until a
-        // real entity hit is reported.
+        if (m_selectedUuid != 0) {
+            m_selectedUuid = 0;
+            m_hoverAxis = -1;
+            m_eventCallback(BackendEventMessage{"selection_changed", std::string()});
+        }
         return;
     }
     m_selectedUuid = static_cast<std::uint64_t>(entity.uuid());
+    m_hoverAxis = -1;
     m_eventCallback(BackendEventMessage{"selection_changed", std::to_string(m_selectedUuid)});
 }
 
@@ -478,6 +543,8 @@ int RuntimeEditorBackend::hitTestGizmo(float screenX, float screenY)
     }
     const dodoe::Vector3f center = entity.getComponent<dodoe::TransformComponent>().getPosition();
     const float thresholdSq = kGizmoHitThresholdPx * kGizmoHitThresholdPx;
+    const float handleLength = kHandleLength * m_gizmoScale;
+    const float ringRadius = kRingRadius * m_gizmoScale;
     int bestAxis = -1;
     float bestDist = thresholdSq;
 
@@ -489,11 +556,11 @@ int RuntimeEditorBackend::hitTestGizmo(float screenX, float screenY)
                 const Float c = std::cos(a), s = std::sin(a);
                 dodoe::Vector3f point;
                 if (axis == 0) {
-                    point = center + dodoe::Vector3f(0.0f, c, s) * kRingRadius;
+                    point = center + dodoe::Vector3f(0.0f, c, s) * ringRadius;
                 } else if (axis == 1) {
-                    point = center + dodoe::Vector3f(c, 0.0f, s) * kRingRadius;
+                    point = center + dodoe::Vector3f(c, 0.0f, s) * ringRadius;
                 } else {
-                    point = center + dodoe::Vector3f(c, s, 0.0f) * kRingRadius;
+                    point = center + dodoe::Vector3f(c, s, 0.0f) * ringRadius;
                 }
                 const dodoe::Vector2f screenPt = m_camera->projectToScreen(point);
                 minDist = std::min(minDist, PointDistanceSq(screenX, screenY, screenPt));
@@ -508,7 +575,7 @@ int RuntimeEditorBackend::hitTestGizmo(float screenX, float screenY)
 
     for (Int32 axis = 0; axis < 3; ++axis) {
         const dodoe::Vector2f start = m_camera->projectToScreen(center);
-        const dodoe::Vector2f end = m_camera->projectToScreen(center + kAxes[axis] * kHandleLength);
+        const dodoe::Vector2f end = m_camera->projectToScreen(center + kAxes[axis] * handleLength);
         const float dist = PointSegmentDistanceSq(screenX, screenY, start, end);
         if (dist < bestDist) {
             bestDist = dist;
@@ -572,7 +639,7 @@ void RuntimeEditorBackend::beginDrag(int axis, float screenX, float screenY)
     if (m_dragMode == "scale") {
         const dodoe::Vector2f start = m_camera->projectToScreen(m_dragStartPosition);
         const dodoe::Vector2f end = m_camera->projectToScreen(
-            m_dragStartPosition + kAxes[m_dragAxis] * kHandleLength);
+            m_dragStartPosition + kAxes[m_dragAxis] * kHandleLength * m_gizmoScale);
         const dodoe::Vector2f axisScreen = end - start;
         const float axisLengthSq = axisScreen.x * axisScreen.x + axisScreen.y * axisScreen.y;
         // A view-facing axis has no screen-space direction in a 2D/editor
@@ -658,7 +725,7 @@ void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
     } else if (m_dragMode == "scale") {
         const dodoe::Vector2f start = m_camera->projectToScreen(m_dragStartPosition);
         const dodoe::Vector2f end = m_camera->projectToScreen(
-            m_dragStartPosition + kAxes[m_dragAxis] * kHandleLength);
+            m_dragStartPosition + kAxes[m_dragAxis] * kHandleLength * m_gizmoScale);
         const dodoe::Vector2f axisScreen = end - start;
         const float axisLengthSq = axisScreen.x * axisScreen.x + axisScreen.y * axisScreen.y;
         if (axisLengthSq < 1e-6f) {
@@ -668,7 +735,7 @@ void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
         const float axisParam = (mouseOffset.x * axisScreen.x + mouseOffset.y * axisScreen.y) / axisLengthSq;
         const float movement = axisParam - m_dragStartAxisParam;
         dodoe::Vector3f newScale = m_dragStartScale;
-        float primaryScale = m_dragStartScale[m_dragAxis] + movement * kHandleLength;
+        float primaryScale = m_dragStartScale[m_dragAxis] + movement * kHandleLength * m_gizmoScale;
         if (snapping) {
             primaryScale = SnapToStep(primaryScale, m_scaleSnap);
         }
@@ -683,7 +750,7 @@ void RuntimeEditorBackend::updateDrag(float screenX, float screenY)
                 continue;
             }
             dodoe::Vector3f otherScale = dragStart.scale;
-            float otherAxis = dragStart.scale[m_dragAxis] + movement * kHandleLength;
+            float otherAxis = dragStart.scale[m_dragAxis] + movement * kHandleLength * m_gizmoScale;
             if (snapping) {
                 otherAxis = SnapToStep(otherAxis, m_scaleSnap);
             }
@@ -703,6 +770,7 @@ void RuntimeEditorBackend::endDrag()
 {
     m_dragAxis = -1;
     m_dragMode.clear();
+    m_hoverAxis = -1;
     m_eventCallback(BackendEventMessage{"transform_drag_end", ""});
 }
 
