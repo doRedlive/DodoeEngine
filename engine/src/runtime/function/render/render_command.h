@@ -25,6 +25,7 @@ namespace dodoe {
         RemoveSprite,
         UpdateSpriteTransform,
         SubmitUIBatch,
+        UpdateSkinning,
     };
 
     struct SceneCommand {
@@ -35,6 +36,7 @@ namespace dodoe {
         LightSceneInfo light{};
         Scope<SpriteRenderObject> sprite{};
         DynamicArray<UISceneInfo> ui_scene_infos{};
+        DynamicArray<Matrix4f> skinning_matrices{};
     };
 
     enum class ResourceCommandType : UInt8 {

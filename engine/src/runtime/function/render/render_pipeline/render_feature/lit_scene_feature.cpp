@@ -22,7 +22,9 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
+#include "runtime/function/render/mesh_draw/lit_mesh_processor.h"
 #include "runtime/function/render/render_pipeline/shadow/shadow_system.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
@@ -30,7 +32,7 @@ namespace dodoe {
     namespace {
 
         static DynamicArray<GfxVertexAttributeDesc> BuildMeshVertexAttributes() {
-            constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
+            constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f) + sizeof(UInt32) * 4 + sizeof(Vector4f);
             constexpr Size_t kInstanceStride = sizeof(InstanceSceneData);
             return {
                 GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
@@ -46,6 +48,9 @@ namespace dodoe {
                 GfxVertexAttributeDesc().setName("TEXCOORD10").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
                 GfxVertexAttributeDesc().setName("TEXCOORD11").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
                 GfxVertexAttributeDesc().setName("TEXCOORD12").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2 + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("TEXCOORD13").setFormat(GfxFormat::R32_UINT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2 + sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+                GfxVertexAttributeDesc().setName("a_BoneIds").setFormat(GfxFormat::RGBA32_UINT).setOffset(sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f)).setElementStride(kVertexStride),
+                GfxVertexAttributeDesc().setName("a_BoneWeights").setFormat(GfxFormat::RGBA32_FLOAT).setOffset(sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f) + sizeof(UInt32) * 4).setElementStride(kVertexStride),
             };
         }
 
@@ -196,6 +201,11 @@ namespace dodoe {
             descriptor_table,
             binding_layout_cache};
         auto pipeline_desc = processor->buildPipelineDescription(pipeline_context);
+        if (auto* lit_processor = static_cast<LitMeshProcessor*>(processor); lit_processor && GetRenderSystem()) {
+            if (auto* scene = GetRenderSystem()->getRenderScene()) {
+                lit_processor->setSkinningBuffer(scene->getSkinningBuffer());
+            }
+        }
         const auto pipeline = pso_cache->resolveGraphicsPipeline(
             getMeshPassType(),
             pipeline_desc,

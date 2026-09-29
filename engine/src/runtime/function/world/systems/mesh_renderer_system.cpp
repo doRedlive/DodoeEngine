@@ -13,10 +13,14 @@
 
 #include "runtime/core/math/math.h"
 
+#include <algorithm>
+#include <cstring>
+
 namespace dodoe {
 
     namespace {
         constexpr Size_t kMaxHierarchyDepth = 256;
+        constexpr Size_t kSkinningSlotMatrices = 256;
     }
 
     MeshRendererSystem::~MeshRendererSystem() = default;
@@ -57,12 +61,46 @@ namespace dodoe {
                 if (pose.dirty) {
                     mesh.skinning_matrices = pose.skinning_matrices;
                     pose.dirty = false;
-                    mesh.dirty = true;
+                    if (!mesh.skinning_matrices.empty()) {
+                        copySkinningToStaging(id.id, mesh.skinning_matrices);
+                    }
                 }
             }
         }
 
+        if (!m_skinning_staging.empty()) {
+            RenderCommandQueue::UpdateSkinning(m_skinning_staging);
+        }
+
         pruneRemovedObjects(active_renderers);
+    }
+
+    UInt32 MeshRendererSystem::acquireSkinningSlot(const UUID& id) {
+        const auto it = m_skinning_slots.find(id);
+        if (it != m_skinning_slots.end()) {
+            return it->second;
+        }
+        const UInt32 slot = m_next_skinning_slot++;
+        m_skinning_slots.emplace(id, slot);
+
+        const Size_t required = static_cast<Size_t>(m_next_skinning_slot) * kSkinningSlotMatrices;
+        if (required > m_skinning_staging.size()) {
+            m_skinning_staging.resize(required, Matrix4f(1.0f));
+        }
+        return slot;
+    }
+
+    void MeshRendererSystem::copySkinningToStaging(const UUID& id, const DynamicArray<Matrix4f>& matrices) {
+        const auto it = m_skinning_slots.find(id);
+        if (it == m_skinning_slots.end()) {
+            return;
+        }
+        const Size_t base = static_cast<Size_t>(it->second) * kSkinningSlotMatrices;
+        if (base + kSkinningSlotMatrices > m_skinning_staging.size()) {
+            return;
+        }
+        const Size_t count = std::min(matrices.size(), kSkinningSlotMatrices);
+        std::memcpy(m_skinning_staging.data() + base, matrices.data(), count * sizeof(Matrix4f));
     }
 
     bool MeshRendererSystem::syncRenderObject(Entity entity) {
@@ -93,7 +131,22 @@ namespace dodoe {
             mesh.mesh.setLegacyPath(legacy_path);
         }
 
-        auto render_object = buildRenderObject(mesh);
+        if (!mesh.skeleton.isValid()) {
+            if (resolved->getSkeleton().isValid()) {
+                mesh.skeleton = resolved->getSkeleton();
+            } else if (mesh.skeleton.getObjectID().isValid()) {
+                const ObjectID& skeleton_ref = mesh.skeleton.getObjectID();
+                if (Skeleton* skeleton = ResourceManager::Self().loadObject<Skeleton>(skeleton_ref.asset_id, skeleton_ref.local_id)) {
+                    mesh.skeleton = PPtr<Skeleton>(skeleton);
+                }
+            }
+        }
+
+        const UInt32 skinning_offset = resolved->isSkinned()
+            ? acquireSkinningSlot(id.id) * static_cast<UInt32>(kSkinningSlotMatrices)
+            : kInvalidSkinningOffset;
+
+        auto render_object = buildRenderObject(mesh, skinning_offset);
         render_object->setUUID(id.id);
         render_object->setWorldTransform(buildWorldMatrix(entity));
         RenderCommandQueue::AddPrimitive(std::move(render_object));
@@ -224,13 +277,14 @@ namespace dodoe {
         return world;
     }
 
-    Scope<PrimitiveRenderObject> MeshRendererSystem::buildRenderObject(const MeshRendererComponent& mesh) {
+    Scope<PrimitiveRenderObject> MeshRendererSystem::buildRenderObject(const MeshRendererComponent& mesh, const UInt32 skinning_offset) {
         auto render_object = create_scope<StaticMeshRenderObject>();
         render_object->setMesh(mesh.mesh.get(), mesh.section_index);
         render_object->setOverrideMaterials(mesh.override_materials);
         render_object->setMobility(mesh.mobility);
         render_object->setVisible(mesh.visible);
         render_object->setCastShadow(mesh.cast_shadow);
+        render_object->setSkinningOffset(skinning_offset);
 
         auto resolveMaterial = [](const PPtr<Material>& material_ptr) -> Material* {
             if (Material* material = material_ptr.get()) {

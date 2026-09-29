@@ -3,13 +3,14 @@
 #include "mesh.h"
 #include "runtime/function/render/render_command_queue.h"
 
-#include "runtime/core/math/math.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/material/material.h"
 #include "runtime/resource/asset/asset_manager.h"
 #include "runtime/resource/asset/types/mesh_asset.h"
 #include "runtime/resource/file/file_id.h"
 #include "runtime/resource/resource_manager.h"
+
+#include <algorithm>
 
 namespace dodoe {
 
@@ -18,6 +19,8 @@ namespace dodoe {
         UnorderedMap<InstanceID, Scope<Mesh>> s_mesh_cache{};
 
     } // namespace
+
+    Mesh::~Mesh() = default;
 
     Mesh* Mesh::Create(const ObjectID& ref, MeshAsset& asset) {
         if (!ref.isValid()) {
@@ -46,23 +49,12 @@ namespace dodoe {
                 (std::max)(bounds_max.z, vertex.position.z));
         }
 
-        const Size_t vertex_count = data->vertices.size();
         const Size_t index_count = data->indices.size();
-        constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
-        const Size_t vertex_byte_size = kVertexStride * vertex_count;
         const Size_t index_byte_size = sizeof(UInt32) * index_count;
 
-        DynamicArray<std::byte> vertex_bytes(vertex_byte_size);
-        for (Size_t i = 0; i < vertex_count; ++i) {
-            const Size_t base_offset = i * kVertexStride;
-            std::memcpy(vertex_bytes.data() + base_offset, &data->vertices[i].position, sizeof(Vector3f));
-
-            const Vector4f unpacked_normal(data->vertices[i].normal, 0.0f);
-            const UInt32 normal = Math::PackSnorm4x8(unpacked_normal);
-            std::memcpy(vertex_bytes.data() + base_offset + sizeof(Vector3f), &normal, sizeof(UInt32));
-
-            std::memcpy(vertex_bytes.data() + base_offset + sizeof(Vector3f) + sizeof(UInt32), &data->vertices[i].tex_coords, sizeof(Vector2f));
-        }
+        DynamicArray<UInt8> vertex_bytes{};
+        PackVertexBytes(data->vertices, vertex_bytes);
+        const Size_t vertex_byte_size = vertex_bytes.size();
 
         MeshLODData lod{};
         auto vertex_buffer_desc = GfxBufferDesc()
@@ -111,6 +103,15 @@ namespace dodoe {
         lods.push_back(std::move(lod));
         raw->setLODData(lods);
         raw->setBounds(bounds_min, bounds_max);
+        raw->setSourceData(data);
+        raw->setSkeleton(data->skeleton);
+        for (const MeshVertex& vertex : data->vertices) {
+            if (vertex.bone_weights[0] > 0.0f || vertex.bone_weights[1] > 0.0f ||
+                vertex.bone_weights[2] > 0.0f || vertex.bone_weights[3] > 0.0f) {
+                raw->setSkinned(true);
+                break;
+            }
+        }
 
         const InstanceID instance_id = raw->getInstanceID();
         s_mesh_cache.emplace(instance_id, std::move(mesh));

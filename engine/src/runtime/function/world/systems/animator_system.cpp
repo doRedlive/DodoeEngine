@@ -8,122 +8,10 @@
 #include "runtime/function/render/pixel2d/sprite.h"
 #include "runtime/resource/resource_manager.h"
 #include "runtime/resource/file/file_id.h"
+#include "runtime/resource/asset/asset_manager.h"
+#include "runtime/resource/asset/types/mesh_asset.h"
 
 namespace dodoe {
-
-    namespace {
-
-        const DynamicArray<AnimFrame2D> k_empty_frames{};
-
-        Float ParameterDefault(const AnimatorParameter& parameter) {
-            switch (parameter.type) {
-                case AnimatorParameterType::Int:
-                    return static_cast<Float>(parameter.default_int);
-                case AnimatorParameterType::Bool:
-                    return parameter.default_bool ? 1.0f : 0.0f;
-                case AnimatorParameterType::Trigger:
-                    return 0.0f;
-                case AnimatorParameterType::Float:
-                default:
-                    return parameter.default_float;
-            }
-        }
-
-        Bool EvaluateCondition(AnimatorComponent& animator,
-                               const AnimatorController& controller,
-                               const AnimatorCondition& condition) {
-            Float value = 0.0f;
-            const auto it = animator.parameters.find(condition.parameter);
-            if (it != animator.parameters.end()) {
-                value = it->second;
-            }
-            else {
-                const auto* parameter = controller.findParameter(condition.parameter);
-                if (parameter) {
-                    value = ParameterDefault(*parameter);
-                }
-            }
-
-            switch (condition.mode) {
-                case AnimatorConditionMode::If:
-                    return value != 0.0f;
-                case AnimatorConditionMode::IfNot:
-                    return value == 0.0f;
-                case AnimatorConditionMode::Equals:
-                    return value == condition.threshold;
-                case AnimatorConditionMode::NotEqual:
-                    return value != condition.threshold;
-                case AnimatorConditionMode::Less:
-                    return value < condition.threshold;
-                case AnimatorConditionMode::Greater:
-                default:
-                    return value > condition.threshold;
-            }
-        }
-
-        void FireClipEvents(AnimatorComponent& animator,
-                            const DynamicArray<AnimClipEvent>& events,
-                            const Float total_ms) {
-            for (const auto& event : events) {
-                const Float event_ms = event.time * total_ms;
-                Bool fired = false;
-                if (animator.state_time >= animator.prev_state_time) {
-                    fired = event_ms > animator.prev_state_time && event_ms <= animator.state_time;
-                }
-                else {
-                    fired = event_ms > animator.prev_state_time || event_ms <= animator.state_time;
-                }
-                if (fired) {
-                    animator.pending_events.push_back(event.function_name);
-                }
-            }
-        }
-
-        void EvaluateTransitions(AnimatorComponent& animator,
-                                 const AnimatorController& controller,
-                                 const Float total_ms) {
-            for (Size_t ti = 0; ti < controller.getTransitionCount(); ++ti) {
-                const auto& transition = controller.getTransition(ti);
-                if (transition.from_state != animator.cur_state) {
-                    continue;
-                }
-
-                Bool should_transition = false;
-                if (!transition.conditions.empty()) {
-                    Bool all_ok = true;
-                    for (const auto& condition : transition.conditions) {
-                        if (!EvaluateCondition(animator, controller, condition)) {
-                            all_ok = false;
-                            break;
-                        }
-                    }
-                    should_transition = all_ok;
-                }
-                else if (transition.has_exit_time) {
-                    should_transition = animator.state_time / total_ms >= transition.exit_time;
-                }
-                else {
-                    should_transition = true;
-                }
-
-                if (should_transition) {
-                    for (const auto& condition : transition.conditions) {
-                        const auto* parameter = controller.findParameter(condition.parameter);
-                        if (parameter && parameter->type == AnimatorParameterType::Trigger) {
-                            animator.parameters[condition.parameter] = 0.0f;
-                        }
-                    }
-                    animator.cur_state = transition.to_state;
-                    animator.state_time = 0.0f;
-                    animator.prev_state_time = 0.0f;
-                    animator.cur_frame_id = 0;
-                    animator.applied_frame_id = static_cast<Size_t>(-1);
-                    break;
-                }
-            }
-        }
-
-    } // anonymous namespace
 
     AnimatorSystem::~AnimatorSystem() = default;
 
@@ -138,7 +26,182 @@ namespace dodoe {
             .build();
     }
 
+    Float AnimatorSystem::parameterDefault(const AnimatorParameter& parameter) {
+        switch (parameter.type) {
+            case AnimatorParameterType::Int:
+                return static_cast<Float>(parameter.default_int);
+            case AnimatorParameterType::Bool:
+                return parameter.default_bool ? 1.0f : 0.0f;
+            case AnimatorParameterType::Trigger:
+                return 0.0f;
+            case AnimatorParameterType::Float:
+            default:
+                return parameter.default_float;
+        }
+    }
+
+    Bool AnimatorSystem::evaluateCondition(AnimatorComponent& animator,
+                                           const AnimatorController& controller,
+                                           const AnimatorCondition& condition) {
+        Float value = 0.0f;
+        const auto it = animator.parameters.find(condition.parameter);
+        if (it != animator.parameters.end()) {
+            value = it->second;
+        }
+        else {
+            const auto* parameter = controller.findParameter(condition.parameter);
+            if (parameter) {
+                value = parameterDefault(*parameter);
+            }
+        }
+
+        switch (condition.mode) {
+            case AnimatorConditionMode::If:
+                return value != 0.0f;
+            case AnimatorConditionMode::IfNot:
+                return value == 0.0f;
+            case AnimatorConditionMode::Equals:
+                return value == condition.threshold;
+            case AnimatorConditionMode::NotEqual:
+                return value != condition.threshold;
+            case AnimatorConditionMode::Less:
+                return value < condition.threshold;
+            case AnimatorConditionMode::Greater:
+            default:
+                return value > condition.threshold;
+        }
+    }
+
+    void AnimatorSystem::fireClipEvents(AnimatorComponent& animator,
+                                        const DynamicArray<AnimClipEvent>& events,
+                                        const Float total_ms) {
+        for (const auto& event : events) {
+            const Float event_ms = event.time * total_ms;
+            Bool fired = false;
+            if (animator.state_time >= animator.prev_state_time) {
+                fired = event_ms > animator.prev_state_time && event_ms <= animator.state_time;
+            }
+            else {
+                fired = event_ms > animator.prev_state_time || event_ms <= animator.state_time;
+            }
+            if (fired) {
+                animator.pending_events.push_back(event.function_name);
+            }
+        }
+    }
+
+    void AnimatorSystem::applyPlayRequest(AnimatorComponent& animator, const String& state_name) {
+        if (!animator.controller) {
+            return;
+        }
+        const Size_t index = animator.controller->findState(state_name);
+        if (index == AnimatorController::kInvalidState) {
+            return;
+        }
+        animator.cur_state = index;
+        animator.state_time = 0.0f;
+        animator.prev_state_time = 0.0f;
+        animator.cur_frame_id = 0;
+        animator.applied_frame_id = static_cast<Size_t>(-1);
+        animator.playing = true;
+    }
+
+    const AnimClip* AnimatorSystem::resolveClipByPath(const String& path_with_clip) {
+        if (path_with_clip.empty()) {
+            return nullptr;
+        }
+        AssetManager* asset_manager = ResourceManager::Self().getAssetManager();
+        if (!asset_manager) {
+            return nullptr;
+        }
+
+        String file_path = path_with_clip;
+        String clip_name{};
+        const Size_t separator = file_path.find('#');
+        if (separator != String::npos) {
+            clip_name = file_path.substr(separator + 1);
+            file_path.resize(separator);
+        }
+
+        const ObjectID ref = asset_manager->resolvePathToRef(FileID(file_path));
+        if (!ref.isValid()) {
+            return nullptr;
+        }
+        MeshAsset* mesh_asset = asset_manager->loadAssetSync<MeshAsset>(ref.asset_id);
+        if (!mesh_asset) {
+            return nullptr;
+        }
+
+        const DynamicArray<MeshAnimClipData>& clips = mesh_asset->getClips();
+        if (clips.empty()) {
+            return nullptr;
+        }
+
+        Size_t clip_index = 0;
+        if (!clip_name.empty()) {
+            Bool found = false;
+            for (Size_t i = 0; i < clips.size(); ++i) {
+                if (clips[i].name == clip_name) {
+                    clip_index = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return nullptr;
+            }
+        }
+
+        return ResourceManager::Self().loadObject<AnimClip>(ref.asset_id, AnimClip::kLocalIdBase + static_cast<UInt32>(clip_index));
+    }
+
+    void AnimatorSystem::evaluateTransitions(AnimatorComponent& animator,
+                                             const AnimatorController& controller,
+                                             const Float total_ms) {
+        for (Size_t ti = 0; ti < controller.getTransitionCount(); ++ti) {
+            const auto& transition = controller.getTransition(ti);
+            if (transition.from_state != animator.cur_state) {
+                continue;
+            }
+
+            Bool should_transition = false;
+            if (!transition.conditions.empty()) {
+                Bool all_ok = true;
+                for (const auto& condition : transition.conditions) {
+                    if (!evaluateCondition(animator, controller, condition)) {
+                        all_ok = false;
+                        break;
+                    }
+                }
+                should_transition = all_ok;
+            }
+            else if (transition.has_exit_time) {
+                should_transition = animator.state_time / total_ms >= transition.exit_time;
+            }
+            else {
+                should_transition = true;
+            }
+
+            if (should_transition) {
+                for (const auto& condition : transition.conditions) {
+                    const auto* parameter = controller.findParameter(condition.parameter);
+                    if (parameter && parameter->type == AnimatorParameterType::Trigger) {
+                        animator.parameters[condition.parameter] = 0.0f;
+                    }
+                }
+                animator.cur_state = transition.to_state;
+                animator.state_time = 0.0f;
+                animator.prev_state_time = 0.0f;
+                animator.cur_frame_id = 0;
+                animator.applied_frame_id = static_cast<Size_t>(-1);
+                break;
+            }
+        }
+    }
+
     void AnimatorSystem::update(Registry& reg, float dt) {
+        static const DynamicArray<AnimFrame2D> k_empty_frames{};
+
         auto view = reg.view<AnimatorComponent>();
         for (auto entity : view) {
             if (!entity.activeInHierarchy()) {
@@ -148,24 +211,20 @@ namespace dodoe {
 
             if (reg.all_of<PlayAnimationRequest>(entity)) {
                 const auto& request = reg.get<PlayAnimationRequest>(entity);
-                if (animator.controller) {
-                    const Size_t index = animator.controller->findState(request.name);
-                    if (index != AnimatorController::kInvalidState) {
-                        animator.cur_state = index;
-                        animator.state_time = 0.0f;
-                        animator.prev_state_time = 0.0f;
-                        animator.cur_frame_id = 0;
-                        animator.applied_frame_id = static_cast<Size_t>(-1);
-                        animator.playing = true;
-                    }
-                }
+                applyPlayRequest(animator, request.name);
             }
-            if (reg.all_of<StopAnimationRequest>(entity)) {
+            if (!animator.play_request.empty()) {
+                applyPlayRequest(animator, animator.play_request);
+                animator.play_request.clear();
+            }
+            if (reg.all_of<StopAnimationRequest>(entity) || animator.stop_requested) {
                 animator.playing = false;
             }
-            if (reg.all_of<ResumeAnimationRequest>(entity)) {
+            animator.stop_requested = false;
+            if (reg.all_of<ResumeAnimationRequest>(entity) || animator.resume_requested) {
                 animator.playing = true;
             }
+            animator.resume_requested = false;
 
             animator.pending_events.clear();
 
@@ -176,6 +235,12 @@ namespace dodoe {
                     animator.controller = PPtr<AnimatorController>(resolved);
                 }
             }
+
+            if (animator.play_on_awake && !animator.playing && !animator.auto_played && animator.controller) {
+                animator.playing = true;
+                animator.auto_played = true;
+            }
+
             if (!animator.playing || !animator.controller) {
                 continue;
             }
@@ -226,8 +291,8 @@ namespace dodoe {
                 animator.cur_frame_id = frame_id;
                 animator.state_time = time_ms;
 
-                FireClipEvents(animator, clip->getEvents(), total_ms);
-                EvaluateTransitions(animator, *controller, total_ms);
+                fireClipEvents(animator, clip->getEvents(), total_ms);
+                evaluateTransitions(animator, *controller, total_ms);
 
                 const auto& frame = frames[animator.cur_frame_id];
                 if (frame.texture.isValid() &&
@@ -243,6 +308,13 @@ namespace dodoe {
             }
             else if (clip_ref.type == AnimatorClipType::Clip3D) {
                 const AnimClip* clip = clip_ref.clip_3d.get();
+                if (!clip && clip_ref.clip_3d.isAssigned()) {
+                    const ObjectID& clip_id = clip_ref.clip_3d.getObjectID();
+                    clip = ResourceManager::Self().loadObject<AnimClip>(clip_id.asset_id, clip_id.local_id);
+                }
+                if (!clip && !clip_ref.clip_3d.getLegacyPath().empty()) {
+                    clip = resolveClipByPath(clip_ref.clip_3d.getLegacyPath());
+                }
                 if (!clip || !entity.hasComponent<MeshRendererComponent>()) {
                     continue;
                 }
@@ -258,8 +330,8 @@ namespace dodoe {
                 animator.prev_state_time = animator.state_time;
                 animator.state_time += dt * 1000.0f * animator.speed * state.speed;
 
-                FireClipEvents(animator, clip->events, total_ms);
-                EvaluateTransitions(animator, *controller, total_ms);
+                fireClipEvents(animator, clip->events, total_ms);
+                evaluateTransitions(animator, *controller, total_ms);
 
                 Float sample_time = animator.state_time / 1000.0f;
                 if (state.loop) {

@@ -25,6 +25,7 @@
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/binding_set_cache.h"
+#include "runtime/core/context/system_context.h"
 #include "runtime/core/thread/thread_pool.h"
 
 namespace dodoe {
@@ -132,7 +133,7 @@ namespace dodoe {
 
         const auto& shader_library = *m_shared_render_service->getShaderLibrary();
 
-        constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
+        constexpr Size_t kVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f) + sizeof(UInt32) * 4 + sizeof(Vector4f);
         constexpr Size_t kInstanceStride = sizeof(InstanceSceneData);
         const DynamicArray<GfxVertexAttributeDesc> mesh_vertex_attributes = {
             GfxVertexAttributeDesc().setName("a_Position").setFormat(GfxFormat::RGB32_FLOAT).setOffset(0).setElementStride(kVertexStride),
@@ -144,6 +145,9 @@ namespace dodoe {
             GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kInstanceStride).setIsInstanced(true),
             GfxVertexAttributeDesc().setName("a_InstanceColorTint").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f)).setElementStride(kInstanceStride).setIsInstanced(true),
             GfxVertexAttributeDesc().setName("a_InstanceParams").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Matrix4f) + sizeof(Vector4f)).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("TEXCOORD9").setFormat(GfxFormat::R32_UINT).setBufferIndex(1).setOffset(sizeof(Matrix4f) * 2 + sizeof(Vector4f) * 2).setElementStride(kInstanceStride).setIsInstanced(true),
+            GfxVertexAttributeDesc().setName("a_BoneIds").setFormat(GfxFormat::RGBA32_UINT).setOffset(sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f)).setElementStride(kVertexStride),
+            GfxVertexAttributeDesc().setName("a_BoneWeights").setFormat(GfxFormat::RGBA32_FLOAT).setOffset(sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f) + sizeof(UInt32) * 4).setElementStride(kVertexStride),
         };
 
         auto* input_layout_cache = m_shared_render_service->getInputLayoutCache();
@@ -162,6 +166,11 @@ namespace dodoe {
             {},
             nullptr,
             nullptr};
+        if (auto* shadow_processor = static_cast<ShadowMeshProcessor*>(processor); shadow_processor && GetRenderSystem()) {
+            if (auto* scene = GetRenderSystem()->getRenderScene()) {
+                shadow_processor->setSkinningBuffer(scene->getSkinningBuffer());
+            }
+        }
         const auto shadow_pipeline = pso_cache->resolveGraphicsPipeline(
             MeshPassType::Shadow,
             processor->buildPipelineDescription(pipeline_context),

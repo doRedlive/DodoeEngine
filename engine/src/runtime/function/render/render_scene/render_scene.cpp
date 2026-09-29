@@ -217,6 +217,30 @@ namespace dodoe {
         m_ui_scene_infos = std::move(instances);
     }
 
+    void RenderScene::updateSkinning(DynamicArray<Matrix4f> matrices) {
+        const Size_t matrix_count = matrices.size();
+        if (matrix_count == 0) {
+            return;
+        }
+
+        const UInt32 required_bytes = static_cast<UInt32>(matrix_count * sizeof(Matrix4f));
+        if (!m_skinning_buffer || m_skinning_buffer->getByteSize() < required_bytes) {
+            UInt32 new_capacity = m_skinning_matrix_capacity > 0 ? m_skinning_matrix_capacity : 256;
+            while (new_capacity * sizeof(Matrix4f) < required_bytes) {
+                new_capacity *= 2;
+            }
+            m_skinning_buffer = GDrawCommandList.createBuffer(
+                GfxBufferDesc()
+                    .setByteSize(new_capacity * static_cast<UInt32>(sizeof(Matrix4f)))
+                    .setStructStride(sizeof(Matrix4f))
+                    .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+                    .setDebugName("Scene Skinning Matrices"));
+            m_skinning_matrix_capacity = new_capacity;
+        }
+
+        GDrawCommandList.writeBuffer(m_skinning_buffer, matrices.data(), required_bytes, 0);
+    }
+
     void RenderScene::flushUpdates(DrawCommandList& cmd_list) {
         DO_PROFILE_SCOPE_CATEGORY("RenderScene::flushUpdates", "frame");
         if (!m_scene_data_dirty && m_pending_primitive_updates.empty() && 

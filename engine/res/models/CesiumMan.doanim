@@ -1,0 +1,20 @@
+{
+    "parameters": [],
+    "states": [
+        {
+            "name": "Walk",
+            "clip": {
+                "type": 2,
+                "clip_3d": {
+                    "asset_id": 0,
+                    "sub_object_id": 0,
+                    "legacy_path": "models/CesiumMan.glb#clip_0"
+                }
+            },
+            "loop": true,
+            "speed": 1.0
+        }
+    ],
+    "transitions": [],
+    "default_state": 0
+}

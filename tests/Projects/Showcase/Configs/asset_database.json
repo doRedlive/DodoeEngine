@@ -478,7 +478,7 @@
             "meta_file_mtime": 13434775730,
             "name": "Test2D",
             "source_file_mtime": 0,
-            "source_path": "Test2D.doscn",
+            "source_path": "Scenes/Test2D.doscn",
             "sub_object_id": 0,
             "tags": [],
             "type": "Scene"

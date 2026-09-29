@@ -32,6 +32,9 @@ namespace dodoe {
         GfxBufferHandle m_global_constant_buffer{};
         GfxBufferHandle m_view_constant_buffer{};
         GfxBufferHandle m_primitive_constant_buffer{};
+        GfxBufferHandle m_skinning_buffer{};
+        BindingSetCache* m_binding_set_cache{nullptr};
+        UInt64 m_view_layout_generation{0};
 
     public:
         LitMeshProcessor(const MeshPassType pass_type,
@@ -39,6 +42,7 @@ namespace dodoe {
                          BindingLayoutCache& binding_layout_cache,
                          BindingSetCache& binding_set_cache);
         void reset() override;
+        void setSkinningBuffer(const GfxBufferHandle& buffer);
         [[nodiscard]] GfxGraphicsPipelineDesc buildPipelineDescription(
             const MeshPassPipelineContext& context) const override;
 

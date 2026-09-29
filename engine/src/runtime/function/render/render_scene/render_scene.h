@@ -120,6 +120,8 @@ namespace dodoe {
 
         Scope<GpuScene> m_gpu_scene{};
         class SharedRenderService* m_shared_render_service{nullptr};
+        GfxBufferHandle m_skinning_buffer{};
+        UInt32 m_skinning_matrix_capacity{0};
 
     public:
         void addPrimitive(Scope<PrimitiveRenderObject> primitive);
@@ -136,7 +138,11 @@ namespace dodoe {
 
         void submitUIInstances(DynamicArray<UISceneInfo> instances);
 
+        void updateSkinning(DynamicArray<Matrix4f> matrices);
+
         void flushUpdates(DrawCommandList& cmd_list);
+
+        [[nodiscard]] const GfxBufferHandle& getSkinningBuffer() const { return m_skinning_buffer; }
 
         [[nodiscard]] const DynamicArray<PrimitiveSceneInfo>& getPrimitiveSceneInfos() const { return m_primitive_scene_infos; }
         [[nodiscard]] const DynamicArray<SpriteSceneInfo>& getSpriteSceneInfos() const { return m_sprite_scene_infos; }

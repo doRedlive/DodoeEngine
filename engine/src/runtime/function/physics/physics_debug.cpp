@@ -18,7 +18,7 @@ namespace dodoe {
 
         constexpr Size_t kBoxVertexCount = 8;
         constexpr Size_t kBoxIndexCount = 36;
-        constexpr Size_t kBoxVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f);
+        constexpr Size_t kBoxVertexStride = sizeof(Vector3f) + sizeof(UInt32) + sizeof(Vector2f) + sizeof(UInt32) * 4 + sizeof(Vector4f);
         constexpr Size_t kBoxVertexByteSize = kBoxVertexStride * kBoxVertexCount;
         constexpr Size_t kBoxIndexByteSize = sizeof(UInt32) * kBoxIndexCount;
 
@@ -45,7 +45,7 @@ namespace dodoe {
                 4, 5, 1, 1, 0, 4,
             };
 
-            DynamicArray<std::byte> vertex_bytes(kBoxVertexByteSize);
+            DynamicArray<Byte> vertex_bytes(kBoxVertexByteSize);
             for (Size_t vertex_index = 0; vertex_index < kBoxVertexCount; ++vertex_index) {
                 const Size_t base_offset = vertex_index * kBoxVertexStride;
                 std::memcpy(vertex_bytes.data() + base_offset, &positions[vertex_index], sizeof(Vector3f));

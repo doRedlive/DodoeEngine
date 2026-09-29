@@ -442,6 +442,9 @@ namespace dodoe {
         case SceneCommandType::SubmitUIBatch:
             scene.submitUIInstances(std::move(cmd.ui_scene_infos));
             break;
+        case SceneCommandType::UpdateSkinning:
+            scene.updateSkinning(std::move(cmd.skinning_matrices));
+            break;
         default:
             break;
         }

@@ -41,6 +41,7 @@ namespace dodoe {
             return nullptr;
         }
         T* operator->() const { return get(); }
+        T& operator*() const { return *get(); }
         [[nodiscard]] explicit operator Bool() const { return m_instance_id != 0 || m_id.isValid(); }
         [[nodiscard]] Bool isValid() const { return m_instance_id != 0 || m_id.isValid(); }
         [[nodiscard]] Bool isAssigned() const { return m_id.isValid(); }

@@ -33,7 +33,7 @@ namespace dodoe {
         bool cast_shadow{true};
         META(Enable)
         PrimitiveMobility mobility{PrimitiveMobility::Static};
-        Ref<Skeleton> skeleton{};
+        PPtr<Skeleton> skeleton{};
         DynamicArray<Matrix4f> skinning_matrices{};
         bool dirty{true};
 

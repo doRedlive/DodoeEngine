@@ -23,6 +23,7 @@ namespace dodoe {
         Bool m_cast_shadow{true};
         Bool m_transparent{false};
         Vector4f m_color_tint{1.0f, 1.0f, 1.0f, 1.0f};
+        UInt32 m_skinning_offset{kInvalidSkinningOffset};
 
     public:
         [[nodiscard]] RenderObjectType getRenderObjectType() const override { return RenderObjectType::StaticMesh; }
@@ -34,6 +35,7 @@ namespace dodoe {
         void setCastShadow(const Bool cast_shadow) { m_cast_shadow = cast_shadow; }
         void setTransparent(const Bool transparent) { m_transparent = transparent; }
         void setColorTint(const Vector4f& color_tint) { m_color_tint = color_tint; }
+        void setSkinningOffset(const UInt32 skinning_offset) { m_skinning_offset = skinning_offset; }
 
         [[nodiscard]] const Mesh* getMesh() const { return m_mesh; }
         [[nodiscard]] Int32 getSectionIndex() const { return m_section_index; }
@@ -43,6 +45,7 @@ namespace dodoe {
         [[nodiscard]] Bool castsShadow() const { return m_cast_shadow; }
         [[nodiscard]] Bool isTransparent() const { return m_transparent; }
         [[nodiscard]] const Vector4f& getColorTint() const { return m_color_tint; }
+        [[nodiscard]] UInt32 getSkinningOffset() const { return m_skinning_offset; }
 
         [[nodiscard]] virtual UInt32 getInstanceCount() const;
         virtual void appendInstanceSceneData(DynamicArray<InstanceSceneData>& out_instance_scene_data, const Matrix4f& world_transform) const;

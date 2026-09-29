@@ -115,6 +115,8 @@ const std::vector<ComponentTemplate>& ComponentTemplates() {
         {"PointLightComponent",
             {{"color", {1.0, 1.0, 1.0, 1.0}}, {"intensity", 1.0}, {"radius", 0.0}, {"range", 10.0}}},
         {"HierarchyComponent", {{"parent_uuid", 0}, {"child_count", 0}}},
+        {"AnimatorComponent",
+            {{"controller", {{"asset_id", 0}, {"sub_object_id", 0}}}, {"speed", 1.0}, {"play_on_awake", true}}},
     };
     return templates;
 }

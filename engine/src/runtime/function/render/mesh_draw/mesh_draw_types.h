@@ -8,11 +8,15 @@
 
 namespace dodoe {
 
+    constexpr UInt32 kInvalidSkinningOffset = 0xFFFFFFFFu;
+
     struct InstanceSceneData {
         Matrix4f model{1.0f};
         Vector4f color_tint{1.0f, 1.0f, 1.0f, 1.0f};
         Vector4f params{0.0f};
         Matrix4f prev_model{1.0f};
+        UInt32 skinning_offset{kInvalidSkinningOffset};
+        UInt32 _padding[3]{0, 0, 0};
     };
 
     struct MeshPassRelevance {

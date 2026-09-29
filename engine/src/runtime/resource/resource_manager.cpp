@@ -20,6 +20,7 @@
 #include "runtime/function/render/texture/texture.h"
 #include "runtime/resource/asset/types/audio_clip_asset.h"
 #include "runtime/resource/asset/types/cubemap_asset.h"
+#include "runtime/resource/asset/types/mesh_asset.h"
 
 namespace dodoe {
 
@@ -142,10 +143,35 @@ namespace dodoe {
     }
 
     Skeleton* ResourceManager::loadSkeleton(const UUID& asset_id, UInt32 local_id) {
+        Skeleton* skeleton = Skeleton::Create(ObjectID{asset_id, local_id});
+        if (!skeleton) {
+            return nullptr;
+        }
+        if (skeleton->getNodeCount() > 0) {
+            return skeleton;
+        }
+        if (local_id != Skeleton::kLocalId) {
+            return skeleton;
+        }
+        if (!m_assetManager->loadAssetSync<MeshAsset>(asset_id)) {
+            DO_WARN("ResourceManager: skeleton asset not loadable (asset_id={})", static_cast<UInt64>(asset_id));
+            return skeleton;
+        }
         return Skeleton::Create(ObjectID{asset_id, local_id});
     }
 
     AnimClip* ResourceManager::loadAnimClip(const UUID& asset_id, UInt32 local_id) {
+        AnimClip* clip = AnimClip::Create(ObjectID{asset_id, local_id});
+        if (!clip) {
+            return nullptr;
+        }
+        if (!clip->channels.empty() || clip->duration > 0.0f) {
+            return clip;
+        }
+        if (!m_assetManager->loadAssetSync<MeshAsset>(asset_id)) {
+            DO_WARN("ResourceManager: anim clip asset not loadable (asset_id={})", static_cast<UInt64>(asset_id));
+            return clip;
+        }
         return AnimClip::Create(ObjectID{asset_id, local_id});
     }
 

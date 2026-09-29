@@ -123,4 +123,11 @@ namespace dodoe {
         enqueueSceneCommand(std::move(cmd));
     }
 
+    void RenderCommandQueue::UpdateSkinning(DynamicArray<Matrix4f> matrices) {
+        SceneCommand cmd;
+        cmd.type = SceneCommandType::UpdateSkinning;
+        cmd.skinning_matrices = std::move(matrices);
+        enqueueSceneCommand(std::move(cmd));
+    }
+
 } // dodoe

@@ -121,7 +121,7 @@ namespace dodoe {
 
         MeshBlob blob{};
         DynamicArray<MaterialProperties> baked_materials{};
-        if (!BuildMeshImport(ctx.absolute_source_path, asset_dir, blob, baked_materials)) {
+        if (!MeshBlob::BuildMeshImport(ctx.absolute_source_path, asset_dir, blob, baked_materials)) {
             DO_ERROR("ModelImporter: failed to import '{}'", ctx.absolute_source_path);
             return mesh;
         }

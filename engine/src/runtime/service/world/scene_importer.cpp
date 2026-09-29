@@ -181,6 +181,9 @@ namespace dodoe {
             mc.mesh = PPtr<Mesh>(mesh);
             mc.mesh.setLegacyPath(ToAssetRelativePath(path));
             mc.section_index = 0;
+            if (mesh->getSkeleton().isValid()) {
+                mc.skeleton = mesh->getSkeleton();
+            }
             mc.dirty = true;
             return;
         }
@@ -207,6 +210,9 @@ namespace dodoe {
                 mc.mesh = PPtr<Mesh>(mesh);
                 mc.mesh.setLegacyPath(ToAssetRelativePath(path));
                 mc.section_index = node.mesh_section_index;
+                if (mesh->getSkeleton().isValid()) {
+                    mc.skeleton = mesh->getSkeleton();
+                }
                 mc.dirty = true;
             }
             node_entities.push_back(node_entity);

@@ -1,0 +1,83 @@
+{
+    "parameters": [
+        {
+            "name": "run",
+            "type": 2,
+            "default_float": 0.0,
+            "default_int": 0,
+            "default_bool": false
+        }
+    ],
+    "states": [
+        {
+            "name": "Walk",
+            "clip": {
+                "type": 2,
+                "clip_3d": {
+                    "asset_id": 0,
+                    "sub_object_id": 0,
+                    "legacy_path": "models/Fox.glb#Walk"
+                }
+            },
+            "loop": true,
+            "speed": 1.0
+        },
+        {
+            "name": "Run",
+            "clip": {
+                "type": 2,
+                "clip_3d": {
+                    "asset_id": 0,
+                    "sub_object_id": 0,
+                    "legacy_path": "models/Fox.glb#Run"
+                }
+            },
+            "loop": true,
+            "speed": 1.0
+        },
+        {
+            "name": "Survey",
+            "clip": {
+                "type": 2,
+                "clip_3d": {
+                    "asset_id": 0,
+                    "sub_object_id": 0,
+                    "legacy_path": "models/Fox.glb#Survey"
+                }
+            },
+            "loop": true,
+            "speed": 1.0
+        }
+    ],
+    "transitions": [
+        {
+            "from_state": 0,
+            "to_state": 1,
+            "conditions": [
+                {
+                    "parameter": "run",
+                    "mode": 4,
+                    "threshold": 0.0
+                }
+            ],
+            "has_exit_time": false,
+            "exit_time": 1.0,
+            "duration": 0.0
+        },
+        {
+            "from_state": 1,
+            "to_state": 0,
+            "conditions": [
+                {
+                    "parameter": "run",
+                    "mode": 5,
+                    "threshold": 0.0
+                }
+            ],
+            "has_exit_time": false,
+            "exit_time": 1.0,
+            "duration": 0.0
+        }
+    ],
+    "default_state": 0
+}

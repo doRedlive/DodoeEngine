@@ -29,6 +29,10 @@ namespace dodoe {
         Size_t cur_frame_id{0};
         Size_t applied_frame_id{static_cast<Size_t>(-1)};
         Bool playing{false};
+        Bool auto_played{false};
+        String play_request{};
+        Bool stop_requested{false};
+        Bool resume_requested{false};
         UnorderedMap<String, Float> parameters{};
         DynamicArray<String> pending_events{};
     };

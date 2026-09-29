@@ -28,6 +28,7 @@ namespace dodoe {
         static void UpdateSpriteTransform(UUID id, const Matrix4f& world_transform);
 
         static void SubmitUI(DynamicArray<UISceneInfo> instances);
+        static void UpdateSkinning(DynamicArray<Matrix4f> matrices);
     };
 
     class DODOE_API RenderResourceQueue {

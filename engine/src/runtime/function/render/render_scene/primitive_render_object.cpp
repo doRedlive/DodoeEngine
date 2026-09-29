@@ -23,6 +23,7 @@ namespace dodoe {
         instance_scene_data.model = world_transform;
         instance_scene_data.prev_model = world_transform;
         instance_scene_data.color_tint = m_color_tint;
+        instance_scene_data.skinning_offset = m_skinning_offset;
         out_instance_scene_data.push_back(instance_scene_data);
     }
 

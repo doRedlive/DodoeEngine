@@ -15,6 +15,9 @@ layout(location = 9) in vec4 a_PrevModel0;
 layout(location = 10) in vec4 a_PrevModel1;
 layout(location = 11) in vec4 a_PrevModel2;
 layout(location = 12) in vec4 a_PrevModel3;
+layout(location = 13) in uint a_SkinningOffset;
+layout(location = 14) in uvec4 a_BoneIds;
+layout(location = 15) in vec4 a_BoneWeights;
 
 layout(location = 0) out vec3 v_Normal;
 layout(location = 1) out vec2 v_UV;
@@ -32,6 +35,9 @@ layout(set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_CONSTANTS) uniform ViewCon
     mat4 u_ViewProjection;
     mat4 u_PrevViewProjection;
     vec4 u_PrevJitterUV;
+};
+layout(std430, set = DOE_SET_VIEW, binding = DOE_VIEW_BINDING_SKINNING) readonly buffer SkinningBuffer {
+    mat4 u_SkinningMatrices[];
 };
 layout(set = DOE_SET_PRIMITIVE, binding = DOE_PRIMITIVE_BINDING_CONSTANTS) uniform PrimitiveConstants {
     ivec4 u_DrawData;
@@ -55,14 +61,28 @@ vec3 applyFoliageWind(vec3 local_position, vec4 instance_params)
     return local_position;
 }
 
+mat4 computeSkinningMatrix()
+{
+    float total_weight = a_BoneWeights.x + a_BoneWeights.y + a_BoneWeights.z + a_BoneWeights.w;
+    if (total_weight <= 0.0 || a_SkinningOffset == 0xFFFFFFFFu) {
+        return mat4(1.0);
+    }
+    mat4 skinning = a_BoneWeights.x * u_SkinningMatrices[a_SkinningOffset + a_BoneIds.x];
+    skinning += a_BoneWeights.y * u_SkinningMatrices[a_SkinningOffset + a_BoneIds.y];
+    skinning += a_BoneWeights.z * u_SkinningMatrices[a_SkinningOffset + a_BoneIds.z];
+    skinning += a_BoneWeights.w * u_SkinningMatrices[a_SkinningOffset + a_BoneIds.w];
+    return skinning;
+}
+
 void main()
 {
     mat4 model = mat4(a_Model0, a_Model1, a_Model2, a_Model3);
     mat4 prev_model = mat4(a_PrevModel0, a_PrevModel1, a_PrevModel2, a_PrevModel3);
     mat3 normal_matrix = transpose(inverse(mat3(model)));
-    vec3 local_position = applyFoliageWind(a_Position, a_InstanceParams);
+    mat4 skinning = computeSkinningMatrix();
+    vec3 local_position = (skinning * vec4(applyFoliageWind(a_Position, a_InstanceParams), 1.0)).xyz;
     vec4 world_position = model * vec4(local_position, 1.0);
-    v_Normal = normalize(normal_matrix * a_Normal.xyz);
+    v_Normal = normalize(normal_matrix * (mat3(skinning) * a_Normal.xyz));
     v_UV = a_UV;
     v_WorldPosition = world_position.xyz;
     v_TexIndex = uint(u_DrawData.x);
@@ -72,7 +92,7 @@ void main()
     vec4 curr_clip = u_ViewProjection * world_position;
     vec4 prev_clip = vec4(0.0);
     if (curr_clip.w > 0.0001) {
-        vec4 prev_world = prev_model * vec4(a_Position, 1.0);
+        vec4 prev_world = prev_model * vec4(local_position, 1.0);
         prev_clip = u_PrevViewProjection * prev_world;
     }
     v_CurrClip = curr_clip;

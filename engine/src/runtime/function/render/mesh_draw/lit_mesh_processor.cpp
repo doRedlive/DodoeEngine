@@ -98,7 +98,8 @@ namespace dodoe {
                 .setVisibility(GfxShaderType::All)
                 .setRegisterSpaceIsDescriptorSet(true)
                 .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::View))
-                .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(shader_bindings::kViewBindingConstants)));
+                .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(shader_bindings::kViewBindingConstants))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning)));
         m_primitive_binding_layout = binding_layout_cache.getOrCreate(
             GfxBindingLayoutDesc()
                 .setVisibility(GfxShaderType::All)
@@ -125,6 +126,14 @@ namespace dodoe {
                 .setIsVolatile(true)
                 .setMaxVersions(kVolatileConstantBufferVersions)
                 .setDebugName("LitMeshProcessor View ConstantBuffer"));
+        m_skinning_buffer = GDrawCommandList.createBuffer(
+            GfxBufferDesc()
+                .setByteSize(256 * static_cast<UInt32>(sizeof(Matrix4f)))
+                .setStructStride(sizeof(Matrix4f))
+                .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+                .setDebugName("LitMeshProcessor Skinning Placeholder"));
+        m_binding_set_cache = &binding_set_cache;
+        m_view_layout_generation = binding_layout_cache.getLayoutGeneration(m_view_binding_layout);
         m_primitive_constant_buffer = GDrawCommandList.createBuffer(
             GfxBufferDesc()
                 .setByteSize(static_cast<UInt32>(sizeof(PrimitiveMeshDrawShaderData)))
@@ -139,7 +148,8 @@ namespace dodoe {
             binding_layout_cache.getLayoutGeneration(m_global_binding_layout));
         m_view_binding_set = binding_set_cache.getOrCreate(
             GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle())),
+                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle()))
+                .addItem(GfxBindingSetItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer->getRHIHandle())),
             m_view_binding_layout,
             binding_layout_cache.getLayoutGeneration(m_view_binding_layout));
         m_primitive_binding_set = binding_set_cache.getOrCreate(
@@ -158,6 +168,8 @@ namespace dodoe {
         m_global_constant_buffer = nullptr;
         m_view_constant_buffer = nullptr;
         m_primitive_constant_buffer = nullptr;
+        m_skinning_buffer = nullptr;
+        m_binding_set_cache = nullptr;
         m_global_binding_set = nullptr;
         m_view_binding_set = nullptr;
         m_primitive_binding_set = nullptr;
@@ -167,6 +179,19 @@ namespace dodoe {
         m_primitive_binding_layout = nullptr;
         m_sampler_binding_layout = nullptr;
         m_sampler = nullptr;
+    }
+
+    void LitMeshProcessor::setSkinningBuffer(const GfxBufferHandle& buffer) {
+        if (!buffer || buffer.get() == m_skinning_buffer.get() || !m_binding_set_cache) {
+            return;
+        }
+        m_skinning_buffer = buffer;
+        m_view_binding_set = m_binding_set_cache->getOrCreate(
+            GfxBindingSetDesc()
+                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle()))
+                .addItem(GfxBindingSetItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer->getRHIHandle())),
+            m_view_binding_layout,
+            m_view_layout_generation);
     }
 
     Bool LitMeshProcessor::shouldDrawPrimitive(const PrimitiveSceneInfo& primitive) const {
