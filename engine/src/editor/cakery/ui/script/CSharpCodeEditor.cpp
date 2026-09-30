@@ -64,7 +64,7 @@ CSharpCodeEditor::CSharpCodeEditor(QWidget* parent)
     QFont codeFont(QStringLiteral("Consolas"));
     codeFont.setStyleHint(QFont::Monospace);
     codeFont.setFixedPitch(true);
-    codeFont.setSize(11);
+    codeFont.setPointSize(11);
     setFont(codeFont);
     setLineWrapMode(QPlainTextEdit::NoWrap);
     setTabStopDistance(4 * QFontMetricsF(font()).horizontalAdvance(QLatin1Char(' ')));
@@ -225,12 +225,10 @@ void CSharpCodeEditor::keyPressEvent(QKeyEvent* event)
     if (event->key() == Qt::Key_Backtab
         || (event->key() == Qt::Key_Tab && event->modifiers() & Qt::ShiftModifier)) {
         QTextCursor anchor = cursor;
-        const int from = anchor.selectionStart();
-        QTextCursor startCursor = document()->findBlock(from);
-        const int startBlock = startCursor.blockNumber();
+        const int startBlock = document()->findBlock(anchor.selectionStart()).blockNumber();
         const int endBlock = document()->findBlock(anchor.selectionEnd()).blockNumber();
         for (int b = startBlock; b <= endBlock; ++b) {
-            QTextCursor line = document()->findBlockByNumber(b);
+            QTextCursor line(document()->findBlockByNumber(b));
             line.beginEditBlock();
             const QString text = line.block().text();
             int remove = 0;
@@ -254,7 +252,7 @@ void CSharpCodeEditor::keyPressEvent(QKeyEvent* event)
             const int startBlock = document()->findBlock(anchor.selectionStart()).blockNumber();
             const int endBlock = document()->findBlock(anchor.selectionEnd()).blockNumber();
             for (int b = startBlock; b <= endBlock; ++b) {
-                QTextCursor line = document()->findBlockByNumber(b);
+                QTextCursor line(document()->findBlockByNumber(b));
                 line.beginEditBlock();
                 line.insertText(QString(m_indentWidth, QLatin1Char(' ')));
                 line.endEditBlock();

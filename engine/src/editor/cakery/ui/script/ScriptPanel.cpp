@@ -26,6 +26,7 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStringListModel>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QTextBlock>
 #include <QTextCursor>
@@ -186,10 +187,12 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     connect(m_tabs, &QTabWidget::currentChanged,
             this, &ScriptPanel::setCurrentTab);
     connect(m_tabs, &QTabWidget::tabCloseRequested, this, &ScriptPanel::closeTab);
-    connect(m_tabs, &QTabWidget::tabMoved, this, [this](int from, int to) {
-        EditorPage page = m_pages.takeAt(from);
-        m_pages.insert(to, page);
-    });
+    if (QTabBar* tabBar = m_tabs->findChild<QTabBar*>()) {
+        connect(tabBar, &QTabBar::tabMoved, this, [this](int from, int to) {
+            EditorPage page = m_pages.takeAt(from);
+            m_pages.insert(to, page);
+        });
+    }
 
     m_statusLabel = new QLabel(editorBody);
     m_statusLabel->setObjectName(QStringLiteral("scriptStatus"));
@@ -728,9 +731,9 @@ void ScriptPanel::jumpToOutlineItem(QTreeWidgetItem* item, int column)
 }
 
 void ScriptPanel::jumpTo(const QString& path, int line, int column, int selectLength,
-                         bool pushHistory)
+                         bool recordHistory)
 {
-    if (pushHistory) {
+    if (recordHistory) {
         pushHistory();
     }
     QString target = path;

@@ -75,7 +75,6 @@ CSharpHighlighter::CSharpHighlighter(QTextDocument* document)
     m_attributeRegex = QRegularExpression(QStringLiteral(
         "\\[[A-Za-z_][\\w.]*(?:\\([^\\)\\n]*\\))?\\]"));
     m_preprocessorRegex = QRegularExpression(QStringLiteral("^\\s*#\\w+"));
-    m_wordRegex = QRegularExpression(QStringLiteral("[A-Za-z_][A-Za-z0-9_]*"));
 }
 
 void CSharpHighlighter::formatRange(int start, int length, Token token)

@@ -73,7 +73,7 @@ private:
     void jumpToOutlineItem(QTreeWidgetItem* item, int column);
 
     void jumpTo(const QString& path, int line, int column, int selectLength,
-                bool pushHistory);
+                bool recordHistory);
     void navigateToSymbol(const QString& symbol);
     void navigateBack();
     void pushHistory();
