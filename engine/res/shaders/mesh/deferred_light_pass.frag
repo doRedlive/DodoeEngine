@@ -5,18 +5,31 @@
 layout(location = 0) in vec2 v_UV;
 layout(location = 0) out vec4 o_Color;
 
+const uint kLightTypeDirectional = 0u;
+const uint kLightTypePoint = 1u;
+const uint kLightTypeSpot = 2u;
+
+struct DeferredLightData {
+    vec4 color_intensity;   // rgb color, a intensity
+    vec4 position_radius;   // xyz world position, w radius
+    vec4 direction_range;   // xyz direction, w range
+    vec4 params;            // x inner_angle(rad), y outer_angle(rad), z type, w casts_shadow
+};
+
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_CONSTANTS) uniform DeferredLightPassUBO {
-    vec4 u_LightColorIntensity;
-    vec4 u_LightPositionRadius;
-    vec4 u_LightDirectionType;
+    vec4 u_CameraDirection;
+    vec4 u_CameraPosition;          // w = has_sky
+    vec4 u_ShadowParams;
     mat4 u_CascadeViewProjections[4];
     vec4 u_CascadeSplits;
-    vec4 u_CameraDirection;
-    vec4 u_ShadowParams;
-    vec4 u_CameraPosition;
     vec4 u_IrradianceSH[9];
     vec4 u_IblParams;
     vec4 u_EmissiveParams;
+    vec4 u_LightInfo;               // x = light count
+};
+
+layout(std430, set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT7) readonly buffer DeferredLights {
+    DeferredLightData u_Lights[];
 };
 
 layout(set = DOE_SET_PASS, binding = DOE_PASS_BINDING_INPUT0) uniform texture2D u_Albedo;
@@ -105,22 +118,12 @@ vec3 evaluateDirectPBR(vec3 albedo, vec3 N, vec3 V, vec3 L, vec3 radiance, float
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
-vec3 applyDirectionalLight(vec3 albedo, vec3 normal, vec3 position, float metallic, float roughness)
-{
-    vec3 n = normalize(normal);
-    vec3 v = normalize(u_CameraPosition.xyz - position);
-    vec3 light_dir = normalize(-u_LightDirectionType.xyz);
-    vec3 light_color = u_LightColorIntensity.rgb * u_LightColorIntensity.a;
-    float shadow = computeShadow(position, n, light_dir);
-    return evaluateDirectPBR(albedo, n, v, light_dir, light_color * shadow, metallic, roughness);
-}
-
-vec3 applyPointLight(vec3 albedo, vec3 normal, vec3 position, float metallic, float roughness)
-{
-    vec3 light_color = u_LightColorIntensity.rgb * u_LightColorIntensity.a * 3.0;
-    vec3 light_pos = u_LightPositionRadius.xyz;
-    float light_radius = max(u_LightPositionRadius.w, 0.001);
-    float light_range = max(u_LightDirectionType.w, light_radius);
+vec3 applyPunctualLight(DeferredLightData light, vec3 albedo, vec3 n, vec3 v, vec3 position,
+                        float metallic, float roughness) {
+    vec3 light_color = light.color_intensity.rgb * light.color_intensity.a * 3.0;
+    vec3 light_pos = light.position_radius.xyz;
+    float light_radius = max(light.position_radius.w, 0.001);
+    float light_range = max(light.direction_range.w, light_radius);
 
     vec3 light_vector = light_pos - position;
     float distance_to_light = length(light_vector);
@@ -129,12 +132,18 @@ vec3 applyPointLight(vec3 albedo, vec3 normal, vec3 position, float metallic, fl
     }
 
     vec3 l = normalize(light_vector);
-    vec3 n = normalize(normal);
-    vec3 v = normalize(u_CameraPosition.xyz - position);
-
     float falloff = 1.0 - clamp((distance_to_light - light_radius) / max(light_range - light_radius, 0.001), 0.0, 1.0);
     falloff *= falloff;
-    return evaluateDirectPBR(albedo, n, v, l, light_color * falloff, metallic, roughness);
+
+    float spot_factor = 1.0;
+    if (uint(light.params.z + 0.5) == kLightTypeSpot) {
+        float theta = dot(l, normalize(light.direction_range.xyz));
+        float inner = cos(light.params.x);
+        float outer = cos(light.params.y);
+        spot_factor = clamp((theta - outer) / max(inner - outer, 1e-4), 0.0, 1.0);
+    }
+
+    return evaluateDirectPBR(albedo, n, v, l, light_color * falloff * spot_factor, metallic, roughness);
 }
 
 vec3 evaluateIBL(vec3 albedo, vec3 N, vec3 V, float metallic, float roughness, float ao,
@@ -186,20 +195,22 @@ void main()
         color += max(texture(sampler2D(u_Emissive, u_Sampler), v_UV).rgb, vec3(0.0));
     }
 
-    if (u_CameraPosition.w > 0.5) {
-        o_Color = vec4(color, 1.0);
-        return;
+    const uint light_count = uint(u_LightInfo.x + 0.5);
+    for (uint i = 0u; i < light_count; ++i) {
+        DeferredLightData light = u_Lights[i];
+        const uint light_type = uint(light.params.z + 0.5);
+        if (light_type == kLightTypeDirectional) {
+            vec3 light_dir = normalize(-light.direction_range.xyz);
+            float shadow = light.params.w > 0.5
+                ? computeShadow(position, n, light_dir)
+                : 1.0;
+            color += evaluateDirectPBR(albedo, n, v, light_dir,
+                light.color_intensity.rgb * light.color_intensity.a * shadow,
+                metallic, roughness);
+        } else if (light_type == kLightTypePoint || light_type == kLightTypeSpot) {
+            color += applyPunctualLight(light, albedo, n, v, position, metallic, roughness);
+        }
     }
 
-    if (u_LightDirectionType.w < 0.5) {
-        vec3 light_dir = normalize(-u_LightDirectionType.xyz);
-        float cs_shadow = computeShadow(position, n, light_dir);
-        color += evaluateDirectPBR(albedo, n, v, light_dir,
-            u_LightColorIntensity.rgb * u_LightColorIntensity.a * cs_shadow, metallic, roughness);
-        o_Color = vec4(color, 1.0);
-        return;
-    }
-
-    color += applyPointLight(albedo, normal, position, metallic, roughness);
     o_Color = vec4(color, 1.0);
 }

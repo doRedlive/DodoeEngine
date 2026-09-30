@@ -66,7 +66,7 @@ namespace dodoe {
 	    addFeature<SpriteFeature>();
 	    addFeature<UIFeature>();
 #ifdef DODOE_EDITOR_ENABLED
-	    //addFeature<GizmoFeature>();
+	    if (IsRenderFeatureEnabled("gizmo"))    addFeature<GizmoFeature>();
 #endif//DODOE_EDITOR_ENABLED
     if (IsRuntimeImGuiEnabled())    addFeature<ImGuiFeature>();
     if (IsRenderFeatureEnabled("present"))  addFeature<PresentFeature>();

@@ -28,24 +28,35 @@ namespace dodoe {
 
     namespace {
         constexpr UInt64 kDeferredLightConstantBufferSize = 544;
+        constexpr UInt32 kMaxDeferredLights = 256;
+
+        constexpr Float kDeferredLightTypeDirectional = 0.0f;
+        constexpr Float kDeferredLightTypePoint = 1.0f;
+        constexpr Float kDeferredLightTypeSpot = 2.0f;
     }
 
-    struct DeferredLightPushConstants {
-        Vector4f light_color_intensity{1.0f, 1.0f, 1.0f, 1.0f};
-        Vector4f light_position_radius{0.0f, 0.0f, 0.0f, 0.0f};
-        Vector4f light_direction_type{0.0f, 0.0f, 0.0f, 0.0f};
+    struct DeferredLightPassConstants {
+        Vector4f camera_direction{0.0f, -1.0f, 0.0f, 0.0f};
+        Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f shadow_params{0.002f, 0.0f, 0.0f, 2.0f};
         StaticArray<Matrix4f, kShadowCascadeCount> cascade_view_projections{
             Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f)};
         Vector4f cascade_split_depths{0.0f};
-        Vector4f camera_direction{0.0f, -1.0f, 0.0f, 0.0f};
-        Vector4f shadow_params{0.002f, 0.0f, 0.0f, 2.0f};
-        Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f irradiance_sh[9]{};
         Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
         Vector4f emissive_params{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f light_info{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
-    static_assert(sizeof(DeferredLightPushConstants) <= kDeferredLightConstantBufferSize);
+    struct DeferredLightData {
+        Vector4f color_intensity{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f position_radius{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f direction_range{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f params{0.0f, 0.0f, 0.0f, 0.0f};
+    };
+
+    static_assert(sizeof(DeferredLightPassConstants) <= kDeferredLightConstantBufferSize);
+    static_assert(sizeof(DeferredLightData) == 64);
 
     struct DeferredLightPassParameters {
         RenderGraphTextureHandle albedo{};
@@ -56,6 +67,7 @@ namespace dodoe {
         RenderGraphTextureHandle shadow_map{};
         RenderGraphTextureHandle hdr_color{};
         RenderGraphTextureHandle skybox_texture{};
+        RenderGraphBufferHandle light_buffer{};
     };
 
     void DeferredLightPass::build(RenderGraphBuilder& graph,
@@ -78,6 +90,7 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::Texture_SRV(5))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(6))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(7))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(8))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(10))
                 .addItem(GfxBindingLayoutItem::Sampler(9)));
 
@@ -98,6 +111,17 @@ namespace dodoe {
                 RenderGraphAttachmentInfo hdr_attachment{};
                 hdr_attachment.load_op = LoadOp::Load;
                 parameters.hdr_color = pass_builder.writeColor(*hdr, hdr_attachment);
+
+                RenderGraphBufferDesc light_buffer_desc{};
+                light_buffer_desc.desc = GfxBufferDesc()
+                    .setByteSize(kMaxDeferredLights * sizeof(DeferredLightData))
+                    .setStructStride(sizeof(DeferredLightData))
+                    .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
+                    .setDebugName("RDG DeferredLightBuffer");
+                parameters.light_buffer = pass_builder.writeBuffer(
+                    pass_builder.createTransientBuffer(light_buffer_desc, "DeferredLightBuffer"),
+                    RenderGraphPipelineStage::Copy);
+                pass_builder.readBuffer(parameters.light_buffer, RenderGraphPipelineStage::PixelShader);
 
                 if (!context.scene) {
                     return;
@@ -133,6 +157,11 @@ namespace dodoe {
                     return;
                 }
 
+                const auto light_buffer = ctx.resolveBuffer(parameters.light_buffer);
+                if (!light_buffer) {
+                    DO_ERROR("DeferredLightPass: light buffer is missing");
+                    return;
+                }
                 const auto albedo_handle = ctx.resolveTexture(parameters.albedo);
                 const auto normal_handle = ctx.resolveTexture(parameters.normal);
                 const auto position_handle = ctx.resolveTexture(parameters.position);
@@ -181,6 +210,118 @@ namespace dodoe {
                 const auto* brdf_lut = ctx.getTextureManager()->getBrdfLut();
                 const GfxTextureHandle brdf_lut_handle = brdf_lut ? brdf_lut->getGpuHandle() : GfxTextureHandle{};
 
+                const Matrix4f transposed_view_projection =
+                    Math::Transpose(ctx.getView()->getViewProjectionMatrix());
+                const Vector4f frustum_planes[6] = {
+                    transposed_view_projection[3] + transposed_view_projection[0],
+                    transposed_view_projection[3] - transposed_view_projection[0],
+                    transposed_view_projection[3] + transposed_view_projection[1],
+                    transposed_view_projection[3] - transposed_view_projection[1],
+                    transposed_view_projection[3] + transposed_view_projection[2],
+                    transposed_view_projection[3] - transposed_view_projection[2]};
+                const auto sphere_outside_frustum = [&frustum_planes](const Vector3f& center, Float radius) {
+                    const Vector4f center4(center, 1.0f);
+                    for (UInt32 i = 0; i < 6u; ++i) {
+                        if (Math::Dot(frustum_planes[i], center4) < -radius) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                DynamicArray<DeferredLightData> gpu_lights;
+                gpu_lights.reserve(kMaxDeferredLights);
+                for (const auto& light_info : light_infos) {
+                    if (!light_info.isEnabled() || light_info.getLightType() == LightType::Sky) {
+                        continue;
+                    }
+                    if (gpu_lights.size() >= kMaxDeferredLights) {
+                        DO_WARN("DeferredLightPass: light count exceeds {}, extra lights are dropped",
+                                kMaxDeferredLights);
+                        break;
+                    }
+
+                    DeferredLightData light_data{};
+                    switch (light_info.getLightType()) {
+                    case LightType::Directional: {
+                        const auto& data = light_info.getDirectionalLightData();
+                        light_data.color_intensity = Vector4f(data.color, data.irradiance);
+                        light_data.direction_range = Vector4f(Math::Normalize(data.direction), 0.0f);
+                        light_data.params = Vector4f(0.0f, 0.0f, kDeferredLightTypeDirectional,
+                                              light_info.getId() == shadow_directional_id ? 1.0f : 0.0f);
+                        break;
+                    }
+                    case LightType::Point: {
+                        const auto& data = light_info.getPointLightData();
+                        const Vector3f position(light_info.getWorldTransform()[3]);
+                        if (sphere_outside_frustum(position, Math::Max(data.range, data.radius))) {
+                            continue;
+                        }
+                        light_data.color_intensity = Vector4f(data.color, data.intensity);
+                        light_data.position_radius = Vector4f(position, data.radius);
+                        light_data.direction_range = Vector4f(0.0f, 0.0f, 0.0f, data.range);
+                        light_data.params = Vector4f(0.0f, 0.0f, kDeferredLightTypePoint, 0.0f);
+                        break;
+                    }
+                    case LightType::Spot: {
+                        const auto& data = light_info.getSpotLightData();
+                        const Vector3f position(light_info.getWorldTransform()[3]);
+                        if (sphere_outside_frustum(position, Math::Max(data.range, data.radius))) {
+                            continue;
+                        }
+                        const Vector3f forward = Math::Normalize(Vector3f(light_info.getWorldTransform()[2]));
+                        light_data.color_intensity = Vector4f(data.color, data.intensity);
+                        light_data.position_radius = Vector4f(position, data.radius);
+                        light_data.direction_range = Vector4f(forward, data.range);
+                        light_data.params = Vector4f(Math::Radians(data.inner_angle), Math::Radians(data.outer_angle),
+                                              kDeferredLightTypeSpot, 0.0f);
+                        break;
+                    }
+                    case LightType::Sky:
+                    default:
+                        continue;
+                    }
+                    gpu_lights.push_back(light_data);
+                }
+
+                DeferredLightPassConstants constants{};
+                constants.camera_position = Vector4f(
+                    rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView()),
+                    has_enabled_sky ? 1.0f : 0.0f);
+                constants.camera_direction = Vector4f(
+                    rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
+                if (has_enabled_sky) {
+                    for (UInt32 b = 0; b < 9u; ++b) {
+                        constants.irradiance_sh[b] = sky_irradiance_sh[b];
+                    }
+                    constants.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
+                }
+                constants.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
+                const auto* shadow_ext = ctx.getView()->getExtension<ShadowViewExtension>();
+                if (shadow_directional_id.isValid() && shadow_ext && shadow_ext->getData().has_shadow) {
+                    constants.cascade_view_projections = shadow_ext->getData().cascade_view_projections;
+                    constants.cascade_split_depths = shadow_ext->getData().cascade_split_depths;
+                    constants.shadow_params = shadow_ext->getData().shadow_params;
+                }
+                constants.light_info = Vector4f(static_cast<Float>(gpu_lights.size()), 0.0f, 0.0f, 0.0f);
+
+                const auto allocation = staging->allocate(kDeferredLightConstantBufferSize);
+                if (!allocation.buffer || !allocation.mapped_data) {
+                    DO_ERROR("DeferredLightPass: unable to allocate light constant buffer");
+                    return;
+                }
+                std::memset(allocation.mapped_data, 0, static_cast<Size_t>(allocation.size));
+                std::memcpy(allocation.mapped_data, &constants, sizeof(constants));
+
+                if (!gpu_lights.empty()) {
+                    command_list.setBufferState(light_buffer, GfxResourceStates::CopyDest);
+                    command_list.commitBarriers();
+                    command_list.writeBuffer(light_buffer, gpu_lights.data(),
+                                             gpu_lights.size() * sizeof(DeferredLightData), 0);
+                    command_list.setBufferState(light_buffer, GfxResourceStates::ShaderResource);
+                    command_list.commitBarriers();
+                }
+
                 const auto pipeline = ctx.getPipelineStateCache()->resolveGraphicsPipeline(
                     rendering_pipeline_utils::BuildFullscreenPipelineDesc(
                         shader_library->getFullscreenVertexShader(),
@@ -196,110 +337,35 @@ namespace dodoe {
 
                 const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                     *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
-                const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView());
 
-                auto draw_fullscreen_light = [&](const DeferredLightPushConstants& push) {
-                    const auto allocation = staging->allocate(kDeferredLightConstantBufferSize);
-                    if (!allocation.buffer || !allocation.mapped_data) {
-                        DO_ERROR("DeferredLightPass: unable to allocate light constant buffer");
-                        return;
-                    }
-                    std::memset(allocation.mapped_data, 0, static_cast<Size_t>(allocation.size));
-                    std::memcpy(allocation.mapped_data, &push, sizeof(push));
-
-                    const auto binding_set = command_list.createBindingSet(
-                        GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(
-                                0, allocation.buffer->getRHIHandle().Get(),
-                                GfxBufferRange(allocation.offset, allocation.size)))
-                            .addItem(GfxBindingSetItem::Texture_SRV(1, albedo_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(2, normal_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(3, position_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(4, shadow_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(5, material_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(
-                                6, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
-                                GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
-                            .addItem(GfxBindingSetItem::Texture_SRV(
-                                7, brdf_lut_handle ? brdf_lut_handle->getRHIHandle().Get() : nullptr))
-                            .addItem(GfxBindingSetItem::Texture_SRV(
-                                10, emissive_handle ? emissive_handle->getRHIHandle().Get() : nullptr))
-                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
-                        binding_layout);
-                    if (!binding_set) {
-                        DO_ERROR("DeferredLightPass: failed to create binding set");
-                        return;
-                    }
-
-                    DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
-                    command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
-                    command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                };
-
-                {
-                    DeferredLightPushConstants push{};
-                    push.camera_position = Vector4f(camera_position, has_enabled_sky ? 1.0f : 0.0f);
-                    if (has_enabled_sky) {
-                        for (UInt32 b = 0; b < 9u; ++b) {
-                            push.irradiance_sh[b] = sky_irradiance_sh[b];
-                        }
-                        push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
-                    }
-                    push.light_color_intensity = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
-                    push.light_direction_type = Vector4f(0.0f, -1.0f, 0.0f, 0.0f);
-                    push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
-                    draw_fullscreen_light(push);
+                const auto binding_set = command_list.createBindingSet(
+                    GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::ConstantBuffer(
+                            0, allocation.buffer->getRHIHandle().Get(),
+                            GfxBufferRange(allocation.offset, allocation.size)))
+                        .addItem(GfxBindingSetItem::Texture_SRV(1, albedo_handle->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Texture_SRV(2, normal_handle->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Texture_SRV(3, position_handle->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Texture_SRV(4, shadow_handle->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Texture_SRV(5, material_handle->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Texture_SRV(
+                            6, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
+                            GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
+                        .addItem(GfxBindingSetItem::Texture_SRV(
+                            7, brdf_lut_handle ? brdf_lut_handle->getRHIHandle().Get() : nullptr))
+                        .addItem(GfxBindingSetItem::StructuredBuffer_SRV(8, light_buffer->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Texture_SRV(
+                            10, emissive_handle ? emissive_handle->getRHIHandle().Get() : nullptr))
+                        .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                    binding_layout);
+                if (!binding_set) {
+                    DO_ERROR("DeferredLightPass: failed to create binding set");
+                    return;
                 }
 
-                for (const auto& light_info : light_infos) {
-                    if (!light_info.isEnabled() || light_info.getLightType() == LightType::Sky) {
-                        continue;
-                    }
-
-                    DeferredLightPushConstants push{};
-                    push.camera_position = Vector4f(camera_position, 0.0f);
-                    push.ibl_params = Vector4f(0.0f, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
-
-                    switch (light_info.getLightType()) {
-                    case LightType::Directional: {
-                        const auto& data = light_info.getDirectionalLightData();
-                        push.light_color_intensity = Vector4f(data.color, data.irradiance);
-                        push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
-                        push.camera_direction = Vector4f(
-                            rendering_pipeline_utils::ExtractCameraDirection(*ctx.getView()), 0.0f);
-                        if (light_info.getId() == shadow_directional_id) {
-                            const auto* shadow_ext = ctx.getView()->getExtension<ShadowViewExtension>();
-                            if (shadow_ext && shadow_ext->getData().has_shadow) {
-                                push.cascade_view_projections = shadow_ext->getData().cascade_view_projections;
-                                push.cascade_split_depths = shadow_ext->getData().cascade_split_depths;
-                                push.shadow_params = shadow_ext->getData().shadow_params;
-                            }
-                        }
-                        break;
-                    }
-                    case LightType::Point: {
-                        const auto& data = light_info.getPointLightData();
-                        push.light_color_intensity = Vector4f(data.color, data.intensity);
-                        push.light_position_radius = Vector4f(Vector3f(light_info.getWorldTransform()[3]), data.radius);
-                        push.light_direction_type = Vector4f(0.0f, 0.0f, 0.0f, data.range);
-                        break;
-                    }
-                    case LightType::Spot: {
-                        const auto& data = light_info.getSpotLightData();
-                        push.light_color_intensity = Vector4f(data.color, data.intensity);
-                        push.light_position_radius = Vector4f(Vector3f(light_info.getWorldTransform()[3]), data.radius);
-                        const Vector3f forward = Math::Normalize(Vector3f(light_info.getWorldTransform()[2]));
-                        push.light_direction_type = Vector4f(forward.x, forward.y, forward.z, data.range);
-                        push.shadow_params = Vector4f(data.inner_angle, data.outer_angle, 0.0f, 0.0f);
-                        break;
-                    }
-                    case LightType::Sky:
-                    default:
-                        continue;
-                    }
-
-                    draw_fullscreen_light(push);
-                }
+                DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
+                command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
+                command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
             });
     }
 

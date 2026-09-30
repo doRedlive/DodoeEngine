@@ -104,7 +104,7 @@ void main()
     vec3 ycc_square_sum = vec3(0.0);
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
-            vec3 sample_color = texture(sampler2D(u_CurrentColor, u_Sampler), scene_uv + vec2(x, y) * texel_size).rgb;
+            vec3 sample_color = texture(sampler2D(u_CurrentColor, u_Sampler), v_UV + vec2(x, y) * texel_size).rgb;
             vec3 sample_ycc = RGBToYCoCg(sample_color);
             ycc_min = min(ycc_min, sample_ycc);
             ycc_max = max(ycc_max, sample_ycc);
@@ -137,10 +137,10 @@ void main()
     vec3 result = mix(current, clamped_history, alpha);
 
     vec3 neighbor_blur = (
-        texture(sampler2D(u_CurrentColor, u_Sampler), scene_uv + vec2(0.0, -1.0) * texel_size).rgb +
-        texture(sampler2D(u_CurrentColor, u_Sampler), scene_uv + vec2(0.0, 1.0) * texel_size).rgb +
-        texture(sampler2D(u_CurrentColor, u_Sampler), scene_uv + vec2(-1.0, 0.0) * texel_size).rgb +
-        texture(sampler2D(u_CurrentColor, u_Sampler), scene_uv + vec2(1.0, 0.0) * texel_size).rgb) * 0.25;
+        texture(sampler2D(u_CurrentColor, u_Sampler), v_UV + vec2(0.0, -1.0) * texel_size).rgb +
+        texture(sampler2D(u_CurrentColor, u_Sampler), v_UV + vec2(0.0, 1.0) * texel_size).rgb +
+        texture(sampler2D(u_CurrentColor, u_Sampler), v_UV + vec2(-1.0, 0.0) * texel_size).rgb +
+        texture(sampler2D(u_CurrentColor, u_Sampler), v_UV + vec2(1.0, 0.0) * texel_size).rgb) * 0.25;
     result += (result - neighbor_blur) * u_Tuning.w;
 
     o_Color = vec4(result, 1.0);

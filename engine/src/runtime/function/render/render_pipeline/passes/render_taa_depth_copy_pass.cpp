@@ -31,9 +31,6 @@ namespace dodoe {
                                  const RenderPassBuildContext& context) {
         const auto* shader_library = context.shared_render_service->getShaderLibrary();
         auto* binding_layout_cache = context.shared_render_service->getBindingLayoutCache();
-        DO_ASSERT(shader_library != nullptr, "TaaDepthCopyPass shader library is null");
-        DO_ASSERT(binding_layout_cache != nullptr, "TaaDepthCopyPass binding layout cache is null");
-        DO_ASSERT(context.graph_imports != nullptr, "TaaDepthCopyPass graph imports are null");
 
         const auto binding_layout = binding_layout_cache->getOrCreate(
             GfxBindingLayoutDesc()

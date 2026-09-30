@@ -5,6 +5,7 @@
 #ifdef DODOE_EDITOR_ENABLED
 
 #include "runtime/function/render/render_pipeline/passes/render_gizmo_pass.h"
+#include "runtime/function/render/render_pipeline/passes/render_pick_pass.h"
 #include "runtime/core/channel/gizmo_channel.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
@@ -38,6 +39,7 @@ namespace dodoe {
 
 	void GizmoFeature::collectPasses(PassCollector& collector) {
 	    collector.addPass<GizmoPass>(m_binding_layout, m_input_layout);
+	    collector.addPass<EditorPickPass>();
 	}
 
 } // namespace dodoe

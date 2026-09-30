@@ -24,6 +24,7 @@ namespace dodoe {
         cutie::GraphicsPipelineHandle m_pipeline{};
         GfxBindingLayoutHandle m_binding_layout{};
         cutie::BufferHandle m_light_cb{};
+        cutie::BufferHandle m_light_buffer{};
 
     public:
         Bool initialize(const BaselinePassContext& context) override;

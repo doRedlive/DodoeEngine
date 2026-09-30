@@ -9,6 +9,7 @@
 #include "runtime/core/channel/gizmo_channel.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/core/debug/instrumentor.h"
+#include "runtime/resource/file/file_system.h"
 #include "runtime/service/editor/picking_backend.h"
 #include "runtime/function/world/components/tilemap/tilemap_component.h"
 #include "runtime/function/world/components/transform_component.h"
@@ -17,6 +18,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -27,12 +31,8 @@ namespace cakery {
 namespace {
 
 constexpr Float kHandleLength = 1.0f;
-constexpr Float kArrowHeadLength = 0.15f;
-constexpr Float kArrowHeadRadius = 0.04f;
-constexpr UInt32 kArrowHeadSegments = 4;
 constexpr Float kRingRadius = 0.9f;
 constexpr UInt32 kRingSegments = 48;
-constexpr Float kCubeHalfSize = 0.06f;
 constexpr Float kGizmoHitThresholdPx = 12.0f;
 
 const dodoe::Color kAxisRed{1.0f, 0.2f, 0.2f, 1.0f};
@@ -69,41 +69,99 @@ void AddLine(dodoe::GizmoChannelData& data, const dodoe::Vector3f& start, const 
     data.commands.push_back(cmd);
 }
 
-void AddArrowHead(dodoe::GizmoChannelData& data, const dodoe::Vector3f& tip, const dodoe::Vector3f& axis,
-                  const dodoe::Color& color, float headLength, float headRadius) {
+struct EditorGizmoPart {
+    DynamicArray<dodoe::Vector3f> positions;
+    DynamicArray<UInt32> indices;
+};
+
+enum class GizmoPartId { Arrow, Shaft, Ring, Cube };
+
+void LoadGizmoPart(EditorGizmoPart& part, const char* file) {
+    const auto path = FileSystem::GetEngineResPath() / "models" / "editor" / file;
+    std::ifstream stream(path);
+    if (!stream.is_open()) {
+        DO_ERROR("GizmoPart: failed to open '{}'", path.string());
+        return;
+    }
+    std::string line;
+    std::string token;
+    while (std::getline(stream, line)) {
+        if (line.rfind("v ", 0) == 0) {
+            std::istringstream iss(line.substr(2));
+            float x = 0.0f, y = 0.0f, z = 0.0f;
+            if (iss >> x >> y >> z) {
+                part.positions.push_back(dodoe::Vector3f(x, y, z));
+            }
+        } else if (line.rfind("f ", 0) == 0) {
+            std::istringstream iss(line.substr(2));
+            DynamicArray<UInt32> face;
+            face.reserve(4);
+            while (iss >> token) {
+                const Size_t slash = token.find('/');
+                const std::string index_text =
+                    (slash == std::string::npos) ? token : token.substr(0, slash);
+                if (index_text.empty()) {
+                    continue;
+                }
+                const int index = std::atoi(index_text.c_str());
+                if (index > 0) {
+                    face.push_back(static_cast<UInt32>(index - 1));
+                }
+            }
+            for (Size_t k = 1; k + 1 < face.size(); ++k) {
+                part.indices.push_back(face[0]);
+                part.indices.push_back(face[k]);
+                part.indices.push_back(face[k + 1]);
+            }
+        }
+    }
+    if (part.positions.empty() || part.indices.empty()) {
+        DO_ERROR("GizmoPart: '{}' has no usable geometry", path.string());
+    } else {
+        DO_INFO("GizmoPart: loaded '{}' verts={} indices={}",
+                path.string(), part.positions.size(), part.indices.size());
+    }
+}
+
+const EditorGizmoPart& GetGizmoPart(GizmoPartId id) {
+    static EditorGizmoPart parts[4];
+    static Bool loaded[4] = {false, false, false, false};
+    const Size_t index = static_cast<Size_t>(id);
+    if (!loaded[index]) {
+        loaded[index] = true;
+        const char* file = nullptr;
+        switch (id) {
+            case GizmoPartId::Arrow: file = "gizmo_arrow.obj"; break;
+            case GizmoPartId::Shaft: file = "gizmo_shaft.obj"; break;
+            case GizmoPartId::Ring:  file = "gizmo_ring.obj";  break;
+            case GizmoPartId::Cube:  file = "gizmo_cube.obj";  break;
+        }
+        LoadGizmoPart(parts[index], file);
+    }
+    return parts[index];
+}
+
+void AppendGizmoPart(dodoe::GizmoChannelData& data, const EditorGizmoPart& part,
+                     const dodoe::Vector3f& axis, const dodoe::Vector3f& origin,
+                     float scale, const dodoe::Color& color) {
+    if (part.positions.empty() || part.indices.empty()) {
+        return;
+    }
+    const dodoe::Vector3f reference =
+        (std::abs(axis.z) > 0.9f) ? dodoe::Vector3f(1.0f, 0.0f, 0.0f) : dodoe::Vector3f(0.0f, 0.0f, 1.0f);
+    const dodoe::Vector3f basis_u = dodoe::Math::Normalize(dodoe::Math::Cross(axis, reference));
+    const dodoe::Vector3f basis_v = dodoe::Math::Cross(basis_u, axis);
+
     const UInt32 base_vertex = static_cast<UInt32>(data.vertices.size());
     const UInt32 base_index  = static_cast<UInt32>(data.indices.size());
 
-    dodoe::Vector3f perp1, perp2;
-    if (std::abs(axis.x) < 0.9f) {
-        perp1 = dodoe::Math::Normalize(dodoe::Math::Cross(axis, dodoe::Vector3f(1.0f, 0.0f, 0.0f)));
-    } else {
-        perp1 = dodoe::Math::Normalize(dodoe::Math::Cross(axis, dodoe::Vector3f(0.0f, 1.0f, 0.0f)));
+    for (const dodoe::Vector3f& p : part.positions) {
+        const dodoe::Vector3f world = origin +
+            (basis_u * p.x + axis * p.y + basis_v * p.z) * scale;
+        data.vertices.push_back(MakeVertex(world, color));
     }
-    perp2 = dodoe::Math::Normalize(dodoe::Math::Cross(axis, perp1));
-
-    const dodoe::Vector3f base_center = tip - axis * headLength;
-
-    data.vertices.push_back(MakeVertex(tip, color));
-    for (UInt32 i = 0; i < kArrowHeadSegments; ++i) {
-        const Float angle = static_cast<Float>(i) * 2.0f * 3.14159265f / static_cast<Float>(kArrowHeadSegments);
-        const dodoe::Vector3f offset = (perp1 * std::cos(angle) + perp2 * std::sin(angle)) * headRadius;
-        data.vertices.push_back(MakeVertex(base_center + offset, color));
-    }
-    data.vertices.push_back(MakeVertex(base_center, color));
-
-    const UInt32 tip_idx   = base_vertex;
-    const UInt32 base_mid  = base_vertex + 1 + kArrowHeadSegments;
-
-    for (UInt32 i = 0; i < kArrowHeadSegments; ++i) {
-        const UInt32 curr = base_vertex + 1 + i;
-        const UInt32 next = base_vertex + 1 + (i + 1) % kArrowHeadSegments;
-        data.indices.push_back(tip_idx);
-        data.indices.push_back(next);
-        data.indices.push_back(curr);
-        data.indices.push_back(base_mid);
-        data.indices.push_back(curr);
-        data.indices.push_back(next);
+    for (const UInt32 index : part.indices) {
+        data.indices.push_back(index);
     }
 
     dodoe::GizmoDrawCommand cmd;
@@ -116,41 +174,13 @@ void AddArrowHead(dodoe::GizmoChannelData& data, const dodoe::Vector3f& tip, con
     data.commands.push_back(cmd);
 }
 
-void AddArrow(dodoe::GizmoChannelData& data, const dodoe::Vector3f& origin, const dodoe::Vector3f& axis,
-              const dodoe::Color& color, float scale) {
-    const dodoe::Vector3f tip = origin + axis * (kHandleLength * scale);
-    const dodoe::Vector3f shaft_end = tip - axis * (kArrowHeadLength * scale);
-    AddLine(data, origin, shaft_end, color);
-    AddArrowHead(data, tip, axis, color, kArrowHeadLength * scale, kArrowHeadRadius * scale);
-}
-
 void GenerateTranslateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position,
                             float scale, int hoverAxis) {
-    const dodoe::Matrix4f translation = dodoe::Math::Translate(dodoe::Matrix4f(1.0f), position);
-
+    const EditorGizmoPart& arrow = GetGizmoPart(GizmoPartId::Arrow);
     for (Int32 i = 0; i < 3; ++i) {
-        dodoe::GizmoChannelData axis_data;
         const dodoe::Color& color = (i == hoverAxis) ? kHoverColors[i] : kColors[i];
-        AddArrow(axis_data, dodoe::Vector3f(0.0f), kAxes[i], color, scale);
-
-        const UInt32 vertex_base = static_cast<UInt32>(data.vertices.size());
-        const UInt32 index_base  = static_cast<UInt32>(data.indices.size());
-
-        for (auto& v : axis_data.vertices) {
-            dodoe::Vector4f world_pos = translation * dodoe::Vector4f(v.px, v.py, v.pz, 1.0f);
-            v.px = world_pos.x; v.py = world_pos.y; v.pz = world_pos.z;
-        }
-
-        for (auto& cmd : axis_data.commands) {
-            cmd.vertex_offset += vertex_base;
-            cmd.index_offset  += index_base;
-        }
-
-        data.vertices.insert(data.vertices.end(), axis_data.vertices.begin(), axis_data.vertices.end());
-        data.indices.insert(data.indices.end(), axis_data.indices.begin(), axis_data.indices.end());
-        data.commands.insert(data.commands.end(), axis_data.commands.begin(), axis_data.commands.end());
+        AppendGizmoPart(data, arrow, kAxes[i], position, scale, color);
     }
-
     data.has_data = true;
 }
 
@@ -198,84 +228,26 @@ bool RayPlaneIntersect(const dodoe::Vector3f& origin, const dodoe::Vector3f& dir
     return true;
 }
 
-void AddCube(dodoe::GizmoChannelData& data, const dodoe::Vector3f& center, float halfSize,
-             const dodoe::Color& color) {
-    const UInt32 base_vertex = static_cast<UInt32>(data.vertices.size());
-    const UInt32 base_index = static_cast<UInt32>(data.indices.size());
-
-    const float h = halfSize;
-    const dodoe::Vector3f corners[8] = {
-        center + dodoe::Vector3f(-h, -h, -h),
-        center + dodoe::Vector3f( h, -h, -h),
-        center + dodoe::Vector3f( h,  h, -h),
-        center + dodoe::Vector3f(-h,  h, -h),
-        center + dodoe::Vector3f(-h, -h,  h),
-        center + dodoe::Vector3f( h, -h,  h),
-        center + dodoe::Vector3f( h,  h,  h),
-        center + dodoe::Vector3f(-h,  h,  h),
-    };
-    const UInt32 faces[6][4] = {
-        {0, 1, 2, 3}, {5, 4, 7, 6}, {4, 0, 3, 7}, {1, 5, 6, 2}, {3, 2, 6, 7}, {4, 5, 1, 0},
-    };
-
-    UInt32 face_base = base_vertex;
-    for (const auto& face : faces) {
-        for (UInt32 i = 0; i < 4; ++i) {
-            data.vertices.push_back(MakeVertex(corners[face[i]], color));
-        }
-        data.indices.push_back(face_base + 0);
-        data.indices.push_back(face_base + 1);
-        data.indices.push_back(face_base + 2);
-        data.indices.push_back(face_base + 0);
-        data.indices.push_back(face_base + 2);
-        data.indices.push_back(face_base + 3);
-        face_base += 4;
-    }
-
-    dodoe::GizmoDrawCommand cmd;
-    cmd.vertex_offset = base_vertex;
-    cmd.vertex_count  = static_cast<UInt32>(data.vertices.size()) - base_vertex;
-    cmd.index_offset  = base_index;
-    cmd.index_count   = static_cast<UInt32>(data.indices.size()) - base_index;
-    cmd.topology      = dodoe::GfxPrimitiveType::TriangleList;
-    cmd.transform     = dodoe::Matrix4f(1.0f);
-    data.commands.push_back(cmd);
-}
-
 void GenerateRotateGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position,
                          float scale, int hoverAxis) {
-    const Float ringRadius = kRingRadius * scale;
+    const EditorGizmoPart& ring = GetGizmoPart(GizmoPartId::Ring);
     for (Int32 axis = 0; axis < 3; ++axis) {
         const dodoe::Color& color = (axis == hoverAxis) ? kHoverColors[axis] : kColors[axis];
-        for (UInt32 i = 0; i < kRingSegments; ++i) {
-            const Float a0 = static_cast<Float>(i) * 2.0f * 3.14159265f / static_cast<Float>(kRingSegments);
-            const Float a1 = static_cast<Float>(i + 1) * 2.0f * 3.14159265f / static_cast<Float>(kRingSegments);
-            const Float c0 = std::cos(a0), s0 = std::sin(a0);
-            const Float c1 = std::cos(a1), s1 = std::sin(a1);
-            dodoe::Vector3f p0, p1;
-            if (axis == 0) {
-                p0 = position + dodoe::Vector3f(0.0f, c0, s0) * ringRadius;
-                p1 = position + dodoe::Vector3f(0.0f, c1, s1) * ringRadius;
-            } else if (axis == 1) {
-                p0 = position + dodoe::Vector3f(c0, 0.0f, s0) * ringRadius;
-                p1 = position + dodoe::Vector3f(c1, 0.0f, s1) * ringRadius;
-            } else {
-                p0 = position + dodoe::Vector3f(c0, s0, 0.0f) * ringRadius;
-                p1 = position + dodoe::Vector3f(c1, s1, 0.0f) * ringRadius;
-            }
-            AddLine(data, p0, p1, color);
-        }
+        AppendGizmoPart(data, ring, kAxes[axis], position, scale, color);
     }
     data.has_data = true;
 }
 
 void GenerateScaleGizmo(dodoe::GizmoChannelData& data, const dodoe::Vector3f& position,
                         float scale, int hoverAxis) {
+    const EditorGizmoPart& shaft = GetGizmoPart(GizmoPartId::Shaft);
+    const EditorGizmoPart& cube = GetGizmoPart(GizmoPartId::Cube);
     for (Int32 i = 0; i < 3; ++i) {
-        const dodoe::Vector3f tip = position + kAxes[i] * (kHandleLength * scale);
         const dodoe::Color& color = (i == hoverAxis) ? kHoverColors[i] : kColors[i];
-        AddLine(data, position, tip, color);
-        AddCube(data, tip, kCubeHalfSize * scale, color);
+        const dodoe::Vector3f axis = kAxes[i];
+        const dodoe::Vector3f tip = position + axis * (kHandleLength * scale);
+        AppendGizmoPart(data, shaft, axis, position, scale, color);
+        AppendGizmoPart(data, cube, axis, tip, scale, color);
     }
     data.has_data = true;
 }
@@ -317,7 +289,13 @@ void RuntimeEditorBackend::updateTileOverlay()
 {
     if (!m_tilePaint || !m_tilePaint->hasTarget()) return;
     dodoe::Entity tm = activeTilemapEntity();
-    if (!tm.valid() || !tm.hasComponent<TilemapComponent>()) return;
+    if (!tm.valid() || !tm.hasComponent<TilemapComponent>()) {
+        m_tilePaint->setActiveTilemap(dodoe::UUID(0));
+        m_tilePaint->setActiveLayer(dodoe::UUID(0));
+        m_tilePaintActive = false;
+        emitTilemapEditMode(false);
+        return;
+    }
 
     const auto& comp = tm.getComponent<TilemapComponent>();
     const float mapW = static_cast<float>(comp.map_width * comp.tile_width);
@@ -422,7 +400,8 @@ void RuntimeEditorBackend::updateGizmo()
     DO_PROFILE_SCOPE_CATEGORY("Cakery::updateGizmo", "frame");
     dodoe::GizmoChannelData& channel_data = dodoe::GetGizmoChannel().get<dodoe::GizmoChannelData>();
     channel_data.clear();
-    const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget();
+    channel_data.grid.ortho2d = m_camera && m_camera->mode() == EditorCamera::Mode::Ortho2D;
+    const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget() && activeTilemapEntity().valid();
     updateTileOverlay();
     if (tilePainting || m_selectedUuid == 0) {
         return;
@@ -442,8 +421,8 @@ void RuntimeEditorBackend::updateGizmo()
     }
     const dodoe::TransformComponent& transform = entity.getComponent<dodoe::TransformComponent>();
     const dodoe::Vector3f position = transform.getPosition();
-    drawSelectionHighlight(channel_data);
     if (m_gizmoMode == "none") {
+        drawSelectionHighlight(channel_data);
         return;
     }
     m_gizmoScale = std::max(computeGizmoScale(position), 1e-3f);
@@ -494,7 +473,25 @@ void RuntimeEditorBackend::pickAt(float screenX, float screenY)
     dodoe::Vector3f origin, dir;
     m_camera->screenToRay(screenX, screenY, origin, dir);
     dodoe::Entity entity = dodoe::PickingBackend::RaycastNearest(*scene, origin, dir);
-    if (!entity.valid()) {
+    setSelectedUuid(entity.valid() ? static_cast<std::uint64_t>(entity.uuid()) : 0);
+}
+
+void RuntimeEditorBackend::requestPick(float screenX, float screenY)
+{
+    if (!m_camera) {
+        return;
+    }
+    auto& channel = dodoe::GetPickChannel().get<dodoe::PickChannelData>();
+    const float dpr = m_surface.devicePixelRatio > 0.0f ? m_surface.devicePixelRatio : 1.0f;
+    channel.request.x = static_cast<std::int32_t>(std::lround(screenX * dpr));
+    channel.request.y = static_cast<std::int32_t>(std::lround(screenY * dpr));
+    channel.request.sequence = ++m_pick_sequence;
+    DO_INFO("EditorPick: request ({}, {}) seq={}", channel.request.x, channel.request.y, channel.request.sequence);
+}
+
+void RuntimeEditorBackend::setSelectedUuid(std::uint64_t uuid)
+{
+    if (uuid == 0) {
         if (m_selectedUuid != 0) {
             m_selectedUuid = 0;
             m_hoverAxis = -1;
@@ -502,9 +499,9 @@ void RuntimeEditorBackend::pickAt(float screenX, float screenY)
         }
         return;
     }
-    m_selectedUuid = static_cast<std::uint64_t>(entity.uuid());
+    m_selectedUuid = uuid;
     m_hoverAxis = -1;
-    m_eventCallback(BackendEventMessage{"selection_changed", std::to_string(m_selectedUuid)});
+    m_eventCallback(BackendEventMessage{"selection_changed", std::to_string(uuid)});
 }
 
 dodoe::Entity RuntimeEditorBackend::selectedSceneEntity() const

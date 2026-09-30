@@ -458,6 +458,7 @@ bool RuntimeEditorBackend::handleSceneMouseDown(const EditorCommandMessage& comm
         m_ctrlHeld = ctrl != 0;
         m_shiftHeld = shift != 0;
         const bool tileEditing = m_tilePaint && m_tilePaint->hasTarget() &&
+                                 activeTilemapEntity().valid() &&
                                  button == 0 && alt == 0;
         if (tileEditing) {
             int cx = 0, cy = 0;
@@ -482,7 +483,7 @@ bool RuntimeEditorBackend::handleSceneMouseDown(const EditorCommandMessage& comm
             m_camera->onMouseDown(x, y, button, alt != 0);
         }
         if (button == 0 && alt == 0 && m_camera) {
-            pickAt(x, y);
+            requestPick(x, y);
         }
     }
     return true;
@@ -506,7 +507,8 @@ bool RuntimeEditorBackend::handleSceneMouseMove(const EditorCommandMessage& comm
             }
             return true;
         }
-        if (m_tilePaint && m_tilePaint->hasTarget() && m_tilePaint->tool() != TileTool::Select) {
+        if (m_tilePaint && m_tilePaint->hasTarget() && activeTilemapEntity().valid() &&
+            m_tilePaint->tool() != TileTool::Select) {
             int cx = 0, cy = 0;
             if (screenToCell(x, y, cx, cy)) {
                 m_tilePaint->setHoverCell(cx, cy);
@@ -1064,6 +1066,13 @@ void RuntimeEditorBackend::tickAtSafePoint()
         m_camera->commitToRenderChannel();
         updateGizmo();
     });
+
+    auto& pick_channel = dodoe::GetPickChannel().get<dodoe::PickChannelData>();
+    if (pick_channel.result.handled && m_pick_sequence != 0 &&
+        pick_channel.result.sequence == m_pick_sequence) {
+        pick_channel.result.handled = false;
+        setSelectedUuid(pick_channel.result.entity_uuid);
+    }
 }
 
 void RuntimeEditorBackend::reportMissingAssetReferences()

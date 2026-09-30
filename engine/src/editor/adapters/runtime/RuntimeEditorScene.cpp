@@ -135,6 +135,15 @@ bool RuntimeEditorBackend::reconcileScene(const EditorDocument& document)
     }
     DO_INFO("Cakery reconcile: {} entities synced", document.entities.size());
 
+    if (m_tilePaint && m_tilePaint->hasTarget()) {
+        const dodoe::UUID tilemap_uuid = m_tilePaint->activeTilemap();
+        if (!scene->tryGetEntityByUUID(tilemap_uuid).valid()) {
+            m_tilePaint->setActiveTilemap(dodoe::UUID(0));
+            m_tilePaint->setActiveLayer(dodoe::UUID(0));
+            m_tilePaintActive = false;
+        }
+    }
+
     for (Entity sceneEntity : scene->getEntities()) {
         if (sceneEntity.valid() && sceneEntity.hasComponent<PrefabInstanceComponent>() &&
             !sceneEntity.hasComponent<PrefabNodeComponent>()) {

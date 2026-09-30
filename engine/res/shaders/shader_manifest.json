@@ -33,6 +33,7 @@
     { "name": "GpuCullingCS",          "source": "compute/gpu_culling_pass",           "entry_point": "main", "stage": "compute",  "platforms": ["d3d12"] },
     { "name": "GizmoVS",               "source": "editor/gizmo_pass",                  "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "GizmoPS",               "source": "editor/gizmo_pass",                  "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
+    { "name": "EditorGridPS",          "source": "editor/grid_pass",                   "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "UIVS",                  "source": "ui/ui_pass",                         "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "UIPS",                  "source": "ui/ui_pass",                         "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "UIPSArray",             "source": "ui/ui_pass_array",                   "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },

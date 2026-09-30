@@ -156,16 +156,6 @@ namespace dodoe {
 
         Matrix4f jittered_proj = proj_mat;
         Vector2f jitter_ndc{0.0f, 0.0f};
-        if (RenderSettings::IsTaaEnabled()) {
-            const UInt32 phase = m_jitter_sequence++ % kTaaJitterPhaseCount;
-            const Float width = static_cast<Float>(std::max(1, m_pixel_size.x));
-            const Float height = static_cast<Float>(std::max(1, m_pixel_size.y));
-            const Float jx = (HaltonSequence(phase + 1, 2) - 0.5f) * 2.0f / width;
-            const Float jy = (HaltonSequence(phase + 1, 3) - 0.5f) * 2.0f / height;
-            jitter_ndc = Vector2f(jx, jy);
-            jittered_proj[2][0] += jx;
-            jittered_proj[2][1] += jy;
-        }
 
         auto& view = family.createView(MakeIdentifier("main_view"));
         view.setMatrices(view_mat, jittered_proj);

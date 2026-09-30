@@ -58,6 +58,12 @@ namespace dodoe {
                     for (const auto& info : ui_infos) {
                         parameters.instances.push_back(info.toInstance());
                     }
+                    if (!RenderSettings::IsBindlessActive()) {
+                        std::stable_sort(parameters.instances.begin(), parameters.instances.end(),
+                            [](const UIInstance& a, const UIInstance& b) {
+                                return a.atlas_index < b.atlas_index;
+                            });
+                    }
                 }
 
                 // Instance buffer
@@ -233,18 +239,7 @@ namespace dodoe {
                         return;
                     }
 
-                    auto sorted_instances = parameters.instances;
-                    std::sort(sorted_instances.begin(), sorted_instances.end(),
-                        [](const UIInstance& a, const UIInstance& b) {
-                            return a.atlas_index < b.atlas_index;
-                        });
-
-                    command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
-                    command_list.commitBarriers();
-                    command_list.writeBuffer(instance_buffer, sorted_instances.data(),
-                                             sorted_instances.size() * sizeof(UIInstance));
-                    command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
-                    command_list.commitBarriers();
+                    const auto& sorted_instances = parameters.instances;
 
                     GfxDepthStencilState depth_stencil;
                     depth_stencil.disableDepthTest().disableDepthWrite().disableStencil();

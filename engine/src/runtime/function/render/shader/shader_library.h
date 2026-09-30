@@ -75,6 +75,7 @@ namespace dodoe {
         GfxShaderHandle getBatchExpandComputeShader() const { return findShaderValue("BatchExpandCS"); }
         GfxShaderHandle getGizmoVertexShader() const { return findShaderValue("GizmoVS"); }
         GfxShaderHandle getGizmoPixelShader() const { return findShaderValue("GizmoPS"); }
+        GfxShaderHandle getEditorGridPixelShader() const { return findShaderValue("EditorGridPS"); }
         GfxShaderHandle getUIVertexShader() const { return findShaderValue("UIVS"); }
         GfxShaderHandle getUIPixelShader() const {
             if (RenderSettings::IsBindlessActive()) {

@@ -90,6 +90,9 @@ namespace dodoe {
     void DrawCommandList::copyBuffer(const GfxBufferHandle& destination, UInt64 destination_offset_bytes, const GfxBufferHandle& source, UInt64 source_offset_bytes, UInt64 data_size_bytes) {
         recordCommand<CopyBufferCommand>(destination, destination_offset_bytes, source, source_offset_bytes, data_size_bytes);
     }
+    void DrawCommandList::copyTextureToStaging(const GfxStagingTextureHandle& destination, const GfxTextureSlice& destination_slice, const GfxTextureHandle& source, const GfxTextureSlice& source_slice) {
+        recordCommand<CopyTextureToStagingCommand>(destination, destination_slice, source, source_slice);
+    }
 
     void DrawCommandList::resolveTexture(const GfxTextureHandle& destination, const GfxTextureHandle& source, const GfxTextureSubresourceSet& subresources) {
         recordCommand<ResolveTextureCommand>(destination, source, subresources);
@@ -198,6 +201,29 @@ namespace dodoe {
         // DO_DEBUG("DrawCommandList: created texture ({}x{}, data={})", desc.width, desc.height, data_size > 0);
         return texture;
     }
+    GfxStagingTextureHandle DrawCommandList::createStagingTexture(const GfxTextureDesc& desc, GfxCpuAccessMode cpu_access) {
+        DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createStagingTexture", "resource");
+        if (!m_device) {
+            DO_ERROR("DrawCommandList::createStagingTexture: graphics device is unavailable");
+            return nullptr;
+        }
+        return m_device->createStagingTexture(desc, cpu_access);
+    }
+
+    void* DrawCommandList::mapStagingTexture(const GfxStagingTextureHandle& texture, const GfxTextureSlice& slice, GfxCpuAccessMode cpu_access, Size_t* out_row_pitch) {
+        if (!m_device || !texture) {
+            DO_ERROR("DrawCommandList::mapStagingTexture: device or staging texture is unavailable");
+            return nullptr;
+        }
+        return m_device->mapStagingTexture(texture.Get(), slice, cpu_access, out_row_pitch);
+    }
+
+    void DrawCommandList::unmapStagingTexture(const GfxStagingTextureHandle& texture) {
+        if (m_device && texture) {
+            m_device->unmapStagingTexture(texture.Get());
+        }
+    }
+
     GfxBufferHandle DrawCommandList::createBuffer(const GfxBufferDesc& desc, const void* data, Size_t data_size) {
         DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createBuffer", "resource");
         if (!m_device) {
@@ -312,6 +338,7 @@ namespace dodoe {
     void DrawCommandList::ClearTextureUIntCommand::execute(GfxCommandList& c) const { if (m_texture->isGpuReady()) c.clearTextureUInt(m_texture->getRHIHandle(), m_subresources, m_clear_color); }
     void DrawCommandList::ClearDepthStencilTextureCommand::execute(GfxCommandList& c) const { if (m_texture->isGpuReady()) c.clearDepthStencilTexture(m_texture->getRHIHandle(), m_subresources, m_clear_depth, m_depth, m_clear_stencil, m_stencil); }
     void DrawCommandList::CopyBufferCommand::execute(GfxCommandList& c) const { if (m_dst->isGpuReady() && m_src->isGpuReady()) c.copyBuffer(m_dst->getRHIHandle(), m_dst_off, m_src->getRHIHandle(), m_src_off, m_size); }
+    void DrawCommandList::CopyTextureToStagingCommand::execute(GfxCommandList& c) const { if (m_src->isGpuReady()) c.copyTexture(m_dst.Get(), m_dst_slice, m_src->getRHIHandle().Get(), m_src_slice); }
     void DrawCommandList::ResolveTextureCommand::execute(GfxCommandList& c) const { if (m_dst->isGpuReady() && m_src->isGpuReady()) c.resolveTexture(m_dst->getRHIHandle().Get(), m_subresources, m_src->getRHIHandle().Get(), m_subresources); }
     void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.setTextureState(m_t->getRHIHandle(), m_s, m_st); else DO_WARN("SetTextureState: texture not realized"); }
     void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& c) const { if (m_b->isGpuReady()) c.setBufferState(m_b->getRHIHandle(), m_st); else DO_WARN("SetBufferState: buffer not realized"); }

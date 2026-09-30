@@ -7,6 +7,7 @@
 #include "bridge/EditorBackend.h"
 #include "core/document/EditorDocument.h"
 #include "runtime/core/channel/gizmo_channel.h"
+#include "runtime/core/channel/pick_channel.h"
 #include "runtime/core/math/math.h"
 #include "runtime/core/utils/uuid.h"
 
@@ -110,6 +111,8 @@ private:
     float computeGizmoScale(const dodoe::Vector3f& position) const;
     void drawSelectionHighlight(dodoe::GizmoChannelData& data);
     void pickAt(float screenX, float screenY);
+    void requestPick(float screenX, float screenY);
+    void setSelectedUuid(std::uint64_t uuid);
     bool importDroppedAsset(const std::string& assetPath, const nlohmann::json& position);
     void setPlayAction(const std::string& action);
     dodoe::Entity selectedSceneEntity() const;
@@ -149,6 +152,7 @@ private:
     EditorDocument m_document;
     std::unique_ptr<AssetDatabase> m_assetDatabase;
     std::uint64_t m_selectedUuid = 0;
+    std::uint64_t m_pick_sequence = 0;
     std::string m_gizmoMode = "translate";
     float m_gizmoScale = 1.0f;
     int m_hoverAxis = -1;

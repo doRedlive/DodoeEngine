@@ -13,14 +13,23 @@
 #include "../render_pipeline_pass_utils.h"
 
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
+#include "runtime/function/render/render_frame/frame_staging_allocator.h"
+#include "runtime/function/render/render_service/binding_layout_cache.h"
+#include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/shader/shader_library.h"
+#include "runtime/function/render/shader/shader_parameter.h"
+#include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "render_pass_blackboard_keys.h"
+
+#include <chrono>
+#include <cstring>
 
 namespace dodoe {
 
     struct GizmoPassParameters {
         RenderGraphTextureHandle color_target{};
+        RenderGraphTextureHandle depth{};
         RenderGraphBufferHandle vertex_buffer{};
         RenderGraphBufferHandle index_buffer{};
         GizmoChannelData gizmo_data{};
@@ -29,6 +38,20 @@ namespace dodoe {
     void GizmoPass::build(RenderGraphBuilder& graph,
                            const RenderPassBuildContext& context) {
         if (!context.view.hasViewFlag(RenderView::kShowEditorPrimitives)) return;
+
+        if (context.shared_render_service) {
+            auto* binding_layout_cache = context.shared_render_service->getBindingLayoutCache();
+            if (binding_layout_cache) {
+                m_grid_binding_layout = binding_layout_cache->getOrCreate(
+                    GfxBindingLayoutDesc()
+                        .setVisibility(GfxShaderType::Pixel)
+                        .setRegisterSpaceIsDescriptorSet(true)
+                        .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
+                        .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
+                        .addItem(GfxBindingLayoutItem::Texture_SRV(1))
+                        .addItem(GfxBindingLayoutItem::Sampler(9)));
+            }
+        }
 
         graph.addPass<GizmoPassParameters>(
             "GizmoPass",
@@ -47,6 +70,11 @@ namespace dodoe {
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG GizmoColor"),
                         "GizmoColor"), color_attachment);
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
+                }
+
+                const auto* scene_textures = pass_builder.blackboard().get<SceneTexturesKey>();
+                if (scene_textures && scene_textures->depth.isValid()) {
+                    parameters.depth = pass_builder.read(scene_textures->depth);
                 }
 
                 RenderGraphBufferDesc vb_desc{};
@@ -93,14 +121,80 @@ namespace dodoe {
                 }
 
                 const auto& gizmo_data = parameters.gizmo_data;
+
+                if (parameters.depth.isValid() && m_grid_binding_layout) {
+                    const auto depth_texture = ctx.resolveTexture(parameters.depth);
+                    auto* staging = ctx.getFrameStagingAllocator();
+                    const auto grid_vs = shader_library->getFullscreenVertexShader();
+                    const auto grid_ps = shader_library->getEditorGridPixelShader();
+                    if (depth_texture && depth_texture->isGpuReady() && staging && grid_vs && grid_ps) {
+                        struct EditorGridConstants {
+                            Matrix4f inverse_view_projection{1.0f};
+                            Matrix4f view_projection{1.0f};
+                            Vector4f camera_world{0.0f, 0.0f, 0.0f, 1.0f};
+                            Vector4f plane{0.0f, 1.0f, 0.0f, 0.0f};
+                            Vector4f params{1.0f, 10.0f, 40.0f, 300.0f};
+                        };
+                        EditorGridConstants grid_constants{};
+                        grid_constants.inverse_view_projection =
+                            Math::Inverse(ctx.getView()->getViewProjectionMatrix());
+                        grid_constants.view_projection = ctx.getView()->getViewProjectionMatrix();
+                        grid_constants.camera_world = Vector4f(
+                            rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView()), 1.0f);
+                        grid_constants.plane = gizmo_data.grid.ortho2d
+                            ? Vector4f(0.0f, 0.0f, 1.0f, 0.0f)
+                            : Vector4f(0.0f, 1.0f, 0.0f, 0.0f);
+                        grid_constants.params = Vector4f(
+                            gizmo_data.grid.minor_spacing,
+                            gizmo_data.grid.major_spacing,
+                            gizmo_data.grid.fade_begin,
+                            gizmo_data.grid.fade_end);
+
+                        const auto allocation = staging->allocate(sizeof(EditorGridConstants));
+                        if (allocation.buffer && allocation.mapped_data) {
+                            std::memcpy(allocation.mapped_data, &grid_constants, sizeof(grid_constants));
+                            const auto grid_binding_set = command_list.createBindingSet(
+                                GfxBindingSetDesc()
+                                    .addItem(GfxBindingSetItem::ConstantBuffer(
+                                        0, allocation.buffer->getRHIHandle().Get(),
+                                        GfxBufferRange(allocation.offset, allocation.size)))
+                                    .addItem(GfxBindingSetItem::Texture_SRV(1, depth_texture->getRHIHandle().Get()))
+                                    .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                                m_grid_binding_layout);
+                            if (grid_binding_set) {
+                                const auto grid_pipeline = pso_cache->resolveGraphicsPipeline(
+                                    rendering_pipeline_utils::BuildFullscreenPipelineDesc(
+                                        grid_vs, grid_ps, m_grid_binding_layout, false, true),
+                                    ctx.getRenderTargetSignature(), command_list);
+                                if (grid_pipeline) {
+                                    command_list.setGraphicsState(
+                                        ctx.getFramebuffer(), grid_pipeline,
+                                        DynamicArray<GfxBindingSetHandle>{grid_binding_set},
+                                        rendering_pipeline_utils::BuildViewportState(
+                                            *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D()));
+                                    command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (gizmo_data.vertices.empty() || gizmo_data.commands.empty()) {
                     return;
+                }
+
+                static auto s_last_gizmo_log = std::chrono::steady_clock::now() - std::chrono::seconds(2);
+                const Bool log_gizmo = std::chrono::steady_clock::now() - s_last_gizmo_log >= std::chrono::seconds(2);
+                if (log_gizmo) {
+                    s_last_gizmo_log = std::chrono::steady_clock::now();
+                    DO_INFO("GizmoPass: verts={} idx={} cmds={}",
+                            gizmo_data.vertices.size(), gizmo_data.indices.size(), gizmo_data.commands.size());
                 }
 
                 GfxDepthStencilState ds;
                 ds.disableDepthTest().disableDepthWrite().disableStencil();
                 GfxRasterState raster;
-                raster.setCullNone();
+                raster.setCullBack();
                 GfxRenderState render_state;
                 render_state.setDepthStencilState(ds).setRasterState(raster);
 
@@ -121,6 +215,18 @@ namespace dodoe {
                     command_list.setBufferState(ib, GfxResourceStates::IndexBuffer);
                 }
                 command_list.commitBarriers();
+
+                if (!m_push_constant_binding_set) {
+                    m_push_constant_binding_set = command_list.createBindingSet(
+                        GfxBindingSetDesc().addItem(GfxBindingSetItem::PushConstants(
+                            0, static_cast<UInt32>(sizeof(GizmoPushConstants)))),
+                        m_binding_layout);
+                }
+                if (!m_push_constant_binding_set) {
+                    DO_ERROR("GizmoPass: failed to create push constant binding set");
+                    return;
+                }
+                DynamicArray<GfxBindingSetHandle> binding_sets = {m_push_constant_binding_set};
 
                 const auto view_projection = ctx.getView()->getViewProjectionMatrix();
                 const auto framebuffer = ctx.getFramebuffer();
@@ -145,6 +251,10 @@ namespace dodoe {
                     if (!pipeline) {
                         continue;
                     }
+                    if (log_gizmo) {
+                        DO_INFO("GizmoPass: draw topology={} verts={}",
+                                static_cast<UInt32>(cmd.topology), cmd.vertex_count);
+                    }
 
                     push.mvp = view_projection * cmd.transform;
 
@@ -161,7 +271,7 @@ namespace dodoe {
                     }
 
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
-                    command_list.setGraphicsState(framebuffer, pipeline, {}, viewport_state, vbs, index_binding);
+                    command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport_state, vbs, index_binding);
                     command_list.setPushConstants(&push, sizeof(push));
 
                     if (cmd.index_count > 0) {

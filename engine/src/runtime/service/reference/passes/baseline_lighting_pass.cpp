@@ -17,25 +17,36 @@ namespace dodoe {
 
     namespace {
         constexpr UInt64 kDeferredLightConstantBufferSize = 544;
+        constexpr UInt32 kMaxDeferredLights = 256;
         constexpr Bool kDebugShadowSamplingView = false;
+
+        constexpr Float kDeferredLightTypeDirectional = 0.0f;
+        constexpr Float kDeferredLightTypePoint = 1.0f;
+        constexpr Float kDeferredLightTypeSpot = 2.0f;
     }
 
-    struct DeferredLightPushConstants {
-        Vector4f light_color_intensity{1.0f, 1.0f, 1.0f, 1.0f};
-        Vector4f light_position_radius{0.0f, 0.0f, 0.0f, 0.0f};
-        Vector4f light_direction_type{0.0f, 0.0f, 0.0f, 0.0f};
+    struct DeferredLightPassConstants {
+        Vector4f camera_direction{0.0f, -1.0f, 0.0f, 0.0f};
+        Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f shadow_params{0.002f, 0.0f, 0.0f, 2.0f};
         StaticArray<Matrix4f, kShadowCascadeCount> cascade_view_projections{
             Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f), Matrix4f(1.0f)};
         Vector4f cascade_split_depths{0.0f};
-        Vector4f camera_direction{0.0f, -1.0f, 0.0f, 0.0f};
-        Vector4f shadow_params{0.002f, 0.0f, 0.0f, 2.0f};
-        Vector4f camera_position{0.0f, 0.0f, 0.0f, 0.0f};
         Vector4f irradiance_sh[9]{};
         Vector4f ibl_params{0.0f, 0.35f, 0.0f, 0.0f};
         Vector4f emissive_params{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f light_info{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
-    static_assert(sizeof(DeferredLightPushConstants) <= kDeferredLightConstantBufferSize);
+    struct DeferredLightData {
+        Vector4f color_intensity{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f position_radius{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f direction_range{0.0f, 0.0f, 0.0f, 0.0f};
+        Vector4f params{0.0f, 0.0f, 0.0f, 0.0f};
+    };
+
+    static_assert(sizeof(DeferredLightPassConstants) <= kDeferredLightConstantBufferSize);
+    static_assert(sizeof(DeferredLightData) == 64);
 
     Bool BaselineLightingPass::initialize(const BaselinePassContext& context) {
         m_device = context.device;
@@ -62,6 +73,7 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::Texture_SRV(5))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(6))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(7))
+                .addItem(GfxBindingLayoutItem::StructuredBuffer_SRV(8))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(10))
                 .addItem(GfxBindingLayoutItem::Sampler(9)));
 
@@ -72,6 +84,13 @@ namespace dodoe {
             .setMaxVersions(4096)
             .setDebugName("BaselineLightCB");
         m_light_cb = m_device->createBuffer(cb_desc);
+
+        GfxBufferDesc light_buffer_desc;
+        light_buffer_desc.setByteSize(kMaxDeferredLights * sizeof(DeferredLightData))
+            .setStructStride(sizeof(DeferredLightData))
+            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
+            .setDebugName("BaselineLightBuffer");
+        m_light_buffer = m_device->createBuffer(light_buffer_desc);
         return true;
     }
 
@@ -79,6 +98,7 @@ namespace dodoe {
         m_pipeline = nullptr;
         m_binding_layout = nullptr;
         m_light_cb = nullptr;
+        m_light_buffer = nullptr;
         m_sampler = nullptr;
         m_shader_library = nullptr;
         m_shared_render_service = nullptr;
@@ -111,7 +131,7 @@ namespace dodoe {
                                       const GfxTextureHandle& gbuffer_position, const GfxTextureHandle& gbuffer_material,
                                       const GfxTextureHandle& gbuffer_emissive,
                                       const BaselineShadowResult& shadow) {
-        if (!m_pipeline) {
+        if (!m_pipeline || !m_light_buffer) {
             return;
         }
         const auto& light_infos = scene.getLightSceneInfos();
@@ -161,6 +181,97 @@ namespace dodoe {
         }
         const auto* brdf_lut = texture_manager ? texture_manager->getBrdfLut() : nullptr;
 
+        RenderId shadow_directional_id{};
+        for (const auto& light_info : light_infos) {
+            if (light_info.getLightType() == LightType::Directional &&
+                light_info.isEnabled() && light_info.castsShadow()) {
+                shadow_directional_id = light_info.getId();
+                break;
+            }
+        }
+
+        DynamicArray<DeferredLightData> gpu_lights;
+        gpu_lights.reserve(kMaxDeferredLights);
+        for (const auto& light_info : light_infos) {
+            if (!light_info.isEnabled() || light_info.getLightType() == LightType::Sky) {
+                continue;
+            }
+            if (kDebugShadowSamplingView && light_info.getLightType() != LightType::Directional) {
+                continue;
+            }
+            if (gpu_lights.size() >= kMaxDeferredLights) {
+                DO_WARN("BaselineLightingPass: light count exceeds {}, extra lights are dropped",
+                        kMaxDeferredLights);
+                break;
+            }
+
+            DeferredLightData gpu{};
+            switch (light_info.getLightType()) {
+            case LightType::Directional: {
+                const auto& data = light_info.getDirectionalLightData();
+                gpu.color_intensity = Vector4f(data.color, data.irradiance);
+                gpu.direction_range = Vector4f(Math::Normalize(data.direction), 0.0f);
+                gpu.params = Vector4f(0.0f, 0.0f, kDeferredLightTypeDirectional,
+                                      light_info.getId() == shadow_directional_id ? 1.0f : 0.0f);
+                break;
+            }
+            case LightType::Point: {
+                const auto& data = light_info.getPointLightData();
+                gpu.color_intensity = Vector4f(data.color, data.intensity);
+                gpu.position_radius = Vector4f(Vector3f(light_info.getWorldTransform()[3]), data.radius);
+                gpu.direction_range = Vector4f(0.0f, 0.0f, 0.0f, data.range);
+                gpu.params = Vector4f(0.0f, 0.0f, kDeferredLightTypePoint, 0.0f);
+                break;
+            }
+            case LightType::Spot: {
+                const auto& data = light_info.getSpotLightData();
+                gpu.color_intensity = Vector4f(data.color, data.intensity);
+                gpu.position_radius = Vector4f(Vector3f(light_info.getWorldTransform()[3]), data.radius);
+                const Vector3f forward = Math::Normalize(Vector3f(light_info.getWorldTransform()[2]));
+                gpu.direction_range = Vector4f(forward, data.range);
+                gpu.params = Vector4f(Math::Radians(data.inner_angle), Math::Radians(data.outer_angle),
+                                      kDeferredLightTypeSpot, 0.0f);
+                break;
+            }
+            case LightType::Sky:
+            default:
+                continue;
+            }
+            gpu_lights.push_back(gpu);
+        }
+
+        const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(view);
+        const Vector3f camera_direction = rendering_pipeline_utils::ExtractCameraDirection(view);
+
+        DeferredLightPassConstants constants{};
+        constants.camera_position = Vector4f(camera_position, has_enabled_sky ? 1.0f : 0.0f);
+        constants.camera_direction = Vector4f(camera_direction, 0.0f);
+        if (has_enabled_sky) {
+            for (UInt32 b = 0; b < 9u; ++b) {
+                constants.irradiance_sh[b] = sky_irradiance_sh[b];
+            }
+            constants.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
+        }
+        constants.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
+        if (shadow_directional_id.isValid() && shadow.has_shadow) {
+            constants.cascade_view_projections = shadow.cascade_view_projections;
+            constants.cascade_split_depths = shadow.cascade_split_depths;
+            constants.shadow_params = shadow.shadow_params;
+        }
+        constants.light_info = Vector4f(static_cast<Float>(gpu_lights.size()), 0.0f, 0.0f, 0.0f);
+
+        m_command_list->writeBuffer(m_light_cb.Get(), &constants, sizeof(constants));
+        m_command_list->setBufferState(m_light_buffer.Get(), GfxResourceStates::CopyDest);
+        RenderFrameCounters::Self().addBarrier();
+        m_command_list->commitBarriers();
+        if (!gpu_lights.empty()) {
+            m_command_list->writeBuffer(m_light_buffer.Get(), gpu_lights.data(),
+                                        gpu_lights.size() * sizeof(DeferredLightData));
+        }
+        m_command_list->setBufferState(m_light_buffer.Get(), GfxResourceStates::ShaderResource);
+        RenderFrameCounters::Self().addBarrier();
+        m_command_list->commitBarriers();
+
         GfxBindingSetDesc pass_desc;
         pass_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_light_cb.Get()));
         pass_desc.addItem(GfxBindingSetItem::Texture_SRV(1, gbuffer_albedo->getRHIHandle().Get()));
@@ -176,127 +287,21 @@ namespace dodoe {
         GfxTextureHandle brdf_lut_handle = brdf_lut ? brdf_lut->getGpuHandle() : GfxTextureHandle{};
         pass_desc.addItem(GfxBindingSetItem::Texture_SRV(
             7, brdf_lut_handle ? brdf_lut_handle->getRHIHandle().Get() : nullptr));
+        pass_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(8, m_light_buffer.Get()));
         pass_desc.addItem(GfxBindingSetItem::Texture_SRV(
             10, gbuffer_emissive ? gbuffer_emissive->getRHIHandle().Get() : nullptr));
         pass_desc.addItem(GfxBindingSetItem::Sampler(9, m_sampler.Get()));
 
         auto binding_set = m_device->createBindingSet(pass_desc, m_binding_layout.Get());
 
-        const auto camera_position = rendering_pipeline_utils::ExtractCameraPosition(view);
-        const Vector3f camera_direction = rendering_pipeline_utils::ExtractCameraDirection(view);
-
-        auto draw_fullscreen_light = [&](const DeferredLightPushConstants& push) {
-            m_command_list->writeBuffer(m_light_cb.Get(), &push, sizeof(push));
-
-            GfxGraphicsState graphics_state;
-            graphics_state.setPipeline(m_pipeline.Get());
-            graphics_state.setFramebuffer(framebuffer);
-            graphics_state.setViewport(viewport_state);
-            graphics_state.addBindingSet(binding_set.Get());
-            m_command_list->setGraphicsState(graphics_state);
-            RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-        };
-
-        if (kDebugShadowSamplingView) {
-            Bool emissive_applied = false;
-            if (has_enabled_sky) {
-                DeferredLightPushConstants sky_push{};
-                sky_push.camera_position = Vector4f(camera_position, 1.0f);
-                for (UInt32 b = 0; b < 9u; ++b) {
-                    sky_push.irradiance_sh[b] = sky_irradiance_sh[b];
-                }
-                sky_push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
-                sky_push.light_color_intensity = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
-                sky_push.light_direction_type = Vector4f(0.0f, -1.0f, 0.0f, 0.0f);
-                sky_push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
-                emissive_applied = true;
-                draw_fullscreen_light(sky_push);
-            }
-            for (const auto& light_info : light_infos) {
-                if (!light_info.isEnabled() || light_info.getLightType() != LightType::Directional) {
-                    continue;
-                }
-                const auto& data = light_info.getDirectionalLightData();
-                DeferredLightPushConstants push{};
-                push.camera_position = Vector4f(camera_position, 0.0f);
-                push.ibl_params = Vector4f(0.0f, 0.35f, static_cast<Float>(sky_max_mip), 2.0f);
-                push.light_color_intensity = Vector4f(data.color, data.irradiance);
-                push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
-                push.camera_direction = Vector4f(camera_direction, 0.0f);
-                push.cascade_view_projections = shadow.cascade_view_projections;
-                push.cascade_split_depths = shadow.cascade_split_depths;
-                push.shadow_params = shadow.shadow_params;
-                if (!emissive_applied) {
-                    push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
-                    emissive_applied = true;
-                }
-                draw_fullscreen_light(push);
-            }
-            return;
-        }
-
-        Bool emissive_applied = false;
-        if (has_enabled_sky) {
-            DeferredLightPushConstants push{};
-            push.camera_position = Vector4f(camera_position, 1.0f);
-            for (UInt32 b = 0; b < 9u; ++b) {
-                push.irradiance_sh[b] = sky_irradiance_sh[b];
-            }
-            push.ibl_params = Vector4f(sky_intensity, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
-            push.light_color_intensity = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
-            push.light_direction_type = Vector4f(0.0f, -1.0f, 0.0f, 0.0f);
-            push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
-            emissive_applied = true;
-            draw_fullscreen_light(push);
-        }
-
-        for (const auto& light_info : light_infos) {
-            if (!light_info.isEnabled() || light_info.getLightType() == LightType::Sky) {
-                continue;
-            }
-
-            DeferredLightPushConstants push{};
-            push.camera_position = Vector4f(camera_position, 0.0f);
-            push.ibl_params = Vector4f(0.0f, 0.35f, static_cast<Float>(sky_max_mip), 0.0f);
-
-            switch (light_info.getLightType()) {
-            case LightType::Directional: {
-                const auto& data = light_info.getDirectionalLightData();
-                push.light_color_intensity = Vector4f(data.color, data.irradiance);
-                push.light_direction_type = Vector4f(Math::Normalize(data.direction), 0.0f);
-                push.camera_direction = Vector4f(camera_direction, 0.0f);
-                push.cascade_view_projections = shadow.cascade_view_projections;
-                push.cascade_split_depths = shadow.cascade_split_depths;
-                push.shadow_params = shadow.shadow_params;
-                break;
-            }
-            case LightType::Point: {
-                const auto& data = light_info.getPointLightData();
-                push.light_color_intensity = Vector4f(data.color, data.intensity);
-                push.light_position_radius = Vector4f(Vector3f(light_info.getWorldTransform()[3]), data.radius);
-                push.light_direction_type = Vector4f(0.0f, 0.0f, 0.0f, data.range);
-                break;
-            }
-            case LightType::Spot: {
-                const auto& data = light_info.getSpotLightData();
-                push.light_color_intensity = Vector4f(data.color, data.intensity);
-                push.light_position_radius = Vector4f(Vector3f(light_info.getWorldTransform()[3]), data.radius);
-                const Vector3f forward = Math::Normalize(Vector3f(light_info.getWorldTransform()[2]));
-                push.light_direction_type = Vector4f(forward.x, forward.y, forward.z, data.range);
-                push.shadow_params = Vector4f(data.inner_angle, data.outer_angle, 0.0f, 0.0f);
-                break;
-            }
-            case LightType::Sky:
-            default:
-                continue;
-            }
-
-            if (!emissive_applied) {
-                push.emissive_params = Vector4f(1.0f, 0.0f, 0.0f, 0.0f);
-                emissive_applied = true;
-            }
-            draw_fullscreen_light(push);
-        }
+        GfxGraphicsState graphics_state;
+        graphics_state.setPipeline(m_pipeline.Get());
+        graphics_state.setFramebuffer(framebuffer);
+        graphics_state.setViewport(viewport_state);
+        graphics_state.addBindingSet(binding_set.Get());
+        m_command_list->setGraphicsState(graphics_state);
+        RenderFrameCounters::Self().addDrawCall(1);
+        m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
     }
 
 } // namespace dodoe

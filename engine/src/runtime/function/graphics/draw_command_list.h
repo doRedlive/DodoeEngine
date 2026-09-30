@@ -72,6 +72,11 @@ namespace dodoe {
             const GfxBufferHandle& source,
             UInt64 source_offset_bytes,
             UInt64 data_size_bytes);
+        void copyTextureToStaging(
+            const GfxStagingTextureHandle& destination,
+            const GfxTextureSlice& destination_slice,
+            const GfxTextureHandle& source,
+            const GfxTextureSlice& source_slice);
         void resolveTexture(
             const GfxTextureHandle& destination,
             const GfxTextureHandle& source,
@@ -114,6 +119,9 @@ namespace dodoe {
         void dispatchIndirect(UInt32 offset_bytes);
 
         GfxTextureHandle createTexture(const GfxTextureDesc& desc, const void* data = nullptr, Size_t data_size = 0);
+        GfxStagingTextureHandle createStagingTexture(const GfxTextureDesc& desc, GfxCpuAccessMode cpu_access);
+        void* mapStagingTexture(const GfxStagingTextureHandle& texture, const GfxTextureSlice& slice, GfxCpuAccessMode cpu_access, Size_t* out_row_pitch);
+        void unmapStagingTexture(const GfxStagingTextureHandle& texture);
         GfxBufferHandle createBuffer(const GfxBufferDesc& desc, const void* data = nullptr, Size_t data_size = 0);
         GfxFramebufferHandle createFramebuffer(const GfxFramebufferDesc& desc);
         GfxBindingSetHandle createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout);
@@ -159,6 +167,14 @@ namespace dodoe {
         GFX_DRAW_CMD(ClearTextureUIntCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; UInt32 m_clear_color{0}; ClearTextureUIntCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, UInt32 c) : m_texture(t), m_subresources(s), m_clear_color(c) {} void execute(GfxCommandList&) const; };
         GFX_DRAW_CMD(ClearDepthStencilTextureCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; Float m_depth{1}; Bool m_clear_depth{true}, m_clear_stencil{false}; UInt8 m_stencil{0}; ClearDepthStencilTextureCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, Bool cd, Float d, Bool cs, UInt8 st) : m_texture(t), m_subresources(s), m_depth(d), m_clear_depth(cd), m_clear_stencil(cs), m_stencil(st) {} void execute(GfxCommandList&) const; };
         GFX_DRAW_CMD(CopyBufferCommand) { GfxBufferHandle m_dst{}, m_src{}; UInt64 m_dst_off{0}, m_src_off{0}, m_size{0}; CopyBufferCommand(const GfxBufferHandle& d, UInt64 doff, const GfxBufferHandle& s, UInt64 soff, UInt64 sz) : m_dst(d), m_src(s), m_dst_off(doff), m_src_off(soff), m_size(sz) {} void execute(GfxCommandList&) const; };
+        struct CopyTextureToStagingCommand final : CommandImpl<CopyTextureToStagingCommand> {
+            GfxStagingTextureHandle m_dst{}; GfxTextureSlice m_dst_slice{};
+            GfxTextureHandle m_src{}; GfxTextureSlice m_src_slice{};
+            CopyTextureToStagingCommand(const GfxStagingTextureHandle& d, const GfxTextureSlice& ds,
+                const GfxTextureHandle& s, const GfxTextureSlice& ss)
+                : m_dst(d), m_dst_slice(ds), m_src(s), m_src_slice(ss) {}
+            void execute(GfxCommandList&) const;
+        };
         GFX_DRAW_CMD(ResolveTextureCommand) { GfxTextureHandle m_dst{}, m_src{}; GfxTextureSubresourceSet m_subresources{}; ResolveTextureCommand(const GfxTextureHandle& d, const GfxTextureHandle& s, const GfxTextureSubresourceSet& sub) : m_dst(d), m_src(s), m_subresources(sub) {} void execute(GfxCommandList&) const; };
 
         struct WriteBufferCommand final : VarCmd<WriteBufferCommand> {

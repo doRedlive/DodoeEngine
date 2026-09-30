@@ -260,7 +260,8 @@ namespace dodoe {
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
 
                 } else {
-                    if (!m_cb_binding_layout || !m_material_binding_layout || !shared_service) {
+                    auto* set_cache = shared_service ? shared_service->getBindingSetCache() : nullptr;
+                    if (!m_cb_binding_layout || !m_material_binding_layout || !shared_service || !set_cache) {
                         DO_ERROR("SpritePass: array binding layout unavailable");
                         command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
                         command_list.commitBarriers();
@@ -304,15 +305,15 @@ namespace dodoe {
                             continue;
                         }
 
-                        auto cb_binding_set = command_list.createBindingSet(
+                        auto cb_binding_set = set_cache->getOrCreate(
                             GfxBindingSetDesc()
                                 .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
-                            m_cb_binding_layout);
-                        auto material_binding_set = command_list.createBindingSet(
+                            m_cb_binding_layout, 0);
+                        auto material_binding_set = set_cache->getOrCreate(
                             GfxBindingSetDesc()
                                 .addItem(GfxBindingSetItem::Texture_SRV(2, tex_handle->getRHIHandle().Get()))
                                 .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get())),
-                            m_material_binding_layout);
+                            m_material_binding_layout, 0);
 
                         if (!cb_binding_set || !material_binding_set) {
                             start = end;

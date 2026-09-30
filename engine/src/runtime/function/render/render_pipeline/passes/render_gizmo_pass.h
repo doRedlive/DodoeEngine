@@ -13,7 +13,9 @@ namespace dodoe {
 
 	class GizmoPass : public IRenderPass {
 	    GfxBindingLayoutHandle m_binding_layout{};
+	    GfxBindingLayoutHandle m_grid_binding_layout{};
 	    GfxInputLayoutHandle m_input_layout{};
+	    GfxBindingSetHandle m_push_constant_binding_set{};
 
 	public:
 	    using Produces = TypeList<>;

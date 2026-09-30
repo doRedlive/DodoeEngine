@@ -25,16 +25,26 @@ namespace dodoe {
         GfxPrimitiveType topology{GfxPrimitiveType::LineList};
     };
 
+    struct GizmoGridData {
+        Bool ortho2d{false};
+        Float minor_spacing{1.0f};
+        Float major_spacing{10.0f};
+        Float fade_begin{40.0f};
+        Float fade_end{300.0f};
+    };
+
     struct GizmoChannelData {
         DynamicArray<GizmoVertex> vertices;
         DynamicArray<UInt32> indices;
         DynamicArray<GizmoDrawCommand> commands;
+        GizmoGridData grid{};
         Bool has_data{false};
 
         void clear() {
             vertices.clear();
             indices.clear();
             commands.clear();
+            grid = GizmoGridData{};
             has_data = false;
         }
     };

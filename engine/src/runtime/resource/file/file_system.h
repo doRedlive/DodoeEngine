@@ -7,7 +7,7 @@
 namespace fs = std::filesystem;
 
 namespace dodoe {
-    class FileSystem {
+    class DODOE_API FileSystem {
         static String s_cwd;
         static FsPath s_documents_path;
         static FsPath s_executable_dir;

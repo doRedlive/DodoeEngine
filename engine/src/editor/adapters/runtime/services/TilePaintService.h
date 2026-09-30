@@ -82,8 +82,8 @@ private:
     std::vector<dodoe::UInt32> snapshotSelection() const;
 
     EditorSession& m_session;
-    dodoe::UUID m_tilemap;
-    dodoe::UUID m_layer;
+    dodoe::UUID m_tilemap{0u};
+    dodoe::UUID m_layer{0u};
     TileTool  m_tool = TileTool::Select;
     TileBrush m_brush;
     TileBrush m_clipboard;
