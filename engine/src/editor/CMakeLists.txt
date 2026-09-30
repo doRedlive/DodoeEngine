@@ -157,6 +157,14 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilePalettePanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilesetPreviewDialog.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilesetPreviewDialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpCodeEditor.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpCodeEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpHighlighter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpHighlighter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpSymbolIndex.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpSymbolIndex.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/ScriptPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/ScriptPanel.cpp
 )
 set_source_files_properties(
     ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_en.ts
@@ -201,6 +209,8 @@ function(setup_cakery_product product_target copy_runtime)
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res/editor" "${BINARY_ROOT_DIR}/resources/editor"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}/resources/pictures"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/res/pictures" "${BINARY_ROOT_DIR}/resources/pictures"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${BINARY_ROOT_DIR}/resources/template"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${ENGINE_ROOT_DIR}/template" "${BINARY_ROOT_DIR}/resources/template"
     )
     if(${copy_runtime})
         list(APPEND POST_BUILD_COMMANDS

@@ -37,6 +37,7 @@ class HistoryPanel;
 class InspectorPanel;
 class ProjectPanel;
 class SceneSurface;
+class ScriptPanel;
 class SettingsPanel;
 class TileLayersPanel;
 class TilePalettePanel;
@@ -99,6 +100,7 @@ private:
     ads::CDockWidget* m_engineSettingsDock = nullptr;
     ads::CDockWidget* m_tilePaletteDock = nullptr;
     ads::CDockWidget* m_tileLayersDock = nullptr;
+    ads::CDockWidget* m_scriptDock = nullptr;
     SceneSurface* m_sceneSurface = nullptr;
     HierarchyPanel* m_hierarchy = nullptr;
     HistoryPanel* m_historyPanel = nullptr;
@@ -109,6 +111,7 @@ private:
     SettingsPanel* m_engineSettingsPanel = nullptr;
     TilePalettePanel* m_tilePalette = nullptr;
     TileLayersPanel* m_tileLayers = nullptr;
+    ScriptPanel* m_scriptPanel = nullptr;
     QWidget* m_titleBar = nullptr;
     QToolBar* m_editorToolbar = nullptr;
     QMenuBar* m_menuBar = nullptr;

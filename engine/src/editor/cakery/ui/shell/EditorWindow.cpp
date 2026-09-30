@@ -26,6 +26,7 @@
 #include "cakery/ui/panels/SettingsPanel.h"
 #include "cakery/ui/panels/TileLayersPanel.h"
 #include "cakery/ui/panels/TilePalettePanel.h"
+#include "cakery/ui/script/ScriptPanel.h"
 #include "cakery/ui/inspector/EditorRemoteWidget.h"
 
 #include <algorithm>
@@ -865,10 +866,10 @@ void EditorWindow::createWindowMenu()
 
 void EditorWindow::populatePanelMenus()
 {
-    const std::array<ads::CDockWidget*, 10> panelDocks = {
+    const std::array<ads::CDockWidget*, 11> panelDocks = {
         m_hierarchyDock, m_inspectorDock, m_projectDock, m_consoleDock,
         m_terminalDock, m_historyDock, m_gameSettingsDock, m_engineSettingsDock,
-        m_tilePaletteDock, m_tileLayersDock,
+        m_tilePaletteDock, m_tileLayersDock, m_scriptDock,
     };
     QList<QAction*> toggleActions;
     for (ads::CDockWidget* dock : panelDocks) {
@@ -1437,6 +1438,22 @@ void EditorWindow::createPanels()
     m_projectDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_projectDock, m_hierarchyDock->dockAreaWidget());
 
+    m_scriptDock = new ads::CDockWidget(tr("Script"));
+    m_scriptDock->setObjectName(QStringLiteral("Script"));
+    m_scriptPanel = new ScriptPanel(m_context, m_scriptDock);
+    m_scriptDock->setWidget(m_scriptPanel);
+    m_scriptDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
+    m_scriptDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
+    m_scriptDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
+    m_scriptDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_scriptDock, m_inspectorDock->dockAreaWidget());
+    m_scriptDock->toggleView(false);
+    connect(m_projectPanel, &ProjectPanel::scriptOpenRequested, this, [this](const QString& path) {
+        m_scriptDock->toggleView(true);
+        m_scriptDock->raise();
+        m_scriptPanel->openFile(path);
+    });
+
     m_consoleDock = new ads::CDockWidget(tr("Console"));
     m_consoleDock->setObjectName(QStringLiteral("Console"));
     m_console = new ConsolePanel(m_context, m_consoleDock);
@@ -1606,35 +1623,52 @@ void EditorWindow::updateWindowTitle()
 bool EditorWindow::promptUnsavedChanges()
 {
     EditorSession& session = m_context.session();
-    if (!session.documentModel().hasDocument() || !session.documentModel().isDirty()) {
-        return true;
-    }
-    UnsavedChangesDialog dialog(this);
-    dialog.adjustSize();
-    dialog.move(frameGeometry().center() - dialog.rect().center());
-    dialog.exec();
-    const auto choice = dialog.result();
-    if (choice == QMessageBox::Cancel) {
-        return false;
-    }
-    if (choice == QMessageBox::Save) {
-        std::string target;
-        if (session.documentModel().path().empty()) {
-            const QString path = QFileDialog::getSaveFileName(
-                this, tr("Save Scene As"), QString(), tr("Dodoe Scene (*.doscn)"));
-            if (path.isEmpty()) {
-                return false;
-            }
-            target = path.toStdString();
-        }
-        if (!session.saveDocument(target)) {
-            QMessageBox::warning(this, tr("Save Scene"),
-                                 tr("Could not save the scene to '%1'.")
-                                     .arg(QString::fromStdString(
-                                         session.documentModel().path().string())));
+    if (session.documentModel().hasDocument() && session.documentModel().isDirty()) {
+        UnsavedChangesDialog dialog(this);
+        dialog.adjustSize();
+        dialog.move(frameGeometry().center() - dialog.rect().center());
+        dialog.exec();
+        const auto choice = dialog.result();
+        if (choice == QMessageBox::Cancel) {
             return false;
         }
-        updateWindowTitle();
+        if (choice == QMessageBox::Save) {
+            std::string target;
+            if (session.documentModel().path().empty()) {
+                const QString path = QFileDialog::getSaveFileName(
+                    this, tr("Save Scene As"), QString(), tr("Dodoe Scene (*.doscn)"));
+                if (path.isEmpty()) {
+                    return false;
+                }
+                target = path.toStdString();
+            }
+            if (!session.saveDocument(target)) {
+                QMessageBox::warning(this, tr("Save Scene"),
+                                     tr("Could not save the scene to '%1'.")
+                                         .arg(QString::fromStdString(
+                                             session.documentModel().path().string())));
+                return false;
+            }
+            updateWindowTitle();
+        }
+    }
+    if (m_scriptPanel && m_scriptPanel->hasUnsavedChanges()) {
+        QMessageBox box(this);
+        box.setIcon(QMessageBox::Question);
+        box.setWindowTitle(tr("Unsaved Scripts"));
+        box.setText(tr("Open scripts have unsaved changes. Save them before continuing?"));
+        QPushButton* save = box.addButton(tr("Save All"), QMessageBox::AcceptRole);
+        QPushButton* discard = box.addButton(tr("Discard"), QMessageBox::DestructiveRole);
+        QPushButton* cancel = box.addButton(tr("Cancel"), QMessageBox::RejectRole);
+        box.exec();
+        if (box.clickedButton() == cancel || box.clickedButton() == nullptr) {
+            return false;
+        }
+        if (box.clickedButton() == save) {
+            m_scriptPanel->saveAll();
+        } else if (box.clickedButton() == discard) {
+            m_scriptPanel->discardAll();
+        }
     }
     return true;
 }
@@ -1707,6 +1741,9 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
     }
     if (m_projectPanel) {
         m_projectPanel->refresh();
+    }
+    if (m_scriptPanel) {
+        m_scriptPanel->reopenProject();
     }
     if (m_sceneSurface) {
         m_sceneSurface->attach();
