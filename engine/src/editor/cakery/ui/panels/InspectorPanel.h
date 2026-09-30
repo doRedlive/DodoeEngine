@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <QPointer>
 #include <QWidget>
 
 #include "bridge/EditorBackend.h"
@@ -41,11 +42,11 @@ private:
     EditorWorkspaceContext& m_context;
     QVBoxLayout* m_layout = nullptr;
     QScrollArea* m_scroll = nullptr;
-    QLineEdit* m_filter = nullptr;
+    QPointer<QLineEdit> m_filter = nullptr;
     QString m_filterText;
     bool m_filterFocused = false;
     int m_scrollPosition = 0;
-    QLineEdit* m_nameEdit = nullptr;
+    QPointer<QLineEdit> m_nameEdit = nullptr;
     std::vector<bool> m_componentExpanded;
     std::vector<bool> m_managedComponentExpanded;
     bool m_editing = false;

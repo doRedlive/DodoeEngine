@@ -9,6 +9,7 @@
 
 #include <QApplication>
 #include <QByteArray>
+#include <QClipboard>
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
@@ -613,6 +614,9 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
             return;
         }
         const QString path = item->data(Qt::UserRole).toString();
+        if (openScriptIfNeeded(path)) {
+            return;
+        }
         const QString suffix = QFileInfo(path).suffix().toLower();
         if (suffix == QLatin1String("doscn")) {
             if (!m_context.confirmUnsavedChanges || m_context.confirmUnsavedChanges()) {
@@ -893,10 +897,15 @@ QStringList ProjectPanel::findAssetReferenceHolders(std::uint64_t guid) const
 void ProjectPanel::onContextMenu(const QPoint& pos)
 {
     QTreeWidgetItem* item = m_tree->itemAt(pos);
-    if (item && !item->isSelected()) {
+    if (item) {
+        if (!item->isSelected()) {
+            m_tree->clearSelection();
+            m_tree->setCurrentItem(item);
+            item->setSelected(true);
+        }
+    } else {
         m_tree->clearSelection();
-        m_tree->setCurrentItem(item);
-        item->setSelected(true);
+        m_tree->setCurrentItem(nullptr);
     }
     openAssetMenu(selectedTreePaths(), m_tree->viewport()->mapToGlobal(pos));
 }
@@ -904,10 +913,15 @@ void ProjectPanel::onContextMenu(const QPoint& pos)
 void ProjectPanel::onGridContextMenu(const QPoint& pos)
 {
     QListWidgetItem* item = m_assetGrid->itemAt(pos);
-    if (item && !item->isSelected()) {
+    if (item) {
+        if (!item->isSelected()) {
+            m_assetGrid->clearSelection();
+            m_assetGrid->setCurrentItem(item);
+            item->setSelected(true);
+        }
+    } else {
         m_assetGrid->clearSelection();
-        m_assetGrid->setCurrentItem(item);
-        item->setSelected(true);
+        m_assetGrid->setCurrentItem(nullptr);
     }
     openAssetMenu(selectedGridPaths(), m_assetGrid->viewport()->mapToGlobal(pos));
 }
@@ -915,48 +929,256 @@ void ProjectPanel::onGridContextMenu(const QPoint& pos)
 void ProjectPanel::openAssetMenu(const QStringList& paths, const QPoint& globalPos)
 {
     QMenu menu(this);
-    QAction* newSceneAction = menu.addAction(tr("New Scene"));
-    QAction* newFolderAction = menu.addAction(tr("New Folder"));
+    const bool hasAssets = !paths.isEmpty();
+    QAction* openAction = nullptr;
+    if (hasAssets && paths.size() == 1) {
+        openAction = menu.addAction(tr("Open"));
+        menu.addSeparator();
+    }
+    QMenu* createMenu = menu.addMenu(tr("Create"));
+    QAction* newSceneAction = createMenu->addAction(tr("Scene"));
+    QAction* newFolderAction = createMenu->addAction(tr("Folder"));
+    QAction* newScriptAction = createMenu->addAction(tr("C# Script"));
     QAction* importAssetAction = menu.addAction(tr("Import Asset..."));
     menu.addSeparator();
     QAction* reimportAssetAction = nullptr;
     QAction* duplicateAssetAction = nullptr;
+    QAction* copyAssetAction = nullptr;
+    QAction* cutAssetAction = nullptr;
+    QAction* pasteAssetAction = nullptr;
     QAction* renameAssetAction = nullptr;
     QAction* deleteAssetAction = nullptr;
+    QAction* copyPathAction = nullptr;
+    QAction* copyGuidAction = nullptr;
+    QAction* findReferencesAction = nullptr;
     QAction* revealAssetAction = nullptr;
-    const bool hasAssets = !paths.isEmpty();
     if (hasAssets) {
         reimportAssetAction = menu.addAction(paths.size() > 1 ? tr("Reimport Assets") : tr("Reimport Asset"));
         duplicateAssetAction = menu.addAction(paths.size() > 1 ? tr("Duplicate Assets") : tr("Duplicate"));
+        copyAssetAction = menu.addAction(tr("Copy"));
+        cutAssetAction = menu.addAction(tr("Cut"));
         renameAssetAction = menu.addAction(tr("Rename"));
         deleteAssetAction = menu.addAction(paths.size() > 1 ? tr("Delete Assets") : tr("Delete"));
+        menu.addSeparator();
+        copyPathAction = menu.addAction(tr("Copy Path"));
+        if (paths.size() == 1) {
+            copyGuidAction = menu.addAction(tr("Copy GUID"));
+            findReferencesAction = menu.addAction(tr("Find References"));
+        }
         revealAssetAction = menu.addAction(tr("Show in Explorer"));
         menu.addSeparator();
     }
+    pasteAssetAction = menu.addAction(tr("Paste"));
+    pasteAssetAction->setEnabled(!m_clipboardPaths.isEmpty());
     QAction* refreshAction = menu.addAction(tr("Refresh"));
     QAction* chosen = menu.exec(globalPos);
     if (!chosen) {
         return;
     }
-    if (chosen == newSceneAction) {
+    if (chosen == openAction) {
+        openAssets(paths);
+    } else if (chosen == newSceneAction) {
         onNewScene();
     } else if (chosen == newFolderAction) {
         onNewFolder();
+    } else if (chosen == newScriptAction) {
+        onCreateScript();
     } else if (chosen == importAssetAction) {
         onImportAsset();
     } else if (chosen == reimportAssetAction) {
         reimportAssets(paths);
     } else if (chosen == duplicateAssetAction) {
         duplicateAssets(paths);
+    } else if (chosen == copyAssetAction) {
+        copyAssets(paths);
+    } else if (chosen == cutAssetAction) {
+        cutAssets(paths);
+    } else if (chosen == pasteAssetAction) {
+        pasteAssets();
     } else if (chosen == renameAssetAction) {
         renameAsset(paths.first());
     } else if (chosen == deleteAssetAction) {
         deleteAssets(paths);
+    } else if (chosen == copyPathAction) {
+        copyAssetPaths(paths);
+    } else if (chosen == copyGuidAction) {
+        copyAssetGuid(paths);
+    } else if (chosen == findReferencesAction) {
+        findAssetReferences(paths);
     } else if (chosen == revealAssetAction) {
         revealAssets(paths);
     } else if (chosen == refreshAction) {
         refresh();
     }
+}
+
+std::uint64_t ProjectPanel::assetGuidForPath(const QString& path) const
+{
+    const auto normalized = normalizedPath(std::filesystem::path(path.toStdString()));
+    for (const auto& asset : m_assets) {
+        if (normalizedPath(std::filesystem::path(asset.path)) == normalized) {
+            return asset.uuid;
+        }
+    }
+    return 0;
+}
+
+QString ProjectPanel::uniqueDestinationPath(const QString& directory, const QString& fileName) const
+{
+    const QFileInfo info(fileName);
+    const QString base = info.completeBaseName();
+    const QString suffix = info.completeSuffix().isEmpty()
+        ? QString()
+        : QStringLiteral(".") + info.completeSuffix();
+    const QDir dir(directory);
+    QString candidate = dir.filePath(fileName);
+    for (int index = 1; QFileInfo::exists(candidate) && index < 1000; ++index) {
+        candidate = dir.filePath(base + QStringLiteral(" ") + QString::number(index) + suffix);
+    }
+    return candidate;
+}
+
+void ProjectPanel::openAssets(const QStringList& paths)
+{
+    if (paths.isEmpty()) {
+        return;
+    }
+    const QString path = paths.first();
+    if (openScriptIfNeeded(path)) {
+        return;
+    }
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    if (suffix == QLatin1String("doscn")) {
+        if (!m_context.confirmUnsavedChanges || m_context.confirmUnsavedChanges()) {
+            m_context.session().openDocument(path.toStdString());
+        }
+    } else if (suffix == QLatin1String("tsx") || suffix == QLatin1String("tmj") ||
+               suffix == QLatin1String("tmx")) {
+        auto* dialog = new TilesetPreviewDialog(
+            path, QString::fromStdString(m_context.session().assetRoot().string()), this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+}
+
+bool ProjectPanel::openScriptIfNeeded(const QString& path)
+{
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    if (suffix == QLatin1String("cs")) {
+        emit scriptOpenRequested(path);
+        return true;
+    }
+    return false;
+}
+
+void ProjectPanel::copyAssets(const QStringList& paths)
+{
+    if (paths.isEmpty()) {
+        return;
+    }
+    m_clipboardPaths = paths;
+    m_clipboardCut = false;
+}
+
+void ProjectPanel::cutAssets(const QStringList& paths)
+{
+    if (paths.isEmpty()) {
+        return;
+    }
+    m_clipboardPaths = paths;
+    m_clipboardCut = true;
+}
+
+void ProjectPanel::pasteAssets()
+{
+    if (m_clipboardPaths.isEmpty()) {
+        return;
+    }
+    std::filesystem::path dir = selectedDirectory();
+    if (dir.empty()) {
+        dir = m_root;
+    }
+    const QString targetDir = QString::fromStdString(dir.string());
+    bool pasted = false;
+    for (const QString& path : m_clipboardPaths) {
+        const QFileInfo info(path);
+        if (!info.isFile()) {
+            continue;
+        }
+        const QString target = uniqueDestinationPath(targetDir, info.fileName());
+        if (QFileInfo(target).absoluteFilePath() == info.absoluteFilePath()) {
+            continue;
+        }
+        bool moved = false;
+        if (m_clipboardCut) {
+            const QString oldMeta = path + QStringLiteral(".meta");
+            const bool hasMeta = QFileInfo::exists(oldMeta);
+            moved = QFile::rename(path, target);
+            if (moved && hasMeta) {
+                QFile::rename(oldMeta, target + QStringLiteral(".meta"));
+            }
+        } else {
+            moved = QFile::copy(path, target);
+        }
+        if (moved) {
+            m_context.session().execute({"asset.import", target.toStdString()});
+            pasted = true;
+        }
+    }
+    if (m_clipboardCut) {
+        m_clipboardPaths.clear();
+        m_clipboardCut = false;
+    }
+    if (pasted) {
+        refresh();
+    }
+}
+
+void ProjectPanel::copyAssetPaths(const QStringList& paths)
+{
+    QStringList absolute;
+    for (const QString& path : paths) {
+        absolute << QFileInfo(path).absoluteFilePath();
+    }
+    if (!absolute.isEmpty()) {
+        QGuiApplication::clipboard()->setText(absolute.join(QLatin1Char('\n')));
+    }
+}
+
+void ProjectPanel::copyAssetGuid(const QStringList& paths)
+{
+    if (paths.isEmpty()) {
+        return;
+    }
+    const std::uint64_t guid = assetGuidForPath(paths.first());
+    if (guid == 0) {
+        QMessageBox::information(this, tr("Copy GUID"), tr("This file has no imported asset GUID yet."));
+        return;
+    }
+    QGuiApplication::clipboard()->setText(QString::number(static_cast<qulonglong>(guid)));
+}
+
+void ProjectPanel::findAssetReferences(const QStringList& paths)
+{
+    if (paths.isEmpty()) {
+        return;
+    }
+    const std::uint64_t guid = assetGuidForPath(paths.first());
+    if (guid == 0) {
+        QMessageBox::information(this, tr("Find References"),
+                                 tr("This file has no imported asset GUID yet."));
+        return;
+    }
+    const QStringList holders = findAssetReferenceHolders(guid);
+    if (holders.isEmpty()) {
+        QMessageBox::information(this, tr("Find References"),
+                                 tr("No entities reference this asset."));
+        return;
+    }
+    QMessageBox::information(this, tr("Find References"),
+                             tr("Referenced by %1 entity/entities:\n%2")
+                                 .arg(holders.size())
+                                 .arg(holders.join(QLatin1Char('\n'))));
 }
 
 void ProjectPanel::handleAssetDrop(const QStringList& paths, const QStringList& externalFiles,
@@ -1402,6 +1624,55 @@ void ProjectPanel::onNewFolder()
     }
 }
 
+QString ProjectPanel::loadScriptTemplate() const
+{
+    const QDir appDir(QApplication::applicationDirPath());
+    const QStringList candidates = {
+        appDir.filePath(QStringLiteral("resources/template/CakeBehaviour.cs.mustache")),
+        appDir.absoluteFilePath(QStringLiteral("../../engine/template/CakeBehaviour.cs.mustache")),
+    };
+    for (const QString& candidate : candidates) {
+        QFile file(candidate);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            return QString::fromUtf8(file.readAll());
+        }
+    }
+    return QString();
+}
+
+void ProjectPanel::onCreateScript()
+{
+    bool ok = false;
+    const QString name = QInputDialog::getText(
+        this, tr("New Script"), tr("Script name:"), QLineEdit::Normal,
+        tr("NewScript"), &ok).trimmed();
+    if (!ok || name.isEmpty()) {
+        return;
+    }
+    std::filesystem::path dir = selectedDirectory();
+    if (dir.empty()) {
+        dir = m_root;
+    }
+    const QString target = uniqueDestinationPath(
+        QString::fromStdString(dir.string()), name + QStringLiteral(".cs"));
+    const QString scriptTemplate = loadScriptTemplate();
+    if (scriptTemplate.isEmpty()) {
+        QMessageBox::warning(this, tr("New Script"),
+                             tr("Could not load the script template CakeBehaviour.cs.mustache."));
+        return;
+    }
+    QFile file(target);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text) ||
+        file.write(scriptTemplate.arg(
+            QFileInfo(target).completeBaseName()).toUtf8()) < 0) {
+        QMessageBox::warning(this, tr("New Script"), tr("Could not create the script file."));
+        return;
+    }
+    m_context.session().execute({"asset.import", target.toStdString()});
+    refresh();
+    emit scriptOpenRequested(target);
+}
+
 void ProjectPanel::onDocumentDoubleClicked(QTreeWidgetItem* item, int column)
 {
     (void)column;
@@ -1413,6 +1684,9 @@ void ProjectPanel::onDocumentDoubleClicked(QTreeWidgetItem* item, int column)
     }
     const QString path = item->data(0, Qt::UserRole).toString();
     if (path.isEmpty()) {
+        return;
+    }
+    if (openScriptIfNeeded(path)) {
         return;
     }
     const QString suffix = QFileInfo(path).suffix().toLower();

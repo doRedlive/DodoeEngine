@@ -169,7 +169,7 @@ void HierarchyPanel::refresh()
 
     std::unordered_set<std::uint64_t> expanded;
     for (QTreeWidgetItemIterator it(m_tree); *it; ++it) {
-        if ((*it)->isExpanded(0)) {
+        if ((*it)->isExpanded()) {
             expanded.insert(ItemUuid(*it));
         }
     }
@@ -307,8 +307,14 @@ void HierarchyPanel::onContextMenu(const QPoint& pos)
 {
     QTreeWidgetItem* item = m_tree->itemAt(pos);
     if (item) {
-        m_tree->setCurrentItem(item);
-        item->setSelected(true);
+        if (!item->isSelected()) {
+            m_tree->clearSelection();
+            m_tree->setCurrentItem(item);
+            item->setSelected(true);
+        }
+    } else {
+        m_tree->clearSelection();
+        m_tree->setCurrentItem(nullptr);
     }
     QMenu menu(this);
     QAction* create = menu.addAction(tr("Create GameObject"));

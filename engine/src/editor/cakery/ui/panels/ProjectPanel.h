@@ -40,6 +40,7 @@ public:
 signals:
     void assetSelected(const cakery::AssetBrowserEntry& asset);
     void assetSelectionCleared();
+    void scriptOpenRequested(const QString& path);
 
 private:
     void reloadAssets();
@@ -54,6 +55,8 @@ private:
     void openAssetMenu(const QStringList& paths, const QPoint& globalPos);
     void onNewScene();
     void onNewFolder();
+    void onCreateScript();
+    QString loadScriptTemplate() const;
     void onImportAsset();
     void handleAssetDrop(const QStringList& paths, const QStringList& externalFiles,
                          const QString& targetDir);
@@ -64,6 +67,16 @@ private:
     void renameAsset(const QString& path);
     void deleteAssets(const QStringList& paths);
     void revealAssets(const QStringList& paths);
+    void openAssets(const QStringList& paths);
+    bool openScriptIfNeeded(const QString& path);
+    void copyAssets(const QStringList& paths);
+    void cutAssets(const QStringList& paths);
+    void pasteAssets();
+    void copyAssetPaths(const QStringList& paths);
+    void copyAssetGuid(const QStringList& paths);
+    void findAssetReferences(const QStringList& paths);
+    std::uint64_t assetGuidForPath(const QString& path) const;
+    QString uniqueDestinationPath(const QString& directory, const QString& fileName) const;
     void onDocumentDoubleClicked(QTreeWidgetItem* item, int column);
     void updatePreview(QTreeWidgetItem* item);
     void populateAssetGrid(const std::filesystem::path& directory);
@@ -83,6 +96,8 @@ private:
     std::filesystem::path m_root;
     std::filesystem::path m_gridDirectory;
     std::vector<AssetBrowserEntry> m_assets;
+    QStringList m_clipboardPaths;
+    bool m_clipboardCut = false;
     QHash<QString, QPair<qint64, QPixmap>> m_thumbnailCache;
 };
 

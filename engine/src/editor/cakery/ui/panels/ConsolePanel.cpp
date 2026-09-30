@@ -127,7 +127,10 @@ void ConsolePanel::refresh()
     }
 
     if (atBottom) {
-        scrollbar->setValue(scrollbar->maximum());
+        QTimer::singleShot(0, this, [this]() {
+            QScrollBar* bar = m_list->verticalScrollBar();
+            bar->setValue(bar->maximum());
+        });
     } else {
         scrollbar->setValue(scrollPosition);
     }

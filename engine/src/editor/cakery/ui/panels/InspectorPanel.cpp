@@ -212,6 +212,7 @@ void InspectorPanel::refresh()
         const AssetBrowserEntry asset = *m_selectedAsset;
         auto* title = new QLabel(QString::fromStdString(asset.name), this);
         title->setObjectName(QStringLiteral("inspectorAssetName"));
+        title->setWordWrap(true);
         m_layout->addWidget(title);
 
         QImage image(QString::fromStdString(asset.path));
@@ -222,9 +223,15 @@ void InspectorPanel::refresh()
 
         auto* details = new QGroupBox(tr("Asset"), this);
         auto* detailsLayout = new QFormLayout(details);
-        detailsLayout->addRow(tr("Type"), new QLabel(QString::fromStdString(asset.type), details));
-        detailsLayout->addRow(tr("Path"), new QLabel(QString::fromStdString(asset.path), details));
-        detailsLayout->addRow(tr("GUID"), new QLabel(QString::number(static_cast<qulonglong>(asset.uuid)), details));
+        const auto addDetailRow = [details, detailsLayout](const QString& label, const QString& value) {
+            auto* valueLabel = new QLabel(value, details);
+            valueLabel->setWordWrap(true);
+            valueLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+            detailsLayout->addRow(label, valueLabel);
+        };
+        addDetailRow(tr("Type"), QString::fromStdString(asset.type));
+        addDetailRow(tr("Path"), QString::fromStdString(asset.path));
+        addDetailRow(tr("GUID"), QString::number(static_cast<qulonglong>(asset.uuid)));
         m_layout->addWidget(details);
 
         AssetImportSettings importSettings;
