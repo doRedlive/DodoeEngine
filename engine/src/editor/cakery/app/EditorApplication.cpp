@@ -106,12 +106,38 @@ EditorApplication::~EditorApplication()
 
 int EditorApplication::run()
 {
+    showProjectManager();
+    return exec();
+}
+
+void EditorApplication::showProjectManager()
+{
+    if (m_projectWindow) {
+        m_projectWindow->show();
+        m_projectWindow->raise();
+        m_projectWindow->activateWindow();
+        return;
+    }
     m_projectWindow = new ProjectManagerWindow();
     connect(m_projectWindow, &ProjectManagerWindow::onProjectOpened,
             this, &EditorApplication::onProjectSelected);
     m_projectWindow->show();
+}
 
-    return exec();
+void EditorApplication::onReturnToProjectManager()
+{
+    if (!m_editorWindow) {
+        return;
+    }
+    const bool quitOnClose = quitOnLastWindowClosed();
+    setQuitOnLastWindowClosed(false);
+    const bool closed = m_editorWindow->close();
+    if (closed) {
+        delete m_editorWindow;
+        m_editorWindow = nullptr;
+        showProjectManager();
+    }
+    setQuitOnLastWindowClosed(quitOnClose);
 }
 
 void EditorApplication::onProjectSelected(const QString& projectPath)
@@ -128,6 +154,8 @@ void EditorApplication::onProjectSelected(const QString& projectPath)
                               userEditorDir.toStdString());
     applyTheme(QString::fromStdString(EditorConfig::self().themeName()));
     m_editorWindow = new EditorWindow(*m_workspace);
+    connect(m_editorWindow, &EditorWindow::returnToProjectManagerRequested,
+            this, &EditorApplication::onReturnToProjectManager);
     if (!m_editorWindow->enterWorkspace(projectPath)) {
         delete m_editorWindow;
         m_editorWindow = nullptr;

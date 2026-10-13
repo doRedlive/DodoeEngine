@@ -28,6 +28,8 @@ public:
 
 private:
     void onProjectSelected(const QString& projectPath);
+    void onReturnToProjectManager();
+    void showProjectManager();
 
     QString m_applicationName;
     std::unique_ptr<QTranslator> m_translator;

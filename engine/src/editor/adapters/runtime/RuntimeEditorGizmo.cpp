@@ -274,6 +274,87 @@ void DrawSelectionBox(dodoe::GizmoChannelData& data, const dodoe::Vector3f& cent
     }
 }
 
+constexpr float k2DHandlePixels = 8.0f;
+constexpr float k2DArrowPixels = 56.0f;
+constexpr float k2DRotateKnobPixels = 10.0f;
+
+void AddRect2D(dodoe::GizmoChannelData& data, const dodoe::Vector2f& min, const dodoe::Vector2f& max,
+               float z, const dodoe::Color& color) {
+    AddLine(data, {min.x, min.y, z}, {max.x, min.y, z}, color);
+    AddLine(data, {max.x, min.y, z}, {max.x, max.y, z}, color);
+    AddLine(data, {max.x, max.y, z}, {min.x, max.y, z}, color);
+    AddLine(data, {min.x, max.y, z}, {min.x, min.y, z}, color);
+}
+
+void AddHandle2D(dodoe::GizmoChannelData& data, const dodoe::Vector2f& center, float half,
+                 float z, const dodoe::Color& color) {
+    AddRect2D(data, {center.x - half, center.y - half}, {center.x + half, center.y + half}, z, color);
+}
+
+void AddCircle2D(dodoe::GizmoChannelData& data, const dodoe::Vector2f& center, float radius,
+                 float z, const dodoe::Color& color) {
+    constexpr int kSegments = 24;
+    constexpr float kTwoPi = 6.2831853f;
+    dodoe::Vector2f prev(center.x + radius, center.y);
+    for (int i = 1; i <= kSegments; ++i) {
+        const float angle = (static_cast<float>(i) / static_cast<float>(kSegments)) * kTwoPi;
+        const dodoe::Vector2f next(center.x + std::cos(angle) * radius, center.y + std::sin(angle) * radius);
+        AddLine(data, {prev.x, prev.y, z}, {next.x, next.y, z}, color);
+        prev = next;
+    }
+}
+
+void AddArrow2D(dodoe::GizmoChannelData& data, const dodoe::Vector2f& origin,
+                const dodoe::Vector2f& dir, float length, float z, const dodoe::Color& color) {
+    const float tipX = origin.x + dir.x * length;
+    const float tipY = origin.y + dir.y * length;
+    const float head = length * 0.25f;
+    const float perpX = -dir.y;
+    const float perpY = dir.x;
+    AddLine(data, {origin.x, origin.y, z}, {tipX, tipY, z}, color);
+    AddLine(data, {tipX, tipY, z}, {tipX - dir.x * head + perpX * head, tipY - dir.y * head + perpY * head, z}, color);
+    AddLine(data, {tipX, tipY, z}, {tipX - dir.x * head - perpX * head, tipY - dir.y * head - perpY * head, z}, color);
+}
+
+void Generate2DGizmo(dodoe::GizmoChannelData& data, cakery::EditorCamera& camera,
+                     const dodoe::Vector3f& position, const dodoe::Vector3f& scale,
+                     const std::string& mode, int hoverAxis) {
+    const float z = position.z;
+    const float halfW = 0.5f * std::fabs(scale.x);
+    const float halfH = 0.5f * std::fabs(scale.y);
+    const float x0 = position.x - halfW;
+    const float x1 = position.x + halfW;
+    const float y0 = position.y - halfH;
+    const float y1 = position.y + halfH;
+
+    AddRect2D(data, {x0, y0}, {x1, y1}, z, kSelectionColor);
+
+    const float handle_half = std::max(camera.pixelsToWorld(position, k2DHandlePixels) * 0.5f, 1e-4f);
+    const dodoe::Vector2f handle_points[8] = {
+        {x0, y0}, {x1, y0}, {x1, y1}, {x0, y1},
+        {(x0 + x1) * 0.5f, y0}, {x1, (y0 + y1) * 0.5f},
+        {(x0 + x1) * 0.5f, y1}, {x0, (y0 + y1) * 0.5f},
+    };
+    for (const auto& p : handle_points) {
+        AddHandle2D(data, p, handle_half, z, kSelectionColor);
+    }
+
+    if (mode == "rotate") {
+        const float knob_radius = std::max(camera.pixelsToWorld(position, k2DRotateKnobPixels), 1e-4f);
+        const float stem = handle_half * 4.0f;
+        AddLine(data, {position.x, y1, z}, {position.x, y1 + stem, z}, kSelectionColor);
+        AddCircle2D(data, {position.x, y1 + stem}, knob_radius, z, kSelectionColor);
+    } else if (mode == "translate") {
+        const float len = std::max(camera.pixelsToWorld(position, k2DArrowPixels), 1e-4f);
+        const dodoe::Color& color_x = (hoverAxis == 0) ? kHoverColors[0] : kColors[0];
+        const dodoe::Color& color_y = (hoverAxis == 1) ? kHoverColors[1] : kColors[1];
+        AddArrow2D(data, {position.x, position.y}, {1.0f, 0.0f}, len, z, color_x);
+        AddArrow2D(data, {position.x, position.y}, {0.0f, 1.0f}, len, z, color_y);
+    }
+
+    data.has_data = true;
+}
+
 } // anonymous namespace
 
 dodoe::Entity RuntimeEditorBackend::activeTilemapEntity() const
@@ -401,6 +482,22 @@ void RuntimeEditorBackend::updateGizmo()
     dodoe::GizmoChannelData& channel_data = dodoe::GetGizmoChannel().get<dodoe::GizmoChannelData>();
     channel_data.clear();
     channel_data.grid.ortho2d = m_camera && m_camera->mode() == EditorCamera::Mode::Ortho2D;
+    if (channel_data.grid.ortho2d) {
+        const float world_per_px = m_camera->pixelsToWorld(dodoe::Vector3f(0.0f), 1.0f);
+        const float target_px = 24.0f;
+        float minor = 1000.0f;
+        for (const float base : {0.01f, 0.02f, 0.05f, 0.1f, 0.2f, 0.5f,
+                                 1.0f, 2.0f, 5.0f, 10.0f, 20.0f, 50.0f, 100.0f, 200.0f, 500.0f}) {
+            minor = base;
+            if (base / world_per_px >= target_px) {
+                break;
+            }
+        }
+        channel_data.grid.minor_spacing = minor;
+        channel_data.grid.major_spacing = minor * 5.0f;
+        channel_data.grid.fade_begin = 1.0e8f;
+        channel_data.grid.fade_end = 1.0e8f + 1.0f;
+    }
     const bool tilePainting = m_tilePaint && m_tilePaint->hasTarget() && activeTilemapEntity().valid();
     updateTileOverlay();
     if (tilePainting || m_selectedUuid == 0) {
@@ -423,6 +520,10 @@ void RuntimeEditorBackend::updateGizmo()
     const dodoe::Vector3f position = transform.getPosition();
     if (m_gizmoMode == "none") {
         drawSelectionHighlight(channel_data);
+        return;
+    }
+    if (m_camera && m_camera->mode() == EditorCamera::Mode::Ortho2D) {
+        Generate2DGizmo(channel_data, *m_camera, position, transform.getScale(), m_gizmoMode, m_hoverAxis);
         return;
     }
     m_gizmoScale = std::max(computeGizmoScale(position), 1e-3f);

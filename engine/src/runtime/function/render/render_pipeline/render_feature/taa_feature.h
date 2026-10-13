@@ -31,6 +31,7 @@ namespace dodoe {
         UInt64 m_history_revision{0};
         UInt64 m_prev_depth_revision{0};
         Bool m_has_prev_frame{false};
+        Bool m_taa_was_active{false};
         Matrix4f m_prev_unjittered_view_projection{1.0f};
         Vector2f m_prev_jitter_uv{0.0f, 0.0f};
     };

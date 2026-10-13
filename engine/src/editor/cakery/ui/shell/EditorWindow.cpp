@@ -673,6 +673,7 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
 
 EditorWindow::~EditorWindow()
 {
+    m_context.confirmUnsavedChanges = {};
     qApp->removeEventFilter(this);
     if (m_safePointTimer) {
         m_safePointTimer->stop();
@@ -724,6 +725,9 @@ void EditorWindow::createMenus()
     });
 
     file->addSeparator();
+    auto* back = file->addAction(tr("Return to Project Manager"));
+    connect(back, &QAction::triggered, this, &EditorWindow::returnToProjectManagerRequested);
+
     auto* close = file->addAction(tr("Close"));
     connect(close, &QAction::triggered, this, &QWidget::close);
 
@@ -1511,6 +1515,14 @@ void EditorWindow::createPanels()
     m_gameSettingsDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_gameSettingsDock, m_consoleDock->dockAreaWidget());
     m_gameSettingsDock->toggleView(false);
+    connect(m_gameSettingsPanel, &SettingsPanel::saved, this, [this]() {
+        const auto& config = m_gameSettingsPanel->value();
+        const auto renderIt = config.find("render_settings");
+        if (renderIt == config.end() || !renderIt->is_object()) {
+            return;
+        }
+        m_context.session().applyRenderSettingsOverlay(*renderIt);
+    });
 
     m_engineSettingsPanel = new SettingsPanel(nullptr);
     m_engineSettingsDock = new ads::CDockWidget(tr("Engine Settings"));

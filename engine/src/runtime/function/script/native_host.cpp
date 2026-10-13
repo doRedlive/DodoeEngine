@@ -236,7 +236,7 @@ namespace dodoe {
         const std::wstring config_wide = runtimeconfig.wstring();
         const int init_rc = m_init_fn(config_wide.c_str(), &init_params, &m_context);
 
-        if (init_rc != 0 || !m_context) {
+        if (init_rc < 0 || !m_context) {
             LogHRESULT("runtime init failed", init_rc);
             return HostError::RuntimeInitFailed;
         }
@@ -255,7 +255,7 @@ namespace dodoe {
     NativeHost::HostError NativeHost::loadAssembly() {
         const int rc = m_get_delegate_fn(m_context, HDT_LOAD_ASM_AND_GET_FN,
             reinterpret_cast<void**>(&m_load_assembly_fn));
-        if (rc != 0) {
+        if (rc < 0) {
             LogHRESULT("get_runtime_delegate(LOAD_ASM_AND_GET_FN) failed", rc);
             return HostError::DelegateLoadFailed;
         }
@@ -299,8 +299,8 @@ namespace dodoe {
             nullptr,
             &delegate);
 
-        if (rc != 0 || !delegate) {
-            if (rc != 0) {
+        if (rc < 0 || !delegate) {
+            if (rc < 0) {
                 LogHRESULT("loadManagedDelegate", rc);
             } else {
                 DO_ERROR("NativeHost: loadManagedDelegate returned null delegate (rc=0)");

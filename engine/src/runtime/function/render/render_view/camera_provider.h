@@ -10,6 +10,7 @@ namespace dodoe {
         virtual ~ICameraProvider() = default;
         virtual Matrix4f getView() const = 0;
         virtual Matrix4f getProj() const = 0;
+        [[nodiscard]] virtual Vector4f getBackground() const { return {0.0f, 0.0f, 0.0f, 1.0f}; }
 #ifdef DODOE_EDITOR_ENABLED
         [[nodiscard]] virtual Bool isEditorCamera() const { return false; }
 #endif
@@ -21,6 +22,7 @@ namespace dodoe {
         explicit IndexedCameraProvider(Size_t index) : m_index(index) {}
         Matrix4f getView() const override;
         Matrix4f getProj() const override;
+        [[nodiscard]] Vector4f getBackground() const override;
     };
 
 #ifdef DODOE_EDITOR_ENABLED
@@ -28,6 +30,7 @@ namespace dodoe {
     public:
         Matrix4f getView() const override;
         Matrix4f getProj() const override;
+        [[nodiscard]] Vector4f getBackground() const override;
         [[nodiscard]] Bool isEditorCamera() const override { return true; }
     };
 #endif

@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <Compile Include="../Assets/Scripts/ShowcaseCamera.cs" />
+    <Compile Include="../Assets/Scripts/Test.cs" />
     <Compile Include="../Assets/Scripts/Turntable.cs" />
   </ItemGroup>
 

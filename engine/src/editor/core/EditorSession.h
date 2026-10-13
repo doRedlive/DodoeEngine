@@ -54,6 +54,7 @@ public:
     bool getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const;
     bool attachSceneSurface(SceneSurfaceDescriptor surface);
     bool bootEngine();
+    void applyRenderSettingsOverlay(const nlohmann::json& renderSettings);
     void submitViewportMetrics(ViewportMetrics metrics);
     void tick();
     void shutdown();

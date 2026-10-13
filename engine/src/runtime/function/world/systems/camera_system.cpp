@@ -70,6 +70,7 @@ namespace dodoe {
 
             registry.cameras[camera_index].view = cam.view_matrix;
             registry.cameras[camera_index].projection = cam.projection_matrix;
+            registry.cameras[camera_index].background = cam.background.to_vec4();
             ++camera_index;
 
             cam.dirty = false;

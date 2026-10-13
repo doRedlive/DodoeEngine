@@ -6,6 +6,7 @@
 
 #include "render_feature.h"
 #include "runtime/function/render/render_pipeline/passes/render_post_process_pass.h"
+#include "runtime/function/render/render_pipeline/passes/render_fxaa_pass.h"
 
 namespace dodoe {
 
@@ -13,6 +14,7 @@ namespace dodoe {
     public:
         void collectPasses(PassCollector& collector) override {
             collector.addPass<PostProcessPass>();
+            collector.addPass<FxaaPass>();
         }
     };
 

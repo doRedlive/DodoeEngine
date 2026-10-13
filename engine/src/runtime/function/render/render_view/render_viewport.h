@@ -42,7 +42,8 @@ namespace dodoe {
         [[nodiscard]] Bool isGeometryDirty() const { return m_geometry_dirty; }
 
         [[nodiscard]] RenderViewFamily buildViewFamily(const class RenderScene& scene, Float time, Float delta,
-            const Matrix4f& view, const Matrix4f& proj, Bool show_editor_primitives = false) const;
+            const Matrix4f& view, const Matrix4f& proj, Bool show_editor_primitives = false,
+            const Vector4f& background = Vector4f(0.0f, 0.0f, 0.0f, 1.0f)) const;
         [[nodiscard]] Vector2f Window2World(const Vector2f& window_pos, const Matrix4f& view_proj) const;
 
     private:

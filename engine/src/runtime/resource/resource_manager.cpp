@@ -120,6 +120,8 @@ namespace dodoe {
     Sprite* ResourceManager::loadSprite(const UUID& asset_id, UInt32 local_id) {
         Asset* asset = m_assetManager->findAsset(asset_id);
         if (!asset) {
+            DO_WARN("ResourceManager: loadSprite asset not registered (asset_id={}, local_id={})",
+                static_cast<UInt64>(asset_id), local_id);
             return nullptr;
         }
         return SpriteManager::Create(ObjectID{asset_id, local_id}, asset->getSourcePath());

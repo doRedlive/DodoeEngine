@@ -27,6 +27,7 @@ namespace dodoe {
         RenderGraphTextureHandle color_target{};
         Bool clear_target{false};
         Bool depth_occlusion{false};
+        GfxColor clear_color{0.0f, 0.0f, 0.0f, 1.0f};
         RenderGraphBufferHandle instance_buffer{};
         RenderGraphBufferHandle quad_vertex_buffer{};
         RenderGraphBufferHandle quad_index_buffer{};
@@ -51,9 +52,11 @@ namespace dodoe {
                     color_attachment.load_op = LoadOp::Load;
                     parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
+                    const Vector4f background = context.view.getBackground();
                     parameters.clear_target = true;
+                    parameters.clear_color = GfxColor(background.x, background.y, background.z, background.w);
                     color_attachment.load_op = LoadOp::Clear;
-                    color_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
+                    color_attachment.clear_color = parameters.clear_color;
                     parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(
                             swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
@@ -144,7 +147,7 @@ namespace dodoe {
                 command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
                 command_list.commitBarriers();
                 if (parameters.clear_target) {
-                    command_list.clearTextureFloat(color_target, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
+                    command_list.clearTextureFloat(color_target, GfxAllSubresources, parameters.clear_color);
                 }
 
                 if (parameters.instances.empty() || !parameters.quad_vertex_buffer.isValid() ||

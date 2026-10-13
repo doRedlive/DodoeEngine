@@ -26,6 +26,7 @@ namespace dodoe {
         Matrix4f m_view_projection_matrix{1.0f};
         Matrix4f m_unjittered_view_projection{1.0f};
         Vector2f m_jitter_ndc{0.0f, 0.0f};
+        Vector4f m_background{0.0f, 0.0f, 0.0f, 1.0f};
         ViewExtensionContainer m_extensions{};
         UInt8 m_view_flags{0};
 
@@ -36,6 +37,7 @@ namespace dodoe {
         void setViewportRect(const Vector4i& rect) { m_viewport_rect = rect; }
         void setMatrices(const Matrix4f& view_matrix, const Matrix4f& projection_matrix);
         void setJitterData(const Vector2f& jitter_ndc, const Matrix4f& unjittered_view_projection);
+        void setBackground(const Vector4f& background) { m_background = background; }
         void buildFromViewInfo(const ViewInfo& info);
 
         void buildVisiblePrimitives(const RenderScene& scene);
@@ -55,6 +57,7 @@ namespace dodoe {
         [[nodiscard]] const Matrix4f& getViewProjectionMatrix() const { return m_view_projection_matrix; }
         [[nodiscard]] const Matrix4f& getUnjitteredViewProjection() const { return m_unjittered_view_projection; }
         [[nodiscard]] const Vector2f& getJitterNdc() const { return m_jitter_ndc; }
+        [[nodiscard]] const Vector4f& getBackground() const { return m_background; }
 
         template<typename TExtension, typename... TArgs>
         TExtension& getOrCreateExtension(TArgs&&... args) {

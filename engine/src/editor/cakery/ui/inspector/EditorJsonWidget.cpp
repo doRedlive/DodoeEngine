@@ -2,6 +2,8 @@
 
 #include "EditorJsonWidget.h"
 
+#include "InspectorWidgets.h"
+
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
@@ -9,11 +11,16 @@
 #include <QDoubleSpinBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QFile>
 #include <QFormLayout>
 #include <QFrame>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <QLabel>
 #include <QImage>
 #include <QIcon>
@@ -96,6 +103,32 @@ bool IsAssetCompatible(const AssetBrowserEntry& asset, const QString& targetType
     if (targetType == QLatin1String("AnimatorController")) return assetType == QLatin1String("AnimatorController");
     if (targetType == QLatin1String("Tileset")) return assetType == QLatin1String("Tileset");
     return targetType.isEmpty() || assetType == targetType;
+}
+
+std::uint64_t ResolveAssetSubObjectId(const QString& assetPath, const QString& targetType)
+{
+    if (targetType != QLatin1String("Sprite") || assetPath.isEmpty()) {
+        return 0;
+    }
+    QFile metaFile(assetPath + QStringLiteral(".meta"));
+    if (!metaFile.open(QIODevice::ReadOnly)) {
+        return 1;
+    }
+    const QJsonDocument doc = QJsonDocument::fromJson(metaFile.readAll());
+    if (!doc.isObject()) {
+        return 1;
+    }
+    const QJsonArray sprites = doc.object().value(QStringLiteral("sprites")).toArray();
+    if (!sprites.isEmpty()) {
+        const QJsonValue first = sprites.first();
+        if (first.isObject()) {
+            const double localId = first.toObject().value(QStringLiteral("local_id")).toDouble(1.0);
+            if (localId >= 1.0) {
+                return static_cast<std::uint64_t>(localId);
+            }
+        }
+    }
+    return 1;
 }
 
 class AssetReferenceField final : public QToolButton {
@@ -253,78 +286,6 @@ private:
     QLineEdit* m_filter = nullptr;
     QListWidget* m_grid = nullptr;
     std::function<void(std::uint64_t, const QString&)> m_selected;
-};
-
-class ScrubDoubleSpinBox : public QDoubleSpinBox {
-public:
-    ScrubDoubleSpinBox(QWidget* parent = nullptr)
-        : QDoubleSpinBox(parent)
-    {
-        setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        lineEdit()->installEventFilter(this);
-    }
-
-protected:
-    QSize minimumSizeHint() const override
-    {
-        return QSize(48, QAbstractSpinBox::minimumSizeHint().height());
-    }
-
-    QSize sizeHint() const override
-    {
-        return QSize(88, QAbstractSpinBox::sizeHint().height());
-    }
-
-    bool eventFilter(QObject* watched, QEvent* event) override
-    {
-        if (watched == lineEdit() && event->type() == QEvent::Wheel) {
-            event->accept();
-            return true;
-        }
-        return QDoubleSpinBox::eventFilter(watched, event);
-    }
-
-    void wheelEvent(QWheelEvent* event) override
-    {
-        event->accept();
-    }
-};
-
-class ScrubIntSpinBox : public QSpinBox {
-public:
-    ScrubIntSpinBox(QWidget* parent = nullptr)
-        : QSpinBox(parent)
-    {
-        setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        lineEdit()->installEventFilter(this);
-    }
-
-protected:
-    QSize minimumSizeHint() const override
-    {
-        return QSize(48, QAbstractSpinBox::minimumSizeHint().height());
-    }
-
-    QSize sizeHint() const override
-    {
-        return QSize(88, QAbstractSpinBox::sizeHint().height());
-    }
-
-    bool eventFilter(QObject* watched, QEvent* event) override
-    {
-        if (watched == lineEdit() && event->type() == QEvent::Wheel) {
-            event->accept();
-            return true;
-        }
-        return QSpinBox::eventFilter(watched, event);
-    }
-
-    void wheelEvent(QWheelEvent* event) override
-    {
-        event->accept();
-    }
 };
 
 class NumericScrubFilter final : public QObject {
@@ -579,7 +540,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
     }
 
     if (metadata && metadata->kind == InspectorFieldKind::Enum && value.is_number_integer()) {
-        auto* combo = new QComboBox();
+        auto* combo = new ScrubComboBox();
         int current = value.get<int>();
         int currentIndex = -1;
         for (const auto& option : metadata->enumValues) {
@@ -688,7 +649,7 @@ void EditorJsonWidget::buildField(QFormLayout* form, const std::string& key, con
 
     if (value.is_string()) {
         if (key == "tag") {
-            auto* combo = new QComboBox();
+            auto* combo = new ScrubComboBox();
             combo->setObjectName(QStringLiteral("inspectorTagField"));
             combo->setEditable(true);
             const QString current = QString::fromStdString(value.get<std::string>());
@@ -848,7 +809,8 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const std::string& path,
             owner->valueAt(path) = nlohmann::json{{"asset_id", 0}, {"sub_object_id", 0}};
             setPresentation(nullptr, false);
         } else if (IsAssetCompatible(*asset, targetType)) {
-            owner->valueAt(path) = nlohmann::json{{"asset_id", assetId}, {"sub_object_id", 0}};
+            const std::uint64_t subObjectId = ResolveAssetSubObjectId(QString::fromStdString(asset->path), targetType);
+            owner->valueAt(path) = nlohmann::json{{"asset_id", assetId}, {"sub_object_id", subObjectId}};
             setPresentation(asset, true);
         } else {
             return;
@@ -965,7 +927,7 @@ QWidget* EditorJsonWidget::buildLayerField(const std::string& key, const std::st
                                            const nlohmann::json& value) {
     const std::uint32_t current = value.get<std::uint32_t>();
     if (key == "layer") {
-        auto* combo = new QComboBox();
+        auto* combo = new ScrubComboBox();
         combo->setObjectName(QStringLiteral("inspectorLayerField"));
         for (int i = 0; i < 32; ++i) {
             combo->addItem(QStringLiteral("Layer %1").arg(i), i);

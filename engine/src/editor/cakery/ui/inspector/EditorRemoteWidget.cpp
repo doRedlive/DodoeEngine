@@ -2,6 +2,8 @@
 
 #include "EditorRemoteWidget.h"
 
+#include "InspectorWidgets.h"
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QColor>
@@ -245,7 +247,7 @@ void EditorRemoteWidget::buildNode(QBoxLayout* layout, const nlohmann::json& nod
         });
         control = check;
     } else if (type == "float") {
-        auto* spin = new QDoubleSpinBox(row);
+        auto* spin = new ScrubDoubleSpinBox(row);
         const double min = node.value("min", 0.0f);
         const double max = node.value("max", 0.0f);
         if (max > min) {
@@ -260,7 +262,7 @@ void EditorRemoteWidget::buildNode(QBoxLayout* layout, const nlohmann::json& nod
         });
         control = spin;
     } else if (type == "int") {
-        auto* spin = new QSpinBox(row);
+        auto* spin = new ScrubIntSpinBox(row);
         const int min = node.value("min", 0);
         const int max = node.value("max", 0);
         if (max > min) {
@@ -288,7 +290,8 @@ void EditorRemoteWidget::buildNode(QBoxLayout* layout, const nlohmann::json& nod
         const std::vector<double> value = node.value("value", std::vector<double>{0.0, 0.0, 0.0});
         QDoubleSpinBox* spins[3] = {nullptr, nullptr, nullptr};
         for (int i = 0; i < 3; ++i) {
-            auto* spin = new QDoubleSpinBox(container);
+            auto* spin = new ScrubDoubleSpinBox(container);
+            spin->setMinimumWidth(0);
             spin->setDecimals(4);
             spin->setRange(-1.0e9, 1.0e9);
             spin->setValue(i < static_cast<int>(value.size()) ? value[static_cast<std::size_t>(i)] : 0.0);
@@ -418,7 +421,7 @@ void EditorRemoteWidget::buildPropertyNode(QBoxLayout* layout, const nlohmann::j
         });
         control = check;
     } else if (kind == InspectorFieldKind::Integer) {
-        auto* spin = new QSpinBox(row);
+        auto* spin = new ScrubIntSpinBox(row);
         const int minimum = metadata != nullptr && metadata->hasRange ? static_cast<int>(metadata->rangeMin) : -1000000000;
         const int maximum = metadata != nullptr && metadata->hasRange ? static_cast<int>(metadata->rangeMax) : 1000000000;
         spin->setRange(minimum, maximum);
@@ -429,7 +432,7 @@ void EditorRemoteWidget::buildPropertyNode(QBoxLayout* layout, const nlohmann::j
         });
         control = spin;
     } else if (kind == InspectorFieldKind::Float || kind == InspectorFieldKind::Double) {
-        auto* spin = new QDoubleSpinBox(row);
+        auto* spin = new ScrubDoubleSpinBox(row);
         const double minimum = metadata != nullptr && metadata->hasRange ? metadata->rangeMin : -1.0e9;
         const double maximum = metadata != nullptr && metadata->hasRange ? metadata->rangeMax : 1.0e9;
         spin->setRange(minimum, maximum);
@@ -449,7 +452,7 @@ void EditorRemoteWidget::buildPropertyNode(QBoxLayout* layout, const nlohmann::j
         });
         control = edit;
     } else if (kind == InspectorFieldKind::Enum && metadata != nullptr) {
-        auto* combo = new QComboBox(row);
+        auto* combo = new ScrubComboBox(row);
         const int current = value->is_number() ? value->get<int>() : 0;
         int currentIndex = -1;
         for (std::size_t i = 0; i < metadata->enumValues.size(); ++i) {
@@ -520,7 +523,8 @@ void EditorRemoteWidget::buildPropertyNode(QBoxLayout* layout, const nlohmann::j
         std::vector<QDoubleSpinBox*> spins;
         spins.reserve(shown);
         for (std::size_t i = 0; i < shown; ++i) {
-            auto* spin = new QDoubleSpinBox(container);
+            auto* spin = new ScrubDoubleSpinBox(container);
+            spin->setMinimumWidth(0);
             spin->setDecimals(4);
             spin->setRange(-1.0e9, 1.0e9);
             spin->setValue(i < count && (*value)[i].is_number() ? (*value)[i].get<double>() : 0.0);

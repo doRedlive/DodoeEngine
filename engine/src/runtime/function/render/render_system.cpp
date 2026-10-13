@@ -142,6 +142,7 @@ namespace dodoe {
             entry.target = target.get();
             entry.view = cam ? cam->getView() : Matrix4f(1.0f);
             entry.proj = cam ? cam->getProj() : Matrix4f(1.0f);
+            entry.background = cam ? cam->getBackground() : Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
 #ifdef DODOE_EDITOR_ENABLED
             entry.show_editor = cam && cam->isEditorCamera();
 #endif//DODOE_EDITOR_ENABLED
@@ -331,7 +332,7 @@ namespace dodoe {
             if (m_baseline_renderer_hook) {
                 for (auto& entry : packet.frame.targets) {
                     auto* target = entry.target;
-                    auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, false);
+                    auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, false, entry.background);
                     family.buildVisiblePrimitives(*scene);
                     m_baseline_renderer_hook(*gfx, frame_ctx.swapchain_image_index, family, *scene);
                 }
@@ -340,7 +341,7 @@ namespace dodoe {
             for (auto& entry : packet.frame.targets) {
                 auto* target = entry.target;
                 Bool show_editor = entry.show_editor;
-                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, show_editor);
+                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, show_editor, entry.background);
                 pipeline->render(
                     family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
                     frame_ctx.staging, frame_ctx.transient_resource_pool);

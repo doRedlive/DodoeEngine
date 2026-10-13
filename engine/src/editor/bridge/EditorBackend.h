@@ -206,6 +206,7 @@ public:
     }
     virtual bool attachSceneSurface(const SceneSurfaceDescriptor& surface) = 0;
     virtual bool bootEngine() = 0;
+    virtual void applyRenderSettingsOverlay(const nlohmann::json& /*renderSettings*/) {}
     virtual void requestSceneSurfaceResize(const ViewportMetrics& metrics) = 0;
     virtual bool detachSceneSurface() = 0;
     virtual void tickAtSafePoint() = 0;

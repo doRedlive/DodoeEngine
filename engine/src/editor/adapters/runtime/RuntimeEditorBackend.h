@@ -69,6 +69,7 @@ public:
     bool findMissingAssetReferences(std::vector<std::uint64_t>& out) const override;
     bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;
     bool bootEngine() override;
+    void applyRenderSettingsOverlay(const nlohmann::json& renderSettings) override;
     void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
     bool detachSceneSurface() override;
     void tickAtSafePoint() override;

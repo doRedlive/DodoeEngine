@@ -110,24 +110,20 @@ namespace dodoe {
 
                 const auto* shader_library = ctx.getShaderLibrary();
                 const auto* pso_cache = ctx.getPipelineStateCache();
-                if (!shader_library || !pso_cache || !m_binding_layout || !m_input_layout) {
-                    return;
-                }
-
                 const auto vs = shader_library->getGizmoVertexShader();
                 const auto ps = shader_library->getGizmoPixelShader();
-                if (!vs || !ps) {
-                    return;
-                }
 
                 const auto& gizmo_data = parameters.gizmo_data;
 
-                if (parameters.depth.isValid() && m_grid_binding_layout) {
-                    const auto depth_texture = ctx.resolveTexture(parameters.depth);
-                    auto* staging = ctx.getFrameStagingAllocator();
+                if (m_grid_binding_layout) {
                     const auto grid_vs = shader_library->getFullscreenVertexShader();
                     const auto grid_ps = shader_library->getEditorGridPixelShader();
-                    if (depth_texture && depth_texture->isGpuReady() && staging && grid_vs && grid_ps) {
+                    auto* staging = ctx.getFrameStagingAllocator();
+                    const auto depth_texture = parameters.depth.isValid()
+                        ? ctx.resolveTexture(parameters.depth)
+                        : nullptr;
+                    const Bool has_depth = depth_texture && depth_texture->isGpuReady();
+                    if (staging && grid_vs && grid_ps) {
                         struct EditorGridConstants {
                             Matrix4f inverse_view_projection{1.0f};
                             Matrix4f view_projection{1.0f};
@@ -140,7 +136,8 @@ namespace dodoe {
                             Math::Inverse(ctx.getView()->getViewProjectionMatrix());
                         grid_constants.view_projection = ctx.getView()->getViewProjectionMatrix();
                         grid_constants.camera_world = Vector4f(
-                            rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView()), 1.0f);
+                            rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView()),
+                            has_depth ? 1.0f : 0.0f);
                         grid_constants.plane = gizmo_data.grid.ortho2d
                             ? Vector4f(0.0f, 0.0f, 1.0f, 0.0f)
                             : Vector4f(0.0f, 1.0f, 0.0f, 0.0f);
@@ -158,7 +155,8 @@ namespace dodoe {
                                     .addItem(GfxBindingSetItem::ConstantBuffer(
                                         0, allocation.buffer->getRHIHandle().Get(),
                                         GfxBufferRange(allocation.offset, allocation.size)))
-                                    .addItem(GfxBindingSetItem::Texture_SRV(1, depth_texture->getRHIHandle().Get()))
+                                    .addItem(GfxBindingSetItem::Texture_SRV(
+                                        1, has_depth ? depth_texture->getRHIHandle().Get() : nullptr))
                                     .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
                                 m_grid_binding_layout);
                             if (grid_binding_set) {
@@ -183,20 +181,20 @@ namespace dodoe {
                     return;
                 }
 
-                static auto s_last_gizmo_log = std::chrono::steady_clock::now() - std::chrono::seconds(2);
-                const Bool log_gizmo = std::chrono::steady_clock::now() - s_last_gizmo_log >= std::chrono::seconds(2);
-                if (log_gizmo) {
-                    s_last_gizmo_log = std::chrono::steady_clock::now();
-                    DO_INFO("GizmoPass: verts={} idx={} cmds={}",
-                            gizmo_data.vertices.size(), gizmo_data.indices.size(), gizmo_data.commands.size());
-                }
-
                 GfxDepthStencilState ds;
                 ds.disableDepthTest().disableDepthWrite().disableStencil();
                 GfxRasterState raster;
-                raster.setCullBack();
+                raster.setCullNone();
+                GfxBlendState blend;
+                GfxBlendState::RenderTarget blend_target;
+                blend_target.enableBlend()
+                    .setSrcBlend(GfxBlendFactor::SrcAlpha)
+                    .setDestBlend(GfxBlendFactor::OneMinusSrcAlpha)
+                    .setSrcBlendAlpha(GfxBlendFactor::One)
+                    .setDestBlendAlpha(GfxBlendFactor::OneMinusSrcAlpha);
+                blend.setRenderTarget(0, blend_target);
                 GfxRenderState render_state;
-                render_state.setDepthStencilState(ds).setRasterState(raster);
+                render_state.setDepthStencilState(ds).setRasterState(raster).setBlendState(blend);
 
                 const UInt64 vb_byte_size = gizmo_data.vertices.size() * sizeof(GizmoVertex);
                 const UInt64 ib_byte_size = gizmo_data.indices.size() * sizeof(UInt32);
@@ -249,11 +247,9 @@ namespace dodoe {
                     auto pipeline = pso_cache->resolveGraphicsPipeline(
                         pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                     if (!pipeline) {
+                        DO_ERROR("GizmoPass: failed to create pipeline for topology={}",
+                                 static_cast<UInt32>(cmd.topology));
                         continue;
-                    }
-                    if (log_gizmo) {
-                        DO_INFO("GizmoPass: draw topology={} verts={}",
-                                static_cast<UInt32>(cmd.topology), cmd.vertex_count);
                     }
 
                     push.mvp = view_projection * cmd.transform;

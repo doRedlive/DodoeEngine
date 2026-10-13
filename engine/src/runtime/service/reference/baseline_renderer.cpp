@@ -125,11 +125,9 @@ namespace dodoe {
         if (!m_post_process_pass->initialize(context)) {
             return false;
         }
-        if (RenderSettings::IsTaaEnabled()) {
-            m_taa_pass = create_scope<BaselineTaaPass>();
-            if (!m_taa_pass->initialize(context)) {
-                return false;
-            }
+        m_taa_pass = create_scope<BaselineTaaPass>();
+        if (!m_taa_pass->initialize(context)) {
+            return false;
         }
         m_present_pass = create_scope<BaselinePresentPass>();
         if (!m_present_pass->initialize(context)) {
@@ -149,9 +147,9 @@ namespace dodoe {
             m_rt.gbuffer_motion && m_rt.gbuffer_motion->isGpuReady() &&
             m_rt.scene_color && m_rt.scene_color->isGpuReady() &&
             m_rt.fxaa_color && m_rt.fxaa_color->isGpuReady() &&
-            (!m_taa_pass || (m_rt.taa_history_a && m_rt.taa_history_a->isGpuReady() &&
-                m_rt.taa_history_b && m_rt.taa_history_b->isGpuReady() &&
-                m_rt.taa_framebuffer_a && m_rt.taa_framebuffer_b)) &&
+            m_rt.taa_history_a && m_rt.taa_history_a->isGpuReady() &&
+            m_rt.taa_history_b && m_rt.taa_history_b->isGpuReady() &&
+            m_rt.taa_framebuffer_a && m_rt.taa_framebuffer_b &&
             m_rt.pick_id && m_rt.pick_id->isGpuReady() &&
             m_rt.pick_framebuffer && m_rt.pick_framebuffer->isGpuReady() &&
             m_pick_staging) {
@@ -295,8 +293,9 @@ namespace dodoe {
 
         m_command_list->open();
 
-        const Bool taa_targets_recreated = m_rt_recreated;
-        if (taa_targets_recreated) {
+        const Bool taa_active = RenderSettings::IsTaaEnabled();
+        const Bool taa_targets_recreated = m_rt_recreated || (taa_active && !m_taa_was_active);
+        if (m_rt_recreated) {
             m_gbuffer_pass->resetMotionHistory();
         }
         m_rt_recreated = false;
@@ -399,7 +398,7 @@ namespace dodoe {
             GfxTextureHandle aa_input = m_rt.scene_color;
 
             // TAA resolve (HDR accumulation over history)
-            if (m_taa_pass && m_rt.taa_history_a && m_rt.taa_history_b) {
+            if (taa_active && m_taa_pass && m_rt.taa_history_a && m_rt.taa_history_b) {
                 m_command_list->beginMarker("Baseline.TAA");
                 ++m_taa_frame_index;
                 const Bool taa_flip = (m_taa_frame_index & 1ull) != 0ull;
@@ -431,8 +430,13 @@ namespace dodoe {
             m_command_list->endMarker();
         }
 
+        m_taa_was_active = taa_active;
+
         m_command_list->beginMarker("Baseline.Present");
-        m_present_pass->render(gfx, swapchain_image_index, extent, m_rt.fxaa_color);
+        const GfxTextureHandle present_color = RenderSettings::IsFxaaEnabled()
+            ? m_rt.fxaa_color
+            : m_rt.tone_map_color;
+        m_present_pass->render(gfx, swapchain_image_index, extent, present_color);
         m_command_list->endMarker();
 
         m_command_list->close();

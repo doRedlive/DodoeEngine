@@ -82,7 +82,7 @@ namespace dodoe {
 	        m_pass_storage.push_back(std::move(pass));
 	    }
 
-	    std::sort(m_ordered_passes.begin(), m_ordered_passes.end(),
+	    std::stable_sort(m_ordered_passes.begin(), m_ordered_passes.end(),
 	        [](const IRenderPass* a, const IRenderPass* b) {
 	            return static_cast<UInt8>(a->getPhase())
 	                 < static_cast<UInt8>(b->getPhase());

@@ -1,5 +1,19 @@
 {
     "assets": {
+        "13053305500296079834": {
+            "asset_file_mtime": 0,
+            "asset_id": 13053305500296079834,
+            "dependencies": [],
+            "import_signature": 879418651,
+            "is_builtin": false,
+            "meta_file_mtime": 13435246648,
+            "name": "Dodoe-Color",
+            "source_file_mtime": 13435246648,
+            "source_path": "Pictures/Dodoe-Color.jpg",
+            "sub_object_id": 0,
+            "tags": [],
+            "type": "Texture"
+        },
         "8563892044875938951": {
             "asset_file_mtime": 0,
             "asset_id": 8563892044875938951,

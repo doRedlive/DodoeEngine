@@ -78,6 +78,8 @@ namespace dodoe {
         render_settings_init_info.enable_single_thread = m_init_info.spec.render_settings.enable_single_thread;
         render_settings_init_info.enable_baseline_renderer = m_init_info.spec.render_settings.enable_baseline_renderer;
         render_settings_init_info.present_mode = m_init_info.spec.render_settings.present_mode;
+        render_settings_init_info.aa_mode = m_init_info.spec.render_settings.aa_mode;
+        render_settings_init_info.msaa_sample_count = m_init_info.spec.render_settings.msaa_sample_count;
         render_settings_init_info.windowless = m_init_info.spec.render_settings.windowless;
         render_settings_init_info.enable_gpu_driven = m_init_info.spec.render_settings.enable_gpu_driven;
         render_settings_init_info.enable_async_compute = m_init_info.spec.render_settings.enable_async_compute;

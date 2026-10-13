@@ -56,6 +56,12 @@ std::vector<InspectorFieldMetadata> SettingsFieldMetadata()
         MakeEnumField("render_settings.present_mode", {
             {"VSync", 0}, {"Mailbox", 1}, {"Immediate", 2},
         }),
+        MakeEnumField("render_settings.aa_mode", {
+            {"None", 0}, {"MSAA", 1}, {"FXAA", 2}, {"TAA", 3},
+        }),
+        MakeEnumField("render_settings.msaa_sample_count", {
+            {"1x", 1}, {"2x", 2}, {"4x", 4}, {"8x", 8},
+        }),
     };
 #ifdef DODOE_DEBUG_ENABLED
     fields.push_back(MakeBoolField("render_settings.enable_single_thread"));
@@ -116,6 +122,11 @@ void SettingsPanel::setFilePath(const QString& path)
 void SettingsPanel::setFallback(std::function<nlohmann::json()> fallback)
 {
     m_fallback = std::move(fallback);
+}
+
+const nlohmann::json& SettingsPanel::value() const
+{
+    return m_editor->value();
 }
 
 void SettingsPanel::reload()

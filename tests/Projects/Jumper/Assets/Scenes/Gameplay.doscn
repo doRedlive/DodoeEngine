@@ -13,7 +13,7 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"background\":[1.0,1.0,1.0,1.0],\"far_plane\":100.0,\"fov\":60.0,\"near_plane\":0.01,\"type\":2}",
+                    "m_component": "{\"background\":[0.4313725531101227,0.5529412031173706,1.0,1.0],\"far_plane\":100.0,\"fov\":60.0,\"near_plane\":0.01,\"type\":2}",
                     "m_type_name": "CameraComponent"
                 }
             ],
@@ -33,11 +33,11 @@
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.5,0.5],\"sprite\":{\"file_id\":{\"file_uuid\":0,\"path\":\"Pictures/grm.jpg\"},\"uuid\":0}}",
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.5,0.5],\"sprite\":{\"asset_id\":13053305500296079834,\"sub_object_id\":0}}",
                     "m_type_name": "SpriteRendererComponent"
                 },
                 {
-                    "m_component": "{\"type\":1,\"gravity_scale\":3.0,\"fixed_rotation\":true}",
+                    "m_component": "{\"fixed_rotation\":true,\"gravity_scale\":3.0,\"type\":1}",
                     "m_type_name": "Rigidbody2dComponent"
                 },
                 {
@@ -115,6 +115,34 @@
             ],
             "m_parent": 0,
             "m_uuid": 1005
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "New GameObject",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":2611389085235349461,\"name\":\"New GameObject\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[23.392803192138672,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.0,0.0],\"sprite\":{\"asset_id\":13053305500296079834,\"sub_object_id\":1}}",
+                    "m_type_name": "SpriteRendererComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 2611389085235349461
         }
     ],
     "m_name": "Gameplay"

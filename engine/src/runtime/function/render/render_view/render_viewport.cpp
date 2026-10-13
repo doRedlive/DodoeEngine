@@ -150,7 +150,8 @@ namespace dodoe {
     }
 
     RenderViewFamily RenderViewport::buildViewFamily(const RenderScene& scene, Float time, Float delta,
-        const Matrix4f& view_mat, const Matrix4f& proj_mat, Bool show_editor_primitives) const {
+        const Matrix4f& view_mat, const Matrix4f& proj_mat, Bool show_editor_primitives,
+        const Vector4f& background) const {
         RenderViewFamily family{};
         family.setFrameTime(time, delta);
 
@@ -160,6 +161,7 @@ namespace dodoe {
         auto& view = family.createView(MakeIdentifier("main_view"));
         view.setMatrices(view_mat, jittered_proj);
         view.setJitterData(jitter_ndc, proj_mat * view_mat);
+        view.setBackground(background);
 
         auto& taa_extension = view.getOrCreateExtension<TaaViewExtension>();
         taa_extension.jitter_ndc = jitter_ndc;

@@ -18,6 +18,7 @@ namespace dodoe {
 
         Scope<Sprite> s_fallback{};
         UnorderedMap<InstanceID, Scope<Sprite>> s_sprite_manager{};
+        UnorderedMap<ObjectID, Sprite*> s_sprite_by_ref{};
 
         void CreateFallback() {
             auto sprite_scope = create_scope<Sprite>(ObjectID{UUID(0), 3});
@@ -33,6 +34,14 @@ namespace dodoe {
     }
 
     Sprite* SpriteManager::Create(const ObjectID& ref, const String& path) {
+        const UInt32 sprite_local_id = ref.local_id == 0u ? 1u : ref.local_id;
+        const ObjectID sprite_ref{ref.asset_id, sprite_local_id};
+
+        const auto cached = s_sprite_by_ref.find(sprite_ref);
+        if (cached != s_sprite_by_ref.end()) {
+            return cached->second;
+        }
+
         Float ppu = kDefaultPixelsPerUnit;
         Float u0 = 0.0f;
         Float v0 = 0.0f;
@@ -45,9 +54,13 @@ namespace dodoe {
             const FsPath absolute = asset_manager->getAssetDir() / FsPath(path.c_str());
             ImportSettings settings;
             if (ImportSettingsIO::Load(absolute, settings)) {
+                if (settings.settings.contains("pixelsPerUnit") &&
+                    settings.settings["pixelsPerUnit"].is_number()) {
+                    ppu = settings.settings["pixelsPerUnit"].get<Float>();
+                }
                 const SpriteMeta* found = nullptr;
                 for (const auto& sprite : settings.sprites) {
-                    if (sprite.local_id == ref.local_id) {
+                    if (sprite.local_id == sprite_local_id) {
                         found = &sprite;
                         break;
                     }
@@ -64,13 +77,14 @@ namespace dodoe {
             }
         }
 
-        auto sprite = create_scope<Sprite>(ref);
+        auto sprite = create_scope<Sprite>(sprite_ref);
         Sprite* sprite_raw = sprite.get();
         sprite_raw->setTexture(PPtr<Texture2D>(texture));
         sprite_raw->setUVRect(u0, v0, u1, v1);
         sprite_raw->setPixelsPerUnit(ppu);
         const InstanceID instance_id = sprite_raw->getInstanceID();
         s_sprite_manager.emplace(instance_id, std::move(sprite));
+        s_sprite_by_ref.emplace(sprite_ref, sprite_raw);
         return sprite_raw;
     }
 
@@ -83,6 +97,7 @@ namespace dodoe {
 
     void SpriteManager::Shutdown() {
         s_sprite_manager.clear();
+        s_sprite_by_ref.clear();
         s_fallback = {};
     }
 

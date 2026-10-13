@@ -35,6 +35,7 @@ namespace dodoe {
         RenderViewTarget* target{nullptr};
         Matrix4f view{1.0f};
         Matrix4f proj{1.0f};
+        Vector4f background{0.0f, 0.0f, 0.0f, 1.0f};
         Bool show_editor{false};
     };
 

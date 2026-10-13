@@ -1,19 +1,21 @@
 {
-    "name": "Jumper",
     "app_mode": 1,
-    "width": 1280,
     "height": 720,
-    "window_resizeable": true,
+    "name": "Jumper",
     "render_settings": {
+        "aa_mode": 0,
         "api": 3,
+        "culling_path": 0,
+        "enable_async_compute": false,
+        "enable_baseline_renderer": false,
+        "enable_bindless": false,
+        "enable_gpu_driven": false,
+        "enable_single_thread": false,
+        "msaa_sample_count": 2,
         "pipeline": 5,
         "present_mode": 1,
-        "enable_single_thread": false,
-        "enable_baseline_renderer": false,
-        "windowless": false,
-        "enable_gpu_driven": false,
-        "enable_async_compute": false,
-        "enable_bindless": false,
-        "culling_path": 0
-    }
+        "windowless": false
+    },
+    "width": 1280,
+    "window_resizeable": true
 }

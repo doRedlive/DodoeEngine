@@ -20,6 +20,7 @@
 #include "runtime/core/log/log_system.h"
 #include "runtime/core/meta/component_db.h"
 #include "runtime/core/project/project.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/render_view/camera_provider.h"
 #include "runtime/function/render/render_view/render_view_manager.h"
@@ -1024,6 +1025,21 @@ bool RuntimeEditorBackend::bootEngine()
     }
     m_camera->commitToRenderChannel();
     return true;
+}
+
+void RuntimeEditorBackend::applyRenderSettingsOverlay(const nlohmann::json& renderSettings)
+{
+    if (!m_booted) {
+        return;
+    }
+    const auto aaIt = renderSettings.find("aa_mode");
+    if (aaIt != renderSettings.end() && aaIt->is_number_integer()) {
+        dodoe::RenderSettings::SetAntialiasingMode(static_cast<dodoe::AntialiasingMode>(aaIt->get<int>()));
+    }
+    const auto sampleIt = renderSettings.find("msaa_sample_count");
+    if (sampleIt != renderSettings.end() && sampleIt->is_number_integer()) {
+        dodoe::RenderSettings::SetMsaaSampleCount(static_cast<dodoe::UInt32>(sampleIt->get<unsigned int>()));
+    }
 }
 
 void RuntimeEditorBackend::requestSceneSurfaceResize(const ViewportMetrics& metrics)

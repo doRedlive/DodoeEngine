@@ -50,6 +50,9 @@ public:
 
     bool enterWorkspace(const QString& projectPath);
 
+signals:
+    void returnToProjectManagerRequested();
+
 protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;

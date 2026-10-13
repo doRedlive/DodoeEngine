@@ -139,6 +139,7 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorRemoteWidget.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorRemoteWidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/InspectorWidgets.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ConsolePanel.h

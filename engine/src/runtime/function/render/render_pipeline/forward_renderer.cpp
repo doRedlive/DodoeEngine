@@ -45,10 +45,7 @@ namespace dodoe {
         addFeature<TransparentSceneFeature>();
         addFeature<ShadowSceneFeature>();
         addFeature<SkyboxFeature>();
-
-        if (RenderSettings::GetMsaaSampleCount() > 1) {
-            addFeature<MsaaResolveFeature>();
-        }
+        addFeature<MsaaResolveFeature>();
 
         if (IsRenderFeatureEnabled("postprocess")) addFeature<PostProcessFeature>();
         if (IsRenderFeatureEnabled("sprite"))      addFeature<SpriteFeature>();

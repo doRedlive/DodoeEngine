@@ -2,7 +2,56 @@
 
 #include "render_settings.h"
 
+#include <algorithm>
+
 namespace dodoe {
+
+    namespace {
+
+        Bool IsForwardPipeline(const RenderingPipelineType pipeline) {
+            return pipeline == RenderingPipelineType::Forward
+                || pipeline == RenderingPipelineType::ForwardPlus;
+        }
+
+        Bool IsDeferredPipeline(const RenderingPipelineType pipeline) {
+            return pipeline == RenderingPipelineType::Deferred
+                || pipeline == RenderingPipelineType::DeferredPlus;
+        }
+
+        AntialiasingMode ResolveAaMode(const RenderingPipelineType pipeline, const Bool baseline,
+                                       const AntialiasingMode mode) {
+            if (mode == AntialiasingMode::None) {
+                return AntialiasingMode::None;
+            }
+            if (baseline || IsDeferredPipeline(pipeline)) {
+                return (mode == AntialiasingMode::FXAA || mode == AntialiasingMode::TAA)
+                    ? mode : AntialiasingMode::TAA;
+            }
+            if (IsForwardPipeline(pipeline)) {
+                return (mode == AntialiasingMode::MSAA || mode == AntialiasingMode::FXAA)
+                    ? mode : AntialiasingMode::MSAA;
+            }
+            return AntialiasingMode::None;
+        }
+
+        UInt32 SnapSampleCount(UInt32 sample_count) {
+            sample_count = std::clamp(sample_count, 1u, 8u);
+            while (sample_count & (sample_count - 1u)) {
+                sample_count &= sample_count - 1u;
+            }
+            return sample_count;
+        }
+
+        const char* AaModeName(const AntialiasingMode mode) {
+            switch (mode) {
+                case AntialiasingMode::MSAA: return "MSAA";
+                case AntialiasingMode::FXAA: return "FXAA";
+                case AntialiasingMode::TAA:  return "TAA";
+                default: return "None";
+            }
+        }
+
+    }
 
     bool RenderSettings::Initialize(const RenderSettingsInitInfo& info) {
         if (info.api == RenderBackendApiType::None) return false;
@@ -15,12 +64,44 @@ namespace dodoe {
         m_present_mode = info.present_mode;
         m_windowless = info.windowless;
         m_create_default_view_target = info.create_default_view_target;
+        m_aa_mode.store(ResolveAaMode(info.pipeline, info.enable_baseline_renderer, info.aa_mode), std::memory_order_relaxed);
+        m_msaa_sample_count.store(SnapSampleCount(info.msaa_sample_count), std::memory_order_relaxed);
         m_feature_settings.enable_gpu_driven = info.enable_gpu_driven;
         m_feature_settings.enable_async_compute = info.enable_async_compute;
         m_feature_settings.enable_bindless = info.enable_bindless;
         m_feature_settings.culling_path = info.culling_path;
 
         return true;
+    }
+
+    void RenderSettings::SetAntialiasingMode(const AntialiasingMode mode) {
+        const AntialiasingMode resolved = ResolveAaMode(m_pipeline, m_enable_baseline_renderer, mode);
+        const AntialiasingMode previous = m_aa_mode.exchange(resolved, std::memory_order_relaxed);
+        if (previous != resolved) {
+            DO_INFO("RenderSettings: antialiasing mode changed ({} -> {})", AaModeName(previous), AaModeName(resolved));
+        }
+    }
+
+    void RenderSettings::SetMsaaSampleCount(const UInt32 sample_count) {
+        const UInt32 snapped = SnapSampleCount(sample_count);
+        const UInt32 previous = m_msaa_sample_count.exchange(snapped, std::memory_order_relaxed);
+        if (previous != snapped) {
+            DO_INFO("RenderSettings: msaa sample count changed ({}x -> {}x)", previous, snapped);
+        }
+    }
+
+    Bool RenderSettings::IsTaaEnabled() {
+        return GetAntialiasingMode() == AntialiasingMode::TAA
+            && (IsDeferredPipeline(m_pipeline) || m_enable_baseline_renderer);
+    }
+
+    Bool RenderSettings::IsMsaaEnabled() {
+        return GetAntialiasingMode() == AntialiasingMode::MSAA && IsForwardPipeline(m_pipeline);
+    }
+
+    Bool RenderSettings::IsFxaaEnabled() {
+        return GetAntialiasingMode() == AntialiasingMode::FXAA
+            && (IsForwardPipeline(m_pipeline) || IsDeferredPipeline(m_pipeline) || m_enable_baseline_renderer);
     }
 
     void RenderSettings::ResolveFeatures(const RenderFeatureSettings& settings) {

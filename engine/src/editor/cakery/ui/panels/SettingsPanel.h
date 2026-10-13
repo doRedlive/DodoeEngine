@@ -23,6 +23,7 @@ public:
     void setFilePath(const QString& path);
     void setFallback(std::function<nlohmann::json()> fallback);
     void reload();
+    const nlohmann::json& value() const;
 
 signals:
     void saved();

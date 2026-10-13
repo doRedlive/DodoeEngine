@@ -10,6 +10,7 @@
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_view/taa_view_extension.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/function/graphics/gfx_context.h"
 
 namespace dodoe {
@@ -106,6 +107,7 @@ namespace dodoe {
         m_gfx_context = nullptr;
         m_deletion_queue = nullptr;
         m_has_prev_frame = false;
+        m_taa_was_active = false;
     }
 
     void TaaFeature::registerGraphImports(RenderGraphImportRegistry& imports,
@@ -119,9 +121,10 @@ namespace dodoe {
         auto* prev_depth_read = flip ? m_prev_depth_b.get() : m_prev_depth_a.get();
         auto* prev_depth_write = flip ? m_prev_depth_a.get() : m_prev_depth_b.get();
 
+        const Bool taa_active = RenderSettings::IsTaaEnabled();
         const Bool history_changed = history_write->getRevision() != m_history_revision ||
             prev_depth_write->getRevision() != m_prev_depth_revision;
-        const Bool reset = !m_has_prev_frame || history_changed;
+        const Bool reset = !m_has_prev_frame || history_changed || (taa_active && !m_taa_was_active);
         m_history_revision = history_write->getRevision();
         m_prev_depth_revision = prev_depth_write->getRevision();
 
@@ -153,6 +156,7 @@ namespace dodoe {
             m_prev_jitter_uv = Vector2f(0.0f, 0.0f);
         }
         m_has_prev_frame = true;
+        m_taa_was_active = taa_active;
     }
 
     void TaaFeature::collectPasses(PassCollector& collector) {

@@ -21,6 +21,9 @@ namespace dodoe {
 
     void MsaaResolvePass::build(RenderGraphBuilder& graph,
                                 const RenderPassBuildContext& context) {
+        if (RenderSettings::GetMsaaSampleCount() <= 1u) {
+            return;
+        }
         graph.addPass<MsaaResolvePassParameters>(
             "MsaaResolvePass",
             RenderGraphPassFlags::Copy,

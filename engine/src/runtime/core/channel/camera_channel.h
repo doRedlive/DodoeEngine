@@ -13,6 +13,7 @@ namespace dodoe {
     struct CameraData {
         Matrix4f view{1.0f};
         Matrix4f projection{1.0f};
+        Vector4f background{0.0f, 0.0f, 0.0f, 1.0f};
     };
 
     struct CameraChannelArray {

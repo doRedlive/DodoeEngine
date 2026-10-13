@@ -10,6 +10,7 @@
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
+#include "runtime/function/render/render_settings.h"
 
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
@@ -51,6 +52,9 @@ namespace dodoe {
 
     void TaaPass::build(RenderGraphBuilder& graph,
                         const RenderPassBuildContext& context) {
+        if (!RenderSettings::IsTaaEnabled()) {
+            return;
+        }
         const auto* shader_library = context.shared_render_service->getShaderLibrary();
         auto* binding_layout_cache = context.shared_render_service->getBindingLayoutCache();
 

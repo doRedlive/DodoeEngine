@@ -6,6 +6,7 @@
 
 #include "../render_pass.h"
 #include "render_pass_blackboard_keys.h"
+#include "runtime/function/render/render_settings.h"
 #include "runtime/function/graphics/gfx.h"
 
 namespace dodoe {
@@ -18,12 +19,18 @@ namespace dodoe {
 	class EditorPickPass : public IRenderPass {
 	public:
 	    using Produces = TypeList<>;
-	    using Consumes = TypeList<SceneTexturesKey>;
+	    using Consumes2D = TypeList<>;
+	    using ConsumesDeferred = TypeList<SceneTexturesKey>;
+
+	    EditorPickPass() = default;
 
 	    RenderPhase getPhase() const override { return RenderPhase::DebugUI; }
 
 	    DynamicArray<Size_t> getConsumedKeys() const override {
-	        return MakeKeyHashes(Consumes{});
+	        if (RenderSettings::GetRenderingPipelineType() == RenderingPipelineType::Only2D) {
+	            return MakeKeyHashes(Consumes2D{});
+	        }
+	        return MakeKeyHashes(ConsumesDeferred{});
 	    }
 
 	    void build(RenderGraphBuilder& graph,
@@ -53,8 +60,9 @@ namespace dodoe {
 	    GfxBufferHandle m_primitive_cb{};
 	    GfxBindingSetHandle m_view_binding_set{};
 	    GfxBindingSetHandle m_primitive_binding_set{};
-	    GfxStagingTextureHandle m_staging_texture{};
-	    DynamicArray<UInt64> m_pick_ids{};
+        GfxStagingTextureHandle m_staging_texture{};
+        DynamicArray<UInt64> m_pick_ids{};
+        UInt64 m_sprite_pick_uuid{0};
 	    UInt64 m_consumed_sequence{0};
 	    UInt64 m_pending_sequence{0};
 	    UInt32 m_active_x{0};

@@ -243,6 +243,14 @@ bool EditorSession::bootEngine()
     return m_backend->bootEngine();
 }
 
+void EditorSession::applyRenderSettingsOverlay(const nlohmann::json& renderSettings)
+{
+    if (!m_backend) {
+        return;
+    }
+    m_backend->applyRenderSettingsOverlay(renderSettings);
+}
+
 void EditorSession::submitViewportMetrics(ViewportMetrics metrics)
 {
     if (!m_backend || m_state == EditorSessionState::Closing || m_state == EditorSessionState::Closed) {

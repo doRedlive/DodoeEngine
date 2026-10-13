@@ -15,6 +15,8 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
+#include "runtime/function/render/render_view/sprite_view_extension.h"
+#include "runtime/function/render/render_scene/sprite_scene_info.h"
 #include "runtime/function/render/render_scene/primitive_scene_info.h"
 #include "runtime/function/render/mesh_draw/mesh_batch.h"
 #include "runtime/function/render/mesh_draw/mesh_draw_types.h"
@@ -26,6 +28,9 @@
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/core/math/math.h"
+
+#include <algorithm>
+#include <cmath>
 
 namespace dodoe {
 
@@ -45,6 +50,62 @@ namespace dodoe {
                 GfxVertexAttributeDesc().setName("TEXCOORD5").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 2).setElementStride(kMeshInstanceStride).setIsInstanced(true),
                 GfxVertexAttributeDesc().setName("TEXCOORD6").setFormat(GfxFormat::RGBA32_FLOAT).setBufferIndex(1).setOffset(sizeof(Vector4f) * 3).setElementStride(kMeshInstanceStride).setIsInstanced(true),
             };
+        }
+
+        UInt64 RaycastSprites(const RenderView& view, Float px, Float py) {
+            const auto* sprite_ext = view.getExtension<SpriteViewExtension>();
+            if (sprite_ext->visible_sprites.empty()) {
+                return 0;
+            }
+            const auto vp = view.getViewportRect();
+            const Float vp_w = vp.z > 0 ? static_cast<Float>(vp.z) : 1.0f;
+            const Float vp_h = vp.w > 0 ? static_cast<Float>(vp.w) : 1.0f;
+            const Float ndc_x = (px - static_cast<Float>(vp.x)) / vp_w * 2.0f - 1.0f;
+            const Float ndc_y = (py - static_cast<Float>(vp.y)) / vp_h * 2.0f - 1.0f;
+            const Matrix4f inv_vp = Math::Inverse(view.getViewProjectionMatrix());
+            const Vector4f near_h = inv_vp * Vector4f(ndc_x, ndc_y, 0.0f, 1.0f);
+            const Vector4f far_h = inv_vp * Vector4f(ndc_x, ndc_y, 1.0f, 1.0f);
+            if (std::abs(near_h.w) < 1e-6f || std::abs(far_h.w) < 1e-6f) {
+                return 0;
+            }
+            const Vector3f near_p = Vector3f(near_h) / near_h.w;
+            const Vector3f far_p = Vector3f(far_h) / far_h.w;
+            const Vector3f dir = far_p - near_p;
+            if (std::abs(dir.z) < 1e-8f) {
+                return 0;
+            }
+            const Float t = -near_p.z / dir.z;
+            if (!(t >= 0.0f) || !(t <= 1.0f)) {
+                return 0;
+            }
+            const Vector2f point(near_p.x + dir.x * t, near_p.y + dir.y * t);
+
+            const SpriteSceneInfo* best = nullptr;
+            for (const auto* sprite : sprite_ext->visible_sprites) {
+                if (sprite->hasInstances()) {
+                    const Vector3f c = sprite->getBoundsCenter();
+                    const Vector3f e = sprite->getBoundsExtents();
+                    if (std::abs(point.x - c.x) > std::max(e.x, 1e-4f) ||
+                        std::abs(point.y - c.y) > std::max(e.y, 1e-4f)) {
+                        continue;
+                    }
+                } else {
+                    const Vector2f p = sprite->getPosition();
+                    const Vector2f s = sprite->getScale();
+                    const Float c = std::cos(sprite->getRotation());
+                    const Float sn = std::sin(sprite->getRotation());
+                    const Vector2f d = point - p;
+                    const Vector2f local(c * d.x + sn * d.y, -sn * d.x + c * d.y);
+                    if (std::abs(local.x) > std::abs(s.x) * 0.5f ||
+                        std::abs(local.y) > std::abs(s.y) * 0.5f) {
+                        continue;
+                    }
+                }
+                if (!best || sprite->getSortingKey() > best->getSortingKey()) {
+                    best = sprite;
+                }
+            }
+            return best ? best->getId().value() : 0;
         }
     }
 
@@ -117,6 +178,9 @@ namespace dodoe {
         if (slot != 0 && static_cast<Size_t>(slot - 1) < m_pick_ids.size()) {
             entity_uuid = m_pick_ids[slot - 1];
         }
+        if (entity_uuid == 0) {
+            entity_uuid = m_sprite_pick_uuid;
+        }
         DO_INFO("EditorPick: resolve seq={} slot={} uuid={}", m_pending_sequence, slot, entity_uuid);
         publishResult(m_pending_sequence, entity_uuid);
     }
@@ -161,11 +225,12 @@ namespace dodoe {
         const auto& primitive_indices = mesh_ext
             ? mesh_ext->getMeshPassPrimitiveIndices(MeshPassType::Opaque)
             : DynamicArray<UInt32>{};
-        const Bool pickable = request.x >= 0 && request.y >= 0 && m_input_layout && m_staging_texture
-            && mesh_ext && !mesh_ext->instance_scene_data.empty() && !primitive_indices.empty();
-        DO_INFO("EditorPick: consume seq={} pickable={}", request.sequence, pickable);
+        const Bool pickable = request.x >= 0 && request.y >= 0 && mesh_ext &&
+            !mesh_ext->instance_scene_data.empty() && !primitive_indices.empty();
+        m_sprite_pick_uuid =
+            RaycastSprites(context.view, static_cast<Float>(request.x), static_cast<Float>(request.y));
         if (!pickable) {
-            publishResult(request.sequence, 0);
+            publishResult(request.sequence, m_sprite_pick_uuid);
             return;
         }
 
@@ -191,8 +256,14 @@ namespace dodoe {
                         GfxFormat::R32_UINT, "RDG EditorPickTarget"),
                     "EditorPickTarget"), pick_attachment);
                 pass_builder.exportTexture(parameters.pick_target, GfxResourceStates::CopySource);
-                parameters.pick_x = m_active_x;
-                parameters.pick_y = m_active_y;
+
+                const auto vp = context.view.getViewportRect();
+                const Int32 vp_w = vp.z > 0 ? vp.z : static_cast<Int32>(extent.x);
+                const Int32 vp_h = vp.w > 0 ? vp.w : static_cast<Int32>(extent.y);
+                const Int32 local_x = std::clamp(static_cast<Int32>(m_active_x) - vp.x, 0, vp_w - 1);
+                const Int32 local_y = std::clamp(static_cast<Int32>(m_active_y) - vp.y, 0, vp_h - 1);
+                parameters.pick_x = static_cast<UInt32>(vp.x + local_x);
+                parameters.pick_y = static_cast<UInt32>(vp.y + (vp_h - 1 - local_y));
             },
             [this](const PickPassParameters& parameters,
                    const RenderGraphPassContext& ctx,
@@ -314,7 +385,7 @@ namespace dodoe {
             m_copy_in_flight = true;
             m_resolve_delay = 2;
         } else {
-            publishResult(m_consumed_sequence, 0);
+            publishResult(m_consumed_sequence, m_sprite_pick_uuid);
         }
     }
 

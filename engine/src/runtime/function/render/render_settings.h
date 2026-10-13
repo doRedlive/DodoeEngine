@@ -4,6 +4,8 @@
 
 #include "dopch.h"
 
+#include <atomic>
+
 #include "runtime/core/meta/reflection/reflection.h"
 
 REFLECTION_TYPE(RenderSettingsInitInfo)
@@ -27,6 +29,13 @@ namespace dodoe {
         DeferredPlus,
         Only2D,
         OnlyGUI,
+    };
+
+    enum class AntialiasingMode {
+        None = 0,
+        MSAA,
+        FXAA,
+        TAA,
     };
 
     enum class PresentMode {
@@ -54,6 +63,10 @@ namespace dodoe {
         Bool enable_baseline_renderer{ false };
         META(Enable)
         PresentMode present_mode{ PresentMode::Mailbox };
+        META(Enable)
+        AntialiasingMode aa_mode{ AntialiasingMode::TAA };
+        META(Enable)
+        UInt32 msaa_sample_count{ 4u };
         META(Enable)
         Bool windowless{ false };
 
@@ -100,6 +113,8 @@ namespace dodoe {
         inline static Bool m_windowless{ false };
         inline static Bool m_create_default_view_target{ true };
         inline static Bool m_gpu_driven_supported{ false };
+        inline static std::atomic<AntialiasingMode> m_aa_mode{ AntialiasingMode::None };
+        inline static std::atomic<UInt32> m_msaa_sample_count{ 4u };
 
         inline static RenderDeviceCapabilities m_device_caps{};
         inline static RenderFeatureSettings m_feature_settings{};
@@ -122,22 +137,21 @@ namespace dodoe {
 
         [[nodiscard]] static Bool IsBindlessActive() { return m_resolved_features.bindless_active; }
 
-        [[nodiscard]] static Bool IsTaaEnabled() {
-            return m_pipeline == RenderingPipelineType::Deferred
-                || m_pipeline == RenderingPipelineType::DeferredPlus
-                || m_enable_baseline_renderer;
-        }
+        [[nodiscard]] static AntialiasingMode GetAntialiasingMode() { return m_aa_mode.load(std::memory_order_relaxed); }
+        static DODOE_API void SetAntialiasingMode(AntialiasingMode mode);
 
-        [[nodiscard]] static Bool IsMsaaEnabled() {
-            return m_pipeline == RenderingPipelineType::Forward
-                || m_pipeline == RenderingPipelineType::ForwardPlus;
-        }
+        [[nodiscard]] static UInt32 GetMsaaSampleCountSetting() { return m_msaa_sample_count.load(std::memory_order_relaxed); }
+        static DODOE_API void SetMsaaSampleCount(UInt32 sample_count);
+
+        [[nodiscard]] static DODOE_API Bool IsTaaEnabled();
+        [[nodiscard]] static DODOE_API Bool IsMsaaEnabled();
+        [[nodiscard]] static DODOE_API Bool IsFxaaEnabled();
 
         [[nodiscard]] static UInt32 GetMsaaSampleCount() {
             if (!IsMsaaEnabled() || GetRenderBackendApiType() == RenderBackendApiType::OpenGL) {
                 return 1u;
             }
-            return 4u;
+            return GetMsaaSampleCountSetting();
         }
 
         [[nodiscard]] static const RenderDeviceCapabilities& GetDeviceCapabilities() { return m_device_caps; }

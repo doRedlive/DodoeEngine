@@ -64,6 +64,9 @@ namespace dodoe {
         sprite_object->setUUID(id.id);
 
         Sprite* resolved = sr.sprite.get();
+        if (resolved && String(resolved->getObjectTypeName()) != "Sprite") {
+            resolved = nullptr;
+        }
         if (!resolved && sr.sprite.getObjectID().isValid()) {
             const ObjectID& ref = sr.sprite.getObjectID();
             resolved = ResourceManager::Self().loadObject<Sprite>(ref.asset_id, ref.local_id);

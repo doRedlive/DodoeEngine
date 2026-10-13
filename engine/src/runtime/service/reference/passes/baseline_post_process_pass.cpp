@@ -9,6 +9,7 @@
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_view/render_view.h"
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
+#include "runtime/function/render/render_settings.h"
 
 namespace dodoe {
 
@@ -108,27 +109,31 @@ namespace dodoe {
 
         // FXAA: LDR (tone mapped) -> LDR (anti-aliased)
         m_command_list->setTextureState(tone_map_color->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
-        m_command_list->setTextureState(fxaa_color->getRHI(), GfxAllSubresources, GfxResourceStates::RenderTarget);
         RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
-        m_command_list->clearTextureFloat(fxaa_color->getRHI(), GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
 
-        if (m_fxaa_pipeline) {
-            auto binding_set = m_device->createBindingSet(
-                GfxBindingSetDesc()
-                    .addItem(GfxBindingSetItem::Texture_SRV(1, tone_map_color->getRHIHandle().Get()))
-                    .addItem(GfxBindingSetItem::Sampler(9, m_sampler.Get())),
-                m_binding_layout.Get());
-            GfxGraphicsState graphics_state;
-            graphics_state.setPipeline(m_fxaa_pipeline.Get());
-            graphics_state.setFramebuffer(fxaa_framebuffer);
-            graphics_state.setViewport(viewport_state);
-            graphics_state.addBindingSet(binding_set.Get());
-            m_command_list->setGraphicsState(graphics_state);
-            RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+        if (RenderSettings::IsFxaaEnabled()) {
+            m_command_list->setTextureState(fxaa_color->getRHI(), GfxAllSubresources, GfxResourceStates::RenderTarget);
+            RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
+            m_command_list->clearTextureFloat(fxaa_color->getRHI(), GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
+
+            if (m_fxaa_pipeline) {
+                auto binding_set = m_device->createBindingSet(
+                    GfxBindingSetDesc()
+                        .addItem(GfxBindingSetItem::Texture_SRV(1, tone_map_color->getRHIHandle().Get()))
+                        .addItem(GfxBindingSetItem::Sampler(9, m_sampler.Get())),
+                    m_binding_layout.Get());
+                GfxGraphicsState graphics_state;
+                graphics_state.setPipeline(m_fxaa_pipeline.Get());
+                graphics_state.setFramebuffer(fxaa_framebuffer);
+                graphics_state.setViewport(viewport_state);
+                graphics_state.addBindingSet(binding_set.Get());
+                m_command_list->setGraphicsState(graphics_state);
+                RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
+            }
+
+            m_command_list->setTextureState(fxaa_color->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
+            RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
         }
-
-        m_command_list->setTextureState(fxaa_color->getRHI(), GfxAllSubresources, GfxResourceStates::ShaderResource);
-        RenderFrameCounters::Self().addBarrier(); m_command_list->commitBarriers();
     }
 
 } // namespace dodoe

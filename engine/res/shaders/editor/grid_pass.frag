@@ -68,9 +68,11 @@ void main()
     }
     float grid_depth = clip.z / clip.w;
 
-    float scene_depth = texture(sampler2D(u_SceneDepth, u_Sampler), v_UV).x;
-    if (scene_depth < grid_depth) {
-        discard;
+    if (u_CameraWorld.w > 0.5) {
+        float scene_depth = texture(sampler2D(u_SceneDepth, u_Sampler), v_UV).x;
+        if (scene_depth < grid_depth) {
+            discard;
+        }
     }
 
     vec2 grid_coord = (abs(plane_n.y) > 0.5) ? point.xz : point.xy;
@@ -97,7 +99,10 @@ void main()
     }
 
     vec3 grid_color = vec3(0.42, 0.44, 0.46);
-    vec3 axis_color = (axis_u >= axis_v) ? vec3(0.78, 0.28, 0.28) : vec3(0.28, 0.45, 0.85);
+    bool xy_plane = abs(plane_n.z) > 0.5;
+    vec3 axis_color = xy_plane
+        ? ((axis_u >= axis_v) ? vec3(0.78, 0.28, 0.28) : vec3(0.30, 0.62, 0.30))
+        : ((axis_u >= axis_v) ? vec3(0.78, 0.28, 0.28) : vec3(0.28, 0.45, 0.85));
     vec3 rgb = (axis > grid) ? axis_color : grid_color;
     o_Color = vec4(rgb, alpha);
 }
