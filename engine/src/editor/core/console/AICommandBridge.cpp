@@ -2,7 +2,8 @@
 
 #include "AICommandBridge.h"
 
-#include "core/console/CommandRegistry.h"
+#include "CommandRegistry.h"
+#include "ExecutionRecorder.h"
 #include "core/history/EditHistory.h"
 #include "core/EditorSession.h"
 
@@ -13,14 +14,32 @@ std::string AICommandBridge::beginSession(const std::string& goal) {
         endSession(true);
     }
     m_inSession = true;
+    m_sessionGoal = goal;
     m_session.editHistory().beginTransaction(Author::AI, goal);
     m_sessionCheckpoint = m_session.editHistory().createCheckpoint(goal, Author::AI, CheckpointMode::DocumentSnapshot);
-    return std::to_string(m_sessionCheckpoint);
+    m_sessionId = std::to_string(m_sessionCheckpoint);
+    ExecutionRecord marker;
+    marker.command = "session.begin";
+    marker.data = nlohmann::json{{"goal", goal}, {"checkpoint", m_sessionCheckpoint}};
+    marker.author = "ai";
+    marker.session = m_sessionId;
+    marker.ok = true;
+    ExecutionRecorder::self().record(std::move(marker));
+    return m_sessionId;
 }
 
 void AICommandBridge::endSession(bool keep) {
     if (!m_inSession) return;
     m_inSession = false;
+    ExecutionRecord marker;
+    marker.command = "session.end";
+    marker.data = nlohmann::json{{"kept", keep}};
+    marker.author = "ai";
+    marker.session = m_sessionId;
+    marker.ok = true;
+    ExecutionRecorder::self().record(std::move(marker));
+    m_sessionId.clear();
+    m_sessionGoal.clear();
     if (keep) {
         m_session.editHistory().commit();
     } else {
@@ -39,7 +58,10 @@ nlohmann::json AICommandBridge::execute(const std::string& name, const nlohmann:
         err["error"] = "Command not allowed: " + name;
         return err;
     }
-    auto result = CommandRegistry::self().executeStructured(m_session, name, args);
+    CommandContext context;
+    context.author = "ai";
+    context.session = m_sessionId;
+    auto result = CommandRegistry::self().executeStructured(m_session, name, args, context);
     nlohmann::json out;
     out["ok"] = result.ok;
     out["message"] = result.message;
@@ -48,7 +70,10 @@ nlohmann::json AICommandBridge::execute(const std::string& name, const nlohmann:
 }
 
 nlohmann::json AICommandBridge::query(const std::string& name, const nlohmann::json& args) {
-    auto result = CommandRegistry::self().executeStructured(m_session, name, args);
+    CommandContext context;
+    context.author = "ai";
+    context.session = m_sessionId;
+    auto result = CommandRegistry::self().executeStructured(m_session, name, args, context);
     nlohmann::json out;
     out["ok"] = result.ok;
     out["message"] = result.message;

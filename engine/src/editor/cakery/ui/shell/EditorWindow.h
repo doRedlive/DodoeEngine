@@ -41,6 +41,7 @@ class ScriptPanel;
 class SettingsPanel;
 class TileLayersPanel;
 class TilePalettePanel;
+class WorkflowPanel;
 
 class EditorWindow : public QMainWindow {
     Q_OBJECT
@@ -99,6 +100,7 @@ private:
     ads::CDockWidget* m_consoleDock = nullptr;
     ads::CDockWidget* m_terminalDock = nullptr;
     ads::CDockWidget* m_historyDock = nullptr;
+    ads::CDockWidget* m_workflowDock = nullptr;
     ads::CDockWidget* m_gameSettingsDock = nullptr;
     ads::CDockWidget* m_engineSettingsDock = nullptr;
     ads::CDockWidget* m_tilePaletteDock = nullptr;
@@ -107,6 +109,7 @@ private:
     SceneSurface* m_sceneSurface = nullptr;
     HierarchyPanel* m_hierarchy = nullptr;
     HistoryPanel* m_historyPanel = nullptr;
+    WorkflowPanel* m_workflowPanel = nullptr;
     InspectorPanel* m_inspector = nullptr;
     ProjectPanel* m_projectPanel = nullptr;
     ConsolePanel* m_console = nullptr;

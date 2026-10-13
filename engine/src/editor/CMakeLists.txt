@@ -25,6 +25,10 @@ set(EDITOR_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/history/EditorHistory.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/CommandRegistry.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/CommandRegistry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/ExecutionRecorder.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/ExecutionRecorder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/WorkflowTemplate.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/WorkflowTemplate.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/AICommandBridge.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/AICommandBridge.cpp
 )
@@ -146,6 +150,10 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ConsolePanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowGraphView.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowGraphView.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.h

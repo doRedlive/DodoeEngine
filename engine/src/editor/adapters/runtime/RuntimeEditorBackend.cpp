@@ -22,6 +22,7 @@
 #include "runtime/core/project/project.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_system.h"
+#include "runtime/function/render/render_graph/render_graph_debug.h"
 #include "runtime/function/render/render_view/camera_provider.h"
 #include "runtime/function/render/render_view/render_view_manager.h"
 #include "runtime/function/render/render_view/render_view_target.h"
@@ -45,6 +46,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <sstream>
+#include <thread>
 
 using namespace dodoe;
 
@@ -138,6 +140,58 @@ void CollectAssetIds(const nlohmann::json& value, std::vector<std::uint64_t>& ou
             CollectAssetIds(item, out);
         }
     }
+}
+
+nlohmann::json SummarizeTelemetry(const std::vector<dodoe::FrameTelemetry>& frames)
+{
+    nlohmann::json summary;
+    summary["frames"] = frames.size();
+    if (frames.empty()) {
+        return summary;
+    }
+    double renderMsSum = 0.0;
+    double renderMsMax = 0.0;
+    double deltaMsSum = 0.0;
+    double gameMsSum = 0.0;
+    std::uint64_t drawCallsSum = 0;
+    std::uint32_t drawCallsMax = 0;
+    std::uint64_t dispatchesSum = 0;
+    std::uint64_t barriersSum = 0;
+    std::uint64_t instancesSum = 0;
+    for (const dodoe::FrameTelemetry& frame : frames) {
+        renderMsSum += frame.render_thread_ms;
+        renderMsMax = std::max(renderMsMax, static_cast<double>(frame.render_thread_ms));
+        gameMsSum += frame.game_thread_ms;
+        deltaMsSum += frame.delta_time_ms;
+        drawCallsSum += frame.draw_call_count;
+        drawCallsMax = std::max(drawCallsMax, frame.draw_call_count);
+        dispatchesSum += frame.dispatch_count;
+        barriersSum += frame.barrier_count;
+        instancesSum += frame.drawn_instance_count;
+    }
+    const double countF = static_cast<double>(frames.size());
+    summary["delta_ms_avg"] = deltaMsSum / countF;
+    summary["render_ms_avg"] = renderMsSum / countF;
+    summary["render_ms_max"] = renderMsMax;
+    summary["game_ms_avg"] = gameMsSum / countF;
+    summary["draw_calls_avg"] = static_cast<double>(drawCallsSum) / countF;
+    summary["draw_calls_max"] = drawCallsMax;
+    summary["dispatches_avg"] = static_cast<double>(dispatchesSum) / countF;
+    summary["barriers_avg"] = static_cast<double>(barriersSum) / countF;
+    summary["drawn_instances_avg"] = static_cast<double>(instancesSum) / countF;
+    return summary;
+}
+
+nlohmann::json TelemetryFramesToJson(const std::vector<dodoe::FrameTelemetry>& frames)
+{
+    nlohmann::json framesJson = nlohmann::json::array();
+    for (const dodoe::FrameTelemetry& frame : frames) {
+        const nlohmann::json parsed = nlohmann::json::parse(std::string(frame.toJSON().c_str()), nullptr, false);
+        if (!parsed.is_discarded()) {
+            framesJson.push_back(parsed);
+        }
+    }
+    return framesJson;
 }
 
 } // anonymous namespace
@@ -1027,19 +1081,254 @@ bool RuntimeEditorBackend::bootEngine()
     return true;
 }
 
-void RuntimeEditorBackend::applyRenderSettingsOverlay(const nlohmann::json& renderSettings)
+bool RuntimeEditorBackend::applyRenderSettingsOverlay(const nlohmann::json& renderSettings)
 {
     if (!m_booted) {
-        return;
+        return false;
     }
+    bool applied = false;
     const auto aaIt = renderSettings.find("aa_mode");
     if (aaIt != renderSettings.end() && aaIt->is_number_integer()) {
-        dodoe::RenderSettings::SetAntialiasingMode(static_cast<dodoe::AntialiasingMode>(aaIt->get<int>()));
+        const int aa = aaIt->get<int>();
+        if (aa >= 0 && aa <= 3) {
+            dodoe::RenderSettings::SetAntialiasingMode(static_cast<dodoe::AntialiasingMode>(aa));
+            applied = true;
+        }
     }
     const auto sampleIt = renderSettings.find("msaa_sample_count");
     if (sampleIt != renderSettings.end() && sampleIt->is_number_integer()) {
-        dodoe::RenderSettings::SetMsaaSampleCount(static_cast<dodoe::UInt32>(sampleIt->get<unsigned int>()));
+        const unsigned int samples = sampleIt->get<unsigned int>();
+        if (samples == 1 || samples == 2 || samples == 4 || samples == 8) {
+            dodoe::RenderSettings::SetMsaaSampleCount(static_cast<dodoe::UInt32>(samples));
+            applied = true;
+        }
     }
+    return applied;
+}
+
+bool RuntimeEditorBackend::queryFrameStats(nlohmann::json& out) const
+{
+    out = nullptr;
+    if (!m_booted || !m_app) {
+        return false;
+    }
+    dodoe::RenderSystem* renderSystem = m_app->context().getRenderSystem();
+    dodoe::RenderFrameScheduler* scheduler = renderSystem ? renderSystem->getFrameScheduler() : nullptr;
+    if (!scheduler) {
+        return false;
+    }
+    const dodoe::FrameTelemetryCollector& telemetry = scheduler->getTelemetry();
+    const std::size_t count = telemetry.getCount();
+    out = nlohmann::json::object();
+    out["available"] = count > 0;
+    out["sample_count"] = count;
+    out["history_capacity"] = telemetry.getCapacity();
+    if (count == 0) {
+        return true;
+    }
+
+    std::vector<dodoe::FrameTelemetry> frames;
+    frames.reserve(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        frames.push_back(telemetry.previous(static_cast<std::uint32_t>(i)));
+    }
+    std::reverse(frames.begin(), frames.end());
+
+    out["summary"] = SummarizeTelemetry(frames);
+    constexpr std::size_t kRecentFrames = 32;
+    if (frames.size() > kRecentFrames) {
+        frames.erase(frames.begin(), frames.end() - static_cast<std::ptrdiff_t>(kRecentFrames));
+    }
+    out["frames"] = TelemetryFramesToJson(frames);
+    return true;
+}
+
+bool RuntimeEditorBackend::runBenchmark(const int frames, nlohmann::json& out)
+{
+    out = nullptr;
+    if (!m_booted || !m_app) {
+        return false;
+    }
+    dodoe::RenderSystem* renderSystem = m_app->context().getRenderSystem();
+    dodoe::RenderFrameScheduler* scheduler = renderSystem ? renderSystem->getFrameScheduler() : nullptr;
+    if (!scheduler) {
+        return false;
+    }
+    const dodoe::FrameTelemetryCollector& telemetry = scheduler->getTelemetry();
+    const std::uint64_t startFrame = telemetry.getCount() > 0 ? telemetry.current().frame_number : 0;
+
+    const int clamped = std::clamp(frames, 16, 3600);
+    for (int i = 0; i < clamped; ++i) {
+        tickAtSafePoint();
+    }
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (std::chrono::steady_clock::now() < deadline) {
+        const std::uint64_t lastFrame = telemetry.getCount() > 0 ? telemetry.current().frame_number : 0;
+        if (lastFrame >= startFrame + static_cast<std::uint64_t>(clamped)) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    std::vector<dodoe::FrameTelemetry> measured;
+    const std::size_t count = telemetry.getCount();
+    for (std::size_t i = 0; i < count; ++i) {
+        const dodoe::FrameTelemetry& frame = telemetry.previous(static_cast<std::uint32_t>(i));
+        if (frame.frame_number > startFrame) {
+            measured.push_back(frame);
+        }
+    }
+    std::reverse(measured.begin(), measured.end());
+
+    out = nlohmann::json::object();
+    out["frames_requested"] = clamped;
+    out["frames_measured"] = measured.size();
+    out["summary"] = SummarizeTelemetry(measured);
+    out["frames"] = TelemetryFramesToJson(measured);
+
+    m_previousBenchmark = std::move(m_lastBenchmark);
+    m_lastBenchmark = out;
+    return true;
+}
+
+bool RuntimeEditorBackend::queryBenchmarkComparison(nlohmann::json& out) const
+{
+    out = nullptr;
+    if (m_previousBenchmark.is_null() || m_lastBenchmark.is_null()) {
+        return false;
+    }
+    const nlohmann::json& prev = m_previousBenchmark["summary"];
+    const nlohmann::json& last = m_lastBenchmark["summary"];
+    if (!prev.is_object() || !last.is_object()) {
+        return false;
+    }
+    out = nlohmann::json::object();
+    out["baseline_frames"] = m_previousBenchmark.value("frames_measured", 0);
+    out["current_frames"] = m_lastBenchmark.value("frames_measured", 0);
+
+    nlohmann::json deltas = nlohmann::json::object();
+    for (auto it = prev.begin(); it != prev.end(); ++it) {
+        const auto rit = last.find(it.key());
+        if (rit == last.end() || !it->is_number() || !rit->is_number()) {
+            continue;
+        }
+        const double before = it->get<double>();
+        const double after = rit->get<double>();
+        nlohmann::json delta;
+        delta["before"] = before;
+        delta["after"] = after;
+        delta["delta"] = after - before;
+        delta["delta_pct"] = before != 0.0 ? ((after - before) / before) * 100.0 : 0.0;
+        deltas[it.key()] = std::move(delta);
+    }
+    out["deltas"] = std::move(deltas);
+    return true;
+}
+
+bool RuntimeEditorBackend::queryRenderGraphSnapshot(nlohmann::json& out) const
+{
+    out = nullptr;
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+    if (!m_booted || !m_app) {
+        return false;
+    }
+    const dodoe::Ref<dodoe::RenderGraphDebugSnapshot> snapshot = dodoe::RenderGraphDebug::Snapshot();
+    if (!snapshot) {
+        return false;
+    }
+    out = nlohmann::json::object();
+    out["sequence"] = snapshot->sequence;
+    out["pass_count"] = snapshot->pass_count;
+    out["culled_count"] = snapshot->culled_count;
+    out["resource_count"] = snapshot->resource_count;
+    out["level_count"] = snapshot->level_count;
+
+    nlohmann::json subgraphs = nlohmann::json::array();
+    for (const dodoe::String& name : snapshot->subgraph_names) {
+        subgraphs.push_back(std::string(name.c_str()));
+    }
+    out["subgraph_names"] = std::move(subgraphs);
+
+    nlohmann::json passes = nlohmann::json::array();
+    for (const dodoe::RenderGraphDebugPass& pass : snapshot->passes) {
+        nlohmann::json item;
+        item["name"] = std::string(pass.name.c_str());
+        item["culled"] = pass.culled;
+        item["level"] = pass.level;
+        item["barrier_count"] = pass.barrier_count;
+        item["subgraph_index"] = pass.subgraph_index;
+        const std::uint32_t flags = static_cast<std::uint32_t>(pass.flags);
+        item["raster"] = (flags & static_cast<std::uint32_t>(dodoe::RenderGraphPassFlags::Raster)) != 0;
+        item["compute"] = (flags & static_cast<std::uint32_t>(dodoe::RenderGraphPassFlags::Compute)) != 0;
+        item["copy"] = (flags & static_cast<std::uint32_t>(dodoe::RenderGraphPassFlags::Copy)) != 0;
+        item["async_compute"] = (flags & static_cast<std::uint32_t>(dodoe::RenderGraphPassFlags::AsyncCompute)) != 0;
+        item["never_cull"] = (flags & static_cast<std::uint32_t>(dodoe::RenderGraphPassFlags::NeverCull)) != 0;
+        passes.push_back(std::move(item));
+    }
+    out["passes"] = std::move(passes);
+
+    nlohmann::json levels = nlohmann::json::array();
+    for (const dodoe::DynamicArray<std::uint32_t>& level : snapshot->levels) {
+        nlohmann::json indices = nlohmann::json::array();
+        for (const std::uint32_t passIndex : level) {
+            indices.push_back(passIndex);
+        }
+        levels.push_back(std::move(indices));
+    }
+    out["levels"] = std::move(levels);
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool RuntimeEditorBackend::queryRenderSettings(nlohmann::json& out) const
+{
+    out = nullptr;
+    if (!m_booted || !m_app) {
+        return false;
+    }
+
+    out = nlohmann::json::object();
+    out["api"] = static_cast<int>(dodoe::RenderSettings::GetRenderBackendApiType());
+    out["api_name"] = std::string(dodoe::RenderSettings::GetRenderBackendApiTypeStr().c_str());
+    out["pipeline"] = static_cast<int>(dodoe::RenderSettings::GetRenderingPipelineType());
+    out["present_mode"] = static_cast<int>(dodoe::RenderSettings::GetPresentMode());
+    out["aa_mode"] = static_cast<int>(dodoe::RenderSettings::GetAntialiasingMode());
+    out["msaa_sample_count"] = dodoe::RenderSettings::GetMsaaSampleCountSetting();
+    out["msaa_effective_sample_count"] = dodoe::RenderSettings::GetMsaaSampleCount();
+    out["msaa_enabled"] = dodoe::RenderSettings::IsMsaaEnabled();
+    out["fxaa_enabled"] = dodoe::RenderSettings::IsFxaaEnabled();
+    out["taa_enabled"] = dodoe::RenderSettings::IsTaaEnabled();
+    out["enable_single_thread"] = dodoe::RenderSettings::IsSingleThread();
+    out["baseline_renderer"] = dodoe::RenderSettings::IsEnableBaselineRender();
+    out["windowless"] = dodoe::RenderSettings::IsWindowless();
+
+    nlohmann::json enums;
+    enums["api"] = {"None", "OpenGL", "Vulkan", "D3D12"};
+    enums["pipeline"] = {"None", "Forward", "ForwardPlus", "Deferred", "DeferredPlus", "Only2D", "OnlyGUI"};
+    enums["present_mode"] = {"VSync", "Mailbox", "Immediate"};
+    enums["aa_mode"] = {"None", "MSAA", "FXAA", "TAA"};
+    out["enum_names"] = std::move(enums);
+
+    nlohmann::json resolved;
+    const dodoe::ResolvedRenderFeatures& features = dodoe::RenderSettings::GetResolvedFeatures();
+    resolved["gpu_driven_active"] = features.gpu_driven_active;
+    resolved["async_compute_active"] = features.async_compute_active;
+    resolved["bindless_active"] = features.bindless_active;
+    resolved["gpu_driven_fallback_reason"] = std::string(features.gpu_driven_fallback_reason.c_str());
+    out["resolved_features"] = std::move(resolved);
+
+    nlohmann::json viewport;
+    viewport["attached"] = m_surface.logicalWidth > 0;
+    viewport["logical_width"] = m_surface.logicalWidth;
+    viewport["logical_height"] = m_surface.logicalHeight;
+    viewport["pixel_width"] = m_surface.pixelWidth;
+    viewport["pixel_height"] = m_surface.pixelHeight;
+    viewport["device_pixel_ratio"] = m_surface.devicePixelRatio;
+    out["viewport"] = std::move(viewport);
+    return true;
 }
 
 void RuntimeEditorBackend::requestSceneSurfaceResize(const ViewportMetrics& metrics)

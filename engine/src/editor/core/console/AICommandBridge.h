@@ -29,6 +29,8 @@ private:
     EditorSession& m_session;
     bool m_inSession = false;
     uint64_t m_sessionCheckpoint = 0;
+    std::string m_sessionId;
+    std::string m_sessionGoal;
     std::vector<std::string> m_allowlist;
     bool m_confirmRequired = false;
 

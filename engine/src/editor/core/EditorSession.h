@@ -54,7 +54,9 @@ public:
     bool getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const;
     bool attachSceneSurface(SceneSurfaceDescriptor surface);
     bool bootEngine();
-    void applyRenderSettingsOverlay(const nlohmann::json& renderSettings);
+    bool applyRenderSettingsOverlay(const nlohmann::json& renderSettings);
+    bool runBenchmark(int frames, nlohmann::json& out);
+    bool queryBenchmarkComparison(nlohmann::json& out) const;
     void submitViewportMetrics(ViewportMetrics metrics);
     void tick();
     void shutdown();
@@ -128,6 +130,9 @@ public:
     void assetRefreshProgress(std::size_t& done, std::size_t& total) const;
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const;
     bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const;
+    bool queryFrameStats(nlohmann::json& out) const;
+    bool queryRenderGraphSnapshot(nlohmann::json& out) const;
+    bool queryRenderSettings(nlohmann::json& out) const;
 
 private:
     bool canEditDocument() const;

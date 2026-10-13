@@ -198,6 +198,18 @@ public:
         out.clear();
         return false;
     }
+    virtual bool queryFrameStats(nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
+    virtual bool queryRenderGraphSnapshot(nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
+    virtual bool queryRenderSettings(nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
     virtual void setEventCallback(std::function<void(const BackendEventMessage&)> callback) = 0;
     virtual bool assetRefreshPending() const { return false; }
     virtual void assetRefreshProgress(std::size_t& done, std::size_t& total) const {
@@ -206,7 +218,15 @@ public:
     }
     virtual bool attachSceneSurface(const SceneSurfaceDescriptor& surface) = 0;
     virtual bool bootEngine() = 0;
-    virtual void applyRenderSettingsOverlay(const nlohmann::json& /*renderSettings*/) {}
+    virtual bool applyRenderSettingsOverlay(const nlohmann::json& /*renderSettings*/) { return false; }
+    virtual bool runBenchmark(int /*frames*/, nlohmann::json& out) {
+        out = nullptr;
+        return false;
+    }
+    virtual bool queryBenchmarkComparison(nlohmann::json& out) const {
+        out = nullptr;
+        return false;
+    }
     virtual void requestSceneSurfaceResize(const ViewportMetrics& metrics) = 0;
     virtual bool detachSceneSurface() = 0;
     virtual void tickAtSafePoint() = 0;

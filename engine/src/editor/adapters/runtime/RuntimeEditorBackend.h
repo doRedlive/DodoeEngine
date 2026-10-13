@@ -66,10 +66,15 @@ public:
     void assetRefreshProgress(std::size_t& done, std::size_t& total) const override;
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const override;
     bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const override;
+    bool queryFrameStats(nlohmann::json& out) const override;
+    bool queryRenderGraphSnapshot(nlohmann::json& out) const override;
+    bool queryRenderSettings(nlohmann::json& out) const override;
     bool findMissingAssetReferences(std::vector<std::uint64_t>& out) const override;
     bool attachSceneSurface(const SceneSurfaceDescriptor& surface) override;
     bool bootEngine() override;
-    void applyRenderSettingsOverlay(const nlohmann::json& renderSettings) override;
+    bool applyRenderSettingsOverlay(const nlohmann::json& renderSettings) override;
+    bool runBenchmark(int frames, nlohmann::json& out) override;
+    bool queryBenchmarkComparison(nlohmann::json& out) const override;
     void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
     bool detachSceneSurface() override;
     void tickAtSafePoint() override;
@@ -181,6 +186,8 @@ private:
     bool m_hasPendingMetrics = false;
     bool m_booted = false;
     bool m_modulesInitialized = false;
+    nlohmann::json m_lastBenchmark;
+    nlohmann::json m_previousBenchmark;
     BackendState m_state = BackendState::Created;
     std::string m_diagnostic;
 };

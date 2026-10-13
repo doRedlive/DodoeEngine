@@ -2,8 +2,11 @@
 
 #include "CommandRegistry.h"
 
+#include "ExecutionRecorder.h"
+
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <sstream>
 #include <utility>
@@ -55,6 +58,28 @@ CommandResult ValidateStructuredArgs(const CommandSpec& spec, const nlohmann::js
         if (!IsParamType(*it, param.type)) {
             return CommandResult::Err("Invalid type for parameter '" + param.name + "' (expected " +
                                       param.type + ")");
+        }
+        if (!param.enumValues.empty()) {
+            bool matched = false;
+            if (it->is_string()) {
+                const std::string text = it->get<std::string>();
+                for (const auto& allowed : param.enumValues) {
+                    if (text == allowed) {
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+            if (!matched) {
+                std::string allowedList;
+                for (const auto& allowed : param.enumValues) {
+                    if (!allowedList.empty()) {
+                        allowedList += ", ";
+                    }
+                    allowedList += allowed;
+                }
+                return CommandResult::Err("Parameter '" + param.name + "' must be one of: " + allowedList);
+            }
         }
     }
     return CommandResult::Ok();
@@ -113,12 +138,8 @@ void CommandRegistry::parseLine(const std::string& line, std::string& outName, C
     }
 }
 
-CommandResult CommandRegistry::execute(EditorSession& session, const std::string& line) {
-    std::string name;
-    CommandArgs args;
-    parseLine(line, name, args);
-
-    const auto* spec = find(name);
+CommandResult CommandRegistry::invoke(EditorSession& session, const std::string& name, const CommandArgs& args) {
+    const CommandSpec* spec = find(name);
     if (!spec) {
         return CommandResult::Err("Unknown command: " + name);
     }
@@ -132,8 +153,32 @@ CommandResult CommandRegistry::execute(EditorSession& session, const std::string
     }
 }
 
-CommandResult CommandRegistry::executeStructured(EditorSession& session, const std::string& name, const nlohmann::json& args) {
-    const auto* spec = find(name);
+CommandResult CommandRegistry::execute(EditorSession& session, const std::string& line) {
+    std::string name;
+    CommandArgs args;
+    parseLine(line, name, args);
+
+    const auto start = std::chrono::steady_clock::now();
+    const CommandResult result = invoke(session, name, args);
+    const auto end = std::chrono::steady_clock::now();
+
+    const CommandSpec* spec = find(name);
+    ExecutionRecord record;
+    record.command = name;
+    record.args = line;
+    record.ok = result.ok;
+    record.message = result.message;
+    record.data = result.data;
+    record.author = "user";
+    record.mutating = spec ? spec->mutating : false;
+    record.duration_ms = std::chrono::duration<double, std::milli>(end - start).count();
+    ExecutionRecorder::self().record(std::move(record));
+    return result;
+}
+
+CommandResult CommandRegistry::executeStructuredInternal(EditorSession& session, const std::string& name,
+                                                          const nlohmann::json& args) {
+    const CommandSpec* spec = find(name);
     if (!spec) {
         return CommandResult::Err("Unknown command: " + name);
     }
@@ -155,11 +200,32 @@ CommandResult CommandRegistry::executeStructured(EditorSession& session, const s
             cargs.positional.push_back(StructuredToken(*it));
         }
     }
-    try {
-        return spec->handler(session, cargs);
-    } catch (const nlohmann::json::exception& error) {
-        return CommandResult::Err("Invalid arguments for " + name + ": " + std::string(error.what()));
-    }
+    return invoke(session, name, cargs);
+}
+
+CommandResult CommandRegistry::executeStructured(EditorSession& session, const std::string& name, const nlohmann::json& args) {
+    return executeStructured(session, name, args, CommandContext{});
+}
+
+CommandResult CommandRegistry::executeStructured(EditorSession& session, const std::string& name,
+                                                 const nlohmann::json& args, const CommandContext& context) {
+    const auto start = std::chrono::steady_clock::now();
+    const CommandResult result = executeStructuredInternal(session, name, args);
+    const auto end = std::chrono::steady_clock::now();
+
+    const CommandSpec* spec = find(name);
+    ExecutionRecord record;
+    record.command = name;
+    record.args = args;
+    record.ok = result.ok;
+    record.message = result.message;
+    record.data = result.data;
+    record.author = context.author.empty() ? std::string("user") : context.author;
+    record.session = context.session;
+    record.mutating = spec ? spec->mutating : false;
+    record.duration_ms = std::chrono::duration<double, std::milli>(end - start).count();
+    ExecutionRecorder::self().record(std::move(record));
+    return result;
 }
 
 std::vector<CommandSpec> CommandRegistry::list() const {
@@ -178,6 +244,9 @@ nlohmann::json CommandRegistry::toolSchema() const {
             // UUID is an editor-level alias; expose a standard JSON Schema type.
             prop["type"] = p.type == "uuid" ? "string" : p.type;
             prop["description"] = p.help;
+            if (!p.enumValues.empty()) {
+                prop["enum"] = p.enumValues;
+            }
             props[p.name] = prop;
         }
         t["parameters"] = nlohmann::json{{"type", "object"}, {"properties", props}};

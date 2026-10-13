@@ -21,6 +21,7 @@
 #include "cakery/ui/panels/ConsolePanel.h"
 #include "cakery/ui/panels/HierarchyPanel.h"
 #include "cakery/ui/panels/HistoryPanel.h"
+#include "cakery/ui/panels/WorkflowPanel.h"
 #include "cakery/ui/panels/InspectorPanel.h"
 #include "cakery/ui/panels/ProjectPanel.h"
 #include "cakery/ui/panels/SettingsPanel.h"
@@ -870,10 +871,10 @@ void EditorWindow::createWindowMenu()
 
 void EditorWindow::populatePanelMenus()
 {
-    const std::array<ads::CDockWidget*, 11> panelDocks = {
+    const std::array<ads::CDockWidget*, 12> panelDocks = {
         m_hierarchyDock, m_inspectorDock, m_projectDock, m_consoleDock,
-        m_terminalDock, m_historyDock, m_gameSettingsDock, m_engineSettingsDock,
-        m_tilePaletteDock, m_tileLayersDock, m_scriptDock,
+        m_terminalDock, m_historyDock, m_workflowDock, m_gameSettingsDock,
+        m_engineSettingsDock, m_tilePaletteDock, m_tileLayersDock, m_scriptDock,
     };
     QList<QAction*> toggleActions;
     for (ads::CDockWidget* dock : panelDocks) {
@@ -1482,6 +1483,17 @@ void EditorWindow::createPanels()
     m_historyDock->setWidget(m_historyPanel);
     m_historyDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_historyDock, m_consoleDock->dockAreaWidget());
+
+    m_workflowDock = new ads::CDockWidget(tr("Workflow"));
+    m_workflowDock->setObjectName(QStringLiteral("Workflow"));
+    m_workflowPanel = new WorkflowPanel(m_context, m_workflowDock);
+    m_workflowDock->setWidget(m_workflowPanel);
+    m_workflowDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
+    m_workflowDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
+    m_workflowDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
+    m_workflowDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_workflowDock, m_historyDock->dockAreaWidget());
+    m_workflowDock->toggleView(false);
 
     m_tilePaletteDock = new ads::CDockWidget(tr("Tile Palette"));
     m_tilePaletteDock->setObjectName(QStringLiteral("Tile Palette"));

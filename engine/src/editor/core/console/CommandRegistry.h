@@ -35,6 +35,12 @@ struct ParamSpec {
     std::string type;
     std::string help;
     bool required = false;
+    std::vector<std::string> enumValues;
+};
+
+struct CommandContext {
+    std::string author = "user";
+    std::string session;
 };
 
 struct CommandSpec {
@@ -55,6 +61,8 @@ public:
 
     CommandResult execute(EditorSession& session, const std::string& line);
     CommandResult executeStructured(EditorSession& session, const std::string& name, const nlohmann::json& args);
+    CommandResult executeStructured(EditorSession& session, const std::string& name,
+                                    const nlohmann::json& args, const CommandContext& context);
 
     std::vector<CommandSpec> list() const;
     nlohmann::json toolSchema() const;
@@ -64,6 +72,9 @@ private:
     CommandRegistry() = default;
     const CommandSpec* find(const std::string& name) const;
     static void parseLine(const std::string& line, std::string& outName, CommandArgs& outArgs);
+    CommandResult executeStructuredInternal(EditorSession& session, const std::string& name,
+                                            const nlohmann::json& args);
+    CommandResult invoke(EditorSession& session, const std::string& name, const CommandArgs& args);
 
     std::vector<CommandSpec> m_specs;
 };

@@ -200,6 +200,33 @@ bool EditorSession::queryAssetThumbnail(const std::string& path, int size, nlohm
     return m_backend->queryAssetThumbnail(path, size, out);
 }
 
+bool EditorSession::queryFrameStats(nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->queryFrameStats(out);
+}
+
+bool EditorSession::queryRenderGraphSnapshot(nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->queryRenderGraphSnapshot(out);
+}
+
+bool EditorSession::queryRenderSettings(nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->queryRenderSettings(out);
+}
+
 bool EditorSession::getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const
 {
     settings = AssetImportSettings{};
@@ -243,12 +270,30 @@ bool EditorSession::bootEngine()
     return m_backend->bootEngine();
 }
 
-void EditorSession::applyRenderSettingsOverlay(const nlohmann::json& renderSettings)
+bool EditorSession::applyRenderSettingsOverlay(const nlohmann::json& renderSettings)
 {
     if (!m_backend) {
-        return;
+        return false;
     }
-    m_backend->applyRenderSettingsOverlay(renderSettings);
+    return m_backend->applyRenderSettingsOverlay(renderSettings);
+}
+
+bool EditorSession::runBenchmark(int frames, nlohmann::json& out)
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->runBenchmark(frames, out);
+}
+
+bool EditorSession::queryBenchmarkComparison(nlohmann::json& out) const
+{
+    if (!m_backend) {
+        out = nullptr;
+        return false;
+    }
+    return m_backend->queryBenchmarkComparison(out);
 }
 
 void EditorSession::submitViewportMetrics(ViewportMetrics metrics)
