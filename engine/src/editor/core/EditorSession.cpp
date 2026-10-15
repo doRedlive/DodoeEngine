@@ -2,9 +2,12 @@
 
 #include "EditorSession.h"
 #include "core/console/CommandRegistry.h"
+#include "core/console/McpServer.h"
 #include "core/commands/CompositeCommand.h"
 #include "core/document/EditorDocumentSerializer.h"
 
+#include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <unordered_map>
@@ -314,6 +317,11 @@ void EditorSession::submitViewportMetrics(ViewportMetrics metrics)
 
 void EditorSession::tick()
 {
+    McpServer::self().drain();
+    if (m_benchmarkActive) {
+        tickBenchmark();
+        return;
+    }
     if (m_backend && (m_state == EditorSessionState::Ready || m_state == EditorSessionState::Degraded)) {
         if (m_surfaceAttached && m_hasPendingViewportMetrics) {
             m_backend->requestSceneSurfaceResize(m_pendingViewportMetrics);
@@ -323,8 +331,72 @@ void EditorSession::tick()
     }
 }
 
+bool EditorSession::startBenchmark(int frames, std::function<void(bool, nlohmann::json)> onFinished,
+                                   std::function<void(int, int)> onProgress)
+{
+    if (m_benchmarkActive || !m_backend ||
+        (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded)) {
+        return false;
+    }
+    const int clamped = std::clamp(frames, 16, 3600);
+    if (!m_backend->startBenchmark(clamped)) {
+        return false;
+    }
+    m_benchmarkFrames = clamped;
+    m_benchmarkDone = 0;
+    m_benchmarkDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    m_benchmarkFinished = std::move(onFinished);
+    m_benchmarkProgress = std::move(onProgress);
+    m_benchmarkActive = true;
+    return true;
+}
+
+void EditorSession::tickBenchmark()
+{
+    if (!m_backend || (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded)) {
+        m_benchmarkActive = false;
+        auto finished = std::move(m_benchmarkFinished);
+        m_benchmarkFinished = nullptr;
+        m_benchmarkProgress = nullptr;
+        if (finished) {
+            finished(false, nlohmann::json{{"error", "Runtime unavailable"}});
+        }
+        return;
+    }
+    constexpr int kFramesPerTick = 4;
+    const int step = std::min(kFramesPerTick, m_benchmarkFrames - m_benchmarkDone);
+    for (int i = 0; i < step; ++i) {
+        m_backend->tickAtSafePoint();
+    }
+    m_benchmarkDone += step;
+    if (m_benchmarkProgress) {
+        m_benchmarkProgress(m_benchmarkDone, m_benchmarkFrames);
+    }
+    const bool expired = std::chrono::steady_clock::now() >= m_benchmarkDeadline;
+    if (m_benchmarkDone < m_benchmarkFrames && !expired) {
+        return;
+    }
+    nlohmann::json out;
+    const bool ok = m_backend->pollBenchmark(out);
+    if (!ok && !expired) {
+        return;
+    }
+    m_benchmarkActive = false;
+    auto finished = std::move(m_benchmarkFinished);
+    m_benchmarkFinished = nullptr;
+    m_benchmarkProgress = nullptr;
+    if (finished) {
+        finished(ok, ok ? std::move(out)
+                        : nlohmann::json{{"error", "Benchmark timed out waiting for frames"}});
+    }
+}
+
 void EditorSession::shutdown()
 {
+    McpServer::self().stop();
+    m_benchmarkActive = false;
+    m_benchmarkFinished = nullptr;
+    m_benchmarkProgress = nullptr;
     if (!m_backend || m_state == EditorSessionState::Closed) {
         return;
     }

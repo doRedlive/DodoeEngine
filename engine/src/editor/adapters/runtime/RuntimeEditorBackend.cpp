@@ -27,6 +27,7 @@
 #include "runtime/function/render/render_view/render_view_manager.h"
 #include "runtime/function/render/render_view/render_view_target.h"
 #include "runtime/function/script/script_system.h"
+#include "runtime/function/time/time_system.h"
 #include "runtime/function/window/window.h"
 #include "runtime/function/window/window_manager.h"
 #include "runtime/function/render/pixel2d/sprite.h"
@@ -192,6 +193,27 @@ nlohmann::json TelemetryFramesToJson(const std::vector<dodoe::FrameTelemetry>& f
         }
     }
     return framesJson;
+}
+
+nlohmann::json CollectBenchmarkReport(const dodoe::FrameTelemetryCollector& telemetry,
+                                      std::uint64_t startFrame, std::uint64_t maxFrameExclusive,
+                                      int framesRequested)
+{
+    std::vector<dodoe::FrameTelemetry> measured;
+    const std::size_t count = telemetry.getCount();
+    for (std::size_t i = 0; i < count; ++i) {
+        const dodoe::FrameTelemetry& frame = telemetry.previous(static_cast<std::uint32_t>(i));
+        if (frame.frame_number > startFrame && frame.frame_number < maxFrameExclusive) {
+            measured.push_back(frame);
+        }
+    }
+    std::reverse(measured.begin(), measured.end());
+    nlohmann::json out = nlohmann::json::object();
+    out["frames_requested"] = framesRequested;
+    out["frames_measured"] = measured.size();
+    out["summary"] = SummarizeTelemetry(measured);
+    out["frames"] = TelemetryFramesToJson(measured);
+    return out;
 }
 
 } // anonymous namespace
@@ -1162,8 +1184,8 @@ bool RuntimeEditorBackend::runBenchmark(const int frames, nlohmann::json& out)
         tickAtSafePoint();
     }
 
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    while (std::chrono::steady_clock::now() < deadline) {
+    const UInt64 deadline = dodoe::TimeSystem::GetSteadyTimeMs() + 5000;
+    while (dodoe::TimeSystem::GetSteadyTimeMs() < deadline) {
         const std::uint64_t lastFrame = telemetry.getCount() > 0 ? telemetry.current().frame_number : 0;
         if (lastFrame >= startFrame + static_cast<std::uint64_t>(clamped)) {
             break;
@@ -1171,21 +1193,56 @@ bool RuntimeEditorBackend::runBenchmark(const int frames, nlohmann::json& out)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    std::vector<dodoe::FrameTelemetry> measured;
-    const std::size_t count = telemetry.getCount();
-    for (std::size_t i = 0; i < count; ++i) {
-        const dodoe::FrameTelemetry& frame = telemetry.previous(static_cast<std::uint32_t>(i));
-        if (frame.frame_number > startFrame) {
-            measured.push_back(frame);
-        }
-    }
-    std::reverse(measured.begin(), measured.end());
+    out = CollectBenchmarkReport(telemetry, startFrame, ~0ULL, clamped);
 
-    out = nlohmann::json::object();
-    out["frames_requested"] = clamped;
-    out["frames_measured"] = measured.size();
-    out["summary"] = SummarizeTelemetry(measured);
-    out["frames"] = TelemetryFramesToJson(measured);
+    m_previousBenchmark = std::move(m_lastBenchmark);
+    m_lastBenchmark = out;
+    return true;
+}
+
+bool RuntimeEditorBackend::startBenchmark(const int frames)
+{
+    if (!m_booted || !m_app) {
+        return false;
+    }
+    dodoe::RenderSystem* renderSystem = m_app->context().getRenderSystem();
+    dodoe::RenderFrameScheduler* scheduler = renderSystem ? renderSystem->getFrameScheduler() : nullptr;
+    if (!scheduler) {
+        return false;
+    }
+    const dodoe::FrameTelemetryCollector& telemetry = scheduler->getTelemetry();
+    m_benchmarkFramesRequested = std::clamp(frames, 16, 3600);
+    m_benchmarkStartFrame = telemetry.getCount() > 0 ? telemetry.current().frame_number : 0;
+    m_benchmarkDeadlineMs = dodoe::TimeSystem::GetSteadyTimeMs() + 30000;
+    m_benchmarkRunning = true;
+    return true;
+}
+
+bool RuntimeEditorBackend::pollBenchmark(nlohmann::json& out)
+{
+    out = nullptr;
+    if (!m_benchmarkRunning || !m_booted || !m_app) {
+        return false;
+    }
+    dodoe::RenderSystem* renderSystem = m_app->context().getRenderSystem();
+    dodoe::RenderFrameScheduler* scheduler = renderSystem ? renderSystem->getFrameScheduler() : nullptr;
+    if (!scheduler) {
+        m_benchmarkRunning = false;
+        return false;
+    }
+    const dodoe::FrameTelemetryCollector& telemetry = scheduler->getTelemetry();
+    const std::uint64_t lastFrame = telemetry.getCount() > 0 ? telemetry.current().frame_number : 0;
+    const bool reached = lastFrame >= m_benchmarkStartFrame +
+                                            static_cast<std::uint64_t>(m_benchmarkFramesRequested);
+    const bool expired = dodoe::TimeSystem::GetSteadyTimeMs() >= m_benchmarkDeadlineMs;
+    if (!reached && !expired) {
+        return false;
+    }
+    m_benchmarkRunning = false;
+    out = CollectBenchmarkReport(telemetry, m_benchmarkStartFrame,
+                                 m_benchmarkStartFrame +
+                                     static_cast<std::uint64_t>(m_benchmarkFramesRequested),
+                                 m_benchmarkFramesRequested);
 
     m_previousBenchmark = std::move(m_lastBenchmark);
     m_lastBenchmark = out;
@@ -1257,6 +1314,7 @@ bool RuntimeEditorBackend::queryRenderGraphSnapshot(nlohmann::json& out) const
         item["culled"] = pass.culled;
         item["level"] = pass.level;
         item["barrier_count"] = pass.barrier_count;
+        item["cpu_ms"] = pass.cpu_ms;
         item["subgraph_index"] = pass.subgraph_index;
         const std::uint32_t flags = static_cast<std::uint32_t>(pass.flags);
         item["raster"] = (flags & static_cast<std::uint32_t>(dodoe::RenderGraphPassFlags::Raster)) != 0;

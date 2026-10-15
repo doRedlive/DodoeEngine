@@ -7,16 +7,37 @@
 #include "core/history/EditHistory.h"
 #include "core/EditorSession.h"
 
+#include <algorithm>
+
 namespace cakery {
 
+AICommandBridge& AICommandBridge::self() {
+    static AICommandBridge instance;
+    return instance;
+}
+
+void AICommandBridge::attach(EditorSession& session) {
+    m_session = &session;
+}
+
+void AICommandBridge::detach() {
+    if (m_inSession) {
+        endSession(true);
+    }
+    m_session = nullptr;
+}
+
 std::string AICommandBridge::beginSession(const std::string& goal) {
+    if (!m_session) {
+        return {};
+    }
     if (m_inSession) {
         endSession(true);
     }
     m_inSession = true;
     m_sessionGoal = goal;
-    m_session.editHistory().beginTransaction(Author::AI, goal);
-    m_sessionCheckpoint = m_session.editHistory().createCheckpoint(goal, Author::AI, CheckpointMode::DocumentSnapshot);
+    m_session->editHistory().beginTransaction(Author::AI, goal);
+    m_sessionCheckpoint = m_session->editHistory().createCheckpoint(goal, Author::AI, CheckpointMode::DocumentSnapshot);
     m_sessionId = std::to_string(m_sessionCheckpoint);
     ExecutionRecord marker;
     marker.command = "session.begin";
@@ -29,7 +50,7 @@ std::string AICommandBridge::beginSession(const std::string& goal) {
 }
 
 void AICommandBridge::endSession(bool keep) {
-    if (!m_inSession) return;
+    if (!m_inSession || !m_session) return;
     m_inSession = false;
     ExecutionRecord marker;
     marker.command = "session.end";
@@ -41,9 +62,9 @@ void AICommandBridge::endSession(bool keep) {
     m_sessionId.clear();
     m_sessionGoal.clear();
     if (keep) {
-        m_session.editHistory().commit();
+        m_session->editHistory().commit();
     } else {
-        m_session.editHistory().revertTo(m_sessionCheckpoint);
+        m_session->editHistory().revertTo(m_sessionCheckpoint);
     }
 }
 
@@ -52,6 +73,12 @@ nlohmann::json AICommandBridge::listCommands() {
 }
 
 nlohmann::json AICommandBridge::execute(const std::string& name, const nlohmann::json& args) {
+    if (!m_session) {
+        nlohmann::json err;
+        err["ok"] = false;
+        err["error"] = "No editor session attached";
+        return err;
+    }
     if (!isAllowed(name)) {
         nlohmann::json err;
         err["ok"] = false;
@@ -61,7 +88,7 @@ nlohmann::json AICommandBridge::execute(const std::string& name, const nlohmann:
     CommandContext context;
     context.author = "ai";
     context.session = m_sessionId;
-    auto result = CommandRegistry::self().executeStructured(m_session, name, args, context);
+    auto result = CommandRegistry::self().executeStructured(*m_session, name, args, context);
     nlohmann::json out;
     out["ok"] = result.ok;
     out["message"] = result.message;
@@ -70,10 +97,16 @@ nlohmann::json AICommandBridge::execute(const std::string& name, const nlohmann:
 }
 
 nlohmann::json AICommandBridge::query(const std::string& name, const nlohmann::json& args) {
+    if (!m_session) {
+        nlohmann::json err;
+        err["ok"] = false;
+        err["error"] = "No editor session attached";
+        return err;
+    }
     CommandContext context;
     context.author = "ai";
     context.session = m_sessionId;
-    auto result = CommandRegistry::self().executeStructured(m_session, name, args, context);
+    auto result = CommandRegistry::self().executeStructured(*m_session, name, args, context);
     nlohmann::json out;
     out["ok"] = result.ok;
     out["message"] = result.message;
@@ -81,7 +114,15 @@ nlohmann::json AICommandBridge::query(const std::string& name, const nlohmann::j
     return out;
 }
 
+bool AICommandBridge::isDenied(const std::string& name) const {
+    for (auto& d : m_denylist) {
+        if (name == d || name.rfind(d + ".", 0) == 0) return true;
+    }
+    return false;
+}
+
 bool AICommandBridge::isAllowed(const std::string& name) const {
+    if (isDenied(name)) return false;
     if (m_allowlist.empty()) return true;
     for (auto& a : m_allowlist) {
         if (name == a || name.rfind(a + ".", 0) == 0) return true;

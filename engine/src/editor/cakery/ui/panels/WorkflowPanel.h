@@ -6,6 +6,8 @@
 
 #include "core/Signal.h"
 
+#include <nlohmann/json.hpp>
+
 class QComboBox;
 class QPlainTextEdit;
 class QToolButton;
@@ -30,6 +32,8 @@ private:
     void captureTemplate();
     void runTemplate();
     void clearHistory();
+    void showContextMenu(const QPoint& pos);
+    void rerunRecord(const nlohmann::json& record, const nlohmann::json* argsOverride);
     std::string authorFilter() const;
 
     EditorWorkspaceContext& m_context;

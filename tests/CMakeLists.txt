@@ -14,9 +14,12 @@ enable_testing()
 set(DODOE_TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data")
 
 function(dodoe_add_test TEST_NAME)
-    cmake_parse_arguments(ARG "" "LABEL;TIMEOUT" "SOURCES" ${ARGN})
+    cmake_parse_arguments(ARG "" "LABEL;TIMEOUT" "SOURCES;LIBS" ${ARGN})
     add_executable(${TEST_NAME} ${ARG_SOURCES})
     target_link_libraries(${TEST_NAME} PRIVATE gtest_main DodoeRuntime DodoeNewDelete)
+    if(ARG_LIBS)
+        target_link_libraries(${TEST_NAME} PRIVATE ${ARG_LIBS})
+    endif()
     target_include_directories(${TEST_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/engine/src/runtime")
     target_compile_definitions(${TEST_NAME} PRIVATE DODOE_TEST_DATA_DIR="${DODOE_TEST_DATA_DIR}")
     set_target_properties(${TEST_NAME} PROPERTIES

@@ -77,6 +77,10 @@ namespace dodoe {
         RenderFramePacket m_recording_packet{};
         std::mutex m_record_mutex{};
         FrameCommand m_last_frame_command{};
+        GfxTimerQuery m_gpu_frame_queries[2]{};
+        UInt32 m_gpu_frame_query_slot{0};
+        Float m_last_gpu_frame_ms{0.0f};
+        Bool m_gpu_frame_ms_valid{false};
 
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:

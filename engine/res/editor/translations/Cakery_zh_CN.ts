@@ -100,4 +100,33 @@
   <name>ProjectConfig</name>
   <message><source>Missing</source><translation>缺失</translation></message>
 </context>
+<context>
+  <name>WorkflowPanel</name>
+  <message><source>All commands</source><translation>所有命令</translation></message>
+  <message><source>Mutating only</source><translation>仅修改操作</translation></message>
+  <message><source>Anyone</source><translation>全部</translation></message>
+  <message><source>User</source><translation>用户</translation></message>
+  <message><source>AI</source><translation>AI</translation></message>
+  <message><source>Workflow</source><translation>工作流</translation></message>
+  <message><source>Capture</source><translation>捕获</translation></message>
+  <message><source>Capture filtered history as a reusable workflow template</source><translation>将筛选后的历史捕获为可复用的工作流模板</translation></message>
+  <message><source>Captured workflow templates</source><translation>已捕获的工作流模板</translation></message>
+  <message><source>Run</source><translation>运行</translation></message>
+  <message><source>Replay the selected workflow template</source><translation>重放选中的工作流模板</translation></message>
+  <message><source>Clear</source><translation>清空</translation></message>
+  <message><source>Clear execution history</source><translation>清空执行历史</translation></message>
+  <message><source>Command</source><translation>命令</translation></message>
+  <message><source>Author</source><translation>作者</translation></message>
+  <message><source>Status</source><translation>状态</translation></message>
+  <message><source>Session</source><translation>会话</translation></message>
+  <message><source>Capture workflow</source><translation>捕获工作流</translation></message>
+  <message><source>Template name:</source><translation>模板名称：</translation></message>
+  <message><source>No replayable commands in the current filter window.</source><translation>当前筛选窗口内没有可重放的命令。</translation></message>
+  <message><source>Run it any time from the template list.</source><translation>之后可随时从模板列表运行。</translation></message>
+  <message><source>Re-run command</source><translation>重新执行命令</translation></message>
+  <message><source>Edit arguments and re-run...</source><translation>编辑参数并重新执行...</translation></message>
+  <message><source>Edit arguments</source><translation>编辑参数</translation></message>
+  <message><source>Arguments JSON:</source><translation>参数 JSON：</translation></message>
+  <message><source>Invalid arguments JSON.</source><translation>参数 JSON 无效。</translation></message>
+</context>
 </TS>

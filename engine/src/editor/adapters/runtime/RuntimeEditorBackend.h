@@ -74,6 +74,8 @@ public:
     bool bootEngine() override;
     bool applyRenderSettingsOverlay(const nlohmann::json& renderSettings) override;
     bool runBenchmark(int frames, nlohmann::json& out) override;
+    bool startBenchmark(int frames) override;
+    bool pollBenchmark(nlohmann::json& out) override;
     bool queryBenchmarkComparison(nlohmann::json& out) const override;
     void requestSceneSurfaceResize(const ViewportMetrics& metrics) override;
     bool detachSceneSurface() override;
@@ -188,6 +190,10 @@ private:
     bool m_modulesInitialized = false;
     nlohmann::json m_lastBenchmark;
     nlohmann::json m_previousBenchmark;
+    bool m_benchmarkRunning = false;
+    int m_benchmarkFramesRequested = 0;
+    std::uint64_t m_benchmarkStartFrame = 0;
+    std::uint64_t m_benchmarkDeadlineMs = 0;
     BackendState m_state = BackendState::Created;
     std::string m_diagnostic;
 };

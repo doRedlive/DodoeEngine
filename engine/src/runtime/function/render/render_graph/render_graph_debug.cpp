@@ -95,6 +95,7 @@ namespace dodoe {
             out_pass.subgraph_index = pass->getSubgraphIndex();
             out_pass.barrier_count = static_cast<UInt32>(pass->getPreBarriers().size());
             out_pass.level = pass_levels[i];
+            out_pass.cpu_ms = pass->getLastCpuMs();
 
             const auto& accesses = pass->getAccesses();
             out_pass.accesses.resize(accesses.size());

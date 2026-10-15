@@ -32,7 +32,7 @@ std::unordered_set<std::string> CollectDataUuids(const nlohmann::json& data)
 bool IsReplayableCommand(const std::string& command)
 {
     static constexpr const char* kNonReplayablePrefixes[] = {
-        "query.", "workflow.", "benchmark.", "session.",
+        "query.", "workflow.", "benchmark.", "session.", "mcp.", "ai.",
     };
     for (const char* prefix : kNonReplayablePrefixes) {
         if (command.rfind(prefix, 0) == 0) {

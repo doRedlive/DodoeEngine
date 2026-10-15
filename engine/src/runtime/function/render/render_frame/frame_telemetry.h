@@ -33,7 +33,7 @@ namespace dodoe {
 
         UInt32 pending_deletion_count{0};
 
-        String toJSON() const;
+        DODOE_API String toJSON() const;
     };
 
 #ifdef DODOE_PERF_ENABLED
@@ -80,8 +80,8 @@ namespace dodoe {
     public:
         void record(const FrameTelemetry& telemetry);
 
-        [[nodiscard]] const FrameTelemetry& current() const;
-        [[nodiscard]] const FrameTelemetry& previous(UInt32 frames_ago = 1) const;
+        [[nodiscard]] DODOE_API const FrameTelemetry& current() const;
+        [[nodiscard]] DODOE_API const FrameTelemetry& previous(UInt32 frames_ago = 1) const;
 
         [[nodiscard]] Size_t getCount() const { return m_count; }
         [[nodiscard]] Size_t getCapacity() const { return kHistorySize; }

@@ -2,7 +2,7 @@
 
 #include "physics3d_system.h"
 
-#include <chrono>
+#include "runtime/function/time/time_system.h"
 
 #include "runtime/function/world/scene.h"
 
@@ -94,9 +94,9 @@ namespace dodoe {
         }
 
         DynamicArray<RaycastHit> raw_hits{};
-        const auto ray_start = std::chrono::steady_clock::now();
+        const UInt64 ray_start_us = TimeSystem::GetSteadyTimeUs();
         world->raycast(origin, direction, max_distance, {}, raw_hits);
-        m_last_raycast_ms = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - ray_start).count();
+        m_last_raycast_ms = static_cast<float>(TimeSystem::GetSteadyTimeUs() - ray_start_us) / 1000.0f;
 
         for (const auto& raw_hit : raw_hits) {
             const ui32 entity = BodyToEntity(world, raw_hit.body);

@@ -30,6 +30,7 @@ private:
     void onProjectSelected(const QString& projectPath);
     void onReturnToProjectManager();
     void showProjectManager();
+    void maybeStartMcpServer();
 
     QString m_applicationName;
     std::unique_ptr<QTranslator> m_translator;

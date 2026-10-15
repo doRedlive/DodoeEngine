@@ -13,7 +13,8 @@ class QGraphicsScene;
 
 namespace cakery {
 
-class WorkflowGraphView : public QGraphicsView {    Q_OBJECT
+class WorkflowGraphView : public QGraphicsView {
+    Q_OBJECT
 public:
     explicit WorkflowGraphView(QWidget* parent = nullptr);
 

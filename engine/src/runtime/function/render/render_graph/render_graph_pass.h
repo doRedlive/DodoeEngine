@@ -1,15 +1,18 @@
 // do@Redlive
 
 #pragma once
-
 #include "dopch.h"
+
 #include "runtime/function/graphics/gfx.h"
+#include "runtime/function/time/time_system.h"
 
 #include "render_graph_blackboard.h"
 #include "render_graph_resource.h"
 #include "render_graph_resource_resolver.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
+
+#include <atomic>
 
 namespace dodoe {
 
@@ -106,6 +109,7 @@ namespace dodoe {
         UInt32 m_subgraph_index{~0u};
         DynamicArray<RenderGraphColorAttachment> m_color_slots{};
         Optional<RenderGraphDepthStencilAttachment> m_depth_slot{};
+        mutable std::atomic<Float> m_last_cpu_ms{0.0f};
 
     public:
         RenderGraphPass() = default;
@@ -131,7 +135,15 @@ namespace dodoe {
 
         void execute(const RenderGraphPassContext& context, DrawCommandList& command_list) const {
             DO_ASSERT(m_execute_function, "RenderGraphPass execute function is empty");
+            const UInt64 start_us = TimeSystem::GetSteadyTimeUs();
             m_execute_function(context, command_list);
+            const UInt64 end_us = TimeSystem::GetSteadyTimeUs();
+            m_last_cpu_ms.store(static_cast<Float>(end_us - start_us) / 1000.0f,
+                                std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] Float getLastCpuMs() const {
+            return m_last_cpu_ms.load(std::memory_order_relaxed);
         }
 
         [[nodiscard]] const String& getName() const { return m_name; }

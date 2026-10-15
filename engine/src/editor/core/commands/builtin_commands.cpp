@@ -1,7 +1,9 @@
 // do@Redlive
 
 #include "core/console/CommandRegistry.h"
+#include "core/console/AICommandBridge.h"
 #include "core/console/ExecutionRecorder.h"
+#include "core/console/McpServer.h"
 #include "core/console/WorkflowTemplate.h"
 
 #include "core/commands/EditorCommand.h"
@@ -13,6 +15,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace cakery {
@@ -40,8 +43,29 @@ std::size_t FindComponentIndex(EditorSession& session, std::uint64_t uuid, const
     return static_cast<std::size_t>(-1);
 }
 
-nlohmann::json ParseNumberArray(const std::string& value, std::size_t expected, bool integer) {
-    nlohmann::json arr = nlohmann::json::array();
+const nlohmann::json* FindPathValue(const nlohmann::json& root, const std::string& path) {
+    const nlohmann::json* node = &root;
+    std::size_t start = 0;
+    while (start <= path.size()) {
+        const std::size_t dot = path.find('.', start);
+        const std::size_t end = dot == std::string::npos ? path.size() : dot;
+        if (!node->is_object()) {
+            return nullptr;
+        }
+        const auto it = node->find(path.substr(start, end - start));
+        if (it == node->end()) {
+            return nullptr;
+        }
+        node = &(*it);
+        if (dot == std::string::npos) {
+            break;
+        }
+        start = dot + 1;
+    }
+    return node;
+}
+
+nlohmann::json ParseNumberArray(const std::string& value, std::size_t expected, bool integer) {    nlohmann::json arr = nlohmann::json::array();
     std::size_t start = 0;
     while (arr.size() < expected) {
         std::size_t comma = value.find(',', start);
@@ -237,10 +261,10 @@ void RegisterBuiltinCommands() {
                                             nlohmann::json{{"uuid", std::to_string(uuid)}, {"type", compType}});
               }});
 
-    reg.add({"component.set", "Set a component field value",
+    reg.add({"component.set", "Set a component field value (supports nested dotted paths like transform.position.x)",
              "component.set <uuid> <Type>.<field> <value>",
              {{"uuid", "uuid", "GameObject UUID", true},
-              {"field", "string", "ComponentType.fieldName", true},
+              {"field", "string", "ComponentType.fieldName (dotted path for nested fields)", true},
               {"value", "string", "New value", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
@@ -257,6 +281,9 @@ void RegisterBuiltinCommands() {
                  }
                  std::string comp = compField.substr(0, dot);
                  std::string field = compField.substr(dot + 1);
+                 if (field.empty()) {
+                     return CommandResult::Err("Format: Type.fieldName");
+                 }
 
                  std::size_t idx = FindComponentIndex(session, uuid, comp);
                  if (idx == static_cast<std::size_t>(-1)) {
@@ -265,24 +292,33 @@ void RegisterBuiltinCommands() {
                  const EditorEntity* entity = session.documentModel().findEntity(uuid);
                  if (!entity) return CommandResult::Err("GameObject not found");
                  const nlohmann::json& compValue = entity->nativeComponents[idx].value;
-                 if (!compValue.contains(field)) {
+                 const bool flat = compValue.is_object() && compValue.contains(field);
+                 const nlohmann::json* current = flat ? &compValue[field]
+                                                      : FindPathValue(compValue, field);
+                 if (!current) {
                      return CommandResult::Err("Unknown field: " + field);
                  }
-                 nlohmann::json newVal = ParseFieldValue(compValue[field], value);
+                 nlohmann::json newVal = ParseFieldValue(*current, value);
                  if (newVal.is_null()) {
                      return CommandResult::Err("Cannot parse '" + value + "' for field " + field);
                  }
-                  if (!session.history().execute(
-                          std::make_unique<SetFieldValueCommand>(uuid, idx, field, newVal),
-                          session.documentModel())) {
-                      return CommandResult::Err("Value is unchanged or the update failed");
-                  }
-                  session.notifyDocumentChanged();
-                  return CommandResult::Ok("Set " + compField + " = " + value,
-                                           nlohmann::json{{"uuid", std::to_string(uuid)},
-                                                          {"field", compField},
-                                                          {"value", newVal}});
-              }});
+                 if (flat) {
+                     if (!session.history().execute(
+                             std::make_unique<SetFieldValueCommand>(uuid, idx, field, newVal),
+                             session.documentModel())) {
+                         return CommandResult::Err("Value is unchanged or the update failed");
+                     }
+                     session.notifyDocumentChanged();
+                 } else {
+                     if (!session.updateComponentFieldOnEntities({uuid}, comp, field, newVal, false)) {
+                         return CommandResult::Err("Value is unchanged or the update failed");
+                     }
+                 }
+                 return CommandResult::Ok("Set " + compField + " = " + value,
+                                          nlohmann::json{{"uuid", std::to_string(uuid)},
+                                                         {"field", compField},
+                                                         {"value", newVal}});
+               }});
 
     reg.add({"scene.new", "Create a new empty scene",
              "scene.new [name]",
@@ -692,6 +728,200 @@ void RegisterBuiltinCommands() {
                  WorkflowLibrary::self().setStoragePath(WorkflowStoragePath(session));
                  WorkflowLibrary::self().store(name, std::move(steps));
                  return CommandResult::Ok("Imported workflow '" + name + "'");
+             }});
+
+    reg.add({"mcp.start", "Start the built-in MCP server (Streamable HTTP, loopback only)",
+             "mcp.start [port]",
+             {{"port", "integer", "TCP port (0 picks a free port, default 7800)", false}},
+             true,
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 std::uint16_t port = kDefaultMcpPort;
+                 const auto nit = args.named.find("port");
+                 if (nit != args.named.end() && nit->is_number_integer()) {
+                     const long long requested = nit->get<long long>();
+                     if (requested < 0 || requested > 65535) {
+                         return CommandResult::Err("Port out of range (0-65535)");
+                     }
+                     port = static_cast<std::uint16_t>(requested);
+                 } else if (!args.positional.empty()) {
+                     char* end = nullptr;
+                     const unsigned long requested =
+                         std::strtoul(args.positional[0].c_str(), &end, 10);
+                     if (!end || *end != '\0' || requested > 65535) {
+                         return CommandResult::Err("Invalid port");
+                     }
+                     port = static_cast<std::uint16_t>(requested);
+                 }
+                 if (!McpServer::self().start(session, port)) {
+                     return CommandResult::Err("Failed to start MCP server (port in use?)");
+                 }
+                 return CommandResult::Ok("MCP server listening on 127.0.0.1:" +
+                                              std::to_string(McpServer::self().port()),
+                                          nlohmann::json{{"port", McpServer::self().port()}});
+             }});
+
+    reg.add({"mcp.stop", "Stop the built-in MCP server",
+             "mcp.stop", {}, true,
+             [](EditorSession&, const CommandArgs&) -> CommandResult {
+                 if (!McpServer::self().isRunning()) {
+                     return CommandResult::Err("MCP server is not running");
+                 }
+                 McpServer::self().stop();
+                 return CommandResult::Ok("MCP server stopped");
+             }});
+
+    reg.add({"mcp.status", "Report MCP server state",
+             "mcp.status", {}, false,
+             [](EditorSession&, const CommandArgs&) -> CommandResult {
+                 nlohmann::json out;
+                 out["running"] = McpServer::self().isRunning();
+                 out["port"] = McpServer::self().port();
+                 out["pending"] = McpServer::self().pendingCount();
+                 return CommandResult::Ok("", std::move(out));
+             }});
+
+    reg.add({"ai.begin_session", "Begin an AI transaction session with an edit-history checkpoint",
+             "ai.begin_session [goal]",
+             {{"goal", "string", "Session goal", false}},
+             true,
+             [](EditorSession&, const CommandArgs& args) -> CommandResult {
+                 std::string goal = args.named.value(
+                     "goal", args.positional.empty() ? std::string() : args.positional[0]);
+                 const std::string id = AICommandBridge::self().beginSession(goal);
+                 if (id.empty()) {
+                     return CommandResult::Err("No editor session attached");
+                 }
+                 return CommandResult::Ok("AI session " + id,
+                                          nlohmann::json{{"session", id}, {"goal", goal}});
+             }});
+
+    reg.add({"ai.end_session", "End the AI transaction session (keep=false reverts to the checkpoint)",
+             "ai.end_session [keep]",
+             {{"keep", "boolean", "Keep changes (default true)", false}},
+             true,
+             [](EditorSession&, const CommandArgs& args) -> CommandResult {
+                 if (!AICommandBridge::self().inSession()) {
+                     return CommandResult::Err("No active AI session");
+                 }
+                 bool keep = true;
+                 const auto kit = args.named.find("keep");
+                 if (kit != args.named.end() && kit->is_boolean()) {
+                     keep = kit->get<bool>();
+                 } else if (!args.positional.empty()) {
+                     keep = args.positional[0] == "true" || args.positional[0] == "1";
+                 }
+                 AICommandBridge::self().endSession(keep);
+                 return CommandResult::Ok(keep ? "AI session committed" : "AI session reverted",
+                                          nlohmann::json{{"kept", keep}});
+             }});
+
+    reg.add({"query.logs", "Report backend log entries",
+             "query.logs [limit] [level]",
+             {{"limit", "integer", "Max entries from the newest end (default 128)", false},
+              {"level", "string", "Minimum level", false,
+               {"trace", "debug", "info", "warning", "error", "critical"}}},
+             false,
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 int limit = args.named.value("limit", 128);
+                 const std::string minLevel = args.named.value("level", std::string("trace"));
+                 static const std::pair<const char*, int> kLevels[] = {
+                     {"trace", 0}, {"debug", 1}, {"info", 2},
+                     {"warning", 3}, {"error", 4}, {"critical", 5}};
+                 int minRank = 0;
+                 for (const auto& [name, rank] : kLevels) {
+                     if (minLevel == name) minRank = rank;
+                 }
+                 std::vector<BackendLogEntry> entries;
+                 if (!session.listLogs(entries)) {
+                     return CommandResult::Err("Logs unavailable");
+                 }
+                 if (limit < 0) limit = 0;
+                 const int total = static_cast<int>(entries.size());
+                 const int skip = total > limit ? total - limit : 0;
+                 nlohmann::json out = nlohmann::json::array();
+                 static const char* kLevelNames[] = {"trace", "debug", "info",
+                                                     "warning", "error", "critical"};
+                 for (int i = skip; i < total; ++i) {
+                     const int rank = static_cast<int>(entries[i].level);
+                     if (rank < minRank) continue;
+                     nlohmann::json item;
+                     item["sequence"] = entries[i].sequence;
+                     item["level"] = kLevelNames[rank];
+                     item["source"] = entries[i].source;
+                     item["message"] = entries[i].message;
+                     item["repeat"] = entries[i].repeatCount;
+                     out.push_back(std::move(item));
+                 }
+                 return CommandResult::Ok(std::to_string(out.size()) + " log entries",
+                                          std::move(out));
+             }});
+
+    reg.add({"query.history", "Report the undo/redo stack state",
+             "query.history [limit]",
+             {{"limit", "integer", "Max stack labels (default 16)", false}},
+             false,
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 int limit = std::clamp(args.named.value("limit", 16), 0, 256);
+                 nlohmann::json out;
+                 out["can_undo"] = session.history().canUndo();
+                 out["can_redo"] = session.history().canRedo();
+                 out["undo_count"] = session.history().undoCount();
+                 out["redo_count"] = session.history().redoCount();
+                 out["undo_label"] = session.history().undoLabel();
+                 out["redo_label"] = session.history().redoLabel();
+                 nlohmann::json undoStack = nlohmann::json::array();
+                 const auto& undo = session.history().undoStack();
+                 int count = 0;
+                 for (auto it = undo.rbegin(); it != undo.rend() && count < limit; ++it, ++count) {
+                     undoStack.push_back((*it)->label());
+                 }
+                 out["undo_stack"] = std::move(undoStack);
+                 nlohmann::json redoStack = nlohmann::json::array();
+                 const auto& redo = session.history().redoStack();
+                 count = 0;
+                 for (auto it = redo.rbegin(); it != redo.rend() && count < limit; ++it, ++count) {
+                     redoStack.push_back((*it)->label());
+                 }
+                 out["redo_stack"] = std::move(redoStack);
+                 return CommandResult::Ok("", std::move(out));
+             }});
+
+    reg.add({"mcp.deny", "Deny AI/MCP execution of commands with this prefix",
+             "mcp.deny <prefix>",
+             {{"prefix", "string", "Command name prefix (e.g. entity.delete)", true}},
+             true,
+             [](EditorSession&, const CommandArgs& args) -> CommandResult {
+                 const std::string prefix = args.named.value(
+                     "prefix", args.positional.empty() ? std::string() : args.positional[0]);
+                 if (prefix.empty()) {
+                     return CommandResult::Err("No prefix specified");
+                 }
+                 auto& bridge = AICommandBridge::self();
+                 auto list = bridge.denylist();
+                 if (std::find(list.begin(), list.end(), prefix) == list.end()) {
+                     list.push_back(prefix);
+                     bridge.setDenylist(std::move(list));
+                 }
+                 return CommandResult::Ok("Denied for AI/MCP: " + prefix,
+                                          nlohmann::json{{"denylist", bridge.denylist()}});
+             }});
+
+    reg.add({"mcp.allow", "Remove a prefix from the AI/MCP denylist",
+             "mcp.allow <prefix>",
+             {{"prefix", "string", "Command name prefix", true}},
+             true,
+             [](EditorSession&, const CommandArgs& args) -> CommandResult {
+                 const std::string prefix = args.named.value(
+                     "prefix", args.positional.empty() ? std::string() : args.positional[0]);
+                 if (prefix.empty()) {
+                     return CommandResult::Err("No prefix specified");
+                 }
+                 auto& bridge = AICommandBridge::self();
+                 auto list = bridge.denylist();
+                 list.erase(std::remove(list.begin(), list.end(), prefix), list.end());
+                 bridge.setDenylist(std::move(list));
+                 return CommandResult::Ok("Allowed for AI/MCP: " + prefix,
+                                          nlohmann::json{{"denylist", bridge.denylist()}});
              }});
 
     reg.add({"history.undo", "Undo last command",

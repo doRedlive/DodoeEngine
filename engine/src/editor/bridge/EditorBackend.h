@@ -223,6 +223,11 @@ public:
         out = nullptr;
         return false;
     }
+    virtual bool startBenchmark(int /*frames*/) { return false; }
+    virtual bool pollBenchmark(nlohmann::json& out) {
+        out = nullptr;
+        return false;
+    }
     virtual bool queryBenchmarkComparison(nlohmann::json& out) const {
         out = nullptr;
         return false;

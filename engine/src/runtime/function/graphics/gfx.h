@@ -80,6 +80,7 @@ namespace dodoe {
     using GfxBindingSetItem = cutie::BindingSetItem;
     using GfxVariableRateShadingState = cutie::VariableRateShadingState;
     using GfxEventQueryHandle = cutie::EventQueryHandle;
+    using GfxTimerQuery = cutie::TimerQueryHandle;
     using GfxCpuAccessMode = cutie::CpuAccessMode;
 
     namespace GfxObjectTypes = cutie::ObjectTypes;

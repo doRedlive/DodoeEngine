@@ -4,6 +4,7 @@
 #include "cakery/ui/EditorWorkspaceContext.h"
 #include "cakery/ui/shell/EditorWindow.h"
 #include "cakery/app/project_selection/ProjectManagerWindow.h"
+#include "core/console/McpServer.h"
 #include "services/EditorConfig.h"
 
 #include "runtime/core/debug/instrumentor.h"
@@ -168,6 +169,40 @@ void EditorApplication::onProjectSelected(const QString& projectPath)
         m_projectWindow = nullptr;
     }
     m_editorWindow->show();
+    maybeStartMcpServer();
+}
+
+void EditorApplication::maybeStartMcpServer()
+{
+    bool autostart = false;
+    std::uint16_t port = 0;
+    const QStringList args = arguments();
+    for (int i = 1; i < args.size(); ++i) {
+        if (args.at(i) == QStringLiteral("--mcp-port") && i + 1 < args.size()) {
+            port = static_cast<std::uint16_t>(args.at(++i).toUShort());
+            autostart = true;
+        }
+    }
+    const nlohmann::json& editor = EditorConfig::self().editorJson();
+    const auto mcpIt = editor.find("mcp");
+    if (mcpIt != editor.end() && mcpIt->is_object()) {
+        const auto autostartIt = mcpIt->find("autostart");
+        if (autostartIt != mcpIt->end() && autostartIt->is_boolean() &&
+            autostartIt->get<bool>()) {
+            autostart = true;
+        }
+        const auto portIt = mcpIt->find("port");
+        if (portIt != mcpIt->end() && portIt->is_number_integer() && port == 0) {
+            const long long configured = portIt->get<long long>();
+            if (configured >= 0 && configured <= 65535) {
+                port = static_cast<std::uint16_t>(configured);
+            }
+        }
+    }
+    if (!autostart) {
+        return;
+    }
+    McpServer::self().start(*m_session, port);
 }
 
 } // namespace cakery

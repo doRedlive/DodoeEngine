@@ -41,6 +41,13 @@ namespace dodoe {
                 .count());
     }
 
+    UInt64 TimeSystem::GetSteadyTimeUs() {
+        using namespace std::chrono;
+        return static_cast<UInt64>(
+            duration_cast<microseconds>(steady_clock::now().time_since_epoch())
+                .count());
+    }
+
     void TimeSystem::setTimeScale(float time_scale) {
         if (time_scale < 0.0f) {
             time_scale = 1.0f;

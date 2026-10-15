@@ -295,7 +295,7 @@ namespace dodoe {
         }
         DO_PROFILE_MARK("RenderSystem::renderFrame.swapchainAcquired", "swapchain");
 #ifdef DODOE_PERF_ENABLED
-        const auto render_frame_start = std::chrono::steady_clock::now();
+        const UInt64 render_frame_start_us = TimeSystem::GetSteadyTimeUs();
 #endif//DODOE_PERF_ENABLED
 
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
@@ -350,10 +350,34 @@ namespace dodoe {
 
         {
             auto& gfx_cmd = m_gfx->getCommandList();
+            auto gfx_device = m_gfx->getDevice();
+            if (!m_gpu_frame_queries[0]) {
+                m_gpu_frame_queries[0] = gfx_device->createTimerQuery();
+                m_gpu_frame_queries[1] = gfx_device->createTimerQuery();
+            }
+            cutie::ITimerQuery* write_query = m_gpu_frame_queries[m_gpu_frame_query_slot].Get();
+            cutie::ITimerQuery* read_query = m_gpu_frame_queries[m_gpu_frame_query_slot ^ 1].Get();
+            Bool measured = write_query && read_query;
+            if (measured && m_gpu_frame_ms_valid) {
+                if (gfx_device->pollTimerQuery(read_query)) {
+                    m_last_gpu_frame_ms = gfx_device->getTimerQueryTime(read_query) * 1000.0f;
+                    gfx_device->resetTimerQuery(read_query);
+                } else {
+                    measured = false;
+                }
+            }
             gfx_cmd->open();
+            if (measured) {
+                gfx_cmd->beginTimerQuery(write_query);
+            }
             frame_ctx.command_list->execute(gfx_cmd);
+            if (measured) {
+                gfx_cmd->endTimerQuery(write_query);
+                m_gpu_frame_query_slot ^= 1;
+                m_gpu_frame_ms_valid = true;
+            }
             gfx_cmd->close();
-            m_gfx->getDevice()->executeCommandList(gfx_cmd);
+            gfx_device->executeCommandList(gfx_cmd);
         }
         gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
         DO_PROFILE_MARK("RenderSystem::renderFrame.commandsSubmitted", "frame");
@@ -364,19 +388,20 @@ namespace dodoe {
 
 #ifdef DODOE_PERF_ENABLED
         {
-            const auto render_frame_end = std::chrono::steady_clock::now();
+            const UInt64 render_frame_end_us = TimeSystem::GetSteadyTimeUs();
             const auto& counters = RenderFrameCounters::Self();
             FrameTelemetry telemetry{};
             telemetry.frame_number = frame_ctx.frame_number;
             telemetry.delta_time_ms = frame_delta * 1000.0f;
             telemetry.render_thread_ms =
-                std::chrono::duration<Float, std::milli>(render_frame_end - render_frame_start).count();
+                static_cast<Float>(render_frame_end_us - render_frame_start_us) / 1000.0f;
             telemetry.draw_call_count = static_cast<UInt32>(counters.getDrawCalls());
             telemetry.indirect_draw_call_count = static_cast<UInt32>(counters.getIndirectDrawCalls());
             telemetry.dispatch_count = static_cast<UInt32>(counters.getDispatches());
             telemetry.barrier_count = static_cast<UInt32>(counters.getBarriers());
             telemetry.drawn_instance_count = counters.getDrawnInstances();
             telemetry.pending_deletion_count = 0;
+            telemetry.gpu_frame_ms = m_last_gpu_frame_ms;
             m_frame_scheduler->recordTelemetry(telemetry);
         }
 #endif

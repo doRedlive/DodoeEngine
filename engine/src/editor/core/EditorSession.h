@@ -10,9 +10,11 @@
 #include "core/EditorSelection.h"
 #include "core/Signal.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -56,6 +58,8 @@ public:
     bool bootEngine();
     bool applyRenderSettingsOverlay(const nlohmann::json& renderSettings);
     bool runBenchmark(int frames, nlohmann::json& out);
+    bool startBenchmark(int frames, std::function<void(bool, nlohmann::json)> onFinished,
+                        std::function<void(int, int)> onProgress);
     bool queryBenchmarkComparison(nlohmann::json& out) const;
     void submitViewportMetrics(ViewportMetrics metrics);
     void tick();
@@ -139,6 +143,7 @@ private:
     void handleBackendEvent(const BackendEventMessage& event);
     void onPlayStateChanged(const std::string& state);
     void applyTransformChange(std::uint64_t uuid, const nlohmann::json& value);
+    void tickBenchmark();
     std::vector<EditorEntity> snapshotEntitySubtrees(const std::vector<std::uint64_t>& roots) const;
     std::vector<EditorEntity> remapEntityClones(const std::vector<EditorEntity>& snapshot,
                                                 bool keepExternalParent) const;
@@ -165,6 +170,12 @@ private:
     bool m_playDocumentEdited = false;
     bool m_pendingStopKeep = false;
     ScopedConnection m_playDocumentSubscription;
+    bool m_benchmarkActive = false;
+    int m_benchmarkFrames = 0;
+    int m_benchmarkDone = 0;
+    std::chrono::steady_clock::time_point m_benchmarkDeadline{};
+    std::function<void(bool, nlohmann::json)> m_benchmarkFinished;
+    std::function<void(int, int)> m_benchmarkProgress;
 };
 
 } // namespace cakery

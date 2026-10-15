@@ -17,6 +17,7 @@
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QScrollBar>
 #include <QSplitter>
@@ -102,6 +103,7 @@ WorkflowPanel::WorkflowPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_list->setRootIsDecorated(false);
     m_list->setUniformRowHeights(true);
     m_list->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_list->setContextMenuPolicy(Qt::CustomContextMenu);
     m_list->header()->setStretchLastSection(false);
     m_list->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_list->header()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -147,6 +149,8 @@ WorkflowPanel::WorkflowPanel(EditorWorkspaceContext& context, QWidget* parent)
                 args["uuid"] = uuid.toStdString();
                 CommandRegistry::self().executeStructured(m_context.session(), "entity.select", args);
             });
+    connect(m_list, &QTreeWidget::customContextMenuRequested, this,
+            [this](const QPoint& pos) { showContextMenu(pos); });
     auto& recorderChanged = ExecutionRecorder::self().changed;
     m_recorderSubscription = ScopedConnection(
         recorderChanged, recorderChanged.connect([this]() { refresh(); }));
@@ -307,6 +311,75 @@ void WorkflowPanel::runTemplate()
     }
     const nlohmann::json result = RunWorkflow(m_context.session(), name.toStdString(), *steps);
     m_details->setPlainText(QString::fromStdString(result.dump(2)));
+}
+
+void WorkflowPanel::showContextMenu(const QPoint& pos)
+{
+    QTreeWidgetItem* item = m_list->itemAt(pos);
+    if (!item) {
+        return;
+    }
+    const nlohmann::json record =
+        nlohmann::json::parse(item->data(0, Qt::UserRole).toString().toStdString(), nullptr, false);
+    if (record.is_discarded() || !record.is_object() ||
+        !record.contains("command") || !record["command"].is_string()) {
+        return;
+    }
+    QMenu menu(m_list);
+    QAction* rerunAction = menu.addAction(tr("Re-run command"));
+    QAction* editAction = menu.addAction(tr("Edit arguments and re-run..."));
+    QAction* chosen = menu.exec(m_list->viewport()->mapToGlobal(pos));
+    if (chosen == rerunAction) {
+        rerunRecord(record, nullptr);
+    } else if (chosen == editAction) {
+        const nlohmann::json args = record.value("args", nlohmann::json::object());
+        bool accepted = false;
+        const QString text = QInputDialog::getMultiLineText(
+            this, tr("Edit arguments"), tr("Arguments JSON:"),
+            QString::fromStdString(args.is_object() ? args.dump(2) : "{}"), &accepted);
+        if (!accepted) {
+            return;
+        }
+        const nlohmann::json parsed =
+            nlohmann::json::parse(text.toStdString(), nullptr, false);
+        if (parsed.is_discarded() || !parsed.is_object()) {
+            m_details->setPlainText(tr("Invalid arguments JSON."));
+            return;
+        }
+        rerunRecord(record, &parsed);
+    }
+}
+
+void WorkflowPanel::rerunRecord(const nlohmann::json& record, const nlohmann::json* argsOverride)
+{
+    const std::string command = record.value("command", std::string());
+    if (command.empty()) {
+        return;
+    }
+    if (argsOverride) {
+        const CommandResult result =
+            CommandRegistry::self().executeStructured(m_context.session(), command, *argsOverride);
+        m_details->setPlainText(QString::fromStdString(result.ok
+            ? result.message + "\n" + result.data.dump(2)
+            : result.message));
+        return;
+    }
+    const nlohmann::json args = record.value("args", nlohmann::json());
+    if (args.is_object()) {
+        const CommandResult result =
+            CommandRegistry::self().executeStructured(m_context.session(), command, args);
+        m_details->setPlainText(QString::fromStdString(result.ok
+            ? result.message + "\n" + result.data.dump(2)
+            : result.message));
+        return;
+    }
+    if (args.is_string()) {
+        const CommandResult result =
+            CommandRegistry::self().execute(m_context.session(), args.get<std::string>());
+        m_details->setPlainText(QString::fromStdString(result.ok
+            ? result.message + "\n" + result.data.dump(2)
+            : result.message));
+    }
 }
 
 } // namespace cakery

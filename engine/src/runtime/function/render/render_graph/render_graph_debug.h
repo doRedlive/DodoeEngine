@@ -23,6 +23,7 @@ namespace dodoe {
         UInt32 subgraph_index{~0u};
         UInt32 barrier_count{0};
         UInt32 level{0};
+        Float cpu_ms{0.0f};
         DynamicArray<RenderGraphDebugAccess> accesses{};
     };
 
@@ -56,7 +57,7 @@ namespace dodoe {
         static void SetAutoRefresh(const Bool enabled);
         static void SetRefreshIntervalMs(const UInt32 milliseconds);
 
-        [[nodiscard]] static Ref<RenderGraphDebugSnapshot> Snapshot();
+        [[nodiscard]] static DODOE_API Ref<RenderGraphDebugSnapshot> Snapshot();
 
     private:
         [[nodiscard]] static Ref<RenderGraphDebugSnapshot> Capture(const RenderGraph& graph);

@@ -31,9 +31,16 @@ set(EDITOR_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/WorkflowTemplate.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/AICommandBridge.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/AICommandBridge.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/McpServer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/McpServer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/mcp/McpHttp.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/mcp/McpRpc.h
 )
 add_library(EditorCore STATIC ${EDITOR_CORE_SOURCES})
 target_link_libraries(EditorCore PUBLIC nlohmann_json::nlohmann_json)
+if(WIN32)
+    target_link_libraries(EditorCore PRIVATE ws2_32)
+endif()
 target_include_directories(EditorCore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ENGINE_ROOT_DIR}/src/shared

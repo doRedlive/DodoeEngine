@@ -25,6 +25,7 @@
 #include "runtime/function/render/render_view/render_view_family.h"
 #include "runtime/function/render/render_view/mesh_view_extension.h"
 #include "runtime/function/render/render_settings.h"
+#include "runtime/function/time/time_system.h"
 #include "runtime/core/utils/common.h"
 
 #include <chrono>
@@ -191,9 +192,9 @@ namespace dodoe {
                 cmd_list, bucket_uploads.data(), static_cast<UInt32>(bucket_uploads.size()),
                 snapshots.data(), static_cast<UInt32>(snapshots.size()));
 	        }
-	        static auto last_hash_dump = std::chrono::steady_clock::now() - std::chrono::seconds(2);
-	        const auto hash_dump_now = std::chrono::steady_clock::now();
-	        if (hash_dump_now - last_hash_dump >= std::chrono::seconds(1)) {
+	        static UInt64 last_hash_dump = TimeSystem::GetSteadyTimeMs() - 2000;
+	        const UInt64 hash_dump_now = TimeSystem::GetSteadyTimeMs();
+	        if (hash_dump_now - last_hash_dump >= 1000) {
 	            last_hash_dump = hash_dump_now;
 	            std::string object_dump;
 	            DynamicArray<GpuPrimitiveDebugInfo> prim_infos;

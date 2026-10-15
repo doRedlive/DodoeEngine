@@ -4,6 +4,7 @@
 #include "runtime/core/math/math.h"
 #include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/shader/shader_parameter.h"
+#include "runtime/function/time/time_system.h"
 
 #include <chrono>
 
@@ -239,9 +240,9 @@ namespace dodoe {
         params.frustum_planes[5] = Vector4f(transposed[3] - transposed[2]);
         params.object_count = effective_count;
 
-        static auto last_visible_log = std::chrono::steady_clock::now() - std::chrono::seconds(2);
-        const auto now = std::chrono::steady_clock::now();
-        if (now - last_visible_log >= std::chrono::seconds(1)) {
+        static UInt64 last_visible_log = TimeSystem::GetSteadyTimeMs() - 2000;
+        const UInt64 now = TimeSystem::GetSteadyTimeMs();
+        if (now - last_visible_log >= 1000) {
             last_visible_log = now;
             UInt32 visible = 0;
             if (m_visible_count_readback_buffer) {
@@ -458,9 +459,9 @@ namespace dodoe {
                 return;
             }
             {
-                static auto last_fill_info = std::chrono::steady_clock::now() - std::chrono::seconds(2);
-                const auto now = std::chrono::steady_clock::now();
-                if (now - last_fill_info >= std::chrono::seconds(1)) {
+                static UInt64 last_fill_info = TimeSystem::GetSteadyTimeMs() - 2000;
+                const UInt64 now = TimeSystem::GetSteadyTimeMs();
+                if (now - last_fill_info >= 1000) {
                     last_fill_info = now;
                     DO_INFO("GpuCulling: fill pass (objects={}, templates={}, generation={})",
                         object_count, m_template_count, m_generation_counter);
@@ -590,9 +591,9 @@ namespace dodoe {
     }
 
     void GpuCulling::debugLogGpuBuckets(DynamicArray<GpuBucketCpuDraw>& draws) {
-        static auto last_bucket_log = std::chrono::steady_clock::now() - std::chrono::seconds(2);
-        const auto now = std::chrono::steady_clock::now();
-        if (now - last_bucket_log < std::chrono::seconds(1)) {
+        static UInt64 last_bucket_log = TimeSystem::GetSteadyTimeMs() - 2000;
+        const UInt64 now = TimeSystem::GetSteadyTimeMs();
+        if (now - last_bucket_log < 1000) {
             return;
         }
         last_bucket_log = now;
@@ -629,9 +630,9 @@ namespace dodoe {
     Bool GpuCulling::acquireBucketDraws(DynamicArray<GpuBucketCpuDraw>& out_draws) {
         out_draws.clear();
         if (!m_gfx || m_generation_counter < 2) {
-            static auto last_gen_warn = std::chrono::steady_clock::now() - std::chrono::seconds(2);
-            const auto now = std::chrono::steady_clock::now();
-            if (now - last_gen_warn >= std::chrono::seconds(1)) {
+            static UInt64 last_gen_warn = TimeSystem::GetSteadyTimeMs() - 2000;
+            const UInt64 now = TimeSystem::GetSteadyTimeMs();
+            if (now - last_gen_warn >= 1000) {
                 last_gen_warn = now;
                 DO_WARN("GpuCulling: bucket draws pending warmup (generation={}, templates={})",
                     m_generation_counter, m_template_count);
