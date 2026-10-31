@@ -1,0 +1,19 @@
+{
+  "states": [
+    {
+      "id": "clear_day",
+      "overlay": null,
+      "ambient": "Audio/ambience_day.wav"
+    },
+    {
+      "id": "light_rain",
+      "overlay": "Textures/Weather/weather_overlay.png",
+      "ambient": "Audio/ambience_rain.wav"
+    },
+    {
+      "id": "mist_night",
+      "overlay": "Textures/Weather/weather_overlay.png",
+      "ambient": "Audio/ambience_night.wav"
+    }
+  ]
+}

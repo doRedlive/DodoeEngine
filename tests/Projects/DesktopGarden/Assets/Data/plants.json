@@ -1,0 +1,42 @@
+{
+  "plants": [
+    {
+      "id": "clover",
+      "displayName": "三叶草",
+      "stageSprites": "Textures/Plants/Stages/clover_{stage}.png",
+      "stages": [
+        "seed",
+        "sprout",
+        "leaf",
+        "stem",
+        "flower",
+        "seedpod"
+      ],
+      "growthSeconds": 180,
+      "waterInterval": 60,
+      "seedDrop": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "moonflower",
+      "displayName": "月光花",
+      "stageSprites": "Textures/Plants/Stages/moonflower_{stage}.png",
+      "stages": [
+        "seed",
+        "sprout",
+        "leaf",
+        "stem",
+        "flower",
+        "seedpod"
+      ],
+      "growthSeconds": 360,
+      "waterInterval": 90,
+      "seedDrop": [
+        1,
+        2
+      ]
+    }
+  ]
+}

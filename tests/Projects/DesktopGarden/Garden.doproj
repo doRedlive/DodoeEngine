@@ -1,0 +1,8 @@
+{
+  "Project": {
+    "Name": "DesktopGarden",
+    "ProjectPath": "Garden.doproj",
+    "AssetDirectory": "Assets",
+    "StartSceneName": "DesktopGarden"
+  }
+}
