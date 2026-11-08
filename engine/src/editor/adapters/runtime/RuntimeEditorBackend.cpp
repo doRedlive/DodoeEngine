@@ -1165,6 +1165,20 @@ bool RuntimeEditorBackend::queryFrameStats(nlohmann::json& out) const
     return true;
 }
 
+bool RuntimeEditorBackend::queryFps(int& outFps) const
+{
+    outFps = 0;
+    if (!m_booted || !m_app) {
+        return false;
+    }
+    dodoe::TimeSystem* timeSystem = m_app->context().getTimeSystem();
+    if (!timeSystem) {
+        return false;
+    }
+    outFps = timeSystem->getFps();
+    return outFps > 0;
+}
+
 bool RuntimeEditorBackend::runBenchmark(const int frames, nlohmann::json& out)
 {
     out = nullptr;

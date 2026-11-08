@@ -67,6 +67,7 @@ public:
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const override;
     bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const override;
     bool queryFrameStats(nlohmann::json& out) const override;
+    bool queryFps(int& outFps) const override;
     bool queryRenderGraphSnapshot(nlohmann::json& out) const override;
     bool queryRenderSettings(nlohmann::json& out) const override;
     bool findMissingAssetReferences(std::vector<std::uint64_t>& out) const override;

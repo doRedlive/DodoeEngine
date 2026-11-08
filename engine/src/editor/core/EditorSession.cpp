@@ -212,6 +212,15 @@ bool EditorSession::queryFrameStats(nlohmann::json& out) const
     return m_backend->queryFrameStats(out);
 }
 
+bool EditorSession::queryFps(int& out) const
+{
+    out = 0;
+    if (!m_backend) {
+        return false;
+    }
+    return m_backend->queryFps(out);
+}
+
 bool EditorSession::queryRenderGraphSnapshot(nlohmann::json& out) const
 {
     if (!m_backend) {

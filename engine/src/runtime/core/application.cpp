@@ -106,7 +106,7 @@ namespace dodoe {
         m_app_spec = spec;
 #ifndef DODOE_SHIPPING
         m_smoke_frames = ParseSmokeFrames(spec.cli_args);
-#endif
+#endif//DODOE_SHIPPING
         loadConfigFile();
         if (m_app_spec.app_mode == AppMode::Server) {
             m_app_spec.render_settings.windowless = true;
@@ -184,7 +184,7 @@ namespace dodoe {
 
 #ifndef DODOE_SHIPPING
         UInt32 frames_run = 0;
-#endif
+#endif//DODOE_SHIPPING
         while (m_running) {
             stepFrame();
 #ifndef DODOE_SHIPPING
@@ -192,7 +192,7 @@ namespace dodoe {
                 DO_INFO("Smoke test mode: exiting after {} frames.", frames_run);
                 quit();
             }
-#endif
+#endif//DODOE_SHIPPING
             if (isServerMode()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }

@@ -135,6 +135,7 @@ public:
     bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const;
     bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const;
     bool queryFrameStats(nlohmann::json& out) const;
+    bool queryFps(int& out) const;
     bool queryRenderGraphSnapshot(nlohmann::json& out) const;
     bool queryRenderSettings(nlohmann::json& out) const;
 

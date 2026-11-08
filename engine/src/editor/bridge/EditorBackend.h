@@ -202,6 +202,10 @@ public:
         out = nullptr;
         return false;
     }
+    virtual bool queryFps(int& outFps) const {
+        outFps = 0;
+        return false;
+    }
     virtual bool queryRenderGraphSnapshot(nlohmann::json& out) const {
         out = nullptr;
         return false;

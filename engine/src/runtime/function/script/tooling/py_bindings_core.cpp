@@ -93,13 +93,13 @@ void RegisterCore(py::module_& m) {
 
     py::module_ time_module = m.def_submodule("Time");
     DO_PY_TIME_GET(get_delta_time, Float, getDeltaTime, 0.0f);
-    DO_PY_TIME_GET(get_current_time, Float, current_time, 0.0f);
-    DO_PY_TIME_GET(get_unscaled_delta_time, Float, get_unscaled_delta_time, 0.0f);
-    DO_PY_TIME_GET(get_fps, Int, get_fps, 0);
-    DO_PY_TIME_GET(get_time_scale, Float, get_time_scale, 1.0f);
-    DO_PY_TIME_SET(set_time_scale, Float, set_time_scale);
-    DO_PY_TIME_GET(get_target_fps, Int, get_target_fps, -1);
-    DO_PY_TIME_SET(set_target_fps, Int, set_target_fps);
+    DO_PY_TIME_GET(get_current_time, Float, getCurrentTime, 0.0f);
+    DO_PY_TIME_GET(get_unscaled_delta_time, Float, getUnscaledDeltaTime, 0.0f);
+    DO_PY_TIME_GET(get_fps, Int, getFps, 0);
+    DO_PY_TIME_GET(get_time_scale, Float, getTimeScale, 1.0f);
+    DO_PY_TIME_SET(set_time_scale, Float, setTimeScale);
+    DO_PY_TIME_GET(get_target_fps, Int, getTargetFps, -1);
+    DO_PY_TIME_SET(set_target_fps, Int, setTargetFps);
 
 #undef DO_PY_TIME_GET
 #undef DO_PY_TIME_SET

@@ -3,6 +3,6 @@
         "Name": "Showcase",
         "ProjectPath": "Showcase.doproj",
         "AssetDirectory": "Assets",
-        "StartSceneName": "ModelTest"
+        "StartSceneName": "Test2D"
     }
 }

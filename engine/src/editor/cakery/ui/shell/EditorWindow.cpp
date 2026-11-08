@@ -365,6 +365,8 @@ public:
         setAutoFillBackground(false);
         setMouseTracking(true);
         setAcceptDrops(true);
+
+        initFpsOverlay();
     }
 
     void attach()
@@ -391,12 +393,14 @@ protected:
     {
         QWidget::showEvent(event);
         attach();
+        positionFpsLabel();
     }
 
     void resizeEvent(QResizeEvent* event) override
     {
         QWidget::resizeEvent(event);
         publishMetrics();
+        positionFpsLabel();
     }
 
     void paintEvent(QPaintEvent* event) override
@@ -529,6 +533,87 @@ protected:
     }
 
 private:
+    void initFpsOverlay()
+    {
+        m_fpsLabel = new QLabel(this);
+        m_fpsLabel->setObjectName(QStringLiteral("sceneFpsOverlay"));
+        m_fpsLabel->setAttribute(Qt::WA_NativeWindow);
+        m_fpsLabel->setAttribute(Qt::WA_DontCreateNativeAncestors);
+        m_fpsLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+        m_fpsLabel->setStyleSheet(QStringLiteral(
+            "QLabel#sceneFpsOverlay {"
+            " color: #E8E8E8;"
+            " background-color: rgba(20, 20, 20, 160);"
+            " border-radius: 4px;"
+            " padding: 2px 8px;"
+            " font-size: 11px;"
+            "}"));
+        m_fpsLabel->hide();
+
+        m_fpsTimer = new QTimer(this);
+        m_fpsTimer->setInterval(250);
+        connect(m_fpsTimer, &QTimer::timeout, this, [this]() { refreshFps(); });
+        m_fpsTimer->start();
+    }
+
+    void positionFpsLabel()
+    {
+        if (!m_fpsLabel) return;
+        const QSize hint = m_fpsLabel->sizeHint();
+        const int x = width() - hint.width() - 12;
+        const int y = height() - hint.height() - 12;
+        m_fpsLabel->setGeometry(std::max(0, x), std::max(0, y), hint.width(), hint.height());
+        m_fpsLabel->raise();
+    }
+
+    void refreshFps()
+    {
+        if (!m_context.capabilities().scenePreview) {
+            m_fpsLabel->hide();
+            return;
+        }
+        int fps = 0;
+        if (m_context.session().queryFps(fps) && fps > 0) {
+            m_fpsLabel->setText(QStringLiteral("%1 FPS").arg(fps));
+            m_fpsLabel->adjustSize();
+            m_fpsLabel->show();
+            positionFpsLabel();
+            return;
+        }
+        nlohmann::json stats;
+        if (!m_context.session().queryFrameStats(stats) ||
+            !stats.value("available", false)) {
+            m_fpsLabel->hide();
+            return;
+        }
+        const auto framesIt = stats.find("frames");
+        double deltaSum = 0.0;
+        int samples = 0;
+        if (framesIt != stats.end() && framesIt->is_array()) {
+            for (auto it = framesIt->rbegin(); it != framesIt->rend() && samples < 16; ++it) {
+                const auto deltaIt = it->find("delta_ms");
+                if (deltaIt == it->end() || !deltaIt->is_number()) continue;
+                const double delta = deltaIt->get<double>();
+                if (delta > 0.0) {
+                    deltaSum += delta;
+                    ++samples;
+                }
+            }
+        }
+        if (samples == 0) {
+            m_fpsLabel->hide();
+            return;
+        }
+        const double avgDelta = deltaSum / static_cast<double>(samples);
+        const double fps = 1000.0 / avgDelta;
+        m_fpsLabel->setText(QStringLiteral("%1 FPS  |  %2 ms")
+            .arg(fps, 0, 'f', 1)
+            .arg(avgDelta, 0, 'f', 2));
+        m_fpsLabel->adjustSize();
+        m_fpsLabel->show();
+        positionFpsLabel();
+    }
+
     void publishMetrics()
     {
         if (!isVisible() || width() < 1 || height() < 1) return;
@@ -547,6 +632,8 @@ private:
     EditorWorkspaceContext& m_context;
     std::uint64_t m_sequence = 0;
     bool m_attached = false;
+    QLabel* m_fpsLabel = nullptr;
+    QTimer* m_fpsTimer = nullptr;
 };
 
 namespace {
