@@ -45,7 +45,8 @@ internal static class ComponentManager
 
         if (IsNative(type))
         {
-            World.Current.CommandBuffer.AddComponent<T>(e.ID);
+            if (!NativeCalls.Native_EntityHasComponent(e.ID, type))
+                NativeCalls.Native_EntityAddComponent(e.ID, type);
             return (T)(object)NativeProxyFactory.Create(type, e);
         }
 

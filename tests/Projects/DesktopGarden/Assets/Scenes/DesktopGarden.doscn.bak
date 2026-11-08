@@ -1,0 +1,27 @@
+{
+  "m_entities": [
+    {
+      "m_managed_components": [
+        {"m_component":"{\"dayLengthSeconds\":300,\"startingFertility\":0.35}","m_type_name":"DesktopGarden.GardenController"}
+      ],
+      "m_name":"DesktopGarden",
+      "m_native_components":[
+        {"m_component":"{\"id\":9001,\"name\":\"DesktopGarden\"}","m_type_name":"IDComponent"},
+        {"m_component":"{\"tag\":\"DesktopGarden\"}","m_type_name":"TagComponent"},
+        {"m_component":"{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}","m_type_name":"TransformComponent"}
+      ],
+      "m_uuid":9001
+    },
+    {
+      "m_managed_components":[],
+      "m_name":"Primary Camera",
+      "m_native_components":[
+        {"m_component":"{\"id\":9002,\"name\":\"Primary Camera\"}","m_type_name":"IDComponent"},
+        {"m_component":"{\"tag\":\"PrimaryCamera\"}","m_type_name":"TagComponent"},
+        {"m_component":"{\"position\":[0.0,0.0,15.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}","m_type_name":"TransformComponent"},
+        {"m_component":"{\"aspect_ratio\":1.7777778,\"background\":[0.74,0.82,0.78,1.0],\"far_plane\":1000.0,\"fov\":60.0,\"near_plane\":0.1,\"type\":1,\"zoom\":50.0}","m_type_name":"CameraComponent"}
+      ],
+      "m_uuid":9002
+    }
+  ]
+}

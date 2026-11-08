@@ -1,27 +1,82 @@
 {
-  "m_entities": [
-    {
-      "m_managed_components": [
-        {"m_component":"{\"dayLengthSeconds\":300,\"startingFertility\":0.35}","m_type_name":"DesktopGarden.GardenController"}
-      ],
-      "m_name":"DesktopGarden",
-      "m_native_components":[
-        {"m_component":"{\"id\":9001,\"name\":\"DesktopGarden\"}","m_type_name":"IDComponent"},
-        {"m_component":"{\"tag\":\"DesktopGarden\"}","m_type_name":"TagComponent"},
-        {"m_component":"{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}","m_type_name":"TransformComponent"}
-      ],
-      "m_uuid":9001
-    },
-    {
-      "m_managed_components":[],
-      "m_name":"Primary Camera",
-      "m_native_components":[
-        {"m_component":"{\"id\":9002,\"name\":\"Primary Camera\"}","m_type_name":"IDComponent"},
-        {"m_component":"{\"tag\":\"PrimaryCamera\"}","m_type_name":"TagComponent"},
-        {"m_component":"{\"position\":[0.0,0.0,15.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}","m_type_name":"TransformComponent"},
-        {"m_component":"{\"aspect_ratio\":1.7777778,\"background\":[0.74,0.82,0.78,1.0],\"far_plane\":1000.0,\"fov\":60.0,\"near_plane\":0.1,\"type\":1,\"zoom\":50.0}","m_type_name":"CameraComponent"}
-      ],
-      "m_uuid":9002
-    }
-  ]
+    "m_entities": [
+        {
+            "m_managed_components": [
+                {
+                    "m_component": "{\"dayLengthSeconds\":300,\"startingFertility\":0.35}",
+                    "m_type_name": "DesktopGarden.GardenController"
+                }
+            ],
+            "m_name": "DesktopGarden",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":9001,\"name\":\"DesktopGarden\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"DesktopGarden\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 9001
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "Primary Camera",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":9002,\"name\":\"Primary Camera\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"PrimaryCamera\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,15.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"aspect_ratio\":1.7777778,\"background\":[0.74,0.82,0.78,1.0],\"far_plane\":1000.0,\"fov\":60.0,\"near_plane\":0.1,\"type\":1,\"zoom\":50.0}",
+                    "m_type_name": "CameraComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 9002
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "New GameObject",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":17139680971474438054,\"name\":\"New GameObject\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.0,0.0],\"sprite\":{\"asset_id\":1575946159008072953,\"sub_object_id\":1}}",
+                    "m_type_name": "SpriteRendererComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 17139680971474438054
+        }
+    ],
+    "m_name": "DesktopGarden"
 }

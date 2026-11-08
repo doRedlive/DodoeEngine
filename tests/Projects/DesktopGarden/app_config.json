@@ -9,7 +9,7 @@
     "pipeline": 5,
     "present_mode": 1,
     "enable_single_thread": false,
-    "enable_baseline_renderer": true,
+    "enable_baseline_renderer": false,
     "windowless": false
   }
 }
