@@ -5,6 +5,7 @@
 #include "core/bridge/EditorTypes.h"
 #include "core/benchmark/BenchmarkRunner.h"
 #include "core/application/DomainEventBus.h"
+#include "core/application/EditorCommandBus.h"
 #include "core/history/EditHistory.h"
 #include "core/commands/EditorCommand.h"
 #include "core/document/EditorDocumentModel.h"
@@ -73,6 +74,7 @@ public:
     EditorSessionState state() const;
     DomainEventBus& events() { return m_events; }
     const DomainEventBus& events() const { return m_events; }
+    EditorCommandBus& commandBus() { return m_commandBus; }
     McpServer& mcpServer() { return *m_mcp; }
     ExecutionRecorder& executionRecorder() { return *m_recorder; }
     AICommandBridge& aiBridge() { return *m_aiBridge; }
@@ -170,6 +172,7 @@ private:
     ProjectDescriptor m_project;
     EditorSessionState m_state = EditorSessionState::Created;
     DomainEventBus m_events;
+    EditorCommandBus m_commandBus;
     EditorDocumentModel m_documentModel;
     EditorSelection m_selection;
     ScopedConnection m_selectionSubscription;

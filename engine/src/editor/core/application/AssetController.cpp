@@ -18,8 +18,8 @@
 
 namespace cakery {
 
-AssetController::AssetController(EditorSession& session)
-    : m_session(session)
+AssetController::AssetController(EditorSession& session, DomainEventBus& events)
+    : m_session(session), m_events(events)
 {
     m_missingSubscription = ScopedConnection(
         m_session.missingAssetReferencesDetected,
@@ -52,7 +52,8 @@ bool AssetController::getImportSettings(const String& path, AssetImportSettings&
 
 bool AssetController::updateImportSettings(const String& path, const Json& settings)
 {
-    return m_session.execute(AssetUpdateSettingsCommand{path, settings});
+    return report(m_session.execute(AssetUpdateSettingsCommand{path, settings}),
+                  "Update import settings");
 }
 
 UInt64 AssetController::guidForPath(const String& path) const
@@ -114,17 +115,17 @@ void AssetController::refresh()
 
 bool AssetController::importAsset(const String& path)
 {
-    return m_session.execute(AssetImportCommand{path});
+    return report(m_session.execute(AssetImportCommand{path}), "Import asset");
 }
 
 bool AssetController::reimportAsset(const String& path)
 {
-    return m_session.execute(AssetReimportCommand{path});
+    return report(m_session.execute(AssetReimportCommand{path}), "Reimport asset");
 }
 
 bool AssetController::createScene(const FsPath& directory, const String& name)
 {
-    return m_session.newScene(directory, name);
+    return report(m_session.newScene(directory, name), "Create scene");
 }
 
 bool AssetController::copyFile(const String& source, const FsPath& target) const
@@ -218,6 +219,19 @@ ScopedConnection AssetController::subscribeChanged(std::function<void()> onChang
 {
     return ScopedConnection(m_session.assetDatabaseChanged,
                             m_session.assetDatabaseChanged.connect(std::move(onChange)));
+}
+
+bool AssetController::report(bool ok, const char* action)
+{
+    if (ok) {
+        return true;
+    }
+    NotificationEvent event;
+    event.level = "error";
+    event.message = action;
+    event.source = m_session.diagnostic();
+    m_events.publish(event);
+    return false;
 }
 
 } // namespace cakery

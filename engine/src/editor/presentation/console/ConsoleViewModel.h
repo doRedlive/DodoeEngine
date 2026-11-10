@@ -34,11 +34,13 @@ public:
 
 private:
     void rebuildMerged();
+    void onNotification(const NotificationEvent& event);
 
     EditorSession& m_session;
     DynamicArray<ConsoleEntry> m_local;
     DynamicArray<ConsoleEntry> m_backend;
     DynamicArray<ConsoleEntry> m_entries;
+    ScopedConnection m_notificationSubscription;
 };
 
 } // namespace cakery

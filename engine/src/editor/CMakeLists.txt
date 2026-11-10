@@ -40,6 +40,9 @@ set(EDITOR_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/McpAutostart.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/application/SelectionController.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/application/DomainEventBus.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/Result.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/EditorCommandBus.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/EditorCommandBus.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/application/AssetController.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/application/AssetController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/application/DocumentController.h

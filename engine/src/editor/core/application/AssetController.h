@@ -3,6 +3,7 @@
 #include "dopch.h"
 
 #include "core/Signal.h"
+#include "core/application/DomainEventBus.h"
 #include "core/bridge/EditorTypes.h"
 
 #include <functional>
@@ -14,7 +15,7 @@ class EditorSession;
 
 class AssetController {
 public:
-    explicit AssetController(EditorSession& session);
+    AssetController(EditorSession& session, DomainEventBus& events);
     ~AssetController();
 
     FsPath projectRoot() const;
@@ -47,7 +48,10 @@ public:
     Signal<Size_t> missingAssetReferences;
 
 private:
+    bool report(bool ok, const char* action);
+
     EditorSession& m_session;
+    DomainEventBus& m_events;
     ScopedConnection m_missingSubscription;
 };
 

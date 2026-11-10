@@ -4,12 +4,13 @@
 
 #include "core/EditorSession.h"
 #include "core/Signal.h"
+#include "core/application/DomainEventBus.h"
 
 namespace cakery {
 
 class DocumentController {
 public:
-    explicit DocumentController(EditorSession& session);
+    DocumentController(EditorSession& session, DomainEventBus& events);
     ~DocumentController();
 
     EditorDocumentModel& documentModel();
@@ -59,7 +60,10 @@ public:
     Signal<> documentChanged;
 
 private:
+    bool report(bool ok, const char* action);
+
     EditorSession& m_session;
+    DomainEventBus& m_events;
     ScopedConnection m_historySubscription;
     ScopedConnection m_documentSubscription;
 };

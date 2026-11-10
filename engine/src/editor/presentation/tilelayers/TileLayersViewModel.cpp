@@ -46,37 +46,37 @@ void TileLayersViewModel::refresh()
 
 void TileLayersViewModel::addLayer(const String& name)
 {
-    m_session.execute(TilemapLayerAddCommand{name});
+    m_session.commandBus().execute(TilemapLayerAddCommand{name});
 }
 
 void TileLayersViewModel::removeLayer(UInt64 uuid)
 {
-    m_session.execute(TilemapLayerRemoveCommand{uuid});
+    m_session.commandBus().execute(TilemapLayerRemoveCommand{uuid});
 }
 
 void TileLayersViewModel::moveLayer(UInt64 uuid, bool up)
 {
-    m_session.execute(TilemapLayerMoveCommand{uuid, up});
+    m_session.commandBus().execute(TilemapLayerMoveCommand{uuid, up});
 }
 
 void TileLayersViewModel::activateLayer(UInt64 uuid)
 {
-    m_session.execute(TilemapLayerActiveCommand{uuid});
+    m_session.commandBus().execute(TilemapLayerActiveCommand{uuid});
 }
 
 void TileLayersViewModel::setLayerVisible(UInt64 uuid, bool visible)
 {
-    m_session.execute(TilemapLayerVisibleCommand{uuid, visible});
+    m_session.commandBus().execute(TilemapLayerVisibleCommand{uuid, visible});
 }
 
 void TileLayersViewModel::setLayerOpacity(UInt64 uuid, float opacity)
 {
-    m_session.execute(TilemapLayerOpacityCommand{uuid, opacity});
+    m_session.commandBus().execute(TilemapLayerOpacityCommand{uuid, opacity});
 }
 
 void TileLayersViewModel::renameLayer(UInt64 uuid, const String& name)
 {
-    m_session.execute(TilemapLayerRenameCommand{uuid, name});
+    m_session.commandBus().execute(TilemapLayerRenameCommand{uuid, name});
 }
 
 } // namespace cakery

@@ -77,7 +77,8 @@ EditorSession::EditorSession()
       m_mcp(create_scope<McpServer>()),
       m_recorder(create_scope<ExecutionRecorder>()),
       m_aiBridge(create_scope<AICommandBridge>()),
-      m_workflows(create_scope<WorkflowLibrary>())
+      m_workflows(create_scope<WorkflowLibrary>()),
+      m_commandBus(*this, m_events)
 {
     if (!m_backend) {
         return;

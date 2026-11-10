@@ -29,7 +29,7 @@ public:
                            ThemeController& theme, EditorConfig& config)
         : m_session(session), m_resources(resources), m_theme(theme), m_config(config),
           m_selection(session.selection()),
-          m_documents(session), m_play(session), m_assets(session),
+          m_documents(session, session.events()), m_play(session), m_assets(session, session.events()),
           m_view(session), m_tools(session), m_scriptWindows(session), m_runtime(session) {}
 
     std::function<bool()> confirmUnsavedChanges;
@@ -46,6 +46,7 @@ public:
     const EditorConfig& config() const { return m_config; }
     DomainEventBus& events() { return m_session.events(); }
     const DomainEventBus& events() const { return m_session.events(); }
+    EditorCommandBus& commandBus() { return m_session.commandBus(); }
     DocumentController& documents() { return m_documents; }
     const DocumentController& documents() const { return m_documents; }
     PlayModeController& playMode() { return m_play; }
@@ -69,7 +70,7 @@ public:
     String diagnostic() const { return m_session.diagnostic(); }
 
     bool openDocument(const String& documentId) { return m_session.openDocument(documentId); }
-    bool execute(EditorOperation command) { return m_session.execute(std::move(command)); }
+    Result execute(EditorOperation command) { return m_session.commandBus().execute(std::move(command)); }
 
 private:
     EditorSession& m_session;

@@ -13,6 +13,23 @@ namespace cakery {
 ConsoleViewModel::ConsoleViewModel(EditorSession& session)
     : m_session(session)
 {
+    m_notificationSubscription = m_session.events().subscribe<NotificationEvent>(
+        [this](const NotificationEvent& event) { onNotification(event); });
+}
+
+void ConsoleViewModel::onNotification(const NotificationEvent& event)
+{
+    ConsoleEntryLevel level = ConsoleEntryLevel::Info;
+    if (event.level == "error") {
+        level = ConsoleEntryLevel::Error;
+    } else if (event.level == "warning") {
+        level = ConsoleEntryLevel::Warning;
+    }
+    String message = event.message;
+    if (!event.source.empty()) {
+        message = message + " (" + event.source + ")";
+    }
+    append(level, message, "Bus");
 }
 
 void ConsoleViewModel::append(ConsoleEntryLevel level, const String& message, const String& source)

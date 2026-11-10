@@ -111,77 +111,77 @@ void TilePaletteViewModel::refresh()
 
 void TilePaletteViewModel::selectTool(TileToolId tool)
 {
-    m_session.execute(TilemapToolCommand{tool});
+    m_session.commandBus().execute(TilemapToolCommand{tool});
 }
 
 void TilePaletteViewModel::activateTarget(UInt64 uuid)
 {
-    m_session.execute(TilemapActivateCommand{uuid});
+    m_session.commandBus().execute(TilemapActivateCommand{uuid});
 }
 
 void TilePaletteViewModel::executeBrush(const EditorOperation& command)
 {
-    m_session.execute(command);
+    m_session.commandBus().execute(command);
 }
 
 void TilePaletteViewModel::setBrush(int width, int height, DynamicArray<UInt32> gids)
 {
-    m_session.execute(TilemapBrushCommand{width, height, std::move(gids)});
+    m_session.commandBus().execute(TilemapBrushCommand{width, height, std::move(gids)});
 }
 
 void TilePaletteViewModel::flipBrush(bool horizontally)
 {
-    m_session.execute(TilemapBrushFlipCommand{horizontally});
+    m_session.commandBus().execute(TilemapBrushFlipCommand{horizontally});
 }
 
 void TilePaletteViewModel::rotateBrush()
 {
-    m_session.execute(TilemapBrushRotateCommand{});
+    m_session.commandBus().execute(TilemapBrushRotateCommand{});
 }
 
 void TilePaletteViewModel::setRandomBrush(bool enabled)
 {
-    m_session.execute(TilemapRandomBrushCommand{enabled});
+    m_session.commandBus().execute(TilemapRandomBrushCommand{enabled});
 }
 
 void TilePaletteViewModel::deleteSelection()
 {
-    m_session.execute(TilemapSelectionDeleteCommand{});
+    m_session.commandBus().execute(TilemapSelectionDeleteCommand{});
 }
 
 void TilePaletteViewModel::copySelection()
 {
-    m_session.execute(TilemapSelectionCopyCommand{});
+    m_session.commandBus().execute(TilemapSelectionCopyCommand{});
 }
 
 void TilePaletteViewModel::pasteSelection()
 {
-    m_session.execute(TilemapSelectionPasteCommand{});
+    m_session.commandBus().execute(TilemapSelectionPasteCommand{});
 }
 
 void TilePaletteViewModel::createTilemap(const TilemapCreateCommand& command)
 {
-    m_session.execute(command);
+    m_session.commandBus().execute(command);
 }
 
 void TilePaletteViewModel::addTileset(const TilemapAddTilesetCommand& command)
 {
-    m_session.execute(command);
+    m_session.commandBus().execute(command);
 }
 
 void TilePaletteViewModel::editTileset(const TilemapEditTilesetCommand& command)
 {
-    m_session.execute(command);
+    m_session.commandBus().execute(command);
 }
 
 void TilePaletteViewModel::removeTileset(UInt64 assetId)
 {
-    m_session.execute(TilemapRemoveTilesetCommand{assetId});
+    m_session.commandBus().execute(TilemapRemoveTilesetCommand{assetId});
 }
 
 void TilePaletteViewModel::resizeTilemap(UInt64 uuid, UInt32 width, UInt32 height)
 {
-    m_session.execute(TilemapResizeCommand{uuid, width, height});
+    m_session.commandBus().execute(TilemapResizeCommand{uuid, width, height});
 }
 
 } // namespace cakery
