@@ -69,11 +69,13 @@ const Json* DefaultComponentValue(const String& typeName)
 
 InspectorViewModel::InspectorViewModel(DocumentController& documents,
                                        SelectionController& selection,
-                                       AssetController& assets)
-    : m_documents(documents), m_selection(selection), m_assets(assets)
+                                       AssetController& assets, DomainEventBus& events)
+    : m_documents(documents), m_selection(selection), m_assets(assets), m_events(events)
 {
-    m_documentSubscription = m_documents.documentModel().subscribe([this]() { rebuild(); });
-    m_selectionSubscription = m_selection.subscribe([this]() { rebuild(); });
+    m_documentSubscription = m_events.subscribe<DocumentChangedEvent>(
+        [this](const DocumentChangedEvent&) { rebuild(); });
+    m_selectionSubscription = m_events.subscribe<SelectionChangedEvent>(
+        [this](const SelectionChangedEvent&) { rebuild(); });
     rebuild();
 }
 

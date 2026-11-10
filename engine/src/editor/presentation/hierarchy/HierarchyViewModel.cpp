@@ -16,13 +16,13 @@ namespace cakery {
 
 HierarchyViewModel::HierarchyViewModel(DocumentController& documents,
                                        SelectionController& selection,
-                                       AssetController& assets)
-    : m_documents(documents), m_selection(selection), m_assets(assets)
+                                       AssetController& assets, DomainEventBus& events)
+    : m_documents(documents), m_selection(selection), m_assets(assets), m_events(events)
 {
-    m_documentSubscription = m_documents.documentModel().subscribe(
-        [this]() { rebuildSnapshot(); });
-    m_selectionSubscription = m_selection.subscribe(
-        [this]() { selectionChanged.fire(); });
+    m_documentSubscription = m_events.subscribe<DocumentChangedEvent>(
+        [this](const DocumentChangedEvent&) { rebuildSnapshot(); });
+    m_selectionSubscription = m_events.subscribe<SelectionChangedEvent>(
+        [this](const SelectionChangedEvent&) { selectionChanged.fire(); });
     rebuildSnapshot();
 }
 

@@ -118,10 +118,11 @@ UnorderedMap<String, const AssetBrowserEntry*> BuildAssetIndex(
 
 } // namespace
 
-ProjectViewModel::ProjectViewModel(AssetController& controller)
-    : m_controller(controller)
+ProjectViewModel::ProjectViewModel(AssetController& controller, DomainEventBus& events)
+    : m_controller(controller), m_events(events)
 {
-    m_assetSubscription = m_controller.subscribeChanged([this]() { rebuild(); });
+    m_assetSubscription = m_events.subscribe<AssetCatalogChangedEvent>(
+        [this](const AssetCatalogChangedEvent&) { rebuild(); });
     rebuild();
 }
 

@@ -12,11 +12,12 @@ namespace cakery {
 TilePaletteViewModel::TilePaletteViewModel(EditorSession& session)
     : m_session(session)
 {
-    m_selectionSubscription = m_session.selection().subscribe([this]() { refresh(); });
-    m_documentSubscription = m_session.documentModel().subscribe([this]() { refresh(); });
-    m_tileModeSubscription = ScopedConnection(
-        m_session.tileEditModeChanged,
-        m_session.tileEditModeChanged.connect([this](bool) { refresh(); }));
+    m_selectionSubscription = m_session.events().subscribe<SelectionChangedEvent>(
+        [this](const SelectionChangedEvent&) { refresh(); });
+    m_documentSubscription = m_session.events().subscribe<DocumentChangedEvent>(
+        [this](const DocumentChangedEvent&) { refresh(); });
+    m_tileModeSubscription = m_session.events().subscribe<TileEditModeChangedEvent>(
+        [this](const TileEditModeChangedEvent&) { refresh(); });
     refresh();
 }
 

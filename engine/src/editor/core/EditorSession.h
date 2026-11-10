@@ -4,6 +4,7 @@
 
 #include "core/bridge/EditorTypes.h"
 #include "core/benchmark/BenchmarkRunner.h"
+#include "core/application/DomainEventBus.h"
 #include "core/history/EditHistory.h"
 #include "core/commands/EditorCommand.h"
 #include "core/document/EditorDocumentModel.h"
@@ -70,6 +71,8 @@ public:
     void shutdown();
 
     EditorSessionState state() const;
+    DomainEventBus& events() { return m_events; }
+    const DomainEventBus& events() const { return m_events; }
     McpServer& mcpServer() { return *m_mcp; }
     ExecutionRecorder& executionRecorder() { return *m_recorder; }
     AICommandBridge& aiBridge() { return *m_aiBridge; }
@@ -166,9 +169,11 @@ private:
     Scope<WorkflowLibrary> m_workflows;
     ProjectDescriptor m_project;
     EditorSessionState m_state = EditorSessionState::Created;
+    DomainEventBus m_events;
     EditorDocumentModel m_documentModel;
     EditorSelection m_selection;
     ScopedConnection m_selectionSubscription;
+    DynamicArray<ScopedConnection> m_eventRepublishConnections;
     EditorHistory m_history;
     EditHistory m_editHistory{m_history, m_documentModel};
     UInt64 m_lastViewportSequence = 0;

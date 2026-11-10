@@ -478,7 +478,7 @@ DynamicArray<String> ToPaths(const QStringList& paths)
 
 ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent),
-      m_viewModel(create_scope<ProjectViewModel>(context.assets())),
+      m_viewModel(create_scope<ProjectViewModel>(context.assets(), context.events())),
       m_context(context)
 {
     auto* layout = new QVBoxLayout(this);

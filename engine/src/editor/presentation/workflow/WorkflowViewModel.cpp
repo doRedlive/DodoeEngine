@@ -20,9 +20,8 @@ constexpr Size_t kMaxGraphNodes = 128;
 WorkflowViewModel::WorkflowViewModel(EditorSession& session)
     : m_session(session)
 {
-    auto& recorderChanged = m_session.executionRecorder().changed;
-    m_recorderSubscription = ScopedConnection(
-        recorderChanged, recorderChanged.connect([this]() { refresh(); }));
+    m_recorderSubscription = m_session.events().subscribe<ExecutionRecordedEvent>(
+        [this](const ExecutionRecordedEvent&) { refresh(); });
     refresh();
     refreshTemplates();
 }

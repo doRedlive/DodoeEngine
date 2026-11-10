@@ -121,7 +121,7 @@ private:
 HierarchyPanel::HierarchyPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent),
       m_viewModel(create_scope<HierarchyViewModel>(
-          context.documents(), context.selection(), context.assets()))
+          context.documents(), context.selection(), context.assets(), context.events()))
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);

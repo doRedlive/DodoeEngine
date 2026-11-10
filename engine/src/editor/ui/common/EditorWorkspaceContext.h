@@ -11,6 +11,7 @@
 #include "core/application/ScriptWindowController.h"
 #include "core/application/SelectionController.h"
 #include "core/application/ToolActionController.h"
+#include "core/application/DomainEventBus.h"
 #include "core/EditorSession.h"
 #include "services/EditorConfig.h"
 #include "services/EditorResourceLocator.h"
@@ -43,6 +44,8 @@ public:
     const ThemeController& theme() const { return m_theme; }
     EditorConfig& config() { return m_config; }
     const EditorConfig& config() const { return m_config; }
+    DomainEventBus& events() { return m_session.events(); }
+    const DomainEventBus& events() const { return m_session.events(); }
     DocumentController& documents() { return m_documents; }
     const DocumentController& documents() const { return m_documents; }
     PlayModeController& playMode() { return m_play; }

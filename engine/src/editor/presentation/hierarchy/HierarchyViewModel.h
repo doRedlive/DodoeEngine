@@ -3,6 +3,7 @@
 #include "dopch.h"
 
 #include "core/Signal.h"
+#include "core/application/DomainEventBus.h"
 #include "presentation/ViewModel.h"
 
 namespace cakery {
@@ -24,7 +25,7 @@ struct HierarchySnapshot {
 class HierarchyViewModel : public ViewModel {
 public:
     HierarchyViewModel(DocumentController& documents, SelectionController& selection,
-                       AssetController& assets);
+                       AssetController& assets, DomainEventBus& events);
     ~HierarchyViewModel() override;
 
     const HierarchySnapshot& snapshot() const { return m_snapshot; }
@@ -57,6 +58,7 @@ private:
     DocumentController& m_documents;
     SelectionController& m_selection;
     AssetController& m_assets;
+    DomainEventBus& m_events;
     HierarchySnapshot m_snapshot;
     ScopedConnection m_documentSubscription;
     ScopedConnection m_selectionSubscription;

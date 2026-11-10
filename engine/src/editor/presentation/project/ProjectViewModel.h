@@ -39,7 +39,7 @@ enum class ProjectOperationResult {
 
 class ProjectViewModel : public ViewModel {
 public:
-    explicit ProjectViewModel(AssetController& controller);
+    ProjectViewModel(AssetController& controller, DomainEventBus& events);
     ~ProjectViewModel() override;
 
     FsPath root() const;
@@ -80,6 +80,7 @@ private:
     void rebuildTypes();
 
     AssetController& m_controller;
+    DomainEventBus& m_events;
     DynamicArray<AssetBrowserEntry> m_assets;
     DynamicArray<String> m_assetTypes;
     Optional<ProjectTreeNode> m_tree;

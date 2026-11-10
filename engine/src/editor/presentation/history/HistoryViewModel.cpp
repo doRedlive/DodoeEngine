@@ -9,7 +9,8 @@ namespace cakery {
 HistoryViewModel::HistoryViewModel(EditorSession& session)
     : m_session(session)
 {
-    m_historySubscription = m_session.history().subscribe([this]() { refresh(); });
+    m_historySubscription = m_session.events().subscribe<HistoryChangedEvent>(
+        [this](const HistoryChangedEvent&) { refresh(); });
     refresh();
 }
 

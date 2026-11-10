@@ -103,6 +103,41 @@ EditorSession::EditorSession()
             ? m_selection.selected() : 0;
         m_backend->execute(SelectionChangedCommand{uuid});
     });
+
+    m_eventRepublishConnections.push_back(m_documentModel.subscribe([this]() {
+        m_events.publish(DocumentChangedEvent{String(m_documentModel.path().string())});
+    }));
+    m_eventRepublishConnections.push_back(m_selection.subscribe([this]() {
+        m_events.publish(SelectionChangedEvent{});
+    }));
+    m_eventRepublishConnections.push_back(ScopedConnection(
+        playStateChanged,
+        playStateChanged.connect([this](PlayState state) {
+            m_events.publish(PlayStateChangedEvent{state});
+        })));
+    m_eventRepublishConnections.push_back(m_history.subscribe([this]() {
+        m_events.publish(HistoryChangedEvent{});
+    }));
+    m_eventRepublishConnections.push_back(ScopedConnection(
+        m_editHistory.changed,
+        m_editHistory.changed.connect([this]() {
+            m_events.publish(HistoryChangedEvent{});
+        })));
+    m_eventRepublishConnections.push_back(ScopedConnection(
+        assetDatabaseChanged,
+        assetDatabaseChanged.connect([this]() {
+            m_events.publish(AssetCatalogChangedEvent{});
+        })));
+    m_eventRepublishConnections.push_back(ScopedConnection(
+        m_recorder->changed,
+        m_recorder->changed.connect([this]() {
+            m_events.publish(ExecutionRecordedEvent{});
+        })));
+    m_eventRepublishConnections.push_back(ScopedConnection(
+        tileEditModeChanged,
+        tileEditModeChanged.connect([this](bool active) {
+            m_events.publish(TileEditModeChangedEvent{active});
+        })));
 }
 
 EditorSession::~EditorSession()

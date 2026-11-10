@@ -3,6 +3,7 @@
 #include "dopch.h"
 
 #include "core/bridge/EditorTypes.h"
+#include "core/application/DomainEventBus.h"
 #include "presentation/ViewModel.h"
 
 namespace cakery {
@@ -40,7 +41,7 @@ struct InspectorAssetModel {
 class InspectorViewModel : public ViewModel {
 public:
     InspectorViewModel(DocumentController& documents, SelectionController& selection,
-                       AssetController& assets);
+                       AssetController& assets, DomainEventBus& events);
     ~InspectorViewModel() override;
 
     const InspectorEntityModel& entity() const { return m_entity; }
@@ -69,6 +70,7 @@ private:
     DocumentController& m_documents;
     SelectionController& m_selection;
     AssetController& m_assets;
+    DomainEventBus& m_events;
     InspectorEntityModel m_entity;
     InspectorAssetModel m_asset;
     ScopedConnection m_documentSubscription;
