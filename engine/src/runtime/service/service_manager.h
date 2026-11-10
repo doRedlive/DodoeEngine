@@ -6,8 +6,6 @@
 
 #include "runtime/core/memory/managed.h"
 
-#include <functional>
-
 namespace dodoe {
 
     struct ServiceManagerCreateInfo {};

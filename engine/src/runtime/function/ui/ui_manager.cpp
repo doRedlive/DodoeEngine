@@ -31,6 +31,7 @@ namespace dodoe {
     }
 
     void UIManager::update(Float deltaTime) {
+        DO_PROFILE_SCOPE_CATEGORY("UIManager::update", "ui");
         (void)deltaTime;
         if (!m_root) return;
 

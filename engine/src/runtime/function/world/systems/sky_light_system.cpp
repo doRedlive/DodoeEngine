@@ -145,9 +145,9 @@ namespace dodoe {
             if (path.empty()) {
                 continue;
             }
-            const FsPath candidate = asset_dir / FsPath(path.c_str());
+            const FsPath candidate = asset_dir / FsPath(path);
             if (FileSystem::IsFileExists(candidate)) {
-                path = String(candidate.lexically_normal().generic_string().c_str());
+                path = String(candidate.lexically_normal().generic_string());
             }
         }
 

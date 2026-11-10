@@ -20,7 +20,7 @@ namespace dodoe {
 
         cutie::GraphicsPipelineHandle m_pipeline{};
         GfxBindingLayoutHandle m_binding_layout{};
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         BaselineImGuiPass* m_imgui_pass{nullptr};
 #endif
 

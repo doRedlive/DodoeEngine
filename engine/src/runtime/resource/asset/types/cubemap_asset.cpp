@@ -26,7 +26,7 @@ namespace dodoe {
             m_face_paths.clear();
             for (const auto& path : json["facePaths"]) {
                 if (path.is_string()) {
-                    m_face_paths.push_back(String(path.get<std::string>().c_str()));
+                    m_face_paths.push_back(String(path.get<std::string>()));
                 }
             }
         }

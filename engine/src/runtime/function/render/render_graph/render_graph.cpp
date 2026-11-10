@@ -528,7 +528,7 @@ namespace dodoe {
                 for (Size_t i = 0; i < level.size(); ++i) {
                     const auto pass_index = level[i];
                     const auto pass = m_passes[pass_index];
-                    DO_PROFILE_SCOPE_CATEGORY(pass->getName().c_str(), "render-pass");
+                    DO_PROFILE_SCOPE_CATEGORY(pass->getName(), "render-pass");
                     RenderGraphPassContext pass_context(context, resource_resolver);
                     for (const auto& barrier : pass->getPreBarriers()) {
                         if (barrier.resource_type == RenderGraphResourceType::Texture) {
@@ -543,7 +543,7 @@ namespace dodoe {
                         out_commands.commitBarriers();
                     }
                     recordPassAttachments(pass, prepared_attachments[i], pass_context, out_commands);
-                    out_commands.beginMarker(pass->getName().c_str());
+                    out_commands.beginMarker(pass->getName());
                     pass->execute(pass_context, out_commands);
                     out_commands.endMarker();
                 }
@@ -562,7 +562,7 @@ namespace dodoe {
 
                     pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list, attachments, &recordPassAttachments] {
                         GfxRenderScope render_scope;
-                        DO_PROFILE_SCOPE_CATEGORY(pass->getName().c_str(), "render-pass");
+                        DO_PROFILE_SCOPE_CATEGORY(pass->getName(), "render-pass");
                         RenderGraphPassContext pass_context(context, resource_resolver);
                         for (const auto& barrier : pass->getPreBarriers()) {
                             if (barrier.resource_type == RenderGraphResourceType::Texture) {
@@ -577,13 +577,16 @@ namespace dodoe {
                             cmd_list->commitBarriers();
                         }
                         recordPassAttachments(pass, *attachments, pass_context, *cmd_list);
-                        cmd_list->beginMarker(pass->getName().c_str());
+                        cmd_list->beginMarker(pass->getName());
                         pass->execute(pass_context, *cmd_list);
                         cmd_list->endMarker();
                         wg.done();
                     });
                 }
-                wg.wait();
+                {
+                    DO_PROFILE_SCOPE_CATEGORY("RenderGraph::waitForPassRecording", "synchronization");
+                    wg.wait();
+                }
 
                 for (auto& cmd_list : pass_command_lists) {
                     out_commands.append(std::move(cmd_list));
@@ -607,21 +610,21 @@ namespace dodoe {
         oss << "{\n  \"passes\": [\n";
         for (Size_t i = 0; i < m_passes.size(); i++) {
             if (i > 0) oss << ",\n";
-            oss << "    { \"name\": \"" << m_passes[i]->getName().c_str()
+            oss << "    { \"name\": \"" << m_passes[i]->getName()
                 << "\", \"culled\": " << (m_culled_passes[i] ? "true" : "false")
                 << ", \"async\": " << (HasAnyFlags(m_passes[i]->getFlags(), RenderGraphPassFlags::AsyncCompute) ? "true" : "false")
                 << ", \"accesses\": [";
             const auto& accesses = m_passes[i]->getAccesses();
             for (Size_t j = 0; j < accesses.size(); j++) {
                 if (j > 0) oss << ", ";
-                oss << "\"" << m_resources[accesses[j].resource_index].name.c_str() << "\"";
+                oss << "\"" << m_resources[accesses[j].resource_index].name << "\"";
             }
             oss << "], \"barriers\": " << m_passes[i]->getPreBarriers().size() << " }";
         }
         oss << "\n  ],\n  \"resources\": [\n";
         for (Size_t i = 0; i < m_resources.size(); i++) {
             if (i > 0) oss << ",\n";
-            oss << "    { \"name\": \"" << m_resources[i].name.c_str()
+            oss << "    { \"name\": \"" << m_resources[i].name
                 << "\", \"exported\": " << (m_resources[i].is_exported ? "true" : "false")
                 << ", \"imported\": " << (m_resources[i].isImported() ? "true" : "false")
                 << ", \"first_pass\": " << m_resources[i].first_pass_index
@@ -636,7 +639,7 @@ namespace dodoe {
         oss << "digraph RenderGraph {\n  rankdir=LR;\n";
         for (Size_t i = 0; i < m_passes.size(); i++) {
             const char* color = m_culled_passes[i] ? "gray" : "black";
-            oss << "  p" << i << " [label=\"" << m_passes[i]->getName().c_str()
+            oss << "  p" << i << " [label=\"" << m_passes[i]->getName()
                 << "\", color=" << color << "];\n";
         }
         for (Size_t i = 0; i < m_passes.size(); i++) {
@@ -646,7 +649,7 @@ namespace dodoe {
                     const auto& resource = m_resources[access.resource_index];
                     for (const auto writer_idx : resource.writer_passes) {
                         oss << "  p" << writer_idx << " -> p" << i
-                            << " [label=\"" << resource.name.c_str() << "\"];\n";
+                            << " [label=\"" << resource.name << "\"];\n";
                     }
                 }
             }

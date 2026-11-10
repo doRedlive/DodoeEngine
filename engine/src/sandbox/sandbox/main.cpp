@@ -5,7 +5,6 @@
 #include "runtime/core/project/project.h"
 
 int main(int argc, char* argv[]) {
-    DO_PROFILE_BEGIN_SESSION("DodoeSandbox", "DodoeProfile.json");
     DO_PROFILE_THREAD_NAME("MainThread");
     int exit_code = 0;
     {
@@ -25,7 +24,6 @@ int main(int argc, char* argv[]) {
             delete app;
         }
     }
-    DO_PROFILE_END_SESSION();
 
     return exit_code;
 }

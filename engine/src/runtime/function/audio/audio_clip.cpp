@@ -66,7 +66,7 @@ namespace dodoe {
         ma_uint64 frame_count = 0;
         void* pcm_data = nullptr;
         ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 0, 0);
-        if (ma_decode_file(absolute_path.c_str(), &config, &frame_count, &pcm_data) != MA_SUCCESS) {
+        if (ma_decode_file(absolute_path, &config, &frame_count, &pcm_data) != MA_SUCCESS) {
             return false;
         }
 

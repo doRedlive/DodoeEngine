@@ -113,7 +113,7 @@ namespace dodoe {
 #endif//DODOE_DEBUG_ENABLED
 
 	void ImGuiFeature::shutdown() {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	    if (ImGui::GetCurrentContext()) {
 	        ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
 	    }

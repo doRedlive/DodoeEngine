@@ -6,9 +6,8 @@
 
 #include <fstream>
 #include <filesystem>
-#include <nlohmann/json.hpp>
 
-using Json = nlohmann::json;
+#include "runtime/core/utils/json.h"
 
 namespace dodoe {
 	ProjectSerializer::ProjectSerializer(Ref<Project> proj) : project_(proj) { }

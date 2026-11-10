@@ -10,10 +10,10 @@
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/time/time_system.h"
 #include "render_frame/frame_telemetry.h"
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "runtime/function/ui/imgui/imgui_builder.h"
 #include "runtime/function/ui/imgui/imgui_viewport_renderer.h"
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
 
 namespace dodoe {
 
@@ -121,11 +121,11 @@ namespace dodoe {
     void RenderSystem::submitFrame() {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::submitFrame", "frame");
         if (!m_render_thread) return;
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         if (!RenderSettings::IsEnableBaselineRender()) {
             ImGuiBuilder::RenderPlatformWindows();
         }
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
 
         FrameCommand frame_command{};
         if (auto window = m_window_manager->getWindow()) {
@@ -299,56 +299,66 @@ namespace dodoe {
 #endif//DODOE_PERF_ENABLED
 
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
-        m_shared_render_service->processDeferredDeletions(frame_ctx.frame_number);
+        {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::processDeferredDeletions", "frame");
+            m_shared_render_service->processDeferredDeletions(frame_ctx.frame_number);
+        }
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
 
         const Float frame_time = packet.frame.frame_time;
         const Float frame_delta = packet.frame.frame_delta;
 
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
-        if (RenderSettings::IsEnableBaselineRender() && RenderSettings::IsGpuDrivenSupported()) {
-            DrawCommandList upload_list;
-            upload_list.setDevice(*m_gfx);
-            scene->flushUpdates(upload_list);
-            auto& upload_cmd = m_gfx->getCommandList();
-            upload_cmd->open();
-            upload_list.execute(upload_cmd);
-            upload_cmd->close();
-            m_gfx->getDevice()->executeCommandList(upload_cmd);
-        } else {
-            scene->flushUpdates(*frame_ctx.command_list);
+        {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::sceneFlush", "frame");
+            if (RenderSettings::IsEnableBaselineRender() && RenderSettings::IsGpuDrivenSupported()) {
+                DrawCommandList upload_list;
+                upload_list.setDevice(*m_gfx);
+                scene->flushUpdates(upload_list);
+                auto& upload_cmd = m_gfx->getCommandList();
+                upload_cmd->open();
+                upload_list.execute(upload_cmd);
+                upload_cmd->close();
+                m_gfx->getDevice()->executeCommandList(upload_cmd);
+            } else {
+                scene->flushUpdates(*frame_ctx.command_list);
+            }
+            m_shared_render_service->getMaterialSystem()->prepare();
         }
-        m_shared_render_service->getMaterialSystem()->prepare();
         DO_PROFILE_MARK("RenderSystem::renderFrame.sceneFlushed", "frame");
 
-        DO_PROFILE_MARK("RenderSystem::renderFrame.renderViewTargets", "frame");
-        if (RenderSettings::IsEnableBaselineRender()) {
-            static Bool s_baseline_branch_logged = false;
-            if (!s_baseline_branch_logged) {
-                s_baseline_branch_logged = true;
-                DO_INFO("RenderSystem: baseline branch active, hook_valid={}",
-                    static_cast<bool>(m_baseline_renderer_hook));
-            }
-            if (m_baseline_renderer_hook) {
+        {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::pipelineRender", "frame");
+            DO_PROFILE_MARK("RenderSystem::renderFrame.renderViewTargets", "frame");
+            if (RenderSettings::IsEnableBaselineRender()) {
+                static Bool s_baseline_branch_logged = false;
+                if (!s_baseline_branch_logged) {
+                    s_baseline_branch_logged = true;
+                    DO_INFO("RenderSystem: baseline branch active, hook_valid={}",
+                        static_cast<bool>(m_baseline_renderer_hook));
+                }
+                if (m_baseline_renderer_hook) {
+                    for (auto& entry : packet.frame.targets) {
+                        auto* target = entry.target;
+                        auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, false, entry.background);
+                        family.buildVisiblePrimitives(*scene);
+                        m_baseline_renderer_hook(*gfx, frame_ctx.swapchain_image_index, family, *scene);
+                    }
+                }
+            } else {
                 for (auto& entry : packet.frame.targets) {
                     auto* target = entry.target;
-                    auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, false, entry.background);
-                    family.buildVisiblePrimitives(*scene);
-                    m_baseline_renderer_hook(*gfx, frame_ctx.swapchain_image_index, family, *scene);
+                    Bool show_editor = entry.show_editor;
+                    auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, show_editor, entry.background);
+                    pipeline->render(
+                        family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
+                        frame_ctx.staging, frame_ctx.transient_resource_pool);
                 }
-            }
-        } else {
-            for (auto& entry : packet.frame.targets) {
-                auto* target = entry.target;
-                Bool show_editor = entry.show_editor;
-                auto family = target->getViewport().buildViewFamily(*scene, frame_time, frame_delta, entry.view, entry.proj, show_editor, entry.background);
-                pipeline->render(
-                    family, *scene, frame_ctx.swapchain_image_index, *frame_ctx.command_list,
-                    frame_ctx.staging, frame_ctx.transient_resource_pool);
             }
         }
 
         {
+            DO_PROFILE_SCOPE_CATEGORY("RenderSystem::submitGfxCommands", "frame");
             auto& gfx_cmd = m_gfx->getCommandList();
             auto gfx_device = m_gfx->getDevice();
             if (!m_gpu_frame_queries[0]) {
@@ -406,14 +416,14 @@ namespace dodoe {
         }
 #endif
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         if (!RenderSettings::IsEnableBaselineRender()) {
             for (auto& entry : packet.viewport_packets) {
                 ImGuiViewportRenderer::RenderWindowOnRenderThread(entry.viewport, entry.packet);
             }
             m_gfx->acquireOpenGLContext();
         }
-#endif//DODOE_DEBUG_ENABLED
+#endif//DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED
     }
 
     void RenderSystem::realizeResourceCommand(ResourceCommand& cmd) {

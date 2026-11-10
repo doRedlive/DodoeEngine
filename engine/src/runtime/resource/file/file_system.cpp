@@ -66,7 +66,7 @@ namespace dodoe {
     }
 
     String FileSystem::GetDocumentsPathString() {
-        return String(GetDocumentsPath().generic_string().c_str());
+        return String(GetDocumentsPath().generic_string());
     }
 
     const FsPath& FileSystem::GetExecutableDir() {
@@ -92,7 +92,7 @@ namespace dodoe {
     }
 
     String FileSystem::GetExecutableDirString() {
-        return String(GetExecutableDir().generic_string().c_str());
+        return String(GetExecutableDir().generic_string());
     }
 
     const FsPath& FileSystem::GetEngineRootPath() {
@@ -100,7 +100,7 @@ namespace dodoe {
     }
 
     String FileSystem::GetEngineRootPathString() {
-        return String(GetEngineRootPath().generic_string().c_str());
+        return String(GetEngineRootPath().generic_string());
     }
 
     const FsPath& FileSystem::GetEngineResPath() {
@@ -112,11 +112,11 @@ namespace dodoe {
     }
 
     String FileSystem::GetEngineResPathString() {
-        return String(GetEngineResPath().generic_string().c_str());
+        return String(GetEngineResPath().generic_string());
     }
 
     String FileSystem::NormalizePath(const FsPath& path) {
-        return String(path.lexically_normal().generic_string().c_str());
+        return String(path.lexically_normal().generic_string());
     }
 
     Bool FileSystem::IsFileExists(const FsPath& p) {
@@ -142,15 +142,15 @@ namespace dodoe {
     }
 
     String FileSystem::StrToNormalizePath(const String& str) {
-        return String(FsPath(str).lexically_normal().generic_string().c_str());
+        return String(FsPath(str).lexically_normal().generic_string());
     }
 
     String FileSystem::PathToName(const String& path) {
-        return String(FsPath(path).filename().string().c_str());
+        return String(FsPath(path).filename().string());
     }
 
     String FileSystem::PathToNameNoExt(const String& path) {
-        return String(FsPath(path).stem().string().c_str());
+        return String(FsPath(path).stem().string());
     }
 
     String FileSystem::RelativeToAbsolute(const String& path, const FsPath& base) {
@@ -161,7 +161,7 @@ namespace dodoe {
         }
 
         FsPath absolute_path = base / relative_path;
-        return String(absolute_path.lexically_normal().generic_string().c_str());
+        return String(absolute_path.lexically_normal().generic_string());
     }
 
     Bool FileSystem::TraverseDirectory(DynamicArray<String>& out_paths, const FsPath& target_dir, const DynamicArray<String>& extensions, Bool case_sensitive) {

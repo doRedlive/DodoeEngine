@@ -35,6 +35,7 @@ namespace dodoe {
         FrameSlot& slot = m_slots[m_current_index];
 
         if (slot.in_flight && slot.completion_query) {
+            DO_PROFILE_SCOPE_CATEGORY("RenderFrameScheduler::waitForFrameComplete", "synchronization");
             m_device->waitEventQuery(slot.completion_query);
             m_device->resetEventQuery(slot.completion_query);
             slot.in_flight = false;
@@ -62,13 +63,14 @@ namespace dodoe {
     }
 
     void RenderFrameScheduler::endFrame(FrameContext& ctx) {
+        DO_PROFILE_SCOPE_CATEGORY("RenderFrameScheduler::endFrame", "frame");
         if (ctx.completion_query) {
             m_device->setEventQuery(ctx.completion_query, GfxCommandQueue::Graphics);
         }
     }
 
     void RenderFrameScheduler::retireCompletedFrames() {
-        DO_PROFILE_SCOPE_CATEGORY("RenderFrameScheduler::retireCompletedFrames", "shutdown");
+        DO_PROFILE_SCOPE_CATEGORY("RenderFrameScheduler::retireCompletedFrames", "synchronization");
         for (auto& slot : m_slots) {
             slot.command_list.beginFrame();
             slot.transient_resource_pool.releaseAll();

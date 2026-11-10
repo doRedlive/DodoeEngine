@@ -20,7 +20,7 @@
 #include "runtime/function/render/shader/descriptor_table_manager.h"
 #include "runtime/function/render/render_view/taa_view_extension.h"
 #include "runtime/core/math/math.h"
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "runtime/service/debug/debug_imgui.h"
 #endif
 
@@ -232,7 +232,7 @@ namespace dodoe {
 
         // Entity selected in the debug ImGui hierarchy panel is highlighted this frame.
         UInt64 selected_uuid = 0;
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         Entity selected_entity = DebugImGui::GetSelectedEntity();
         if (selected_entity.valid()) {
             selected_uuid = static_cast<UInt64>(selected_entity.uuid());

@@ -146,6 +146,7 @@ namespace dodoe {
     }
 
     void Application::stepFrame(const std::function<void(Float)>& preTick) {
+        DO_PROFILE_SCOPE_CATEGORY("Application::stepFrame", "frame");
         EventSystem::Publish<BeforeOneTickEvent>();
 
         m_context->getTimeSystem()->updateTime();
@@ -155,12 +156,18 @@ namespace dodoe {
         if (auto* input_manager = m_context->getInputManager()) {
             input_manager->beginFrame();
         }
-        EventSystem::Poll();
-        EventSystem::Handle();
-        if (auto* input_manager = m_context->getInputManager()) {
-            input_manager->update(delta);
+        {
+            DO_PROFILE_SCOPE_CATEGORY("Application::eventsAndInput", "frame");
+            if (!isHosted()) {
+                EventSystem::Poll();
+            }
+            EventSystem::Handle();
+            if (auto* input_manager = m_context->getInputManager()) {
+                input_manager->update(delta);
+            }
         }
         if (preTick) {
+            DO_PROFILE_SCOPE_CATEGORY("Application::preTick", "frame");
             preTick(unscaledDelta);
         }
         m_context->tickOneFrame();

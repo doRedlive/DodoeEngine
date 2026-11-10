@@ -666,19 +666,29 @@ namespace dodoe {
 
     void World::onRuntimeUpdate(Registry& reg, const float dt) {
         DO_PROFILE_SCOPE_CATEGORY("World::onRuntimeUpdate", "frame");
-        for (auto& sys : m_gameplay_systems) {
-            if (sys) {
-                sys->update(reg, dt);
+        {
+            DO_PROFILE_SCOPE_CATEGORY("World::gameplaySystemsSerial", "frame");
+            for (auto& sys : m_gameplay_systems) {
+                if (sys) {
+                    sys->update(reg, dt);
+                }
             }
         }
 
-        m_command_buffer.apply(MakeCommandContext(reg));
-        m_command_buffer.reset();
+        {
+            DO_PROFILE_SCOPE_CATEGORY("World::commandBufferApply", "frame");
+            m_command_buffer.apply(MakeCommandContext(reg));
+            m_command_buffer.reset();
+        }
 
         if (m_task_graph_dirty) {
+            DO_PROFILE_SCOPE_CATEGORY("World::buildTaskGraphs", "frame");
             buildTaskGraphs();
         }
-        ExecuteSystemsParallel(m_runtime_task_graph, m_runtime_systems, reg, dt, m_command_buffer);
+        {
+            DO_PROFILE_SCOPE_CATEGORY("World::runtimeSystemsParallel", "frame");
+            ExecuteSystemsParallel(m_runtime_task_graph, m_runtime_systems, reg, dt, m_command_buffer);
+        }
     }
 
     void World::flushCommandBuffer() {

@@ -168,7 +168,7 @@ namespace dodoe {
         ofn.lpstrFilter = "Dodoe Project (*.doproj)\0*.doproj\0All Files (*.*)\0*.*\0";
         ofn.nFilterIndex = 1;
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-        ofn.lpstrInitialDir = initial_dir.c_str();
+        ofn.lpstrInitialDir = initial_dir;
         return GetOpenFileNameA(&ofn) ? String(file_buffer) : String();
     }
 
@@ -248,7 +248,7 @@ namespace dodoe {
             return false;
         }
 
-        const String command(std::string("dotnet build \"" + generated_project_path.string() + "\" -c Debug --nologo").c_str());
+        const String command(std::string("dotnet build \"" + generated_project_path.string() + "\" -c Debug --nologo"));
         return RunProcessAndWait(command, output_directory);
     }
 

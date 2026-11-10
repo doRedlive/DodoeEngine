@@ -64,10 +64,10 @@ namespace dodoe {
         try {
             json types = json::parse(json_str);
             for (const auto& t : types) {
-                String ns = String(t.value("ns", "").c_str());
-                String name = String(t.value("name", "").c_str());
-                String base_ns = String(t.value("baseNs", "").c_str());
-                String base_name = String(t.value("baseName", "").c_str());
+                String ns = String(t.value("ns", ""));
+                String name = String(t.value("name", ""));
+                String base_ns = String(t.value("baseNs", ""));
+                String base_name = String(t.value("baseName", ""));
                 String full_name = ns.empty() ? name : ns + "." + name;
 
                 if (base_ns == "GreenCake" && base_name == "CakeComponent") {
@@ -147,7 +147,7 @@ namespace dodoe {
             for (const auto& [entity_uuid, snapshots] : m_field_snapshot) {
                 json fields_obj = json::object();
                 for (const auto& [key, value] : snapshots) {
-                    fields_obj[key.c_str()] = value;
+                    fields_obj[key] = value;
                 }
                 restoreJson[std::to_string(entity_uuid)] = fields_obj;
             }
@@ -210,7 +210,7 @@ namespace dodoe {
         try {
             json response = json::parse(json_str);
             if (!response.value("ok", false)) {
-                out_error = String(response.value("error", "").c_str());
+                out_error = String(response.value("error", ""));
                 return false;
             }
             return true;
@@ -273,7 +273,7 @@ namespace dodoe {
             const Json data = Json::parse(owned_result.get());
             if (!data.is_object()) return false;
             for (const auto& [type_name, fields] : data.items()) {
-                out_components.emplace_back(String(type_name.c_str()), fields);
+                out_components.emplace_back(String(type_name), fields);
             }
         }
         catch (const Json::exception& e) {

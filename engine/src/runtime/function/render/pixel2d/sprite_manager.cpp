@@ -51,7 +51,7 @@ namespace dodoe {
         Texture2D* texture = ResourceManager::Self().loadObject<Texture2D>(ref.asset_id, 0);
 
         if (auto* asset_manager = ResourceManager::Self().getAssetManager()) {
-            const FsPath absolute = asset_manager->getAssetDir() / FsPath(path.c_str());
+            const FsPath absolute = asset_manager->getAssetDir() / FsPath(path);
             ImportSettings settings;
             if (ImportSettingsIO::Load(absolute, settings)) {
                 if (settings.settings.contains("pixelsPerUnit") &&

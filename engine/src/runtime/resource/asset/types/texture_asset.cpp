@@ -8,7 +8,7 @@ namespace dodoe {
 
     Bool TextureAsset::loadFromSource(const String& absolute_source_path) {
         ImportSettings settings;
-        if (ImportSettingsIO::Load(FsPath(absolute_source_path.c_str()), settings)) {
+        if (ImportSettingsIO::Load(FsPath(absolute_source_path), settings)) {
             if (settings.settings.contains("flipVertical") && settings.settings["flipVertical"].is_boolean()) {
                 m_flip_vertical = settings.settings["flipVertical"].get<Bool>();
             }

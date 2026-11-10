@@ -73,9 +73,9 @@ namespace dodoe {
             if (path.empty()) {
                 return path;
             }
-            const FsPath fs_path(path.c_str());
+            const FsPath fs_path(path);
             if (!fs_path.is_absolute()) {
-                return String(fs_path.generic_string().c_str());
+                return String(fs_path.generic_string());
             }
             AssetManager* asset_manager = ResourceManager::Self().getAssetManager();
             if (!asset_manager) {
@@ -276,7 +276,7 @@ namespace dodoe {
             return Entity::NullEntity();
         }
 
-        const String root_name(FsPath(prefab->getPath().c_str()).stem().string().c_str());
+        const String root_name(FsPath(prefab->getPath()).stem().string().c_str());
 
         std::unordered_map<UUID, Entity> created;
         created.reserve(res.m_entities.size());
@@ -358,12 +358,12 @@ namespace dodoe {
             return nullptr;
         }
 
-        FsPath prefab_fs_path(legacy_path.c_str());
+        FsPath prefab_fs_path(legacy_path);
         if (prefab_fs_path.is_relative()) {
             prefab_fs_path = asset_manager->getAssetDir() / prefab_fs_path;
         }
 
-        const ObjectID ref = asset_manager->ensureImported(String(prefab_fs_path.generic_string().c_str()));
+        const ObjectID ref = asset_manager->ensureImported(String(prefab_fs_path.generic_string()));
         if (!ref.isValid()) {
             return nullptr;
         }
@@ -382,12 +382,12 @@ namespace dodoe {
             return Entity::NullEntity();
         }
 
-        FsPath prefab_fs_path(path.c_str());
+        FsPath prefab_fs_path(path);
         if (prefab_fs_path.is_relative()) {
             prefab_fs_path = asset_manager->getAssetDir() / prefab_fs_path;
         }
 
-        const ObjectID ref = asset_manager->ensureImported(String(prefab_fs_path.generic_string().c_str()));
+        const ObjectID ref = asset_manager->ensureImported(String(prefab_fs_path.generic_string()));
         if (!ref.isValid()) {
             DO_ERROR("SceneImporter::ImportPrefab: failed to ensure import for '{}'", path);
             return Entity::NullEntity();
@@ -425,7 +425,7 @@ namespace dodoe {
         }
 
         const FsPath absolute_path = asset_manager->getAssetDir() / FsPath(path);
-        const ObjectID ref = asset_manager->ensureImported(String(absolute_path.generic_string().c_str()));
+        const ObjectID ref = asset_manager->ensureImported(String(absolute_path.generic_string()));
         if (!ref.isValid()) {
             return {};
         }

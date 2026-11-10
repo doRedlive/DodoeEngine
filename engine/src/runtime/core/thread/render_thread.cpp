@@ -41,7 +41,12 @@ namespace dodoe {
     void RenderThread::submitFrame() {
         DO_PROFILE_SCOPE_CATEGORY("RenderThread::submitFrame", "frame");
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return !m_running || m_in_flight_frames < kMaxFramesInFlight; });
+        if (m_in_flight_frames >= kMaxFramesInFlight) {
+            DO_PROFILE_SCOPE_CATEGORY("RenderThread::backpressureWait", "synchronization");
+            m_cv.wait(lock, [this] { return !m_running || m_in_flight_frames < kMaxFramesInFlight; });
+        } else {
+            m_cv.wait(lock, [this] { return !m_running || m_in_flight_frames < kMaxFramesInFlight; });
+        }
         if (!m_running) return;
         ++m_pending_frames;
         ++m_in_flight_frames;
@@ -68,7 +73,12 @@ namespace dodoe {
 
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait(lock, [this] { return m_pending_frames > 0 || !m_running; });
+                if (m_pending_frames == 0 && m_running) {
+                    DO_PROFILE_SCOPE_CATEGORY("RenderThread::idle", "idle");
+                    m_cv.wait(lock, [this] { return m_pending_frames > 0 || !m_running; });
+                } else {
+                    m_cv.wait(lock, [this] { return m_pending_frames > 0 || !m_running; });
+                }
                 if (!m_running && m_pending_frames == 0) {
                     if (m_shutdown_task) {
                         m_shutdown_task();

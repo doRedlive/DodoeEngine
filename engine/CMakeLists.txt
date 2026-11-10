@@ -15,10 +15,10 @@ add_subdirectory(external)
 if(TARGET Tracy::TracyClient)
     add_library(DodoeProfiling INTERFACE)
     target_compile_definitions(DodoeProfiling INTERFACE
-        $<$<CONFIG:Debug>:DODOE_TRACY_ENABLED=1>
+        $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:DODOE_TRACY_ENABLED=1>
     )
     target_link_libraries(DodoeProfiling INTERFACE
-        $<$<CONFIG:Debug>:Tracy::TracyClient>
+        $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:Tracy::TracyClient>
     )
 endif()
 

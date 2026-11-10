@@ -21,7 +21,7 @@
 namespace sandbox {
 
     SandboxLayer::SandboxLayer(const std::string& name)
-        : dodoe::Layer(name.c_str()),
+        : dodoe::Layer(name),
           m_camera(std::make_unique<SandboxCamera>()),
           m_provider(m_camera.get()) {
     }

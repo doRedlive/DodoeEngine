@@ -8,7 +8,7 @@
 #include "runtime/function/render/render_pipeline/render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_settings.h"
 #include "runtime/function/render/render_frame/frame_telemetry.h"
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "runtime/service/debug/debug_imgui.h"
 #endif
 
@@ -111,7 +111,7 @@ namespace dodoe {
         if (!m_outline_pass->initialize(context)) {
             return false;
         }
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         m_imgui_pass = create_scope<BaselineImGuiPass>();
         if (!m_imgui_pass->initialize(context)) {
             return false;
@@ -133,7 +133,7 @@ namespace dodoe {
         if (!m_present_pass->initialize(context)) {
             return false;
         }
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         m_present_pass->setImGuiPass(m_imgui_pass.get());
 #endif
 
@@ -224,7 +224,7 @@ namespace dodoe {
         m_sky_pass.reset();
         m_sprite_pass.reset();
         m_outline_pass.reset();
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         m_imgui_pass.reset();
         m_pick_pass.reset();
 #endif
@@ -276,13 +276,13 @@ namespace dodoe {
         if (m_taa_pass) {
             m_taa_pass->ensurePipeline(m_rt.taa_framebuffer_a->getFramebufferInfo().getRHI());
         }
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         m_imgui_pass->ensurePipeline(framebuffer->getFramebufferInfo().getRHI());
         m_pick_pass->ensurePipeline(m_rt.pick_framebuffer->getFramebufferInfo().getRHI());
 #endif
         m_present_pass->ensurePipeline(framebuffer->getFramebufferInfo().getRHI());
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         Int32 pick_x = -1;
         Int32 pick_y = -1;
         Bool pick_requested = DebugImGui::ConsumePickRequest(pick_x, pick_y);
@@ -300,7 +300,7 @@ namespace dodoe {
         }
         m_rt_recreated = false;
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         Bool pick_copied = false;
 #endif
         for (auto& view : view_family.getViews()) {
@@ -336,7 +336,7 @@ namespace dodoe {
             m_command_list->endMarker();
 
             // Viewport pick pass
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
             m_pick_ids.clear();
             if (pick_requested) {
                 m_command_list->beginMarker("Baseline.Pick");
@@ -441,7 +441,7 @@ namespace dodoe {
 
         m_command_list->close();
         m_device->executeCommandList(m_command_list.Get());
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         if (pick_copied) {
             Size_t row_pitch = 0;
             if (void* data = m_device->mapStagingTexture(m_pick_staging.Get(),

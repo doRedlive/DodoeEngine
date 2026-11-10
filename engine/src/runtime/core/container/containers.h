@@ -4,15 +4,48 @@
 
 #include "runtime/core/memory/std_allocator.h"
 
+#include <filesystem>
+#include <functional>
 #include <map>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <spdlog/fmt/bundled/format.h>
 
 namespace dodoe {
 
-	using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
+	using StringBase = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
 	using StringView = std::string_view;
 
+	class String : public StringBase {
+	public:
+		using StringBase::StringBase;
+		using StringBase::operator=;
+
+		String() = default;
+		String(const String&) = default;
+		String(String&&) noexcept = default;
+		~String() = default;
+		String& operator=(const String&) = default;
+		String& operator=(String&&) noexcept = default;
+
+		String(const StringBase& other) : StringBase(other) {}
+		String(StringBase&& other) noexcept : StringBase(std::move(other)) {}
+		String(const std::string& other) : StringBase(other.data(), other.size()) {}
+		String(std::string_view other) : StringBase(other.data(), other.size()) {}
+
+		operator const char*() const noexcept { return this->c_str(); }
+		operator std::string() const { return std::string(this->data(), this->size()); }
+		operator std::filesystem::path() const { return std::filesystem::path(this->c_str()); }
+	};
+
 	inline std::string string_to_std(const String& s) { return std::string(s.data(), s.size()); }
+
+	template <typename T>
+	inline String ToString(const T& value) {
+		const std::string text = std::to_string(value);
+		return String(text.data(), text.size());
+	}
 
 	template <typename T>
 	using Optional = std::optional<T>;
@@ -43,15 +76,30 @@ namespace dodoe {
 
 } // namespace dodoe
 
-template <>
-struct fmt::formatter<dodoe::String> {
+namespace std {
+    template <>
+    struct hash<dodoe::String> {
+        size_t operator()(const dodoe::String& s) const noexcept {
+            return hash<dodoe::StringView>{}(dodoe::StringView(s.data(), s.size()));
+        }
+    };
+} // namespace std
+
+template <typename StringType>
+struct DodoeStringFormatter {
     constexpr auto parse(fmt::format_parse_context& ctx) {
         auto it = ctx.begin();
         while (it != ctx.end() && *it != '}') ++it;
         return it;
     }
     template <typename FormatContext>
-    auto format(const dodoe::String& s, FormatContext& ctx) {
+    auto format(const StringType& s, FormatContext& ctx) {
         return std::copy(s.begin(), s.end(), ctx.out());
     }
 };
+
+template <>
+struct fmt::formatter<dodoe::String> : DodoeStringFormatter<dodoe::String> {};
+
+template <>
+struct fmt::formatter<dodoe::StringBase> : DodoeStringFormatter<dodoe::StringBase> {};

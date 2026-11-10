@@ -97,6 +97,7 @@ namespace dodoe {
         [[nodiscard]] const SystemContext& context() const;
         [[nodiscard]] const AppMode& getAppMode() const { return m_app_spec.app_mode; }
         [[nodiscard]] Bool isServerMode() const { return m_app_spec.app_mode == AppMode::Server; }
+        [[nodiscard]] Bool isHosted() const { return m_app_spec.host_handle != nullptr; }
         [[nodiscard]] const EngineMode& getEngineMode() const { return m_app_spec.engine_mode; }
 
         void run();

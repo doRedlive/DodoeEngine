@@ -7,33 +7,33 @@
 #include <string>
 #include <utility>
 
-#include <nlohmann/json.hpp>
+#include "runtime/core/utils/json.h"
 
 namespace dodoe::config {
 
-    inline nlohmann::json LoadJsonFile(const std::filesystem::path& path) {
+    inline Json LoadJsonFile(const std::filesystem::path& path) {
         if (!std::filesystem::exists(path)) {
-            return nlohmann::json();
+            return Json();
         }
         std::ifstream file(path);
         if (!file.is_open()) {
-            return nlohmann::json();
+            return Json();
         }
         try {
-            nlohmann::json j;
+            Json j;
             file >> j;
             return j;
         } catch (const std::exception&) {
-            return nlohmann::json();
+            return Json();
         }
     }
 
-    inline void MergeOverride(nlohmann::json& base, const std::filesystem::path& dir, const std::string& filename) {
+    inline void MergeOverride(Json& base, const std::filesystem::path& dir, const std::string& filename) {
         const std::filesystem::path path = dir / filename;
         if (!std::filesystem::exists(path)) {
             return;
         }
-        nlohmann::json override_json = LoadJsonFile(path);
+        Json override_json = LoadJsonFile(path);
         if (!override_json.is_object()) {
             return;
         }
@@ -44,11 +44,11 @@ namespace dodoe::config {
         base.merge_patch(override_json);
     }
 
-    inline nlohmann::json LoadLayered(const std::filesystem::path& builtin_dir,
+    inline Json LoadLayered(const std::filesystem::path& builtin_dir,
                                       const std::filesystem::path& project_dir,
                                       const std::filesystem::path& user_dir,
                                       const std::string& filename) {
-        nlohmann::json merged = LoadJsonFile(builtin_dir / filename);
+        Json merged = LoadJsonFile(builtin_dir / filename);
         if (!project_dir.empty()) {
             MergeOverride(merged, project_dir, filename);
         }
@@ -56,7 +56,7 @@ namespace dodoe::config {
             MergeOverride(merged, user_dir, filename);
         }
         if (!merged.is_object()) {
-            merged = nlohmann::json::object();
+            merged = Json::object();
         }
         return merged;
     }

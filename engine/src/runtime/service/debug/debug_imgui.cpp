@@ -51,7 +51,7 @@ namespace dodoe {
         bool DrawJsonValue(Json& value, bool read_only);
 
         bool DrawJsonMember(const String& name, Json& value, bool read_only) {
-            ImGui::PushID(name.c_str());
+            ImGui::PushID(name);
             const bool immutable_id = read_only && name == "id";
             bool changed = false;
 
@@ -65,7 +65,7 @@ namespace dodoe {
             }
             else {
                 ImGui::AlignTextToFramePadding();
-                ImGui::TextUnformatted(name.c_str());
+                ImGui::TextUnformatted(name);
                 ImGui::SameLine();
                 if (immutable_id) {
                     ImGui::TextDisabled("%s", value.dump().c_str());
@@ -145,7 +145,7 @@ namespace dodoe {
             if (value.is_object()) {
                 bool changed = false;
                 for (auto& [name, child] : value.items()) {
-                    changed |= DrawJsonMember(String(name.c_str()), child, read_only);
+                    changed |= DrawJsonMember(String(name), child, read_only);
                 }
                 return changed;
             }
@@ -177,7 +177,7 @@ namespace dodoe {
 
         void DrawNativeComponent(Entity& entity, const ComponentDB::Entry& entry) {
             ImGui::PushID(static_cast<int>(entry.type));
-            if (!ImGui::CollapsingHeader(entry.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (!ImGui::CollapsingHeader(entry.name, ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::PopID();
                 return;
             }
@@ -222,13 +222,13 @@ namespace dodoe {
             if (!s_cache_valid) return;
 
             for (auto& [type_name, fields] : s_cached_components) {
-                ImGui::PushID(type_name.c_str());
+                ImGui::PushID(type_name);
                 String title = type_name;
                 const auto dot = title.find_last_of('.');
                 if (dot != String::npos) {
                     title = title.substr(dot + 1);
                 }
-                if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (DrawJsonValue(fields, false)) {
                         runtime->setEntityManagedComponentFields(entity_uuid, type_name, fields);
                     }
@@ -655,7 +655,7 @@ namespace dodoe {
             }
             fout << "]";
             fout.close();
-            return String(out_path.string().c_str());
+            return String(out_path.string());
         }
 
         void RenderRendererCompare() {
@@ -805,7 +805,7 @@ namespace dodoe {
         Bool ExportMemoryCsv() {
             const String sampled_at = CsvTimestamp();
             String filename = "memory_stats_" + sampled_at + ".csv";
-            FsPath out_path = std::filesystem::current_path() / filename.c_str();
+            FsPath out_path = std::filesystem::current_path() / filename;
 
             std::ofstream fout(out_path);
             if (!fout.is_open()) {
@@ -1074,8 +1074,8 @@ namespace dodoe {
 
         auto draw_instance_editor = [&](const String& owner_label, const String& instance_name,
                                         const MaterialInstance& instance, const String& section_label) {
-            ImGui::PushID(instance_name.c_str());
-            ImGui::SeparatorText(owner_label.c_str());
+            ImGui::PushID(instance_name);
+            ImGui::SeparatorText(owner_label);
             ImGui::Text("%s (template: %s)",
                         section_label.c_str(),
                         instance.tpl ? instance.tpl->desc.name.c_str() : "<none>");
@@ -1165,7 +1165,7 @@ namespace dodoe {
             const String owner_label = owner.hasComponent<IDComponent>()
                 ? owner.getComponent<IDComponent>().name : String("Entity");
             const String owner_prefix = String(fmt::format(
-                "Mat_{}_", static_cast<UInt64>(owner.uuid())).c_str());
+                "Mat_{}_", static_cast<UInt64>(owner.uuid())));
             for (const auto& [instance_name, instance] : material_system->getInstances()) {
                 if (instance_name.compare(0, owner_prefix.size(), owner_prefix) != 0) {
                     continue;
@@ -1258,11 +1258,11 @@ namespace dodoe {
         }
 
         for (auto& [top, subpaths] : groups) {
-            if (ImGui::TreeNode(top.c_str())) {
+            if (ImGui::TreeNode(top)) {
                 for (const String& path : subpaths) {
                     const size_t slash = path.find('/');
                     const String label = (slash == String::npos) ? path : path.substr(slash + 1);
-                    if (ImGui::MenuItem(label.c_str())) {
+                    if (ImGui::MenuItem(label)) {
                         String error;
                         if (script_system->invokeToolAction(path, error)) {
                             s_tool_error.clear();

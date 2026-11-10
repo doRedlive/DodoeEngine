@@ -24,8 +24,10 @@ namespace dodoe {
     public:
         ThreadPool(size_t thread_size) : stop_(false) {
             for (size_t i = 0; i < thread_size; i++) {
-                threads_.emplace_back([this]{
+                threads_.emplace_back([this, i]{
                     Memory::InitThread();
+                    const String thread_name("Worker" + std::to_string(i));
+                    DO_PROFILE_THREAD_NAME(thread_name);
                     while (true) {
                         UInt64 cur = Memory::CurrentFrameEpoch();
                         ThreadAllocator* ta = threadAllocatorPtr();
@@ -44,7 +46,10 @@ namespace dodoe {
                             task = std::move(tasks_.front());
                             tasks_.pop();
                         }
-                        task();
+                        {
+                            DO_PROFILE_SCOPE_CATEGORY("ThreadPool::task", "task");
+                            task();
+                        }
                     }
                 });
             }

@@ -56,7 +56,7 @@ namespace dodoe {
         UInt64 m_taa_frame_index{0};
         Bool m_rt_recreated{false};
         Bool m_taa_was_active{false};
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         Scope<BaselineImGuiPass> m_imgui_pass{};
         Scope<BaselinePickPass> m_pick_pass{};
 #endif

@@ -40,7 +40,7 @@ namespace dodoe {
             material.setNormalTexture(texture_ptr(props.normal_texture));
             material.setMetallicRoughnessTexture(texture_ptr(props.metallic_roughness_texture));
             material.setEmissiveTexture(texture_ptr(props.emissive_texture));
-            (void)material.saveToJson(String(absolute_path.generic_string().c_str()));
+            (void)material.saveToJson(String(absolute_path.generic_string()));
         }
 
         ObjectID EnsureTextureImported(AssetManager* asset_manager, const FileID& texture_id, const FsPath& asset_dir) {
@@ -51,12 +51,12 @@ namespace dodoe {
             if (texture_path.empty()) {
                 return {};
             }
-            const FsPath absolute_path = asset_dir / FsPath(texture_path.c_str());
+            const FsPath absolute_path = asset_dir / FsPath(texture_path);
             std::error_code ec;
             if (!std::filesystem::exists(absolute_path, ec) || ec) {
                 return {};
             }
-            return asset_manager->ensureImported(String(absolute_path.generic_string().c_str()));
+            return asset_manager->ensureImported(String(absolute_path.generic_string()));
         }
 
         void EnsureMaterialTextures(AssetManager* asset_manager, const MaterialProperties& props, const FsPath& asset_dir,
@@ -126,7 +126,7 @@ namespace dodoe {
             return mesh;
         }
 
-        const String cache_path = String((ctx.absolute_source_path + ".domesh").c_str());
+        const String cache_path = String((ctx.absolute_source_path + ".domesh"));
         if (!SaveMeshCache(cache_path, blob)) {
             DO_ERROR("ModelImporter: failed to write mesh cache '{}'", cache_path);
         }
@@ -155,7 +155,7 @@ namespace dodoe {
             }
 
             const String source_path = MakeMaterialAssetPath(model_stem, static_cast<UInt32>(i));
-            const String file_name = String(FsPath(source_path.c_str()).filename().string().c_str());
+            const String file_name = String(FsPath(source_path).filename().string());
 
             UUID asset_id = asset_manager->registerAsset(source_path, AssetType::Material);
             if (!asset_id.isValid()) {

@@ -158,7 +158,7 @@ namespace dodoe {
             asset_json["dependencies"] = deps;
 
             String key_str(std::to_string(static_cast<UInt64>(id.asset_id)).c_str());
-            assets[key_str.c_str()] = asset_json;
+            assets[key_str] = asset_json;
         }
 
         root["assets"] = assets;

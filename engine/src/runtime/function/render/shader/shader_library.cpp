@@ -126,7 +126,7 @@ namespace dodoe {
 
             String debug_name = "ShaderLibrary " + entry.name;
             auto shader = GDrawCommandList.createShader(
-                GfxShaderDesc().setShaderType(entry.stage).setEntryName(entry.entry_point.c_str()).setDebugName(debug_name.c_str()),
+                GfxShaderDesc().setShaderType(entry.stage).setEntryName(entry.entry_point).setDebugName(debug_name),
                 source.data(),
                 source.size()
             );

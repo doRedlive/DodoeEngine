@@ -37,9 +37,9 @@ namespace dodoe {
         if (path.empty()) {
             return path;
         }
-        const FsPath fs_path(path.c_str());
+        const FsPath fs_path(path);
         if (!fs_path.is_absolute()) {
-            return String(fs_path.generic_string().c_str());
+            return String(fs_path.generic_string());
         }
         if (!Project::ActiveProject()) {
             DO_ERROR("Serializer: drop absolute asset path '{}' (no active project)", path);
@@ -125,7 +125,7 @@ namespace dodoe {
                 j["asset_id"] = Serializer::write(instance.getObjectID().asset_id);
                 j["sub_object_id"] = Serializer::write(instance.getObjectID().local_id);
                 if (!instance.getLegacyPath().empty()) {
-                    if (FsPath(instance.getLegacyPath().c_str()).is_absolute()) {
+                    if (FsPath(instance.getLegacyPath()).is_absolute()) {
                         DO_ERROR("Serializer: absolute asset path '{}' is not allowed, use a path relative to Assets",
                                  instance.getLegacyPath());
                     } else {

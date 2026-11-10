@@ -9,7 +9,7 @@
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "baseline_imgui_pass.h"
 #endif
 
@@ -48,7 +48,7 @@ namespace dodoe {
     }
 
     void BaselinePresentPass::setImGuiPass(BaselineImGuiPass* imgui_pass) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         m_imgui_pass = imgui_pass;
 #else
         (void)imgui_pass;
@@ -128,7 +128,7 @@ namespace dodoe {
             RenderFrameCounters::Self().addDrawCall(1); m_command_list->draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
         }
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
         if (m_imgui_pass) {
             m_imgui_pass->render(framebuffer->getRHI());
         }

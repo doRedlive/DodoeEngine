@@ -11,7 +11,7 @@ namespace dodoe {
         if (!ctx.cached_meta) {
             return true;
         }
-        if (ImportSettingsIO::LastWriteTimeSeconds(FsPath(ctx.absolute_source_path.c_str())) != ctx.cached_meta->source_file_mtime) {
+        if (ImportSettingsIO::LastWriteTimeSeconds(FsPath(ctx.absolute_source_path)) != ctx.cached_meta->source_file_mtime) {
             return true;
         }
         return ComputeImportSignature(ctx.settings) != ctx.cached_meta->import_signature;

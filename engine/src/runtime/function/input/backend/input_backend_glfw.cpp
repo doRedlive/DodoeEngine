@@ -81,7 +81,7 @@ namespace dodoe {
         });
 
         glfwSetScrollCallback(window, [](GLFWwindow* w, double x_offset, double y_offset) {
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
             if (ImGui::GetCurrentContext()) ImGui_ImplGlfw_ScrollCallback(w, x_offset, y_offset);
 #endif
             auto* self = static_cast<InputBackendGlfw*>(glfwGetWindowUserPointer(w));

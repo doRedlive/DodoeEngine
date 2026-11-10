@@ -182,7 +182,7 @@ namespace dodoe {
         static void native_ui_UIWidget_alpha_set(uint32_t id, float v) { if (auto* e = FindUIElementById<UIWidget>(id)) e->setAlpha(v); }
 
         // === UILabel ===
-        static const char* native_ui_UILabel_text_get(uint32_t id) { DEF_STR_RET(ui_lbl_text); if (auto* e = FindUIElementById<UILabel>(id)) { _s_ui_lbl_text = e->getText(); return _s_ui_lbl_text.c_str(); } return ""; }
+        static const char* native_ui_UILabel_text_get(uint32_t id) { DEF_STR_RET(ui_lbl_text); if (auto* e = FindUIElementById<UILabel>(id)) { _s_ui_lbl_text = e->getText(); return _s_ui_lbl_text; } return ""; }
         static void native_ui_UILabel_text_set(uint32_t id, const char* v) { if (auto* e = FindUIElementById<UILabel>(id)) { if (v) e->setText(v); } }
         static int native_ui_UILabel_font_size_get(uint32_t id) { if (auto* e = FindUIElementById<UILabel>(id)) return e->getFontSize(); return 0; }
         static void native_ui_UILabel_font_size_set(uint32_t id, int v) { if (auto* e = FindUIElementById<UILabel>(id)) e->setFontSize(v); }
@@ -200,7 +200,7 @@ namespace dodoe {
         static void native_ui_UIImage_alpha_set(uint32_t id, float v) { if (auto* e = FindUIElementById<UIImage>(id)) e->setAlpha(v); }
 
         // === UIButton ===
-        static const char* native_ui_UIButton_label_get(uint32_t id) { DEF_STR_RET(ui_btn_label); if (auto* e = FindUIElementById<UIButton>(id)) { _s_ui_btn_label = e->getLabel(); return _s_ui_btn_label.c_str(); } return ""; }
+        static const char* native_ui_UIButton_label_get(uint32_t id) { DEF_STR_RET(ui_btn_label); if (auto* e = FindUIElementById<UIButton>(id)) { _s_ui_btn_label = e->getLabel(); return _s_ui_btn_label; } return ""; }
         static void native_ui_UIButton_label_set(uint32_t id, const char* v) { if (auto* e = FindUIElementById<UIButton>(id)) { if (v) e->setLabel(v); } }
         static int native_ui_UIButton_interactable_get(uint32_t id) { if (auto* e = FindUIElementById<UIButton>(id)) return e->isInteractable(); return 0; }
         static void native_ui_UIButton_interactable_set(uint32_t id, int v) { if (auto* e = FindUIElementById<UIButton>(id)) e->setInteractable(v != 0); }
@@ -479,7 +479,7 @@ namespace dodoe {
 
         static uint64_t native_id_component_get_id(uint64_t u) { auto* c = TryGetComponent<IDComponent>(u); return c ? (uint64_t)c->id : 0; }
         DEF_STR_RET(id_get_name);
-        static const char* native_id_component_get_name(uint64_t u) { auto* c = TryGetComponent<IDComponent>(u); if (c) { _s_id_get_name = c->name; return _s_id_get_name.c_str(); } return ""; }
+        static const char* native_id_component_get_name(uint64_t u) { auto* c = TryGetComponent<IDComponent>(u); if (c) { _s_id_get_name = c->name; return _s_id_get_name; } return ""; }
         static void native_id_component_set_name(uint64_t u, const char* v) { auto* c = TryGetComponent<IDComponent>(u); if (c && v) c->setName(v); }
 
         static uint64_t native_create_entity(const char* name) {
@@ -814,14 +814,14 @@ namespace dodoe {
         }
 
         DEF_STR_RET(asset_dir);
-        static const char* native_get_asset_directory() { _s_asset_dir = Project::AssetDirectory().string(); return _s_asset_dir.c_str(); }
+        static const char* native_get_asset_directory() { _s_asset_dir = Project::AssetDirectory().string(); return _s_asset_dir; }
         DEF_STR_RET(object_type_name);
 
         static const char* native_object_get_type_name(int instanceID) {
             auto* obj = Object::FindObjectFromInstanceID((InstanceID)instanceID);
             if (!obj) return "";
             _s_object_type_name = obj->getObjectTypeName();
-            return _s_object_type_name.c_str();
+            return _s_object_type_name;
         }
 
         static int native_object_is_alive(int instanceID, int generation) {
@@ -897,9 +897,9 @@ namespace dodoe {
             DEF_STR_RET(world_entities);
             _s_world_entities = "[]";
             auto* world = GetWorld();
-            if (!world) return _s_world_entities.c_str();
+            if (!world) return _s_world_entities;
             auto* scene = world->getActiveScene();
-            if (!scene) return _s_world_entities.c_str();
+            if (!scene) return _s_world_entities;
 
             Json arr = Json::array();
             for (Entity e : scene->getEntities()) {
@@ -910,7 +910,7 @@ namespace dodoe {
                 arr.push_back(std::move(item));
             }
             _s_world_entities = arr.dump();
-            return _s_world_entities.c_str();
+            return _s_world_entities;
         }
 
         static int native_world_save_active_scene() {
@@ -933,9 +933,9 @@ namespace dodoe {
             DEF_STR_RET(scene_hierarchy);
             _s_scene_hierarchy = "[]";
             auto* world = GetWorld();
-            if (!world) return _s_scene_hierarchy.c_str();
+            if (!world) return _s_scene_hierarchy;
             auto* scene = world->getActiveScene();
-            if (!scene) return _s_scene_hierarchy.c_str();
+            if (!scene) return _s_scene_hierarchy;
 
             Json arr = Json::array();
             for (Entity e : scene->getEntities()) {
@@ -961,7 +961,7 @@ namespace dodoe {
                 arr.push_back(std::move(item));
             }
             _s_scene_hierarchy = arr.dump();
-            return _s_scene_hierarchy.c_str();
+            return _s_scene_hierarchy;
         }
 
         static void native_scene_import_prefab(const char* path) {
@@ -1078,7 +1078,7 @@ namespace dodoe {
             String sv(value);
 
             if (pn == "visible")         elem->setVisible(sv == "true" || sv == "1");
-            else if (pn == "depth")      elem->setDepth(static_cast<Float>(std::strtod(sv.c_str(), nullptr)));
+            else if (pn == "depth")      elem->setDepth(static_cast<Float>(std::strtod(sv, nullptr)));
             else if (pn == "position") {
                 auto comma = sv.find(',');
                 if (comma != String::npos) {
@@ -1111,7 +1111,7 @@ namespace dodoe {
             }
             else if (pn == "alpha") {
                 if (auto* widget = dynamic_cast<UIWidget*>(elem))
-                    widget->setAlpha(static_cast<Float>(std::strtod(sv.c_str(), nullptr)));
+                    widget->setAlpha(static_cast<Float>(std::strtod(sv, nullptr)));
             }
             else if (pn == "text") {
                 if (auto* label = dynamic_cast<UILabel*>(elem))
@@ -1249,7 +1249,7 @@ namespace dodoe {
                     _s_ui_prop_value = panel->isClipChildrenEnabled() ? "true" : "false";
             }
 
-            return _s_ui_prop_value.c_str();
+            return _s_ui_prop_value;
         }
 
         static uint32_t native_ui_create_element(const char* type, const char* id, const char* parent_id) {

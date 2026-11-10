@@ -41,7 +41,7 @@ namespace dodoe {
     }
 
     void Debugger::onRender() {
-#if defined(DODOE_DEBUG_ENABLED) && !defined(DODOE_EDITOR_ENABLED)
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED) && !defined(DODOE_EDITOR_ENABLED)
         if (!ImGuiBuilder::GetContext()) return;
         ImGuiContext* prev_ctx = ImGui::GetCurrentContext();
         ImGui::SetCurrentContext(ImGuiBuilder::GetContext());

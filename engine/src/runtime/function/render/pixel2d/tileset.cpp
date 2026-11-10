@@ -74,7 +74,7 @@ namespace dodoe {
                 UnorderedMap<String, String> properties;
                 for (auto prop_it = tile_it.value().begin(); prop_it != tile_it.value().end(); ++prop_it) {
                     if (prop_it.value().is_string()) {
-                        properties.emplace(String(prop_it.key().c_str()), prop_it.value().get<String>());
+                        properties.emplace(String(prop_it.key()), prop_it.value().get<String>());
                     }
                 }
                 if (!properties.empty()) {
@@ -108,7 +108,7 @@ namespace dodoe {
             for (const auto& [localId, props] : tile_properties) {
                 Json entry = Json::object();
                 for (const auto& [key, value] : props) {
-                    entry[std::string(key.c_str())] = value;
+                    entry[std::string(key)] = value;
                 }
                 properties[std::to_string(localId)] = std::move(entry);
             }

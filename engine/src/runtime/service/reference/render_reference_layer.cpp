@@ -9,7 +9,7 @@
 namespace dodoe {
 
     RenderReferenceLayer::RenderReferenceLayer(const String& name) :
-        Layer(name.c_str()) {
+        Layer(name) {
     }
 
     void RenderReferenceLayer::attach() {

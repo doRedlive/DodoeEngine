@@ -249,7 +249,7 @@ namespace dodoe {
                 return String{};
             }
             Json out = Serializer::write(overrides);
-            return String(out.dump().c_str());
+            return String(out.dump());
         }
 
         void ApplyOverrideComponents(const EntityRes& er, Entity entity) {

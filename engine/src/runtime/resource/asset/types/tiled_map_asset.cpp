@@ -34,9 +34,9 @@ namespace dodoe {
                     } else if (prop["value"].is_boolean()) {
                         value = String(prop["value"].get<bool>() ? "true" : "false");
                     } else if (prop["value"].is_number_integer()) {
-                        value = String(std::to_string(prop["value"].get<long long>()).c_str());
+                        value = String(std::to_string(prop["value"].get<long long>()));
                     } else if (prop["value"].is_number_float()) {
-                        value = String(std::to_string(prop["value"].get<double>()).c_str());
+                        value = String(std::to_string(prop["value"].get<double>()));
                     } else {
                         continue;
                     }
@@ -215,7 +215,7 @@ namespace dodoe {
             }
             std::stringstream buffer;
             buffer << file.rdbuf();
-            const String content = String(buffer.str().c_str());
+            const String content = String(buffer.str());
 
             const auto tilesetAttrs = ExtractXmlTagAttrs(content, "tileset");
             if (tilesetAttrs.empty()) {
@@ -308,7 +308,7 @@ namespace dodoe {
             m_orientation = json["orientation"].get<String>();
         }
 
-        const FsPath base_dir = FsPath(absolute_source_path.c_str()).parent_path();
+        const FsPath base_dir = FsPath(absolute_source_path).parent_path();
 
         if (json.contains("tilesets") && json["tilesets"].is_array()) {
             for (const auto& ts : json["tilesets"]) {
@@ -319,13 +319,13 @@ namespace dodoe {
                 ParseUInt32(ts, "firstgid", data.first_gid);
                 if (ts.contains("source") && ts["source"].is_string()) {
                     const String source = ts["source"].get<String>();
-                    const FsPath external_path = base_dir / FsPath(source.c_str());
+                    const FsPath external_path = base_dir / FsPath(source);
                     if (!LoadExternalTileset(external_path, data)) {
                         continue;
                     }
                     if (!data.image_path.empty()) {
-                        const FsPath img = external_path.parent_path() / FsPath(data.image_path.c_str());
-                        data.image_path = String(img.lexically_relative(base_dir).generic_string().c_str());
+                        const FsPath img = external_path.parent_path() / FsPath(data.image_path);
+                        data.image_path = String(img.lexically_relative(base_dir).generic_string());
                     }
                 } else {
                     FillEmbeddedTileset(ts, data);

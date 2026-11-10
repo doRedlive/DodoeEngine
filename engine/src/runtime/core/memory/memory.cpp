@@ -2,6 +2,7 @@
 
 #include "memory.h"
 #include "thread_allocator.h"
+#include "runtime/core/debug/instrumentor.h"
 #include "runtime/core/log/log_system.h"
 
 #include <mimalloc.h>
@@ -313,6 +314,7 @@ namespace dodoe {
 	}
 
 	void Memory::ResetFrame() {
+		DO_PROFILE_SCOPE_CATEGORY("Memory::ResetFrame", "memory");
 		std::lock_guard<std::mutex> lock(s_thread_allocators_mutex);
 		for (auto* ta : s_thread_allocators) {
 			ta->frame.reset();

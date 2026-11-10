@@ -197,12 +197,12 @@ namespace dodoe {
                 if (!asset_dir.empty()) {
                     std::error_code ec;
                     const FsPath relative_path = std::filesystem::relative(resolved_path, asset_dir, ec);
-                    const String relative_str = String(relative_path.generic_string().c_str());
+                    const String relative_str = String(relative_path.generic_string());
                     if (!ec && !relative_path.empty() && !relative_str.starts_with("..")) {
-                        return FileID(String(relative_path.generic_string().c_str()));
+                        return FileID(String(relative_path.generic_string()));
                     }
                 }
-                return FileID(String(resolved_path.generic_string().c_str()));
+                return FileID(String(resolved_path.generic_string()));
             }
             return FileID();
         };
@@ -280,7 +280,7 @@ namespace dodoe {
             MeshAnimClipData clip_data;
             clip_data.name = source_animation->mName.length > 0
                 ? String(source_animation->mName.C_Str())
-                : String(fmt::format("clip_{}", anim_index).c_str());
+                : String(fmt::format("clip_{}", anim_index));
             clip_data.duration = static_cast<Float>(source_animation->mDuration / ticks_per_second);
             clip_data.loop = true;
 
@@ -362,7 +362,7 @@ namespace dodoe {
 
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
-            absolute_source_path.c_str(),
+            absolute_source_path,
             aiProcess_Triangulate |
             aiProcess_GenSmoothNormals |
             aiProcess_CalcTangentSpace |
@@ -373,8 +373,8 @@ namespace dodoe {
             return false;
         }
 
-        const FsPath model_directory = FsPath(absolute_source_path.c_str()).parent_path();
-        const String model_stem = FileSystem::PathToNameNoExt(String(absolute_source_path.c_str()));
+        const FsPath model_directory = FsPath(absolute_source_path).parent_path();
+        const String model_stem = FileSystem::PathToNameNoExt(String(absolute_source_path));
 
         out_blob.BuildHierarchyNode(*scene->mRootNode, -1, out_blob.hierarchy);
 
@@ -505,7 +505,7 @@ namespace dodoe {
     void MeshBlob::load(const String& path, const UUID& asset_id) {
         free();
 
-        const String cache_path = String((path + ".domesh").c_str());
+        const String cache_path = String((path + ".domesh"));
         if (!LoadMeshCache(cache_path, *this)) {
             FsPath asset_dir{};
             if (AssetManager* asset_manager = ResourceManager::Self().getAssetManager()) {
@@ -533,7 +533,7 @@ namespace dodoe {
     }
 
     String MakeMaterialAssetPath(const String& model_stem, const UInt32 material_index) {
-        return String(fmt::format("materials/{}_{}.domat", model_stem, material_index).c_str());
+        return String(fmt::format("materials/{}_{}.domat", model_stem, material_index));
     }
 
     Bool SaveMeshCache(const String& absolute_cache_path, const MeshBlob& blob) {

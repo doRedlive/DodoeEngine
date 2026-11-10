@@ -31,6 +31,7 @@
 #include "runtime/core/debug/instrumentor.h"
 #include "runtime/core/memory/managed.h"
 #include "runtime/core/log/log_system.h"
+#include "runtime/core/utils/json.h"
 
 using dodoe::Bool;
 using dodoe::Byte;
@@ -49,7 +50,23 @@ using dodoe::UInt32;
 using dodoe::UInt64;
 using dodoe::String;
 using dodoe::StringView;
+using dodoe::ToString;
+using dodoe::Optional;
 using dodoe::DynamicArray;
+using dodoe::StaticArray;
+using dodoe::UnorderedMap;
+using dodoe::OrderedMap;
+using dodoe::UnorderedSet;
+using dodoe::Dictionary;
+using dodoe::Pair;
+using dodoe::Deque;
+using dodoe::Scope;
+using dodoe::Ref;
+using dodoe::Weak;
+using dodoe::create_scope;
+using dodoe::create_ref;
+using dodoe::Json;
+using dodoe::FsPath;
 using dodoe::Vector2f;
 using dodoe::Vector2i;
 using dodoe::Vector3f;

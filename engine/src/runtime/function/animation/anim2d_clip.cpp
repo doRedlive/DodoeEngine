@@ -128,8 +128,8 @@ namespace dodoe {
 
         String absolute_path = path;
         if (auto* asset_manager = ResourceManager::Self().getAssetManager()) {
-            if (FsPath(path.c_str()).is_relative()) {
-                absolute_path = String((asset_manager->getAssetDir() / FsPath(path.c_str())).generic_string().c_str());
+            if (FsPath(path).is_relative()) {
+                absolute_path = String((asset_manager->getAssetDir() / FsPath(path)).generic_string());
             }
         }
 

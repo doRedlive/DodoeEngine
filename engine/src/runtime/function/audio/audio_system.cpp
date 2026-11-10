@@ -29,6 +29,7 @@ namespace dodoe {
     }
 
     void AudioSystem::update(Float dt) {
+        DO_PROFILE_SCOPE_CATEGORY("AudioSystem::update", "audio");
         if (m_backend) {
             m_backend->update(dt);
         }

@@ -89,7 +89,7 @@ namespace dodoe {
         // Uniform buffers → Constant buffers
         for (const auto& ub : resources.uniform_buffers) {
             ShaderCBReflection cb;
-            cb.name = String(ub.name.c_str());
+            cb.name = String(ub.name);
             cb.set = compiler.get_decoration(ub.id, spv::DecorationDescriptorSet);
             cb.slot = compiler.get_decoration(ub.id, spv::DecorationBinding);
 
@@ -98,7 +98,7 @@ namespace dodoe {
 
             for (UInt32 mi = 0; mi < static_cast<UInt32>(type.member_types.size()); ++mi) {
                 ShaderCBVariable cv;
-                cv.name = String(compiler.get_member_name(ub.type_id, mi).c_str());
+                cv.name = String(compiler.get_member_name(ub.type_id, mi));
                 cv.offset = compiler.type_struct_member_offset(type, mi);
                 cv.size = static_cast<UInt32>(compiler.get_declared_struct_member_size(type, mi));
                 cb.variables.push_back(cv);
@@ -110,7 +110,7 @@ namespace dodoe {
         // Storage buffers (read-only → StructuredBufferSRV, read-write → StructuredBufferUAV)
         for (const auto& sb : resources.storage_buffers) {
             ShaderTextureReflection tex;
-            tex.name = String(sb.name.c_str());
+            tex.name = String(sb.name);
             tex.set = compiler.get_decoration(sb.id, spv::DecorationDescriptorSet);
             tex.slot = compiler.get_decoration(sb.id, spv::DecorationBinding);
             tex.dimension = GfxTextureDimension::Unknown;
@@ -126,7 +126,7 @@ namespace dodoe {
         // Sampled images (textures)
         for (const auto& si : resources.sampled_images) {
             ShaderTextureReflection tex;
-            tex.name = String(si.name.c_str());
+            tex.name = String(si.name);
             tex.set = compiler.get_decoration(si.id, spv::DecorationDescriptorSet);
             tex.slot = compiler.get_decoration(si.id, spv::DecorationBinding);
 
@@ -145,7 +145,7 @@ namespace dodoe {
         // Storage images (UAV textures)
         for (const auto& img : resources.storage_images) {
             ShaderTextureReflection tex;
-            tex.name = String(img.name.c_str());
+            tex.name = String(img.name);
             tex.set = compiler.get_decoration(img.id, spv::DecorationDescriptorSet);
             tex.slot = compiler.get_decoration(img.id, spv::DecorationBinding);
             const auto& type = compiler.get_type(img.type_id);
@@ -160,7 +160,7 @@ namespace dodoe {
         // Separate samplers
         for (const auto& smp : resources.separate_samplers) {
             ShaderSamplerReflection s;
-            s.name = String(smp.name.c_str());
+            s.name = String(smp.name);
             s.set = compiler.get_decoration(smp.id, spv::DecorationDescriptorSet);
             s.slot = compiler.get_decoration(smp.id, spv::DecorationBinding);
             result.samplers.push_back(s);
@@ -179,7 +179,7 @@ namespace dodoe {
         // Stage inputs (vertex inputs)
         for (const auto& input : resources.stage_inputs) {
             ShaderVertexInput vi;
-            vi.semantic_name = String(input.name.c_str());
+            vi.semantic_name = String(input.name);
             vi.semantic_index = 0;
             vi.location = compiler.get_decoration(input.id, spv::DecorationLocation);
 
@@ -216,7 +216,7 @@ namespace dodoe {
                 }
             }
             if (!found) {
-                out_error = String(("CBV at set " + std::to_string(cb.set) + " slot " + std::to_string(cb.slot) + " (" + cb.name.c_str() + ") not found in layout").c_str());
+                out_error = String(("CBV at set " + std::to_string(cb.set) + " slot " + std::to_string(cb.slot) + " (" + cb.name.c_str() + ") not found in layout"));
                 DO_ERROR("ShaderReflector: {}", out_error);
                 return false;
             }
@@ -232,7 +232,7 @@ namespace dodoe {
                 }
             }
             if (!found) {
-                out_error = String(("Texture at set " + std::to_string(tex.set) + " slot " + std::to_string(tex.slot) + " (" + tex.name.c_str() + ") not found in layout").c_str());
+                out_error = String(("Texture at set " + std::to_string(tex.set) + " slot " + std::to_string(tex.slot) + " (" + tex.name.c_str() + ") not found in layout"));
                 DO_ERROR("ShaderReflector: {}", out_error);
                 return false;
             }
@@ -249,7 +249,7 @@ namespace dodoe {
                 }
             }
             if (!found) {
-                out_error = String(("Sampler at set " + std::to_string(smp.set) + " slot " + std::to_string(smp.slot) + " (" + smp.name.c_str() + ") not found in layout").c_str());
+                out_error = String(("Sampler at set " + std::to_string(smp.set) + " slot " + std::to_string(smp.slot) + " (" + smp.name.c_str() + ") not found in layout"));
                 DO_ERROR("ShaderReflector: {}", out_error);
                 return false;
             }

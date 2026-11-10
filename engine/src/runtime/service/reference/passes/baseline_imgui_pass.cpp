@@ -1,6 +1,6 @@
 // do@Redlive
 
-#ifdef DODOE_DEBUG_ENABLED
+#if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 
 #include "baseline_imgui_pass.h"
 
@@ -267,4 +267,4 @@ namespace dodoe {
 
 } // namespace dodoe
 
-#endif // DODOE_DEBUG_ENABLED
+#endif // DODOE_DEBUG_ENABLED && DODOE_IMGUI_ENABLED

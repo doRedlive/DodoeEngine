@@ -36,9 +36,9 @@ namespace dodoe {
         for (const auto& entry : json["shaders"]) {
             ShaderManifestEntry e;
             e.name = entry.value("name", "");
-            e.source = String(entry.value("source", "").c_str());
-            e.entry_point = String(entry.value("entry_point", "main").c_str());
-            e.stage = ParseStage(String(entry.value("stage", "").c_str()));
+            e.source = String(entry.value("source", ""));
+            e.entry_point = String(entry.value("entry_point", "main"));
+            e.stage = ParseStage(String(entry.value("stage", "")));
 
             if (entry.contains("platforms") && entry["platforms"].is_array()) {
                 for (const auto& p : entry["platforms"]) {

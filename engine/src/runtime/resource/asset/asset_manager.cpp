@@ -155,7 +155,7 @@ namespace dodoe {
         if (!asset_id.isValid()) {
             const String importer_name = String(MetaImporterNameFor(type));
             if (!m_asset_dir.empty() && !importer_name.empty()) {
-                const FsPath absolute_path = m_asset_dir / FsPath(source_path.c_str());
+                const FsPath absolute_path = m_asset_dir / FsPath(source_path);
                 asset_id = ImportSettingsIO::LoadOrCreate(
                     absolute_path, source_path, importer_name, Json::object()).guid;
             }
@@ -172,7 +172,7 @@ namespace dodoe {
         meta.name = FileSystem::PathToNameNoExt(source_path);
         if (!m_asset_dir.empty()) {
             meta.meta_file_mtime = ImportSettingsIO::MetaLastWriteTime(
-                m_asset_dir / FsPath(source_path.c_str()));
+                m_asset_dir / FsPath(source_path));
         }
 
         m_path_to_asset_id[source_path] = asset_id;
@@ -212,17 +212,17 @@ namespace dodoe {
         if (!source_path.empty()) {
             String lookup_path = source_path;
             FsPath meta_path;
-            if (FsPath(source_path.c_str()).is_absolute()) {
+            if (FsPath(source_path).is_absolute()) {
                 if (!m_asset_dir.empty()) {
                     std::error_code ec;
-                    const FsPath rel = std::filesystem::relative(FsPath(source_path.c_str()), m_asset_dir, ec);
+                    const FsPath rel = std::filesystem::relative(FsPath(source_path), m_asset_dir, ec);
                     if (!ec) {
-                        lookup_path = String(rel.generic_string().c_str());
+                        lookup_path = String(rel.generic_string());
                     }
                 }
-                meta_path = FsPath(source_path.c_str());
+                meta_path = FsPath(source_path);
             } else {
-                meta_path = m_asset_dir / FsPath(source_path.c_str());
+                meta_path = m_asset_dir / FsPath(source_path);
             }
             {
                 std::shared_lock lock(m_mutex);
@@ -250,9 +250,9 @@ namespace dodoe {
         if (source_path.empty()) {
             return {};
         }
-        const FsPath meta_path = FsPath(source_path.c_str()).is_absolute()
-            ? FsPath(source_path.c_str())
-            : (m_asset_dir / FsPath(source_path.c_str()));
+        const FsPath meta_path = FsPath(source_path).is_absolute()
+            ? FsPath(source_path)
+            : (m_asset_dir / FsPath(source_path));
         ImportSettings settings;
         if (!ImportSettingsIO::Load(meta_path, settings) || settings.sprites.empty()) {
             return {};
@@ -279,7 +279,7 @@ namespace dodoe {
             return {};
         }
 
-        const FsPath abs = FsPath(absolute_path.c_str()).lexically_normal();
+        const FsPath abs = FsPath(absolute_path).lexically_normal();
         if (!std::filesystem::exists(abs) || !std::filesystem::is_regular_file(abs)) {
             DO_ERROR("AssetManager::ensureImported: '{}' is not a regular file", absolute_path);
             return {};
@@ -287,15 +287,15 @@ namespace dodoe {
 
         std::error_code ec;
         const FsPath rel = std::filesystem::relative(abs, m_asset_dir, ec);
-        const String rel_str = String(rel.generic_string().c_str());
+        const String rel_str = String(rel.generic_string());
         if (ec || rel.empty() || rel_str.starts_with("..")) {
             DO_WARN("AssetManager::ensureImported: '{}' is outside the project asset directory '{}'",
                     absolute_path, m_asset_dir.string());
             return {};
         }
-        const String source_path = String(rel_str.c_str());
+        const String source_path = String(rel_str);
 
-        String ext = String(abs.extension().string().c_str());
+        String ext = String(abs.extension().string());
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
         if (ext == kPrefabExt) {
@@ -347,7 +347,7 @@ namespace dodoe {
             return {};
         }
 
-        const FsPath abs = FsPath(absolute_path.c_str()).lexically_normal();
+        const FsPath abs = FsPath(absolute_path).lexically_normal();
         if (!std::filesystem::exists(abs) || !std::filesystem::is_regular_file(abs)) {
             DO_ERROR("AssetManager::ensureTilesetImported: '{}' is not a regular file", absolute_path);
             return {};
@@ -355,13 +355,13 @@ namespace dodoe {
 
         std::error_code ec;
         const FsPath rel = std::filesystem::relative(abs, m_asset_dir, ec);
-        const String rel_str = String(rel.generic_string().c_str());
+        const String rel_str = String(rel.generic_string());
         if (ec || rel.empty() || rel_str.starts_with("..")) {
             DO_WARN("AssetManager::ensureTilesetImported: '{}' is outside the project asset directory '{}'",
                     absolute_path, m_asset_dir.string());
             return {};
         }
-        const String source_path = String(rel_str.c_str());
+        const String source_path = String(rel_str);
 
         UUID asset_id;
         {
@@ -447,7 +447,7 @@ namespace dodoe {
     }
 
     void AssetManager::registerTextAsset(const String& source_path, AssetType type) {
-        const FsPath absolute_path = m_asset_dir / FsPath(source_path.c_str());
+        const FsPath absolute_path = m_asset_dir / FsPath(source_path);
 
         AssetMetaData cached;
         if (m_database) {
@@ -633,7 +633,7 @@ namespace dodoe {
             : default_importer;
 
         const ImportContext ctx{FileID(source_path), source_path,
-                                String(absolute_path.generic_string().c_str()),
+                                String(absolute_path.generic_string()),
                                 asset_id, settings.settings, nullptr};
 
         lock.unlock();
@@ -672,7 +672,7 @@ namespace dodoe {
             return false;
         }
 
-        const FsPath absolute_path = m_asset_dir / FsPath(meta.source_path.c_str());
+        const FsPath absolute_path = m_asset_dir / FsPath(meta.source_path);
         if (ImportSettingsIO::LastWriteTimeSeconds(absolute_path) != meta.source_file_mtime) {
             return true;
         }
@@ -695,7 +695,7 @@ namespace dodoe {
         }
 
         const FsPath absolute_path = m_asset_dir / FsPath(source_path);
-        String ext = String(absolute_path.extension().string().c_str());
+        String ext = String(absolute_path.extension().string());
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
         const bool is_importer_asset = std::ranges::find(kImageExts, ext) != kImageExts.end()
@@ -747,7 +747,7 @@ namespace dodoe {
                     continue;
                 }
 
-                String ext = String(entry.path().extension().string().c_str());
+                String ext = String(entry.path().extension().string());
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
                 if (ext == ".meta") {
@@ -755,7 +755,7 @@ namespace dodoe {
                 }
 
                 FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
-                String source_path = String(rel_path.generic_string().c_str());
+                String source_path = String(rel_path.generic_string());
 
                 const AssetType text_type = text_asset_type_for(ext);
                 if (text_type != AssetType::Unknown) {
@@ -807,7 +807,7 @@ namespace dodoe {
 
         for (const auto& path : paths) {
             FsPath rel = std::filesystem::relative(path, m_asset_dir);
-            String rel_str = String(rel.generic_string().c_str());
+            String rel_str = String(rel.generic_string());
 
             std::unique_lock lock(m_mutex);
             if (m_path_to_asset_id.find(rel_str) != m_path_to_asset_id.end()) {

@@ -328,7 +328,7 @@ namespace dodoe {
             .setFormat(cmd.texture_is_hdr ? GfxFormat::RGBA32_FLOAT : GfxFormat::RGBA8_UNORM)
             .setMipLevels(1)
             .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
-            .setDebugName(texture->getPath().c_str());
+            .setDebugName(texture->getPath());
 
         auto handle = m_resource_service->createTexture(texture_desc);
         if (!handle) {

@@ -26,7 +26,7 @@ namespace dodoe {
         ss << "\"drawn_instances\":" << drawn_instance_count << ",";
         ss << "\"pending_deletions\":" << pending_deletion_count;
         ss << "}";
-        return String(ss.str().c_str());
+        return String(ss.str());
     }
 
 #ifdef DODOE_PERF_ENABLED
