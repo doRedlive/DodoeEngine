@@ -1,14 +1,17 @@
 set(TARGET_NAME Cakery)
-set(PREVIEW_TARGET_NAME CakeryPreview)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools)
 
 set(EDITOR_CORE_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/bridge/EditorBackend.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/bridge/EditorTypes.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/bridge/EditorCommands.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/bridge/EditorCommands.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/Signal.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/EditorSelection.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/EditorSession.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/EditorSession.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/benchmark/BenchmarkRunner.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/benchmark/BenchmarkRunner.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/document/EditorDocument.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/document/EditorDocumentModel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/document/EditorDocumentModel.cpp
@@ -33,154 +36,174 @@ set(EDITOR_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/AICommandBridge.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/McpServer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/McpServer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/McpAutostart.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/console/McpAutostart.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/SelectionController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/AssetController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/AssetController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/DocumentController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/DocumentController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/PlayModeController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/PlayModeController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/EditorViewController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/EditorViewController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/ToolActionController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/ToolActionController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/ScriptWindowController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/ScriptWindowController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/RuntimeController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/application/RuntimeController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/mcp/McpHttp.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/console/mcp/McpRpc.h
 )
 add_library(EditorCore STATIC ${EDITOR_CORE_SOURCES})
-target_link_libraries(EditorCore PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(EditorCore PUBLIC nlohmann_json::nlohmann_json DodoeRuntime)
+if(TARGET DodoeProfiling)
+    target_link_libraries(EditorCore PUBLIC DodoeProfiling)
+endif()
 if(WIN32)
     target_link_libraries(EditorCore PRIVATE ws2_32)
 endif()
 target_include_directories(EditorCore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ENGINE_ROOT_DIR}/src
     ${ENGINE_ROOT_DIR}/src/shared
+    ${ENGINE_ROOT_DIR}/src/runtime
+    ${ENGINE_ROOT_DIR}/external/glm
+    ${ENGINE_ROOT_DIR}/external/spdlog/include
 )
 set_target_properties(EditorCore PROPERTIES FOLDER "Engine/Editor")
 
 set(EDITOR_SERVICES_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/AssetFileOperations.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/AssetFileOperations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/services/EditorResourceLocator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/services/EditorResourceLocator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/services/EditorConfig.h
     ${CMAKE_CURRENT_SOURCE_DIR}/services/EditorConfig.cpp
 )
-add_library(EditorServices STATIC ${EDITOR_SERVICES_SOURCES})
-target_link_libraries(EditorServices PUBLIC nlohmann_json::nlohmann_json)
-target_include_directories(EditorServices PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ENGINE_ROOT_DIR}/src/shared
+set(EDITOR_BACKEND_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackend.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackend.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendScene.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendGizmo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendTilemap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendThumbnail.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/script/EditorScriptBridge.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/script/EditorScriptBridge.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/EditorCamera.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/EditorCamera.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/AssetDatabase.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/AssetDatabase.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/FieldAttributes.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/FieldAttributes.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/TileCoord.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/TileCoord.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/TilePaintService.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/TilePaintService.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/UuidResolve.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/UuidResolve.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/PaintTilesCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/PaintTilesCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTilemapCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTilemapCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTileLayerCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTileLayerCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTilesetCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/RemoveTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/RemoveTilesetCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ReorderTileLayerCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ReorderTileLayerCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ResizeTilemapCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ResizeTilemapCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/UpdateTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/UpdateTilesetCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/TilemapDocumentRefs.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/TilemapDocumentRefs.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ReparentEntityCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ReparentEntityCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ImportSpriteCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ImportSpriteCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ImportMeshCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ImportMeshCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTilemapWithTilesetCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/CreateTilemapWithTilesetCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ImportTiledMapCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/ImportTiledMapCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/InstantiatePrefabCommand.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/commands/InstantiatePrefabCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/PrefabService.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/PrefabService.cpp
 )
-set_target_properties(EditorServices PROPERTIES FOLDER "Engine/Editor")
-
-set(EDITOR_NULL_BACKEND_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/null/NullEditorBackend.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/null/NullEditorBackend.cpp
-)
-add_library(EditorNullBackend STATIC ${EDITOR_NULL_BACKEND_SOURCES})
-target_link_libraries(EditorNullBackend PUBLIC EditorCore)
-target_include_directories(EditorNullBackend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-set_target_properties(EditorNullBackend PROPERTIES FOLDER "Engine/Editor")
-
-set(EDITOR_RUNTIME_BACKEND_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorBackend.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorBackend.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorScene.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorGizmo.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorTilemap.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/RuntimeEditorThumbnail.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/script/EditorScriptBridge.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/script/EditorScriptBridge.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/EditorCamera.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/AssetDatabase.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/AssetDatabase.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/FieldAttributes.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/FieldAttributes.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/TileCoord.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/TileCoord.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/TilePaintService.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/TilePaintService.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/UuidResolve.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/UuidResolve.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/PaintTilesCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/PaintTilesCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTileLayerCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTileLayerCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilesetCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilesetCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/RemoveTilesetCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/RemoveTilesetCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReorderTileLayerCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReorderTileLayerCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ResizeTilemapCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ResizeTilemapCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/UpdateTilesetCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/UpdateTilesetCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/TilemapDocumentRefs.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/TilemapDocumentRefs.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReparentEntityCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ReparentEntityCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportSpriteCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportSpriteCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportMeshCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportMeshCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapWithTilesetCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/CreateTilemapWithTilesetCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportTiledMapCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/ImportTiledMapCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/InstantiatePrefabCommand.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/commands/InstantiatePrefabCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/PrefabService.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/runtime/services/PrefabService.cpp
-)
-add_library(EditorRuntimeBackend STATIC ${EDITOR_RUNTIME_BACKEND_SOURCES})
-target_link_libraries(EditorRuntimeBackend PUBLIC DodoeRuntime PRIVATE EditorCore EditorServices)
-target_include_directories(EditorRuntimeBackend PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ENGINE_ROOT_DIR}/src
-    ${ENGINE_ROOT_DIR}/src/runtime
-    ${ENGINE_ROOT_DIR}/external/glm
-    ${ENGINE_ROOT_DIR}/external/spdlog/include
-)
-set_target_properties(EditorRuntimeBackend PROPERTIES FOLDER "Engine/Editor")
+target_sources(EditorCore PRIVATE ${EDITOR_BACKEND_SOURCES} ${EDITOR_SERVICES_SOURCES})
 
 set(EDITOR_UI_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/EditorApplication.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/EditorApplication.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/project_selection/ProjectConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/project_selection/ProjectConfig.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/project_selection/ProjectManagerWindow.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/app/project_selection/ProjectManagerWindow.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/EditorWorkspaceContext.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/EditorIcons.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/shell/EditorWindow.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/shell/EditorWindow.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorJsonWidget.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorRemoteWidget.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/EditorRemoteWidget.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/inspector/InspectorWidgets.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HierarchyPanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ConsolePanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ConsolePanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/HistoryPanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowPanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowGraphView.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/WorkflowGraphView.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/InspectorPanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/ProjectPanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/SettingsPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/SettingsPanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TileLayersPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TileLayersPanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilePalettePanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilePalettePanel.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilesetPreviewDialog.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/panels/TilesetPreviewDialog.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpCodeEditor.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpCodeEditor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpHighlighter.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpHighlighter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpSymbolIndex.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/CSharpSymbolIndex.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/ScriptPanel.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cakery/ui/script/ScriptPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/EditorApplication.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/EditorApplication.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectConfig.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectManagerWindow.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectManagerWindow.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectSelectionController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectSelectionController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/EditorWorkspaceContext.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/EditorIcons.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/QtStringInterop.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/ThemeController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/ThemeController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/ViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/shell/ShellViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/shell/ShellViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/hierarchy/HierarchyViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/hierarchy/HierarchyViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/inspector/InspectorViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/inspector/InspectorViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/project/ProjectViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/project/ProjectViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorLayoutController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorLayoutController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorWindow.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorWindow.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/SceneSurface.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/SceneSurface.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/FramelessChrome.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/FramelessChrome.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/EditorJsonWidget.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/EditorJsonWidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/EditorRemoteWidget.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/EditorRemoteWidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/InspectorWidgets.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/HierarchyPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/HierarchyPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/ConsolePanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/ConsolePanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/HistoryPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/HistoryPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/WorkflowPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/WorkflowPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/widgets/WorkflowGraphView.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/widgets/WorkflowGraphView.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/InspectorPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/InspectorPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/ProjectPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/ProjectPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/SettingsPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/SettingsPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/TileLayersPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/TileLayersPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/TilePalettePanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/TilePalettePanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/dialogs/TilesetPreviewDialog.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/dialogs/TilesetPreviewDialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/script/CSharpCodeEditor.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/script/CSharpCodeEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/script/CSharpHighlighter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/script/CSharpHighlighter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/script/CSharpSymbolIndex.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/script/CSharpSymbolIndex.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/ScriptPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/panels/ScriptPanel.cpp
 )
 set_source_files_properties(
     ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_en.ts
@@ -188,8 +211,7 @@ set_source_files_properties(
     PROPERTIES HEADER_FILE_ONLY TRUE
 )
 add_library(EditorUI STATIC ${EDITOR_UI_SOURCES})
-target_link_libraries(EditorUI PUBLIC EditorCore EditorServices Qt6::Widgets qtadvanceddocking-qt6)
-target_compile_definitions(EditorUI PUBLIC $<$<BOOL:${DODOE_ENABLE_PROFILING}>:DODOE_PROFILE_ENABLED=1>)
+target_link_libraries(EditorUI PUBLIC EditorCore Qt6::Widgets qtadvanceddocking-qt6)
 if(TARGET DodoeProfiling)
     target_link_libraries(EditorUI PUBLIC DodoeProfiling)
 endif()
@@ -247,10 +269,9 @@ function(setup_cakery_product product_target copy_runtime)
     add_custom_command(TARGET ${product_target} POST_BUILD ${POST_BUILD_COMMANDS})
 endfunction()
 
-qt_add_executable(${TARGET_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/products/cakery/main.cpp)
+qt_add_executable(${TARGET_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 target_link_libraries(${TARGET_NAME}
     PRIVATE EditorUI
-    PRIVATE EditorRuntimeBackend
     PRIVATE DodoeNewDelete
     PRIVATE Qt6::Widgets
 )
@@ -262,19 +283,6 @@ set(CAKERY_TRANSLATIONS
     ${ENGINE_ROOT_DIR}/res/editor/translations/Cakery_zh_CN.ts
 )
 qt_add_translations(${TARGET_NAME}
-    TS_FILES ${CAKERY_TRANSLATIONS}
-    RESOURCE_PREFIX "/i18n"
-)
-
-qt_add_executable(${PREVIEW_TARGET_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/products/cakery_preview/main.cpp)
-target_link_libraries(${PREVIEW_TARGET_NAME}
-    PRIVATE EditorUI
-    PRIVATE EditorNullBackend
-    PRIVATE Qt6::Widgets
-)
-target_include_directories(${PREVIEW_TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-setup_cakery_product(${PREVIEW_TARGET_NAME} OFF)
-qt_add_translations(${PREVIEW_TARGET_NAME}
     TS_FILES ${CAKERY_TRANSLATIONS}
     RESOURCE_PREFIX "/i18n"
 )

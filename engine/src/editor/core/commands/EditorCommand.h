@@ -1,6 +1,6 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include "core/document/EditorDocument.h"
 
@@ -19,182 +19,182 @@ public:
     virtual bool execute(EditorDocumentModel& model) = 0;
     virtual void revert(EditorDocumentModel& model) = 0;
 
-    virtual std::string label() const { return "Command"; }
+    virtual String label() const { return "Command"; }
     virtual bool mergeWith(const EditorCommand& /*next*/) { return false; }
 };
 
 class CreateEntityCommand final : public EditorCommand {
 public:
-    explicit CreateEntityCommand(std::string name);
+    explicit CreateEntityCommand(String name);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
-    std::uint64_t createdUuid() const { return m_createdUuid; }
+    String label() const override;
+    UInt64 createdUuid() const { return m_createdUuid; }
 
 private:
-    std::string m_name;
-    std::uint64_t m_createdUuid = 0;
+    String m_name;
+    UInt64 m_createdUuid = 0;
 };
 
 class DeleteEntityCommand final : public EditorCommand {
 public:
-    explicit DeleteEntityCommand(std::uint64_t uuid);
+    explicit DeleteEntityCommand(UInt64 uuid);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
 private:
     struct SavedEntity {
-        std::size_t index = 0;
+        Size_t index = 0;
         EditorEntity entity;
     };
 
-    std::uint64_t m_uuid = 0;
-    std::vector<SavedEntity> m_savedEntities;
+    UInt64 m_uuid = 0;
+    DynamicArray<SavedEntity> m_savedEntities;
     bool m_captured = false;
 };
 
 class RenameEntityCommand final : public EditorCommand {
 public:
-    RenameEntityCommand(std::uint64_t uuid, std::string newName);
+    RenameEntityCommand(UInt64 uuid, String newName);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
 private:
-    std::uint64_t m_uuid = 0;
-    std::string m_newName;
-    std::string m_oldName;
+    UInt64 m_uuid = 0;
+    String m_newName;
+    String m_oldName;
 };
 
 class AddComponentCommand final : public EditorCommand {
 public:
-    AddComponentCommand(std::uint64_t uuid, EditorComponent component);
+    AddComponentCommand(UInt64 uuid, EditorComponent component);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
 private:
-    std::uint64_t m_uuid = 0;
+    UInt64 m_uuid = 0;
     EditorComponent m_component;
-    std::size_t m_index = 0;
+    Size_t m_index = 0;
 };
 
 class RemoveComponentCommand final : public EditorCommand {
 public:
-    RemoveComponentCommand(std::uint64_t uuid, std::size_t nativeIndex);
+    RemoveComponentCommand(UInt64 uuid, Size_t nativeIndex);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
 private:
-    std::uint64_t m_uuid = 0;
-    std::size_t m_index = 0;
+    UInt64 m_uuid = 0;
+    Size_t m_index = 0;
     EditorComponent m_savedComponent;
     bool m_saved = false;
 };
 
 class UpdateComponentCommand final : public EditorCommand {
 public:
-    UpdateComponentCommand(std::uint64_t uuid, std::size_t nativeIndex, nlohmann::json newValue);
+    UpdateComponentCommand(UInt64 uuid, Size_t nativeIndex, Json newValue);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
     bool mergeWith(const EditorCommand& next) override;
 
 private:
-    std::uint64_t m_uuid = 0;
-    std::size_t m_index = 0;
-    nlohmann::json m_oldValue;
-    nlohmann::json m_newValue;
+    UInt64 m_uuid = 0;
+    Size_t m_index = 0;
+    Json m_oldValue;
+    Json m_newValue;
 };
 
 class RemoveManagedComponentCommand final : public EditorCommand {
 public:
-    RemoveManagedComponentCommand(std::uint64_t uuid, std::size_t index);
+    RemoveManagedComponentCommand(UInt64 uuid, Size_t index);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
 private:
-    std::uint64_t m_uuid = 0;
-    std::size_t m_index = 0;
+    UInt64 m_uuid = 0;
+    Size_t m_index = 0;
     EditorComponent m_savedComponent;
     bool m_saved = false;
 };
 
 class UpdateManagedComponentCommand final : public EditorCommand {
 public:
-    UpdateManagedComponentCommand(std::uint64_t uuid, std::size_t index, nlohmann::json newValue);
+    UpdateManagedComponentCommand(UInt64 uuid, Size_t index, Json newValue);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
     bool mergeWith(const EditorCommand& next) override;
 
 private:
-    std::uint64_t m_uuid = 0;
-    std::size_t m_index = 0;
-    nlohmann::json m_oldValue;
-    nlohmann::json m_newValue;
+    UInt64 m_uuid = 0;
+    Size_t m_index = 0;
+    Json m_oldValue;
+    Json m_newValue;
 };
 
 class SetFieldValueCommand final : public EditorCommand {
 public:
-    SetFieldValueCommand(std::uint64_t uuid, std::size_t nativeIndex, std::string fieldPath, nlohmann::json newValue);
+    SetFieldValueCommand(UInt64 uuid, Size_t nativeIndex, String fieldPath, Json newValue);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
     bool mergeWith(const EditorCommand& next) override;
 
 private:
-    static std::vector<std::string> splitPath(const std::string& path);
+    static DynamicArray<String> splitPath(const String& path);
 
-    std::uint64_t m_uuid = 0;
-    std::size_t m_index = 0;
-    std::string m_fieldPath;
-    nlohmann::json m_oldValue;
-    nlohmann::json m_newValue;
+    UInt64 m_uuid = 0;
+    Size_t m_index = 0;
+    String m_fieldPath;
+    Json m_oldValue;
+    Json m_newValue;
 };
 
 class ReparentDocumentCommand final : public EditorCommand {
 public:
-    ReparentDocumentCommand(std::uint64_t uuid, std::uint64_t newParent);
+    ReparentDocumentCommand(UInt64 uuid, UInt64 newParent);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
 private:
-    std::uint64_t m_uuid = 0;
-    std::uint64_t m_newParent = 0;
-    std::uint64_t m_oldParent = 0;
+    UInt64 m_uuid = 0;
+    UInt64 m_newParent = 0;
+    UInt64 m_oldParent = 0;
     bool m_captured = false;
 };
 
 class MoveComponentCommand final : public EditorCommand {
 public:
-    MoveComponentCommand(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex);
+    MoveComponentCommand(UInt64 uuid, Size_t fromIndex, Size_t toIndex);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
 private:
-    std::uint64_t m_uuid = 0;
-    std::size_t m_fromIndex = 0;
-    std::size_t m_toIndex = 0;
+    UInt64 m_uuid = 0;
+    Size_t m_fromIndex = 0;
+    Size_t m_toIndex = 0;
 };
 
 class InsertEntitiesCommand final : public EditorCommand {
 public:
-    explicit InsertEntitiesCommand(std::vector<EditorEntity> entities);
+    explicit InsertEntitiesCommand(DynamicArray<EditorEntity> entities);
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
-    std::string label() const override;
+    String label() const override;
 
-    const std::vector<std::uint64_t>& insertedUuids() const { return m_uuids; }
+    const DynamicArray<UInt64>& insertedUuids() const { return m_uuids; }
 
 private:
-    std::vector<EditorEntity> m_entities;
-    std::vector<std::uint64_t> m_uuids;
+    DynamicArray<EditorEntity> m_entities;
+    DynamicArray<UInt64> m_uuids;
     bool m_executed = false;
 };
 

@@ -1,6 +1,6 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include <functional>
 #include <vector>
@@ -13,7 +13,7 @@ template <typename... Args>
 class Signal {
 public:
     using Slot   = std::function<void(Args...)>;
-    using Handle = std::uint64_t;
+    using Handle = UInt64;
 
     Handle connect(Slot slot) {
         Handle h = ++m_next;
@@ -35,7 +35,7 @@ public:
 
 private:
     struct Entry { Handle handle; Slot slot; };
-    mutable std::vector<Entry> m_slots;
+    mutable DynamicArray<Entry> m_slots;
     Handle m_next{0};
 };
 

@@ -1,0 +1,114 @@
+// do@Redlive
+
+#include "dopch.h"
+
+#include "ReorderTileLayerCommand.h"
+
+#include "TilemapDocumentRefs.h"
+#include "services/UuidResolve.h"
+#include "core/document/EditorDocumentModel.h"
+
+#include "runtime/core/context/system_context.h"
+#include "runtime/function/world/components/hierarchy_component.h"
+#include "runtime/function/world/components/tilemap/tilemap_component.h"
+#include "runtime/function/world/entity.h"
+#include "runtime/function/world/scene.h"
+
+#include <algorithm>
+#include <utility>
+#include <vector>
+
+namespace cakery {
+
+namespace {
+
+dodoe::Scene* ActiveScene() {
+    dodoe::World* world = dodoe::GetWorld();
+    return world ? world->getActiveScene() : nullptr;
+}
+
+int FindChildIndex(dodoe::HierarchyComponent& hierarchy, dodoe::UUID layer)
+{
+    for (Size_t i = 0; i < hierarchy.children.size(); ++i) {
+        if (hierarchy.children[i].valid() && hierarchy.children[i].uuid() == layer) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+} // namespace
+
+ReorderTileLayerCommand::ReorderTileLayerCommand(dodoe::UUID tilemap, dodoe::UUID layer, bool moveUp)
+    : m_tilemap(tilemap)
+    , m_layer(layer)
+    , m_moveUp(moveUp)
+{}
+
+bool ReorderTileLayerCommand::swapInScene(EditorDocumentModel& model, bool reverse)
+{
+    auto* scene = ActiveScene();
+    if (!scene) return false;
+
+    bool up = reverse ? !m_moveUp : m_moveUp;
+    auto tilemapEntity = ResolveEntity(scene, m_tilemap);
+    if (!tilemapEntity.valid() || !tilemapEntity.hasComponent<dodoe::HierarchyComponent>()) return false;
+    auto& hierarchy = tilemapEntity.getComponent<dodoe::HierarchyComponent>();
+
+    const int index = FindChildIndex(hierarchy, m_layer);
+    if (index < 0) return false;
+    const int other = up ? index - 1 : index + 1;
+    if (other < 0 || other >= static_cast<int>(hierarchy.children.size())) return false;
+
+    auto& children = hierarchy.children;
+    dodoe::Entity otherEntity = children[static_cast<Size_t>(other)];
+    if (otherEntity.valid()) {
+        m_otherLayer = otherEntity.uuid();
+    }
+    std::swap(children[static_cast<Size_t>(index)],
+              children[static_cast<Size_t>(other)]);
+    hierarchy.child_count = static_cast<int>(children.size());
+    hierarchy.dirty = true;
+
+    if (Json* order = FindTilemapLayerOrderArray(model, m_tilemap)) {
+        if (order->is_array()) {
+            const UInt64 layerId = static_cast<UInt64>(m_layer);
+            const UInt64 otherId = static_cast<UInt64>(m_otherLayer);
+            const auto findItem = [layerId](const Json& item) {
+                return item.is_number_unsigned() && item.get<UInt64>() == layerId;
+            };
+            auto layerIt = std::find_if(order->begin(), order->end(), findItem);
+            auto otherIt = std::find_if(order->begin(), order->end(),
+                                        [otherId](const Json& item) {
+                                            return item.is_number_unsigned() &&
+                                                   item.get<UInt64>() == otherId;
+                                        });
+            if (layerIt != order->end() && otherIt != order->end()) {
+                std::iter_swap(layerIt, otherIt);
+            }
+        }
+    }
+    return true;
+}
+
+bool ReorderTileLayerCommand::execute(EditorDocumentModel& model)
+{
+    if (!swapInScene(model, false)) {
+        return false;
+    }
+    m_swapped = true;
+    return true;
+}
+
+void ReorderTileLayerCommand::revert(EditorDocumentModel& model)
+{
+    if (!m_swapped) return;
+    swapInScene(model, true);
+}
+
+String ReorderTileLayerCommand::label() const
+{
+    return m_moveUp ? String("Move Layer Up") : String("Move Layer Down");
+}
+
+} // namespace cakery

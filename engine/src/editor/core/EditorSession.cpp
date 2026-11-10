@@ -1,10 +1,18 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "EditorSession.h"
+
+#include "backend/RuntimeBackend.h"
+#include "core/console/AICommandBridge.h"
 #include "core/console/CommandRegistry.h"
+#include "core/console/ExecutionRecorder.h"
 #include "core/console/McpServer.h"
+#include "core/console/WorkflowTemplate.h"
 #include "core/commands/CompositeCommand.h"
 #include "core/document/EditorDocumentSerializer.h"
+#include "runtime/core/debug/instrumentor.h"
 
 #include <algorithm>
 #include <chrono>
@@ -19,13 +27,13 @@ namespace cakery {
 
 namespace {
 
-const nlohmann::json* FindJsonPath(const nlohmann::json& root, const std::string& path)
+const Json* FindJsonPath(const Json& root, const String& path)
 {
-    const nlohmann::json* node = &root;
-    std::size_t start = 0;
+    const Json* node = &root;
+    Size_t start = 0;
     while (start <= path.size()) {
-        const std::size_t dot = path.find('.', start);
-        const std::size_t end = dot == std::string::npos ? path.size() : dot;
+        const Size_t dot = path.find('.', start);
+        const Size_t end = dot == String::npos ? path.size() : dot;
         if (!node->is_object()) {
             return nullptr;
         }
@@ -34,7 +42,7 @@ const nlohmann::json* FindJsonPath(const nlohmann::json& root, const std::string
             return nullptr;
         }
         node = &(*it);
-        if (dot == std::string::npos) {
+        if (dot == String::npos) {
             break;
         }
         start = dot + 1;
@@ -42,18 +50,18 @@ const nlohmann::json* FindJsonPath(const nlohmann::json& root, const std::string
     return node;
 }
 
-nlohmann::json* ResolveJsonPath(nlohmann::json& root, const std::string& path)
+Json* ResolveJsonPath(Json& root, const String& path)
 {
-    nlohmann::json* node = &root;
-    std::size_t start = 0;
+    Json* node = &root;
+    Size_t start = 0;
     while (start <= path.size()) {
-        const std::size_t dot = path.find('.', start);
-        const std::size_t end = dot == std::string::npos ? path.size() : dot;
+        const Size_t dot = path.find('.', start);
+        const Size_t end = dot == String::npos ? path.size() : dot;
         if (!node->is_object()) {
             return nullptr;
         }
         node = &(*node)[path.substr(start, end - start)];
-        if (dot == std::string::npos) {
+        if (dot == String::npos) {
             break;
         }
         start = dot + 1;
@@ -63,17 +71,21 @@ nlohmann::json* ResolveJsonPath(nlohmann::json& root, const std::string& path)
 
 } // namespace
 
-EditorSession::EditorSession(std::unique_ptr<IEditorBackend> backend)
-    : m_backend(std::move(backend))
+EditorSession::EditorSession()
+    : m_commands(create_scope<CommandRegistry>()),
+      m_backend(create_scope<RuntimeBackend>(*this)),
+      m_mcp(create_scope<McpServer>()),
+      m_recorder(create_scope<ExecutionRecorder>()),
+      m_aiBridge(create_scope<AICommandBridge>()),
+      m_workflows(create_scope<WorkflowLibrary>())
 {
-    RegisterBuiltinCommands();
     if (!m_backend) {
         return;
     }
     m_backend->setEventCallback([this](const BackendEventMessage& event) {
         handleBackendEvent(event);
     });
-    m_backend->setEditorSession(this);
+
     m_editHistory.changed.connect([this]() {
         notifyDocumentChanged();
     });
@@ -87,12 +99,9 @@ EditorSession::EditorSession(std::unique_ptr<IEditorBackend> backend)
                            m_state != EditorSessionState::Degraded)) {
             return;
         }
-        const std::uint64_t uuid = m_selection.target() == EditorSelection::Target::Entity
+        const UInt64 uuid = m_selection.target() == EditorSelection::Target::Entity
             ? m_selection.selected() : 0;
-        m_backend->execute(EditorCommandMessage{
-            "selection_changed",
-            uuid == 0 ? std::string() : std::to_string(uuid)
-        });
+        m_backend->execute(SelectionChangedCommand{uuid});
     });
 }
 
@@ -120,7 +129,7 @@ bool EditorSession::openProject(ProjectDescriptor project)
               backendCapabilities.scenePreview || backendCapabilities.simulation
         ? EditorSessionState::Ready
         : EditorSessionState::Degraded;
-    const std::string startScenePath = m_backend->startScenePath();
+    const String startScenePath = m_backend->startScenePath();
     if (!startScenePath.empty()) {
         if (!openDocument(startScenePath)) {
             m_backend->shutdown();
@@ -131,7 +140,7 @@ bool EditorSession::openProject(ProjectDescriptor project)
     return true;
 }
 
-bool EditorSession::openDocument(const std::string& documentPath)
+bool EditorSession::openDocument(const String& documentPath)
 {
     if (!m_backend || (m_state != EditorSessionState::Ready &&
                        m_state != EditorSessionState::Degraded)) {
@@ -151,19 +160,20 @@ bool EditorSession::openDocument(const std::string& documentPath)
     return true;
 }
 
-bool EditorSession::saveDocument(const std::string& documentPath)
+bool EditorSession::saveDocument(const String& documentPath)
 {
     if (!m_documentModel.hasDocument()) {
         return false;
     }
-    const std::string target = documentPath.empty() ? m_documentModel.path().string() : documentPath;
+    const String target = documentPath.empty()
+        ? String(m_documentModel.path().string().c_str()) : documentPath;
     if (target.empty()) {
         return false;
     }
     return m_documentModel.save(target);
 }
 
-bool EditorSession::execute(EditorCommandMessage command)
+bool EditorSession::execute(EditorOperation command)
 {
     if (!m_backend || (m_state != EditorSessionState::Ready &&
                        m_state != EditorSessionState::Degraded)) {
@@ -172,20 +182,20 @@ bool EditorSession::execute(EditorCommandMessage command)
     return m_backend->execute(command);
 }
 
-bool EditorSession::inspectComponent(const std::string& typeName,
-                                     std::vector<InspectorFieldMetadata>& fields) const
+bool EditorSession::inspectComponent(const String& typeName,
+                                     DynamicArray<InspectorFieldMetadata>& fields) const
 {
     fields.clear();
     return m_backend && m_backend->inspectComponent(typeName, fields);
 }
 
-bool EditorSession::listAssets(std::vector<AssetBrowserEntry>& entries) const
+bool EditorSession::listAssets(DynamicArray<AssetBrowserEntry>& entries) const
 {
     entries.clear();
     return m_backend && m_backend->listAssets(entries);
 }
 
-bool EditorSession::queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const
+bool EditorSession::queryTilemapState(const String& tilemapUuid, Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -194,7 +204,7 @@ bool EditorSession::queryTilemapState(const std::string& tilemapUuid, nlohmann::
     return m_backend->queryTilemapState(tilemapUuid, out);
 }
 
-bool EditorSession::queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const
+bool EditorSession::queryAssetThumbnail(const String& path, int size, Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -203,7 +213,7 @@ bool EditorSession::queryAssetThumbnail(const std::string& path, int size, nlohm
     return m_backend->queryAssetThumbnail(path, size, out);
 }
 
-bool EditorSession::queryFrameStats(nlohmann::json& out) const
+bool EditorSession::queryFrameStats(Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -221,7 +231,7 @@ bool EditorSession::queryFps(int& out) const
     return m_backend->queryFps(out);
 }
 
-bool EditorSession::queryRenderGraphSnapshot(nlohmann::json& out) const
+bool EditorSession::queryRenderGraphSnapshot(Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -230,7 +240,7 @@ bool EditorSession::queryRenderGraphSnapshot(nlohmann::json& out) const
     return m_backend->queryRenderGraphSnapshot(out);
 }
 
-bool EditorSession::queryRenderSettings(nlohmann::json& out) const
+bool EditorSession::queryRenderSettings(Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -239,7 +249,7 @@ bool EditorSession::queryRenderSettings(nlohmann::json& out) const
     return m_backend->queryRenderSettings(out);
 }
 
-bool EditorSession::getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const
+bool EditorSession::getAssetImportSettings(const String& path, AssetImportSettings& settings) const
 {
     settings = AssetImportSettings{};
     return m_backend && m_backend->getAssetImportSettings(path, settings);
@@ -282,7 +292,7 @@ bool EditorSession::bootEngine()
     return m_backend->bootEngine();
 }
 
-bool EditorSession::applyRenderSettingsOverlay(const nlohmann::json& renderSettings)
+bool EditorSession::applyRenderSettingsOverlay(const Json& renderSettings)
 {
     if (!m_backend) {
         return false;
@@ -290,7 +300,7 @@ bool EditorSession::applyRenderSettingsOverlay(const nlohmann::json& renderSetti
     return m_backend->applyRenderSettingsOverlay(renderSettings);
 }
 
-bool EditorSession::runBenchmark(int frames, nlohmann::json& out)
+bool EditorSession::runBenchmark(int frames, Json& out)
 {
     if (!m_backend) {
         out = nullptr;
@@ -299,7 +309,7 @@ bool EditorSession::runBenchmark(int frames, nlohmann::json& out)
     return m_backend->runBenchmark(frames, out);
 }
 
-bool EditorSession::queryBenchmarkComparison(nlohmann::json& out) const
+bool EditorSession::queryBenchmarkComparison(Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -326,9 +336,14 @@ void EditorSession::submitViewportMetrics(ViewportMetrics metrics)
 
 void EditorSession::tick()
 {
-    McpServer::self().drain();
-    if (m_benchmarkActive) {
-        tickBenchmark();
+    DO_PROFILE_SCOPE_CATEGORY("Cakery::sessionTick", "frame");
+    if (m_mcp) {
+        m_mcp->drain();
+    }
+    if (m_benchmark.active()) {
+        const bool ready = m_backend && (m_state == EditorSessionState::Ready ||
+                                         m_state == EditorSessionState::Degraded);
+        m_benchmark.tick(ready ? m_backend.get() : nullptr);
         return;
     }
     if (m_backend && (m_state == EditorSessionState::Ready || m_state == EditorSessionState::Degraded)) {
@@ -340,72 +355,22 @@ void EditorSession::tick()
     }
 }
 
-bool EditorSession::startBenchmark(int frames, std::function<void(bool, nlohmann::json)> onFinished,
+bool EditorSession::startBenchmark(int frames, std::function<void(bool, Json)> onFinished,
                                    std::function<void(int, int)> onProgress)
 {
-    if (m_benchmarkActive || !m_backend ||
+    if (!m_backend ||
         (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded)) {
         return false;
     }
-    const int clamped = std::clamp(frames, 16, 3600);
-    if (!m_backend->startBenchmark(clamped)) {
-        return false;
-    }
-    m_benchmarkFrames = clamped;
-    m_benchmarkDone = 0;
-    m_benchmarkDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-    m_benchmarkFinished = std::move(onFinished);
-    m_benchmarkProgress = std::move(onProgress);
-    m_benchmarkActive = true;
-    return true;
-}
-
-void EditorSession::tickBenchmark()
-{
-    if (!m_backend || (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded)) {
-        m_benchmarkActive = false;
-        auto finished = std::move(m_benchmarkFinished);
-        m_benchmarkFinished = nullptr;
-        m_benchmarkProgress = nullptr;
-        if (finished) {
-            finished(false, nlohmann::json{{"error", "Runtime unavailable"}});
-        }
-        return;
-    }
-    constexpr int kFramesPerTick = 4;
-    const int step = std::min(kFramesPerTick, m_benchmarkFrames - m_benchmarkDone);
-    for (int i = 0; i < step; ++i) {
-        m_backend->tickAtSafePoint();
-    }
-    m_benchmarkDone += step;
-    if (m_benchmarkProgress) {
-        m_benchmarkProgress(m_benchmarkDone, m_benchmarkFrames);
-    }
-    const bool expired = std::chrono::steady_clock::now() >= m_benchmarkDeadline;
-    if (m_benchmarkDone < m_benchmarkFrames && !expired) {
-        return;
-    }
-    nlohmann::json out;
-    const bool ok = m_backend->pollBenchmark(out);
-    if (!ok && !expired) {
-        return;
-    }
-    m_benchmarkActive = false;
-    auto finished = std::move(m_benchmarkFinished);
-    m_benchmarkFinished = nullptr;
-    m_benchmarkProgress = nullptr;
-    if (finished) {
-        finished(ok, ok ? std::move(out)
-                        : nlohmann::json{{"error", "Benchmark timed out waiting for frames"}});
-    }
+    return m_benchmark.start(*m_backend, frames, std::move(onFinished), std::move(onProgress));
 }
 
 void EditorSession::shutdown()
 {
-    McpServer::self().stop();
-    m_benchmarkActive = false;
-    m_benchmarkFinished = nullptr;
-    m_benchmarkProgress = nullptr;
+    if (m_mcp) {
+        m_mcp->stop();
+    }
+    m_benchmark.reset();
     if (!m_backend || m_state == EditorSessionState::Closed) {
         return;
     }
@@ -430,14 +395,14 @@ const ProjectDescriptor& EditorSession::project() const
     return m_project;
 }
 
-std::filesystem::path EditorSession::assetRoot() const
+FsPath EditorSession::assetRoot() const
 {
     if (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded) {
         return {};
     }
-    std::filesystem::path projectFile(m_project.projectFile);
+    FsPath projectFile(m_project.projectFile);
     if (projectFile.empty()) {
-        const std::filesystem::path root(m_project.rootPath);
+        const FsPath root(m_project.rootPath);
         std::error_code ec;
         for (auto it = std::filesystem::directory_iterator(root, ec);
              it != std::filesystem::directory_iterator(); it.increment(ec)) {
@@ -451,30 +416,30 @@ std::filesystem::path EditorSession::assetRoot() const
             }
         }
     }
-    std::filesystem::path projectDir = projectFile.parent_path();
+    FsPath projectDir = projectFile.parent_path();
     if (projectDir.empty()) {
         projectDir = m_project.rootPath;
     }
-    std::string assetDirName = "Assets";
+    String assetDirName = "Assets";
     if (!projectFile.empty()) {
         std::ifstream file(projectFile);
         if (file.is_open()) {
             try {
-                nlohmann::json root;
+                Json root;
                 file >> root;
                 if (root.contains("Project") && root["Project"].is_object() &&
                     root["Project"].contains("AssetDirectory") &&
                     root["Project"]["AssetDirectory"].is_string()) {
-                    assetDirName = root["Project"]["AssetDirectory"].get<std::string>();
+                    assetDirName = root["Project"]["AssetDirectory"].get<String>();
                 }
-            } catch (const nlohmann::json::exception&) {
+            } catch (const Json::exception&) {
             }
         }
     }
     return projectDir / assetDirName;
 }
 
-bool EditorSession::newScene(const std::filesystem::path& directory, const std::string& name)
+bool EditorSession::newScene(const FsPath& directory, const String& name)
 {
     if (m_state != EditorSessionState::Ready && m_state != EditorSessionState::Degraded) {
         return false;
@@ -487,11 +452,11 @@ bool EditorSession::newScene(const std::filesystem::path& directory, const std::
     if (ec) {
         return false;
     }
-    const std::string sceneName = name.empty() ? std::string("New Scene") : name;
-    std::filesystem::path path = directory / (sceneName + ".doscn");
+    const String sceneName = name.empty() ? String("New Scene") : name;
+    FsPath path = directory / (sceneName + ".doscn");
     int counter = 1;
     while (std::filesystem::exists(path)) {
-        path = directory / (sceneName + " " + std::to_string(counter) + ".doscn");
+        path = directory / (sceneName + " " + ToString(counter) + ".doscn");
         ++counter;
     }
     EditorDocument blank;
@@ -499,7 +464,7 @@ bool EditorSession::newScene(const std::filesystem::path& directory, const std::
     if (!EditorDocumentSerializer::save(blank, path)) {
         return false;
     }
-    return openDocument(path.string());
+    return openDocument(path.string().c_str());
 }
 
 BackendCapabilities EditorSession::capabilities() const
@@ -512,12 +477,12 @@ BackendStatus EditorSession::status() const
     return m_backend ? m_backend->status() : BackendStatus{BackendState::Failed, "No editor backend is available."};
 }
 
-std::string EditorSession::diagnostic() const
+String EditorSession::diagnostic() const
 {
     return m_backend ? m_backend->diagnostic() : "No editor backend is available.";
 }
 
-bool EditorSession::listLogs(std::vector<BackendLogEntry>& entries) const
+bool EditorSession::listLogs(DynamicArray<BackendLogEntry>& entries) const
 {
     if (!m_backend) {
         entries.clear();
@@ -531,7 +496,7 @@ bool EditorSession::clearLogs()
     return m_backend && m_backend->clearLogs();
 }
 
-bool EditorSession::listToolActions(std::vector<std::string>& actions) const
+bool EditorSession::listToolActions(DynamicArray<String>& actions) const
 {
     if (!m_backend) {
         actions.clear();
@@ -540,12 +505,12 @@ bool EditorSession::listToolActions(std::vector<std::string>& actions) const
     return m_backend->listToolActions(actions);
 }
 
-bool EditorSession::invokeToolAction(const std::string& path)
+bool EditorSession::invokeToolAction(const String& path)
 {
     return m_backend && m_backend->invokeToolAction(path);
 }
 
-bool EditorSession::getCustomInspectorUI(const std::string& typeName, nlohmann::json& out) const
+bool EditorSession::getCustomInspectorUI(const String& typeName, Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -554,7 +519,7 @@ bool EditorSession::getCustomInspectorUI(const std::string& typeName, nlohmann::
     return m_backend->getCustomInspectorUI(typeName, out);
 }
 
-bool EditorSession::listEditorWindows(std::vector<std::pair<std::string, std::string>>& out) const
+bool EditorSession::listEditorWindows(DynamicArray<Pair<String, String>>& out) const
 {
     if (!m_backend) {
         out.clear();
@@ -563,7 +528,7 @@ bool EditorSession::listEditorWindows(std::vector<std::pair<std::string, std::st
     return m_backend->listEditorWindows(out);
 }
 
-bool EditorSession::getEditorWindowUI(const std::string& id, nlohmann::json& out) const
+bool EditorSession::getEditorWindowUI(const String& id, Json& out) const
 {
     if (!m_backend) {
         out = nullptr;
@@ -572,9 +537,9 @@ bool EditorSession::getEditorWindowUI(const std::string& id, nlohmann::json& out
     return m_backend->getEditorWindowUI(id, out);
 }
 
-bool EditorSession::dispatchEditorEvent(const std::string& owner, const std::string& ownerId,
-                                        const std::string& controlId, const std::string& eventName,
-                                        const nlohmann::json& value)
+bool EditorSession::dispatchEditorEvent(const String& owner, const String& ownerId,
+                                        const String& controlId, const String& eventName,
+                                        const Json& value)
 {
     return m_backend && m_backend->dispatchEditorEvent(owner, ownerId, controlId, eventName, value);
 }
@@ -585,26 +550,26 @@ bool EditorSession::canEditDocument() const
            (m_state == EditorSessionState::Ready || m_state == EditorSessionState::Degraded);
 }
 
-std::uint64_t EditorSession::createEntity(const std::string& name)
+UInt64 EditorSession::createEntity(const String& name)
 {
     if (!canEditDocument()) {
         return 0;
     }
-    m_history.execute(std::make_unique<CreateEntityCommand>(name), m_documentModel);
+    m_history.execute(create_scope<CreateEntityCommand>(name), m_documentModel);
     notifyDocumentChanged();
-    const std::vector<EditorEntity>& entities = m_documentModel.entities();
-    const std::uint64_t uuid = entities.empty() ? 0 : entities.back().uuid;
+    const DynamicArray<EditorEntity>& entities = m_documentModel.entities();
+    const UInt64 uuid = entities.empty() ? 0 : entities.back().uuid;
     m_selection.set(uuid);
     return uuid;
 }
 
-bool EditorSession::deleteEntity(std::uint64_t uuid)
+bool EditorSession::deleteEntity(UInt64 uuid)
 {
     if (!canEditDocument() || !m_documentModel.findEntity(uuid)) {
         return false;
     }
-    m_history.execute(std::make_unique<DeleteEntityCommand>(uuid), m_documentModel);
-    for (const std::uint64_t selected : m_selection.selectedAll()) {
+    m_history.execute(create_scope<DeleteEntityCommand>(uuid), m_documentModel);
+    for (const UInt64 selected : m_selection.selectedAll()) {
         if (!m_documentModel.findEntity(selected)) {
             m_selection.remove(selected);
         }
@@ -613,18 +578,18 @@ bool EditorSession::deleteEntity(std::uint64_t uuid)
     return true;
 }
 
-bool EditorSession::deleteEntities(const std::vector<std::uint64_t>& uuids)
+bool EditorSession::deleteEntities(const DynamicArray<UInt64>& uuids)
 {
     if (!canEditDocument() || uuids.empty()) {
         return false;
     }
-    std::vector<std::uint64_t> targets;
-    for (const std::uint64_t uuid : uuids) {
+    DynamicArray<UInt64> targets;
+    for (const UInt64 uuid : uuids) {
         if (!m_documentModel.findEntity(uuid)) {
             continue;
         }
         bool covered = false;
-        for (const std::uint64_t other : uuids) {
+        for (const UInt64 other : uuids) {
             if (other != uuid && m_documentModel.isDescendantOf(uuid, other)) {
                 covered = true;
                 break;
@@ -640,14 +605,14 @@ bool EditorSession::deleteEntities(const std::vector<std::uint64_t>& uuids)
     if (targets.size() == 1) {
         return deleteEntity(targets.front());
     }
-    auto composite = std::make_unique<CompositeCommand>();
-    for (const std::uint64_t uuid : targets) {
-        composite->addCommand(std::make_unique<DeleteEntityCommand>(uuid));
+    auto composite = create_scope<CompositeCommand>();
+    for (const UInt64 uuid : targets) {
+        composite->addCommand(create_scope<DeleteEntityCommand>(uuid));
     }
     if (!m_history.execute(std::move(composite), m_documentModel)) {
         return false;
     }
-    for (const std::uint64_t selected : m_selection.selectedAll()) {
+    for (const UInt64 selected : m_selection.selectedAll()) {
         if (!m_documentModel.findEntity(selected)) {
             m_selection.remove(selected);
         }
@@ -656,16 +621,16 @@ bool EditorSession::deleteEntities(const std::vector<std::uint64_t>& uuids)
     return true;
 }
 
-std::vector<EditorEntity> EditorSession::snapshotEntitySubtrees(
-    const std::vector<std::uint64_t>& roots) const
+DynamicArray<EditorEntity> EditorSession::snapshotEntitySubtrees(
+    const DynamicArray<UInt64>& roots) const
 {
-    std::vector<std::uint64_t> topMost;
-    for (const std::uint64_t uuid : roots) {
+    DynamicArray<UInt64> topMost;
+    for (const UInt64 uuid : roots) {
         if (!m_documentModel.findEntity(uuid)) {
             continue;
         }
         bool covered = false;
-        for (const std::uint64_t other : roots) {
+        for (const UInt64 other : roots) {
             if (other != uuid && m_documentModel.isDescendantOf(uuid, other)) {
                 covered = true;
                 break;
@@ -679,10 +644,10 @@ std::vector<EditorEntity> EditorSession::snapshotEntitySubtrees(
         return {};
     }
 
-    std::unordered_set<std::uint64_t> subtree;
-    std::vector<std::uint64_t> stack = topMost;
+    UnorderedSet<UInt64> subtree;
+    DynamicArray<UInt64> stack = topMost;
     while (!stack.empty()) {
-        const std::uint64_t uuid = stack.back();
+        const UInt64 uuid = stack.back();
         stack.pop_back();
         if (!subtree.insert(uuid).second) {
             continue;
@@ -694,7 +659,7 @@ std::vector<EditorEntity> EditorSession::snapshotEntitySubtrees(
         }
     }
 
-    std::vector<EditorEntity> snapshot;
+    DynamicArray<EditorEntity> snapshot;
     for (const EditorEntity& entity : m_documentModel.entities()) {
         if (subtree.contains(entity.uuid)) {
             snapshot.push_back(entity);
@@ -703,20 +668,20 @@ std::vector<EditorEntity> EditorSession::snapshotEntitySubtrees(
     return snapshot;
 }
 
-std::vector<EditorEntity> EditorSession::remapEntityClones(
-    const std::vector<EditorEntity>& snapshot, bool keepExternalParent) const
+DynamicArray<EditorEntity> EditorSession::remapEntityClones(
+    const DynamicArray<EditorEntity>& snapshot, bool keepExternalParent) const
 {
-    std::unordered_map<std::uint64_t, std::uint64_t> uuidMap;
+    UnorderedMap<UInt64, UInt64> uuidMap;
     uuidMap.reserve(snapshot.size());
     for (const EditorEntity& entity : snapshot) {
-        std::uint64_t uuid = m_documentModel.generateEntityUuid();
+        UInt64 uuid = m_documentModel.generateEntityUuid();
         while (uuidMap.contains(uuid) || uuid == 0) {
             uuid = m_documentModel.generateEntityUuid();
         }
         uuidMap.emplace(entity.uuid, uuid);
     }
 
-    std::vector<EditorEntity> clones;
+    DynamicArray<EditorEntity> clones;
     clones.reserve(snapshot.size());
     for (const EditorEntity& source : snapshot) {
         EditorEntity clone = source;
@@ -735,7 +700,7 @@ std::vector<EditorEntity> EditorSession::remapEntityClones(
     return clones;
 }
 
-bool EditorSession::copyEntities(const std::vector<std::uint64_t>& uuids)
+bool EditorSession::copyEntities(const DynamicArray<UInt64>& uuids)
 {
     if (!canEditDocument() || uuids.empty()) {
         return false;
@@ -744,7 +709,7 @@ bool EditorSession::copyEntities(const std::vector<std::uint64_t>& uuids)
     return !m_clipboard.empty();
 }
 
-bool EditorSession::cutEntities(const std::vector<std::uint64_t>& uuids)
+bool EditorSession::cutEntities(const DynamicArray<UInt64>& uuids)
 {
     return copyEntities(uuids) && deleteEntities(uuids);
 }
@@ -754,13 +719,13 @@ bool EditorSession::pasteEntities()
     if (!canEditDocument() || m_clipboard.empty()) {
         return false;
     }
-    std::vector<EditorEntity> clones = remapEntityClones(m_clipboard, false);
-    std::vector<std::uint64_t> inserted;
+    DynamicArray<EditorEntity> clones = remapEntityClones(m_clipboard, false);
+    DynamicArray<UInt64> inserted;
     inserted.reserve(clones.size());
     for (const EditorEntity& clone : clones) {
         inserted.push_back(clone.uuid);
     }
-    if (!m_history.execute(std::make_unique<InsertEntitiesCommand>(std::move(clones)), m_documentModel)) {
+    if (!m_history.execute(create_scope<InsertEntitiesCommand>(std::move(clones)), m_documentModel)) {
         return false;
     }
     m_selection.selectMany(std::move(inserted));
@@ -768,21 +733,21 @@ bool EditorSession::pasteEntities()
     return true;
 }
 
-bool EditorSession::duplicateEntities(const std::vector<std::uint64_t>& uuids)
+bool EditorSession::duplicateEntities(const DynamicArray<UInt64>& uuids)
 {
     if (!canEditDocument() || uuids.empty()) {
         return false;
     }
-    std::vector<EditorEntity> clones = remapEntityClones(snapshotEntitySubtrees(uuids), true);
+    DynamicArray<EditorEntity> clones = remapEntityClones(snapshotEntitySubtrees(uuids), true);
     if (clones.empty()) {
         return false;
     }
-    std::vector<std::uint64_t> inserted;
+    DynamicArray<UInt64> inserted;
     inserted.reserve(clones.size());
     for (const EditorEntity& clone : clones) {
         inserted.push_back(clone.uuid);
     }
-    if (!m_history.execute(std::make_unique<InsertEntitiesCommand>(std::move(clones)), m_documentModel)) {
+    if (!m_history.execute(create_scope<InsertEntitiesCommand>(std::move(clones)), m_documentModel)) {
         return false;
     }
     m_selection.selectMany(std::move(inserted));
@@ -790,17 +755,17 @@ bool EditorSession::duplicateEntities(const std::vector<std::uint64_t>& uuids)
     return true;
 }
 
-bool EditorSession::renameEntity(std::uint64_t uuid, const std::string& name)
+bool EditorSession::renameEntity(UInt64 uuid, const String& name)
 {
     if (!canEditDocument() || !m_documentModel.findEntity(uuid)) {
         return false;
     }
-    m_history.execute(std::make_unique<RenameEntityCommand>(uuid, name), m_documentModel);
+    m_history.execute(create_scope<RenameEntityCommand>(uuid, name), m_documentModel);
     notifyDocumentChanged();
     return true;
 }
 
-bool EditorSession::reparentEntity(std::uint64_t uuid, std::uint64_t newParent)
+bool EditorSession::reparentEntity(UInt64 uuid, UInt64 newParent)
 {
     if (!canEditDocument() || !m_documentModel.findEntity(uuid)) {
         return false;
@@ -808,7 +773,7 @@ bool EditorSession::reparentEntity(std::uint64_t uuid, std::uint64_t newParent)
     if (newParent != 0 && !m_documentModel.findEntity(newParent)) {
         return false;
     }
-    auto command = std::make_unique<ReparentDocumentCommand>(uuid, newParent);
+    auto command = create_scope<ReparentDocumentCommand>(uuid, newParent);
     if (!m_history.execute(std::move(command), m_documentModel)) {
         return false;
     }
@@ -816,17 +781,17 @@ bool EditorSession::reparentEntity(std::uint64_t uuid, std::uint64_t newParent)
     return true;
 }
 
-bool EditorSession::addComponent(std::uint64_t uuid, const EditorComponent& component)
+bool EditorSession::addComponent(UInt64 uuid, const EditorComponent& component)
 {
     if (!canEditDocument() || !m_documentModel.findEntity(uuid)) {
         return false;
     }
-    m_history.execute(std::make_unique<AddComponentCommand>(uuid, component), m_documentModel);
+    m_history.execute(create_scope<AddComponentCommand>(uuid, component), m_documentModel);
     notifyDocumentChanged();
     return true;
 }
 
-bool EditorSession::moveComponent(std::uint64_t uuid, std::size_t nativeIndex, int delta)
+bool EditorSession::moveComponent(UInt64 uuid, Size_t nativeIndex, int delta)
 {
     if (!canEditDocument() || delta == 0) {
         return false;
@@ -840,7 +805,7 @@ bool EditorSession::moveComponent(std::uint64_t uuid, std::size_t nativeIndex, i
         return false;
     }
     if (!m_history.execute(
-            std::make_unique<MoveComponentCommand>(uuid, nativeIndex, static_cast<std::size_t>(target)),
+            create_scope<MoveComponentCommand>(uuid, nativeIndex, static_cast<Size_t>(target)),
             m_documentModel)) {
         return false;
     }
@@ -848,7 +813,7 @@ bool EditorSession::moveComponent(std::uint64_t uuid, std::size_t nativeIndex, i
     return true;
 }
 
-bool EditorSession::removeComponent(std::uint64_t uuid, std::size_t nativeIndex)
+bool EditorSession::removeComponent(UInt64 uuid, Size_t nativeIndex)
 {
     if (!canEditDocument()) {
         return false;
@@ -857,12 +822,12 @@ bool EditorSession::removeComponent(std::uint64_t uuid, std::size_t nativeIndex)
     if (!entity || nativeIndex >= entity->nativeComponents.size()) {
         return false;
     }
-    m_history.execute(std::make_unique<RemoveComponentCommand>(uuid, nativeIndex), m_documentModel);
+    m_history.execute(create_scope<RemoveComponentCommand>(uuid, nativeIndex), m_documentModel);
     notifyDocumentChanged();
     return true;
 }
 
-bool EditorSession::updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value)
+bool EditorSession::updateComponent(UInt64 uuid, Size_t nativeIndex, const Json& value)
 {
     if (!canEditDocument()) {
         return false;
@@ -871,35 +836,35 @@ bool EditorSession::updateComponent(std::uint64_t uuid, std::size_t nativeIndex,
     if (!entity || nativeIndex >= entity->nativeComponents.size()) {
         return false;
     }
-    m_history.execute(std::make_unique<UpdateComponentCommand>(uuid, nativeIndex, value), m_documentModel);
+    m_history.execute(create_scope<UpdateComponentCommand>(uuid, nativeIndex, value), m_documentModel);
     notifyDocumentChanged();
     return true;
 }
 
-bool EditorSession::updateComponentOnEntities(const std::vector<std::uint64_t>& uuids,
-                                              const std::string& typeName,
-                                              const nlohmann::json& value,
+bool EditorSession::updateComponentOnEntities(const DynamicArray<UInt64>& uuids,
+                                              const String& typeName,
+                                              const Json& value,
                                               bool managed)
 {
     if (!canEditDocument() || uuids.empty() || typeName.empty()) {
         return false;
     }
-    auto composite = std::make_unique<CompositeCommand>();
-    for (const std::uint64_t uuid : uuids) {
+    auto composite = create_scope<CompositeCommand>();
+    for (const UInt64 uuid : uuids) {
         const EditorEntity* entity = m_documentModel.findEntity(uuid);
         if (!entity) {
             continue;
         }
-        const std::vector<EditorComponent>& components =
+        const DynamicArray<EditorComponent>& components =
             managed ? entity->managedComponents : entity->nativeComponents;
-        for (std::size_t i = 0; i < components.size(); ++i) {
+        for (Size_t i = 0; i < components.size(); ++i) {
             if (components[i].typeName != typeName) {
                 continue;
             }
             if (managed) {
-                composite->addCommand(std::make_unique<UpdateManagedComponentCommand>(uuid, i, value));
+                composite->addCommand(create_scope<UpdateManagedComponentCommand>(uuid, i, value));
             } else {
-                composite->addCommand(std::make_unique<UpdateComponentCommand>(uuid, i, value));
+                composite->addCommand(create_scope<UpdateComponentCommand>(uuid, i, value));
             }
             break;
         }
@@ -911,38 +876,38 @@ bool EditorSession::updateComponentOnEntities(const std::vector<std::uint64_t>& 
     return true;
 }
 
-bool EditorSession::updateComponentFieldOnEntities(const std::vector<std::uint64_t>& uuids,
-                                                   const std::string& typeName,
-                                                   const std::string& fieldPath,
-                                                   const nlohmann::json& value,
+bool EditorSession::updateComponentFieldOnEntities(const DynamicArray<UInt64>& uuids,
+                                                   const String& typeName,
+                                                   const String& fieldPath,
+                                                   const Json& value,
                                                    bool managed)
 {
     if (!canEditDocument() || uuids.empty() || typeName.empty() || fieldPath.empty()) {
         return false;
     }
-    const nlohmann::json* leaf = FindJsonPath(value, fieldPath);
+    const Json* leaf = FindJsonPath(value, fieldPath);
     if (!leaf) {
         return false;
     }
-    auto composite = std::make_unique<CompositeCommand>();
-    for (const std::uint64_t uuid : uuids) {
+    auto composite = create_scope<CompositeCommand>();
+    for (const UInt64 uuid : uuids) {
         const EditorEntity* entity = m_documentModel.findEntity(uuid);
         if (!entity) {
             continue;
         }
-        const std::vector<EditorComponent>& components =
+        const DynamicArray<EditorComponent>& components =
             managed ? entity->managedComponents : entity->nativeComponents;
-        for (std::size_t i = 0; i < components.size(); ++i) {
+        for (Size_t i = 0; i < components.size(); ++i) {
             if (components[i].typeName != typeName) {
                 continue;
             }
-            nlohmann::json merged = components[i].value;
-            if (nlohmann::json* target = ResolveJsonPath(merged, fieldPath)) {
+            Json merged = components[i].value;
+            if (Json* target = ResolveJsonPath(merged, fieldPath)) {
                 *target = *leaf;
                 if (managed) {
-                    composite->addCommand(std::make_unique<UpdateManagedComponentCommand>(uuid, i, merged));
+                    composite->addCommand(create_scope<UpdateManagedComponentCommand>(uuid, i, merged));
                 } else {
-                    composite->addCommand(std::make_unique<UpdateComponentCommand>(uuid, i, merged));
+                    composite->addCommand(create_scope<UpdateComponentCommand>(uuid, i, merged));
                 }
             }
             break;
@@ -955,7 +920,7 @@ bool EditorSession::updateComponentFieldOnEntities(const std::vector<std::uint64
     return true;
 }
 
-bool EditorSession::removeManagedComponent(std::uint64_t uuid, std::size_t index)
+bool EditorSession::removeManagedComponent(UInt64 uuid, Size_t index)
 {
     if (!canEditDocument()) {
         return false;
@@ -964,13 +929,13 @@ bool EditorSession::removeManagedComponent(std::uint64_t uuid, std::size_t index
     if (!entity || index >= entity->managedComponents.size()) {
         return false;
     }
-    m_history.execute(std::make_unique<RemoveManagedComponentCommand>(uuid, index), m_documentModel);
+    m_history.execute(create_scope<RemoveManagedComponentCommand>(uuid, index), m_documentModel);
     notifyDocumentChanged();
     return true;
 }
 
-bool EditorSession::updateManagedComponent(std::uint64_t uuid, std::size_t index,
-                                            const nlohmann::json& value)
+bool EditorSession::updateManagedComponent(UInt64 uuid, Size_t index,
+                                            const Json& value)
 {
     if (!canEditDocument()) {
         return false;
@@ -979,7 +944,7 @@ bool EditorSession::updateManagedComponent(std::uint64_t uuid, std::size_t index
     if (!entity || index >= entity->managedComponents.size()) {
         return false;
     }
-    m_history.execute(std::make_unique<UpdateManagedComponentCommand>(uuid, index, value), m_documentModel);
+    m_history.execute(create_scope<UpdateManagedComponentCommand>(uuid, index, value), m_documentModel);
     notifyDocumentChanged();
     return true;
 }
@@ -1010,7 +975,7 @@ void EditorSession::notifyDocumentChanged()
     EditorDocument snapshot;
     snapshot.name = m_documentModel.name();
     snapshot.entities = m_documentModel.entities();
-    m_backend->execute(EditorCommandMessage{"document_changed", EditorDocumentSerializer::toJson(snapshot).dump()});
+    m_backend->execute(DocumentChangedCommand{EditorDocumentSerializer::toJson(snapshot)});
 }
 
 void EditorSession::handleBackendEvent(const BackendEventMessage& event)
@@ -1027,9 +992,9 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
         return;
     }
     if (event.name == "selection_changed") {
-        const std::uint64_t uuid = event.payload.empty()
+        const UInt64 uuid = event.payload.empty()
             ? 0
-            : static_cast<std::uint64_t>(std::strtoull(event.payload.c_str(), nullptr, 10));
+            : static_cast<UInt64>(std::strtoull(event.payload.c_str(), nullptr, 10));
         if (m_selection.selected() != uuid) {
             m_selection.set(uuid);
         }
@@ -1037,22 +1002,22 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
     }
     if (event.name == "transform_changed") {
         try {
-            const nlohmann::json payload = nlohmann::json::parse(event.payload);
+            const Json payload = Json::parse(event.payload);
             if (payload.contains("entities") && payload["entities"].is_array()) {
                 for (const auto& entry : payload["entities"]) {
                     applyTransformChange(
-                        entry.value("uuid", std::uint64_t(0)),
-                        entry.value("value", nlohmann::json::object()));
+                        entry.value("uuid", UInt64(0)),
+                        entry.value("value", Json::object()));
                 }
             } else {
                 applyTransformChange(
-                    payload.value("uuid", std::uint64_t(0)),
-                    payload.value("value", nlohmann::json::object()));
+                    payload.value("uuid", UInt64(0)),
+                    payload.value("value", Json::object()));
             }
             if (!m_transformDragging) {
                 notifyDocumentChanged();
             }
-        } catch (const nlohmann::json::exception&) {
+        } catch (const Json::exception&) {
         }
         return;
     }
@@ -1062,7 +1027,8 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
         return;
     }
     if (event.name == "gizmo_mode_changed") {
-        gizmoModeChanged.fire(event.payload.empty() ? std::string("none") : event.payload);
+        m_gizmoMode = event.payload.empty() ? String("none") : event.payload;
+        gizmoModeChanged.fire(m_gizmoMode);
         return;
     }
     if (event.name == "tilemap_edit_mode") {
@@ -1079,11 +1045,11 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
         return;
     }
     if (event.name == "asset_references_missing") {
-        std::size_t count = 0;
+        Size_t count = 0;
         try {
-            const nlohmann::json payload = nlohmann::json::parse(event.payload);
-            count = payload.is_array() ? payload.size() : payload.get<std::size_t>();
-        } catch (const nlohmann::json::exception&) {
+            const Json payload = Json::parse(event.payload);
+            count = payload.is_array() ? payload.size() : payload.get<Size_t>();
+        } catch (const Json::exception&) {
             count = 0;
         }
         missingAssetReferencesDetected.fire(count);
@@ -1091,7 +1057,7 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
     }
 }
 
-bool EditorSession::findMissingAssetReferences(std::vector<std::uint64_t>& out) const
+bool EditorSession::findMissingAssetReferences(DynamicArray<UInt64>& out) const
 {
     out.clear();
     return m_backend && m_backend->findMissingAssetReferences(out);
@@ -1106,10 +1072,10 @@ bool EditorSession::stopPlay(bool keepPlayChanges)
         return true;
     }
     m_pendingStopKeep = keepPlayChanges;
-    return execute(EditorCommandMessage{"stop", ""});
+    return execute(PlayActionCommand{PlayAction::Stop});
 }
 
-void EditorSession::onPlayStateChanged(const std::string& state)
+void EditorSession::onPlayStateChanged(const String& state)
 {
     const PlayState previous = m_playState;
     PlayState next = PlayState::Edit;
@@ -1150,12 +1116,12 @@ bool EditorSession::isAssetRefreshPending() const
     return m_backend->assetRefreshPending();
 }
 
-void EditorSession::assetRefreshProgress(std::size_t& done, std::size_t& total) const
+void EditorSession::assetRefreshProgress(Size_t& done, Size_t& total) const
 {
     m_backend->assetRefreshProgress(done, total);
 }
 
-void EditorSession::applyTransformChange(std::uint64_t uuid, const nlohmann::json& value)
+void EditorSession::applyTransformChange(UInt64 uuid, const Json& value)
 {
     if (!canEditDocument()) {
         return;
@@ -1164,11 +1130,11 @@ void EditorSession::applyTransformChange(std::uint64_t uuid, const nlohmann::jso
     if (!entity) {
         return;
     }
-    for (std::size_t i = 0; i < entity->nativeComponents.size(); ++i) {
+    for (Size_t i = 0; i < entity->nativeComponents.size(); ++i) {
         if (entity->nativeComponents[i].typeName != "TransformComponent") {
             continue;
         }
-        m_history.execute(std::make_unique<UpdateComponentCommand>(uuid, i, value), m_documentModel);
+        m_history.execute(create_scope<UpdateComponentCommand>(uuid, i, value), m_documentModel);
         return;
     }
 }

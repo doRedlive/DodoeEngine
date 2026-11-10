@@ -1,6 +1,6 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include "EditorDocument.h"
 
@@ -16,46 +16,46 @@ namespace cakery {
 
 class EditorDocumentModel {
 public:
-    bool load(const std::filesystem::path& path);
-    bool save(const std::filesystem::path& path);
+    bool load(const FsPath& path);
+    bool save(const FsPath& path);
     void close();
 
     bool hasDocument() const { return m_hasDocument; }
     bool isDirty() const { return m_dirty; }
-    const std::string& name() const;
-    const std::filesystem::path& path() const { return m_path; }
-    const std::vector<EditorEntity>& entities() const { return m_document.entities; }
+    const String& name() const;
+    const FsPath& path() const { return m_path; }
+    const DynamicArray<EditorEntity>& entities() const { return m_document.entities; }
     const EditorDocument& document() const { return m_document; }
 
-    EditorEntity* findEntity(std::uint64_t uuid);
-    const EditorEntity* findEntity(std::uint64_t uuid) const;
-    bool isDescendantOf(std::uint64_t uuid, std::uint64_t ancestorUuid) const;
+    EditorEntity* findEntity(UInt64 uuid);
+    const EditorEntity* findEntity(UInt64 uuid) const;
+    bool isDescendantOf(UInt64 uuid, UInt64 ancestorUuid) const;
 
-    std::uint64_t createEntity(const std::string& name, std::uint64_t preferredUuid = 0);
-    std::uint64_t generateEntityUuid() const;
-    bool deleteEntity(std::uint64_t uuid);
-    bool renameEntity(std::uint64_t uuid, const std::string& name);
-    bool reparentEntity(std::uint64_t uuid, std::uint64_t newParent);
-    bool insertEntity(std::size_t index, const EditorEntity& entity);
+    UInt64 createEntity(const String& name, UInt64 preferredUuid = 0);
+    UInt64 generateEntityUuid() const;
+    bool deleteEntity(UInt64 uuid);
+    bool renameEntity(UInt64 uuid, const String& name);
+    bool reparentEntity(UInt64 uuid, UInt64 newParent);
+    bool insertEntity(Size_t index, const EditorEntity& entity);
     void replaceDocument(const EditorDocument& document);
     void restoreDocument(const EditorDocument& document, bool dirty);
-    void newScene(const std::string& name);
+    void newScene(const String& name);
 
-    bool addComponent(std::uint64_t uuid, const EditorComponent& component);
-    bool insertComponent(std::uint64_t uuid, std::size_t index, const EditorComponent& component);
-    bool moveComponent(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex);
-    bool removeComponent(std::uint64_t uuid, std::size_t nativeIndex);
-    bool updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value);
-    bool insertManagedComponent(std::uint64_t uuid, std::size_t index, const EditorComponent& component);
-    bool removeManagedComponent(std::uint64_t uuid, std::size_t index);
-    bool updateManagedComponent(std::uint64_t uuid, std::size_t index, const nlohmann::json& value);
+    bool addComponent(UInt64 uuid, const EditorComponent& component);
+    bool insertComponent(UInt64 uuid, Size_t index, const EditorComponent& component);
+    bool moveComponent(UInt64 uuid, Size_t fromIndex, Size_t toIndex);
+    bool removeComponent(UInt64 uuid, Size_t nativeIndex);
+    bool updateComponent(UInt64 uuid, Size_t nativeIndex, const Json& value);
+    bool insertManagedComponent(UInt64 uuid, Size_t index, const EditorComponent& component);
+    bool removeManagedComponent(UInt64 uuid, Size_t index);
+    bool updateManagedComponent(UInt64 uuid, Size_t index, const Json& value);
 
     ScopedConnection subscribe(std::function<void()> onChange);
     void notifyChanged();
 
 private:
     EditorDocument m_document;
-    std::filesystem::path m_path;
+    FsPath m_path;
     bool m_hasDocument = false;
     bool m_dirty = false;
     Signal<> m_changed;

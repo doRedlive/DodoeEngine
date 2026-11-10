@@ -1,6 +1,6 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include <filesystem>
 #include <string>
@@ -9,15 +9,15 @@ namespace cakery {
 
 class EditorResourceLocator {
 public:
-    explicit EditorResourceLocator(std::filesystem::path packagedRoot);
+    explicit EditorResourceLocator(FsPath packagedRoot);
 
-    void setProjectRoot(std::filesystem::path projectRoot);
-    std::filesystem::path resolve(const std::string& resourceId) const;
-    const std::filesystem::path& packagedRoot() const;
+    void setProjectRoot(FsPath projectRoot);
+    FsPath resolve(const String& resourceId) const;
+    const FsPath& packagedRoot() const;
 
 private:
-    std::filesystem::path m_packagedRoot;
-    std::filesystem::path m_projectOverrideRoot;
+    FsPath m_packagedRoot;
+    FsPath m_projectOverrideRoot;
 };
 
 } // namespace cakery

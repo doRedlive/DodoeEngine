@@ -1,9 +1,8 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include <cstdint>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
@@ -13,7 +12,7 @@ class EditorSession;
 
 class AICommandBridge {
 public:
-    static AICommandBridge& self();
+    AICommandBridge();
 
     AICommandBridge(const AICommandBridge&) = delete;
     AICommandBridge& operator=(const AICommandBridge&) = delete;
@@ -22,33 +21,31 @@ public:
     void detach();
     EditorSession* session() const { return m_session; }
 
-    std::string beginSession(const std::string& goal);
+    String beginSession(const String& goal);
     void endSession(bool keep);
     bool inSession() const { return m_inSession; }
-    std::string sessionId() const { return m_sessionId; }
+    String sessionId() const { return m_sessionId; }
 
-    nlohmann::json listCommands();
-    nlohmann::json execute(const std::string& name, const nlohmann::json& args);
-    nlohmann::json query(const std::string& name, const nlohmann::json& args);
+    Json listCommands();
+    Json execute(const String& name, const Json& args);
+    Json query(const String& name, const Json& args);
 
-    void setAllowlist(std::vector<std::string> names) { m_allowlist = std::move(names); }
-    void setDenylist(std::vector<std::string> names) { m_denylist = std::move(names); }
-    const std::vector<std::string>& allowlist() const { return m_allowlist; }
-    const std::vector<std::string>& denylist() const { return m_denylist; }
-    bool isAllowed(const std::string& name) const;
+    void setAllowlist(DynamicArray<String> names) { m_allowlist = std::move(names); }
+    void setDenylist(DynamicArray<String> names) { m_denylist = std::move(names); }
+    const DynamicArray<String>& allowlist() const { return m_allowlist; }
+    const DynamicArray<String>& denylist() const { return m_denylist; }
+    bool isAllowed(const String& name) const;
 
 private:
-    AICommandBridge() = default;
-
-    bool isDenied(const std::string& name) const;
+    bool isDenied(const String& name) const;
 
     EditorSession* m_session = nullptr;
     bool m_inSession = false;
-    uint64_t m_sessionCheckpoint = 0;
-    std::string m_sessionId;
-    std::string m_sessionGoal;
-    std::vector<std::string> m_allowlist;
-    std::vector<std::string> m_denylist;
+    UInt64 m_sessionCheckpoint = 0;
+    String m_sessionId;
+    String m_sessionGoal;
+    DynamicArray<String> m_allowlist;
+    DynamicArray<String> m_denylist;
 };
 
 } // namespace cakery

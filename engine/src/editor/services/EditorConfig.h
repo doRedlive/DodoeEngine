@@ -1,15 +1,10 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include <string>
 #include <functional>
 
-#include <nlohmann/json.hpp>
-
-namespace dodoe {
-using Json = nlohmann::json;
-}
 
 namespace cakery {
 
@@ -17,31 +12,31 @@ class EditorConfig {
 public:
     static EditorConfig& self();
 
-    bool load(const std::string& builtinDir, const std::string& projectDir = "", const std::string& userDir = "");
+    bool load(const String& builtinDir, const String& projectDir = "", const String& userDir = "");
 
     const dodoe::Json& editorJson() const { return m_editor; }
     const dodoe::Json& menusJson() const { return m_menus; }
     const dodoe::Json& panelsJson() const { return m_panels; }
     const dodoe::Json& inspectorsJson() const { return m_inspectors; }
 
-    dodoe::Json layoutJson(const std::string& name) const;
+    dodoe::Json layoutJson(const String& name) const;
 
-    std::string themeName() const;
-    std::string defaultLayoutName() const;
-    std::string themePath() const;
-    std::string builtinDir() const { return m_builtinDir; }
+    String themeName() const;
+    String defaultLayoutName() const;
+    String themePath() const;
+    String builtinDir() const { return m_builtinDir; }
 
-    std::string shortcut(const std::string& action) const;
-    void setThemeName(const std::string& themeName);
+    String shortcut(const String& action) const;
+    void setThemeName(const String& themeName);
 
     void reload();
 
 private:
     EditorConfig() = default;
 
-    std::string m_builtinDir;
-    std::string m_projectDir;
-    std::string m_userDir;
+    String m_builtinDir;
+    String m_projectDir;
+    String m_userDir;
 
     dodoe::Json m_editor;
     dodoe::Json m_menus;

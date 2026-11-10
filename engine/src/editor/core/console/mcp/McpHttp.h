@@ -1,6 +1,6 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include <cstddef>
 #include <cstdlib>
@@ -8,23 +8,23 @@
 
 namespace cakery::mcp {
 
-inline constexpr std::size_t kMaxHeaderBytes = 64 * 1024;
-inline constexpr std::size_t kMaxBodyBytes = 16 * 1024 * 1024;
+inline constexpr Size_t kMaxHeaderBytes = 64 * 1024;
+inline constexpr Size_t kMaxBodyBytes = 16 * 1024 * 1024;
 
 struct HttpBuffer {
-    std::string data;
-    std::size_t offset = 0;
+    String data;
+    Size_t offset = 0;
 
-    void feed(const char* bytes, std::size_t length) {
+    void feed(const char* bytes, Size_t length) {
         data.append(bytes, length);
     }
 
     enum class ReadResult { Ok, NeedMore, Error };
 
-    ReadResult readLine(std::string& line) {
-        const std::size_t end = data.find('\n', offset);
-        if (end != std::string::npos) {
-            std::size_t length = end - offset;
+    ReadResult readLine(String& line) {
+        const Size_t end = data.find('\n', offset);
+        if (end != String::npos) {
+            Size_t length = end - offset;
             if (length > 0 && data[offset + length - 1] == '\r') {
                 --length;
             }
@@ -38,7 +38,7 @@ struct HttpBuffer {
         return ReadResult::NeedMore;
     }
 
-    ReadResult readBody(std::size_t length, std::string& body) {
+    ReadResult readBody(Size_t length, String& body) {
         if (length > kMaxBodyBytes) {
             return ReadResult::Error;
         }
@@ -52,14 +52,14 @@ struct HttpBuffer {
 };
 
 struct HttpRequestHead {
-    std::string method;
-    std::string target;
-    std::string session_id;
-    std::size_t content_length = 0;
+    String method;
+    String target;
+    String session_id;
+    Size_t content_length = 0;
     bool valid = false;
 };
 
-inline std::string ToLowerAscii(std::string text) {
+inline String ToLowerAscii(String text) {
     for (char& c : text) {
         if (c >= 'A' && c <= 'Z') {
             c = static_cast<char>(c - 'A' + 'a');
@@ -71,7 +71,7 @@ inline std::string ToLowerAscii(std::string text) {
 template <typename Feed>
 inline bool ParseRequestHead(HttpBuffer& buffer, HttpRequestHead& head, Feed&& feed) {
     head = HttpRequestHead{};
-    std::string line;
+    String line;
     bool haveRequestLine = false;
     while (true) {
         const HttpBuffer::ReadResult result = buffer.readLine(line);
@@ -89,35 +89,35 @@ inline bool ParseRequestHead(HttpBuffer& buffer, HttpRequestHead& head, Feed&& f
         }
         if (!haveRequestLine) {
             haveRequestLine = true;
-            const std::size_t first = line.find(' ');
-            const std::size_t second =
-                first == std::string::npos ? std::string::npos : line.find(' ', first + 1);
-            if (first == std::string::npos || second == std::string::npos) {
+            const Size_t first = line.find(' ');
+            const Size_t second =
+                first == String::npos ? String::npos : line.find(' ', first + 1);
+            if (first == String::npos || second == String::npos) {
                 head.valid = false;
                 continue;
             }
             head.method = line.substr(0, first);
             head.target = line.substr(first + 1, second - first - 1);
             const auto query = head.target.find('?');
-            if (query != std::string::npos) {
+            if (query != String::npos) {
                 head.target = head.target.substr(0, query);
             }
             head.valid = !head.method.empty() && !head.target.empty();
             continue;
         }
         const auto colon = line.find(':');
-        if (colon == std::string::npos) {
+        if (colon == String::npos) {
             continue;
         }
-        const std::string name = ToLowerAscii(line.substr(0, colon));
-        std::size_t valueStart = colon + 1;
+        const String name = ToLowerAscii(line.substr(0, colon));
+        Size_t valueStart = colon + 1;
         while (valueStart < line.size() && (line[valueStart] == ' ' || line[valueStart] == '\t')) {
             ++valueStart;
         }
-        const std::string value = line.substr(valueStart);
+        const String value = line.substr(valueStart);
         if (name == "content-length") {
             head.content_length =
-                static_cast<std::size_t>(std::strtoull(value.c_str(), nullptr, 10));
+                static_cast<Size_t>(std::strtoull(value.c_str(), nullptr, 10));
         } else if (name == "mcp-session-id") {
             head.session_id = value;
         }
@@ -125,7 +125,7 @@ inline bool ParseRequestHead(HttpBuffer& buffer, HttpRequestHead& head, Feed&& f
 }
 
 template <typename Feed>
-inline bool ReadBody(HttpBuffer& buffer, std::size_t length, std::string& body, Feed&& feed) {
+inline bool ReadBody(HttpBuffer& buffer, Size_t length, String& body, Feed&& feed) {
     if (length > kMaxBodyBytes) {
         return false;
     }

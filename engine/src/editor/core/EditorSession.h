@@ -1,13 +1,15 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
-#include "bridge/EditorBackend.h"
+#include "core/bridge/EditorTypes.h"
+#include "core/benchmark/BenchmarkRunner.h"
 #include "core/history/EditHistory.h"
 #include "core/commands/EditorCommand.h"
 #include "core/document/EditorDocumentModel.h"
 #include "core/history/EditorHistory.h"
 #include "core/EditorSelection.h"
+#include "core/PlayState.h"
 #include "core/Signal.h"
 
 #include <chrono>
@@ -22,6 +24,13 @@
 
 namespace cakery {
 
+class AICommandBridge;
+class CommandRegistry;
+class ExecutionRecorder;
+class McpServer;
+class RuntimeBackend;
+class WorkflowLibrary;
+
 enum class EditorSessionState {
     Created,
     OpeningProject,
@@ -32,56 +41,55 @@ enum class EditorSessionState {
     Closed
 };
 
-enum class PlayState {
-    Edit,
-    Playing,
-    Paused
-};
-
 class EditorSession {
 public:
-    explicit EditorSession(std::unique_ptr<IEditorBackend> backend);
+    EditorSession();
     ~EditorSession();
 
     EditorSession(const EditorSession&) = delete;
     EditorSession& operator=(const EditorSession&) = delete;
 
     bool openProject(ProjectDescriptor project);
-    bool openDocument(const std::string& documentPath);
-    bool saveDocument(const std::string& documentPath);
-    bool execute(EditorCommandMessage command);
-    bool inspectComponent(const std::string& typeName,
-                          std::vector<InspectorFieldMetadata>& fields) const;
-    bool listAssets(std::vector<AssetBrowserEntry>& entries) const;
-    bool getAssetImportSettings(const std::string& path, AssetImportSettings& settings) const;
+    bool openDocument(const String& documentPath);
+    bool saveDocument(const String& documentPath);
+    bool execute(EditorOperation command);
+    bool inspectComponent(const String& typeName,
+                          DynamicArray<InspectorFieldMetadata>& fields) const;
+    bool listAssets(DynamicArray<AssetBrowserEntry>& entries) const;
+    bool getAssetImportSettings(const String& path, AssetImportSettings& settings) const;
     bool attachSceneSurface(SceneSurfaceDescriptor surface);
     bool bootEngine();
-    bool applyRenderSettingsOverlay(const nlohmann::json& renderSettings);
-    bool runBenchmark(int frames, nlohmann::json& out);
-    bool startBenchmark(int frames, std::function<void(bool, nlohmann::json)> onFinished,
+    bool applyRenderSettingsOverlay(const Json& renderSettings);
+    bool runBenchmark(int frames, Json& out);
+    bool startBenchmark(int frames, std::function<void(bool, Json)> onFinished,
                         std::function<void(int, int)> onProgress);
-    bool queryBenchmarkComparison(nlohmann::json& out) const;
+    bool queryBenchmarkComparison(Json& out) const;
     void submitViewportMetrics(ViewportMetrics metrics);
     void tick();
     void shutdown();
 
     EditorSessionState state() const;
+    McpServer& mcpServer() { return *m_mcp; }
+    ExecutionRecorder& executionRecorder() { return *m_recorder; }
+    AICommandBridge& aiBridge() { return *m_aiBridge; }
+    WorkflowLibrary& workflows() { return *m_workflows; }
+    CommandRegistry& commands() { return *m_commands; }
     const ProjectDescriptor& project() const;
-    std::filesystem::path assetRoot() const;
-    bool newScene(const std::filesystem::path& directory, const std::string& name);
+    FsPath assetRoot() const;
+    bool newScene(const FsPath& directory, const String& name);
     BackendCapabilities capabilities() const;
     BackendStatus status() const;
-    std::string diagnostic() const;
-    bool listLogs(std::vector<BackendLogEntry>& entries) const;
+    String diagnostic() const;
+    bool listLogs(DynamicArray<BackendLogEntry>& entries) const;
     bool clearLogs();
-    bool listToolActions(std::vector<std::string>& actions) const;
-    bool invokeToolAction(const std::string& path);
-    bool getCustomInspectorUI(const std::string& typeName, nlohmann::json& out) const;
-    bool listEditorWindows(std::vector<std::pair<std::string, std::string>>& out) const;
-    bool getEditorWindowUI(const std::string& id, nlohmann::json& out) const;
-    bool dispatchEditorEvent(const std::string& owner, const std::string& ownerId,
-                             const std::string& controlId, const std::string& eventName,
-                             const nlohmann::json& value);
+    bool listToolActions(DynamicArray<String>& actions) const;
+    bool invokeToolAction(const String& path);
+    bool getCustomInspectorUI(const String& typeName, Json& out) const;
+    bool listEditorWindows(DynamicArray<Pair<String, String>>& out) const;
+    bool getEditorWindowUI(const String& id, Json& out) const;
+    bool dispatchEditorEvent(const String& owner, const String& ownerId,
+                             const String& controlId, const String& eventName,
+                             const Json& value);
 
     EditorDocumentModel& documentModel() { return m_documentModel; }
     const EditorDocumentModel& documentModel() const { return m_documentModel; }
@@ -92,64 +100,69 @@ public:
     EditHistory& editHistory() { return m_editHistory; }
     const EditHistory& editHistory() const { return m_editHistory; }
 
-    std::uint64_t createEntity(const std::string& name);
-    bool deleteEntity(std::uint64_t uuid);
-    bool deleteEntities(const std::vector<std::uint64_t>& uuids);
-    bool copyEntities(const std::vector<std::uint64_t>& uuids);
-    bool cutEntities(const std::vector<std::uint64_t>& uuids);
+    UInt64 createEntity(const String& name);
+    bool deleteEntity(UInt64 uuid);
+    bool deleteEntities(const DynamicArray<UInt64>& uuids);
+    bool copyEntities(const DynamicArray<UInt64>& uuids);
+    bool cutEntities(const DynamicArray<UInt64>& uuids);
     bool pasteEntities();
-    bool duplicateEntities(const std::vector<std::uint64_t>& uuids);
+    bool duplicateEntities(const DynamicArray<UInt64>& uuids);
     bool hasEntityClipboard() const { return !m_clipboard.empty(); }
-    bool renameEntity(std::uint64_t uuid, const std::string& name);
-    bool reparentEntity(std::uint64_t uuid, std::uint64_t newParent);
-    bool addComponent(std::uint64_t uuid, const EditorComponent& component);
-    bool removeComponent(std::uint64_t uuid, std::size_t nativeIndex);
-    bool moveComponent(std::uint64_t uuid, std::size_t nativeIndex, int delta);
-    bool updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value);
-    bool updateComponentOnEntities(const std::vector<std::uint64_t>& uuids, const std::string& typeName,
-                                   const nlohmann::json& value, bool managed);
-    bool updateComponentFieldOnEntities(const std::vector<std::uint64_t>& uuids,
-                                        const std::string& typeName, const std::string& fieldPath,
-                                        const nlohmann::json& value, bool managed);
-    bool removeManagedComponent(std::uint64_t uuid, std::size_t index);
-    bool updateManagedComponent(std::uint64_t uuid, std::size_t index, const nlohmann::json& value);
+    bool renameEntity(UInt64 uuid, const String& name);
+    bool reparentEntity(UInt64 uuid, UInt64 newParent);
+    bool addComponent(UInt64 uuid, const EditorComponent& component);
+    bool removeComponent(UInt64 uuid, Size_t nativeIndex);
+    bool moveComponent(UInt64 uuid, Size_t nativeIndex, int delta);
+    bool updateComponent(UInt64 uuid, Size_t nativeIndex, const Json& value);
+    bool updateComponentOnEntities(const DynamicArray<UInt64>& uuids, const String& typeName,
+                                   const Json& value, bool managed);
+    bool updateComponentFieldOnEntities(const DynamicArray<UInt64>& uuids,
+                                        const String& typeName, const String& fieldPath,
+                                        const Json& value, bool managed);
+    bool removeManagedComponent(UInt64 uuid, Size_t index);
+    bool updateManagedComponent(UInt64 uuid, Size_t index, const Json& value);
     bool undo();
     bool redo();
     void notifyDocumentChanged();
 
-    const std::string& cameraMode() const { return m_cameraMode; }
-    Signal<std::string> cameraModeChanged;
-    Signal<std::string> gizmoModeChanged;
+    const String& cameraMode() const { return m_cameraMode; }
+    const String& gizmoMode() const { return m_gizmoMode; }
+    Signal<String> cameraModeChanged;
+    Signal<String> gizmoModeChanged;
 
     PlayState playState() const { return m_playState; }
     bool playDocumentEdited() const { return m_playDocumentEdited; }
     bool stopPlay(bool keepPlayChanges);
     Signal<PlayState> playStateChanged;
-    bool findMissingAssetReferences(std::vector<std::uint64_t>& out) const;
-    Signal<std::size_t> missingAssetReferencesDetected;
+    bool findMissingAssetReferences(DynamicArray<UInt64>& out) const;
+    Signal<Size_t> missingAssetReferencesDetected;
 
     Signal<bool> tileEditModeChanged;
     Signal<> assetDatabaseChanged;
     bool isAssetRefreshPending() const;
-    void assetRefreshProgress(std::size_t& done, std::size_t& total) const;
-    bool queryTilemapState(const std::string& tilemapUuid, nlohmann::json& out) const;
-    bool queryAssetThumbnail(const std::string& path, int size, nlohmann::json& out) const;
-    bool queryFrameStats(nlohmann::json& out) const;
+    void assetRefreshProgress(Size_t& done, Size_t& total) const;
+    bool queryTilemapState(const String& tilemapUuid, Json& out) const;
+    bool queryAssetThumbnail(const String& path, int size, Json& out) const;
+    bool queryFrameStats(Json& out) const;
     bool queryFps(int& out) const;
-    bool queryRenderGraphSnapshot(nlohmann::json& out) const;
-    bool queryRenderSettings(nlohmann::json& out) const;
+    bool queryRenderGraphSnapshot(Json& out) const;
+    bool queryRenderSettings(Json& out) const;
 
 private:
     bool canEditDocument() const;
     void handleBackendEvent(const BackendEventMessage& event);
-    void onPlayStateChanged(const std::string& state);
-    void applyTransformChange(std::uint64_t uuid, const nlohmann::json& value);
-    void tickBenchmark();
-    std::vector<EditorEntity> snapshotEntitySubtrees(const std::vector<std::uint64_t>& roots) const;
-    std::vector<EditorEntity> remapEntityClones(const std::vector<EditorEntity>& snapshot,
+    void onPlayStateChanged(const String& state);
+    void applyTransformChange(UInt64 uuid, const Json& value);
+    DynamicArray<EditorEntity> snapshotEntitySubtrees(const DynamicArray<UInt64>& roots) const;
+    DynamicArray<EditorEntity> remapEntityClones(const DynamicArray<EditorEntity>& snapshot,
                                                 bool keepExternalParent) const;
 
-    std::unique_ptr<IEditorBackend> m_backend;
+    Scope<CommandRegistry> m_commands;
+    Scope<RuntimeBackend> m_backend;
+    Scope<McpServer> m_mcp;
+    Scope<ExecutionRecorder> m_recorder;
+    Scope<AICommandBridge> m_aiBridge;
+    Scope<WorkflowLibrary> m_workflows;
     ProjectDescriptor m_project;
     EditorSessionState m_state = EditorSessionState::Created;
     EditorDocumentModel m_documentModel;
@@ -157,13 +170,14 @@ private:
     ScopedConnection m_selectionSubscription;
     EditorHistory m_history;
     EditHistory m_editHistory{m_history, m_documentModel};
-    std::uint64_t m_lastViewportSequence = 0;
+    UInt64 m_lastViewportSequence = 0;
     bool m_surfaceAttached = false;
     bool m_hasPendingViewportMetrics = false;
     ViewportMetrics m_pendingViewportMetrics;
-    std::string m_cameraMode{"3d"};
+    String m_cameraMode{"3d"};
+    String m_gizmoMode{"translate"};
     bool m_transformDragging = false;
-    std::vector<EditorEntity> m_clipboard;
+    DynamicArray<EditorEntity> m_clipboard;
     PlayState m_playState = PlayState::Edit;
     EditorDocument m_playSnapshot;
     bool m_hasPlaySnapshot = false;
@@ -171,12 +185,7 @@ private:
     bool m_playDocumentEdited = false;
     bool m_pendingStopKeep = false;
     ScopedConnection m_playDocumentSubscription;
-    bool m_benchmarkActive = false;
-    int m_benchmarkFrames = 0;
-    int m_benchmarkDone = 0;
-    std::chrono::steady_clock::time_point m_benchmarkDeadline{};
-    std::function<void(bool, nlohmann::json)> m_benchmarkFinished;
-    std::function<void(int, int)> m_benchmarkProgress;
+    BenchmarkRunner m_benchmark;
 };
 
 } // namespace cakery

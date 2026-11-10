@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "CompositeCommand.h"
 
 #include "core/document/EditorDocumentModel.h"
@@ -8,7 +10,7 @@ namespace cakery {
 
 bool CompositeCommand::execute(EditorDocumentModel& model)
 {
-    std::vector<EditorCommand*> executed;
+    DynamicArray<EditorCommand*> executed;
     for (auto& cmd : m_commands) {
         if (!cmd) {
             continue;
@@ -33,9 +35,9 @@ void CompositeCommand::revert(EditorDocumentModel& model)
     }
 }
 
-std::string CompositeCommand::label() const
+String CompositeCommand::label() const
 {
-    return "Composite (" + std::to_string(m_commands.size()) + " commands)";
+    return "Composite (" + ToString(m_commands.size()) + " commands)";
 }
 
 } // namespace cakery

@@ -1,0 +1,72 @@
+// do@Redlive
+
+#include "dopch.h"
+
+#include "FieldAttributes.h"
+#include "services/EditorConfig.h"
+#include "runtime/core/meta/reflection/reflection.h"
+#include "runtime/core/utils/json.h"
+
+#include <cstring>
+
+namespace cakery {
+
+FieldAttributeRegistry::FieldAttributeRegistry() = default;
+
+void FieldAttributeRegistry::registerDefaults() {
+    if (m_defaultsRegistered) {
+        return;
+    }
+    m_defaultsRegistered = true;
+
+    // These are editor hints only; the runtime serializer remains the source
+    // of truth for the component JSON representation.
+    m_defaults = {
+        {"CameraComponent", "fov", "Range", "1,179"},
+        {"CameraComponent", "near_plane", "Range", "0.001,1000"},
+        {"CameraComponent", "far_plane", "Range", "1,100000"},
+        {"Rigidbody2dComponent", "gravity_scale", "Range", "0,10"},
+        {"RigidbodyComponent", "gravity_scale", "Range", "0,10"},
+    };
+}
+
+void FieldAttributeRegistry::applyTo(dodoe::TypeMeta& meta, const String& typeName) {
+    registerDefaults();
+
+    for (const auto& attr : m_defaults) {
+        if (typeName == attr.typeName) {
+            meta.set_field_attribute(attr.fieldName, attr.key, attr.value);
+        }
+    }
+
+    auto& inspectors = EditorConfig::self().inspectorsJson();
+    if (inspectors.contains("fieldAttributes")) {
+        auto& attrs = inspectors["fieldAttributes"];
+        for (auto it = attrs.begin(); it != attrs.end(); ++it) {
+            const String prefix = typeName + ".";
+            if (it.key().rfind(prefix, 0) != 0 || !it.value().is_object()) {
+                continue;
+            }
+            const String fieldName(it.key().substr(prefix.size()).c_str());
+            const auto& fa = it.value();
+            if (fa.contains("Hidden") && fa["Hidden"].is_boolean() && fa["Hidden"].get<bool>()) {
+                meta.set_field_attribute(fieldName, "Hidden", "true");
+            }
+            if (fa.contains("Tooltip") && fa["Tooltip"].is_string()) {
+                const String tooltip = fa["Tooltip"].get<String>();
+                meta.set_field_attribute(fieldName, "Tooltip", tooltip);
+            }
+            if (fa.contains("Range") && fa["Range"].is_array() && fa["Range"].size() == 2 &&
+                fa["Range"][0].is_number() && fa["Range"][1].is_number()) {
+                const String rangeStr = ToString(fa["Range"][0].get<float>()) + "," +
+                                              ToString(fa["Range"][1].get<float>());
+                meta.set_field_attribute(fieldName, "Range", rangeStr);
+            }
+            if (fa.contains("ReadOnly") && fa["ReadOnly"].is_boolean() && fa["ReadOnly"].get<bool>()) {
+                meta.set_field_attribute(fieldName, "ReadOnly", "true");
+            }
+        }
+    }
+}
+
+} // namespace cakery

@@ -1,6 +1,6 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include "core/document/EditorDocument.h"
 #include "core/history/EditorHistory.h"
@@ -18,15 +18,15 @@ enum class Author { User, AI, System };
 enum class CheckpointMode { StackMarker, DocumentSnapshot };
 
 struct TransactionInfo {
-    uint64_t id;
+    UInt64 id;
     Author author;
-    std::string message;
+    String message;
     int commandCount = 0;
 };
 
 struct CheckpointInfo {
-    uint64_t id;
-    std::string name;
+    UInt64 id;
+    String name;
     Author author;
     CheckpointMode mode;
 };
@@ -35,40 +35,40 @@ class EditHistory {
 public:
     EditHistory(EditorHistory& history, EditorDocumentModel& document);
 
-    void beginTransaction(Author who, std::string message);
-    uint64_t commit();
+    void beginTransaction(Author who, String message);
+    UInt64 commit();
     void abortTransaction();
 
-    std::vector<TransactionInfo> log() const;
+    DynamicArray<TransactionInfo> log() const;
 
-    uint64_t createCheckpoint(std::string name, Author who,
+    UInt64 createCheckpoint(String name, Author who,
                               CheckpointMode mode = CheckpointMode::DocumentSnapshot);
-    void revertTo(uint64_t checkpointId);
+    void revertTo(UInt64 checkpointId);
 
-    std::vector<CheckpointInfo> checkpoints() const;
+    DynamicArray<CheckpointInfo> checkpoints() const;
 
     Signal<> changed;
 
 private:
     EditorHistory& m_history;
     EditorDocumentModel& m_document;
-    uint64_t m_nextId = 1;
+    UInt64 m_nextId = 1;
 
     bool m_inTransaction = false;
     Author m_currentAuthor = Author::User;
-    std::string m_currentMessage;
+    String m_currentMessage;
     int m_commandCount = 0;
-    size_t m_undoCountAtBegin = 0;
+    Size_t m_undoCountAtBegin = 0;
     ScopedConnection m_historySubscription;
 
-    std::vector<TransactionInfo> m_transactions;
-    std::vector<CheckpointInfo> m_checkpoints;
+    DynamicArray<TransactionInfo> m_transactions;
+    DynamicArray<CheckpointInfo> m_checkpoints;
 
     struct SnapshotEntry {
-        uint64_t checkpointId;
+        UInt64 checkpointId;
         EditorDocument document;
     };
-    std::vector<SnapshotEntry> m_snapshots;
+    DynamicArray<SnapshotEntry> m_snapshots;
 };
 
 } // namespace cakery

@@ -1,8 +1,7 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
-#include <nlohmann/json.hpp>
 
 #include <string>
 #include <unordered_map>
@@ -13,39 +12,37 @@ namespace cakery {
 class EditorSession;
 
 struct WorkflowStep {
-    std::string command;
-    nlohmann::json args;
-    std::vector<std::string> produces;
+    String command;
+    Json args;
+    DynamicArray<String> produces;
 };
 
 class WorkflowLibrary {
 public:
-    static WorkflowLibrary& self();
+    WorkflowLibrary();
 
     WorkflowLibrary(const WorkflowLibrary&) = delete;
     WorkflowLibrary& operator=(const WorkflowLibrary&) = delete;
 
-    void setStoragePath(const std::string& path);
-    std::vector<std::string> names() const;
-    bool contains(const std::string& name) const;
-    const std::vector<WorkflowStep>* find(const std::string& name) const;
-    void store(const std::string& name, std::vector<WorkflowStep> steps);
-    std::size_t size() const { return m_templates.size(); }
+    void setStoragePath(const String& path);
+    DynamicArray<String> names() const;
+    bool contains(const String& name) const;
+    const DynamicArray<WorkflowStep>* find(const String& name) const;
+    void store(const String& name, DynamicArray<WorkflowStep> steps);
+    Size_t size() const { return m_templates.size(); }
 
 private:
-    WorkflowLibrary() = default;
-
     void loadFromDisk();
     void saveToDisk();
 
-    std::string m_storagePath;
+    String m_storagePath;
     bool m_loaded = false;
-    std::unordered_map<std::string, std::vector<WorkflowStep>> m_templates;
+    UnorderedMap<String, DynamicArray<WorkflowStep>> m_templates;
 };
 
-std::string WorkflowStoragePath(EditorSession& session);
-std::vector<WorkflowStep> CaptureWorkflowSteps(const nlohmann::json& records);
-nlohmann::json RunWorkflow(EditorSession& session, const std::string& name,
-                           const std::vector<WorkflowStep>& steps);
+String WorkflowStoragePath(EditorSession& session);
+DynamicArray<WorkflowStep> CaptureWorkflowSteps(const Json& records);
+Json RunWorkflow(EditorSession& session, const String& name,
+                           const DynamicArray<WorkflowStep>& steps);
 
 } // namespace cakery

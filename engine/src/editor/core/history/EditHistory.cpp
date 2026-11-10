@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "EditHistory.h"
 
 #include "core/document/EditorDocumentModel.h"
@@ -18,7 +20,7 @@ EditHistory::EditHistory(EditorHistory& history, EditorDocumentModel& document)
     });
 }
 
-void EditHistory::beginTransaction(Author who, std::string message) {
+void EditHistory::beginTransaction(Author who, String message) {
     m_inTransaction = true;
     m_currentAuthor = who;
     m_currentMessage = std::move(message);
@@ -26,7 +28,7 @@ void EditHistory::beginTransaction(Author who, std::string message) {
     m_undoCountAtBegin = m_history.undoCount();
 }
 
-uint64_t EditHistory::commit() {
+UInt64 EditHistory::commit() {
     if (!m_inTransaction) return 0;
     m_inTransaction = false;
     TransactionInfo info;
@@ -50,12 +52,12 @@ void EditHistory::abortTransaction() {
     changed.fire();
 }
 
-std::vector<TransactionInfo> EditHistory::log() const {
+DynamicArray<TransactionInfo> EditHistory::log() const {
     return m_transactions;
 }
 
-uint64_t EditHistory::createCheckpoint(std::string name, Author who, CheckpointMode mode) {
-    uint64_t id = m_nextId++;
+UInt64 EditHistory::createCheckpoint(String name, Author who, CheckpointMode mode) {
+    UInt64 id = m_nextId++;
     CheckpointInfo info;
     info.id = id;
     info.name = name;
@@ -75,7 +77,7 @@ uint64_t EditHistory::createCheckpoint(std::string name, Author who, CheckpointM
     return id;
 }
 
-void EditHistory::revertTo(uint64_t checkpointId) {
+void EditHistory::revertTo(UInt64 checkpointId) {
     for (auto& snap : m_snapshots) {
         if (snap.checkpointId == checkpointId) {
             m_document.replaceDocument(snap.document);
@@ -86,7 +88,7 @@ void EditHistory::revertTo(uint64_t checkpointId) {
     }
 }
 
-std::vector<CheckpointInfo> EditHistory::checkpoints() const {
+DynamicArray<CheckpointInfo> EditHistory::checkpoints() const {
     return m_checkpoints;
 }
 

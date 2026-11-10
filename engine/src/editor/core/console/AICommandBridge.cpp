@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "AICommandBridge.h"
 
 #include "CommandRegistry.h"
@@ -11,10 +13,7 @@
 
 namespace cakery {
 
-AICommandBridge& AICommandBridge::self() {
-    static AICommandBridge instance;
-    return instance;
-}
+AICommandBridge::AICommandBridge() = default;
 
 void AICommandBridge::attach(EditorSession& session) {
     m_session = &session;
@@ -27,7 +26,7 @@ void AICommandBridge::detach() {
     m_session = nullptr;
 }
 
-std::string AICommandBridge::beginSession(const std::string& goal) {
+String AICommandBridge::beginSession(const String& goal) {
     if (!m_session) {
         return {};
     }
@@ -38,14 +37,14 @@ std::string AICommandBridge::beginSession(const std::string& goal) {
     m_sessionGoal = goal;
     m_session->editHistory().beginTransaction(Author::AI, goal);
     m_sessionCheckpoint = m_session->editHistory().createCheckpoint(goal, Author::AI, CheckpointMode::DocumentSnapshot);
-    m_sessionId = std::to_string(m_sessionCheckpoint);
+    m_sessionId = ToString(m_sessionCheckpoint);
     ExecutionRecord marker;
     marker.command = "session.begin";
-    marker.data = nlohmann::json{{"goal", goal}, {"checkpoint", m_sessionCheckpoint}};
+    marker.data = Json{{"goal", goal}, {"checkpoint", m_sessionCheckpoint}};
     marker.author = "ai";
     marker.session = m_sessionId;
     marker.ok = true;
-    ExecutionRecorder::self().record(std::move(marker));
+    m_session->executionRecorder().record(std::move(marker));
     return m_sessionId;
 }
 
@@ -54,11 +53,11 @@ void AICommandBridge::endSession(bool keep) {
     m_inSession = false;
     ExecutionRecord marker;
     marker.command = "session.end";
-    marker.data = nlohmann::json{{"kept", keep}};
+    marker.data = Json{{"kept", keep}};
     marker.author = "ai";
     marker.session = m_sessionId;
     marker.ok = true;
-    ExecutionRecorder::self().record(std::move(marker));
+    m_session->executionRecorder().record(std::move(marker));
     m_sessionId.clear();
     m_sessionGoal.clear();
     if (keep) {
@@ -68,19 +67,22 @@ void AICommandBridge::endSession(bool keep) {
     }
 }
 
-nlohmann::json AICommandBridge::listCommands() {
-    return CommandRegistry::self().toolSchema();
+Json AICommandBridge::listCommands() {
+    if (!m_session) {
+        return Json::array();
+    }
+    return m_session->commands().toolSchema();
 }
 
-nlohmann::json AICommandBridge::execute(const std::string& name, const nlohmann::json& args) {
+Json AICommandBridge::execute(const String& name, const Json& args) {
     if (!m_session) {
-        nlohmann::json err;
+        Json err;
         err["ok"] = false;
         err["error"] = "No editor session attached";
         return err;
     }
     if (!isAllowed(name)) {
-        nlohmann::json err;
+        Json err;
         err["ok"] = false;
         err["error"] = "Command not allowed: " + name;
         return err;
@@ -88,17 +90,17 @@ nlohmann::json AICommandBridge::execute(const std::string& name, const nlohmann:
     CommandContext context;
     context.author = "ai";
     context.session = m_sessionId;
-    auto result = CommandRegistry::self().executeStructured(*m_session, name, args, context);
-    nlohmann::json out;
+    auto result = m_session->commands().executeStructured(*m_session, name, args, context);
+    Json out;
     out["ok"] = result.ok;
     out["message"] = result.message;
     out["data"] = result.data;
     return out;
 }
 
-nlohmann::json AICommandBridge::query(const std::string& name, const nlohmann::json& args) {
+Json AICommandBridge::query(const String& name, const Json& args) {
     if (!m_session) {
-        nlohmann::json err;
+        Json err;
         err["ok"] = false;
         err["error"] = "No editor session attached";
         return err;
@@ -106,22 +108,22 @@ nlohmann::json AICommandBridge::query(const std::string& name, const nlohmann::j
     CommandContext context;
     context.author = "ai";
     context.session = m_sessionId;
-    auto result = CommandRegistry::self().executeStructured(*m_session, name, args, context);
-    nlohmann::json out;
+    auto result = m_session->commands().executeStructured(*m_session, name, args, context);
+    Json out;
     out["ok"] = result.ok;
     out["message"] = result.message;
     out["data"] = result.data;
     return out;
 }
 
-bool AICommandBridge::isDenied(const std::string& name) const {
+bool AICommandBridge::isDenied(const String& name) const {
     for (auto& d : m_denylist) {
         if (name == d || name.rfind(d + ".", 0) == 0) return true;
     }
     return false;
 }
 
-bool AICommandBridge::isAllowed(const std::string& name) const {
+bool AICommandBridge::isAllowed(const String& name) const {
     if (isDenied(name)) return false;
     if (m_allowlist.empty()) return true;
     for (auto& a : m_allowlist) {

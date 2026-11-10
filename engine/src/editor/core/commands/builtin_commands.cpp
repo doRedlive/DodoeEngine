@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "core/console/CommandRegistry.h"
 #include "core/console/AICommandBridge.h"
 #include "core/console/ExecutionRecorder.h"
@@ -22,33 +24,33 @@ namespace cakery {
 
 namespace {
 
-std::uint64_t ParseUuid(const std::string& text) {
+UInt64 ParseUuid(const String& text) {
     if (text.empty()) return 0;
     char* end = nullptr;
     const unsigned long long value = std::strtoull(text.c_str(), &end, 10);
     if (!end || *end != '\0' || value == 0) return 0;
-    return static_cast<std::uint64_t>(value);
+    return static_cast<UInt64>(value);
 }
 
-std::uint64_t primarySelection(EditorSession& session) {
+UInt64 primarySelection(EditorSession& session) {
     return session.selection().primary();
 }
 
-std::size_t FindComponentIndex(EditorSession& session, std::uint64_t uuid, const std::string& typeName) {
+Size_t FindComponentIndex(EditorSession& session, UInt64 uuid, const String& typeName) {
     const EditorEntity* entity = session.documentModel().findEntity(uuid);
-    if (!entity) return static_cast<std::size_t>(-1);
-    for (std::size_t i = 0; i < entity->nativeComponents.size(); ++i) {
+    if (!entity) return static_cast<Size_t>(-1);
+    for (Size_t i = 0; i < entity->nativeComponents.size(); ++i) {
         if (entity->nativeComponents[i].typeName == typeName) return i;
     }
-    return static_cast<std::size_t>(-1);
+    return static_cast<Size_t>(-1);
 }
 
-const nlohmann::json* FindPathValue(const nlohmann::json& root, const std::string& path) {
-    const nlohmann::json* node = &root;
-    std::size_t start = 0;
+const Json* FindPathValue(const Json& root, const String& path) {
+    const Json* node = &root;
+    Size_t start = 0;
     while (start <= path.size()) {
-        const std::size_t dot = path.find('.', start);
-        const std::size_t end = dot == std::string::npos ? path.size() : dot;
+        const Size_t dot = path.find('.', start);
+        const Size_t end = dot == String::npos ? path.size() : dot;
         if (!node->is_object()) {
             return nullptr;
         }
@@ -57,7 +59,7 @@ const nlohmann::json* FindPathValue(const nlohmann::json& root, const std::strin
             return nullptr;
         }
         node = &(*it);
-        if (dot == std::string::npos) {
+        if (dot == String::npos) {
             break;
         }
         start = dot + 1;
@@ -65,47 +67,47 @@ const nlohmann::json* FindPathValue(const nlohmann::json& root, const std::strin
     return node;
 }
 
-nlohmann::json ParseNumberArray(const std::string& value, std::size_t expected, bool integer) {    nlohmann::json arr = nlohmann::json::array();
-    std::size_t start = 0;
+Json ParseNumberArray(const String& value, Size_t expected, bool integer) {    Json arr = Json::array();
+    Size_t start = 0;
     while (arr.size() < expected) {
-        std::size_t comma = value.find(',', start);
-        std::string token = value.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
-        std::size_t b = token.find_first_not_of(" \t");
-        if (b == std::string::npos) return nlohmann::json();
-        std::size_t e = token.find_last_not_of(" \t");
+        Size_t comma = value.find(',', start);
+        String token = value.substr(start, comma == String::npos ? String::npos : comma - start);
+        Size_t b = token.find_first_not_of(" \t");
+        if (b == String::npos) return Json();
+        Size_t e = token.find_last_not_of(" \t");
         token = token.substr(b, e - b + 1);
         char* end = nullptr;
-        double num = std::strtod(token.c_str(), &end);
-        if (!end || *end != '\0') return nlohmann::json();
+        double num = std::strtod(token, &end);
+        if (!end || *end != '\0') return Json();
         if (integer) {
             arr.push_back(static_cast<long long>(num));
         } else {
             arr.push_back(num);
         }
-        if (comma == std::string::npos) break;
+        if (comma == String::npos) break;
         start = comma + 1;
     }
-    if (arr.size() != expected) return nlohmann::json();
+    if (arr.size() != expected) return Json();
     return arr;
 }
 
-nlohmann::json ParseFieldValue(const nlohmann::json& currentValue, const std::string& value) {
+Json ParseFieldValue(const Json& currentValue, const String& value) {
     if (currentValue.is_number_integer() || currentValue.is_number_unsigned()) {
         char* end = nullptr;
         long long num = std::strtoll(value.c_str(), &end, 10);
-        if (!end || *end != '\0') return nlohmann::json();
-        return nlohmann::json(num);
+        if (!end || *end != '\0') return Json();
+        return Json(num);
     }
     if (currentValue.is_number_float()) {
         char* end = nullptr;
-        double num = std::strtod(value.c_str(), &end);
-        if (!end || *end != '\0') return nlohmann::json();
-        return nlohmann::json(num);
+        double num = std::strtod(value, &end);
+        if (!end || *end != '\0') return Json();
+        return Json(num);
     }
     if (currentValue.is_boolean()) {
-        if (value == "true" || value == "1") return nlohmann::json(true);
-        if (value == "false" || value == "0") return nlohmann::json(false);
-        return nlohmann::json();
+        if (value == "true" || value == "1") return Json(true);
+        if (value == "false" || value == "0") return Json(false);
+        return Json();
     }
     if (currentValue.is_array()) {
         bool integer = !currentValue.empty() &&
@@ -113,21 +115,17 @@ nlohmann::json ParseFieldValue(const nlohmann::json& currentValue, const std::st
         return ParseNumberArray(value, currentValue.size(), integer);
     }
     if (currentValue.is_string()) {
-        return nlohmann::json(value);
+        return Json(value);
     }
-    nlohmann::json parsed = nlohmann::json::parse(value, nullptr, false);
-    if (parsed.is_discarded()) return nlohmann::json();
+    Json parsed = Json::parse(value, nullptr, false);
+    if (parsed.is_discarded()) return Json();
     return parsed;
 }
 
 } // namespace
 
-void RegisterBuiltinCommands() {
-    static bool registered = false;
-    if (registered) return;
-    registered = true;
-
-    auto& reg = CommandRegistry::self();
+void RegisterBuiltinCommands(CommandRegistry& registry) {
+    auto& reg = registry;
 
     reg.add({"entity.create", "Create a new GameObject",
              "entity.create name=<string> [parent=<uuid>] [preset=<string>]",
@@ -136,13 +134,13 @@ void RegisterBuiltinCommands() {
               {"preset", "string", "Preset type (Cube, Sphere, etc.)", false}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                  std::string name = args.named.value("name", args.named.value("preset", "GameObject"));
-                  const std::uint64_t uuid = session.createEntity(name);
+                  String name = args.named.value("name", args.named.value("preset", "GameObject"));
+                  const UInt64 uuid = session.createEntity(name);
                   if (uuid == 0) {
                       return CommandResult::Err("Failed to create GameObject");
                   }
                   return CommandResult::Ok("Create GameObject",
-                                           nlohmann::json{{"uuid", std::to_string(uuid)}, {"name", name}});
+                                           Json{{"uuid", ToString(uuid)}, {"name", name}});
               }});
 
     reg.add({"entity.delete", "Delete a GameObject and its children",
@@ -150,7 +148,7 @@ void RegisterBuiltinCommands() {
              {{"uuid", "uuid", "GameObject UUID", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                  std::uint64_t uuid;
+                  UInt64 uuid;
                   if (!args.positional.empty()) {
                       uuid = ParseUuid(args.positional[0]);
                   } else {
@@ -161,7 +159,7 @@ void RegisterBuiltinCommands() {
                        return CommandResult::Err("GameObject not found");
                    }
                    return CommandResult::Ok("GameObject deleted",
-                                            nlohmann::json{{"uuid", std::to_string(uuid)}});
+                                            Json{{"uuid", ToString(uuid)}});
               }});
 
     reg.add({"entity.rename", "Rename a GameObject",
@@ -170,8 +168,8 @@ void RegisterBuiltinCommands() {
               {"name", "string", "New name", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::uint64_t uuid;
-                 std::string newName;
+                 UInt64 uuid;
+                 String newName;
                  if (args.positional.size() >= 2) {
                      uuid = ParseUuid(args.positional[0]);
                      newName = args.positional[1];
@@ -188,7 +186,7 @@ void RegisterBuiltinCommands() {
                        return CommandResult::Err("Failed to rename GameObject");
                    }
                    return CommandResult::Ok("Renamed to: " + newName,
-                                            nlohmann::json{{"uuid", std::to_string(uuid)}, {"name", newName}});
+                                            Json{{"uuid", ToString(uuid)}, {"name", newName}});
               }});
 
     reg.add({"entity.select", "Select GameObjects by UUID",
@@ -199,12 +197,12 @@ void RegisterBuiltinCommands() {
                  if (args.positional.empty()) {
                      return CommandResult::Err("Usage: entity.select <uuid...>");
                  }
-                 std::vector<std::uint64_t> uuids;
+                 DynamicArray<UInt64> uuids;
                  for (auto& p : args.positional) {
                      uuids.push_back(ParseUuid(p));
                  }
                  session.selection().selectMany(uuids);
-                 return CommandResult::Ok("Selected " + std::to_string(uuids.size()) + " GameObjects");
+                 return CommandResult::Ok("Selected " + ToString(uuids.size()) + " GameObjects");
              }});
 
     reg.add({"component.add", "Add a component to a GameObject",
@@ -213,8 +211,8 @@ void RegisterBuiltinCommands() {
               {"type", "string", "Component type name", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::uint64_t uuid;
-                 std::string compType;
+                 UInt64 uuid;
+                 String compType;
                  if (args.positional.size() >= 2) {
                      uuid = ParseUuid(args.positional[0]);
                      compType = args.positional[1];
@@ -225,11 +223,11 @@ void RegisterBuiltinCommands() {
                      return CommandResult::Err("Usage: component.add <uuid> <Type>");
                   }
                   if (uuid == 0) return CommandResult::Err("Invalid UUID");
-                  if (!session.addComponent(uuid, EditorComponent{compType, nlohmann::json::object()})) {
+                  if (!session.addComponent(uuid, EditorComponent{compType, Json::object()})) {
                       return CommandResult::Err("GameObject not found");
                   }
                   return CommandResult::Ok("Added " + compType,
-                                           nlohmann::json{{"uuid", std::to_string(uuid)}, {"type", compType}});
+                                           Json{{"uuid", ToString(uuid)}, {"type", compType}});
               }});
 
     reg.add({"component.remove", "Remove a component from a GameObject",
@@ -238,8 +236,8 @@ void RegisterBuiltinCommands() {
               {"type", "string", "Component type name", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::uint64_t uuid;
-                 std::string compType;
+                 UInt64 uuid;
+                 String compType;
                  if (args.positional.size() >= 2) {
                      uuid = ParseUuid(args.positional[0]);
                      compType = args.positional[1];
@@ -250,15 +248,15 @@ void RegisterBuiltinCommands() {
                      return CommandResult::Err("Usage: component.remove <uuid> <Type>");
                  }
                  if (uuid == 0) return CommandResult::Err("Invalid UUID");
-                 std::size_t idx = FindComponentIndex(session, uuid, compType);
-                 if (idx == static_cast<std::size_t>(-1)) {
+                 Size_t idx = FindComponentIndex(session, uuid, compType);
+                 if (idx == static_cast<Size_t>(-1)) {
                      return CommandResult::Err("Component not found: " + compType);
                  }
                    if (!session.removeComponent(uuid, idx)) {
                        return CommandResult::Err("Failed to remove component: " + compType);
                    }
                    return CommandResult::Ok("Removed " + compType,
-                                            nlohmann::json{{"uuid", std::to_string(uuid)}, {"type", compType}});
+                                            Json{{"uuid", ToString(uuid)}, {"type", compType}});
               }});
 
     reg.add({"component.set", "Set a component field value (supports nested dotted paths like transform.position.x)",
@@ -271,40 +269,40 @@ void RegisterBuiltinCommands() {
                  if (args.positional.size() < 3) {
                      return CommandResult::Err("Usage: component.set <uuid> <Type>.<field> <value>");
                  }
-                 std::uint64_t uuid = ParseUuid(args.positional[0]);
-                 std::string compField = args.positional[1];
-                 std::string value = args.positional[2];
+                 UInt64 uuid = ParseUuid(args.positional[0]);
+                 String compField = args.positional[1];
+                 String value = args.positional[2];
 
                  auto dot = compField.find('.');
-                 if (dot == std::string::npos) {
+                 if (dot == String::npos) {
                      return CommandResult::Err("Format: Type.fieldName");
                  }
-                 std::string comp = compField.substr(0, dot);
-                 std::string field = compField.substr(dot + 1);
+                 String comp = compField.substr(0, dot);
+                 String field = compField.substr(dot + 1);
                  if (field.empty()) {
                      return CommandResult::Err("Format: Type.fieldName");
                  }
 
-                 std::size_t idx = FindComponentIndex(session, uuid, comp);
-                 if (idx == static_cast<std::size_t>(-1)) {
+                 Size_t idx = FindComponentIndex(session, uuid, comp);
+                 if (idx == static_cast<Size_t>(-1)) {
                      return CommandResult::Err("Unknown component type: " + comp);
                  }
                  const EditorEntity* entity = session.documentModel().findEntity(uuid);
                  if (!entity) return CommandResult::Err("GameObject not found");
-                 const nlohmann::json& compValue = entity->nativeComponents[idx].value;
+                 const Json& compValue = entity->nativeComponents[idx].value;
                  const bool flat = compValue.is_object() && compValue.contains(field);
-                 const nlohmann::json* current = flat ? &compValue[field]
+                 const Json* current = flat ? &compValue[field]
                                                       : FindPathValue(compValue, field);
                  if (!current) {
                      return CommandResult::Err("Unknown field: " + field);
                  }
-                 nlohmann::json newVal = ParseFieldValue(*current, value);
+                 Json newVal = ParseFieldValue(*current, value);
                  if (newVal.is_null()) {
                      return CommandResult::Err("Cannot parse '" + value + "' for field " + field);
                  }
                  if (flat) {
                      if (!session.history().execute(
-                             std::make_unique<SetFieldValueCommand>(uuid, idx, field, newVal),
+                             create_scope<SetFieldValueCommand>(uuid, idx, field, newVal),
                              session.documentModel())) {
                          return CommandResult::Err("Value is unchanged or the update failed");
                      }
@@ -315,7 +313,7 @@ void RegisterBuiltinCommands() {
                      }
                  }
                  return CommandResult::Ok("Set " + compField + " = " + value,
-                                          nlohmann::json{{"uuid", std::to_string(uuid)},
+                                          Json{{"uuid", ToString(uuid)},
                                                          {"field", compField},
                                                          {"value", newVal}});
                }});
@@ -325,7 +323,7 @@ void RegisterBuiltinCommands() {
              {{"name", "string", "Scene name", false}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::string name = args.named.value("name", args.positional.empty() ? "Untitled" : args.positional[0]);
+                 String name = args.named.value("name", args.positional.empty() ? "Untitled" : args.positional[0]);
                  session.documentModel().newScene(name);
                  session.history().clear();
                  session.selection().clear();
@@ -349,7 +347,7 @@ void RegisterBuiltinCommands() {
              {{"path", "string", "Scene file path", false}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::string path = args.named.value("path", args.positional.empty() ? "" : args.positional[0]);
+                 String path = args.named.value("path", args.positional.empty() ? "" : args.positional[0]);
                  if (path.empty()) return CommandResult::Err("No path specified");
                  if (!session.saveDocument(path)) return CommandResult::Err("Save failed");
                  return CommandResult::Ok("Saved to " + path);
@@ -360,7 +358,7 @@ void RegisterBuiltinCommands() {
              {{"path", "string", "Scene file path", false}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::string path = args.named.value("path", args.positional.empty() ? "" : args.positional[0]);
+                 String path = args.named.value("path", args.positional.empty() ? "" : args.positional[0]);
                  if (path.empty()) return CommandResult::Err("No path specified");
                  if (!session.openDocument(path)) return CommandResult::Err("Failed to open " + path);
                  return CommandResult::Ok("Opened " + path);
@@ -371,9 +369,9 @@ void RegisterBuiltinCommands() {
              {},
              true,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                  if (!session.execute({"asset.save_all", ""})) {
-                      return CommandResult::Err("Asset save request failed");
-                  }
+                  if (!session.execute(AssetSaveAllCommand{})) {
+                       return CommandResult::Err("Asset save request failed");
+                   }
                  return CommandResult::Ok("Save requested");
              }});
 
@@ -382,14 +380,14 @@ void RegisterBuiltinCommands() {
              {{"path", "string", "Asset file path", false}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const std::string path = args.named.value(
-                     "path", args.positional.empty() ? std::string() : args.positional[0]);
+                 const String path = args.named.value(
+                     "path", args.positional.empty() ? String() : args.positional[0]);
                  if (path.empty()) {
                      return CommandResult::Err("No asset path specified");
                  }
-                 if (!session.execute({"asset.import", path})) {
-                     return CommandResult::Err("Asset import request failed");
-                 }
+                  if (!session.execute(AssetImportCommand{String(path)})) {
+                      return CommandResult::Err("Asset import request failed");
+                  }
                  return CommandResult::Ok("Import requested: " + path);
              }});
 
@@ -398,14 +396,14 @@ void RegisterBuiltinCommands() {
              {{"path", "string", "Asset file path", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const std::string path = args.named.value(
-                     "path", args.positional.empty() ? std::string() : args.positional[0]);
+                 const String path = args.named.value(
+                     "path", args.positional.empty() ? String() : args.positional[0]);
                  if (path.empty()) {
                      return CommandResult::Err("No asset path specified");
                  }
-                 if (!session.execute({"asset.reimport", path})) {
-                     return CommandResult::Err("Asset reimport request failed");
-                 }
+                  if (!session.execute(AssetReimportCommand{String(path)})) {
+                      return CommandResult::Err("Asset reimport request failed");
+                  }
                  return CommandResult::Ok("Reimport requested: " + path);
              }});
 
@@ -415,14 +413,14 @@ void RegisterBuiltinCommands() {
              false,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
                  if (!session.documentModel().hasDocument()) return CommandResult::Err("No active scene");
-                 nlohmann::json result = nlohmann::json::array();
+                 Json result = Json::array();
                  for (const EditorEntity& entity : session.documentModel().entities()) {
-                     nlohmann::json e;
+                     Json e;
                      e["name"] = entity.name;
-                     e["uuid"] = std::to_string(entity.uuid);
+                     e["uuid"] = ToString(entity.uuid);
                      result.push_back(e);
                  }
-                 return CommandResult::Ok(std::to_string(result.size()) + " GameObjects", result);
+                 return CommandResult::Ok(ToString(result.size()) + " GameObjects", result);
              }});
 
     reg.add({"query.components", "List components on a GameObject",
@@ -430,7 +428,7 @@ void RegisterBuiltinCommands() {
              {{"uuid", "uuid", "GameObject UUID", true}},
              false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::uint64_t uuid;
+                 UInt64 uuid;
                  if (!args.positional.empty()) {
                      uuid = ParseUuid(args.positional[0]);
                  } else {
@@ -439,7 +437,7 @@ void RegisterBuiltinCommands() {
                  if (uuid == 0) return CommandResult::Err("No GameObject specified");
                  const EditorEntity* entity = session.documentModel().findEntity(uuid);
                  if (!entity) return CommandResult::Err("GameObject not found");
-                 nlohmann::json result = nlohmann::json::array();
+                 Json result = Json::array();
                  for (const auto& comp : entity->nativeComponents) {
                      result.push_back(comp.typeName);
                  }
@@ -451,24 +449,24 @@ void RegisterBuiltinCommands() {
              {{"filter", "string", "Name, path, type, extension, or GUID substring", false}},
              false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const std::string filter = args.named.value(
-                     "filter", args.positional.empty() ? std::string() : args.positional[0]);
-                 std::vector<AssetBrowserEntry> assets;
+                 const String filter = args.named.value(
+                     "filter", args.positional.empty() ? String() : args.positional[0]);
+                 DynamicArray<AssetBrowserEntry> assets;
                  if (!session.listAssets(assets)) {
                      return CommandResult::Err("Asset database is unavailable");
                  }
-                 nlohmann::json result = nlohmann::json::array();
+                 Json result = Json::array();
                  for (const auto& asset : assets) {
                      if (!filter.empty()) {
-                         const std::string haystack = asset.name + " " + asset.path + " " +
+                         const String haystack = asset.name + " " + asset.path + " " +
                              asset.type + " " + asset.extension + " " +
-                             std::to_string(static_cast<std::uint64_t>(asset.uuid));
-                         if (haystack.find(filter) == std::string::npos) {
+                             ToString(static_cast<UInt64>(asset.uuid));
+                         if (haystack.find(filter) == String::npos) {
                              continue;
                          }
                      }
-                     nlohmann::json item;
-                     item["uuid"] = std::to_string(static_cast<std::uint64_t>(asset.uuid));
+                     Json item;
+                     item["uuid"] = ToString(static_cast<UInt64>(asset.uuid));
                      item["name"] = asset.name;
                      item["path"] = asset.path;
                      item["type"] = asset.type;
@@ -477,7 +475,7 @@ void RegisterBuiltinCommands() {
                      item["dependencies"] = asset.dependencies;
                      result.push_back(std::move(item));
                  }
-                 return CommandResult::Ok(std::to_string(result.size()) + " assets", result);
+                 return CommandResult::Ok(ToString(result.size()) + " assets", result);
              }});
 
     reg.add({"query.perf.frame_stats", "Report recent frame render telemetry: timings, draw calls, dispatches, barriers",
@@ -485,7 +483,7 @@ void RegisterBuiltinCommands() {
              {},
              false,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 nlohmann::json out;
+                 Json out;
                  if (!session.queryFrameStats(out)) {
                      return CommandResult::Err("Frame telemetry unavailable (runtime not booted)");
                  }
@@ -497,7 +495,7 @@ void RegisterBuiltinCommands() {
              {},
              false,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 nlohmann::json out;
+                 Json out;
                  if (!session.queryRenderGraphSnapshot(out)) {
                      return CommandResult::Err("Render graph snapshot unavailable (requires a debug build with a booted runtime)");
                  }
@@ -509,7 +507,7 @@ void RegisterBuiltinCommands() {
              {},
              false,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 nlohmann::json out;
+                 Json out;
                  if (!session.queryRenderSettings(out)) {
                      return CommandResult::Err("Render settings unavailable (runtime not booted)");
                  }
@@ -523,7 +521,7 @@ void RegisterBuiltinCommands() {
               {"value", "integer", "Setting value", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const std::string key = args.named.value("key", std::string());
+                 const String key = args.named.value("key", String());
                  if (key.empty()) {
                      return CommandResult::Err("No setting key specified");
                  }
@@ -531,7 +529,7 @@ void RegisterBuiltinCommands() {
                  if (vit == args.named.end() || !vit->is_number_integer()) {
                      return CommandResult::Err("No setting value specified");
                  }
-                 nlohmann::json overlay;
+                 Json overlay;
                  overlay[key] = vit->get<int>();
                  if (!session.applyRenderSettingsOverlay(overlay)) {
                      return CommandResult::Err("Setting rejected (runtime not booted or value out of range)");
@@ -549,9 +547,9 @@ void RegisterBuiltinCommands() {
                  if (fit != args.named.end() && fit->is_number_integer()) {
                      frames = fit->get<int>();
                  } else if (!args.positional.empty()) {
-                     frames = std::atoi(args.positional[0].c_str());
+                     frames = std::atoi(args.positional[0]);
                  }
-                 nlohmann::json out;
+                 Json out;
                  if (!session.runBenchmark(frames, out)) {
                      return CommandResult::Err("Benchmark unavailable (runtime not booted)");
                  }
@@ -563,7 +561,7 @@ void RegisterBuiltinCommands() {
              {},
              false,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 nlohmann::json out;
+                 Json out;
                  if (!session.queryBenchmarkComparison(out)) {
                      return CommandResult::Err("No benchmark pair to compare (run benchmark.run twice)");
                  }
@@ -576,12 +574,12 @@ void RegisterBuiltinCommands() {
               {"mutating_only", "boolean", "Only mutating commands (default true)", false},
               {"author", "string", "Author filter", false, {"all", "user", "ai", "workflow"}}},
              false,
-             [](EditorSession&, const CommandArgs& args) -> CommandResult {
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  const int limit = args.named.value("limit", 128);
                  const bool mutatingOnly = args.named.value("mutating_only", true);
-                 const std::string author = args.named.value("author", std::string("all"));
-                 return CommandResult::Ok("", ExecutionRecorder::self().toJSON(
-                     static_cast<std::size_t>(limit < 0 ? 0 : limit), mutatingOnly, author));
+                 const String author = args.named.value("author", String("all"));
+                 return CommandResult::Ok("", session.executionRecorder().toJSON(
+                     static_cast<Size_t>(limit < 0 ? 0 : limit), mutatingOnly, author));
              }});
 
     reg.add({"workflow.graph", "Report the execution workflow graph: nodes, artifact dependency edges and sessions",
@@ -590,20 +588,20 @@ void RegisterBuiltinCommands() {
               {"mutating_only", "boolean", "Only mutating commands (default true)", false},
               {"author", "string", "Author filter", false, {"all", "user", "ai", "workflow"}}},
              false,
-             [](EditorSession&, const CommandArgs& args) -> CommandResult {
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  const int limit = args.named.value("limit", 256);
                  const bool mutatingOnly = args.named.value("mutating_only", true);
-                 const std::string author = args.named.value("author", std::string("all"));
-                 return CommandResult::Ok("", ExecutionRecorder::self().toGraphJSON(
-                     static_cast<std::size_t>(limit < 0 ? 0 : limit), mutatingOnly, author));
+                 const String author = args.named.value("author", String("all"));
+                 return CommandResult::Ok("", session.executionRecorder().toGraphJSON(
+                     static_cast<Size_t>(limit < 0 ? 0 : limit), mutatingOnly, author));
              }});
 
     reg.add({"workflow.clear", "Clear the execution recorder history",
              "workflow.clear",
              {},
              true,
-             [](EditorSession&, const CommandArgs&) -> CommandResult {
-                 ExecutionRecorder::self().clear();
+             [](EditorSession& session, const CommandArgs&) -> CommandResult {
+                 session.executionRecorder().clear();
                  return CommandResult::Ok("Execution history cleared");
              }});
 
@@ -615,24 +613,24 @@ void RegisterBuiltinCommands() {
                {"all", "user", "ai", "workflow"}}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const std::string name = args.named.value("name", std::string());
+                 const String name = args.named.value("name", String());
                  if (name.empty()) {
                      return CommandResult::Err("No template name specified");
                  }
                  const int count = std::clamp(args.named.value("count", 50), 1, 1024);
-                 const std::string author = args.named.value("author", std::string("all"));
-                 const nlohmann::json report =
-                     ExecutionRecorder::self().toJSON(static_cast<std::size_t>(count), true, author);
-                 const std::vector<WorkflowStep> steps = CaptureWorkflowSteps(
-                     report.contains("records") ? report["records"] : nlohmann::json());
+                 const String author = args.named.value("author", String("all"));
+                 const Json report =
+                     session.executionRecorder().toJSON(static_cast<Size_t>(count), true, author);
+                 const DynamicArray<WorkflowStep> steps = CaptureWorkflowSteps(
+                     report.contains("records") ? report["records"] : Json());
                  if (steps.empty()) {
                      return CommandResult::Err("No replayable commands found in the capture window");
                  }
-                 WorkflowLibrary::self().setStoragePath(WorkflowStoragePath(session));
-                 const std::size_t stepCount = steps.size();
-                 WorkflowLibrary::self().store(name, std::move(steps));
+                 session.workflows().setStoragePath(WorkflowStoragePath(session));
+                 const Size_t stepCount = steps.size();
+                 session.workflows().store(name, std::move(steps));
                  return CommandResult::Ok("Captured workflow '" + name + "'",
-                                          nlohmann::json{{"name", name}, {"steps", stepCount}});
+                                          Json{{"name", name}, {"steps", stepCount}});
              }});
 
     reg.add({"workflow.run", "Replay a captured workflow template with entity UUID rebinding",
@@ -640,9 +638,9 @@ void RegisterBuiltinCommands() {
              {{"name", "string", "Template name", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const std::string name = args.named.value("name", std::string());
-                 WorkflowLibrary::self().setStoragePath(WorkflowStoragePath(session));
-                 const std::vector<WorkflowStep>* steps = WorkflowLibrary::self().find(name);
+                 const String name = args.named.value("name", String());
+                 session.workflows().setStoragePath(WorkflowStoragePath(session));
+                 const DynamicArray<WorkflowStep>* steps = session.workflows().find(name);
                  if (!steps || steps->empty()) {
                      return CommandResult::Err("Unknown workflow template: " + name);
                  }
@@ -654,11 +652,11 @@ void RegisterBuiltinCommands() {
              {},
              false,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 WorkflowLibrary::self().setStoragePath(WorkflowStoragePath(session));
-                 nlohmann::json items = nlohmann::json::array();
-                 for (const std::string& name : WorkflowLibrary::self().names()) {
-                     const auto* steps = WorkflowLibrary::self().find(name);
-                     nlohmann::json item;
+                 session.workflows().setStoragePath(WorkflowStoragePath(session));
+                 Json items = Json::array();
+                 for (const String& name : session.workflows().names()) {
+                     const auto* steps = session.workflows().find(name);
+                     Json item;
                      item["name"] = name;
                      item["steps"] = steps ? steps->size() : 0;
                      items.push_back(std::move(item));
@@ -671,17 +669,17 @@ void RegisterBuiltinCommands() {
              {{"name", "string", "Template name", true}},
              false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const std::string name = args.named.value("name", std::string());
-                 WorkflowLibrary::self().setStoragePath(WorkflowStoragePath(session));
-                 const auto* steps = WorkflowLibrary::self().find(name);
+                 const String name = args.named.value("name", String());
+                 session.workflows().setStoragePath(WorkflowStoragePath(session));
+                 const auto* steps = session.workflows().find(name);
                  if (!steps) {
                      return CommandResult::Err("Unknown workflow template: " + name);
                  }
-                 nlohmann::json data;
+                 Json data;
                  data["name"] = name;
-                 data["steps"] = nlohmann::json::array();
+                 data["steps"] = Json::array();
                  for (const WorkflowStep& step : *steps) {
-                     nlohmann::json item;
+                     Json item;
                      item["command"] = step.command;
                      item["args"] = step.args;
                      item["produces"] = step.produces;
@@ -695,28 +693,28 @@ void RegisterBuiltinCommands() {
              {{"data", "object", "Template JSON: {name, steps: [{command, args, produces}]}", true}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 const nlohmann::json data = args.named.value("data", nlohmann::json::object());
+                 const Json data = args.named.value("data", Json::object());
                  if (!data.is_object() || !data.contains("name") || !data["name"].is_string()) {
                      return CommandResult::Err("Template data must be an object with a string 'name'");
                  }
-                 const std::string name = data["name"].get<std::string>();
+                 const String name = data["name"].get<String>();
                  const auto stepsIt = data.find("steps");
                  if (stepsIt == data.end() || !stepsIt->is_array()) {
                      return CommandResult::Err("Template data must contain a 'steps' array");
                  }
-                 std::vector<WorkflowStep> steps;
+                 DynamicArray<WorkflowStep> steps;
                  for (const auto& item : *stepsIt) {
                      if (!item.is_object() || !item.contains("command") || !item["command"].is_string() ||
                          !item.contains("args") || !item["args"].is_object()) {
                          return CommandResult::Err("Each step must have a string 'command' and an object 'args'");
                      }
                      WorkflowStep step;
-                     step.command = item["command"].get<std::string>();
+                     step.command = item["command"].get<String>();
                      step.args = item["args"];
                      if (item.contains("produces") && item["produces"].is_array()) {
                          for (const auto& uuid : item["produces"]) {
                              if (uuid.is_string()) {
-                                 step.produces.push_back(uuid.get<std::string>());
+                                 step.produces.push_back(uuid.get<String>());
                              }
                          }
                      }
@@ -725,8 +723,8 @@ void RegisterBuiltinCommands() {
                  if (steps.empty()) {
                      return CommandResult::Err("Template has no valid steps");
                  }
-                 WorkflowLibrary::self().setStoragePath(WorkflowStoragePath(session));
-                 WorkflowLibrary::self().store(name, std::move(steps));
+                 session.workflows().setStoragePath(WorkflowStoragePath(session));
+                 session.workflows().store(name, std::move(steps));
                  return CommandResult::Ok("Imported workflow '" + name + "'");
              }});
 
@@ -735,14 +733,14 @@ void RegisterBuiltinCommands() {
              {{"port", "integer", "TCP port (0 picks a free port, default 7800)", false}},
              true,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::uint16_t port = kDefaultMcpPort;
+                 UInt16 port = kDefaultMcpPort;
                  const auto nit = args.named.find("port");
                  if (nit != args.named.end() && nit->is_number_integer()) {
                      const long long requested = nit->get<long long>();
                      if (requested < 0 || requested > 65535) {
                          return CommandResult::Err("Port out of range (0-65535)");
                      }
-                     port = static_cast<std::uint16_t>(requested);
+                     port = static_cast<UInt16>(requested);
                  } else if (!args.positional.empty()) {
                      char* end = nullptr;
                      const unsigned long requested =
@@ -750,33 +748,33 @@ void RegisterBuiltinCommands() {
                      if (!end || *end != '\0' || requested > 65535) {
                          return CommandResult::Err("Invalid port");
                      }
-                     port = static_cast<std::uint16_t>(requested);
+                     port = static_cast<UInt16>(requested);
                  }
-                 if (!McpServer::self().start(session, port)) {
+                 if (!session.mcpServer().start(session, port)) {
                      return CommandResult::Err("Failed to start MCP server (port in use?)");
                  }
                  return CommandResult::Ok("MCP server listening on 127.0.0.1:" +
-                                              std::to_string(McpServer::self().port()),
-                                          nlohmann::json{{"port", McpServer::self().port()}});
+                                              ToString(session.mcpServer().port()),
+                                          Json{{"port", session.mcpServer().port()}});
              }});
 
     reg.add({"mcp.stop", "Stop the built-in MCP server",
              "mcp.stop", {}, true,
-             [](EditorSession&, const CommandArgs&) -> CommandResult {
-                 if (!McpServer::self().isRunning()) {
+             [](EditorSession& session, const CommandArgs&) -> CommandResult {
+                 if (!session.mcpServer().isRunning()) {
                      return CommandResult::Err("MCP server is not running");
                  }
-                 McpServer::self().stop();
+                 session.mcpServer().stop();
                  return CommandResult::Ok("MCP server stopped");
              }});
 
     reg.add({"mcp.status", "Report MCP server state",
              "mcp.status", {}, false,
-             [](EditorSession&, const CommandArgs&) -> CommandResult {
-                 nlohmann::json out;
-                 out["running"] = McpServer::self().isRunning();
-                 out["port"] = McpServer::self().port();
-                 out["pending"] = McpServer::self().pendingCount();
+             [](EditorSession& session, const CommandArgs&) -> CommandResult {
+                 Json out;
+                 out["running"] = session.mcpServer().isRunning();
+                 out["port"] = session.mcpServer().port();
+                 out["pending"] = session.mcpServer().pendingCount();
                  return CommandResult::Ok("", std::move(out));
              }});
 
@@ -784,23 +782,23 @@ void RegisterBuiltinCommands() {
              "ai.begin_session [goal]",
              {{"goal", "string", "Session goal", false}},
              true,
-             [](EditorSession&, const CommandArgs& args) -> CommandResult {
-                 std::string goal = args.named.value(
-                     "goal", args.positional.empty() ? std::string() : args.positional[0]);
-                 const std::string id = AICommandBridge::self().beginSession(goal);
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 String goal = args.named.value(
+                     "goal", args.positional.empty() ? String() : args.positional[0]);
+                 const String id = session.aiBridge().beginSession(goal);
                  if (id.empty()) {
                      return CommandResult::Err("No editor session attached");
                  }
                  return CommandResult::Ok("AI session " + id,
-                                          nlohmann::json{{"session", id}, {"goal", goal}});
+                                          Json{{"session", id}, {"goal", goal}});
              }});
 
     reg.add({"ai.end_session", "End the AI transaction session (keep=false reverts to the checkpoint)",
              "ai.end_session [keep]",
              {{"keep", "boolean", "Keep changes (default true)", false}},
              true,
-             [](EditorSession&, const CommandArgs& args) -> CommandResult {
-                 if (!AICommandBridge::self().inSession()) {
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 if (!session.aiBridge().inSession()) {
                      return CommandResult::Err("No active AI session");
                  }
                  bool keep = true;
@@ -810,9 +808,9 @@ void RegisterBuiltinCommands() {
                  } else if (!args.positional.empty()) {
                      keep = args.positional[0] == "true" || args.positional[0] == "1";
                  }
-                 AICommandBridge::self().endSession(keep);
+                 session.aiBridge().endSession(keep);
                  return CommandResult::Ok(keep ? "AI session committed" : "AI session reverted",
-                                          nlohmann::json{{"kept", keep}});
+                                          Json{{"kept", keep}});
              }});
 
     reg.add({"query.logs", "Report backend log entries",
@@ -823,36 +821,36 @@ void RegisterBuiltinCommands() {
              false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  int limit = args.named.value("limit", 128);
-                 const std::string minLevel = args.named.value("level", std::string("trace"));
-                 static const std::pair<const char*, int> kLevels[] = {
+                 const String minLevel = args.named.value("level", String("trace"));
+                 static const Pair<const char*, int> kLevels[] = {
                      {"trace", 0}, {"debug", 1}, {"info", 2},
                      {"warning", 3}, {"error", 4}, {"critical", 5}};
                  int minRank = 0;
                  for (const auto& [name, rank] : kLevels) {
                      if (minLevel == name) minRank = rank;
                  }
-                 std::vector<BackendLogEntry> entries;
+                 DynamicArray<BackendLogEntry> entries;
                  if (!session.listLogs(entries)) {
                      return CommandResult::Err("Logs unavailable");
                  }
                  if (limit < 0) limit = 0;
                  const int total = static_cast<int>(entries.size());
                  const int skip = total > limit ? total - limit : 0;
-                 nlohmann::json out = nlohmann::json::array();
+                 Json out = Json::array();
                  static const char* kLevelNames[] = {"trace", "debug", "info",
                                                      "warning", "error", "critical"};
                  for (int i = skip; i < total; ++i) {
                      const int rank = static_cast<int>(entries[i].level);
                      if (rank < minRank) continue;
-                     nlohmann::json item;
+                     Json item;
                      item["sequence"] = entries[i].sequence;
                      item["level"] = kLevelNames[rank];
-                     item["source"] = entries[i].source;
-                     item["message"] = entries[i].message;
+        item["source"] = entries[i].source;
+        item["message"] = entries[i].message;
                      item["repeat"] = entries[i].repeatCount;
                      out.push_back(std::move(item));
                  }
-                 return CommandResult::Ok(std::to_string(out.size()) + " log entries",
+                 return CommandResult::Ok(ToString(out.size()) + " log entries",
                                           std::move(out));
              }});
 
@@ -862,21 +860,21 @@ void RegisterBuiltinCommands() {
              false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
                  int limit = std::clamp(args.named.value("limit", 16), 0, 256);
-                 nlohmann::json out;
+                 Json out;
                  out["can_undo"] = session.history().canUndo();
                  out["can_redo"] = session.history().canRedo();
                  out["undo_count"] = session.history().undoCount();
                  out["redo_count"] = session.history().redoCount();
                  out["undo_label"] = session.history().undoLabel();
                  out["redo_label"] = session.history().redoLabel();
-                 nlohmann::json undoStack = nlohmann::json::array();
+                 Json undoStack = Json::array();
                  const auto& undo = session.history().undoStack();
                  int count = 0;
                  for (auto it = undo.rbegin(); it != undo.rend() && count < limit; ++it, ++count) {
                      undoStack.push_back((*it)->label());
                  }
                  out["undo_stack"] = std::move(undoStack);
-                 nlohmann::json redoStack = nlohmann::json::array();
+                 Json redoStack = Json::array();
                  const auto& redo = session.history().redoStack();
                  count = 0;
                  for (auto it = redo.rbegin(); it != redo.rend() && count < limit; ++it, ++count) {
@@ -890,38 +888,38 @@ void RegisterBuiltinCommands() {
              "mcp.deny <prefix>",
              {{"prefix", "string", "Command name prefix (e.g. entity.delete)", true}},
              true,
-             [](EditorSession&, const CommandArgs& args) -> CommandResult {
-                 const std::string prefix = args.named.value(
-                     "prefix", args.positional.empty() ? std::string() : args.positional[0]);
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 const String prefix = args.named.value(
+                     "prefix", args.positional.empty() ? String() : args.positional[0]);
                  if (prefix.empty()) {
                      return CommandResult::Err("No prefix specified");
                  }
-                 auto& bridge = AICommandBridge::self();
+                 auto& bridge = session.aiBridge();
                  auto list = bridge.denylist();
                  if (std::find(list.begin(), list.end(), prefix) == list.end()) {
                      list.push_back(prefix);
                      bridge.setDenylist(std::move(list));
                  }
                  return CommandResult::Ok("Denied for AI/MCP: " + prefix,
-                                          nlohmann::json{{"denylist", bridge.denylist()}});
+                                          Json{{"denylist", bridge.denylist()}});
              }});
 
     reg.add({"mcp.allow", "Remove a prefix from the AI/MCP denylist",
              "mcp.allow <prefix>",
              {{"prefix", "string", "Command name prefix", true}},
              true,
-             [](EditorSession&, const CommandArgs& args) -> CommandResult {
-                 const std::string prefix = args.named.value(
-                     "prefix", args.positional.empty() ? std::string() : args.positional[0]);
+             [](EditorSession& session, const CommandArgs& args) -> CommandResult {
+                 const String prefix = args.named.value(
+                     "prefix", args.positional.empty() ? String() : args.positional[0]);
                  if (prefix.empty()) {
                      return CommandResult::Err("No prefix specified");
                  }
-                 auto& bridge = AICommandBridge::self();
+                 auto& bridge = session.aiBridge();
                  auto list = bridge.denylist();
                  list.erase(std::remove(list.begin(), list.end(), prefix), list.end());
                  bridge.setDenylist(std::move(list));
                  return CommandResult::Ok("Allowed for AI/MCP: " + prefix,
-                                          nlohmann::json{{"denylist", bridge.denylist()}});
+                                          Json{{"denylist", bridge.denylist()}});
              }});
 
     reg.add({"history.undo", "Undo last command",
@@ -943,21 +941,21 @@ void RegisterBuiltinCommands() {
     reg.add({"playmode.play", "Enter play mode",
              "playmode.play", {}, true,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 session.execute({"play", ""});
+                 session.execute(PlayActionCommand{PlayAction::Play});
                  return CommandResult::Ok();
              }});
 
     reg.add({"playmode.pause", "Pause or resume play mode",
              "playmode.pause", {}, true,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 session.execute({"pause", ""});
+                 session.execute(PlayActionCommand{PlayAction::Pause});
                  return CommandResult::Ok();
              }});
 
     reg.add({"playmode.stop", "Stop play mode",
              "playmode.stop", {}, true,
              [](EditorSession& session, const CommandArgs&) -> CommandResult {
-                 session.execute({"stop", ""});
+                 session.execute(PlayActionCommand{PlayAction::Stop});
                  return CommandResult::Ok();
              }});
 
@@ -966,12 +964,12 @@ void RegisterBuiltinCommands() {
              {{"mode", "string", "Gizmo mode", true,
                {"Translate", "Move", "Rotate", "Scale", "None"}}}, false,
              [](EditorSession& session, const CommandArgs& args) -> CommandResult {
-                 std::string mode = args.named.value("mode", args.positional.empty() ? "" : args.positional[0]);
-                 std::string backendMode = "none";
-                 if (mode == "Translate" || mode == "Move") backendMode = "translate";
-                 else if (mode == "Rotate") backendMode = "rotate";
-                 else if (mode == "Scale") backendMode = "scale";
-                 session.execute({"gizmo_mode", backendMode});
+                 String mode = args.named.value("mode", args.positional.empty() ? "" : args.positional[0]);
+                 GizmoMode backendMode = GizmoMode::None;
+                 if (mode == "Translate" || mode == "Move") backendMode = GizmoMode::Translate;
+                 else if (mode == "Rotate") backendMode = GizmoMode::Rotate;
+                 else if (mode == "Scale") backendMode = GizmoMode::Scale;
+                 session.execute(GizmoModeCommand{backendMode});
                  return CommandResult::Ok("Gizmo: " + mode);
              }});
 

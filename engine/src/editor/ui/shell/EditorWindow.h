@@ -1,0 +1,159 @@
+// do@Redlive
+#pragma once
+#include "dopch.h"
+
+#include <QMainWindow>
+#include <QByteArray>
+#include <QString>
+
+#include <utility>
+#include <vector>
+
+#include "core/Signal.h"
+
+class QAction;
+class QEvent;
+class QMenu;
+class QMenuBar;
+class QPoint;
+class QProgressDialog;
+class QShowEvent;
+class QTimer;
+class QToolBar;
+class QToolButton;
+
+namespace ads {
+class CDockManager;
+class CDockWidget;
+class CFloatingDockContainer;
+}
+
+namespace cakery {
+
+enum class GizmoMode;
+
+class EditorLayoutController;
+class EditorWorkspaceContext;
+class ShellViewModel;
+class ConsolePanel;
+class HierarchyPanel;
+class HistoryPanel;
+class InspectorPanel;
+class ProjectPanel;
+class SceneSurface;
+class ScriptPanel;
+class SettingsPanel;
+class TileLayersPanel;
+class TilePalettePanel;
+class WorkflowPanel;
+
+class EditorWindow : public QMainWindow {
+    Q_OBJECT
+public:
+    explicit EditorWindow(EditorWorkspaceContext& context, QWidget* parent = nullptr);
+    ~EditorWindow() override;
+
+    bool enterWorkspace(const QString& projectPath);
+
+signals:
+    void returnToProjectManagerRequested();
+
+protected:
+    void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
+    void changeEvent(QEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
+    bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
+
+private:
+    void createTitleBar();
+    void createToolbar();
+    void createMenus();
+    void createToolsMenu();
+    void refreshToolsMenu();
+    void createDocks();
+    void createPanels();
+    void createWindowMenu();
+    void populatePanelMenus();
+    void refreshEditorWindowsMenu();
+    void openEditorWindow(const QString& id, const QString& title);
+    void refreshEditorWindows();
+    void setupPanelToggle(ads::CDockWidget* dock);
+    void setupFloatingDockWindow(ads::CFloatingDockContainer* floating);
+    void startSafePointTimer();
+    void stopPlayWithPrompt();
+    void updateRuntimeControls();
+    void updateCameraAction();
+    void updateGizmoActions(GizmoMode mode);
+    void updateWindowTitle();
+    void showMissingAssetReferences(Size_t count);
+    bool promptUnsavedChanges();
+    void updateAssetImportProgress();
+    void refreshUndoRedoActions();
+    void resetLayout();
+    void toggleMaximize();
+    void updateMaximizeButton();
+    bool overInteractiveChild(const QPoint& pos) const;
+    bool overMenuAction(QMenuBar* menuBar, const QPoint& localPos) const;
+
+    EditorWorkspaceContext& m_context;
+    Scope<ShellViewModel> m_shellViewModel;
+    Scope<EditorLayoutController> m_layoutController;
+    ads::CDockManager* m_dockManager = nullptr;
+    ads::CDockWidget* m_sceneDock = nullptr;
+    ads::CDockWidget* m_hierarchyDock = nullptr;
+    ads::CDockWidget* m_inspectorDock = nullptr;
+    ads::CDockWidget* m_projectDock = nullptr;
+    ads::CDockWidget* m_consoleDock = nullptr;
+    ads::CDockWidget* m_terminalDock = nullptr;
+    ads::CDockWidget* m_historyDock = nullptr;
+    ads::CDockWidget* m_workflowDock = nullptr;
+    ads::CDockWidget* m_gameSettingsDock = nullptr;
+    ads::CDockWidget* m_engineSettingsDock = nullptr;
+    ads::CDockWidget* m_tilePaletteDock = nullptr;
+    ads::CDockWidget* m_tileLayersDock = nullptr;
+    ads::CDockWidget* m_scriptDock = nullptr;
+    SceneSurface* m_sceneSurface = nullptr;
+    HierarchyPanel* m_hierarchy = nullptr;
+    HistoryPanel* m_historyPanel = nullptr;
+    WorkflowPanel* m_workflowPanel = nullptr;
+    InspectorPanel* m_inspector = nullptr;
+    ProjectPanel* m_projectPanel = nullptr;
+    ConsolePanel* m_console = nullptr;
+    SettingsPanel* m_gameSettingsPanel = nullptr;
+    SettingsPanel* m_engineSettingsPanel = nullptr;
+    TilePalettePanel* m_tilePalette = nullptr;
+    TileLayersPanel* m_tileLayers = nullptr;
+    ScriptPanel* m_scriptPanel = nullptr;
+    QWidget* m_titleBar = nullptr;
+    QToolBar* m_editorToolbar = nullptr;
+    QMenuBar* m_menuBar = nullptr;
+    QMenu* m_settingsMenu = nullptr;
+    QMenu* m_windowMenu = nullptr;
+    QMenu* m_toolsMenu = nullptr;
+    QMenu* m_editorWindowsMenu = nullptr;
+    QTimer* m_editorWindowTimer = nullptr;
+    DynamicArray<Pair<QString, ads::CDockWidget*>> m_editorWindowDocks;
+    QAction* m_resetLayoutAction = nullptr;
+    QToolButton* m_maxButton = nullptr;
+    QAction* m_undoAction = nullptr;
+    QAction* m_redoAction = nullptr;
+    QAction* m_camera2DAction = nullptr;
+    QAction* m_sceneToolActions[4] = {nullptr, nullptr, nullptr, nullptr};
+    QAction* m_runtimeMenuActions[3] = {nullptr, nullptr, nullptr};
+    QToolButton* m_playButton = nullptr;
+    QToolButton* m_pauseButton = nullptr;
+    QToolButton* m_stopButton = nullptr;
+    QTimer* m_safePointTimer = nullptr;
+    QTimer* m_assetImportTimer = nullptr;
+    QProgressDialog* m_assetImportDialog = nullptr;
+    bool m_closed = false;
+    ScopedConnection m_historyViewSubscription;
+    ScopedConnection m_cameraViewSubscription;
+    ScopedConnection m_gizmoViewSubscription;
+    ScopedConnection m_runtimeViewSubscription;
+    ScopedConnection m_documentViewSubscription;
+    ScopedConnection m_missingRefsViewSubscription;
+};
+
+} // namespace cakery

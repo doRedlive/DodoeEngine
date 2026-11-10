@@ -1,8 +1,7 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
-#include <nlohmann/json.hpp>
 #include <string>
 
 namespace cakery::mcp {
@@ -11,48 +10,48 @@ inline constexpr const char* kProtocolVersion = "2025-06-18";
 inline constexpr const char* kServerName = "cakery-editor";
 inline constexpr const char* kServerVersion = "1.0.0";
 
-inline bool IsSupportedProtocolVersion(const std::string& version) {
+inline bool IsSupportedProtocolVersion(const String& version) {
     return version == "2024-11-05" || version == "2025-03-26" || version == "2025-06-18";
 }
 
-inline nlohmann::json RpcError(const nlohmann::json& id, int code, const std::string& message) {
-    return nlohmann::json{{"jsonrpc", "2.0"}, {"id", id},
+inline Json RpcError(const Json& id, int code, const String& message) {
+    return Json{{"jsonrpc", "2.0"}, {"id", id},
                           {"error", {{"code", code}, {"message", message}}}};
 }
 
-inline nlohmann::json RpcResult(const nlohmann::json& id, nlohmann::json result) {
-    return nlohmann::json{{"jsonrpc", "2.0"}, {"id", id}, {"result", std::move(result)}};
+inline Json RpcResult(const Json& id, Json result) {
+    return Json{{"jsonrpc", "2.0"}, {"id", id}, {"result", std::move(result)}};
 }
 
-inline nlohmann::json BuildInitializeResult(const std::string& requestedVersion) {
-    nlohmann::json result;
+inline Json BuildInitializeResult(const String& requestedVersion) {
+    Json result;
     result["protocolVersion"] =
         IsSupportedProtocolVersion(requestedVersion) ? requestedVersion : kProtocolVersion;
-    result["capabilities"] = nlohmann::json{
-        {"tools", nlohmann::json::object()},
-        {"resources", nlohmann::json{{"subscribe", false}, {"listChanged", false}}},
-        {"prompts", nlohmann::json{{"listChanged", false}}}};
-    result["serverInfo"] = nlohmann::json{{"name", kServerName}, {"version", kServerVersion}};
+    result["capabilities"] = Json{
+        {"tools", Json::object()},
+        {"resources", Json{{"subscribe", false}, {"listChanged", false}}},
+        {"prompts", Json{{"listChanged", false}}}};
+    result["serverInfo"] = Json{{"name", kServerName}, {"version", kServerVersion}};
     return result;
 }
 
-inline nlohmann::json BuildToolCatalog(const nlohmann::json& toolSchema) {
-    nlohmann::json tools = nlohmann::json::array();
+inline Json BuildToolCatalog(const Json& toolSchema) {
+    Json tools = Json::array();
     if (toolSchema.is_array()) {
         for (const auto& entry : toolSchema) {
-            nlohmann::json tool;
+            Json tool;
             tool["name"] = entry["name"];
-            tool["description"] = entry.value("description", std::string());
-            tool["inputSchema"] = entry.value("parameters", nlohmann::json::object());
+            tool["description"] = entry.value("description", String());
+            tool["inputSchema"] = entry.value("parameters", Json::object());
             tools.push_back(std::move(tool));
         }
     }
-    return nlohmann::json{{"tools", std::move(tools)}};
+    return Json{{"tools", std::move(tools)}};
 }
 
-inline nlohmann::json ToolCallResult(const std::string& text, bool isError) {
-    return nlohmann::json{
-        {"content", nlohmann::json::array({nlohmann::json{{"type", "text"}, {"text", text}}})},
+inline Json ToolCallResult(const String& text, bool isError) {
+    return Json{
+        {"content", Json::array({Json{{"type", "text"}, {"text", text}}})},
         {"isError", isError}};
 }
 

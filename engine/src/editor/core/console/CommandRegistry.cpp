@@ -1,8 +1,11 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "CommandRegistry.h"
 
 #include "ExecutionRecorder.h"
+#include "core/EditorSession.h"
 
 #include <algorithm>
 #include <cctype>
@@ -15,22 +18,22 @@ namespace cakery {
 
 namespace {
 
-bool IsUuidValue(const nlohmann::json& value)
+bool IsUuidValue(const Json& value)
 {
     if (value.is_number_unsigned()) {
-        return value.get<std::uint64_t>() != 0;
+        return value.get<UInt64>() != 0;
     }
     if (value.is_number_integer()) {
-        return value.get<std::int64_t>() > 0;
+        return value.get<Int64>() > 0;
     }
-    if (!value.is_string() || value.get<std::string>().empty()) {
+    if (!value.is_string() || value.get<String>().empty()) {
         return false;
     }
-    const std::string text = value.get<std::string>();
+    const String text = value.get<String>();
     return std::all_of(text.begin(), text.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
 }
 
-bool IsParamType(const nlohmann::json& value, const std::string& type)
+bool IsParamType(const Json& value, const String& type)
 {
     if (type == "string") return value.is_string();
     if (type == "boolean" || type == "bool") return value.is_boolean();
@@ -42,7 +45,7 @@ bool IsParamType(const nlohmann::json& value, const std::string& type)
     return true;
 }
 
-CommandResult ValidateStructuredArgs(const CommandSpec& spec, const nlohmann::json& args)
+CommandResult ValidateStructuredArgs(const CommandSpec& spec, const Json& args)
 {
     if (!args.is_object()) {
         return CommandResult::Err("Arguments for " + spec.name + " must be an object");
@@ -62,7 +65,7 @@ CommandResult ValidateStructuredArgs(const CommandSpec& spec, const nlohmann::js
         if (!param.enumValues.empty()) {
             bool matched = false;
             if (it->is_string()) {
-                const std::string text = it->get<std::string>();
+                const String text = it->get<String>();
                 for (const auto& allowed : param.enumValues) {
                     if (text == allowed) {
                         matched = true;
@@ -71,7 +74,7 @@ CommandResult ValidateStructuredArgs(const CommandSpec& spec, const nlohmann::js
                 }
             }
             if (!matched) {
-                std::string allowedList;
+                String allowedList;
                 for (const auto& allowed : param.enumValues) {
                     if (!allowedList.empty()) {
                         allowedList += ", ";
@@ -85,52 +88,49 @@ CommandResult ValidateStructuredArgs(const CommandSpec& spec, const nlohmann::js
     return CommandResult::Ok();
 }
 
-std::string StructuredToken(const nlohmann::json& value)
+String StructuredToken(const Json& value)
 {
     if (value.is_string()) {
-        return value.get<std::string>();
+        return value.get<String>();
     }
     if (value.is_boolean()) {
         return value.get<bool>() ? "true" : "false";
     }
     if (value.is_number()) {
-        return value.dump();
+        return ToString(value);
     }
-    return value.dump();
+    return ToString(value);
 }
 
 } // namespace
 
-CommandRegistry& CommandRegistry::self() {
-    static CommandRegistry instance;
-    return instance;
-}
+CommandRegistry::CommandRegistry() = default;
 
 void CommandRegistry::add(CommandSpec spec) {
     m_specs.push_back(std::move(spec));
 }
 
-bool CommandRegistry::has(const std::string& name) const {
+bool CommandRegistry::has(const String& name) const {
     return find(name) != nullptr;
 }
 
-const CommandSpec* CommandRegistry::find(const std::string& name) const {
+const CommandSpec* CommandRegistry::find(const String& name) const {
     for (auto& s : m_specs) {
         if (s.name == name) return &s;
     }
     return nullptr;
 }
 
-void CommandRegistry::parseLine(const std::string& line, std::string& outName, CommandArgs& outArgs) {
+void CommandRegistry::parseLine(const String& line, String& outName, CommandArgs& outArgs) {
     std::istringstream iss(line);
     iss >> outName;
 
-    std::string token;
+    String token;
     while (iss >> token) {
         auto eq = token.find('=');
-        if (eq != std::string::npos) {
-            std::string key = token.substr(0, eq);
-            std::string val = token.substr(eq + 1);
+        if (eq != String::npos) {
+            String key = token.substr(0, eq);
+            String val = token.substr(eq + 1);
             outArgs.named[key] = val;
         } else {
             outArgs.positional.push_back(token);
@@ -138,7 +138,7 @@ void CommandRegistry::parseLine(const std::string& line, std::string& outName, C
     }
 }
 
-CommandResult CommandRegistry::invoke(EditorSession& session, const std::string& name, const CommandArgs& args) {
+CommandResult CommandRegistry::invoke(EditorSession& session, const String& name, const CommandArgs& args) {
     const CommandSpec* spec = find(name);
     if (!spec) {
         return CommandResult::Err("Unknown command: " + name);
@@ -148,13 +148,13 @@ CommandResult CommandRegistry::invoke(EditorSession& session, const std::string&
     }
     try {
         return spec->handler(session, args);
-    } catch (const nlohmann::json::exception& error) {
-        return CommandResult::Err("Invalid arguments for " + name + ": " + std::string(error.what()));
+    } catch (const Json::exception& error) {
+        return CommandResult::Err("Invalid arguments for " + name + ": " + String(error.what()));
     }
 }
 
-CommandResult CommandRegistry::execute(EditorSession& session, const std::string& line) {
-    std::string name;
+CommandResult CommandRegistry::execute(EditorSession& session, const String& line) {
+    String name;
     CommandArgs args;
     parseLine(line, name, args);
 
@@ -172,12 +172,12 @@ CommandResult CommandRegistry::execute(EditorSession& session, const std::string
     record.author = "user";
     record.mutating = spec ? spec->mutating : false;
     record.duration_ms = std::chrono::duration<double, std::milli>(end - start).count();
-    ExecutionRecorder::self().record(std::move(record));
+    session.executionRecorder().record(std::move(record));
     return result;
 }
 
-CommandResult CommandRegistry::executeStructuredInternal(EditorSession& session, const std::string& name,
-                                                          const nlohmann::json& args) {
+CommandResult CommandRegistry::executeStructuredInternal(EditorSession& session, const String& name,
+                                                          const Json& args) {
     const CommandSpec* spec = find(name);
     if (!spec) {
         return CommandResult::Err("Unknown command: " + name);
@@ -203,12 +203,12 @@ CommandResult CommandRegistry::executeStructuredInternal(EditorSession& session,
     return invoke(session, name, cargs);
 }
 
-CommandResult CommandRegistry::executeStructured(EditorSession& session, const std::string& name, const nlohmann::json& args) {
+CommandResult CommandRegistry::executeStructured(EditorSession& session, const String& name, const Json& args) {
     return executeStructured(session, name, args, CommandContext{});
 }
 
-CommandResult CommandRegistry::executeStructured(EditorSession& session, const std::string& name,
-                                                 const nlohmann::json& args, const CommandContext& context) {
+CommandResult CommandRegistry::executeStructured(EditorSession& session, const String& name,
+                                                 const Json& args, const CommandContext& context) {
     const auto start = std::chrono::steady_clock::now();
     const CommandResult result = executeStructuredInternal(session, name, args);
     const auto end = std::chrono::steady_clock::now();
@@ -220,27 +220,27 @@ CommandResult CommandRegistry::executeStructured(EditorSession& session, const s
     record.ok = result.ok;
     record.message = result.message;
     record.data = result.data;
-    record.author = context.author.empty() ? std::string("user") : context.author;
+    record.author = context.author.empty() ? String("user") : context.author;
     record.session = context.session;
     record.mutating = spec ? spec->mutating : false;
     record.duration_ms = std::chrono::duration<double, std::milli>(end - start).count();
-    ExecutionRecorder::self().record(std::move(record));
+    session.executionRecorder().record(std::move(record));
     return result;
 }
 
-std::vector<CommandSpec> CommandRegistry::list() const {
+DynamicArray<CommandSpec> CommandRegistry::list() const {
     return m_specs;
 }
 
-nlohmann::json CommandRegistry::toolSchema() const {
-    nlohmann::json tools = nlohmann::json::array();
+Json CommandRegistry::toolSchema() const {
+    Json tools = Json::array();
     for (auto& s : m_specs) {
-        nlohmann::json t;
+        Json t;
         t["name"] = s.name;
         t["description"] = s.summary;
-        nlohmann::json props = nlohmann::json::object();
+        Json props = Json::object();
         for (auto& p : s.params) {
-            nlohmann::json prop;
+            Json prop;
             // UUID is an editor-level alias; expose a standard JSON Schema type.
             prop["type"] = p.type == "uuid" ? "string" : p.type;
             prop["description"] = p.help;
@@ -249,8 +249,8 @@ nlohmann::json CommandRegistry::toolSchema() const {
             }
             props[p.name] = prop;
         }
-        t["parameters"] = nlohmann::json{{"type", "object"}, {"properties", props}};
-        nlohmann::json required = nlohmann::json::array();
+        t["parameters"] = Json{{"type", "object"}, {"properties", props}};
+        Json required = Json::array();
         for (const auto& p : s.params) {
             if (p.required) {
                 required.push_back(p.name);
@@ -265,7 +265,7 @@ nlohmann::json CommandRegistry::toolSchema() const {
     return tools;
 }
 
-std::string CommandRegistry::help(const std::string& name) const {
+String CommandRegistry::help(const String& name) const {
     const auto* spec = find(name);
     if (!spec) return "Unknown command: " + name;
     return spec->summary + "\nUsage: " + spec->usage;

@@ -1,9 +1,8 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include <functional>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
@@ -12,73 +11,72 @@ namespace cakery {
 class EditorSession;
 
 struct CommandArgs {
-    std::vector<std::string> positional;
-    nlohmann::json named;
-    nlohmann::json raw;
+    DynamicArray<String> positional;
+    Json named;
+    Json raw;
 };
 
 struct CommandResult {
     bool ok = true;
-    std::string message;
-    nlohmann::json data;
+    String message;
+    Json data;
 
-    static CommandResult Ok(std::string m = {}, nlohmann::json d = {}) {
+    static CommandResult Ok(String m = {}, Json d = {}) {
         return {true, std::move(m), std::move(d)};
     }
-    static CommandResult Err(std::string m) {
+    static CommandResult Err(String m) {
         return {false, std::move(m), {}};
     }
 };
 
 struct ParamSpec {
-    std::string name;
-    std::string type;
-    std::string help;
+    String name;
+    String type;
+    String help;
     bool required = false;
-    std::vector<std::string> enumValues;
+    DynamicArray<String> enumValues;
 };
 
 struct CommandContext {
-    std::string author = "user";
-    std::string session;
+    String author = "user";
+    String session;
 };
 
 struct CommandSpec {
-    std::string name;
-    std::string summary;
-    std::string usage;
-    std::vector<ParamSpec> params;
+    String name;
+    String summary;
+    String usage;
+    DynamicArray<ParamSpec> params;
     bool mutating = true;
     std::function<CommandResult(EditorSession&, const CommandArgs&)> handler;
 };
 
 class CommandRegistry {
 public:
-    static CommandRegistry& self();
+    CommandRegistry();
 
     void add(CommandSpec spec);
-    bool has(const std::string& name) const;
+    bool has(const String& name) const;
 
-    CommandResult execute(EditorSession& session, const std::string& line);
-    CommandResult executeStructured(EditorSession& session, const std::string& name, const nlohmann::json& args);
-    CommandResult executeStructured(EditorSession& session, const std::string& name,
-                                    const nlohmann::json& args, const CommandContext& context);
+    CommandResult execute(EditorSession& session, const String& line);
+    CommandResult executeStructured(EditorSession& session, const String& name, const Json& args);
+    CommandResult executeStructured(EditorSession& session, const String& name,
+                                    const Json& args, const CommandContext& context);
 
-    std::vector<CommandSpec> list() const;
-    nlohmann::json toolSchema() const;
-    std::string help(const std::string& name) const;
+    DynamicArray<CommandSpec> list() const;
+    Json toolSchema() const;
+    String help(const String& name) const;
 
 private:
-    CommandRegistry() = default;
-    const CommandSpec* find(const std::string& name) const;
-    static void parseLine(const std::string& line, std::string& outName, CommandArgs& outArgs);
-    CommandResult executeStructuredInternal(EditorSession& session, const std::string& name,
-                                            const nlohmann::json& args);
-    CommandResult invoke(EditorSession& session, const std::string& name, const CommandArgs& args);
+    const CommandSpec* find(const String& name) const;
+    static void parseLine(const String& line, String& outName, CommandArgs& outArgs);
+    CommandResult executeStructuredInternal(EditorSession& session, const String& name,
+                                            const Json& args);
+    CommandResult invoke(EditorSession& session, const String& name, const CommandArgs& args);
 
-    std::vector<CommandSpec> m_specs;
+    DynamicArray<CommandSpec> m_specs;
 };
 
-void RegisterBuiltinCommands();
+void RegisterBuiltinCommands(CommandRegistry& registry);
 
 } // namespace cakery

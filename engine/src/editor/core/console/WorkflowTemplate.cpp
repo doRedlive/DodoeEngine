@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "WorkflowTemplate.h"
 
 #include "CommandRegistry.h"
@@ -17,19 +19,19 @@ namespace cakery {
 
 namespace {
 
-std::unordered_set<std::string> CollectDataUuids(const nlohmann::json& data)
+UnorderedSet<String> CollectDataUuids(const Json& data)
 {
-    std::unordered_set<std::string> uuids;
+    UnorderedSet<String> uuids;
     if (data.is_object()) {
         const auto it = data.find("uuid");
         if (it != data.end() && it->is_string()) {
-            uuids.insert(it->get<std::string>());
+            uuids.insert(it->get<String>());
         }
     }
     return uuids;
 }
 
-bool IsReplayableCommand(const std::string& command)
+bool IsReplayableCommand(const String& command)
 {
     static constexpr const char* kNonReplayablePrefixes[] = {
         "query.", "workflow.", "benchmark.", "session.", "mcp.", "ai.",
@@ -42,12 +44,12 @@ bool IsReplayableCommand(const std::string& command)
     return !command.empty();
 }
 
-void SubstituteUuids(nlohmann::json& value, const std::unordered_map<std::string, std::string>& map)
+void SubstituteUuids(Json& value, const UnorderedMap<String, String>& map)
 {
     if (value.is_object()) {
         for (auto it = value.begin(); it != value.end(); ++it) {
             if (it.key() == "uuid" && it.value().is_string()) {
-                const auto mapped = map.find(it.value().get<std::string>());
+                const auto mapped = map.find(it.value().get<String>());
                 if (mapped != map.end()) {
                     it.value() = mapped->second;
                 }
@@ -62,11 +64,11 @@ void SubstituteUuids(nlohmann::json& value, const std::unordered_map<std::string
     }
 }
 
-nlohmann::json StepsToJson(const std::vector<WorkflowStep>& steps)
+Json StepsToJson(const DynamicArray<WorkflowStep>& steps)
 {
-    nlohmann::json array = nlohmann::json::array();
+    Json array = Json::array();
     for (const WorkflowStep& step : steps) {
-        nlohmann::json item;
+        Json item;
         item["command"] = step.command;
         item["args"] = step.args;
         item["produces"] = step.produces;
@@ -75,9 +77,9 @@ nlohmann::json StepsToJson(const std::vector<WorkflowStep>& steps)
     return array;
 }
 
-std::vector<WorkflowStep> StepsFromJson(const nlohmann::json& array)
+DynamicArray<WorkflowStep> StepsFromJson(const Json& array)
 {
-    std::vector<WorkflowStep> steps;
+    DynamicArray<WorkflowStep> steps;
     if (!array.is_array()) {
         return steps;
     }
@@ -93,13 +95,13 @@ std::vector<WorkflowStep> StepsFromJson(const nlohmann::json& array)
             continue;
         }
         WorkflowStep step;
-        step.command = commandIt->get<std::string>();
+        step.command = commandIt->get<String>();
         step.args = *argsIt;
         const auto producesIt = item.find("produces");
         if (producesIt != item.end() && producesIt->is_array()) {
             for (const auto& uuid : *producesIt) {
                 if (uuid.is_string()) {
-                    step.produces.push_back(uuid.get<std::string>());
+                    step.produces.push_back(uuid.get<String>());
                 }
             }
         }
@@ -110,13 +112,9 @@ std::vector<WorkflowStep> StepsFromJson(const nlohmann::json& array)
 
 } // anonymous namespace
 
-WorkflowLibrary& WorkflowLibrary::self()
-{
-    static WorkflowLibrary instance;
-    return instance;
-}
+WorkflowLibrary::WorkflowLibrary() = default;
 
-void WorkflowLibrary::setStoragePath(const std::string& path)
+void WorkflowLibrary::setStoragePath(const String& path)
 {
     if (m_loaded) {
         return;
@@ -128,9 +126,9 @@ void WorkflowLibrary::setStoragePath(const std::string& path)
     }
 }
 
-std::vector<std::string> WorkflowLibrary::names() const
+DynamicArray<String> WorkflowLibrary::names() const
 {
-    std::vector<std::string> result;
+    DynamicArray<String> result;
     result.reserve(m_templates.size());
     for (const auto& [name, steps] : m_templates) {
         result.push_back(name);
@@ -139,18 +137,18 @@ std::vector<std::string> WorkflowLibrary::names() const
     return result;
 }
 
-bool WorkflowLibrary::contains(const std::string& name) const
+bool WorkflowLibrary::contains(const String& name) const
 {
     return m_templates.contains(name);
 }
 
-const std::vector<WorkflowStep>* WorkflowLibrary::find(const std::string& name) const
+const DynamicArray<WorkflowStep>* WorkflowLibrary::find(const String& name) const
 {
     const auto it = m_templates.find(name);
     return it == m_templates.end() ? nullptr : &it->second;
 }
 
-void WorkflowLibrary::store(const std::string& name, std::vector<WorkflowStep> steps)
+void WorkflowLibrary::store(const String& name, DynamicArray<WorkflowStep> steps)
 {
     m_templates[name] = std::move(steps);
     if (!m_storagePath.empty()) {
@@ -160,61 +158,61 @@ void WorkflowLibrary::store(const std::string& name, std::vector<WorkflowStep> s
 
 void WorkflowLibrary::loadFromDisk()
 {
-    std::ifstream file(m_storagePath);
+    std::ifstream file(m_storagePath.c_str());
     if (!file.is_open()) {
         return;
     }
-    nlohmann::json root;
+    Json root;
     try {
         file >> root;
-    } catch (const nlohmann::json::exception&) {
+    } catch (const Json::exception&) {
         return;
     }
     if (!root.is_object() || !root.contains("templates") || !root["templates"].is_object()) {
         return;
     }
     for (auto it = root["templates"].begin(); it != root["templates"].end(); ++it) {
-        std::vector<WorkflowStep> steps = StepsFromJson(it.value());
+        DynamicArray<WorkflowStep> steps = StepsFromJson(it.value());
         if (!steps.empty()) {
-            m_templates[it.key()] = std::move(steps);
+            m_templates[String(it.key())] = std::move(steps);
         }
     }
 }
 
 void WorkflowLibrary::saveToDisk()
 {
-    nlohmann::json root = nlohmann::json::object();
-    nlohmann::json templates = nlohmann::json::object();
+    Json root = Json::object();
+    Json templates = Json::object();
     for (const auto& [name, steps] : m_templates) {
         templates[name] = StepsToJson(steps);
     }
     root["templates"] = std::move(templates);
 
-    std::ofstream file(m_storagePath, std::ios::binary | std::ios::trunc);
+    std::ofstream file(m_storagePath.c_str(), std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
         return;
     }
     file << root.dump(4) << std::endl;
 }
 
-std::string WorkflowStoragePath(EditorSession& session)
+String WorkflowStoragePath(EditorSession& session)
 {
-    const std::string root = session.project().rootPath;
+    const String root = session.project().rootPath;
     if (root.empty()) {
         return {};
     }
     std::error_code ec;
-    const std::filesystem::path dir = std::filesystem::path(root) / "Configs";
+    const FsPath dir = FsPath(root) / "Configs";
     std::filesystem::create_directories(dir, ec);
     if (ec) {
         return {};
     }
-    return (dir / "workflows.json").string();
+    return String((dir / "workflows.json").string());
 }
 
-std::vector<WorkflowStep> CaptureWorkflowSteps(const nlohmann::json& records)
+DynamicArray<WorkflowStep> CaptureWorkflowSteps(const Json& records)
 {
-    std::vector<WorkflowStep> steps;
+    DynamicArray<WorkflowStep> steps;
     if (!records.is_array()) {
         return steps;
     }
@@ -222,7 +220,7 @@ std::vector<WorkflowStep> CaptureWorkflowSteps(const nlohmann::json& records)
         if (!record.is_object()) {
             continue;
         }
-        const std::string command = record.value("command", std::string());
+        const String command = record.value("command", String());
         if (!IsReplayableCommand(command)) {
             continue;
         }
@@ -233,7 +231,7 @@ std::vector<WorkflowStep> CaptureWorkflowSteps(const nlohmann::json& records)
         WorkflowStep step;
         step.command = command;
         step.args = *argsIt;
-        for (const std::string& uuid : CollectDataUuids(record.contains("data") ? record["data"] : nlohmann::json())) {
+        for (const String& uuid : CollectDataUuids(record.contains("data") ? record["data"] : Json())) {
             step.produces.push_back(uuid);
         }
         steps.push_back(std::move(step));
@@ -241,26 +239,26 @@ std::vector<WorkflowStep> CaptureWorkflowSteps(const nlohmann::json& records)
     return steps;
 }
 
-nlohmann::json RunWorkflow(EditorSession& session, const std::string& name,
-                           const std::vector<WorkflowStep>& steps)
+Json RunWorkflow(EditorSession& session, const String& name,
+                           const DynamicArray<WorkflowStep>& steps)
 {
-    std::unordered_map<std::string, std::string> uuidMap;
-    nlohmann::json out = nlohmann::json::object();
+    UnorderedMap<String, String> uuidMap;
+    Json out = Json::object();
     out["name"] = name;
-    out["steps"] = nlohmann::json::array();
+    out["steps"] = Json::array();
 
     bool allOk = true;
     int index = 0;
     for (const WorkflowStep& step : steps) {
-        nlohmann::json args = step.args;
+        Json args = step.args;
         SubstituteUuids(args, uuidMap);
 
         CommandContext context;
         context.author = "workflow";
         const CommandResult result =
-            CommandRegistry::self().executeStructured(session, step.command, args, context);
+            session.commands().executeStructured(session, step.command, args, context);
 
-        nlohmann::json stepOut = nlohmann::json::object();
+        Json stepOut = Json::object();
         stepOut["index"] = index;
         stepOut["command"] = step.command;
         stepOut["ok"] = result.ok;
@@ -276,8 +274,8 @@ nlohmann::json RunWorkflow(EditorSession& session, const std::string& name,
         if (result.data.is_object()) {
             const auto uuidIt = result.data.find("uuid");
             if (uuidIt != result.data.end() && uuidIt->is_string()) {
-                for (const std::string& oldUuid : step.produces) {
-                    uuidMap[oldUuid] = uuidIt->get<std::string>();
+                for (const String& oldUuid : step.produces) {
+                    uuidMap[oldUuid] = uuidIt->get<String>();
                 }
             }
         }

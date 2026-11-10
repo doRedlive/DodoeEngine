@@ -1,30 +1,29 @@
 // do@Redlive
-
 #pragma once
+#include "dopch.h"
 
 #include <cstdint>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
 namespace cakery {
 
 struct EditorComponent {
-    std::string typeName;
-    nlohmann::json value = nlohmann::json::object();
+    String typeName;
+    Json value = Json::object();
 };
 
 struct EditorEntity {
-    std::uint64_t uuid = 0;
-    std::uint64_t parent = 0;
-    std::string name;
-    std::vector<EditorComponent> nativeComponents;
-    std::vector<EditorComponent> managedComponents;
+    UInt64 uuid = 0;
+    UInt64 parent = 0;
+    String name;
+    DynamicArray<EditorComponent> nativeComponents;
+    DynamicArray<EditorComponent> managedComponents;
 };
 
 struct EditorDocument {
-    std::string name;
-    std::vector<EditorEntity> entities;
+    String name;
+    DynamicArray<EditorEntity> entities;
 };
 
 } // namespace cakery

@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "EditorConfig.h"
 
 #include <filesystem>
@@ -15,7 +17,7 @@ EditorConfig& EditorConfig::self()
     return instance;
 }
 
-bool EditorConfig::load(const std::string& builtinDir, const std::string& projectDir, const std::string& userDir)
+bool EditorConfig::load(const String& builtinDir, const String& projectDir, const String& userDir)
 {
     m_builtinDir  = builtinDir;
     m_projectDir  = projectDir;
@@ -29,51 +31,51 @@ bool EditorConfig::load(const std::string& builtinDir, const std::string& projec
     return true;
 }
 
-dodoe::Json EditorConfig::layoutJson(const std::string& name) const
+dodoe::Json EditorConfig::layoutJson(const String& name) const
 {
     dodoe::Json j = dodoe::config::LoadJsonFile(
-        std::filesystem::path(m_builtinDir) / "layouts" / (name + ".layout.json"));
+        FsPath(m_builtinDir) / "layouts" / (name + ".layout.json"));
     if (!j.is_null()) return j;
 
     if (!m_projectDir.empty()) {
         j = dodoe::config::LoadJsonFile(
-            std::filesystem::path(m_projectDir) / "layouts" / (name + ".layout.json"));
+            FsPath(m_projectDir) / "layouts" / (name + ".layout.json"));
         if (!j.is_null()) return j;
     }
 
     return dodoe::Json::object();
 }
 
-std::string EditorConfig::themeName() const
+String EditorConfig::themeName() const
 {
     if (m_editor.contains("theme") && m_editor["theme"].is_string()) {
-        return m_editor["theme"].get<std::string>();
+        return m_editor["theme"].get<String>();
     }
     return "cakery-dark";
 }
 
-std::string EditorConfig::defaultLayoutName() const
+String EditorConfig::defaultLayoutName() const
 {
     if (m_editor.contains("defaultLayout") && m_editor["defaultLayout"].is_string()) {
-        return m_editor["defaultLayout"].get<std::string>();
+        return m_editor["defaultLayout"].get<String>();
     }
     return "default";
 }
 
-std::string EditorConfig::themePath() const
+String EditorConfig::themePath() const
 {
     return m_builtinDir + "/themes/" + themeName() + ".qss";
 }
 
-std::string EditorConfig::shortcut(const std::string& action) const
+String EditorConfig::shortcut(const String& action) const
 {
     if (m_editor.contains("shortcuts") && m_editor["shortcuts"].contains(action)) {
-        return m_editor["shortcuts"][action].get<std::string>();
+        return m_editor["shortcuts"][action].get<String>();
     }
     return "";
 }
 
-void EditorConfig::setThemeName(const std::string& themeName)
+void EditorConfig::setThemeName(const String& themeName)
 {
     if (themeName.empty()) {
         return;
@@ -84,7 +86,7 @@ void EditorConfig::setThemeName(const std::string& themeName)
     }
 
     std::filesystem::create_directories(m_userDir);
-    const std::filesystem::path path = std::filesystem::path(m_userDir) / "editor.json";
+    const FsPath path = FsPath(m_userDir) / "editor.json";
     dodoe::Json override = dodoe::config::LoadJsonFile(path);
     if (!override.is_object()) {
         override = dodoe::Json::object();

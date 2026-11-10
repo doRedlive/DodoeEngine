@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "EditorCommand.h"
 
 #include "core/document/EditorDocumentModel.h"
@@ -11,7 +13,7 @@
 
 namespace cakery {
 
-CreateEntityCommand::CreateEntityCommand(std::string name)
+CreateEntityCommand::CreateEntityCommand(String name)
     : m_name(std::move(name))
 {
 }
@@ -25,11 +27,11 @@ void CreateEntityCommand::revert(EditorDocumentModel& model) {
     model.deleteEntity(m_createdUuid);
 }
 
-std::string CreateEntityCommand::label() const {
+String CreateEntityCommand::label() const {
     return "Create GameObject";
 }
 
-DeleteEntityCommand::DeleteEntityCommand(std::uint64_t uuid)
+DeleteEntityCommand::DeleteEntityCommand(UInt64 uuid)
     : m_uuid(uuid)
 {
 }
@@ -39,8 +41,8 @@ bool DeleteEntityCommand::execute(EditorDocumentModel& model) {
         return false;
     }
     if (!m_captured) {
-        const std::vector<EditorEntity>& entities = model.entities();
-        std::unordered_set<std::uint64_t> subtree{m_uuid};
+        const DynamicArray<EditorEntity>& entities = model.entities();
+        UnorderedSet<UInt64> subtree{m_uuid};
         bool expanded = true;
         while (expanded) {
             expanded = false;
@@ -50,7 +52,7 @@ bool DeleteEntityCommand::execute(EditorDocumentModel& model) {
                 }
             }
         }
-        for (std::size_t i = 0; i < entities.size(); ++i) {
+        for (Size_t i = 0; i < entities.size(); ++i) {
             if (subtree.contains(entities[i].uuid)) {
                 m_savedEntities.push_back({i, entities[i]});
             }
@@ -67,11 +69,11 @@ void DeleteEntityCommand::revert(EditorDocumentModel& model) {
     }
 }
 
-std::string DeleteEntityCommand::label() const {
+String DeleteEntityCommand::label() const {
     return "Delete GameObject";
 }
 
-RenameEntityCommand::RenameEntityCommand(std::uint64_t uuid, std::string newName)
+RenameEntityCommand::RenameEntityCommand(UInt64 uuid, String newName)
     : m_uuid(uuid), m_newName(std::move(newName))
 {
 }
@@ -92,11 +94,11 @@ void RenameEntityCommand::revert(EditorDocumentModel& model) {
     model.renameEntity(m_uuid, m_oldName);
 }
 
-std::string RenameEntityCommand::label() const {
+String RenameEntityCommand::label() const {
     return "Rename GameObject";
 }
 
-AddComponentCommand::AddComponentCommand(std::uint64_t uuid, EditorComponent component)
+AddComponentCommand::AddComponentCommand(UInt64 uuid, EditorComponent component)
     : m_uuid(uuid), m_component(std::move(component))
 {
 }
@@ -115,11 +117,11 @@ void AddComponentCommand::revert(EditorDocumentModel& model) {
     model.removeComponent(m_uuid, m_index);
 }
 
-std::string AddComponentCommand::label() const {
+String AddComponentCommand::label() const {
     return "Add Component";
 }
 
-RemoveComponentCommand::RemoveComponentCommand(std::uint64_t uuid, std::size_t nativeIndex)
+RemoveComponentCommand::RemoveComponentCommand(UInt64 uuid, Size_t nativeIndex)
     : m_uuid(uuid), m_index(nativeIndex)
 {
 }
@@ -141,11 +143,11 @@ void RemoveComponentCommand::revert(EditorDocumentModel& model) {
     model.insertComponent(m_uuid, m_index, m_savedComponent);
 }
 
-std::string RemoveComponentCommand::label() const {
+String RemoveComponentCommand::label() const {
     return "Remove Component";
 }
 
-UpdateComponentCommand::UpdateComponentCommand(std::uint64_t uuid, std::size_t nativeIndex, nlohmann::json newValue)
+UpdateComponentCommand::UpdateComponentCommand(UInt64 uuid, Size_t nativeIndex, Json newValue)
     : m_uuid(uuid), m_index(nativeIndex), m_newValue(std::move(newValue))
 {
 }
@@ -166,7 +168,7 @@ void UpdateComponentCommand::revert(EditorDocumentModel& model) {
     model.updateComponent(m_uuid, m_index, m_oldValue);
 }
 
-std::string UpdateComponentCommand::label() const {
+String UpdateComponentCommand::label() const {
     return "Update Component";
 }
 
@@ -178,7 +180,7 @@ bool UpdateComponentCommand::mergeWith(const EditorCommand& next) {
     return true;
 }
 
-RemoveManagedComponentCommand::RemoveManagedComponentCommand(std::uint64_t uuid, std::size_t index)
+RemoveManagedComponentCommand::RemoveManagedComponentCommand(UInt64 uuid, Size_t index)
     : m_uuid(uuid), m_index(index)
 {
 }
@@ -200,12 +202,12 @@ void RemoveManagedComponentCommand::revert(EditorDocumentModel& model) {
     model.insertManagedComponent(m_uuid, m_index, m_savedComponent);
 }
 
-std::string RemoveManagedComponentCommand::label() const {
+String RemoveManagedComponentCommand::label() const {
     return "Remove Managed Component";
 }
 
 UpdateManagedComponentCommand::UpdateManagedComponentCommand(
-    std::uint64_t uuid, std::size_t index, nlohmann::json newValue)
+    UInt64 uuid, Size_t index, Json newValue)
     : m_uuid(uuid), m_index(index), m_newValue(std::move(newValue))
 {
 }
@@ -226,7 +228,7 @@ void UpdateManagedComponentCommand::revert(EditorDocumentModel& model) {
     model.updateManagedComponent(m_uuid, m_index, m_oldValue);
 }
 
-std::string UpdateManagedComponentCommand::label() const {
+String UpdateManagedComponentCommand::label() const {
     return "Update Managed Component";
 }
 
@@ -239,7 +241,7 @@ bool UpdateManagedComponentCommand::mergeWith(const EditorCommand& next) {
     return true;
 }
 
-SetFieldValueCommand::SetFieldValueCommand(std::uint64_t uuid, std::size_t nativeIndex, std::string fieldPath, nlohmann::json newValue)
+SetFieldValueCommand::SetFieldValueCommand(UInt64 uuid, Size_t nativeIndex, String fieldPath, Json newValue)
     : m_uuid(uuid), m_index(nativeIndex), m_fieldPath(std::move(fieldPath)), m_newValue(std::move(newValue))
 {
 }
@@ -249,13 +251,13 @@ bool SetFieldValueCommand::execute(EditorDocumentModel& model) {
     if (!entity || m_index >= entity->nativeComponents.size()) {
         return false;
     }
-    nlohmann::json& compValue = entity->nativeComponents[m_index].value;
-    std::vector<std::string> keys = splitPath(m_fieldPath);
+    Json& compValue = entity->nativeComponents[m_index].value;
+    DynamicArray<String> keys = splitPath(m_fieldPath);
     if (keys.empty()) {
         return false;
     }
     if (m_oldValue.is_null()) {
-        const nlohmann::json* node = &compValue;
+        const Json* node = &compValue;
         bool missing = false;
         for (const auto& key : keys) {
             if (!node->contains(key)) {
@@ -264,10 +266,10 @@ bool SetFieldValueCommand::execute(EditorDocumentModel& model) {
             }
             node = &(*node)[key];
         }
-        m_oldValue = missing ? nlohmann::json(nullptr) : *node;
+        m_oldValue = missing ? Json(nullptr) : *node;
     }
-    nlohmann::json updated = compValue;
-    nlohmann::json* target = &updated;
+    Json updated = compValue;
+    Json* target = &updated;
     for (const auto& key : keys) {
         target = &(*target)[key];
     }
@@ -281,8 +283,8 @@ void SetFieldValueCommand::revert(EditorDocumentModel& model) {
     if (!entity || m_index >= entity->nativeComponents.size()) {
         return;
     }
-    nlohmann::json updated = entity->nativeComponents[m_index].value;
-    nlohmann::json* target = &updated;
+    Json updated = entity->nativeComponents[m_index].value;
+    Json* target = &updated;
     for (const auto& key : splitPath(m_fieldPath)) {
         target = &(*target)[key];
     }
@@ -290,7 +292,7 @@ void SetFieldValueCommand::revert(EditorDocumentModel& model) {
     model.updateComponent(m_uuid, m_index, updated);
 }
 
-std::string SetFieldValueCommand::label() const {
+String SetFieldValueCommand::label() const {
     return "Set Field";
 }
 
@@ -302,7 +304,7 @@ bool SetFieldValueCommand::mergeWith(const EditorCommand& next) {
     return true;
 }
 
-ReparentDocumentCommand::ReparentDocumentCommand(std::uint64_t uuid, std::uint64_t newParent)
+ReparentDocumentCommand::ReparentDocumentCommand(UInt64 uuid, UInt64 newParent)
     : m_uuid(uuid), m_newParent(newParent)
 {
 }
@@ -324,11 +326,11 @@ void ReparentDocumentCommand::revert(EditorDocumentModel& model) {
     model.reparentEntity(m_uuid, m_oldParent);
 }
 
-std::string ReparentDocumentCommand::label() const {
+String ReparentDocumentCommand::label() const {
     return "Reparent GameObject";
 }
 
-MoveComponentCommand::MoveComponentCommand(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex)
+MoveComponentCommand::MoveComponentCommand(UInt64 uuid, Size_t fromIndex, Size_t toIndex)
     : m_uuid(uuid)
     , m_fromIndex(fromIndex)
     , m_toIndex(toIndex)
@@ -343,11 +345,11 @@ void MoveComponentCommand::revert(EditorDocumentModel& model) {
     model.moveComponent(m_uuid, m_toIndex, m_fromIndex);
 }
 
-std::string MoveComponentCommand::label() const {
+String MoveComponentCommand::label() const {
     return "Move Component";
 }
 
-InsertEntitiesCommand::InsertEntitiesCommand(std::vector<EditorEntity> entities)
+InsertEntitiesCommand::InsertEntitiesCommand(DynamicArray<EditorEntity> entities)
     : m_entities(std::move(entities))
 {
 }
@@ -382,14 +384,14 @@ void InsertEntitiesCommand::revert(EditorDocumentModel& model) {
     m_executed = false;
 }
 
-std::string InsertEntitiesCommand::label() const {
+String InsertEntitiesCommand::label() const {
     return m_entities.size() == 1 ? "Duplicate GameObject" : "Duplicate GameObjects";
 }
 
-std::vector<std::string> SetFieldValueCommand::splitPath(const std::string& path) {
-    std::vector<std::string> keys;
+DynamicArray<String> SetFieldValueCommand::splitPath(const String& path) {
+    DynamicArray<String> keys;
     std::stringstream ss(path);
-    std::string part;
+    String part;
     while (std::getline(ss, part, '.')) {
         if (!part.empty()) {
             keys.push_back(part);

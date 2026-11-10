@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "EditorHistory.h"
 
 #include "core/document/EditorDocumentModel.h"
@@ -9,7 +11,7 @@
 
 namespace cakery {
 
-EditorCommand* EditorHistory::execute(std::unique_ptr<EditorCommand> command, EditorDocumentModel& model) {
+EditorCommand* EditorHistory::execute(Scope<EditorCommand> command, EditorDocumentModel& model) {
     if (!command) {
         return nullptr;
     }
@@ -50,7 +52,7 @@ bool EditorHistory::undo(EditorDocumentModel& model) {
         return false;
     }
     m_mergeGroup.clear();
-    std::unique_ptr<EditorCommand> command = std::move(m_undoStack.back());
+    Scope<EditorCommand> command = std::move(m_undoStack.back());
     m_undoStack.pop_back();
     const EditorDocument before{
         model.name(),
@@ -75,7 +77,7 @@ bool EditorHistory::redo(EditorDocumentModel& model) {
         return false;
     }
     m_mergeGroup.clear();
-    std::unique_ptr<EditorCommand> command = std::move(m_redoStack.back());
+    Scope<EditorCommand> command = std::move(m_redoStack.back());
     m_redoStack.pop_back();
     const EditorDocument before{
         model.name(),
@@ -105,14 +107,14 @@ void EditorHistory::clear() {
     emitChanged();
 }
 
-std::string EditorHistory::undoLabel() const {
+String EditorHistory::undoLabel() const {
     if (m_undoStack.empty()) {
         return {};
     }
     return m_undoStack.back()->label();
 }
 
-std::string EditorHistory::redoLabel() const {
+String EditorHistory::redoLabel() const {
     if (m_redoStack.empty()) {
         return {};
     }

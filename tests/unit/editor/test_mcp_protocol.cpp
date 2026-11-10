@@ -1,3 +1,5 @@
+#include "dopch.h"
+
 #include <gtest/gtest.h>
 
 #include "core/console/mcp/McpHttp.h"
@@ -11,7 +13,7 @@ using cakery::mcp::ParseRequestHead;
 using cakery::mcp::ReadBody;
 
 TEST(McpHttp, ParsesPostWithHeadersAndBody) {
-    const std::string raw =
+    const String raw =
         "POST /mcp HTTP/1.1\r\n"
         "Host: 127.0.0.1\r\n"
         "Content-Type: application/json\r\n"
@@ -33,7 +35,7 @@ TEST(McpHttp, ParsesPostWithHeadersAndBody) {
     EXPECT_EQ(head.session_id, "abc123");
     EXPECT_TRUE(head.valid);
 
-    std::string body;
+    String body;
     EXPECT_TRUE(ReadBody(buffer, head.content_length, body, [](HttpBuffer&) { return false; }));
     EXPECT_EQ(body, R"({"jsonrpc":"2.0"})");
 }
@@ -66,14 +68,14 @@ TEST(McpHttp, RejectsOversizedBody) {
     buffer.feed("POST /mcp HTTP/1.1\r\nContent-Length: 5\r\n\r\n", 42);
     HttpRequestHead head;
     ASSERT_TRUE(ParseRequestHead(buffer, head, [](HttpBuffer&) { return false; }));
-    std::string body;
+    String body;
     EXPECT_FALSE(ReadBody(buffer, cakery::mcp::kMaxBodyBytes + 1, body,
                           [](HttpBuffer&) { return false; }));
 }
 
 TEST(McpHttp, HeaderSizeLimitReturnsInvalid) {
-    std::string raw = "POST /mcp HTTP/1.1\r\n";
-    raw.append(static_cast<std::size_t>(cakery::mcp::kMaxHeaderBytes) + 16, 'x');
+    String raw = "POST /mcp HTTP/1.1\r\n";
+    raw.append(static_cast<Size_t>(cakery::mcp::kMaxHeaderBytes) + 16, 'x');
     raw += "\r\n\r\n";
     HttpBuffer buffer;
     buffer.feed(raw.data(), raw.size());
@@ -82,37 +84,37 @@ TEST(McpHttp, HeaderSizeLimitReturnsInvalid) {
 }
 
 TEST(McpRpc, ErrorAndResultShapes) {
-    const nlohmann::json id = 7;
-    const nlohmann::json error = cakery::mcp::RpcError(id, -32601, "Method not found");
+    const Json id = 7;
+    const Json error = cakery::mcp::RpcError(id, -32601, "Method not found");
     EXPECT_EQ(error["jsonrpc"], "2.0");
     EXPECT_EQ(error["id"], 7);
     EXPECT_EQ(error["error"]["code"], -32601);
     EXPECT_EQ(error["error"]["message"], "Method not found");
 
-    const nlohmann::json result = cakery::mcp::RpcResult(id, nlohmann::json::object());
-    EXPECT_EQ(result["result"], nlohmann::json::object());
+    const Json result = cakery::mcp::RpcResult(id, Json::object());
+    EXPECT_EQ(result["result"], Json::object());
 }
 
 TEST(McpRpc, InitializeResultNegotiatesVersion) {
-    const nlohmann::json negotiated =
+    const Json negotiated =
         cakery::mcp::BuildInitializeResult("2025-03-26");
     EXPECT_EQ(negotiated["protocolVersion"], "2025-03-26");
     EXPECT_TRUE(negotiated["capabilities"].contains("tools"));
     EXPECT_TRUE(negotiated["serverInfo"].contains("name"));
 
-    const nlohmann::json fallback = cakery::mcp::BuildInitializeResult("1999-01-01");
-    EXPECT_STREQ(fallback["protocolVersion"].get<std::string>().c_str(),
+    const Json fallback = cakery::mcp::BuildInitializeResult("1999-01-01");
+    EXPECT_STREQ(fallback["protocolVersion"].get<String>().c_str(),
                  cakery::mcp::kProtocolVersion);
 }
 
 TEST(McpRpc, ToolCatalogMapsInputSchema) {
-    nlohmann::json schema = nlohmann::json::array();
-    schema.push_back(nlohmann::json{
+    Json schema = Json::array();
+    schema.push_back(Json{
         {"name", "entity.create"},
         {"description", "Create a new GameObject"},
-        {"parameters", nlohmann::json{{"type", "object"},
-                                      {"properties", nlohmann::json::object()}}}});
-    const nlohmann::json catalog = cakery::mcp::BuildToolCatalog(schema);
+        {"parameters", Json{{"type", "object"},
+                                      {"properties", Json::object()}}}});
+    const Json catalog = cakery::mcp::BuildToolCatalog(schema);
     ASSERT_TRUE(catalog.contains("tools"));
     ASSERT_EQ(catalog["tools"].size(), 1u);
     EXPECT_EQ(catalog["tools"][0]["name"], "entity.create");
@@ -121,7 +123,7 @@ TEST(McpRpc, ToolCatalogMapsInputSchema) {
 }
 
 TEST(McpRpc, ToolCallResultWrapsText) {
-    const nlohmann::json result = cakery::mcp::ToolCallResult(R"({"ok":true})", false);
+    const Json result = cakery::mcp::ToolCallResult(R"({"ok":true})", false);
     ASSERT_TRUE(result["content"].is_array());
     EXPECT_EQ(result["content"][0]["type"], "text");
     EXPECT_EQ(result["content"][0]["text"], R"({"ok":true})");

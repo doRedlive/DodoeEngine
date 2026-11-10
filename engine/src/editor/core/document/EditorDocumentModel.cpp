@@ -1,5 +1,7 @@
 // do@Redlive
 
+#include "dopch.h"
+
 #include "EditorDocumentModel.h"
 
 #include "EditorDocumentSerializer.h"
@@ -15,7 +17,7 @@ namespace cakery {
 
 namespace {
 
-std::uint64_t GenerateUuid() {
+UInt64 GenerateUuid() {
     static std::mt19937_64 engine(std::random_device{}());
     return engine();
 }
@@ -32,7 +34,7 @@ EditorComponent* FindHierarchyComponent(EditorEntity& entity)
 
 void SyncHierarchyComponents(EditorDocument& document)
 {
-    std::unordered_map<std::uint64_t, std::size_t> childCounts;
+    UnorderedMap<UInt64, Size_t> childCounts;
     for (const auto& entity : document.entities) {
         if (entity.parent != 0) {
             ++childCounts[entity.parent];
@@ -41,13 +43,13 @@ void SyncHierarchyComponents(EditorDocument& document)
 
     for (auto& entity : document.entities) {
         const auto childCountIt = childCounts.find(entity.uuid);
-        const std::size_t childCount = childCountIt == childCounts.end() ? 0 : childCountIt->second;
+        const Size_t childCount = childCountIt == childCounts.end() ? 0 : childCountIt->second;
         EditorComponent* hierarchy = FindHierarchyComponent(entity);
         if (entity.parent == 0 && childCount == 0 && !hierarchy) {
             continue;
         }
         if (!hierarchy) {
-            entity.nativeComponents.push_back(EditorComponent{"HierarchyComponent", nlohmann::json::object()});
+            entity.nativeComponents.push_back(EditorComponent{"HierarchyComponent", Json::object()});
             hierarchy = &entity.nativeComponents.back();
         }
         hierarchy->value["parent_uuid"] = entity.parent;
@@ -57,7 +59,7 @@ void SyncHierarchyComponents(EditorDocument& document)
 
 } // namespace
 
-bool EditorDocumentModel::load(const std::filesystem::path& path) {
+bool EditorDocumentModel::load(const FsPath& path) {
     EditorDocument document;
     if (!EditorDocumentSerializer::load(path, document)) {
         return false;
@@ -71,7 +73,7 @@ bool EditorDocumentModel::load(const std::filesystem::path& path) {
     return true;
 }
 
-bool EditorDocumentModel::save(const std::filesystem::path& path) {
+bool EditorDocumentModel::save(const FsPath& path) {
     if (!m_hasDocument) {
         return false;
     }
@@ -92,11 +94,11 @@ void EditorDocumentModel::close() {
     notifyChanged();
 }
 
-const std::string& EditorDocumentModel::name() const {
+const String& EditorDocumentModel::name() const {
     return m_document.name;
 }
 
-EditorEntity* EditorDocumentModel::findEntity(std::uint64_t uuid) {
+EditorEntity* EditorDocumentModel::findEntity(UInt64 uuid) {
     for (auto& entity : m_document.entities) {
         if (entity.uuid == uuid) {
             return &entity;
@@ -105,12 +107,12 @@ EditorEntity* EditorDocumentModel::findEntity(std::uint64_t uuid) {
     return nullptr;
 }
 
-bool EditorDocumentModel::isDescendantOf(std::uint64_t uuid, std::uint64_t ancestorUuid) const {
+bool EditorDocumentModel::isDescendantOf(UInt64 uuid, UInt64 ancestorUuid) const {
     const EditorEntity* entity = findEntity(uuid);
     if (!entity || ancestorUuid == 0) {
         return false;
     }
-    std::uint64_t parent = entity->parent;
+    UInt64 parent = entity->parent;
     int depth = 0;
     while (parent != 0 && depth < 256) {
         if (parent == ancestorUuid) {
@@ -126,7 +128,7 @@ bool EditorDocumentModel::isDescendantOf(std::uint64_t uuid, std::uint64_t ances
     return false;
 }
 
-const EditorEntity* EditorDocumentModel::findEntity(std::uint64_t uuid) const {
+const EditorEntity* EditorDocumentModel::findEntity(UInt64 uuid) const {
     for (const auto& entity : m_document.entities) {
         if (entity.uuid == uuid) {
             return &entity;
@@ -135,23 +137,23 @@ const EditorEntity* EditorDocumentModel::findEntity(std::uint64_t uuid) const {
     return nullptr;
 }
 
-std::uint64_t EditorDocumentModel::generateEntityUuid() const {
-    std::uint64_t uuid = GenerateUuid();
+UInt64 EditorDocumentModel::generateEntityUuid() const {
+    UInt64 uuid = GenerateUuid();
     while (findEntity(uuid) != nullptr) {
         uuid = GenerateUuid();
     }
     return uuid;
 }
 
-std::uint64_t EditorDocumentModel::createEntity(const std::string& name, std::uint64_t preferredUuid) {
-    std::uint64_t uuid = preferredUuid != 0 ? preferredUuid : GenerateUuid();
+UInt64 EditorDocumentModel::createEntity(const String& name, UInt64 preferredUuid) {
+    UInt64 uuid = preferredUuid != 0 ? preferredUuid : GenerateUuid();
     while (findEntity(uuid) != nullptr) {
         uuid = GenerateUuid();
     }
 
     EditorEntity entity;
     entity.uuid = uuid;
-    entity.name = name.empty() ? std::string("GameObject") : name;
+    entity.name = name.empty() ? String("GameObject") : name;
     entity.nativeComponents.push_back(EditorComponent{"IDComponent", {{"id", uuid}, {"name", entity.name}}});
     entity.nativeComponents.push_back(EditorComponent{"TagComponent", {{"tag", "default"}}});
     entity.nativeComponents.push_back(EditorComponent{"TransformComponent",
@@ -163,12 +165,12 @@ std::uint64_t EditorDocumentModel::createEntity(const std::string& name, std::ui
     return uuid;
 }
 
-bool EditorDocumentModel::deleteEntity(std::uint64_t uuid) {
+bool EditorDocumentModel::deleteEntity(UInt64 uuid) {
     if (!findEntity(uuid)) {
         return false;
     }
 
-    std::unordered_set<std::uint64_t> subtree{uuid};
+    UnorderedSet<UInt64> subtree{uuid};
     bool expanded = true;
     while (expanded) {
         expanded = false;
@@ -195,7 +197,7 @@ bool EditorDocumentModel::deleteEntity(std::uint64_t uuid) {
     return true;
 }
 
-bool EditorDocumentModel::reparentEntity(std::uint64_t uuid, std::uint64_t newParent) {
+bool EditorDocumentModel::reparentEntity(UInt64 uuid, UInt64 newParent) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity) {
         return false;
@@ -203,7 +205,7 @@ bool EditorDocumentModel::reparentEntity(std::uint64_t uuid, std::uint64_t newPa
     if (newParent == uuid || (newParent != 0 && !findEntity(newParent))) {
         return false;
     }
-    for (std::uint64_t ancestor = newParent; ancestor != 0;) {
+    for (UInt64 ancestor = newParent; ancestor != 0;) {
         if (ancestor == uuid) {
             return false;
         }
@@ -223,12 +225,12 @@ bool EditorDocumentModel::reparentEntity(std::uint64_t uuid, std::uint64_t newPa
     return true;
 }
 
-bool EditorDocumentModel::renameEntity(std::uint64_t uuid, const std::string& name) {
+bool EditorDocumentModel::renameEntity(UInt64 uuid, const String& name) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity) {
         return false;
     }
-    entity->name = name.empty() ? std::string("GameObject") : name;
+    entity->name = name.empty() ? String("GameObject") : name;
     for (auto& component : entity->nativeComponents) {
         if (component.typeName == "IDComponent" && component.value.contains("name")) {
             component.value["name"] = entity->name;
@@ -239,7 +241,7 @@ bool EditorDocumentModel::renameEntity(std::uint64_t uuid, const std::string& na
     return true;
 }
 
-bool EditorDocumentModel::insertEntity(std::size_t index, const EditorEntity& entity) {
+bool EditorDocumentModel::insertEntity(Size_t index, const EditorEntity& entity) {
     if (index > m_document.entities.size()) {
         return false;
     }
@@ -266,16 +268,16 @@ void EditorDocumentModel::restoreDocument(const EditorDocument& document, bool d
     notifyChanged();
 }
 
-void EditorDocumentModel::newScene(const std::string& name) {
+void EditorDocumentModel::newScene(const String& name) {
     m_document = EditorDocument{};
-    m_document.name = name.empty() ? std::string("Untitled") : name;
+    m_document.name = name.empty() ? String("Untitled") : name;
     m_path.clear();
     m_hasDocument = true;
     m_dirty = true;
     notifyChanged();
 }
 
-bool EditorDocumentModel::addComponent(std::uint64_t uuid, const EditorComponent& component) {
+bool EditorDocumentModel::addComponent(UInt64 uuid, const EditorComponent& component) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity) {
         return false;
@@ -286,7 +288,7 @@ bool EditorDocumentModel::addComponent(std::uint64_t uuid, const EditorComponent
     return true;
 }
 
-bool EditorDocumentModel::insertComponent(std::uint64_t uuid, std::size_t index, const EditorComponent& component) {
+bool EditorDocumentModel::insertComponent(UInt64 uuid, Size_t index, const EditorComponent& component) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity || index > entity->nativeComponents.size()) {
         return false;
@@ -297,7 +299,7 @@ bool EditorDocumentModel::insertComponent(std::uint64_t uuid, std::size_t index,
     return true;
 }
 
-bool EditorDocumentModel::moveComponent(std::uint64_t uuid, std::size_t fromIndex, std::size_t toIndex) {
+bool EditorDocumentModel::moveComponent(UInt64 uuid, Size_t fromIndex, Size_t toIndex) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity || fromIndex >= entity->nativeComponents.size() ||
         toIndex >= entity->nativeComponents.size() || fromIndex == toIndex) {
@@ -309,7 +311,7 @@ bool EditorDocumentModel::moveComponent(std::uint64_t uuid, std::size_t fromInde
     return true;
 }
 
-bool EditorDocumentModel::removeComponent(std::uint64_t uuid, std::size_t nativeIndex) {
+bool EditorDocumentModel::removeComponent(UInt64 uuid, Size_t nativeIndex) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity || nativeIndex >= entity->nativeComponents.size()) {
         return false;
@@ -320,7 +322,7 @@ bool EditorDocumentModel::removeComponent(std::uint64_t uuid, std::size_t native
     return true;
 }
 
-bool EditorDocumentModel::updateComponent(std::uint64_t uuid, std::size_t nativeIndex, const nlohmann::json& value) {
+bool EditorDocumentModel::updateComponent(UInt64 uuid, Size_t nativeIndex, const Json& value) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity || nativeIndex >= entity->nativeComponents.size()) {
         return false;
@@ -331,7 +333,7 @@ bool EditorDocumentModel::updateComponent(std::uint64_t uuid, std::size_t native
     return true;
 }
 
-bool EditorDocumentModel::insertManagedComponent(std::uint64_t uuid, std::size_t index,
+bool EditorDocumentModel::insertManagedComponent(UInt64 uuid, Size_t index,
                                                   const EditorComponent& component) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity || index > entity->managedComponents.size()) {
@@ -344,7 +346,7 @@ bool EditorDocumentModel::insertManagedComponent(std::uint64_t uuid, std::size_t
     return true;
 }
 
-bool EditorDocumentModel::removeManagedComponent(std::uint64_t uuid, std::size_t index) {
+bool EditorDocumentModel::removeManagedComponent(UInt64 uuid, Size_t index) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity || index >= entity->managedComponents.size()) {
         return false;
@@ -356,8 +358,8 @@ bool EditorDocumentModel::removeManagedComponent(std::uint64_t uuid, std::size_t
     return true;
 }
 
-bool EditorDocumentModel::updateManagedComponent(std::uint64_t uuid, std::size_t index,
-                                                  const nlohmann::json& value) {
+bool EditorDocumentModel::updateManagedComponent(UInt64 uuid, Size_t index,
+                                                  const Json& value) {
     EditorEntity* entity = findEntity(uuid);
     if (!entity || index >= entity->managedComponents.size()) {
         return false;

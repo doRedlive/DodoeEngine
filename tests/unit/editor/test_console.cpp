@@ -1,3 +1,5 @@
+#include "dopch.h"
+
 #include <gtest/gtest.h>
 
 #include "core/EditorSession.h"
@@ -10,62 +12,54 @@
 
 namespace {
 
-std::unique_ptr<cakery::EditorSession> MakeNullSession() {
-    std::unique_ptr<cakery::IEditorBackend> backend;
-    return std::make_unique<cakery::EditorSession>(std::move(backend));
+Scope<cakery::EditorSession> MakeNullSession() {
+    auto session = create_scope<cakery::EditorSession>();
+    cakery::RegisterBuiltinCommands(session->commands());
+    return session;
 }
-
-struct ScopedRecorderClear {
-    ~ScopedRecorderClear() { ExecutionRecorder::self().clear(); }
-};
 
 TEST(CommandRegistry, UnknownCommandFails) {
     auto session = MakeNullSession();
-    ScopedRecorderClear cleanup;
     const CommandResult result =
-        CommandRegistry::self().executeStructured(session, "definitely_not_a_command",
-                                                  nlohmann::json::object());
+        session->commands().executeStructured(*session, "definitely_not_a_command",
+                                                  Json::object());
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.message.find("Unknown command"), std::string::npos);
+    EXPECT_NE(result.message.find("Unknown command"), String::npos);
 }
 
 TEST(CommandRegistry, ValidationRejectsMissingRequiredParameter) {
     auto session = MakeNullSession();
-    ScopedRecorderClear cleanup;
-    const CommandResult result = CommandRegistry::self().executeStructured(
-        session, "entity.create", nlohmann::json::object());
+    const CommandResult result = session->commands().executeStructured(
+        *session, "entity.create", Json::object());
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.message.find("Missing required parameter: name"), std::string::npos);
+    EXPECT_NE(result.message.find("Missing required parameter: name"), String::npos);
 }
 
 TEST(CommandRegistry, ValidationRejectsWrongType) {
     auto session = MakeNullSession();
-    ScopedRecorderClear cleanup;
     const CommandResult result =
-        CommandRegistry::self().executeStructured(session, "entity.create",
-                                                  nlohmann::json{{"name", 123}});
+        session->commands().executeStructured(*session, "entity.create",
+                                                  Json{{"name", 123}});
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.message.find("Invalid type for parameter 'name'"), std::string::npos);
+    EXPECT_NE(result.message.find("Invalid type for parameter 'name'"), String::npos);
 }
 
 TEST(CommandRegistry, ValidationRejectsEnumMismatch) {
     auto session = MakeNullSession();
-    ScopedRecorderClear cleanup;
-    const CommandResult result = CommandRegistry::self().executeStructured(
-        session, "gizmo.setmode", nlohmann::json{{"mode", "Sideways"}});
+    const CommandResult result = session->commands().executeStructured(
+        *session, "gizmo.setmode", Json{{"mode", "Sideways"}});
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.message.find("must be one of"), std::string::npos);
+    EXPECT_NE(result.message.find("must be one of"), String::npos);
 }
 
 TEST(CommandRegistry, ValidArgsReachHandlerWithoutDocument) {
     auto session = MakeNullSession();
-    ScopedRecorderClear cleanup;
-    const CommandResult result = CommandRegistry::self().executeStructured(
-        session, "entity.create", nlohmann::json{{"name", "Test"}});
+    const CommandResult result = session->commands().executeStructured(
+        *session, "entity.create", Json{{"name", "Test"}});
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.message.find("Failed to create"), std::string::npos);
+    EXPECT_NE(result.message.find("Failed to create"), String::npos);
 
-    const nlohmann::json report = ExecutionRecorder::self().toJSON(8, true, "user");
+    const Json report = session->executionRecorder().toJSON(8, true, "user");
     ASSERT_TRUE(report.contains("records"));
     ASSERT_TRUE(report["records"].is_array());
     ASSERT_EQ(report["records"].size(), 1u);
@@ -76,17 +70,17 @@ TEST(CommandRegistry, ValidArgsReachHandlerWithoutDocument) {
 
 TEST(CommandRegistry, LineExecuteRecordsAsUserAuthor) {
     auto session = MakeNullSession();
-    ScopedRecorderClear cleanup;
-    const CommandResult result = CommandRegistry::self().execute(session, "query.entities");
+    const CommandResult result = session->commands().execute(*session, "query.entities");
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.message.find("No active scene"), std::string::npos);
-    const nlohmann::json report = ExecutionRecorder::self().toJSON(8, false, "user");
+    EXPECT_NE(result.message.find("No active scene"), String::npos);
+    const Json report = session->executionRecorder().toJSON(8, false, "user");
     ASSERT_EQ(report["records"].size(), 1u);
     EXPECT_EQ(report["records"][0]["command"], "query.entities");
 }
 
 TEST(CommandRegistry, ToolSchemaShape) {
-    const nlohmann::json tools = CommandRegistry::self().toolSchema();
+    auto session = MakeNullSession();
+    const Json tools = session->commands().toolSchema();
     ASSERT_TRUE(tools.is_array());
     EXPECT_FALSE(tools.empty());
     for (const auto& tool : tools) {
@@ -100,7 +94,7 @@ TEST(CommandRegistry, ToolSchemaShape) {
         if (tool["name"] == "entity.create") {
             hasEntityCreate = true;
             EXPECT_EQ(tool["parameters"]["required"],
-                      nlohmann::json::array({"name"}));
+                      Json::array({"name"}));
         }
     }
     EXPECT_TRUE(hasEntityCreate);
@@ -108,51 +102,49 @@ TEST(CommandRegistry, ToolSchemaShape) {
 
 TEST(CommandRegistry, AiContextRecordsAiAuthor) {
     auto session = MakeNullSession();
-    ScopedRecorderClear cleanup;
     CommandContext context;
     context.author = "ai";
-    const CommandResult result = CommandRegistry::self().executeStructured(
-        session, "query.entities", nlohmann::json::object(), context);
+    const CommandResult result = session->commands().executeStructured(
+        *session, "query.entities", Json::object(), context);
     EXPECT_FALSE(result.ok);
-    const nlohmann::json report = ExecutionRecorder::self().toJSON(8, false, "ai");
+    const Json report = session->executionRecorder().toJSON(8, false, "ai");
     ASSERT_EQ(report["records"].size(), 1u);
     EXPECT_EQ(report["records"][0]["author"], "ai");
-    const nlohmann::json userReport = ExecutionRecorder::self().toJSON(8, false, "user");
+    const Json userReport = session->executionRecorder().toJSON(8, false, "user");
     EXPECT_EQ(userReport["records"].size(), 0u);
 }
 
 TEST(ExecutionRecorder, GraphJSONContainsNodesAndEdges) {
-    ExecutionRecorder::self().clear();
-    ScopedRecorderClear cleanup;
+    ExecutionRecorder recorder;
     ExecutionRecord first;
     first.command = "entity.create";
-    first.args = nlohmann::json{{"name", "A"}};
-    first.data = nlohmann::json{{"uuid", "100"}};
+    first.args = Json{{"name", "A"}};
+    first.data = Json{{"uuid", "100"}};
     first.ok = true;
     first.author = "ai";
     first.mutating = true;
-    ExecutionRecorder::self().record(std::move(first));
+    recorder.record(std::move(first));
     ExecutionRecord second;
     second.command = "component.add";
-    second.args = nlohmann::json{{"uuid", "100"}, {"type", "Sprite"}};
+    second.args = Json{{"uuid", "100"}, {"type", "Sprite"}};
     second.ok = true;
     second.author = "ai";
     second.mutating = true;
-    ExecutionRecorder::self().record(std::move(second));
+    recorder.record(std::move(second));
 
-    const nlohmann::json graph = ExecutionRecorder::self().toGraphJSON(16, true, "ai");
+    const Json graph = recorder.toGraphJSON(16, true, "ai");
     ASSERT_TRUE(graph.contains("nodes"));
     EXPECT_GE(graph["nodes"].size(), 2u);
 }
 
 TEST(WorkflowTemplate, CaptureFiltersNonReplayablePrefixes) {
-    nlohmann::json records = nlohmann::json::array();
-    const auto addRecord = [&records](const std::string& command, const std::string& uuid) {
-        nlohmann::json record;
+    Json records = Json::array();
+    const auto addRecord = [&records](const String& command, const String& uuid) {
+        Json record;
         record["command"] = command;
-        record["args"] = nlohmann::json{{"name", "A"}};
+        record["args"] = Json{{"name", "A"}};
         record["ok"] = true;
-        record["data"] = nlohmann::json{{"uuid", uuid}};
+        record["data"] = Json{{"uuid", uuid}};
         records.push_back(std::move(record));
     };
     addRecord("entity.create", "100");
@@ -164,7 +156,7 @@ TEST(WorkflowTemplate, CaptureFiltersNonReplayablePrefixes) {
     addRecord("ai.begin_session", "");
     addRecord("component.add", "");
 
-    const std::vector<WorkflowStep> steps = CaptureWorkflowSteps(records);
+    const DynamicArray<WorkflowStep> steps = CaptureWorkflowSteps(records);
     ASSERT_EQ(steps.size(), 2u);
     EXPECT_EQ(steps[0].command, "entity.create");
     ASSERT_EQ(steps[0].produces.size(), 1u);
@@ -173,11 +165,11 @@ TEST(WorkflowTemplate, CaptureFiltersNonReplayablePrefixes) {
 }
 
 TEST(WorkflowTemplate, LibraryRoundTripInMemory) {
-    auto& library = WorkflowLibrary::self();
-    std::vector<WorkflowStep> steps;
+    WorkflowLibrary library;
+    DynamicArray<WorkflowStep> steps;
     WorkflowStep step;
     step.command = "entity.create";
-    step.args = nlohmann::json{{"name", "A"}};
+    step.args = Json{{"name", "A"}};
     step.produces.push_back("100");
     steps.push_back(std::move(step));
 
@@ -190,7 +182,7 @@ TEST(WorkflowTemplate, LibraryRoundTripInMemory) {
     EXPECT_EQ((*stored)[0].command, "entity.create");
     EXPECT_EQ((*stored)[0].args["name"], "A");
 
-    const std::vector<std::string> names = library.names();
+    const DynamicArray<String> names = library.names();
     EXPECT_TRUE(std::find(names.begin(), names.end(), "roundtrip") != names.end());
 }
 
