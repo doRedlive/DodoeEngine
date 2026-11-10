@@ -440,6 +440,7 @@ Hierarchy 使用 `EditorSelection`，而 ProjectPanel 直接发出 Qt 的 `asset
 
 ## 十二、相关文档
 
+- [mvc-architecture.md](mvc-architecture.md)：MVC/MVVM 目标架构、ViewModel 分层与迁移阶段。
 - [editor.md](editor.md)：编辑器模块总览和更广泛的功能缺口分析。
 - [../core/core.md](../core/core.md)：Runtime Core 基础对象和模块。
 - [../core/resource.md](../core/resource.md)：资源、Asset 和导入链路。
