@@ -17,6 +17,7 @@ namespace cakery {
 
 class EditorWorkspaceContext;
 class WorkflowGraphView;
+class WorkflowViewModel;
 
 class WorkflowPanel : public QWidget {
     Q_OBJECT
@@ -24,10 +25,10 @@ public:
     explicit WorkflowPanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
 
 private:
+    void onViewModelChanged();
     void refresh();
     void showDetails(QTreeWidgetItem* current);
     void selectRecord(UInt64 sequence);
-    void refreshTemplates();
     void captureTemplate();
     void runTemplate();
     void clearHistory();
@@ -36,6 +37,8 @@ private:
     String authorFilter() const;
 
     EditorWorkspaceContext& m_context;
+    Scope<WorkflowViewModel> m_viewModel;
+    ScopedConnection m_viewModelConnection;
     WorkflowGraphView* m_graph = nullptr;
     QTreeWidget* m_list = nullptr;
     QComboBox* m_filter = nullptr;
@@ -43,7 +46,6 @@ private:
     QComboBox* m_template = nullptr;
     QToolButton* m_run = nullptr;
     QPlainTextEdit* m_details = nullptr;
-    ScopedConnection m_recorderSubscription;
 };
 
 } // namespace cakery

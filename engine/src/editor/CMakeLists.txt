@@ -169,6 +169,8 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/tilelayers/TileLayersViewModel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/tilepalette/TilePaletteViewModel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/tilepalette/TilePaletteViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/workflow/WorkflowViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/workflow/WorkflowViewModel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorLayoutController.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorLayoutController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorWindow.h

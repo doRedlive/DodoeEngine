@@ -6,12 +6,11 @@
 
 #include "WorkflowPanel.h"
 
+#include "presentation/workflow/WorkflowViewModel.h"
+
 #include "ui/widgets/WorkflowGraphView.h"
 
 #include "ui/common/EditorWorkspaceContext.h"
-#include "core/console/CommandRegistry.h"
-#include "core/console/ExecutionRecorder.h"
-#include "core/console/WorkflowTemplate.h"
 
 #include <QAbstractItemView>
 #include <QColor>
@@ -31,13 +30,6 @@
 #include <QVBoxLayout>
 
 namespace cakery {
-
-namespace {
-
-constexpr Size_t kMaxVisibleRecords = 256;
-constexpr Size_t kMaxGraphNodes = 128;
-
-}
 
 WorkflowPanel::WorkflowPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
@@ -149,16 +141,21 @@ WorkflowPanel::WorkflowPanel(EditorWorkspaceContext& context, QWidget* parent)
             [this](UInt64 sequence) { selectRecord(sequence); });
     connect(m_graph, &WorkflowGraphView::nodeActivated, this,
             [this](UInt64, const QString& uuid) {
-                Json args;
-                args["uuid"] = ToDodoeString(uuid);
-                m_context.session().commands().executeStructured(m_context.session(), "entity.select", args);
+                m_viewModel->selectEntity(ToDodoeString(uuid));
             });
     connect(m_list, &QTreeWidget::customContextMenuRequested, this,
             [this](const QPoint& pos) { showContextMenu(pos); });
-    auto& recorderChanged = m_context.session().executionRecorder().changed;
-    m_recorderSubscription = ScopedConnection(
-        recorderChanged, recorderChanged.connect([this]() { refresh(); }));
+
+    m_viewModel = create_scope<WorkflowViewModel>(m_context.session());
+    m_viewModelConnection = ScopedConnection(
+        m_viewModel->changed,
+        m_viewModel->changed.connect([this]() { onViewModelChanged(); }));
     refresh();
+    const DynamicArray<String>& templates = m_viewModel->templates();
+    for (const String& name : templates) {
+        m_template->addItem(ToQString(name));
+    }
+    m_run->setEnabled(m_template->count() > 0);
 }
 
 String WorkflowPanel::authorFilter() const
@@ -175,32 +172,30 @@ String WorkflowPanel::authorFilter() const
     return "all";
 }
 
+void WorkflowPanel::onViewModelChanged()
+{
+    refresh();
+}
+
 void WorkflowPanel::refresh()
 {
-    const bool mutatingOnly = m_filter->currentIndex() == 1;
-    const String author = authorFilter();
+    m_viewModel->setQuery(m_filter->currentIndex() == 1, authorFilter());
 
     const QScrollBar* scrollbar = m_list->verticalScrollBar();
     const bool atBottom = !scrollbar || scrollbar->value() >= scrollbar->maximum() - 2;
     m_list->clear();
 
-    const Json report = m_context.session().executionRecorder().toJSON(kMaxVisibleRecords, mutatingOnly, author);
-    if (!report.contains("records") || !report["records"].is_array()) {
-        return;
-    }
-    for (const auto& record : report["records"]) {
-        const String command = record.value("command", String());
-        const bool marker = command == "session.begin" || command == "session.end";
-        const bool ok = record.value("ok", false);
+    for (const WorkflowRecordRow& row : m_viewModel->records()) {
+        const bool marker = row.command == "session.begin" || row.command == "session.end";
         auto* item = new QTreeWidgetItem(m_list);
-        item->setText(0, QString::number(record.value("sequence", UInt64(0))));
-        item->setText(1, ToQString(command));
-        item->setText(2, ToQString(record.value("author", String())));
-        item->setText(3, ok ? QStringLiteral("OK") : QStringLiteral("FAIL"));
-        item->setText(4, QString::number(record.value("duration_ms", 0.0), 'f', 1));
-        item->setText(5, ToQString(record.value("session", String())));
+        item->setText(0, QString::number(row.sequence));
+        item->setText(1, ToQString(row.command));
+        item->setText(2, ToQString(row.author));
+        item->setText(3, row.ok ? QStringLiteral("OK") : QStringLiteral("FAIL"));
+        item->setText(4, QString::number(row.durationMs, 'f', 1));
+        item->setText(5, ToQString(row.session));
 
-        QColor statusColor = ok ? QColor("#7fbf7f") : QColor("#e06c6c");
+        QColor statusColor = row.ok ? QColor("#7fbf7f") : QColor("#e06c6c");
         QColor baseColor("#d8d8d8");
         if (marker) {
             statusColor = QColor("#9a9a9a");
@@ -215,15 +210,14 @@ void WorkflowPanel::refresh()
                 item->setForeground(column, baseColor);
             }
         }
-        item->setData(0, Qt::UserRole, ToQString(record.dump()));
+        item->setData(0, Qt::UserRole, ToQString(row.raw));
     }
 
     if (atBottom) {
         m_list->scrollToBottom();
     }
 
-    const Json graph = m_context.session().executionRecorder().toGraphJSON(kMaxGraphNodes, mutatingOnly, author);
-    m_graph->setGraph(graph);
+    m_graph->setGraph(m_viewModel->graph());
 }
 
 void WorkflowPanel::selectRecord(const UInt64 sequence)
@@ -258,19 +252,7 @@ void WorkflowPanel::showDetails(QTreeWidgetItem* current)
 
 void WorkflowPanel::clearHistory()
 {
-    m_context.session().executionRecorder().clear();
-}
-
-void WorkflowPanel::refreshTemplates()
-{
-    m_context.session().workflows().setStoragePath(WorkflowStoragePath(m_context.session()));
-    m_template->blockSignals(true);
-    m_template->clear();
-    for (const String& name : m_context.session().workflows().names()) {
-        m_template->addItem(ToQString(name));
-    }
-    m_template->blockSignals(false);
-    m_run->setEnabled(m_template->count() > 0);
+    m_viewModel->clearHistory();
 }
 
 void WorkflowPanel::captureTemplate()
@@ -282,24 +264,14 @@ void WorkflowPanel::captureTemplate()
     if (!accepted || name.isEmpty()) {
         return;
     }
-    const Json report =
-        m_context.session().executionRecorder().toJSON(kMaxVisibleRecords, true, authorFilter());
-    DynamicArray<WorkflowStep> steps = CaptureWorkflowSteps(
-        report.contains("records") ? report["records"] : Json());
-    if (steps.empty()) {
-        m_details->setPlainText(tr("No replayable commands in the current filter window."));
-        return;
+    String message;
+    m_viewModel->captureTemplate(ToDodoeString(name), message);
+    m_details->setPlainText(ToQString(message));
+    m_template->clear();
+    for (const String& templateName : m_viewModel->templates()) {
+        m_template->addItem(ToQString(templateName));
     }
-    m_context.session().workflows().setStoragePath(WorkflowStoragePath(m_context.session()));
-    const Size_t count = steps.size();
-    m_context.session().workflows().store(ToDodoeString(name), std::move(steps));
-    refreshTemplates();
-    const auto* stored = m_context.session().workflows().find(ToDodoeString(name));
-    m_details->setPlainText(QStringLiteral("Captured %1 steps into '%2'.")
-                                .arg(count)
-                                .arg(name) +
-                            (stored ? QStringLiteral("\nRun it any time from the template list.")
-                                    : QString()));
+    m_run->setEnabled(m_template->count() > 0);
 }
 
 void WorkflowPanel::runTemplate()
@@ -308,12 +280,10 @@ void WorkflowPanel::runTemplate()
     if (name.isEmpty()) {
         return;
     }
-    m_context.session().workflows().setStoragePath(WorkflowStoragePath(m_context.session()));
-    const auto* steps = m_context.session().workflows().find(ToDodoeString(name));
-    if (!steps || steps->empty()) {
+    const Json result = m_viewModel->runTemplate(ToDodoeString(name));
+    if (result.is_null()) {
         return;
     }
-    const Json result = RunWorkflow(m_context.session(), ToDodoeString(name), *steps);
     m_details->setPlainText(ToQString(result.dump(2)));
 }
 
@@ -356,33 +326,9 @@ void WorkflowPanel::showContextMenu(const QPoint& pos)
 
 void WorkflowPanel::rerunRecord(const Json& record, const Json* argsOverride)
 {
-    const String command = record.value("command", String());
-    if (command.empty()) {
-        return;
-    }
-    if (argsOverride) {
-        const CommandResult result =
-            m_context.session().commands().executeStructured(m_context.session(), command, *argsOverride);
-        m_details->setPlainText(ToQString(result.ok
-            ? result.message + "\n" + ToString(result.data, 2)
-            : result.message));
-        return;
-    }
-    const Json args = record.value("args", Json());
-    if (args.is_object()) {
-        const CommandResult result =
-            m_context.session().commands().executeStructured(m_context.session(), command, args);
-        m_details->setPlainText(ToQString(result.ok
-            ? result.message + "\n" + ToString(result.data, 2)
-            : result.message));
-        return;
-    }
-    if (args.is_string()) {
-        const CommandResult result =
-            m_context.session().commands().execute(m_context.session(), args.get<String>());
-        m_details->setPlainText(ToQString(result.ok
-            ? result.message + "\n" + ToString(result.data, 2)
-            : result.message));
+    const String output = m_viewModel->rerun(record, argsOverride);
+    if (!output.empty()) {
+        m_details->setPlainText(ToQString(output));
     }
 }
 
