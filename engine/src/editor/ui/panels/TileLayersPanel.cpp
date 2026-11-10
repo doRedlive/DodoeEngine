@@ -4,6 +4,8 @@
 
 #include "TileLayersPanel.h"
 
+#include "presentation/tilelayers/TileLayersViewModel.h"
+
 #include "ui/common/EditorIcons.h"
 #include "ui/common/EditorWorkspaceContext.h"
 #include "ui/common/QtStringInterop.h"
@@ -143,53 +145,47 @@ TileLayersPanel::TileLayersPanel(EditorWorkspaceContext& context, QWidget* paren
         }
     });
 
-    m_selectionConnection = m_context.session().selection().subscribe([this]() { refresh(); });
-    m_documentConnection = m_context.session().documentModel().subscribe([this]() { refresh(); });
-    m_tileModeConnection = ScopedConnection(
-        m_context.session().tileEditModeChanged,
-        m_context.session().tileEditModeChanged.connect([this](bool) { refresh(); }));
+    m_viewModel = create_scope<TileLayersViewModel>(m_context.session());
+    m_viewModelConnection = ScopedConnection(
+        m_viewModel->changed,
+        m_viewModel->changed.connect([this]() { onViewModelChanged(); }));
 
-    refresh();
+    onViewModelChanged();
 }
 
 TileLayersPanel::~TileLayersPanel()
 {
 }
 
+void TileLayersPanel::onViewModelChanged()
+{
+    refresh();
+}
+
 void TileLayersPanel::refresh()
 {
     m_list->clear();
-    Json state;
-    if (!m_context.session().queryTilemapState(String(), state)) {
-        m_state = Json();
+    const TileLayersSnapshot& snapshot = m_viewModel->snapshot();
+    if (!snapshot.valid) {
         return;
     }
-    m_state = std::move(state);
 
-    const UInt64 activeLayer = m_state.contains("active_layer")
-        ? m_state["active_layer"].get<UInt64>()
-        : 0;
     QListWidgetItem* activeItem = nullptr;
-    if (m_state.contains("layers") && m_state["layers"].is_array()) {
-        for (const auto& entry : m_state["layers"]) {
-            const UInt64 uuid = entry.value("uuid", UInt64(0));
-            const String name = entry.value("name", String());
-            const bool visible = entry.value("visible", true);
-            const float opacity = entry.value("opacity", 1.0f);
-
-            auto* item = new QListWidgetItem(m_list);
-            item->setData(Qt::UserRole, static_cast<qulonglong>(uuid));
-            auto* row = new LayerRowWidget(ToQString(name), visible, opacity);
-            row->onVisibleToggle = [this, uuid](bool v) { onToggleVisible(uuid, v); };
-            row->onOpacityChanged = [this, uuid](float o) { onOpacityChanged(uuid, o); };
-            row->onRename = [this, uuid, name]() {
-                onRenameLayer(uuid, ToQString(name));
-            };
-            item->setSizeHint(row->sizeHint());
-            m_list->setItemWidget(item, row);
-            if (uuid == activeLayer) {
-                activeItem = item;
-            }
+    for (const TileLayerRow& row : snapshot.layers) {
+        auto* item = new QListWidgetItem(m_list);
+        item->setData(Qt::UserRole, static_cast<qulonglong>(row.uuid));
+        auto* rowWidget = new LayerRowWidget(ToQString(row.name), row.visible, row.opacity);
+        const UInt64 uuid = row.uuid;
+        const String name = row.name;
+        rowWidget->onVisibleToggle = [this, uuid](bool v) { onToggleVisible(uuid, v); };
+        rowWidget->onOpacityChanged = [this, uuid](float o) { onOpacityChanged(uuid, o); };
+        rowWidget->onRename = [this, uuid, name]() {
+            onRenameLayer(uuid, ToQString(name));
+        };
+        item->setSizeHint(rowWidget->sizeHint());
+        m_list->setItemWidget(item, rowWidget);
+        if (row.uuid == snapshot.activeLayer) {
+            activeItem = item;
         }
     }
     if (activeItem) {
@@ -205,7 +201,7 @@ void TileLayersPanel::onAddLayer()
     if (!ok || name.trimmed().isEmpty()) {
         return;
     }
-    m_context.session().execute(TilemapLayerAddCommand{ToDodoeString(name.trimmed())});
+    m_viewModel->addLayer(ToDodoeString(name.trimmed()));
 }
 
 void TileLayersPanel::onRemoveLayer()
@@ -215,7 +211,7 @@ void TileLayersPanel::onRemoveLayer()
         return;
     }
     const UInt64 uuid = selected.first()->data(Qt::UserRole).toULongLong();
-    m_context.session().execute(TilemapLayerRemoveCommand{uuid});
+    m_viewModel->removeLayer(uuid);
 }
 
 void TileLayersPanel::onMoveLayer(bool up)
@@ -225,22 +221,22 @@ void TileLayersPanel::onMoveLayer(bool up)
         return;
     }
     const UInt64 uuid = selected.first()->data(Qt::UserRole).toULongLong();
-    m_context.session().execute(TilemapLayerMoveCommand{uuid, up});
+    m_viewModel->moveLayer(uuid, up);
 }
 
 void TileLayersPanel::onActivateLayer(UInt64 uuid)
 {
-    m_context.session().execute(TilemapLayerActiveCommand{uuid});
+    m_viewModel->activateLayer(uuid);
 }
 
 void TileLayersPanel::onToggleVisible(UInt64 uuid, bool visible)
 {
-    m_context.session().execute(TilemapLayerVisibleCommand{uuid, visible});
+    m_viewModel->setLayerVisible(uuid, visible);
 }
 
 void TileLayersPanel::onOpacityChanged(UInt64 uuid, float opacity)
 {
-    m_context.session().execute(TilemapLayerOpacityCommand{uuid, opacity});
+    m_viewModel->setLayerOpacity(uuid, opacity);
 }
 
 void TileLayersPanel::onRenameLayer(UInt64 uuid, const QString& currentName)
@@ -251,8 +247,7 @@ void TileLayersPanel::onRenameLayer(UInt64 uuid, const QString& currentName)
     if (!ok || name.trimmed().isEmpty() || name.trimmed() == currentName) {
         return;
     }
-    m_context.session().execute(
-        TilemapLayerRenameCommand{uuid, ToDodoeString(name.trimmed())});
+    m_viewModel->renameLayer(uuid, ToDodoeString(name.trimmed()));
 }
 
 } // namespace cakery

@@ -4,6 +4,7 @@
 
 #include "ui/panels/TilePalettePanel.h"
 
+#include "presentation/tilepalette/TilePaletteViewModel.h"
 #include "ui/common/EditorIcons.h"
 #include "ui/common/EditorWorkspaceContext.h"
 #include "ui/common/QtStringInterop.h"
@@ -399,7 +400,7 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
             action->setChecked(true);
         }
         connect(action, &QAction::triggered, this, [this, toolId = tool.tool]() {
-            m_context.session().execute(TilemapToolCommand{toolId});
+            m_viewModel->selectTool(toolId);
         });
     }
     layout->addWidget(m_toolBar);
@@ -494,7 +495,7 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
         auto* action = new QAction(this);
         action->setShortcut(key);
         connect(action, &QAction::triggered, this, [this, command]() {
-            m_context.session().execute(command);
+            m_viewModel->executeBrush(command);
         });
     };
     addBrushAction(QKeySequence(Qt::Key_X), TilemapBrushFlipCommand{true});
@@ -505,16 +506,16 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
     addBrushAction(QKeySequence::Paste, TilemapSelectionPasteCommand{});
 
     connect(flipXButton, &QToolButton::clicked, this, [this]() {
-        m_context.session().execute(TilemapBrushFlipCommand{true});
+        m_viewModel->flipBrush(true);
     });
     connect(flipYButton, &QToolButton::clicked, this, [this]() {
-        m_context.session().execute(TilemapBrushFlipCommand{false});
+        m_viewModel->flipBrush(false);
     });
     connect(rotateButton, &QToolButton::clicked, this, [this]() {
-        m_context.session().execute(TilemapBrushRotateCommand{});
+        m_viewModel->rotateBrush();
     });
     connect(m_randomBrushButton, &QToolButton::toggled, this, [this](bool checked) {
-        m_context.session().execute(TilemapRandomBrushCommand{checked});
+        m_viewModel->setRandomBrush(checked);
     });
 
     m_statusLabel = new QLabel(this);
@@ -534,13 +535,12 @@ TilePalettePanel::TilePalettePanel(EditorWorkspaceContext& context, QWidget* par
     m_scroll->setWidget(content);
     layout->addWidget(m_scroll, 1);
 
-    m_selectionConnection = m_context.session().selection().subscribe([this]() { refresh(); });
-    m_documentConnection = m_context.session().documentModel().subscribe([this]() { refresh(); });
-    m_tileModeConnection = ScopedConnection(
-        m_context.session().tileEditModeChanged,
-        m_context.session().tileEditModeChanged.connect([this](bool) { refresh(); }));
+    m_viewModel = create_scope<TilePaletteViewModel>(m_context.session());
+    ScopedConnection viewModelConnection(
+        m_viewModel->changed,
+        m_viewModel->changed.connect([this]() { onViewModelChanged(); }));
 
-    refresh();
+    onViewModelChanged();
 }
 
 TilePalettePanel::~TilePalettePanel()
@@ -553,9 +553,13 @@ TilePalettePanel::~TilePalettePanel()
 
 void TilePalettePanel::refresh()
 {
-    Json state;
-    if (!m_context.session().queryTilemapState(String(), state)) {
-        m_state = Json();
+    m_viewModel->refresh();
+}
+
+void TilePalettePanel::onViewModelChanged()
+{
+    const Json& state = m_viewModel->tilemapState();
+    if (!m_viewModel->hasTilemap()) {
         rebuildTargetOptions(0);
         updateToolState(false);
         if (m_randomBrushButton) {
@@ -569,19 +573,16 @@ void TilePalettePanel::refresh()
         rebuildTilesets();
         return;
     }
-    m_state = std::move(state);
-    const UInt64 activeUuid = m_state.contains("tilemap")
-        ? m_state["tilemap"].value("uuid", UInt64(0))
-        : 0;
+    const UInt64 activeUuid = state["tilemap"].value("uuid", UInt64(0));
     rebuildTargetOptions(activeUuid);
     updateToolState(activeUuid != 0);
     if (m_randomBrushButton) {
         const QSignalBlocker blocker(m_randomBrushButton);
-        m_randomBrushButton->setChecked(m_state.value("random_brush", false));
+        m_randomBrushButton->setChecked(state.value("random_brush", false));
     }
     if (m_brushLabel) {
-        const Json brush = m_state.contains("brush") && m_state["brush"].is_object()
-            ? m_state["brush"] : Json::object();
+        const Json brush = state.contains("brush") && state["brush"].is_object()
+            ? state["brush"] : Json::object();
         const int brushW = brush.value("w", 1);
         const int brushH = brush.value("h", 1);
         const Size_t tileCount = brush.contains("gids") && brush["gids"].is_array()
@@ -589,12 +590,10 @@ void TilePalettePanel::refresh()
         m_brushLabel->setText(QStringLiteral("Active Brush: %1 x %2 (%3 tiles)")
             .arg(brushW).arg(brushH).arg(static_cast<qulonglong>(tileCount)));
     }
-    const String tilemapName = m_state.contains("tilemap")
-        ? m_state["tilemap"].value("name", String())
-        : String();
+    const String tilemapName = state["tilemap"].value("name", String());
     m_statusLabel->setText(QStringLiteral("Tilemap: %1\n%2 tileset(s)")
         .arg(ToQString(tilemapName))
-        .arg(static_cast<qulonglong>(m_state["tilesets"].size())));
+        .arg(static_cast<qulonglong>(state["tilesets"].size())));
     rebuildTilesets();
 }
 
@@ -608,16 +607,10 @@ void TilePalettePanel::rebuildTargetOptions(UInt64 activeUuid)
     m_targetCombo->addItem(tr("No Tilemap"), QVariant::fromValue<qulonglong>(0));
 
     int activeIndex = 0;
-    for (const EditorEntity& entity : m_context.session().documentModel().entities()) {
-        const bool isTilemap = std::any_of(
-            entity.nativeComponents.begin(), entity.nativeComponents.end(),
-            [](const EditorComponent& component) { return component.typeName == "TilemapComponent"; });
-        if (!isTilemap) {
-            continue;
-        }
-        m_targetCombo->addItem(ToQString(entity.name),
-                               QVariant::fromValue<qulonglong>(entity.uuid));
-        if (entity.uuid == activeUuid) {
+    for (const TilemapTargetOption& target : m_viewModel->tilemapTargets()) {
+        m_targetCombo->addItem(ToQString(target.name),
+                               QVariant::fromValue<qulonglong>(target.uuid));
+        if (target.uuid == activeUuid) {
             activeIndex = m_targetCombo->count() - 1;
         }
     }
@@ -662,7 +655,7 @@ void TilePalettePanel::setActiveTarget(int index)
         return;
     }
     m_activeTarget = uuid;
-    m_context.session().execute(TilemapActivateCommand{uuid});
+    m_viewModel->activateTarget(uuid);
 }
 
 void TilePalettePanel::rebuildTilesets()
@@ -677,15 +670,16 @@ void TilePalettePanel::rebuildTilesets()
     m_tilesetViews.clear();
     m_tilesetsLayout->addStretch();
 
-    if (!m_state.contains("tilesets") || !m_state["tilesets"].is_array()) {
+    const Json& state = m_viewModel->tilemapState();
+    if (!state.contains("tilesets") || !state["tilesets"].is_array()) {
         return;
     }
-    for (const auto& entry : m_state["tilesets"]) {
+    for (const auto& entry : state["tilesets"]) {
         const String url = entry.value("image_path", String());
-        const String imagePath = resolveImagePath(url);
+        const FsPath imagePath = m_viewModel->resolveImagePath(url);
         QPixmap pixmap;
         if (!imagePath.empty()) {
-            pixmap.load(ToQString(imagePath));
+            pixmap.load(ToQString(imagePath.string()));
         }
         const UInt32 tileW = entry.value("tile_width", 16u);
         const UInt32 tileH = entry.value("tile_height", 16u);
@@ -702,7 +696,7 @@ void TilePalettePanel::rebuildTilesets()
         m_tilesetsLayout->insertWidget(m_tilesetsLayout->count() - 1, label);
         m_tilesetsLayout->insertWidget(m_tilesetsLayout->count() - 1, view);
         view->onBrushSelected = [this](int w, int h, DynamicArray<UInt32> gids) {
-            m_context.session().execute(TilemapBrushCommand{w, h, std::move(gids)});
+            m_viewModel->setBrush(w, h, std::move(gids));
         };
         m_tilesetViews.push_back(view);
     }
@@ -714,14 +708,18 @@ void TilePalettePanel::applyBrushHighlight()
     for (TileTilesetView* view : m_tilesetViews) {
         view->setSelection(0, 0, 1, 1);
     }
-    if (!m_state.contains("brush") || !m_state["brush"].contains("gids") ||
-        m_state["brush"]["gids"].empty()) {
+    const Json& state = m_viewModel->tilemapState();
+    if (!state.contains("brush")) {
+        return;
+    }
+    const Json& brush = state["brush"];
+    if (!brush.contains("gids") || brush["gids"].empty()) {
         return;
     }
     const UInt32 firstGid =
-        m_state["brush"]["gids"][0].get<UInt32>() & 0x0FFFFFFFu;
-    const int brushW = m_state["brush"].value("w", 1);
-    const int brushH = m_state["brush"].value("h", 1);
+        brush["gids"][0].get<UInt32>() & 0x0FFFFFFFu;
+    const int brushW = brush.value("w", 1);
+    const int brushH = brush.value("h", 1);
 
     for (TileTilesetView* view : m_tilesetViews) {
         if (firstGid < view->firstGid() || firstGid >= view->firstGid() + view->tileCount()) {
@@ -734,45 +732,18 @@ void TilePalettePanel::applyBrushHighlight()
         break;
     }
 }
-
-String TilePalettePanel::resolveImagePath(const String& url) const
-{
-    if (url.empty()) {
-        return {};
-    }
-    FsPath path(url);
-    if (path.is_absolute()) {
-        return String(path.string());
-    }
-    const FsPath assetRoot = m_context.session().assetRoot();
-    if (!assetRoot.empty()) {
-        const FsPath candidate = assetRoot / url;
-        if (std::filesystem::exists(candidate)) {
-            return String(candidate.string());
-        }
-    }
-    const FsPath project(m_context.project().rootPath);
-    if (!project.empty()) {
-        const FsPath candidate = project / url;
-        if (std::filesystem::exists(candidate)) {
-            return String(candidate.string());
-        }
-    }
-    return url;
-}
-
 void TilePalettePanel::onNewTilemap()
 {
     const Optional<TilemapCreateCommand> command = createTilemapDialog(this);
     if (!command.has_value()) {
         return;
     }
-    m_context.session().execute(*command);
+    m_viewModel->createTilemap(*command);
 }
 
 void TilePalettePanel::onAddTileset()
 {
-    if (!m_state.contains("tilemap")) {
+    if (!m_viewModel->hasTilemap()) {
         QMessageBox::information(this, tr("Add Tileset"), tr("Select or create a tilemap first."));
         return;
     }
@@ -780,17 +751,18 @@ void TilePalettePanel::onAddTileset()
     if (!command.has_value()) {
         return;
     }
-    m_context.session().execute(*command);
+    m_viewModel->addTileset(*command);
 }
 
 void TilePalettePanel::onRemoveTileset()
 {
-    if (!m_state.contains("tilesets") || m_state["tilesets"].empty()) {
+    if (!m_viewModel->hasTilesets()) {
         return;
     }
+    const DynamicArray<String> tilesets = m_viewModel->tilesetNames();
     QStringList names;
-    for (const auto& entry : m_state["tilesets"]) {
-        names << ToQString(entry.value("name", String()));
+    for (const String& name : tilesets) {
+        names << ToQString(name);
     }
     bool ok = false;
     const QString selected = QInputDialog::getItem(this, tr("Remove Tileset"), tr("Tileset:"),
@@ -798,24 +770,22 @@ void TilePalettePanel::onRemoveTileset()
     if (!ok || selected.isEmpty()) {
         return;
     }
-    for (const auto& entry : m_state["tilesets"]) {
-        if (ToQString(entry.value("name", String())) == selected) {
-            const UInt64 assetId = entry.value("asset_id", UInt64(0));
-            m_context.session().execute(TilemapRemoveTilesetCommand{assetId});
-            break;
-        }
+    const UInt64 assetId = m_viewModel->tilesetAssetId(ToDodoeString(selected));
+    if (assetId != 0) {
+        m_viewModel->removeTileset(assetId);
     }
 }
 
 void TilePalettePanel::onEditTileset()
 {
-    if (!m_state.contains("tilesets") || m_state["tilesets"].empty()) {
+    if (!m_viewModel->hasTilesets()) {
         QMessageBox::information(this, tr("Edit Tileset"), tr("The tilemap has no tilesets."));
         return;
     }
+    const DynamicArray<String> tilesets = m_viewModel->tilesetNames();
     QStringList names;
-    for (const auto& entry : m_state["tilesets"]) {
-        names << ToQString(entry.value("name", String()));
+    for (const String& name : tilesets) {
+        names << ToQString(name);
     }
     bool ok = false;
     const QString selected = QInputDialog::getItem(this, tr("Edit Tileset"), tr("Tileset:"),
@@ -823,11 +793,12 @@ void TilePalettePanel::onEditTileset()
     if (!ok || selected.isEmpty()) {
         return;
     }
-    for (const auto& entry : m_state["tilesets"]) {
+    const Json& state = m_viewModel->tilemapState();
+    for (const auto& entry : state["tilesets"]) {
         if (ToQString(entry.value("name", String())) == selected) {
             const Optional<TilemapEditTilesetCommand> command = editTilesetDialog(this, entry);
             if (command.has_value()) {
-                m_context.session().execute(*command);
+                m_viewModel->editTileset(*command);
             }
             break;
         }
@@ -836,11 +807,11 @@ void TilePalettePanel::onEditTileset()
 
 void TilePalettePanel::onResizeTilemap()
 {
-    if (!m_state.contains("tilemap")) {
+    if (!m_viewModel->hasTilemap()) {
         QMessageBox::information(this, tr("Resize Tilemap"), tr("Select a tilemap first."));
         return;
     }
-    const Json& tilemap = m_state["tilemap"];
+    const Json& tilemap = m_viewModel->tilemapState()["tilemap"];
     const UInt64 uuid = tilemap.value("uuid", UInt64(0));
     if (uuid == 0) {
         return;
@@ -855,9 +826,7 @@ void TilePalettePanel::onResizeTilemap()
     if (dialog.width() == currentW && dialog.height() == currentH) {
         return;
     }
-    m_context.session().execute(TilemapResizeCommand{
-        uuid, static_cast<UInt32>(dialog.width()),
-        static_cast<UInt32>(dialog.height())});
+    m_viewModel->resizeTilemap(uuid, static_cast<UInt32>(dialog.width()), static_cast<UInt32>(dialog.height()));
 }
 
 } // namespace cakery

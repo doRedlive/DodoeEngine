@@ -25,6 +25,7 @@ class QPaintEvent;
 namespace cakery {
 
 class EditorWorkspaceContext;
+class TilePaletteViewModel;
 
 class TileTilesetView final : public QWidget {
 public:
@@ -87,6 +88,7 @@ public:
     void onNewTilemap();
 
 private:
+    void onViewModelChanged();
     void onAddTileset();
     void onRemoveTileset();
     void onEditTileset();
@@ -95,10 +97,10 @@ private:
     void rebuildTargetOptions(UInt64 activeUuid);
     void updateToolState(bool active);
     void setActiveTarget(int index);
-    String resolveImagePath(const String& url) const;
     void rebuildTilesets();
 
     EditorWorkspaceContext& m_context;
+    Scope<TilePaletteViewModel> m_viewModel;
     QToolBar* m_toolBar = nullptr;
     QActionGroup* m_toolGroup = nullptr;
     QComboBox* m_targetCombo = nullptr;
@@ -113,11 +115,7 @@ private:
     QToolButton* m_resizeTilemapButton = nullptr;
     QToolButton* m_randomBrushButton = nullptr;
     DynamicArray<TileTilesetView*> m_tilesetViews;
-    Json m_state;
     UInt64 m_activeTarget = 0;
-    ScopedConnection m_selectionConnection;
-    ScopedConnection m_documentConnection;
-    ScopedConnection m_tileModeConnection;
 };
 
 } // namespace cakery

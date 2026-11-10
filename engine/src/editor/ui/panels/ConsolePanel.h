@@ -16,6 +16,7 @@ class QTimer;
 namespace cakery {
 
 class EditorWorkspaceContext;
+class ConsoleViewModel;
 
 enum class ConsoleLogLevel {
     Trace,
@@ -34,12 +35,7 @@ public:
     void append(ConsoleLogLevel level, const QString& message, const QString& source = {});
 
 private:
-    struct Entry {
-        ConsoleLogLevel level;
-        QString message;
-        QString source;
-    };
-
+    void onViewModelChanged();
     void refresh();
     void syncBackendLogs();
     void copySelection();
@@ -50,9 +46,8 @@ private:
     QLineEdit* m_search = nullptr;
     QComboBox* m_levelFilter = nullptr;
     QListWidget* m_list = nullptr;
-    DynamicArray<Entry> m_entries;
-    DynamicArray<Entry> m_backendEntries;
-    EditorWorkspaceContext& m_context;
+    Scope<ConsoleViewModel> m_viewModel;
+    ScopedConnection m_viewModelConnection;
     QTimer* m_refreshTimer = nullptr;
 };
 

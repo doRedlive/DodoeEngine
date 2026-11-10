@@ -14,6 +14,7 @@ class QListWidget;
 namespace cakery {
 
 class EditorWorkspaceContext;
+class TileLayersViewModel;
 
 class TileLayersPanel final : public QWidget {
     Q_OBJECT
@@ -24,6 +25,7 @@ public:
     void refresh();
 
 private:
+    void onViewModelChanged();
     void onAddLayer();
     void onRemoveLayer();
     void onMoveLayer(bool up);
@@ -33,11 +35,9 @@ private:
     void onRenameLayer(UInt64 uuid, const QString& currentName);
 
     EditorWorkspaceContext& m_context;
+    Scope<TileLayersViewModel> m_viewModel;
+    ScopedConnection m_viewModelConnection;
     QListWidget* m_list = nullptr;
-    Json m_state;
-    ScopedConnection m_selectionConnection;
-    ScopedConnection m_documentConnection;
-    ScopedConnection m_tileModeConnection;
 };
 
 } // namespace cakery

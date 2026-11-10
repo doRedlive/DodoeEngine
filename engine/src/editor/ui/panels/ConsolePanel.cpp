@@ -4,6 +4,8 @@
 
 #include "ConsolePanel.h"
 
+#include "presentation/console/ConsoleViewModel.h"
+
 #include "ui/common/EditorIcons.h"
 #include "ui/common/EditorWorkspaceContext.h"
 #include "ui/common/QtStringInterop.h"
@@ -25,6 +27,23 @@
 #include <algorithm>
 
 namespace cakery {
+
+namespace {
+
+ConsoleLogLevel ToConsoleLogLevel(ConsoleEntryLevel level)
+{
+    switch (level) {
+    case ConsoleEntryLevel::Trace: return ConsoleLogLevel::Trace;
+    case ConsoleEntryLevel::Debug: return ConsoleLogLevel::Debug;
+    case ConsoleEntryLevel::Info: return ConsoleLogLevel::Info;
+    case ConsoleEntryLevel::Warning: return ConsoleLogLevel::Warning;
+    case ConsoleEntryLevel::Error: return ConsoleLogLevel::Error;
+    case ConsoleEntryLevel::Critical: return ConsoleLogLevel::Critical;
+    }
+    return ConsoleLogLevel::Info;
+}
+
+} // namespace
 
 ConsolePanel::ConsolePanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
@@ -81,11 +100,20 @@ ConsolePanel::ConsolePanel(EditorWorkspaceContext& context, QWidget* parent)
     auto* copyShortcut = new QShortcut(QKeySequence::Copy, m_list);
     connect(copyShortcut, &QShortcut::activated, this, &ConsolePanel::copySelection);
 
+    m_viewModel = create_scope<ConsoleViewModel>(m_context.session());
+    m_viewModelConnection = ScopedConnection(
+        m_viewModel->changed,
+        m_viewModel->changed.connect([this]() { onViewModelChanged(); }));
     m_refreshTimer = new QTimer(this);
     m_refreshTimer->setInterval(250);
     connect(m_refreshTimer, &QTimer::timeout, this, &ConsolePanel::syncBackendLogs);
     m_refreshTimer->start();
-    syncBackendLogs();
+    onViewModelChanged();
+}
+
+void ConsolePanel::onViewModelChanged()
+{
+    refresh();
 }
 
 void ConsolePanel::append(ConsoleLogLevel level, const QString& message, const QString& source)
@@ -93,8 +121,8 @@ void ConsolePanel::append(ConsoleLogLevel level, const QString& message, const Q
     if (message.trimmed().isEmpty()) {
         return;
     }
-    m_entries.push_back({level, message, source});
-    refresh();
+    m_viewModel->append(static_cast<ConsoleEntryLevel>(level), ToDodoeString(message),
+                        ToDodoeString(source));
 }
 
 void ConsolePanel::refresh()
@@ -106,27 +134,24 @@ void ConsolePanel::refresh()
     const QString needle = m_search->text().trimmed();
     const int selectedLevel = m_levelFilter->currentData().toInt();
     m_list->clear();
-    const auto addEntry = [this, &needle, selectedLevel](const Entry& entry) {
-        if (selectedLevel >= 0 && selectedLevel != static_cast<int>(entry.level)) {
-            return;
+    for (const ConsoleEntry& entry : m_viewModel->entries()) {
+        const ConsoleLogLevel level = ToConsoleLogLevel(entry.level);
+        if (selectedLevel >= 0 && selectedLevel != static_cast<int>(level)) {
+            continue;
         }
-        const QString fullMessage = entry.source.isEmpty()
-            ? entry.message
-            : QStringLiteral("[%1] %2").arg(entry.source, entry.message);
+        const QString message = ToQString(entry.message);
+        const QString source = ToQString(entry.source);
+        const QString fullMessage = source.isEmpty()
+            ? message
+            : QStringLiteral("[%1] %2").arg(source, message);
         if (!needle.isEmpty() && !fullMessage.contains(needle, Qt::CaseInsensitive)) {
-            return;
+            continue;
         }
         auto* item = new QListWidgetItem(
-            QStringLiteral("%1  %2").arg(levelName(entry.level), fullMessage), m_list);
+            QStringLiteral("%1  %2").arg(levelName(level), fullMessage), m_list);
         item->setData(Qt::UserRole, fullMessage);
-        item->setForeground(levelColor(entry.level));
+        item->setForeground(levelColor(level));
         item->setToolTip(fullMessage);
-    };
-    for (const Entry& entry : m_entries) {
-        addEntry(entry);
-    }
-    for (const Entry& entry : m_backendEntries) {
-        addEntry(entry);
     }
 
     if (atBottom) {
@@ -141,36 +166,7 @@ void ConsolePanel::refresh()
 
 void ConsolePanel::syncBackendLogs()
 {
-    DynamicArray<BackendLogEntry> logs;
-    if (!m_context.session().listLogs(logs)) {
-        return;
-    }
-    DynamicArray<Entry> nextEntries;
-    nextEntries.reserve(logs.size());
-    for (const BackendLogEntry& log : logs) {
-        ConsoleLogLevel level = ConsoleLogLevel::Info;
-        switch (log.level) {
-        case BackendLogLevel::Trace: level = ConsoleLogLevel::Trace; break;
-        case BackendLogLevel::Debug: level = ConsoleLogLevel::Debug; break;
-        case BackendLogLevel::Info: level = ConsoleLogLevel::Info; break;
-        case BackendLogLevel::Warning: level = ConsoleLogLevel::Warning; break;
-        case BackendLogLevel::Error: level = ConsoleLogLevel::Error; break;
-        case BackendLogLevel::Critical: level = ConsoleLogLevel::Critical; break;
-        }
-    const QString message = log.repeatCount > 1
-        ? QStringLiteral("%1 (x%2)").arg(ToQString(log.message)).arg(log.repeatCount)
-        : ToQString(log.message);
-    nextEntries.push_back({level, message, ToQString(log.source)});
-    }
-    const bool changed = nextEntries.size() != m_backendEntries.size()
-        || !std::equal(nextEntries.begin(), nextEntries.end(), m_backendEntries.begin(),
-            [](const Entry& lhs, const Entry& rhs) {
-                return lhs.level == rhs.level && lhs.message == rhs.message && lhs.source == rhs.source;
-            });
-    if (changed) {
-        m_backendEntries = std::move(nextEntries);
-        refresh();
-    }
+    m_viewModel->pollBackend();
 }
 
 void ConsolePanel::copySelection()
@@ -186,10 +182,7 @@ void ConsolePanel::copySelection()
 
 void ConsolePanel::clearEntries()
 {
-    m_entries.clear();
-    m_backendEntries.clear();
-    m_context.session().clearLogs();
-    refresh();
+    m_viewModel->clear();
 }
 
 QString ConsolePanel::levelName(ConsoleLogLevel level)

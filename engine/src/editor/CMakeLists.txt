@@ -161,6 +161,14 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/inspector/InspectorViewModel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/project/ProjectViewModel.h
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/project/ProjectViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/console/ConsoleViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/console/ConsoleViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/history/HistoryViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/history/HistoryViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/tilelayers/TileLayersViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/tilelayers/TileLayersViewModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/tilepalette/TilePaletteViewModel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/presentation/tilepalette/TilePaletteViewModel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorLayoutController.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorLayoutController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/EditorWindow.h

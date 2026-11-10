@@ -6,9 +6,10 @@
 
 #include "HistoryPanel.h"
 
+#include "presentation/history/HistoryViewModel.h"
+
 #include "ui/common/EditorIcons.h"
 #include "ui/common/EditorWorkspaceContext.h"
-#include "core/history/EditorHistory.h"
 
 #include <QAbstractItemView>
 #include <QColor>
@@ -67,52 +68,59 @@ HistoryPanel::HistoryPanel(EditorWorkspaceContext& context, QWidget* parent)
     connect(m_undo, &QToolButton::clicked, this, &HistoryPanel::undo);
     connect(m_redo, &QToolButton::clicked, this, &HistoryPanel::redo);
     connect(clear, &QToolButton::clicked, this, &HistoryPanel::clear);
-    m_historySubscription = m_context.session().history().subscribe([this]() { refresh(); });
+
+    m_viewModel = create_scope<HistoryViewModel>(m_context.session());
+    m_viewModelConnection = ScopedConnection(
+        m_viewModel->changed,
+        m_viewModel->changed.connect([this]() { onViewModelChanged(); }));
+    onViewModelChanged();
+}
+
+void HistoryPanel::onViewModelChanged()
+{
     refresh();
 }
 
 void HistoryPanel::refresh()
 {
-    const EditorHistory& history = m_context.session().history();
-    const auto& undoStack = history.undoStack();
-    const auto& redoStack = history.redoStack();
+    const HistorySnapshot& snapshot = m_viewModel->snapshot();
     const QString needle = m_search->text().trimmed();
     m_list->clear();
 
-    for (auto it = redoStack.rbegin(); it != redoStack.rend(); ++it) {
-        const QString label = ToQString((*it)->label());
+    for (auto it = snapshot.redoLabels.rbegin(); it != snapshot.redoLabels.rend(); ++it) {
+        const QString label = ToQString(*it);
         if (!needle.isEmpty() && !label.contains(needle, Qt::CaseInsensitive)) continue;
         auto* item = new QListWidgetItem(label, m_list);
         item->setForeground(QColor("#6f6f6f"));
     }
-    if (!redoStack.empty() && needle.isEmpty()) {
+    if (!snapshot.redoLabels.empty() && needle.isEmpty()) {
         auto* separator = new QListWidgetItem(QStringLiteral("────"), m_list);
         separator->setFlags(Qt::NoItemFlags);
         separator->setForeground(QColor("#4f4f4f"));
     }
-    for (auto it = undoStack.rbegin(); it != undoStack.rend(); ++it) {
-        const QString label = ToQString((*it)->label());
+    for (auto it = snapshot.undoLabels.rbegin(); it != snapshot.undoLabels.rend(); ++it) {
+        const QString label = ToQString(*it);
         if (!needle.isEmpty() && !label.contains(needle, Qt::CaseInsensitive)) continue;
         auto* item = new QListWidgetItem(label, m_list);
         item->setForeground(QColor("#d8d8d8"));
     }
-    m_undo->setEnabled(history.canUndo());
-    m_redo->setEnabled(history.canRedo());
+    m_undo->setEnabled(snapshot.canUndo);
+    m_redo->setEnabled(snapshot.canRedo);
 }
 
 void HistoryPanel::undo()
 {
-    m_context.session().undo();
+    m_viewModel->undo();
 }
 
 void HistoryPanel::redo()
 {
-    m_context.session().redo();
+    m_viewModel->redo();
 }
 
 void HistoryPanel::clear()
 {
-    m_context.session().history().clear();
+    m_viewModel->clear();
 }
 
 } // namespace cakery
