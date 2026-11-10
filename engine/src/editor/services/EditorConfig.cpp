@@ -11,12 +11,6 @@
 
 namespace cakery {
 
-EditorConfig& EditorConfig::self()
-{
-    static EditorConfig instance;
-    return instance;
-}
-
 bool EditorConfig::load(const String& builtinDir, const String& projectDir, const String& userDir)
 {
     m_builtinDir  = builtinDir;

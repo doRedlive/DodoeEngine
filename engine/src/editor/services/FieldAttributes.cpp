@@ -3,7 +3,6 @@
 #include "dopch.h"
 
 #include "FieldAttributes.h"
-#include "services/EditorConfig.h"
 #include "runtime/core/meta/reflection/reflection.h"
 #include "runtime/core/utils/json.h"
 
@@ -30,7 +29,8 @@ void FieldAttributeRegistry::registerDefaults() {
     };
 }
 
-void FieldAttributeRegistry::applyTo(dodoe::TypeMeta& meta, const String& typeName) {
+void FieldAttributeRegistry::applyTo(dodoe::TypeMeta& meta, const String& typeName,
+                                     const dodoe::Json& inspectors) {
     registerDefaults();
 
     for (const auto& attr : m_defaults) {
@@ -39,32 +39,32 @@ void FieldAttributeRegistry::applyTo(dodoe::TypeMeta& meta, const String& typeNa
         }
     }
 
-    auto& inspectors = EditorConfig::self().inspectorsJson();
-    if (inspectors.contains("fieldAttributes")) {
-        auto& attrs = inspectors["fieldAttributes"];
-        for (auto it = attrs.begin(); it != attrs.end(); ++it) {
-            const String prefix = typeName + ".";
-            if (it.key().rfind(prefix, 0) != 0 || !it.value().is_object()) {
-                continue;
-            }
-            const String fieldName(it.key().substr(prefix.size()).c_str());
-            const auto& fa = it.value();
-            if (fa.contains("Hidden") && fa["Hidden"].is_boolean() && fa["Hidden"].get<bool>()) {
-                meta.set_field_attribute(fieldName, "Hidden", "true");
-            }
-            if (fa.contains("Tooltip") && fa["Tooltip"].is_string()) {
-                const String tooltip = fa["Tooltip"].get<String>();
-                meta.set_field_attribute(fieldName, "Tooltip", tooltip);
-            }
-            if (fa.contains("Range") && fa["Range"].is_array() && fa["Range"].size() == 2 &&
-                fa["Range"][0].is_number() && fa["Range"][1].is_number()) {
-                const String rangeStr = ToString(fa["Range"][0].get<float>()) + "," +
-                                              ToString(fa["Range"][1].get<float>());
-                meta.set_field_attribute(fieldName, "Range", rangeStr);
-            }
-            if (fa.contains("ReadOnly") && fa["ReadOnly"].is_boolean() && fa["ReadOnly"].get<bool>()) {
-                meta.set_field_attribute(fieldName, "ReadOnly", "true");
-            }
+    if (!inspectors.contains("fieldAttributes")) {
+        return;
+    }
+    auto& attrs = inspectors["fieldAttributes"];
+    for (auto it = attrs.begin(); it != attrs.end(); ++it) {
+        const String prefix = typeName + ".";
+        if (it.key().rfind(prefix, 0) != 0 || !it.value().is_object()) {
+            continue;
+        }
+        const String fieldName(it.key().substr(prefix.size()).c_str());
+        const auto& fa = it.value();
+        if (fa.contains("Hidden") && fa["Hidden"].is_boolean() && fa["Hidden"].get<bool>()) {
+            meta.set_field_attribute(fieldName, "Hidden", "true");
+        }
+        if (fa.contains("Tooltip") && fa["Tooltip"].is_string()) {
+            const String tooltip = fa["Tooltip"].get<String>();
+            meta.set_field_attribute(fieldName, "Tooltip", tooltip);
+        }
+        if (fa.contains("Range") && fa["Range"].is_array() && fa["Range"].size() == 2 &&
+            fa["Range"][0].is_number() && fa["Range"][1].is_number()) {
+            const String rangeStr = ToString(fa["Range"][0].get<float>()) + "," +
+                                          ToString(fa["Range"][1].get<float>());
+            meta.set_field_attribute(fieldName, "Range", rangeStr);
+        }
+        if (fa.contains("ReadOnly") && fa["ReadOnly"].is_boolean() && fa["ReadOnly"].get<bool>()) {
+            meta.set_field_attribute(fieldName, "ReadOnly", "true");
         }
     }
 }

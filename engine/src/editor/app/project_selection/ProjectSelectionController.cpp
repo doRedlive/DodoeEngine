@@ -8,8 +8,8 @@
 
 namespace cakery {
 
-ProjectSelectionController::ProjectSelectionController(QObject* parent)
-    : QObject(parent)
+ProjectSelectionController::ProjectSelectionController(ProjectConfig& config, QObject* parent)
+    : QObject(parent), m_config(config)
 {
 }
 
@@ -45,7 +45,7 @@ void ProjectSelectionController::ensureWindow()
     if (m_window) {
         return;
     }
-    m_window = new ProjectManagerWindow();
+    m_window = new ProjectManagerWindow(m_config);
     connect(m_window, &ProjectManagerWindow::onProjectOpened,
             this, &ProjectSelectionController::projectSelected);
 }

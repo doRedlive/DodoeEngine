@@ -22,8 +22,8 @@
 
 namespace cakery {
 
-ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
-    : QDialog(parent)
+ProjectManagerWindow::ProjectManagerWindow(ProjectConfig& config, QWidget* parent)
+    : QDialog(parent), m_config(config)
 {
     setWindowTitle(tr("Cakery Engine - Project Manager"));
     setObjectName("ProjectManagerWindow");
@@ -138,17 +138,16 @@ ProjectManagerWindow::ProjectManagerWindow(QWidget* parent)
     connect(m_showInExplorerBtn, &QPushButton::clicked, this, &ProjectManagerWindow::onShowInExplorer);
 
     // Load projects
-    ProjectConfig::getInstance().load();
+    m_config.load();
     rebuildList();
 }
 
 void ProjectManagerWindow::rebuildList()
 {
     m_filtered.clear();
-    auto& cfg = ProjectConfig::getInstance();
     QString search = m_searchEdit->text().trimmed();
 
-    for (const auto& proj : cfg.projects()) {
+    for (const auto& proj : m_config.projects()) {
         if (!search.isEmpty() &&
             !proj.name.contains(search, Qt::CaseInsensitive) &&
             !proj.projectFile.contains(search, Qt::CaseInsensitive))
@@ -226,8 +225,8 @@ void ProjectManagerWindow::onOpenProject()
     if (proj.isMissing) return;
     if (!QFileInfo::exists(proj.projectFile)) return;
 
-    ProjectConfig::getInstance().markOpened(proj.projectFile);
-    ProjectConfig::getInstance().save();
+    m_config.markOpened(proj.projectFile);
+    m_config.save();
 
     emit onProjectOpened(proj.projectFile);
     accept();
@@ -316,9 +315,9 @@ void ProjectManagerWindow::onNewProject()
     entry.projectPath = fullDir;
     entry.isMissing = false;
 
-    ProjectConfig::getInstance().addProject(entry);
-    ProjectConfig::getInstance().markOpened(projFile);
-    ProjectConfig::getInstance().save();
+    m_config.addProject(entry);
+    m_config.markOpened(projFile);
+    m_config.save();
 
     emit onProjectOpened(projFile);
     accept();
@@ -339,8 +338,8 @@ void ProjectManagerWindow::onImportProject()
     entry.projectPath = fi.absolutePath();
     entry.isMissing = false;
 
-    ProjectConfig::getInstance().addProject(entry);
-    ProjectConfig::getInstance().save();
+    m_config.addProject(entry);
+    m_config.save();
     rebuildList();
 }
 
@@ -360,17 +359,17 @@ void ProjectManagerWindow::onScanFolder()
         entry.lastModifiedUnix = fi.lastModified().toSecsSinceEpoch();
         entry.projectPath = fi.absolutePath();
         entry.isMissing = false;
-        ProjectConfig::getInstance().addProject(entry);
+        m_config.addProject(entry);
         added++;
     }
 
-    ProjectConfig::getInstance().save();
+    m_config.save();
     rebuildList();
 }
 
 void ProjectManagerWindow::onRefresh()
 {
-    ProjectConfig::getInstance().load();
+    m_config.load();
     rebuildList();
 }
 

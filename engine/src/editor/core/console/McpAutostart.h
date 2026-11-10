@@ -5,12 +5,13 @@
 namespace cakery {
 
 class EditorSession;
+class EditorConfig;
 
 class McpAutostart {
 public:
     McpAutostart(int argc, char** argv);
 
-    void startIfConfigured(EditorSession& session) const;
+    void startIfConfigured(EditorSession& session, const EditorConfig& config) const;
 
 private:
     bool m_requested = false;

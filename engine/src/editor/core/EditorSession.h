@@ -65,6 +65,7 @@ public:
                         std::function<void(int, int)> onProgress);
     bool queryBenchmarkComparison(Json& out) const;
     void submitViewportMetrics(ViewportMetrics metrics);
+    void attachInspectorConfig(const Json* inspectors);
     void tick();
     void shutdown();
 

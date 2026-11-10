@@ -26,12 +26,12 @@ McpAutostart::McpAutostart(int argc, char** argv)
     }
 }
 
-void McpAutostart::startIfConfigured(EditorSession& session) const
+void McpAutostart::startIfConfigured(EditorSession& session, const EditorConfig& config) const
 {
     bool autostart = m_requested;
     UInt16 port = m_port;
 
-    const Json& editor = EditorConfig::self().editorJson();
+    const Json& editor = config.editorJson();
     const auto mcpIt = editor.find("mcp");
     if (mcpIt != editor.end() && mcpIt->is_object()) {
         const auto autostartIt = mcpIt->find("autostart");

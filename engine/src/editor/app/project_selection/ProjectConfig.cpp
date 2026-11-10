@@ -24,11 +24,7 @@ QString ProjectEntry::displayDate() const
     return dt.toString("yyyy-MM-dd HH:mm");
 }
 
-ProjectConfig& ProjectConfig::getInstance()
-{
-    static ProjectConfig s_instance;
-    return s_instance;
-}
+ProjectConfig::ProjectConfig() = default;
 
 QString ProjectConfig::configPath() const
 {

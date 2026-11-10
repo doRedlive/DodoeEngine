@@ -10,8 +10,6 @@ namespace cakery {
 
 class EditorConfig {
 public:
-    static EditorConfig& self();
-
     bool load(const String& builtinDir, const String& projectDir = "", const String& userDir = "");
 
     const dodoe::Json& editorJson() const { return m_editor; }
@@ -32,8 +30,6 @@ public:
     void reload();
 
 private:
-    EditorConfig() = default;
-
     String m_builtinDir;
     String m_projectDir;
     String m_userDir;

@@ -246,6 +246,11 @@ BackendCapabilities RuntimeBackend::capabilities() const
     return caps;
 }
 
+void RuntimeBackend::setInspectorConfig(const Json* inspectors)
+{
+    m_inspectorConfig = inspectors;
+}
+
 bool RuntimeBackend::inspectComponent(
     const String& typeName, DynamicArray<InspectorFieldMetadata>& fields) const
 {
@@ -257,7 +262,9 @@ bool RuntimeBackend::inspectComponent(
     }
 
     if (m_fieldAttributes) {
-        m_fieldAttributes->applyTo(meta, typeName);
+        static const Json emptyInspectors = Json::object();
+        m_fieldAttributes->applyTo(meta, typeName,
+                                   m_inspectorConfig ? *m_inspectorConfig : emptyInspectors);
     }
     FieldAccessor* reflectedFields = nullptr;
     const int count = meta.get_field_list(reflectedFields);

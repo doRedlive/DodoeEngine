@@ -21,7 +21,6 @@
 #include "presentation/shell/ShellViewModel.h"
 #include "ui/shell/EditorLayoutController.h"
 #include "ui/common/QtStringInterop.h"
-#include "services/EditorConfig.h"
 #include "ui/common/EditorWorkspaceContext.h"
 #include "ui/common/EditorIcons.h"
 #include "core/document/EditorDocumentModel.h"
@@ -355,14 +354,14 @@ void EditorWindow::createWindowMenu()
     }};
     auto* themeGroup = new QActionGroup(themes);
     themeGroup->setExclusive(true);
-    const String activeTheme = EditorConfig::self().themeName();
+    const String activeTheme = m_context.config().themeName();
     for (const auto& [themeName, themeLabel] : themeChoices) {
         auto* action = themes->addAction(tr(themeLabel));
         action->setCheckable(true);
         action->setChecked(activeTheme == themeName);
         themeGroup->addAction(action);
         connect(action, &QAction::triggered, this, [this, themeName]() {
-            EditorConfig::self().setThemeName(themeName);
+            m_context.config().setThemeName(themeName);
             m_context.theme().apply(String(themeName));
         });
     }
@@ -1003,8 +1002,8 @@ void EditorWindow::createPanels()
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_engineSettingsDock, m_consoleDock->dockAreaWidget());
     m_engineSettingsDock->toggleView(false);
     connect(m_engineSettingsPanel, &SettingsPanel::saved, this, [this]() {
-        EditorConfig::self().reload();
-        m_context.theme().apply(EditorConfig::self().themeName());
+        m_context.config().reload();
+        m_context.theme().apply(m_context.config().themeName());
     });
 
     // Establish the single-Scene authoring layout before the user resizes any dock.
@@ -1231,7 +1230,7 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
             QDir(ToQString(project.rootPath)).filePath(QStringLiteral("app_config.json")));
     }
     if (m_engineSettingsPanel) {
-        m_engineSettingsPanel->setFallback([this]() { return EditorConfig::self().editorJson(); });
+        m_engineSettingsPanel->setFallback([this]() { return m_context.config().editorJson(); });
         m_engineSettingsPanel->setFilePath(
             QDir(ToQString(project.rootPath))
                 .filePath(QStringLiteral("ProjectSettings/Editor/editor.json")));

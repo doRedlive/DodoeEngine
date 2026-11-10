@@ -15,7 +15,9 @@ namespace cakery {
 
 class EditorWindow;
 class EditorWorkspaceContext;
+class EditorConfig;
 class McpAutostart;
+class ProjectConfig;
 class ProjectSelectionController;
 class ThemeController;
 
@@ -45,6 +47,8 @@ private:
     Scope<QTranslator> m_translator;
     Scope<EditorSession> m_session;
     Scope<EditorResourceLocator> m_resources;
+    Scope<EditorConfig> m_config;
+    Scope<ProjectConfig> m_projectConfig;
     Scope<ThemeController> m_theme;
     Scope<EditorWorkspaceContext> m_workspace;
     Scope<ProjectSelectionController> m_projectSelection;

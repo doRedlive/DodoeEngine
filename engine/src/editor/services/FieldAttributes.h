@@ -16,7 +16,7 @@ public:
     FieldAttributeRegistry();
 
     void registerDefaults();
-    void applyTo(dodoe::TypeMeta& meta, const String& typeName);
+    void applyTo(dodoe::TypeMeta& meta, const String& typeName, const dodoe::Json& inspectors);
 
 private:
     struct DefaultAttribute {

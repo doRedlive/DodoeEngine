@@ -8,11 +8,12 @@
 namespace cakery {
 
 class ProjectManagerWindow;
+class ProjectConfig;
 
 class ProjectSelectionController : public QObject {
     Q_OBJECT
 public:
-    explicit ProjectSelectionController(QObject* parent = nullptr);
+    explicit ProjectSelectionController(ProjectConfig& config, QObject* parent = nullptr);
     ~ProjectSelectionController() override;
 
     void show();
@@ -25,6 +26,7 @@ private:
     void ensureWindow();
 
     ProjectManagerWindow* m_window = nullptr;
+    ProjectConfig& m_config;
 };
 
 } // namespace cakery

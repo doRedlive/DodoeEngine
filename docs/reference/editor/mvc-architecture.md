@@ -297,7 +297,7 @@ ViewModel 统一放在 `presentation/`，按面板分子目录；View 继续放�
 - Phase 3：`AssetController`、`ProjectViewModel`、`ProjectPanel` 已解耦。
 - Phase 4：`ShellViewModel`、`EditorLayoutController`、`ThemeController` 已落地；`EditorWindow` 的 Play/Undo/相机/Gizmo/标题/资产进度全部走 ViewModel，主题不再依赖 `qobject_cast<EditorApplication*>`。菜单与工具栏仍由 `EditorWindow` 构建，但只绑定 ViewModel 状态与意图。
 - Phase 5：新增 `DocumentController`、`PlayModeController`、`EditorViewController`、`ToolActionController`、`ScriptWindowController`、`RuntimeController`；`HierarchyViewModel`、`InspectorViewModel`、`ProjectViewModel`、`ShellViewModel` 均已不再依赖 `EditorSession`。`PlayState` 已抽到 `core/PlayState.h`。
-- Phase 6（进行中）：`McpServer`、`ExecutionRecorder`、`AICommandBridge`、`WorkflowLibrary`、`CommandRegistry` 已从单例改为 `EditorSession` 拥有的实例；`FieldAttributeRegistry` 改为 `RuntimeBackend` 拥有的实例。命令、MCP、Workflow、测试均通过 `EditorSession` 访问。剩余单例：`EditorConfig`；错误模型尚未统一。
+- Phase 6：`McpServer`、`ExecutionRecorder`、`AICommandBridge`、`WorkflowLibrary`、`CommandRegistry` 已从单例改为 `EditorSession` 拥有的实例；`FieldAttributeRegistry` 改为 `RuntimeBackend` 拥有的实例。`EditorConfig`、`ProjectConfig` 已去单例,由 `EditorApplication` 组合根持有并注入：`EditorWorkspaceContext::config()` 供面板与 Shell 使用,inspectors 配置经 `EditorSession::attachInspectorConfig` 下发到 backend,UI 图标主题经 `ThemeController` 写入的 `qApp` 属性读取。编辑器侧已无全局单例访问；错误模型尚未统一。
 
 ViewModel 位于 `engine/src/editor/presentation/`，不再放在 `ui/common/`。后续按上表继续推进。
 

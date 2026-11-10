@@ -12,6 +12,7 @@
 #include "core/application/SelectionController.h"
 #include "core/application/ToolActionController.h"
 #include "core/EditorSession.h"
+#include "services/EditorConfig.h"
 #include "services/EditorResourceLocator.h"
 #include "ui/common/ThemeController.h"
 
@@ -24,8 +25,8 @@ namespace cakery {
 class EditorWorkspaceContext {
 public:
     EditorWorkspaceContext(EditorSession& session, EditorResourceLocator& resources,
-                           ThemeController& theme)
-        : m_session(session), m_resources(resources), m_theme(theme),
+                           ThemeController& theme, EditorConfig& config)
+        : m_session(session), m_resources(resources), m_theme(theme), m_config(config),
           m_selection(session.selection()),
           m_documents(session), m_play(session), m_assets(session),
           m_view(session), m_tools(session), m_scriptWindows(session), m_runtime(session) {}
@@ -40,6 +41,8 @@ public:
     const SelectionController& selection() const { return m_selection; }
     ThemeController& theme() { return m_theme; }
     const ThemeController& theme() const { return m_theme; }
+    EditorConfig& config() { return m_config; }
+    const EditorConfig& config() const { return m_config; }
     DocumentController& documents() { return m_documents; }
     const DocumentController& documents() const { return m_documents; }
     PlayModeController& playMode() { return m_play; }
@@ -69,6 +72,7 @@ private:
     EditorSession& m_session;
     EditorResourceLocator& m_resources;
     ThemeController& m_theme;
+    EditorConfig& m_config;
     SelectionController m_selection;
     DocumentController m_documents;
     PlayModeController m_play;

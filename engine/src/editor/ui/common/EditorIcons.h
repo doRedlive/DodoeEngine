@@ -9,8 +9,6 @@
 #include <QPixmap>
 #include <QSize>
 
-#include "services/EditorConfig.h"
-
 namespace cakery {
 
 inline QIcon editorIcon(const QString& fileName)
@@ -20,10 +18,18 @@ inline QIcon editorIcon(const QString& fileName)
     return QIcon(path);
 }
 
+inline QString editorThemeName()
+{
+    const QVariant theme = QApplication::instance()->property("editorTheme");
+    return theme.isValid() && theme.canConvert<QString>()
+        ? theme.toString()
+        : QStringLiteral("cakery-dark");
+}
+
 inline QIcon editorThemedIcon(const QString& fileName)
 {
     const QIcon source = editorIcon(fileName);
-    if (EditorConfig::self().themeName() == "cakery-light") {
+    if (editorThemeName() == QStringLiteral("cakery-light")) {
         return source;
     }
 

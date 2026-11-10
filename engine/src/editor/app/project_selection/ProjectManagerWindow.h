@@ -16,7 +16,7 @@ namespace cakery {
 class ProjectManagerWindow : public QDialog {
     Q_OBJECT
 public:
-    explicit ProjectManagerWindow(QWidget* parent = nullptr);
+    explicit ProjectManagerWindow(ProjectConfig& config, QWidget* parent = nullptr);
 
 signals:
     void onProjectOpened(const QString& projectPath);
@@ -49,6 +49,7 @@ private:
 
     QList<ProjectEntry> m_filtered;
     int m_selectedIndex = -1;
+    ProjectConfig& m_config;
 };
 
 } // namespace cakery

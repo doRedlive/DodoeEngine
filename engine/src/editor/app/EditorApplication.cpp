@@ -8,6 +8,7 @@
 #include "ui/common/EditorWorkspaceContext.h"
 #include "ui/common/ThemeController.h"
 #include "ui/shell/EditorWindow.h"
+#include "app/project_selection/ProjectConfig.h"
 #include "app/project_selection/ProjectSelectionController.h"
 #include "core/console/CommandRegistry.h"
 #include "core/console/McpAutostart.h"
@@ -78,32 +79,36 @@ void EditorApplication::setupResources()
 
     m_resources = create_scope<EditorResourceLocator>(ToDodoeString(builtinEditorDir));
     m_theme = create_scope<ThemeController>(*m_resources);
+    m_config = create_scope<EditorConfig>();
+    m_projectConfig = create_scope<ProjectConfig>();
 }
 
 void EditorApplication::loadConfiguration()
 {
     const QString userEditorDir = QDir(QStandardPaths::writableLocation(
         QStandardPaths::AppDataLocation)).filePath("Editor");
-    EditorConfig::self().load(ToDodoeString(m_resources->packagedRoot().string()), {},
-                              ToDodoeString(userEditorDir));
-    applyTheme(ToQString(EditorConfig::self().themeName()));
+    m_config->load(ToDodoeString(m_resources->packagedRoot().string()), {},
+                   ToDodoeString(userEditorDir));
+    applyTheme(ToQString(m_config->themeName()));
 }
 
 void EditorApplication::setupSession(int argc, char** argv)
 {
     m_session = create_scope<EditorSession>();
+    m_session->attachInspectorConfig(&m_config->inspectorsJson());
     RegisterBuiltinCommands(m_session->commands());
     m_mcpAutostart = create_scope<McpAutostart>(argc, argv);
 }
 
 void EditorApplication::setupWorkspace()
 {
-    m_workspace = create_scope<EditorWorkspaceContext>(*m_session, *m_resources, *m_theme);
+    m_workspace = create_scope<EditorWorkspaceContext>(*m_session, *m_resources, *m_theme,
+                                                       *m_config);
 }
 
 void EditorApplication::setupProjectSelection()
 {
-    m_projectSelection = create_scope<ProjectSelectionController>();
+    m_projectSelection = create_scope<ProjectSelectionController>(*m_projectConfig);
     connect(m_projectSelection.get(), &ProjectSelectionController::projectSelected,
             this, &EditorApplication::onProjectSelected);
 }
@@ -127,6 +132,8 @@ EditorApplication::~EditorApplication()
     m_theme.reset();
     m_session.reset();
     m_resources.reset();
+    m_config.reset();
+    m_projectConfig.reset();
 }
 
 int EditorApplication::run()
@@ -158,7 +165,7 @@ void EditorApplication::onProjectSelected(const QString& projectPath)
         ? projectPath
         : selectedInfo.absolutePath();
     loadProjectConfiguration(projectRoot);
-    applyTheme(ToQString(EditorConfig::self().themeName()));
+    applyTheme(ToQString(m_config->themeName()));
 
     m_editorWindow = new EditorWindow(*m_workspace);
     connect(m_editorWindow, &EditorWindow::returnToProjectManagerRequested,
@@ -171,7 +178,7 @@ void EditorApplication::onProjectSelected(const QString& projectPath)
 
     m_projectSelection->dismiss();
     m_editorWindow->show();
-    m_mcpAutostart->startIfConfigured(*m_session);
+    m_mcpAutostart->startIfConfigured(*m_session, *m_config);
 }
 
 void EditorApplication::loadProjectConfiguration(const QString& projectRoot)
@@ -179,9 +186,9 @@ void EditorApplication::loadProjectConfiguration(const QString& projectRoot)
     const QString projectEditorDir = QDir(projectRoot).filePath("ProjectSettings/Editor");
     const QString userEditorDir = QDir(QStandardPaths::writableLocation(
         QStandardPaths::AppDataLocation)).filePath("Editor");
-    EditorConfig::self().load(ToDodoeString(m_resources->packagedRoot().string()),
-                              ToDodoeString(projectEditorDir),
-                              ToDodoeString(userEditorDir));
+    m_config->load(ToDodoeString(m_resources->packagedRoot().string()),
+                   ToDodoeString(projectEditorDir),
+                   ToDodoeString(userEditorDir));
 }
 
 } // namespace cakery

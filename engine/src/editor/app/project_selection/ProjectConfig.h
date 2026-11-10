@@ -37,7 +37,7 @@ struct ProjectConfigData {
 
 class ProjectConfig {
 public:
-    static ProjectConfig& getInstance();
+    ProjectConfig() = default;
 
     QList<ProjectEntry> projects() const { return m_data.projects; }
     QString lastOpened() const { return m_data.lastOpened; }
@@ -50,7 +50,6 @@ public:
     void setLastSortOption(const QString& option);
 
 private:
-    ProjectConfig() = default;
     QString configPath() const;
 
     ProjectConfigData m_data;

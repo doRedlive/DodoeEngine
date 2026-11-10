@@ -544,6 +544,13 @@ bool EditorSession::dispatchEditorEvent(const String& owner, const String& owner
     return m_backend && m_backend->dispatchEditorEvent(owner, ownerId, controlId, eventName, value);
 }
 
+void EditorSession::attachInspectorConfig(const Json* inspectors)
+{
+    if (m_backend) {
+        m_backend->setInspectorConfig(inspectors);
+    }
+}
+
 bool EditorSession::canEditDocument() const
 {
     return m_documentModel.hasDocument() &&

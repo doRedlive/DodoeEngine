@@ -38,6 +38,7 @@ void ThemeController::apply(const String& themeName)
             styleSheet += QStringLiteral("\n") + QString::fromUtf8(overrideFile.readAll());
         }
     }
+    qApp->setProperty("editorTheme", normalized);
     qApp->setStyleSheet(styleSheet);
 }
 

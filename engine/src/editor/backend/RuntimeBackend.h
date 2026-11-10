@@ -59,6 +59,7 @@ public:
                              const String& controlId, const String& eventName,
                              const Json& value);
     void setEventCallback(std::function<void(const BackendEventMessage&)>);
+    void setInspectorConfig(const Json* inspectors);
 
     bool assetRefreshPending() const;
     void assetRefreshProgress(Size_t& done, Size_t& total) const;
@@ -188,6 +189,7 @@ private:
     bool m_altHeld = false;
     String m_playState = "edit";
     EditorSession* m_session = nullptr;
+    const Json* m_inspectorConfig = nullptr;
     Scope<TilePaintService> m_tilePaint;
     Scope<FieldAttributeRegistry> m_fieldAttributes;
     bool m_tilePaintActive = false;
