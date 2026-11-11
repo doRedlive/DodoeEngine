@@ -516,17 +516,8 @@ namespace dodoe {
             info.setBounds(sprite->getBoundsCenter(), sprite->getBoundsExtents());
         } else {
             const Matrix4f& transform = sprite->getWorldTransform();
-            const Vector3f translation = Vector3f(transform[3]);
-            const Vector3f scale = Vector3f(
-                Math::Length(Vector3f(transform[0])),
-                Math::Length(Vector3f(transform[1])),
-                Math::Length(Vector3f(transform[2]))
-            );
 
             info.setWorldTransform(transform);
-            info.setPosition(Vector2f(translation.x, translation.y));
-            info.setScale(Vector2f(scale.x, scale.y));
-            info.setRotation(0.0f);
             info.setSprite(sprite->getSprite());
             info.setAtlasIndex(sprite->getAtlasIndex());
             info.setUVRect(sprite->getUVMinX(), sprite->getUVMinY(), sprite->getUVMaxX(), sprite->getUVMaxY());
@@ -560,15 +551,7 @@ namespace dodoe {
                 return;
             }
             const Matrix4f& transform = sprite->getWorldTransform();
-            const Vector3f translation = Vector3f(transform[3]);
-            const Vector3f scale = Vector3f(
-                Math::Length(Vector3f(transform[0])),
-                Math::Length(Vector3f(transform[1])),
-                Math::Length(Vector3f(transform[2]))
-            );
             info.setWorldTransform(transform);
-            info.setPosition(Vector2f(translation.x, translation.y));
-            info.setScale(Vector2f(scale.x, scale.y));
         }
     }
 

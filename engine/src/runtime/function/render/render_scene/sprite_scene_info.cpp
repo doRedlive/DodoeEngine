@@ -1,11 +1,28 @@
 // do@Redlive
 
 #include "sprite_scene_info.h"
+#include <cmath>
 
 namespace dodoe {
 
     SpriteSceneInfo::SpriteSceneInfo(const RenderId id)
         : m_id(id) {}
+
+    void SpriteSceneInfo::setWorldTransform(const Matrix4f& transform) {
+        m_world_transform = transform;
+        m_position = Vector2f(transform[3]);
+        const Float sx = std::hypot(transform[0][0], transform[0][1]);
+        if (sx > 1e-8f) {
+            const Float determinant = transform[0][0] * transform[1][1] - transform[1][0] * transform[0][1];
+            m_scale = Vector2f(sx, determinant / sx);
+            // sprite_pass.vert uses a clockwise mat2; preserve the world
+            // transform's rotation and reflection in that convention.
+            m_rotation = -std::atan2(transform[0][1], transform[0][0]);
+        } else {
+            m_scale = Vector2f(0.0f, std::hypot(transform[1][0], transform[1][1]));
+            m_rotation = -std::atan2(-transform[1][0], transform[1][1]);
+        }
+    }
 
     void SpriteSceneInfo::setSprite(const PPtr<Sprite>& sprite) {
         m_sprite = sprite;

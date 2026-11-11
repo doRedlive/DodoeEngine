@@ -65,7 +65,7 @@ namespace dodoe {
         explicit SpriteSceneInfo(RenderId id);
 
         void setRenderObject(const RenderObject* render_object) { m_render_object = render_object; }
-        void setWorldTransform(const Matrix4f& world_transform) { m_world_transform = world_transform; }
+        void setWorldTransform(const Matrix4f& world_transform);
         void setPosition(const Vector2f& position) { m_position = position; }
         void setScale(const Vector2f& scale) { m_scale = scale; }
         void setRotation(Float rotation) { m_rotation = rotation; }

@@ -40,11 +40,7 @@ namespace dodoe {
     }
 
     Vector4f EditorCameraProvider::getBackground() const {
-        auto& registry = GetCameraRegistry();
-        if (registry.active_count > 0) {
-            return registry.cameras[0].background;
-        }
-        return {0.0f, 0.0f, 0.0f, 1.0f};
+        return GetEditorCameraChannel().get<CameraData>().background;
     }
 #endif
 

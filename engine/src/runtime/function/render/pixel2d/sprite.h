@@ -40,6 +40,15 @@ namespace dodoe {
         [[nodiscard]] Float getUVMaxX() const { return m_uv_max_x; }
         [[nodiscard]] Float getUVMaxY() const { return m_uv_max_y; }
         [[nodiscard]] Float getPixelsPerUnit() const { return m_pixels_per_unit; }
+        [[nodiscard]] Vector2f getNaturalSize() const {
+            const auto* texture = m_texture.get();
+            if (!texture || texture->getWidth() <= 0 || texture->getHeight() <= 0) {
+                return Vector2f(1.0f);
+            }
+            const Float ppu = m_pixels_per_unit > 0.0f ? m_pixels_per_unit : kDefaultPixelsPerUnit;
+            return Vector2f((m_uv_max_x - m_uv_min_x) * texture->getWidth() / ppu,
+                            (m_uv_max_y - m_uv_min_y) * texture->getHeight() / ppu);
+        }
         [[nodiscard]] UInt32 getAtlasIndex() const {
             if (auto* tex = m_texture.get()) {
                 if (tex->getDescriptorIndex() >= 0) {

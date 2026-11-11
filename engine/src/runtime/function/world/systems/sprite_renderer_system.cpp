@@ -130,15 +130,7 @@ namespace dodoe {
     }
 
     Vector2f SpriteRendererSystem::computeSpriteNaturalSize(const Sprite* sprite) const {
-        const auto* texture = sprite->getTexture().get();
-        if (!texture || texture->getWidth() <= 0 || texture->getHeight() <= 0) {
-            return Vector2f(1.0f);
-        }
-        const Float ppu = sprite->getPixelsPerUnit() > 0.0f ? sprite->getPixelsPerUnit() : kDefaultPixelsPerUnit;
-        const Float uv_w = sprite->getUVMaxX() - sprite->getUVMinX();
-        const Float uv_h = sprite->getUVMaxY() - sprite->getUVMinY();
-        return Vector2f(uv_w * static_cast<Float>(texture->getWidth()) / ppu,
-                        uv_h * static_cast<Float>(texture->getHeight()) / ppu);
+        return sprite->getNaturalSize();
     }
 
 } // dodoe
