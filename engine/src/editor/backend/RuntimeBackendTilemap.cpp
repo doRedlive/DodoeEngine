@@ -38,6 +38,8 @@ using namespace dodoe;
 
 namespace cakery {
 
+    using dodoe::UUID;
+
 namespace {
 
 const char* TileToolName(TileTool tool)

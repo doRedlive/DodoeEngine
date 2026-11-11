@@ -31,6 +31,8 @@ using namespace dodoe;
 
 namespace cakery {
 
+    using dodoe::UUID;
+
 namespace {
 
 void SyncNativeComponents(Entity entity, const DynamicArray<EditorComponent>& components) {

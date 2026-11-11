@@ -432,7 +432,7 @@ bool RuntimeBackend::queryAssetThumbnail(const String& path, int size,
         return false;
     }
 
-    const UUID assetId(info->uuid);
+    const dodoe::UUID assetId(info->uuid);
     DynamicArray<UInt8> rgba;
     bool generated = false;
     if (info->type == "Mesh") {

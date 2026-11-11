@@ -30,6 +30,8 @@ using namespace dodoe;
 
 namespace cakery {
 
+    using dodoe::UUID;
+
 namespace {
 
 constexpr Float kHandleLength = 1.0f;
@@ -105,7 +107,7 @@ void LoadGizmoPart(EditorGizmoPart& part, const char* file) {
                 if (index_text.empty()) {
                     continue;
                 }
-                const int index = std::atoi(index_text);
+                const int index = std::atoi(index_text.c_str());
                 if (index > 0) {
                     face.push_back(static_cast<UInt32>(index - 1));
                 }

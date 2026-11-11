@@ -7,6 +7,7 @@
 #include "services/AssetDatabase.h"
 #include "services/TilePaintService.h"
 #include "core/bridge/EditorTypes.h"
+#include "core/bridge/EditorCommands.h"
 #include "core/document/EditorDocument.h"
 #include "runtime/core/channel/gizmo_channel.h"
 #include "runtime/core/channel/pick_channel.h"
@@ -139,7 +140,7 @@ private:
     void requestPick(float screenX, float screenY);
     void setSelectedUuid(UInt64 uuid);
     bool importDroppedAsset(const String& assetPath, const Json& position);
-    void setPlayAction(const String& action);
+    void setPlayAction(PlayAction action);
     dodoe::Entity selectedSceneEntity() const;
     dodoe::Entity dragEntityByUuid(UInt64 uuid) const;
     int hitTestGizmo(float screenX, float screenY);

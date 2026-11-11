@@ -55,6 +55,8 @@ using namespace dodoe;
 
 namespace cakery {
 
+    using dodoe::UUID;
+
 namespace {
 
 BackendLogLevel ToBackendLogLevel(LogLevel level)
