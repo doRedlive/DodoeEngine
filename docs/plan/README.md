@@ -11,6 +11,7 @@
 | [Cakery Runtime 交接](cakery-runtime-handoff.md) | [Editor](../reference/editor/editor.md) -> [World](../reference/modules/world.md) -> [Render](../reference/rendering/render.md) -> [UI、Input、Window](../reference/modules/ui-input-window.md) -> [Code Style](../reference/core/code-style.md) |
 | [网络模块](dodoe-network-module.md) | [Core](../reference/core/core.md) -> [World](../reference/modules/world.md) -> [Scripting](../reference/scripting/scripting.md) -> [Code Style](../reference/core/code-style.md) |
 | [Cakery 编辑器后续完善](cakery-editor-followups.md) | [Editor](../reference/editor/editor.md) -> [Resource](../reference/core/resource.md) -> [Code Style](../reference/core/code-style.md) |
+| [ScriptPanel 脚本工作区调研](script-panel-workspace-research.md) | 自动发现全 Assets 脚本、项目目录树、C# 工程上下文与修改生效策略 |
 
 ## Reference 模块
 

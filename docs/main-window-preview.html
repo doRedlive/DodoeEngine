@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cakery Main Window Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --app-bg: #11161d;
+      --shell: #171d25;
+      --toolbar: #1a2029;
+      --panel: #1d242d;
+      --panel-raised: #222a35;
+      --canvas: #090c11;
+      --line: rgba(207, 218, 232, 0.12);
+      --line-strong: rgba(207, 218, 232, 0.2);
+      --text: #edf1f7;
+      --text-soft: #c4ccd8;
+      --muted: #8190a3;
+      --muted-2: #5f6c7d;
+      --purple: #bd93f9;
+      --purple-soft: rgba(189, 147, 249, 0.14);
+      --green: #4fbf8b;
+      --yellow: #f0c36a;
+      --red: #e07070;
+      --shadow: 0 24px 70px rgba(2, 5, 10, 0.42);
+      font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-width: 320px; min-height: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 72% 0%, rgba(189, 147, 249, 0.09), transparent 32%),
+        #0c1117;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+
+    .window {
+      width: min(1600px, 100vw - 36px);
+      height: min(920px, 100vh - 36px);
+      min-height: 620px;
+      display: grid;
+      grid-template-rows: 42px 56px minmax(0, 1fr) 38px;
+      overflow: hidden;
+      background: var(--shell);
+      border: 1px solid rgba(231, 238, 248, 0.13);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .menu-bar,
+    .tool-bar,
+    .status-bar { border-bottom: 1px solid var(--line); }
+
+    .menu-bar {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 12px;
+      background: #141920;
+    }
+
+    .app-mark {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      margin-right: 8px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #d6b7ff, #7c5cd6);
+      color: #282a36;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .menu-item,
+    .window-action,
+    .tool-button,
+    .tab-button,
+    .tree-row,
+    .bottom-tab,
+    .inspector-action {
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .menu-item {
+      height: 28px;
+      padding: 0 11px;
+      border-radius: 6px;
+      color: var(--text-soft);
+    }
+
+    .menu-item:hover,
+    .menu-item[aria-expanded="true"] { background: rgba(255, 255, 255, 0.07); color: var(--text); }
+
+    .menu-spacer { flex: 1; }
+
+    .window-action {
+      width: 32px;
+      height: 28px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .window-action:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+    .window-action.close:hover { background: #bd5361; color: #fff; }
+
+    .menu-popover {
+      position: absolute;
+      z-index: 10;
+      top: 36px;
+      min-width: 178px;
+      padding: 6px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #202732;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .menu-popover[hidden] { display: none; }
+    .menu-popover button { width: 100%; padding: 8px 10px; border: 0; border-radius: 5px; background: transparent; text-align: left; color: var(--text-soft); cursor: pointer; }
+    .menu-popover button:hover { background: var(--purple-soft); color: var(--text); }
+    .menu-wrap { position: relative; }
+
+    .tool-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 14px;
+      background: #1a2028;
+    }
+
+    .brand {
+      min-width: 92px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .brand small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 400; letter-spacing: 0.8px; text-transform: uppercase; }
+    .toolbar-separator { width: 1px; height: 24px; background: var(--line); }
+
+    .runtime-group,
+    .tool-group { display: flex; gap: 5px; align-items: center; }
+
+    .tool-button {
+      min-width: 34px;
+      height: 32px;
+      padding: 0 10px;
+      border-color: var(--line);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--muted);
+    }
+
+    .tool-button:hover { border-color: rgba(189, 147, 249, 0.46); background: rgba(189, 147, 249, 0.1); color: var(--text); }
+    .tool-button[aria-pressed="true"] { border-color: var(--purple); background: var(--purple); color: #282a36; }
+    .runtime-group .tool-button { font-size: 17px; }
+    .runtime-group .tool-button[aria-pressed="true"] { color: #282a36; }
+    .toolbar-spacer { flex: 1; }
+    .project-chip { padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 11px; font-family: Consolas, monospace; }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 252px minmax(0, 1fr) 286px;
+      gap: 12px;
+      padding: 10px 10px 0;
+      background: var(--app-bg);
+    }
+
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 10px 10px 0 0;
+      background: var(--panel);
+    }
+
+    .panel-head {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.018);
+    }
+
+    .panel-title { margin-right: auto; color: var(--text-soft); font-size: 13px; font-weight: 600; }
+    .panel-subtitle { color: var(--muted); font-size: 10px; font-family: Consolas, monospace; }
+
+    .panel-tabs { display: flex; gap: 4px; }
+    .tab-button {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .tab-button:hover { background: rgba(255, 255, 255, 0.05); color: var(--text); }
+    .tab-button.active { background: var(--purple-soft); color: var(--text); box-shadow: inset 0 -2px 0 var(--purple); }
+
+    .panel-body { min-height: 0; flex: 1; overflow: auto; }
+    .left-body { padding: 10px; }
+
+    .search {
+      width: 100%;
+      height: 34px;
+      margin-bottom: 12px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      outline: none;
+      background: #181e26;
+      color: var(--text);
+    }
+    .search::placeholder { color: var(--muted-2); }
+    .search:focus { border-color: var(--purple); box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.12); }
+
+    .tree-section { margin-bottom: 14px; }
+    .tree-label { padding: 6px 8px; color: var(--muted-2); font-size: 10px; letter-spacing: 0.9px; text-transform: uppercase; }
+    .tree-row {
+      width: 100%;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 9px;
+      border-radius: 6px;
+      color: var(--text-soft);
+      text-align: left;
+      font-size: 12px;
+    }
+    .tree-row:hover { background: rgba(255, 255, 255, 0.05); }
+    .tree-row.active { background: var(--purple-soft); color: var(--text); }
+    .tree-row.indent { padding-left: 28px; }
+    .tree-chevron { width: 12px; color: var(--muted); font-size: 10px; }
+    .tree-icon { width: 16px; color: var(--purple); text-align: center; }
+    .tree-icon.green { color: var(--green); }
+    .tree-icon.yellow { color: var(--yellow); }
+    .tree-meta { margin-left: auto; color: var(--muted-2); font-family: Consolas, monospace; font-size: 10px; }
+
+    .project-list { display: grid; gap: 7px; }
+    .project-entry { padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255, 255, 255, 0.025); }
+    .project-entry strong { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500; }
+    .project-entry span { color: var(--muted); font-size: 10px; font-family: Consolas, monospace; }
+
+    .scene-panel { background: #171d25; }
+    .scene-head { min-height: 48px; }
+    .scene-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: #1a2028; }
+    .scene-tools .tool-button { height: 30px; padding: 0 9px; }
+    .tool-label { color: var(--muted); font-size: 10px; letter-spacing: 0.4px; }
+
+    .scene-viewport {
+      min-height: 0;
+      flex: 1;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      position: relative;
+      background:
+        linear-gradient(rgba(189, 147, 249, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(189, 147, 249, 0.055) 1px, transparent 1px),
+        var(--canvas);
+      background-size: 48px 48px;
+    }
+    .scene-viewport::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle, transparent 30%, rgba(4, 6, 10, 0.38) 100%); }
+    .scene-image-frame { position: relative; z-index: 1; width: min(64%, 520px); aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border: 1px solid rgba(189, 147, 249, 0.52); border-radius: 4px; box-shadow: 0 0 0 7px rgba(189, 147, 249, 0.04), 0 18px 40px rgba(0, 0, 0, 0.35); background: #9ab2ef; }
+    .scene-image { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+    .scene-gizmo { position: absolute; z-index: 2; left: 50%; top: 50%; width: 66px; height: 66px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.72; }
+    .scene-gizmo::before, .scene-gizmo::after { content: ""; position: absolute; background: var(--purple); box-shadow: 0 0 8px rgba(189, 147, 249, 0.5); }
+    .scene-gizmo::before { left: 32px; top: 0; width: 2px; height: 66px; }
+    .scene-gizmo::after { left: 0; top: 32px; width: 66px; height: 2px; }
+    .scene-corner { position: absolute; right: 12px; bottom: 10px; z-index: 2; padding: 4px 7px; border: 1px solid var(--line); border-radius: 4px; background: rgba(11, 14, 19, 0.72); color: var(--muted); font-size: 10px; font-family: Consolas, monospace; }
+
+    .inspector-body { padding: 12px; }
+    .inspector-empty { padding: 22px 12px; color: var(--muted); text-align: center; font-size: 12px; }
+    .inspector-selection { display: none; }
+    .inspector-selection.visible { display: block; }
+    .object-title { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid rgba(189, 147, 249, 0.38); border-radius: 7px; background: var(--purple-soft); }
+    .object-icon { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; background: rgba(189, 147, 249, 0.22); color: var(--purple); }
+    .object-title strong { display: block; font-size: 13px; font-weight: 600; }
+    .object-title small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .inspector-section { margin-top: 14px; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+    .inspector-section h3 { margin: 0; padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; }
+    .property { display: grid; grid-template-columns: 1fr 1.05fr; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(207, 218, 232, 0.06); }
+    .property:last-child { border-bottom: 0; }
+    .property label { color: var(--text-soft); font-size: 11px; }
+    .property input, .property select { min-width: 0; height: 28px; padding: 0 7px; border: 1px solid var(--line); border-radius: 5px; background: #181e26; color: var(--text); outline: none; font-size: 11px; }
+    .property input:focus, .property select:focus { border-color: var(--purple); }
+    .inspector-action { width: 100%; height: 30px; margin-top: 12px; border-color: var(--line); border-radius: 6px; background: rgba(255,255,255,0.04); color: var(--text-soft); font-size: 11px; }
+    .inspector-action:hover { border-color: var(--purple); background: var(--purple-soft); color: var(--text); }
+
+    .status-bar { display: flex; align-items: center; gap: 4px; padding: 0 8px; border-top: 1px solid var(--line); border-bottom: 0; background: #171d25; }
+    .bottom-tab { height: 28px; padding: 0 12px; border-radius: 6px; color: var(--muted); font-size: 11px; }
+    .bottom-tab:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+    .bottom-tab.active { background: var(--purple-soft); color: var(--text); }
+    .status-spacer { flex: 1; }
+    .status-item { display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; color: var(--muted); font-size: 10px; font-family: Consolas, monospace; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .status-dot.yellow { background: var(--yellow); }
+    [hidden] { display: none !important; }
+    button:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+    .bottom-drawer { flex: 0 0 138px; overflow: auto; padding: 14px 16px; border-top: 1px solid var(--line); background: #171d25; font: 12px/1.9 Consolas, monospace; color: var(--muted); }
+    .bottom-drawer strong { display: block; color: var(--text-soft); font: 600 12px "Segoe UI", sans-serif; margin-bottom: 8px; }
+    .scene-image-frame { max-height: 90%; }
+
+    @media (max-width: 980px) {
+      body { padding: 0; place-items: stretch; }
+      .window { width: 100vw; height: 100vh; min-height: 560px; border-radius: 0; }
+      .workspace { grid-template-columns: 220px minmax(0, 1fr); }
+      .inspector-panel { display: none; }
+    }
+
+    @media (max-width: 680px) {
+      .menu-bar { overflow-x: auto; flex-shrink: 0; }
+      .menu-wrap, .app-mark { flex-shrink: 0; }
+      .window { grid-template-rows: 42px 54px minmax(0, 1fr) 36px; }
+      .workspace { grid-template-columns: 1fr; padding: 8px; }
+      .left-panel { display: none; }
+      .scene-image-frame { width: min(80%, 420px); }
+      .project-chip { display: none; }
+      .tool-label { display: none; }
+    }
+  </style>
+  <style>
+    /* Expanded editor panels — same palette as the project manager. */
+    .workspace { grid-template-columns: 270px minmax(0,1fr) 350px; gap: 10px; }
+    .panel { border-radius: 10px; margin-bottom: 10px; }
+    .inspector-body { padding: 12px; }
+    .compact { border: 1px solid var(--line); background: #242c37; color: var(--text-soft); border-radius: 5px; padding: 5px 8px; cursor: pointer; font-size: 11px; }
+    .compact:hover { border-color: #72608d; color: var(--text); }
+    .compact:disabled { opacity: .4; cursor: default; }
+    select { font: inherit; color: var(--text-soft); background: #181e26; border: 1px solid var(--line); border-radius: 5px; padding: 5px; }
+    .object-heading { display: flex; align-items: center; gap: 10px; margin: 2px 0 14px; }
+    .object-heading .object-icon { width: 36px; height: 36px; flex-shrink: 0; }
+    .object-heading small { color: var(--muted); font-size: 11px; display: block; padding-top: 4px; }
+    .object-heading input { width: 100%; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; padding: 3px 0; }
+    .component { margin-bottom: 10px; border: 1px solid var(--line); border-radius: 7px; background: #1b222b; overflow: hidden; }
+    .component summary { padding: 11px 10px; background: #222a34; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-soft); }
+    .component summary::marker { color: var(--muted); }
+    .component-content { padding: 6px 10px; }
+    .field { display: grid; grid-template-columns: 68px minmax(0,1fr); align-items: center; gap: 8px; padding: 7px 0; font-size: 11px; color: #a8b3c2; }
+    .field > input, .field > select { min-width: 0; width: 100%; }
+    .field input:not([type=checkbox]):not([type=color]), .vector input { height: 30px; color: var(--text-soft); border: 1px solid var(--line); background: #151b23; border-radius: 5px; padding: 4px 7px; font-size: 11px; width: 100%; min-width: 0; }
+    input:focus-visible, select:focus-visible, summary:focus-visible { outline: 1px solid var(--purple); outline-offset: 1px; }
+    .vector { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; }
+    .vector.two { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .axis { display: flex; align-items: center; background: #151b23; border-radius: 5px; border: 1px solid var(--line); overflow: hidden; }
+    .axis span { font: 10px Consolas,monospace; color: #df818f; padding-left: 6px; }
+    .axis:nth-child(2) span { color: #6eb79c; }
+    .axis:nth-child(3) span { color: #79a8df; }
+    .axis input { border: 0; padding: 4px; appearance: textfield; -moz-appearance: textfield; }
+    .field .axis input { border: 0; padding: 4px; background: transparent; }
+    .axis input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .switch-label { display: inline-flex; gap: 9px; align-items: center; cursor: pointer; justify-self: start; }
+    .switch-label input { appearance: none; width: 30px; height: 17px; margin: 0; background: #354051; border: 1px solid #4a5666; border-radius: 20px; cursor: pointer; position: relative; }
+    .switch-label input::after { content: ''; position: absolute; width: 11px; height: 11px; border-radius: 50%; background: #dbe1eb; left: 2px; top: 2px; }
+    .switch-label input:checked { background: #9a72d0; border-color: var(--purple); }
+    .switch-label input:checked::after { left: 15px; background: #f5efff; }
+    .switch-label span { color: var(--text-soft); }
+    .resource-field { display: flex; min-width: 0; align-items: center; gap: 7px; text-align: left; }
+    .resource-field img { width: 23px; height: 23px; object-fit: cover; border-radius: 3px; }
+    .resource-field span { flex: 1; }
+    .tint { display: flex; align-items: center; gap: 9px; color: var(--muted); font-family: Consolas,monospace; }
+    .tint input { width: 30px; height: 27px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+    .asset-browser { display: flex; flex-direction: column; }
+    .folders { padding: 2px 0 12px; border-bottom: 1px solid var(--line); }
+    .folder-button { display: flex; width: 100%; align-items: center; gap: 9px; padding: 7px 10px 7px 24px; background: transparent; color: var(--text-soft); border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-size: 12px; }
+    .folder-button:first-child { padding-left: 8px; }
+    .folder-button[aria-current=true] { background: var(--purple-soft); border-color: #534562; color: #e8d8ff; }
+    .folder-glyph { display: inline-block; width: 16px; height: 12px; background: #9b8ab5; border-radius: 2px; position: relative; flex-shrink: 0; }
+    .folder-glyph::before { content: ''; position: absolute; width: 7px; height: 3px; left: 0; top: -2px; background: inherit; border-radius: 2px 2px 0 0; }
+    .folder-button small { margin-left: auto; color: var(--muted); font: 10px Consolas,monospace; }
+    .asset-controls { display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 14px 0 10px; }
+    #breadcrumbs { font-size: 11px; color: var(--muted); }
+    #breadcrumbs button { background: transparent; color: var(--text-soft); border: 0; padding: 3px; cursor: pointer; }
+    .asset-filter { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 11px; color: var(--muted); }
+    .asset-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; align-content: start; }
+    .asset-tile { border: 1px solid transparent; border-radius: 7px; padding: 6px; background: transparent; color: var(--text-soft); text-align: left; min-width: 0; cursor: pointer; }
+    .asset-tile:hover { background: #252d38; }
+    .asset-tile[aria-pressed=true] { background: var(--purple-soft); border-color: #9a78c9; }
+    .asset-art { height: 78px; display: grid; place-items: center; background: #161c24; border: 1px solid var(--line); border-radius: 5px; color: #b5a0d3; font: 20px Consolas,monospace; margin-bottom: 7px; overflow: hidden; }
+    .asset-art img { width: 100%; height: 100%; object-fit: contain; }
+    .asset-name { display: block; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .asset-tile small { display: block; color: var(--muted); font-size: 10px; margin-top: 4px; }
+    .asset-grid.list { grid-template-columns: 1fr; gap: 3px; }
+    .asset-grid.list .asset-tile { display: grid; grid-template-columns: 32px 1fr; column-gap: 9px; }
+    .asset-grid.list .asset-art { grid-row: span 2; height: 32px; margin: 0; font-size: 13px; }
+    .asset-selection { margin-top: auto; padding: 16px 2px 4px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+    .empty-message { color: var(--muted); font-size: 12px; padding: 14px 4px; }
+    .asset-preview { background: #141a22; border-radius: 6px; margin-bottom: 16px; padding: 12px; text-align: center; }
+    .asset-preview img { max-width: 100%; max-height: 200px; border-radius: 3px; }
+    .asset-path { font: 11px/1.7 Consolas,monospace; color: var(--muted); overflow-wrap: anywhere; }
+    dialog { width: 380px; max-width: calc(100vw - 32px); border: 1px solid #485165; border-radius: 12px; padding: 18px; color: var(--text); background: #1c232d; box-shadow: 0 20px 80px #0009; }
+    dialog::backdrop { background: #080c1488; }
+    .dialog-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-size: 14px; }
+    .picker-choice { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--line); background: #222a35; color: var(--text-soft); border-radius: 6px; margin-bottom: 6px; cursor: pointer; }
+    .picker-choice img { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; }
+    .picker-choice:hover { border-color: var(--purple); background: #30283d; }
+    .bottom-drawer { flex: 0 0 220px; padding: 0; display: flex; flex-direction: column; min-height: 120px; }
+    .drawer-tools { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 8px 10px; border-bottom: 1px solid var(--line); font: 11px "Segoe UI",sans-serif; }
+    .drawer-tools .search { margin: 0; width: 130px; flex: 1; min-width: 80px; height: 28px; font-size: 11px; }
+    .drawer-tools strong { margin: 0 auto 0 0; font-size: 12px; }
+    .drawer-content { overflow: auto; min-height: 0; flex: 1; }
+    .log-row { display: grid; grid-template-columns: 61px 14px 1fr; gap: 8px; width: 100%; padding: 5px 12px; text-align: left; border: 0; border-bottom: 1px solid #ffffff05; background: transparent; color: var(--text-soft); font: 11px/1.6 Consolas,monospace; cursor: pointer; }
+    .log-row:hover, .log-row[aria-pressed=true] { background: #2c2538; }
+    .log-row time { color: var(--muted); }
+    .severity.info { color: #8baed6; } .severity.warning { color: var(--yellow); } .severity.error { color: var(--red); }
+    .log-detail { padding: 7px 12px; font: 11px/1.5 Consolas,monospace; color: #af9dca; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+    .history-row { display: flex; width: 100%; gap: 10px; text-align: left; padding: 7px 12px; border: 0; border-bottom: 1px solid #ffffff05; background: transparent; color: var(--text-soft); cursor: pointer; font: 11px/1.6 "Segoe UI",sans-serif; }
+    .history-row[aria-current=true] { background: var(--purple-soft); color: #e8d8ff; }
+    .history-row.undone { opacity: .4; }
+    .history-row small { margin-left: auto; color: var(--muted); }
+    .terminal-output { padding: 8px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.8 Consolas,monospace; color: #b1bccb; }
+    .terminal-form { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-top: 1px solid var(--line); }
+    .terminal-form label { color: var(--purple); font: 11px Consolas,monospace; }
+    .terminal-form input { min-width: 0; flex: 1; background: transparent; border: 0; color: var(--text); font: 12px Consolas,monospace; padding: 5px; }
+    .preview-badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line); padding: 3px 7px; border-radius: 4px; }
+    .panel-body, .drawer-content { scrollbar-width: thin; scrollbar-color: #424b5b transparent; }
+    .scene-viewport { min-height: 160px; }
+    .scene-image-frame { width: auto; max-width: 78%; height: 74%; max-height: 340px; }
+    @media (max-width: 1200px) and (min-width: 981px) { .workspace { grid-template-columns: 225px minmax(0,1fr) 310px; } .field { grid-template-columns: 58px minmax(0,1fr); gap: 4px; } .component-content { padding: 6px 8px; } }
+    @media (max-width: 980px) { .window { height: auto; min-height: 100vh; } .workspace { grid-template-columns: minmax(200px, .8fr) minmax(300px,1.2fr); } .inspector-panel { display: flex; grid-column: 2; grid-row: 1 / span 2; } .scene-panel { grid-column: 1; min-height: 450px; } .left-panel { min-height: 450px; } }
+    @media (max-width: 680px) { .workspace { display: flex; flex-direction: column; } .left-panel { display: flex; max-height: 600px; } .inspector-panel { display: flex; } .scene-panel { height: 550px; flex: none; } .status-bar { flex-wrap: wrap; height: auto; } .window { grid-template-rows: 42px 54px 1fr auto; } }
+  </style>
+</head>
+<body>
+  <main class="window" aria-label="Cakery editor main window">
+    <nav class="menu-bar" aria-label="Application menu">
+      <div class="app-mark" aria-hidden="true">C</div>
+      <div class="menu-wrap">
+        <button class="menu-item" type="button" aria-expanded="false">File</button>
+        <div class="menu-popover" hidden>
+          <button type="button">New Scene</button>
+          <button type="button">Open Scene…</button>
+          <button type="button">Save Scene</button>
+        </div>
+      </div>
+      <div class="menu-wrap"><button class="menu-item" type="button" aria-expanded="false">Edit</button><div class="menu-popover" hidden><button type="button">Undo</button><button type="button">Redo</button><button type="button">Preferences</button></div></div>
+      <div class="menu-wrap"><button class="menu-item" type="button" aria-expanded="false">Runtime</button><div class="menu-popover" hidden><button type="button">Run Project</button><button type="button">Pause</button><button type="button">Stop</button></div></div>
+      <div class="menu-wrap"><button class="menu-item" type="button" aria-expanded="false">Settings</button><div class="menu-popover" hidden><button type="button">Project Settings</button><button type="button">Engine Settings</button></div></div>
+      <div class="menu-wrap"><button class="menu-item" type="button" aria-expanded="false">Tools</button><div class="menu-popover" hidden><button type="button">Asset Database</button><button type="button">Workflow</button></div></div>
+      <div class="menu-wrap"><button class="menu-item" type="button" aria-expanded="false">Window</button><div class="menu-popover" hidden><button type="button">Reset Layout</button><button type="button">Project Manager</button></div></div>
+      <div class="menu-spacer"></div>
+      <button class="window-action" type="button" aria-label="Minimize">−</button>
+      <button class="window-action" type="button" aria-label="Maximize">↗</button>
+      <button class="window-action close" type="button" aria-label="Close">×</button>
+    </nav>
+
+    <header class="tool-bar">
+      <div class="brand">Cakery<small>Editor workspace</small></div>
+      <div class="toolbar-separator"></div>
+      <div class="runtime-group" aria-label="Runtime controls">
+        <button class="tool-button" type="button" data-runtime="play" aria-label="Play" aria-pressed="false">▶</button>
+        <button class="tool-button" type="button" data-runtime="pause" aria-label="Pause" aria-pressed="false">Ⅱ</button>
+        <button class="tool-button" type="button" data-runtime="stop" aria-label="Stop" aria-pressed="false">■</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <div class="project-chip">OnlyOne · Sandbox · D3D12</div>
+      <div class="tool-group">
+        <button class="tool-button" type="button" data-tooltip="Toggle grid">▦</button>
+        <button class="tool-button" type="button" data-tooltip="Open project settings">⚙</button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="panel left-panel" aria-label="Hierarchy and project panel">
+        <div class="panel-head">
+          <div class="panel-tabs" role="tablist" aria-label="Left panel tabs">
+            <button class="tab-button" type="button" role="tab" aria-selected="false" data-left-tab="hierarchy">Hierarchy</button>
+            <button class="tab-button active" type="button" role="tab" aria-selected="true" data-left-tab="project">Project</button>
+          </div>
+        </div>
+        <div class="panel-body left-body" data-left-panel="hierarchy" hidden>
+          <input class="search" type="search" placeholder="Search hierarchy…" aria-label="Search hierarchy">
+          <div class="tree-section">
+            <div class="tree-label">Scene · Gameplay</div>
+            <button class="tree-row active" type="button" data-object="Gameplay"><span class="tree-chevron">⌄</span><span class="tree-icon">◆</span><span>Gameplay</span><span class="tree-meta">Scene</span></button>
+            <button class="tree-row indent" type="button" data-object="Player"><span class="tree-chevron">⌄</span><span class="tree-icon green">●</span><span>Player</span></button>
+            <button class="tree-row indent" type="button" data-object="Camera2D"><span class="tree-chevron">·</span><span class="tree-icon">◉</span><span>Camera2D</span></button>
+            <button class="tree-row indent" type="button" data-object="World"><span class="tree-chevron">⌄</span><span class="tree-icon yellow">◆</span><span>World</span></button>
+            <button class="tree-row" type="button" data-object="UI"><span class="tree-chevron">›</span><span class="tree-icon">▣</span><span>UI</span><span class="tree-meta">Canvas</span></button>
+          </div>
+          <div class="tree-section">
+            <div class="tree-label">Scene files</div>
+            <button class="tree-row" type="button" data-object="Main"><span class="tree-chevron">·</span><span class="tree-icon">◫</span><span>Main.doscn</span></button>
+          </div>
+        </div>
+        <div class="panel-body left-body asset-browser" data-left-panel="project">
+          <input class="search" type="search" placeholder="Search assets…" aria-label="Search assets">
+          <nav class="folders" aria-label="Asset folders" id="folders"></nav>
+          <div class="asset-controls"><nav id="breadcrumbs" aria-label="Asset path"></nav><button class="compact" id="asset-view" aria-label="Switch to list view" aria-pressed="false">☷</button></div>
+          <div class="asset-filter"><select id="asset-type" aria-label="Asset type"><option value="all">All types</option><option>Texture</option><option>Script</option><option>Scene</option></select><span id="asset-count"></span></div>
+          <div id="assets" class="asset-grid"></div>
+          <p class="empty-message" id="asset-empty" hidden>No matching assets.</p>
+          <div class="asset-selection" id="asset-selection">Select an asset to inspect</div>
+        </div>
+      </aside>
+
+      <section class="panel scene-panel" aria-label="Scene workspace">
+        <div class="panel-head scene-head">
+          <div class="panel-title">Scene</div>
+          <div class="panel-subtitle">Gameplay.doscn</div>
+          <button class="tool-button" type="button" aria-label="Scene menu">⋯</button>
+        </div>
+        <div class="scene-tools" aria-label="Scene tools">
+          <button class="tool-button" type="button" data-scene-tool="select" aria-label="Select tool" aria-pressed="true">▣</button>
+          <button class="tool-button" type="button" data-scene-tool="pan" aria-label="Pan tool" aria-pressed="false">✋</button>
+          <button class="tool-button" type="button" data-scene-tool="move" aria-label="Move tool" aria-pressed="false">↗</button>
+          <button class="tool-button" type="button" data-scene-tool="rotate" aria-label="Rotate tool" aria-pressed="false">⟳</button>
+          <button class="tool-button" type="button" data-scene-tool="scale" aria-label="Scale tool" aria-pressed="false">⌗</button>
+          <div class="toolbar-separator"></div>
+          <span class="tool-label">T</span><button class="tool-button" type="button">0.250</button>
+          <span class="tool-label">R</span><button class="tool-button" type="button">15.000</button>
+          <span class="tool-label">S</span><button class="tool-button" type="button">0.100</button>
+          <div class="toolbar-spacer"></div>
+          <button class="tool-button" type="button">2D</button>
+        </div>
+        <div class="scene-viewport">
+          <div class="scene-image-frame">
+            <img class="scene-image" src="../tests/Projects/OnlyOne/Assets/Pictures/grm.jpg" alt="OnlyOne scene preview">
+            <div class="scene-gizmo" aria-hidden="true"></div>
+          </div>
+          <div class="scene-corner">66 FPS · 1600 × 900</div>
+        </div>
+        <div class="bottom-drawer" data-bottom-drawer hidden></div>
+      </section>
+
+      <aside class="panel inspector-panel" aria-label="Inspector panel">
+        <div class="panel-head"><div class="panel-title">Inspector</div><button class="compact" id="return-object" title="Inspect selected GameObject">◆ Object</button></div>
+        <div class="panel-body inspector-body" id="inspector"></div>
+      </aside>
+    </section>
+
+    <footer class="status-bar" aria-label="Bottom panels">
+      <button class="bottom-tab" type="button" data-bottom-tab="console" aria-expanded="false">Console</button>
+      <button class="bottom-tab" type="button" data-bottom-tab="history" aria-expanded="false">History</button>
+      <button class="bottom-tab" type="button" data-bottom-tab="terminal" aria-expanded="false">Terminal</button>
+      <div class="status-spacer"></div>
+      <div class="status-item"><span class="status-dot"></span>Ready</div>
+      <div class="status-item"><span class="status-dot yellow"></span>0 warnings</div>
+    </footer>
+  </main>
+  <dialog id="picker"><div class="dialog-heading"><strong id="picker-title"></strong><button class="compact" id="close-picker" aria-label="Close dialog">×</button></div><input class="search" id="picker-search" aria-label="Filter choices" placeholder="Search…"><div id="picker-items"></div></dialog>
+
+  <script>
+    const menuButtons = document.querySelectorAll('.menu-item');
+    menuButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const popover = button.nextElementSibling;
+        const isOpen = button.getAttribute('aria-expanded') === 'true';
+        document.querySelectorAll('.menu-item').forEach((other) => {
+          other.setAttribute('aria-expanded', 'false');
+          if (other.nextElementSibling) other.nextElementSibling.hidden = true;
+        });
+        button.setAttribute('aria-expanded', String(!isOpen));
+        popover.hidden = isOpen;
+      });
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.menu-wrap')) {
+        document.querySelectorAll('.menu-item').forEach((button) => {
+          button.setAttribute('aria-expanded', 'false');
+          if (button.nextElementSibling) button.nextElementSibling.hidden = true;
+        });
+      }
+    });
+
+    document.querySelectorAll('[data-runtime]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.runtime;
+        document.querySelectorAll('[data-runtime]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
+        if (action !== 'stop') button.setAttribute('aria-pressed', 'true');
+        document.querySelector('.status-item').lastChild.textContent = action === 'play' ? 'Running' : action === 'pause' ? 'Paused' : 'Ready';
+      });
+    });
+
+    document.querySelectorAll('[data-left-tab]').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const active = tab.dataset.leftTab;
+        document.querySelectorAll('[data-left-tab]').forEach((other) => {
+          const selected = other === tab;
+          other.classList.toggle('active', selected);
+          other.setAttribute('aria-selected', String(selected));
+        });
+        document.querySelectorAll('[data-left-panel]').forEach((panel) => { panel.hidden = panel.dataset.leftPanel !== active; });
+      });
+    });
+
+    document.querySelectorAll('[data-scene-tool]').forEach((tool) => {
+      tool.addEventListener('click', () => {
+        document.querySelectorAll('[data-scene-tool]').forEach((other) => other.setAttribute('aria-pressed', String(other === tool)));
+      });
+    });
+
+    document.querySelector('[aria-label="Search hierarchy"]').addEventListener('input', (event) => {
+      const query = event.target.value.toLowerCase().trim();
+      document.querySelectorAll('[data-object]').forEach(row => { row.hidden = !row.dataset.object.toLowerCase().includes(query); });
+    });
+    document.addEventListener('pointerdown', (event) => {
+      if (!event.target.closest('input, select, button') && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') document.querySelectorAll('.menu-item').forEach(button => {
+        button.setAttribute('aria-expanded', 'false');
+        button.nextElementSibling.hidden = true;
+      });
+    });
+    document.querySelector('[aria-label="Maximize"]').addEventListener('click', () => {
+      const editor = document.querySelector('.window');
+      const expanded = editor.dataset.expanded !== 'true';
+      editor.dataset.expanded = String(expanded);
+      editor.style.width = expanded ? '100vw' : '';
+      editor.style.height = expanded ? '100vh' : '';
+      editor.style.borderRadius = expanded ? '0' : '';
+      document.body.style.padding = expanded ? '0' : '';
+    });
+  </script>
+  <script>
+  (() => {
+    const $ = selector => document.querySelector(selector);
+    const $$ = selector => [...document.querySelectorAll(selector)];
+    const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const imagePath = '../tests/Projects/OnlyOne/Assets/Pictures/grm.jpg';
+    const assets = [
+      {name:'grm.jpg', folder:'Pictures', type:'Texture', image:imagePath},
+      {name:'ModelTest.doscn', folder:'Scenes', type:'Scene'},
+      {name:'PlayerController.cs', folder:'Scripts', type:'Script'},
+      {name:'CameraFollow.cs', folder:'Scripts', type:'Script'},
+      {name:'EnemyController.cs', folder:'Scripts', type:'Script'},
+      {name:'EnemySpawner.cs', folder:'Scripts', type:'Script'},
+      {name:'Heart.png', folder:'textures', type:'Texture', image:'../tests/Projects/OnlyOne/Assets/textures/UI/Heart.png'},
+      {name:'title-screen.png', folder:'textures', type:'Texture', image:'../tests/Projects/OnlyOne/Assets/textures/UI/title-screen.png'}
+    ];
+    const objects = {};
+    $$('[data-object]').forEach(row => {
+      const id = row.dataset.object;
+      objects[id] = {name:id, tag:'default', active:true, position:[0,0,0], rotation:[0,0,0], scale:[1,1,1], flip:false, pivot:[0,0], depth:0, color:'#ffffff', sprite:'grm.jpg', extras:[]};
+    });
+    let selectedObject = 'Player', selectedAsset = null, folder = 'Assets', listView = false;
+    let activeBottom = '', logLevel = 'all', logSearch = '', logSelected = -1;
+    const logs = [
+      {time:'16:38:00', level:'info', message:'OnlyOne workspace opened.', detail:'Editor / Project · OnlyOne'},
+      {time:'16:38:01', level:'info', message:'Scene ready. Select an object to inspect.', detail:'Editor / Scene · Gameplay'},
+      {time:'16:38:01', level:'info', message:'Texture available: grm.jpg', detail:'Assets / Pictures / grm.jpg'}
+    ];
+    const snapshot = () => JSON.stringify(objects);
+    const history = [{label:'Opened scene', detail:'Gameplay', state:snapshot()}];
+    let historyIndex = 0;
+    let terminalLines = ['Cakery · Preview terminal', 'Local demo commands only. Type help to see available commands.'];
+    const commandHistory = []; let commandIndex = 0;
+    const now = () => new Date().toLocaleTimeString('en-GB', {hour12:false});
+    function log(message, level='info', detail='Editor / Preview') {
+      logs.push({time:now(), message, level, detail});
+      $('.status-item:last-child').lastChild.textContent = `${logs.filter(item=>item.level==='warning').length} warnings`;
+      if(activeBottom==='console') renderLogRows();
+    }
+    function record(label, detail=objects[selectedObject].name) {
+      history.splice(historyIndex+1);
+      history.push({label, detail, state:snapshot()}); historyIndex=history.length-1;
+      log(label, 'info', detail);
+      if(activeBottom==='history') renderHistory();
+    }
+    function restore(index) {
+      historyIndex=Math.max(0,Math.min(index,history.length-1));
+      Object.assign(objects,JSON.parse(history[historyIndex].state));
+      renderInspector(); syncScene();
+      log(`History restored: ${history[historyIndex].label}`);
+      if(activeBottom==='history') renderHistory();
+    }
+    const field = (name, content) => `<div class="field"><span>${name}</span>${content}</div>`;
+    function vector(name, key, values) {
+      return field(name,`<div class="vector ${values.length===2?'two':''}">${values.map((value,index)=>`<label class="axis"><span>${'XYZ'[index]}</span><input type="number" step="0.1" value="${value}" aria-label="${name} ${'XYZ'[index]}" data-property="${key}" data-axis="${index}"></label>`).join('')}</div>`);
+    }
+    const toggle = (name,key,checked) => field(name,`<label class="switch-label"><input type="checkbox" aria-label="${name}" data-property="${key}" ${checked?'checked':''}><span>${checked?'On':'Off'}</span></label>`);
+    const component = (name,content) => `<details class="component" open data-component="${name}"><summary>${name}</summary><div class="component-content">${content}</div></details>`;
+    function renderInspector() {
+      const host=$('#inspector');
+      if(selectedAsset) {
+        const asset=selectedAsset;
+        host.innerHTML=`<div class="object-heading"><span class="object-icon">${asset.type==='Script'?'C#':'▧'}</span><div><b>${esc(asset.name)}</b><small>${asset.type}</small></div></div>${asset.image?`<div class="asset-preview"><img src="${asset.image}" alt="${esc(asset.name)} preview"></div>`:''}<div class="asset-path">Assets / ${asset.folder} / ${esc(asset.name)}</div>${component('Asset',field('Type',`<span>${asset.type}</span>`)+field('Name',`<span>${esc(asset.name)}</span>`))}<button class="inspector-action" id="asset-back">← Back to ${esc(objects[selectedObject].name)}</button>`;
+        $('#asset-back').onclick=()=>{selectedAsset=null;renderInspector();renderAssets();};
+        return;
+      }
+      const obj=objects[selectedObject];
+      host.innerHTML=`<div class="object-heading"><span class="object-icon">◆</span><div style="min-width:0;flex:1"><input aria-label="Object name" data-property="name" value="${esc(obj.name)}"><small>GameObject · ${obj.active?'Active':'Inactive'}</small></div></div>
+        <input class="search" id="property-filter" type="search" placeholder="Filter properties…" aria-label="Filter properties">
+        ${component('Tag',field('Tag',`<input aria-label="Tag" data-property="tag" value="${esc(obj.tag)}">`))}
+        ${component('Transform',vector('Position','position',obj.position)+vector('Rotation','rotation',obj.rotation)+vector('Scale','scale',obj.scale))}
+        ${component('Active',toggle('Active Self','active',obj.active))}
+        ${component('SpriteRenderer',field('Sprite',`<button class="compact resource-field" id="choose-sprite"><img src="${assets.find(a=>a.name===obj.sprite)?.image||imagePath}" alt=""><span>${esc(obj.sprite.replace(/\.[^.]+$/,''))}</span>⌕</button>`)+toggle('Flip','flip',obj.flip)+vector('Pivot','pivot',obj.pivot)+field('Depth',`<input type="number" step="0.1" aria-label="Depth" data-property="depth" value="${obj.depth}">`)+field('Color',`<label class="tint"><input type="color" aria-label="Sprite color" data-property="color" value="${obj.color}"><span>${obj.color.toUpperCase()}</span></label>`))}
+        ${obj.extras.map(extra=>component(extra,`<p class="asset-path">${extra} attached.</p><button class="compact" data-remove="${extra}">Remove component</button>`)).join('')}
+        <p class="empty-message" id="property-empty" hidden>No matching properties.</p>
+        <button class="inspector-action" id="add-component">＋ Add Component</button>`;
+      $('#property-filter').oninput=event=>{
+        const query=event.target.value.toLowerCase().trim(); let visible=0;
+        $$('#inspector .component').forEach(section=>{
+          section.hidden=!section.textContent.toLowerCase().includes(query);
+          if(!section.hidden) {visible++;if(query)section.open=true;}
+        }); $('#property-empty').hidden=visible!==0;
+      };
+      $$('[data-property]').forEach(input=>input.onchange=()=>{
+        const key=input.dataset.property;
+        let value=input.type==='checkbox'?input.checked:input.type==='number'?Number(input.value):input.value;
+        if(input.type==='number' && (!Number.isFinite(value)||input.value==='')) {renderInspector();return;}
+        if(key==='name') value=value.trim()||obj.name;
+        if(input.dataset.axis!==undefined) obj[key][Number(input.dataset.axis)]=value;
+        else obj[key]=value;
+        if(input.type==='checkbox') input.nextElementSibling.textContent=value?'On':'Off';
+        if(input.type==='color') input.nextElementSibling.textContent=value.toUpperCase();
+        record(`Changed ${key}${input.dataset.axis!==undefined?' '+ 'XYZ'[Number(input.dataset.axis)]:''}`);
+        syncScene();
+      });
+      $('#choose-sprite').onclick=()=>openPicker('Select Sprite', assets.filter(a=>a.type==='Texture').map(a=>({name:a.name,image:a.image})), name=>{obj.sprite=name;record('Assigned sprite');renderInspector();syncScene();});
+      $('#add-component').onclick=()=>openPicker('Add Component',['Camera','Rigidbody2D','BoxCollider2D','AudioSource','Script'].filter(name=>!obj.extras.includes(name)).map(name=>({name})),name=>{obj.extras.push(name);record(`Added ${name}`);renderInspector();});
+      $$('[data-remove]').forEach(button=>button.onclick=()=>{obj.extras=obj.extras.filter(name=>name!==button.dataset.remove);record(`Removed ${button.dataset.remove}`);renderInspector();});
+    }
+    function syncScene() {
+      const obj=objects[selectedObject], img=$('.scene-image');
+      img.src=assets.find(asset=>asset.name===obj.sprite)?.image||imagePath;
+      img.style.visibility=obj.active?'visible':'hidden';
+      img.style.transform=`translate(${obj.position[0]*10}px,${-obj.position[1]*10}px) rotate(${obj.rotation[2]}deg) scale(${obj.scale[0]*(obj.flip?-1:1)},${obj.scale[1]})`;
+      $$('[data-object]').forEach(row=>{
+        row.classList.toggle('active', row.dataset.object===selectedObject);
+        row.querySelector('span:nth-child(3)').textContent=objects[row.dataset.object].name;
+      });
+    }
+    function chooseObject(id) {selectedObject=id;selectedAsset=null;renderInspector();syncScene();renderAssets();}
+    $$('[data-object]').forEach(row=>row.onclick=()=>chooseObject(row.dataset.object));
+    $('#return-object').onclick=()=>chooseObject(selectedObject);
+    $('.scene-image-frame').onclick=()=>chooseObject(selectedObject);
+    function openPicker(title,items,onPick) {
+      const picker=$('#picker'); $('#picker-title').textContent=title; $('#picker-search').value='';
+      function draw() {
+        const query=$('#picker-search').value.toLowerCase();
+        $('#picker-items').innerHTML='';
+        items.filter(item=>item.name.toLowerCase().includes(query)).forEach(item=>{
+          const button=document.createElement('button');button.className='picker-choice';button.type='button';
+          button.innerHTML=`${item.image?`<img alt="" src="${item.image}">`:'＋'} <span>${esc(item.name)}</span>`;
+          button.onclick=()=>{picker.close();onPick(item.name);};$('#picker-items').append(button);
+        });
+        if(!$('#picker-items').children.length) $('#picker-items').textContent='No matching items.';
+      }
+      $('#picker-search').oninput=draw;draw();picker.showModal();$('#picker-search').focus();
+    }
+    $('#close-picker').onclick=()=>$('#picker').close();
+    function renderAssets() {
+      const query=$('[aria-label="Search assets"]').value.toLowerCase().trim(), type=$('#asset-type').value;
+      const visible=assets.filter(a=>(query||folder==='Assets'||a.folder===folder)&&a.name.toLowerCase().includes(query)&&(type==='all'||a.type===type));
+      $('#folders').innerHTML=['Assets','Pictures','Scenes','Scripts','textures'].map(name=>`<button class="folder-button" data-folder="${name}" aria-current="${name===folder}"><span class="folder-glyph" aria-hidden="true"></span>${name}<small>${name==='Assets'?assets.length:assets.filter(a=>a.folder===name).length}</small></button>`).join('');
+      $$('[data-folder]').forEach(button=>button.onclick=()=>{folder=button.dataset.folder;$('[aria-label="Search assets"]').value='';renderAssets();});
+      $('#breadcrumbs').innerHTML=`<button id="asset-root">Assets</button>${folder!=='Assets'?` / ${folder}`:''}`;
+      $('#asset-root').onclick=()=>{folder='Assets';renderAssets();};
+      $('#asset-count').textContent=`${visible.length} items`;
+      $('#assets').classList.toggle('list',listView);
+      $('#assets').innerHTML=visible.map(a=>`<button class="asset-tile" data-asset="${a.name}" aria-pressed="${selectedAsset===a}" title="Assets/${a.folder}/${a.name}"><span class="asset-art">${a.image?`<img src="${a.image}" alt="">`:a.type==='Script'?'C#':'◫'}</span><span class="asset-name">${a.name}</span><small>${a.type}</small></button>`).join('');
+      $('#asset-empty').hidden=visible.length>0;
+      $$('[data-asset]').forEach(button=>button.onclick=()=>{selectedAsset=assets.find(a=>a.name===button.dataset.asset);renderInspector();renderAssets();});
+      $('#asset-selection').textContent=selectedAsset?`Assets / ${selectedAsset.folder} / ${selectedAsset.name}`:'Select an asset to inspect';
+    }
+    $('#asset-view').onclick=()=>{listView=!listView;$('#asset-view').setAttribute('aria-pressed',String(listView));$('#asset-view').setAttribute('aria-label',listView?'Switch to grid view':'Switch to list view');$('#asset-view').textContent=listView?'▦':'☷';renderAssets();};
+    $('#asset-type').onchange=renderAssets;
+    $('[aria-label="Search assets"]').oninput=renderAssets;
+    const drawer=$('[data-bottom-drawer]');
+    function showBottom(name) {
+      activeBottom=name;
+      drawer.hidden=!name;
+      $$('[data-bottom-tab]').forEach(tab=>{const active=tab.dataset.bottomTab===name;tab.classList.toggle('active',active);tab.setAttribute('aria-expanded',String(active));});
+      if(name==='console') {
+        drawer.innerHTML=`<div class="drawer-tools"><strong>Console</strong><input class="search" id="log-search" aria-label="Search logs" placeholder="Filter messages…" value="${esc(logSearch)}"><select id="log-level" aria-label="Log severity"><option value="all">All levels</option><option value="info">Info</option><option value="warning">Warning</option><option value="error">Error</option></select><button class="compact" id="clear-logs">Clear</button><button class="compact" data-close-bottom aria-label="Collapse Console">×</button></div><div class="drawer-content" id="log-rows"></div><div class="log-detail" id="log-detail">Select a message to view details</div>`;
+        $('#log-level').value=logLevel;
+        $('#log-search').oninput=e=>{logSearch=e.target.value;renderLogRows();};
+        $('#log-level').onchange=e=>{logLevel=e.target.value;renderLogRows();};
+        $('#clear-logs').onclick=()=>{logs.length=0;logSelected=-1;renderLogRows();};renderLogRows();
+      } else if(name==='history') renderHistory();
+      else if(name==='terminal') {
+        drawer.innerHTML=`<div class="drawer-tools"><strong>Terminal</strong><span class="preview-badge">Local demo</span><button class="compact" id="clear-terminal">Clear</button><button class="compact" data-close-bottom aria-label="Collapse Terminal">×</button></div><div class="drawer-content terminal-output" id="terminal-output"></div><form class="terminal-form" id="terminal-form"><label for="terminal-command">OnlyOne ❯</label><input id="terminal-command" autocomplete="off" spellcheck="false" placeholder="help"><button class="compact" type="submit">Run</button></form>`;
+        $('#clear-terminal').onclick=()=>{terminalLines=[];renderTerminal();};
+        $('#terminal-form').onsubmit=e=>{e.preventDefault();const input=$('#terminal-command'),line=input.value.trim();if(!line)return;input.value='';commandHistory.push(line);commandIndex=commandHistory.length;runCommand(line);renderTerminal();};
+        $('#terminal-command').onkeydown=e=>{if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();commandIndex=Math.max(0,Math.min(commandHistory.length,commandIndex+(e.key==='ArrowUp'?-1:1)));e.target.value=commandHistory[commandIndex]||'';}};
+        renderTerminal();
+      }
+      if($('[data-close-bottom]')) $('[data-close-bottom]').onclick=()=>showBottom('');
+    }
+    function renderLogRows() {
+      if(!$('#log-rows'))return;
+      const visible=logs.map((item,index)=>({...item,index})).filter(item=>(logLevel==='all'||item.level===logLevel)&&`${item.message} ${item.detail}`.toLowerCase().includes(logSearch.toLowerCase()));
+      $('#log-rows').innerHTML=visible.map(item=>`<button class="log-row" data-log="${item.index}" aria-pressed="${item.index===logSelected}"><time>${item.time}</time><span class="severity ${item.level}" aria-label="${item.level}">${item.level==='info'?'●':item.level==='error'?'×':'!'}</span><span>${esc(item.message)}</span></button>`).join('')||'<p class="empty-message">No matching messages.</p>';
+      $('#log-detail').textContent=logs[logSelected]?`${logs[logSelected].level.toUpperCase()} · ${logs[logSelected].detail}`:'Select a message to view details';
+      $$('[data-log]').forEach(row=>row.onclick=()=>{logSelected=Number(row.dataset.log);renderLogRows();});
+    }
+    function renderHistory() {
+      drawer.innerHTML=`<div class="drawer-tools"><strong>History</strong><button class="compact" id="history-undo" ${historyIndex===0?'disabled':''}>↶ Undo</button><button class="compact" id="history-redo" ${historyIndex===history.length-1?'disabled':''}>↷ Redo</button><button class="compact" data-close-bottom aria-label="Collapse History">×</button></div><div class="drawer-content">${history.map((item,index)=>`<button class="history-row ${index>historyIndex?'undone':''}" aria-current="${index===historyIndex}" data-history="${index}"><span>${index===historyIndex?'●':'○'}</span><span>${esc(item.label)}</span><small>${esc(item.detail)}</small></button>`).join('')}</div>`;
+      $('#history-undo').onclick=()=>restore(historyIndex-1);$('#history-redo').onclick=()=>restore(historyIndex+1);
+      $$('[data-history]').forEach(row=>row.onclick=()=>restore(Number(row.dataset.history)));
+      $('[data-close-bottom]').onclick=()=>showBottom('');
+    }
+    function renderTerminal() {if($('#terminal-output')){$('#terminal-output').textContent=terminalLines.join('\n');$('#terminal-output').scrollTop=$('#terminal-output').scrollHeight;}}
+    function runCommand(line) {
+      terminalLines.push(`OnlyOne ❯ ${line}`);
+      const [command,...args]=line.split(/\s+/), value=args.join(' ');
+      switch(command.toLowerCase()) {
+        case 'help': terminalLines.push('help · clear · pwd · ls · select <name>','play · pause · stop · undo · redo · echo <text>');break;
+        case 'clear': terminalLines=[];break;
+        case 'pwd': terminalLines.push(`OnlyOne/Assets/${folder==='Assets'?'':folder}`);break;
+        case 'ls': terminalLines.push(...assets.filter(a=>folder==='Assets'||a.folder===folder).map(a=>a.name));break;
+        case 'select': {const id=Object.keys(objects).find(key=>objects[key].name.toLowerCase()===value.toLowerCase());if(id){chooseObject(id);terminalLines.push(`Selected ${objects[id].name}`);}else{terminalLines.push('Object not found. Try: select Player');log(`Object not found: ${value}`,'warning','Terminal / select');}break;}
+        case 'play': case 'pause': case 'stop': $(`[data-runtime="${command.toLowerCase()}"]`).click();terminalLines.push(`Preview runtime: ${command.toLowerCase()}`);break;
+        case 'undo':restore(historyIndex-1);terminalLines.push('History step restored.');break;
+        case 'redo':restore(historyIndex+1);terminalLines.push('History step restored.');break;
+        case 'echo':terminalLines.push(value);break;
+        default:terminalLines.push(`Unknown preview command: ${command}. Type help.`);log(`Unknown command: ${command}`,'error','Terminal / Preview command');
+      }
+    }
+    $$('[data-bottom-tab]').forEach(tab=>tab.onclick=()=>showBottom(activeBottom===tab.dataset.bottomTab?'':tab.dataset.bottomTab));
+    $$('[data-runtime]').forEach(button=>button.addEventListener('click',()=>log(`Runtime preview: ${button.dataset.runtime}`)));
+    renderAssets();renderInspector();syncScene();showBottom('console');
+  })();
+  </script>
+</body>
+</html>
