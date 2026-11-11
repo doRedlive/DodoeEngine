@@ -175,10 +175,10 @@ private:
     EditorCommandBus m_commandBus;
     EditorDocumentModel m_documentModel;
     EditorSelection m_selection;
-    ScopedConnection m_selectionSubscription;
-    DynamicArray<ScopedConnection> m_eventRepublishConnections;
     EditorHistory m_history;
     EditHistory m_editHistory{m_history, m_documentModel};
+    ScopedConnection m_selectionSubscription;
+    DynamicArray<ScopedConnection> m_eventRepublishConnections;
     UInt64 m_lastViewportSequence = 0;
     bool m_surfaceAttached = false;
     bool m_hasPendingViewportMetrics = false;
