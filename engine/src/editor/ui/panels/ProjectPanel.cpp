@@ -610,7 +610,6 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     m_viewModelSubscription = ScopedConnection(
         m_viewModel->changed, m_viewModel->changed.connect([this]() { onViewModelChanged(); }));
-    m_viewModel->refresh();
 }
 
 ProjectPanel::~ProjectPanel() = default;

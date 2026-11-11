@@ -123,7 +123,6 @@ ProjectViewModel::ProjectViewModel(AssetController& controller, DomainEventBus& 
 {
     m_assetSubscription = m_events.subscribe<AssetCatalogChangedEvent>(
         [this](const AssetCatalogChangedEvent&) { rebuild(); });
-    rebuild();
 }
 
 ProjectViewModel::~ProjectViewModel() = default;
