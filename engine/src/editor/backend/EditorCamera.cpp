@@ -52,15 +52,16 @@ void EditorCamera::update(float dt)
 
     const float moveX = (m_keyD ? 1.0f : 0.0f) - (m_keyA ? 1.0f : 0.0f);
     const float moveY = (m_keyW ? 1.0f : 0.0f) - (m_keyS ? 1.0f : 0.0f);
+    const float speed = m_speed * (m_fastMove ? 3.0f : 1.0f);
     if (moveX != 0.0f || moveY != 0.0f) {
-        m_position += forward() * (moveY * m_speed * dt);
-        m_position += right() * (moveX * m_speed * dt);
+        m_position += forward() * (moveY * speed * dt);
+        m_position += right() * (moveX * speed * dt);
     }
     if (m_keyE) {
-        m_position.y += m_speed * dt;
+        m_position.y += speed * dt;
     }
     if (m_keyQ) {
-        m_position.y -= m_speed * dt;
+        m_position.y -= speed * dt;
     }
     m_pivot = m_position + forward() * m_distance;
 }
@@ -106,6 +107,7 @@ void EditorCamera::commitToRenderChannel()
     auto& ch = GetEditorCameraChannel().get<CameraData>();
     ch.view = view();
     ch.projection = projection();
+    ch.background = Vector4f(40.0f / 255.0f, 42.0f / 255.0f, 54.0f / 255.0f, 1.0f);
 }
 
 void EditorCamera::onMouseDown(float x, float y, int button, bool alt)
@@ -151,7 +153,11 @@ void EditorCamera::onMouseMove(float x, float y)
     m_lastMouseY = y;
 
     if (m_mode == Mode::Ortho2D) {
-        float panSpeed = m_orthoZoom / m_vpH;
+        if (m_mouseDown[2] && m_altDown) {
+            m_orthoZoom = std::clamp(m_orthoZoom * std::exp(dy * 0.01f), kOrthoZoomMin, kOrthoZoomMax);
+            return;
+        }
+        float panSpeed = m_orthoZoom / std::max(1.0f, m_vpH);
         if (m_mouseDown[1] || (m_mouseDown[0] && m_altDown)) {
             m_orthoPan.x -= dx * panSpeed;
             m_orthoPan.y += dy * panSpeed;
@@ -159,7 +165,10 @@ void EditorCamera::onMouseMove(float x, float y)
         return;
     }
 
-    if (m_mouseDown[0] && m_altDown) {
+    if (m_mouseDown[2] && m_altDown) {
+        m_distance = std::max(kMinDistance, m_distance * std::exp(dy * 0.01f));
+        m_position = m_pivot - forward() * m_distance;
+    } else if (m_mouseDown[0] && m_altDown) {
         m_yaw   += dx * kOrbitSpeed;
         m_pitch -= dy * kOrbitSpeed;
         m_pitch  = std::clamp(m_pitch, -kPitchLimit, kPitchLimit);
@@ -210,12 +219,21 @@ void EditorCamera::onKey(int key, bool down)
     case 'D': m_keyD = down; break;
     case 'Q': m_keyQ = down; break;
     case 'E': m_keyE = down; break;
+    case 0x01000020: m_fastMove = down; break; // Qt's Shift key, keeping Qt out of the camera backend.
     default: break;
     }
 }
 
 void EditorCamera::focusOn(const Vector3f& target, float radius)
 {
+    if (m_mode == Mode::Ortho2D) {
+        m_pivot = target;
+        m_orthoPan = Vector2f(target.x, target.y);
+        const float aspect = m_vpW / std::max(1.0f, m_vpH);
+        m_orthoZoom = std::clamp(radius * 4.0f / std::min(1.0f, aspect),
+            kOrthoZoomMin, kOrthoZoomMax);
+        return;
+    }
     m_pivot    = target;
     m_distance = std::max(radius * 2.0f, kMinDistance);
     m_position = m_pivot - forward() * m_distance;
@@ -239,12 +257,12 @@ Matrix4f EditorCamera::projection() const
     if (m_mode == Mode::Ortho2D) {
         float halfH = m_orthoZoom * 0.5f;
         float halfW = halfH * aspect;
-        auto proj = glm::ortho(-halfW, halfW, -halfH, halfH, -100.0f, 100.0f);
-        return Math::FlipClipSpaceY(proj);
+        // The RHI uses top-left viewports on both APIs (negative Vulkan height).
+        // Keep one Y-up, zero-to-one clip convention for drawing and picking.
+        return glm::orthoRH_ZO(-halfW, halfW, -halfH, halfH, -100.0f, 100.0f);
     }
 
-    auto proj = glm::perspective(glm::radians(m_fov), aspect, 0.1f, 10000.0f);
-    return Math::FlipClipSpaceY(proj);
+    return glm::perspectiveRH_ZO(glm::radians(m_fov), aspect, 0.1f, 10000.0f);
 }
 
 void EditorCamera::screenToRay(float sx, float sy,
@@ -254,7 +272,7 @@ void EditorCamera::screenToRay(float sx, float sy,
     Matrix4f invVP = glm::inverse(vp);
 
     float ndcX = (2.0f * sx) / m_vpW - 1.0f;
-    float ndcY = (2.0f * sy) / m_vpH - 1.0f;
+    float ndcY = 1.0f - (2.0f * sy) / m_vpH;
 
     Vector4f nearPoint = invVP * Vector4f{ndcX, ndcY, 0.0f, 1.0f};
     Vector4f farPoint  = invVP * Vector4f{ndcX, ndcY, 1.0f, 1.0f};
@@ -276,7 +294,7 @@ Vector2f EditorCamera::projectToScreen(const Vector3f& worldPos) const
     const float ndcX = clip.x / clip.w;
     const float ndcY = clip.y / clip.w;
     const float sx = (ndcX + 1.0f) * 0.5f * m_vpW;
-    const float sy = (ndcY + 1.0f) * 0.5f * m_vpH;
+    const float sy = (1.0f - ndcY) * 0.5f * m_vpH;
     return {sx, sy};
 }
 

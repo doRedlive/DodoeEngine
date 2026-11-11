@@ -3,6 +3,9 @@
 #include "dopch.h"
 
 #include "RuntimeBackend.h"
+#include "scene/SceneGrid.h"
+#include "scene/SceneSelectionBounds.h"
+#include "scene/TilemapOverlay.h"
 
 #include "EditorCamera.h"
 #include "core/EditorSession.h"
@@ -37,6 +40,8 @@
 #include "runtime/function/world/scene.h"
 #include "runtime/service/world/scene_importer.h"
 #include "runtime/function/world/world.h"
+#include "runtime/function/world/components/transform_component.h"
+#include "runtime/function/world/components/tilemap/tilemap_component.h"
 #include "runtime/resource/res_type/scene_res.h"
 #include "runtime/resource/asset/importer/import_settings_io.h"
 #include "runtime/resource/resource_manager.h"
@@ -505,14 +510,11 @@ bool RuntimeBackend::handleCommand(const SceneMouseDownCommand& command)
         m_tilePaintActive = true;
         return true;
     }
-    if (command.button == 0 && !command.alt && m_selectedUuid != 0 && m_gizmoMode != "none") {
-        const int axis = hitTestGizmo(command.x, command.y);
-        if (axis >= 0) {
-            beginDrag(axis, command.x, command.y);
-            return true;
-        }
+    if (command.button == 0 && !command.alt &&
+        m_sceneGizmos.press(sceneGizmoContext(), command.x, command.y)) {
+        return true;
     }
-    m_hoverAxis = -1;
+    m_sceneGizmos.resetHover();
     if (m_camera) {
         m_camera->onMouseDown(command.x, command.y, command.button, command.alt);
     }
@@ -546,14 +548,14 @@ bool RuntimeBackend::handleCommand(const SceneMouseMoveCommand& command)
             m_tilePaint->clearHover();
         }
     }
-    if (m_dragAxis >= 0) {
-        updateDrag(command.x, command.y);
+    if (m_sceneGizmos.dragging()) {
+        m_sceneGizmos.updateDrag(sceneGizmoContext(), command.x, command.y);
     } else {
         if (m_camera) {
             m_camera->onMouseMove(command.x, command.y);
         }
-        m_hoverAxis = (!m_tilePaintActive && m_selectedUuid != 0 && m_gizmoMode != "none")
-            ? hitTestGizmo(command.x, command.y) : -1;
+        if (!m_tilePaintActive) m_sceneGizmos.hover(sceneGizmoContext(), command.x, command.y);
+        else m_sceneGizmos.resetHover();
     }
     return true;
 }
@@ -565,8 +567,8 @@ bool RuntimeBackend::handleCommand(const SceneMouseUpCommand& command)
         m_tilePaintActive = false;
         return true;
     }
-    if (m_dragAxis >= 0 && command.button == 0) {
-        endDrag();
+    if (m_sceneGizmos.dragging() && command.button == 0) {
+        m_sceneGizmos.endDrag(sceneGizmoContext());
     } else if (m_camera) {
         m_camera->onMouseUp(command.button);
     }
@@ -583,7 +585,30 @@ bool RuntimeBackend::handleCommand(const SceneMouseWheelCommand& command)
 
 bool RuntimeBackend::handleCommand(const SceneKeyCommand& command)
 {
+    if (command.key == 0x01000000 && command.down && m_sceneGizmos.dragging()) {
+        m_sceneGizmos.cancelDrag(sceneGizmoContext());
+        return true;
+    }
     if (m_camera) {
+        if (command.key == 'F' && command.down) {
+            Entity entity = selectedSceneEntity();
+            if (entity && entity.hasComponent<TransformComponent>()) {
+                const auto bounds = sceneSelectionBounds(entity);
+                const Vector3f localCenter = (bounds.minimum + bounds.maximum) * 0.5f;
+                const Vector3f center(bounds.localToWorld * Vector4f(localCenter, 1.0f));
+                float radius = 0.5f;
+                if (bounds.hasGeometry) {
+                    for (int corner = 0; corner < 8; ++corner) {
+                        const Vector3f local(corner & 1 ? bounds.maximum.x : bounds.minimum.x,
+                                             corner & 2 ? bounds.maximum.y : bounds.minimum.y,
+                                             corner & 4 ? bounds.maximum.z : bounds.minimum.z);
+                        radius = std::max(radius, glm::length(Vector3f(bounds.localToWorld * Vector4f(local, 1.0f)) - center));
+                    }
+                }
+                m_camera->focusOn(center, radius);
+            }
+            return true;
+        }
         m_camera->onKey(command.key, command.down);
     }
     return true;
@@ -591,35 +616,36 @@ bool RuntimeBackend::handleCommand(const SceneKeyCommand& command)
 
 bool RuntimeBackend::handleCommand(const SelectionChangedCommand& command)
 {
+    if (m_selectedUuid != command.uuid) m_sceneGizmos.cancelDrag(sceneGizmoContext());
     m_selectedUuid = command.uuid;
+    m_sceneGizmos.resetHover();
     updateTileEditFromSelection();
     return true;
 }
 
 bool RuntimeBackend::handleCommand(const GizmoModeCommand& command)
 {
-    m_gizmoMode = gizmoModeName(command.mode);
-    m_hoverAxis = -1;
-    m_eventCallback(BackendEventMessage{"gizmo_mode_changed", m_gizmoMode});
+    m_sceneGizmos.cancelDrag(sceneGizmoContext());
+    m_sceneGizmos.setMode(gizmoModeName(command.mode));
+    m_eventCallback(BackendEventMessage{"gizmo_mode_changed", m_sceneGizmos.mode()});
     return true;
 }
 
 bool RuntimeBackend::handleCommand(const GizmoSnapCommand& command)
 {
-    m_snapEnabled = command.enabled;
+    m_sceneGizmos.setSnapEnabled(command.enabled);
     return true;
 }
 
 bool RuntimeBackend::handleCommand(const GizmoSnapStepCommand& command)
 {
-    m_translateSnap = std::max(0.0f, command.translate);
-    m_rotateSnap = std::max(0.0f, command.rotate);
-    m_scaleSnap = std::max(0.0f, command.scale);
+    m_sceneGizmos.setSnapSteps(command.translate, command.rotate, command.scale);
     return true;
 }
 
 bool RuntimeBackend::handleCommand(const CameraModeCommand& command)
 {
+    m_sceneGizmos.cancelDrag(sceneGizmoContext());
     m_camera->setMode(command.ortho2d ? EditorCamera::Mode::Ortho2D : EditorCamera::Mode::Orbit);
     m_eventCallback(BackendEventMessage{"camera_mode_changed", command.ortho2d ? "2d" : "3d"});
     return true;
@@ -1280,6 +1306,33 @@ bool RuntimeBackend::detachSceneSurface()
     return true;
 }
 
+SceneGizmoContext RuntimeBackend::sceneGizmoContext() const
+{
+    World* world = runtimeWorld();
+    return {world ? world->getActiveScene() : nullptr, m_camera.get(), m_selectedUuid,
+            m_session->selection().selectedAll(), m_playState == "edit", m_ctrlHeld, m_eventCallback};
+}
+
+void RuntimeBackend::updateSceneOverlays()
+{
+    auto& data = GetGizmoChannel().get<GizmoChannelData>();
+    data.clear();
+    if (!m_camera) return;
+    configureSceneGrid(*m_camera, data.grid);
+    if (m_tilePaint && m_tilePaint->hasTarget()) {
+        Entity tilemap = activeTilemapEntity();
+        if (tilemap && tilemap.hasComponent<TilemapComponent>()) {
+            drawTilemapOverlay(data, *m_tilePaint, tilemap);
+            return;
+        }
+        m_tilePaint->setActiveTilemap(UUID(0));
+        m_tilePaint->setActiveLayer(UUID(0));
+        m_tilePaintActive = false;
+        emitTilemapEditMode(false);
+    }
+    m_sceneGizmos.draw(sceneGizmoContext(), data);
+}
+
 void RuntimeBackend::tickAtSafePoint()
 {
     if (!m_booted) {
@@ -1300,7 +1353,7 @@ void RuntimeBackend::tickAtSafePoint()
     m_app->stepFrame([this](const float dt) {
         m_camera->update(dt);
         m_camera->commitToRenderChannel();
-        updateGizmo();
+        updateSceneOverlays();
     });
 
     auto& pick_channel = GetPickChannel().get<PickChannelData>();
@@ -1324,6 +1377,7 @@ void RuntimeBackend::reportMissingAssetReferences()
 
 void RuntimeBackend::shutdown()
 {
+    m_sceneGizmos.resetInteraction();
     if (!m_app) {
         return;
     }
@@ -1511,7 +1565,7 @@ bool RuntimeBackend::bootRuntime()
     m_diagnostic = "Runtime backend booted.";
     DO_INFO("Cakery backend: runtime boot complete");
     m_eventCallback(BackendEventMessage{"camera_mode_changed", "3d"});
-    m_eventCallback(BackendEventMessage{"gizmo_mode_changed", m_gizmoMode});
+    m_eventCallback(BackendEventMessage{"gizmo_mode_changed", m_sceneGizmos.mode()});
     return true;
 }
 
@@ -1544,6 +1598,7 @@ void RuntimeBackend::setPlayAction(PlayAction action)
         return;
     }
 
+    m_sceneGizmos.cancelDrag(sceneGizmoContext());
     switch (action) {
     case PlayAction::Play:
         if (m_playState != "edit") {

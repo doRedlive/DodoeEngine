@@ -90,7 +90,16 @@ set(EDITOR_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackend.h
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendScene.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendGizmo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendPicking.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneGizmoController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneGizmoController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneGrid.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneGrid.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneOverlayGeometry.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneSelectionBounds.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneSelectionBounds.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/TilemapOverlay.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/TilemapOverlay.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendTilemap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendThumbnail.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/script/EditorScriptBridge.h

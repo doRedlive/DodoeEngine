@@ -27,21 +27,27 @@ namespace cakery {
 
 namespace {
 
-const Json* FindJsonPath(const Json& root, const String& path)
+template <typename JsonNode>
+JsonNode* ResolveJsonNode(JsonNode& root, const String& path)
 {
-    const Json* node = &root;
+    JsonNode* node = &root;
     Size_t start = 0;
     while (start <= path.size()) {
         const Size_t dot = path.find('.', start);
         const Size_t end = dot == String::npos ? path.size() : dot;
-        if (!node->is_object()) {
+        const String key = path.substr(start, end - start);
+        if (node->is_array()) {
+            if (key.empty() || key.find_first_not_of("0123456789") != String::npos) return nullptr;
+            const auto index = std::strtoull(key.c_str(), nullptr, 10);
+            if (index >= node->size()) return nullptr;
+            node = &(*node)[static_cast<Size_t>(index)];
+        } else if (node->is_object()) {
+            const auto it = node->find(key);
+            if (it == node->end()) return nullptr;
+            node = &(*it);
+        } else {
             return nullptr;
         }
-        const auto it = node->find(path.substr(start, end - start));
-        if (it == node->end()) {
-            return nullptr;
-        }
-        node = &(*it);
         if (dot == String::npos) {
             break;
         }
@@ -50,23 +56,14 @@ const Json* FindJsonPath(const Json& root, const String& path)
     return node;
 }
 
+const Json* FindJsonPath(const Json& root, const String& path)
+{
+    return ResolveJsonNode(root, path);
+}
+
 Json* ResolveJsonPath(Json& root, const String& path)
 {
-    Json* node = &root;
-    Size_t start = 0;
-    while (start <= path.size()) {
-        const Size_t dot = path.find('.', start);
-        const Size_t end = dot == String::npos ? path.size() : dot;
-        if (!node->is_object()) {
-            return nullptr;
-        }
-        node = &(*node)[path.substr(start, end - start)];
-        if (dot == String::npos) {
-            break;
-        }
-        start = dot + 1;
-    }
-    return node;
+    return ResolveJsonNode(root, path);
 }
 
 } // namespace
@@ -1034,11 +1031,19 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
         notifyDocumentChanged();
         return;
     }
-    if (event.name == "selection_changed") {
+    if (event.name == "selection_changed" || event.name == "selection_toggle" || event.name == "selection_add") {
         const UInt64 uuid = event.payload.empty()
             ? 0
             : static_cast<UInt64>(std::strtoull(event.payload.c_str(), nullptr, 10));
-        if (m_selection.selected() != uuid) {
+        if (event.name != "selection_changed" && uuid != 0) {
+            if (m_selection.target() != EditorSelection::Target::Entity) {
+                m_selection.set(uuid);
+            } else if (event.name == "selection_toggle") {
+                m_selection.toggle(uuid);
+            } else {
+                m_selection.add(uuid);
+            }
+        } else if (event.name == "selection_changed") {
             m_selection.set(uuid);
         }
         return;
@@ -1047,11 +1052,21 @@ void EditorSession::handleBackendEvent(const BackendEventMessage& event)
         try {
             const Json payload = Json::parse(event.payload);
             if (payload.contains("entities") && payload["entities"].is_array()) {
+                if (!canEditDocument()) return;
+                auto composite = create_scope<CompositeCommand>();
                 for (const auto& entry : payload["entities"]) {
-                    applyTransformChange(
-                        entry.value("uuid", UInt64(0)),
-                        entry.value("value", Json::object()));
+                    const UInt64 uuid = entry.value("uuid", UInt64(0));
+                    const EditorEntity* entity = m_documentModel.findEntity(uuid);
+                    if (!entity) continue;
+                    for (Size_t i = 0; i < entity->nativeComponents.size(); ++i) {
+                        if (entity->nativeComponents[i].typeName == "TransformComponent") {
+                            composite->addCommand(create_scope<UpdateComponentCommand>(uuid, i,
+                                entry.value("value", Json::object())));
+                            break;
+                        }
+                    }
                 }
+                if (!composite->empty()) m_history.execute(std::move(composite), m_documentModel);
             } else {
                 applyTransformChange(
                     payload.value("uuid", UInt64(0)),

@@ -69,6 +69,7 @@ private:
 
     bool m_keyW = false, m_keyS = false, m_keyA = false, m_keyD = false;
     bool m_keyQ = false, m_keyE = false;
+    bool m_fastMove = false;
 
     dodoe::Vector2f m_orthoPan{0.0f, 0.0f};
     float m_orthoZoom = 100.0f;

@@ -8,11 +8,15 @@
 #include "ui/common/QtStringInterop.h"
 
 #include <QDragEnterEvent>
+#include <QApplication>
+#include <QAction>
+#include <QFocusEvent>
 #include <QDropEvent>
 #include <QFont>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QMimeData>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
@@ -44,12 +48,16 @@ int toCameraButton(Qt::MouseButton button)
 SceneSurface::SceneSurface(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
 {
-    setMinimumSize(480, 320);
+    setMinimumSize(280, 200);
     setAttribute(Qt::WA_NativeWindow);
     setFocusPolicy(Qt::StrongFocus);
     setAutoFillBackground(false);
     setMouseTracking(true);
     setAcceptDrops(true);
+    m_gizmoSubscription = ScopedConnection(m_context.view().gizmoChanged,
+        m_context.view().gizmoChanged.connect([this](GizmoMode mode) {
+            setCursor(mode == GizmoMode::None ? Qt::OpenHandCursor : Qt::ArrowCursor);
+        }));
 
     initFpsOverlay();
 }
@@ -89,50 +97,135 @@ void SceneSurface::resizeEvent(QResizeEvent* event)
 
 void SceneSurface::mousePressEvent(QMouseEvent* event)
 {
+    setFocus(Qt::MouseFocusReason);
+    if (event->button() == Qt::LeftButton) {
+        m_handPanning = m_context.view().gizmoMode() == GizmoMode::None
+            && !event->modifiers().testFlag(Qt::AltModifier);
+    }
+    if (event->button() == Qt::RightButton) {
+        m_rightPressPosition = event->position();
+        m_rightNavigated = event->modifiers().testFlag(Qt::AltModifier);
+    }
+    if (m_handPanning) setCursor(Qt::ClosedHandCursor);
     m_context.session().execute(SceneMouseDownCommand{
         static_cast<Float>(event->position().x()),
         static_cast<Float>(event->position().y()),
-        toCameraButton(event->button()),
+        m_handPanning && event->button() == Qt::LeftButton ? 1 : toCameraButton(event->button()),
         event->modifiers().testFlag(Qt::AltModifier),
         event->modifiers().testFlag(Qt::ControlModifier),
         event->modifiers().testFlag(Qt::ShiftModifier)});
-    QWidget::mousePressEvent(event);
+    event->accept();
 }
 
 void SceneSurface::mouseMoveEvent(QMouseEvent* event)
 {
+    if (event->buttons().testFlag(Qt::RightButton)
+        && (event->position() - m_rightPressPosition).manhattanLength() > 4.0) m_rightNavigated = true;
     m_context.session().execute(SceneMouseMoveCommand{
         static_cast<Float>(event->position().x()),
         static_cast<Float>(event->position().y()),
         event->modifiers().testFlag(Qt::ControlModifier),
         event->modifiers().testFlag(Qt::ShiftModifier),
         event->modifiers().testFlag(Qt::AltModifier)});
-    QWidget::mouseMoveEvent(event);
+    event->accept();
 }
 
 void SceneSurface::mouseReleaseEvent(QMouseEvent* event)
 {
-    m_context.session().execute(SceneMouseUpCommand{toCameraButton(event->button())});
-    QWidget::mouseReleaseEvent(event);
+    const bool endPan = m_handPanning && event->button() == Qt::LeftButton;
+    m_context.session().execute(SceneMouseUpCommand{endPan ? 1 : toCameraButton(event->button())});
+    if (endPan) {
+        m_handPanning = false;
+        setCursor(m_context.view().gizmoMode() == GizmoMode::None
+            ? Qt::OpenHandCursor : Qt::ArrowCursor);
+    }
+    if (event->button() == Qt::RightButton && !m_rightNavigated) {
+        QMenu menu(this);
+        auto* frame = menu.addAction(tr("Frame Selected"));
+        frame->setEnabled(m_context.selection().target() == EditorSelection::Target::Entity
+            && m_context.selection().hasSelection());
+        connect(frame, &QAction::triggered, this, [this]() {
+            m_context.session().execute(SceneKeyCommand{Qt::Key_F, true});
+        });
+        menu.addSeparator();
+        const StaticArray<Pair<const char*, GizmoMode>, 4> modes = {{
+            {QT_TR_NOOP("Hand"), GizmoMode::None}, {QT_TR_NOOP("Move"), GizmoMode::Translate},
+            {QT_TR_NOOP("Rotate"), GizmoMode::Rotate}, {QT_TR_NOOP("Scale"), GizmoMode::Scale}}};
+        for (const auto& [name, mode] : modes) {
+            auto* action = menu.addAction(tr(name));
+            action->setCheckable(true);
+            action->setChecked(m_context.view().gizmoMode() == mode);
+            connect(action, &QAction::triggered, this, [this, mode]() { m_context.view().setGizmoMode(mode); });
+        }
+        menu.addSeparator();
+        auto* mode2D = menu.addAction(tr("2D View"));
+        mode2D->setCheckable(true);
+        mode2D->setChecked(m_context.view().is2D());
+        connect(mode2D, &QAction::triggered, this, [this](bool checked) { m_context.view().setCamera2D(checked); });
+        menu.exec(event->globalPosition().toPoint());
+    }
+    event->accept();
 }
 
 void SceneSurface::wheelEvent(QWheelEvent* event)
 {
     m_context.session().execute(
         SceneMouseWheelCommand{static_cast<float>(event->angleDelta().y() / 120.0)});
-    QWidget::wheelEvent(event);
+    event->accept();
 }
 
 void SceneSurface::keyPressEvent(QKeyEvent* event)
 {
+    if (event->isAutoRepeat()) {
+        event->accept();
+        return;
+    }
+    if (QApplication::mouseButtons().testFlag(Qt::RightButton)) m_rightNavigated = true;
+    // Tool hotkeys are local to the viewport; right-mouse navigation keeps WASDQE.
+    if (event->modifiers() == Qt::NoModifier && QApplication::mouseButtons() == Qt::NoButton) {
+        switch (event->key()) {
+        case Qt::Key_Q: m_context.view().setGizmoMode(GizmoMode::None); break;
+        case Qt::Key_W: m_context.view().setGizmoMode(GizmoMode::Translate); break;
+        case Qt::Key_E: m_context.view().setGizmoMode(GizmoMode::Rotate); break;
+        case Qt::Key_R: m_context.view().setGizmoMode(GizmoMode::Scale); break;
+        case Qt::Key_F:
+            m_context.session().execute(SceneKeyCommand{Qt::Key_F, true});
+            break;
+        default:
+            QWidget::keyPressEvent(event);
+            return;
+        }
+        event->accept();
+        return;
+    }
+    if (event->modifiers().testFlag(Qt::ControlModifier)
+        || event->modifiers().testFlag(Qt::AltModifier)) {
+        QWidget::keyPressEvent(event);
+        return;
+    }
     m_context.session().execute(SceneKeyCommand{event->key(), true});
-    QWidget::keyPressEvent(event);
+    event->accept();
 }
 
 void SceneSurface::keyReleaseEvent(QKeyEvent* event)
 {
+    if (event->isAutoRepeat()) return;
     m_context.session().execute(SceneKeyCommand{event->key(), false});
     QWidget::keyReleaseEvent(event);
+}
+
+void SceneSurface::focusOutEvent(QFocusEvent* event)
+{
+    for (const int key : {Qt::Key_W, Qt::Key_A, Qt::Key_S, Qt::Key_D, Qt::Key_Q, Qt::Key_E, Qt::Key_Shift}) {
+        m_context.session().execute(SceneKeyCommand{key, false});
+    }
+    for (int button = 0; button < 3; ++button) {
+        m_context.session().execute(SceneMouseUpCommand{button});
+    }
+    m_handPanning = false;
+    setCursor(m_context.view().gizmoMode() == GizmoMode::None
+        ? Qt::OpenHandCursor : Qt::ArrowCursor);
+    QWidget::focusOutEvent(event);
 }
 
 void SceneSurface::dragEnterEvent(QDragEnterEvent* event)
@@ -178,7 +271,9 @@ void SceneSurface::initFpsOverlay()
     m_fpsLabel->setAutoFillBackground(false);
     m_fpsLabel->setStyleSheet(QStringLiteral(
         "QLabel#sceneFpsOverlay {"
-        " color: #E8E8E8;"
+        " color: #9b9db4; background: #21222c;"
+        " border: none; border-radius: 2px; padding: 2px 5px;"
+        " font-family: Consolas;"
         " font-size: 11px;"
         "}"));
     m_fpsLabel->hide();
@@ -203,7 +298,8 @@ void SceneSurface::refreshFps()
 {
     int fps = 0;
     if (m_context.session().queryFps(fps) && fps > 0) {
-        m_fpsLabel->setText(QStringLiteral("%1 FPS").arg(fps));
+        m_fpsLabel->setText(QStringLiteral("%1 FPS  |  %2 x %3").arg(fps)
+            .arg(qRound(width() * devicePixelRatioF())).arg(qRound(height() * devicePixelRatioF())));
         m_fpsLabel->adjustSize();
         m_fpsLabel->show();
         positionFpsLabel();

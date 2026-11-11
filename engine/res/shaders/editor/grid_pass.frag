@@ -88,12 +88,14 @@ void main()
     float axis_v = axisLine(grid_coord.y, derivative.y);
 
     float dist = length(point - u_CameraWorld.xyz);
-    float fade = 1.0 - smoothstep(max(u_Params.z, 1.0), max(u_Params.w, u_Params.z + 1.0), dist);
+    float fade_begin = max(u_Params.z, 1.0);
+    float fade_end = max(u_Params.w, fade_begin + max(1.0, fade_begin * 0.001));
+    float fade = 1.0 - smoothstep(fade_begin, fade_end, dist);
 
     float grid = clamp(max(minor, major), 0.0, 1.0) * clamp(fade, 0.0, 1.0);
     float axis = clamp(max(axis_u, axis_v), 0.0, 1.0) * clamp(fade, 0.0, 1.0);
 
-    float alpha = clamp(max(grid * 0.85, axis), 0.0, 1.0);
+    float alpha = clamp(max(max(minor * 0.22, major * 0.42) * fade, axis * 0.7), 0.0, 1.0);
     if (alpha <= 0.002) {
         discard;
     }
@@ -101,8 +103,8 @@ void main()
     vec3 grid_color = vec3(0.42, 0.44, 0.46);
     bool xy_plane = abs(plane_n.z) > 0.5;
     vec3 axis_color = xy_plane
-        ? ((axis_u >= axis_v) ? vec3(0.78, 0.28, 0.28) : vec3(0.30, 0.62, 0.30))
-        : ((axis_u >= axis_v) ? vec3(0.78, 0.28, 0.28) : vec3(0.28, 0.45, 0.85));
+        ? ((axis_u >= axis_v) ? vec3(0.30, 0.62, 0.30) : vec3(0.78, 0.28, 0.28))
+        : ((axis_u >= axis_v) ? vec3(0.28, 0.45, 0.85) : vec3(0.78, 0.28, 0.28));
     vec3 rgb = (axis > grid) ? axis_color : grid_color;
     o_Color = vec4(rgb, alpha);
 }

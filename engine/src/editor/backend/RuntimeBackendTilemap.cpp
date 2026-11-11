@@ -472,4 +472,13 @@ void RuntimeBackend::executeTilemapLayerField(UUID layer, const String& field,
     }
 }
 
+Entity RuntimeBackend::activeTilemapEntity() const
+{
+    if (!m_tilePaint || !m_tilePaint->hasTarget()) return {};
+    World* world = runtimeWorld();
+    Scene* scene = world ? world->getActiveScene() : nullptr;
+    if (!scene) return {};
+    return ResolveEntity(scene, m_tilePaint->activeTilemap());
+}
+
 } // namespace cakery

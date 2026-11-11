@@ -3,6 +3,8 @@
 #include "dopch.h"
 
 #include <QWidget>
+#include <QPointF>
+#include "core/Signal.h"
 
 #include <cstdint>
 
@@ -28,6 +30,7 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void keyReleaseEvent(QKeyEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
 
@@ -40,6 +43,10 @@ private:
     EditorWorkspaceContext& m_context;
     UInt64 m_sequence = 0;
     bool m_attached = false;
+    bool m_handPanning = false;
+    QPointF m_rightPressPosition;
+    bool m_rightNavigated = false;
+    ScopedConnection m_gizmoSubscription;
     QLabel* m_fpsLabel = nullptr;
     QTimer* m_fpsTimer = nullptr;
 };

@@ -9,7 +9,7 @@
 #include "core/bridge/EditorTypes.h"
 #include "core/bridge/EditorCommands.h"
 #include "core/document/EditorDocument.h"
-#include "runtime/core/channel/gizmo_channel.h"
+#include "scene/SceneGizmoController.h"
 #include "runtime/core/channel/pick_channel.h"
 #include "runtime/core/math/math.h"
 #include "runtime/core/utils/uuid.h"
@@ -132,30 +132,14 @@ private:
     void applyPendingMetrics();
     bool reconcileScene(const EditorDocument& document);
     void rebuildHierarchy(dodoe::Scene& scene, const EditorDocument& document);
-    void updateGizmo();
-    void updateTileOverlay();
-    float computeGizmoScale(const dodoe::Vector3f& position) const;
-    void drawSelectionHighlight(dodoe::GizmoChannelData& data);
+    void updateSceneOverlays();
+    SceneGizmoContext sceneGizmoContext() const;
     void pickAt(float screenX, float screenY);
     void requestPick(float screenX, float screenY);
     void setSelectedUuid(UInt64 uuid);
     bool importDroppedAsset(const String& assetPath, const Json& position);
     void setPlayAction(PlayAction action);
     dodoe::Entity selectedSceneEntity() const;
-    dodoe::Entity dragEntityByUuid(UInt64 uuid) const;
-    int hitTestGizmo(float screenX, float screenY);
-    void beginDrag(int axis, float screenX, float screenY);
-    void updateDrag(float screenX, float screenY);
-    void endDrag();
-    struct TransformUpdate {
-        UInt64 uuid = 0;
-        dodoe::Vector3f position;
-        dodoe::Vector3f rotation;
-        dodoe::Vector3f scale;
-    };
-    void emitTransformChange(const dodoe::Vector3f& position, const dodoe::Vector3f& rotation,
-                             const dodoe::Vector3f& scale);
-    void emitTransformChanges(const DynamicArray<TransformUpdate>& updates);
     void updateTileEditFromSelection();
     void activateTilemapEdit(const dodoe::UUID& tilemapUuid, const dodoe::UUID& layerUuid);
     bool screenToCell(float screenX, float screenY, int& outX, int& outY) const;
@@ -178,13 +162,9 @@ private:
     Scope<AssetDatabase> m_assetDatabase;
     UInt64 m_selectedUuid = 0;
     UInt64 m_pick_sequence = 0;
-    String m_gizmoMode = "translate";
-    float m_gizmoScale = 1.0f;
-    int m_hoverAxis = -1;
-    bool m_snapEnabled = false;
-    float m_translateSnap = 0.25f;
-    float m_rotateSnap = 15.0f;
-    float m_scaleSnap = 0.1f;
+    bool m_pickToggle = false;
+    bool m_pickAdd = false;
+    SceneGizmoController m_sceneGizmos;
     bool m_ctrlHeld = false;
     bool m_shiftHeld = false;
     bool m_altHeld = false;
@@ -194,15 +174,6 @@ private:
     Scope<TilePaintService> m_tilePaint;
     Scope<FieldAttributeRegistry> m_fieldAttributes;
     bool m_tilePaintActive = false;
-    int m_dragAxis = -1;
-    String m_dragMode;
-    DynamicArray<TransformUpdate> m_dragEntities;
-    dodoe::Vector3f m_dragStartPosition{0.0f, 0.0f, 0.0f};
-    dodoe::Vector3f m_dragStartRotation{0.0f, 0.0f, 0.0f};
-    dodoe::Vector3f m_dragStartScale{1.0f, 1.0f, 1.0f};
-    dodoe::Vector3f m_dragPlanePoint{0.0f, 0.0f, 0.0f};
-    float m_dragStartAngle = 0.0f;
-    float m_dragStartAxisParam = 0.0f;
     bool m_hasDocument = false;
     bool m_hasPendingMetrics = false;
     bool m_booted = false;
