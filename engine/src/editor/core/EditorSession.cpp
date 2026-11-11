@@ -37,7 +37,7 @@ const Json* FindJsonPath(const Json& root, const String& path)
         if (!node->is_object()) {
             return nullptr;
         }
-        const auto it = node->find(std::string(path.substr(start, end - start)));
+        const auto it = node->find(path.substr(start, end - start));
         if (it == node->end()) {
             return nullptr;
         }
@@ -60,7 +60,7 @@ Json* ResolveJsonPath(Json& root, const String& path)
         if (!node->is_object()) {
             return nullptr;
         }
-        node = &(*node)[std::string(path.substr(start, end - start))];
+        node = &(*node)[path.substr(start, end - start)];
         if (dot == String::npos) {
             break;
         }

@@ -42,9 +42,4 @@ inline QString ToQString(const char* value)
     return QString::fromUtf8(value == nullptr ? "" : value);
 }
 
-inline std::string ToStdString(const String& value)
-{
-    return std::string(value.c_str(), value.size());
-}
-
 } // namespace cakery

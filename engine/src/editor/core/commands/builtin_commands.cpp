@@ -54,7 +54,7 @@ const Json* FindPathValue(const Json& root, const String& path) {
         if (!node->is_object()) {
             return nullptr;
         }
-        const auto it = node->find(std::string(path.substr(start, end - start)));
+        const auto it = node->find(path.substr(start, end - start));
         if (it == node->end()) {
             return nullptr;
         }
