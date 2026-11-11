@@ -21,6 +21,7 @@ struct ProjectEntry {
     QString engineVersion;
 
     bool isMissing = false;
+    bool archived = false;
     QString projectPath;
 
     double rowOpacity() const { return isMissing ? 0.5 : 1.0; }
@@ -45,6 +46,7 @@ public:
     void load();
     void save();
     void addProject(const ProjectEntry& entry);
+    void replaceProject(int index, const ProjectEntry& entry);
     void removeProject(const QString& projectFile);
     void markOpened(const QString& projectFile);
     void setLastSortOption(const QString& option);

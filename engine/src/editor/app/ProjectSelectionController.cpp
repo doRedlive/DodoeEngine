@@ -4,7 +4,7 @@
 
 #include "ProjectSelectionController.h"
 
-#include "ProjectManagerWindow.h"
+#include "ui/shell/ProjectManagerWindow.h"
 
 namespace cakery {
 

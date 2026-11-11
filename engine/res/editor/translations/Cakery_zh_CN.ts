@@ -77,24 +77,127 @@
 <context>
   <name>ProjectManagerWindow</name>
   <message><source>A project directory with this name already exists.</source><translation>同名项目目录已存在。</translation></message><message><source>Could not create the project file.</source><translation>无法创建项目文件。</translation></message><message><source>Could not create the start scene.</source><translation>无法创建起始场景。</translation></message>
-  <message><source>Cakery Engine - Project Manager</source><translation>Cakery Engine - 项目管理器</translation></message>
-  <message><source>Cakery Engine</source><translation>Cakery Engine</translation></message>
-  <message><source>Last Edited</source><translation>最近编辑</translation></message>
-  <message><source>Name</source><translation>名称</translation></message>
-  <message><source>Path</source><translation>路径</translation></message>
-  <message><source>Filter projects...</source><translation>筛选项目...</translation></message>
-  <message><source>New</source><translation>新建</translation></message>
-  <message><source>Import</source><translation>导入</translation></message>
-  <message><source>Scan</source><translation>扫描</translation></message>
-  <message><source>Open</source><translation>打开</translation></message>
-  <message><source>No Project Selected</source><translation>未选择项目</translation></message>
-  <message><source>Select a project from the list or create a new one.</source><translation>从列表中选择项目，或创建一个新项目。</translation></message>
-  <message><source>Location: %1</source><translation>位置：%1</translation></message>
-  <message><source>Modified: %1</source><translation>修改时间：%1</translation></message>
-  <message><source>Create Project</source><translation>创建项目</translation></message>
+  <message><source>Cakery - Project Manager</source><translation>Cakery - 项目管理器</translation></message>
+  <message><source>Project Manager</source><translation>项目管理器</translation></message>
+  <message><source>Minimize</source><translation>最小化</translation></message>
+  <message><source>Maximize</source><translation>最大化</translation></message>
+  <message><source>Close</source><translation>关闭</translation></message>
+  <message><source>Library</source><translation>项目库</translation></message>
+  <message><source>Recent Projects</source><translation>最近项目</translation></message>
+  <message><source>All Projects</source><translation>全部项目</translation></message>
+  <message><source>Archived</source><translation>已归档</translation></message>
+  <message><source>All</source><translation>全部</translation></message>
+  <message><source>Tags</source><translation>标签</translation></message>
+  <message><source>Game Projects</source><translation>游戏项目</translation></message>
+  <message><source>Samples &amp; Tests</source><translation>示例与测试</translation></message>
+  <message><source>Game</source><translation>游戏</translation></message>
+  <message><source>Demo</source><translation>示例</translation></message>
+  <message><source>Project</source><translation>项目</translation></message>
+  <message><source>Other</source><translation>其他</translation></message>
+  <message><source>Template Library</source><translation>模板库</translation></message>
+  <message><source>Preferences</source><translation>偏好设置</translation></message>
+  <message><source>Templates are offered while creating a new project.</source><translation>模板在新建项目时提供。</translation></message>
+  <message><source>Preferences will be available in a future build.</source><translation>偏好设置将在后续版本提供。</translation></message>
+  <message><source>Search name or path</source><translation>搜索项目名或路径</translation></message>
+  <message><source>Last Modified</source><translation>最近修改</translation></message>
+  <message><source>Size</source><translation>占用空间</translation></message>
+  <message><source>Import Project</source><translation>导入项目</translation></message>
+  <message><source>New Project</source><translation>新建项目</translation></message>
+  <message><source>No matching projects. Create one to get started.</source><translation>没有匹配的项目，新建一个项目开始。</translation></message>
+  <message><source>No project selected</source><translation>未选中项目</translation></message>
+  <message><source>Selected · %1</source><translation>已选中 · %1</translation></message>
+  <message><source>%1 project(s)</source><translation>%1 个项目</translation></message>
+  <message><source>%1 project(s)  ·  sorted by %2</source><translation>%1 个项目 · 按%2排序</translation></message>
+  <message><source>%1 GB</source><translation>%1 GB</translation></message>
+  <message><source>%1 MB</source><translation>%1 MB</translation></message>
+  <message><source>Open project</source><translation>打开项目</translation></message>
+  <message><source>Show in Explorer</source><translation>打开所在目录</translation></message>
+  <message><source>Project settings</source><translation>项目设置</translation></message>
+  <message><source>Remove from list</source><translation>从列表移除</translation></message>
+  <message><source>Removed</source><translation>已移除</translation></message>
+  <message><source>Removed %1 from the library. Files on disk are untouched.</source><translation>已从项目库移除「%1」，磁盘文件未删除。</translation></message>
   <message><source>Import .doproj File</source><translation>导入 .doproj 文件</translation></message>
   <message><source>Dodoe Project (*.doproj)</source><translation>Dodoe 项目 (*.doproj)</translation></message>
   <message><source>Scan Folder for Projects</source><translation>扫描文件夹中的项目</translation></message>
+</context>
+<context>
+  <name>NewProjectDialog</name>
+  <message><source>New Project</source><translation>新建项目</translation></message>
+  <message><source>Pick a template and location; a new entry appears in your library.</source><translation>选择模板与位置，创建后会出现在项目库中。</translation></message>
+  <message><source>Project name</source><translation>项目名称</translation></message>
+  <message><source>MyFirstProject</source><translation>MyFirstProject</translation></message>
+  <message><source>Used to create the project folder and project file.</source><translation>用于创建项目目录与工程文件。</translation></message>
+  <message><source>Please enter a project name.</source><translation>请填写项目名称。</translation></message>
+  <message><source>The name cannot contain / \ : * ? &quot; &lt; &gt; |</source><translation>名称不能包含 / \ : * ? &quot; &lt; &gt; |</translation></message>
+  <message><source>A project with this name already exists.</source><translation>项目库中已存在同名项目。</translation></message>
+  <message><source>Please choose a project directory.</source><translation>请选择项目目录。</translation></message>
+  <message><source>Project directory</source><translation>项目目录</translation></message>
+  <message><source>Browse</source><translation>浏览</translation></message>
+  <message><source>The directory is created on confirmation.</source><translation>确认后创建该目录。</translation></message>
+  <message><source>Project template</source><translation>项目模板</translation></message>
+  <message><source>Template</source><translation>模板</translation></message>
+  <message><source>Estimated size</source><translation>预估占用</translation></message>
+  <message><source>The project is created immediately on confirm.</source><translation>确认后立即创建项目。</translation></message>
+  <message><source>Cancel</source><translation>取消</translation></message>
+  <message><source>Create Project</source><translation>创建项目</translation></message>
+</context>
+<context>
+  <name>DirectoryPickerDialog</name>
+  <message><source>Select Project Directory</source><translation>选择项目目录</translation></message>
+  <message><source>Navigate into the target folder; the project is created inside it.</source><translation>进入目标文件夹后确认，项目会创建在该目录下。</translation></message>
+  <message><source>Up One Level</source><translation>上一级</translation></message>
+  <message><source>New Folder</source><translation>新建文件夹</translation></message>
+  <message><source>New Folder %1</source><translation>新建文件夹 %1</translation></message>
+  <message><source>Select This Folder</source><translation>选择此文件夹</translation></message>
+  <message><source>This folder is empty</source><translation>此文件夹为空</translation></message>
+</context>
+<context>
+  <name>ProjectSettingsDialog</name>
+  <message><source>Project Settings</source><translation>项目设置</translation></message>
+  <message><source>Window title</source><translation>窗口标题</translation></message>
+  <message><source>Width</source><translation>宽度</translation></message>
+  <message><source>Height</source><translation>高度</translation></message>
+  <message><source>Resizable window</source><translation>窗口可调整大小</translation></message>
+  <message><source>Allow resizing the application window.</source><translation>允许调整应用窗口大小。</translation></message>
+  <message><source>App mode</source><translation>应用模式</translation></message>
+  <message><source>Game</source><translation>Game</translation></message>
+  <message><source>Sandbox</source><translation>Sandbox</translation></message>
+  <message><source>Editor</source><translation>Editor</translation></message>
+  <message><source>Server</source><translation>Server</translation></message>
+  <message><source>Engine mode</source><translation>引擎模式</translation></message>
+  <message><source>Full</source><translation>Full</translation></message>
+  <message><source>TwoD</source><translation>TwoD</translation></message>
+  <message><source>GUI</source><translation>GUI</translation></message>
+  <message><source>Render backend</source><translation>渲染后端</translation></message>
+  <message><source>None</source><translation>无</translation></message>
+  <message><source>OpenGL</source><translation>OpenGL</translation></message>
+  <message><source>Vulkan</source><translation>Vulkan</translation></message>
+  <message><source>D3D12</source><translation>D3D12</translation></message>
+  <message><source>Present mode</source><translation>呈现模式</translation></message>
+  <message><source>VSync</source><translation>VSync</translation></message>
+  <message><source>Mailbox</source><translation>Mailbox</translation></message>
+  <message><source>Immediate</source><translation>Immediate</translation></message>
+  <message><source>Render pipeline</source><translation>渲染管线</translation></message>
+  <message><source>Forward</source><translation>Forward</translation></message>
+  <message><source>Forward+</source><translation>Forward+</translation></message>
+  <message><source>Deferred</source><translation>Deferred</translation></message>
+  <message><source>Deferred+</source><translation>Deferred+</translation></message>
+  <message><source>Only 2D</source><translation>仅 2D</translation></message>
+  <message><source>Only GUI</source><translation>仅 GUI</translation></message>
+  <message><source>Render options</source><translation>渲染选项</translation></message>
+  <message><source>Single-threaded rendering</source><translation>单线程渲染</translation></message>
+  <message><source>Drive the renderer from a single thread.</source><translation>由单一线程驱动渲染。</translation></message>
+  <message><source>Baseline renderer layer</source><translation>Baseline 参考渲染层</translation></message>
+  <message><source>Enable the reference renderer path for debugging.</source><translation>启用用于调试的参考渲染路径。</translation></message>
+  <message><source>Windowless rendering</source><translation>无窗口渲染</translation></message>
+  <message><source>Render without creating an application window.</source><translation>渲染时不创建应用窗口。</translation></message>
+  <message><source>Archived</source><translation>已归档</translation></message>
+  <message><source>Hide from Recent and list it under Archived.</source><translation>从最近项目隐藏，归入已归档列表。</translation></message>
+  <message><source>Config file %1  ·  Size %2  ·  Modified %3</source><translation>配置文件 %1 · 占用 %2 · 最近修改 %3</translation></message>
+  <message><source>app_config.json will be created on save.</source><translation>保存时生成 app_config.json。</translation></message>
+  <message><source>Saved into app_config.json; applies on next launch.</source><translation>设置保存到 app_config.json，下次启动时生效。</translation></message>
+  <message><source>Cancel</source><translation>取消</translation></message>
+  <message><source>Save Settings</source><translation>保存设置</translation></message>
 </context>
 <context>
   <name>ProjectConfig</name>

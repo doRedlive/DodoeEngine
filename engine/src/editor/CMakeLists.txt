@@ -145,12 +145,10 @@ target_sources(EditorCore PRIVATE ${EDITOR_BACKEND_SOURCES} ${EDITOR_SERVICES_SO
 set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/app/EditorApplication.h
     ${CMAKE_CURRENT_SOURCE_DIR}/app/EditorApplication.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectConfig.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectManagerWindow.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectManagerWindow.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectSelectionController.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/app/project_selection/ProjectSelectionController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/ProjectSelectionController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/ProjectSelectionController.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/ProjectConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/services/ProjectConfig.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/EditorWorkspaceContext.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/EditorIcons.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/common/QtStringInterop.h
@@ -183,6 +181,10 @@ set(EDITOR_UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/SceneSurface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/FramelessChrome.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/FramelessChrome.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/ProjectManagerWindow.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/ProjectManagerWindow.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/ProjectManagerDialogs.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui/shell/ProjectManagerDialogs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/EditorJsonWidget.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/EditorJsonWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui/inspector/EditorRemoteWidget.h

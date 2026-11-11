@@ -8,7 +8,9 @@
 #include "services/EditorResourceLocator.h"
 
 #include <QApplication>
+#include <QColor>
 #include <QFile>
+#include <QPalette>
 
 namespace cakery {
 
@@ -39,6 +41,14 @@ void ThemeController::apply(const String& themeName)
         }
     }
     qApp->setProperty("editorTheme", normalized);
+
+    QPalette palette = qApp->palette();
+    palette.setColor(QPalette::Active, QPalette::Highlight, QColor(0xbd, 0x93, 0xf9));
+    palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor(0x6f, 0x5a, 0x96));
+    palette.setColor(QPalette::Active, QPalette::HighlightedText, QColor(0x28, 0x2a, 0x36));
+    palette.setColor(QPalette::Inactive, QPalette::HighlightedText, QColor(0xf8, 0xf8, 0xf2));
+    qApp->setPalette(palette);
+
     qApp->setStyleSheet(styleSheet);
 }
 

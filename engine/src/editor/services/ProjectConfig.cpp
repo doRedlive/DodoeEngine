@@ -55,6 +55,9 @@ void ProjectConfig::load()
         entry.iconPath = obj["IconPath"].toString();
         entry.description = obj["Description"].toString();
         entry.engineVersion = obj["EngineVersion"].toString();
+        entry.archived = obj["Archived"].toBool();
+        for (const auto& tag : obj["Tags"].toArray())
+            entry.tags.append(tag.toString());
 
         entry.isMissing = !QFileInfo::exists(entry.projectFile);
         if (!entry.isMissing) {
@@ -81,6 +84,13 @@ void ProjectConfig::save()
         obj["IconPath"] = p.iconPath;
         obj["Description"] = p.description;
         obj["EngineVersion"] = p.engineVersion;
+        obj["Archived"] = p.archived;
+        if (!p.tags.isEmpty()) {
+            QJsonArray tagsArr;
+            for (const QString& tag : p.tags)
+                tagsArr.append(tag);
+            obj["Tags"] = tagsArr;
+        }
         projectsArr.append(obj);
     }
 
@@ -109,6 +119,13 @@ void ProjectConfig::addProject(const ProjectEntry& entry)
         }
     }
     m_data.projects.append(entry);
+}
+
+void ProjectConfig::replaceProject(int index, const ProjectEntry& entry)
+{
+    if (index < 0 || index >= m_data.projects.size())
+        return;
+    m_data.projects[index] = entry;
 }
 
 void ProjectConfig::removeProject(const QString& projectFile)

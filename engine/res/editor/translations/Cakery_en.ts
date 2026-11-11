@@ -81,8 +81,8 @@
 <context>
   <name>ProjectManagerWindow</name>
   <message><source>A project directory with this name already exists.</source><translation>A project directory with this name already exists.</translation></message><message><source>Could not create the project file.</source><translation>Could not create the project file.</translation></message><message><source>Could not create the start scene.</source><translation>Could not create the start scene.</translation></message>
-  <message><source>Cakery Engine - Project Manager</source><translation>Cakery Engine - Project Manager</translation></message>
-  <message><source>Cakery Engine</source><translation>Cakery Engine</translation></message>
+  <message><source>Cakery - Project Manager</source><translation>Cakery - Project Manager</translation></message>
+  <message><source>Project Manager</source><translation>Project Manager</translation></message>
   <message><source>Last Edited</source><translation>Last Edited</translation></message>
   <message><source>Name</source><translation>Name</translation></message>
   <message><source>Path</source><translation>Path</translation></message>
