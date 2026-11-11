@@ -9,12 +9,13 @@ namespace dodoe {
         : m_database_path(project_asset_dir / "asset_database.json") {}
 
     AssetDatabase::~AssetDatabase() {
-        if (m_dirty) {
+        if (isDirty()) {
             save();
         }
     }
 
     Bool AssetDatabase::load() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (!std::filesystem::exists(m_database_path)) {
             return true;
         }
@@ -117,6 +118,7 @@ namespace dodoe {
         return true;
     }
     Bool AssetDatabase::save() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         std::error_code ec;
         std::filesystem::create_directories(m_database_path.parent_path(), ec);
 
@@ -170,10 +172,12 @@ namespace dodoe {
     }
 
     Bool AssetDatabase::hasAsset(const ObjectID& id) const {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return m_metadata_cache.find(id) != m_metadata_cache.end();
     }
 
     AssetMetaData AssetDatabase::getMetaData(const ObjectID& id) const {
+        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_metadata_cache.find(id);
         if (it != m_metadata_cache.end()) {
             return it->second;
@@ -182,6 +186,7 @@ namespace dodoe {
     }
 
     void AssetDatabase::setMetaData(const ObjectID& id, const AssetMetaData& meta) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (!meta.source_path.empty()) {
             m_path_index[meta.source_path] = id.asset_id;
         }
@@ -190,6 +195,7 @@ namespace dodoe {
     }
 
     void AssetDatabase::removeAsset(const ObjectID& id) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         const auto it = m_metadata_cache.find(id);
         if (it != m_metadata_cache.end()) {
             if (!it->second.source_path.empty()) {
@@ -204,11 +210,13 @@ namespace dodoe {
     }
 
     UUID AssetDatabase::getAssetIdByPath(const String& source_path) const {
+        std::lock_guard<std::mutex> lock(m_mutex);
         const auto it = m_path_index.find(source_path);
         return it != m_path_index.end() ? it->second : UUID{};
     }
 
     DynamicArray<ObjectID> AssetDatabase::getAllAssetIDs() const {
+        std::lock_guard<std::mutex> lock(m_mutex);
         DynamicArray<ObjectID> result;
         result.reserve(m_metadata_cache.size());
         for (const auto& [id, meta] : m_metadata_cache) {
@@ -218,6 +226,7 @@ namespace dodoe {
     }
 
     DynamicArray<ObjectID> AssetDatabase::getAssetsOfType(AssetType type) const {
+        std::lock_guard<std::mutex> lock(m_mutex);
         DynamicArray<ObjectID> result;
         for (const auto& [id, meta] : m_metadata_cache) {
             if (meta.type == type) {
@@ -228,6 +237,7 @@ namespace dodoe {
     }
 
     DynamicArray<ObjectID> AssetDatabase::getAssetsByTag(const String& tag) const {
+        std::lock_guard<std::mutex> lock(m_mutex);
         DynamicArray<ObjectID> result;
         for (const auto& [id, meta] : m_metadata_cache) {
             for (const auto& t : meta.tags) {

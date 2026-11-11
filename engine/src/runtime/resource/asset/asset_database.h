@@ -14,6 +14,7 @@ namespace dodoe {
         UnorderedMap<ObjectID, AssetMetaData> m_metadata_cache;
         UnorderedMap<String, UUID> m_path_index;
         Bool m_dirty{false};
+        mutable std::mutex m_mutex;
 
     public:
         explicit AssetDatabase(const FsPath& project_asset_dir);
@@ -33,8 +34,14 @@ namespace dodoe {
         [[nodiscard]] DynamicArray<ObjectID> getAssetsOfType(AssetType type) const;
         [[nodiscard]] DynamicArray<ObjectID> getAssetsByTag(const String& tag) const;
 
-        void markDirty() { m_dirty = true; }
-        [[nodiscard]] Bool isDirty() const { return m_dirty; }
+        void markDirty() {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_dirty = true;
+        }
+        [[nodiscard]] Bool isDirty() const {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_dirty;
+        }
         [[nodiscard]] static UUID generateUUID();
     };
 

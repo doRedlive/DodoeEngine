@@ -31,6 +31,20 @@ namespace dodoe {
 
     using RefreshProgressFn = std::function<void(std::size_t done, std::size_t total)>;
 
+    struct AssetRefreshEntry {
+        FsPath absolute_path;
+        String source_path;
+        String ext;
+        AssetType text_type = AssetType::Unknown;
+        Bool importable = false;
+    };
+
+    struct AssetRefreshResult {
+        Bool cancelled = false;
+        Bool failed = false;
+        DynamicArray<AssetRefreshEntry> entries;
+    };
+
     class AssetManager : public Managed<AssetManager, AssetManagerCreateInfo> {
         friend class Managed<AssetManager, AssetManagerCreateInfo>;
 
@@ -134,6 +148,9 @@ namespace dodoe {
 
         [[nodiscard]] Bool DODOE_API isAssetDirty(const UUID& asset_id) const;
         Bool DODOE_API reimportAsset(const UUID& asset_id);
+        [[nodiscard]] DODOE_API AssetRefreshResult scanAssets(RefreshProgressFn progress = {});
+        Bool DODOE_API applyRefreshResult(const AssetRefreshResult& result,
+                                          RefreshProgressFn progress = {});
         Bool DODOE_API refreshAssets(RefreshProgressFn progress = {});
         void cancelRefresh() { m_refresh_cancelled.store(true, std::memory_order_relaxed); }
 

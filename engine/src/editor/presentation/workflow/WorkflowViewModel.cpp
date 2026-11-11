@@ -28,6 +28,9 @@ WorkflowViewModel::WorkflowViewModel(EditorSession& session)
 
 void WorkflowViewModel::setQuery(bool mutatingOnly, const String& author)
 {
+    if (m_mutatingOnly == mutatingOnly && m_author == author) {
+        return;
+    }
     m_mutatingOnly = mutatingOnly;
     m_author = author;
     refresh();

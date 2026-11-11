@@ -1239,12 +1239,6 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
         m_console->append(ConsoleLogLevel::Info, ToQString(m_shellViewModel->diagnostic()),
                           QStringLiteral("Backend"));
     }
-    if (m_projectPanel) {
-        m_projectPanel->refresh();
-    }
-    if (m_scriptPanel) {
-        m_scriptPanel->reopenProject();
-    }
     if (m_sceneSurface) {
         m_sceneSurface->attach();
         if (!m_shellViewModel->bootEngine()) {
@@ -1255,6 +1249,12 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
             }
             return false;
         }
+    }
+    if (m_projectPanel) {
+        m_projectPanel->refresh();
+    }
+    if (m_scriptPanel) {
+        m_scriptPanel->reopenProject();
     }
     return true;
 }

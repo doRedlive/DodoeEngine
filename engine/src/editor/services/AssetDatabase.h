@@ -14,6 +14,7 @@
 #include <utility>
 #include "core/Signal.h"
 #include "runtime/core/utils/uuid.h"
+#include "runtime/resource/asset/asset_manager.h"
 
 namespace cakery {
 
@@ -54,7 +55,7 @@ private:
     DynamicArray<AssetInfo> m_assets;
     UnorderedSet<dodoe::UUID> m_dirty;
     std::atomic<bool> m_refreshing{false};
-    std::future<bool> m_refresh_future;
+    std::future<dodoe::AssetRefreshResult> m_refresh_future;
     std::atomic<Size_t> m_progress_done{0};
     std::atomic<Size_t> m_progress_total{0};
 };

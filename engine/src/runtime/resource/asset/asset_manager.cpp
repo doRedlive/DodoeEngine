@@ -709,9 +709,11 @@ namespace dodoe {
         return true;
     }
 
-    Bool AssetManager::refreshAssets(RefreshProgressFn progress) {
+    AssetRefreshResult AssetManager::scanAssets(RefreshProgressFn progress) {
+        AssetRefreshResult result;
         if (m_asset_dir.empty()) {
-            return false;
+            result.failed = true;
+            return result;
         }
 
         EnsureBuiltinImporters();
@@ -736,12 +738,12 @@ namespace dodoe {
             return AssetType::Unknown;
         };
 
-        UnorderedSet<String> live_paths;
         std::size_t done = 0;
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(m_asset_dir)) {
                 if (m_refresh_cancelled.load(std::memory_order_relaxed)) {
-                    return false;
+                    result.cancelled = true;
+                    return result;
                 }
                 if (!entry.is_regular_file()) {
                     continue;
@@ -754,19 +756,20 @@ namespace dodoe {
                     continue;
                 }
 
-                FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
-                String source_path = String(rel_path.generic_string());
-
                 const AssetType text_type = text_asset_type_for(ext);
-                if (text_type != AssetType::Unknown) {
-                    live_paths.insert(source_path);
-                    registerTextAsset(source_path, text_type);
-                } else if (is_importable(ext)) {
-                    live_paths.insert(source_path);
-                    importSourceFile(entry.path(), source_path, ext);
-                } else {
+                const Bool importable = is_importable(ext);
+                if (text_type == AssetType::Unknown && !importable) {
                     continue;
                 }
+
+                const FsPath rel_path = std::filesystem::relative(entry.path(), m_asset_dir);
+                AssetRefreshEntry refresh_entry;
+                refresh_entry.absolute_path = entry.path();
+                refresh_entry.source_path = String(rel_path.generic_string());
+                refresh_entry.ext = ext;
+                refresh_entry.text_type = text_type;
+                refresh_entry.importable = importable;
+                result.entries.push_back(std::move(refresh_entry));
 
                 ++done;
                 if (progress && (done % 8 == 0)) {
@@ -775,8 +778,39 @@ namespace dodoe {
             }
         }
         catch (const std::filesystem::filesystem_error& err) {
-            DO_ERROR("Refresh {} error: {}", m_asset_dir.string(), err.what());
+            DO_ERROR("Refresh scan {} error: {}", m_asset_dir.string(), err.what());
+            result.failed = true;
+        }
+        return result;
+    }
+
+    Bool AssetManager::applyRefreshResult(const AssetRefreshResult& result,
+                                          RefreshProgressFn progress) {
+        if (result.cancelled || result.failed) {
             return false;
+        }
+
+        UnorderedSet<String> live_paths;
+        live_paths.reserve(result.entries.size());
+
+        const std::size_t total = result.entries.size();
+        std::size_t done = 0;
+        for (const auto& entry : result.entries) {
+            live_paths.insert(entry.source_path);
+            try {
+                if (entry.text_type != AssetType::Unknown) {
+                    registerTextAsset(entry.source_path, entry.text_type);
+                } else if (entry.importable) {
+                    importSourceFile(entry.absolute_path, entry.source_path, entry.ext);
+                }
+            }
+            catch (const std::exception& err) {
+                DO_ERROR("Asset import '{}' failed: {}", entry.source_path, err.what());
+            }
+            ++done;
+            if (progress && (done % 8 == 0)) {
+                progress(done, total);
+            }
         }
 
         if (m_database) {
@@ -799,6 +833,11 @@ namespace dodoe {
             m_database->save();
         }
         return true;
+    }
+
+    Bool AssetManager::refreshAssets(RefreshProgressFn progress) {
+        const AssetRefreshResult result = scanAssets(progress);
+        return applyRefreshResult(result, progress);
     }
 
     void AssetManager::discoverAssets() {

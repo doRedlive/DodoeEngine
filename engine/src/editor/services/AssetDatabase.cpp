@@ -52,7 +52,7 @@ void AssetDatabase::refresh() {
 
     m_refresh_future = dodoe::TaskScheduler::Self().async(
         [this, am](dodoe::RefreshProgressFn report) {
-            return am->refreshAssets(std::move(report));
+            return am->scanAssets(std::move(report));
         },
         std::move(progress));
 }
@@ -63,7 +63,13 @@ void AssetDatabase::finalize() {
     }
     if (m_refresh_future.valid()) {
         m_refresh_future.wait();
-        m_refresh_future.get();
+        const dodoe::AssetRefreshResult result = m_refresh_future.get();
+        if (auto* am = dodoe::ResourceManager::Self().getAssetManager()) {
+            am->applyRefreshResult(result, [this](Size_t done, Size_t total) {
+                m_progress_done.store(done, std::memory_order_relaxed);
+                m_progress_total.store(total, std::memory_order_relaxed);
+            });
+        }
     }
     buildFromDatabase();
     changed.fire();
