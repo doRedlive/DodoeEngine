@@ -24,8 +24,6 @@ QString ProjectEntry::displayDate() const
     return dt.toString("yyyy-MM-dd HH:mm");
 }
 
-ProjectConfig::ProjectConfig() = default;
-
 QString ProjectConfig::configPath() const
 {
     return QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation))

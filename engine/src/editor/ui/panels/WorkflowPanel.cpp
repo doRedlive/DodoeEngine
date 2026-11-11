@@ -31,6 +31,8 @@
 
 namespace cakery {
 
+WorkflowPanel::~WorkflowPanel() = default;
+
 WorkflowPanel::WorkflowPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
 {

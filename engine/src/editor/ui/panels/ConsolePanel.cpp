@@ -45,8 +45,10 @@ ConsoleLogLevel ToConsoleLogLevel(ConsoleEntryLevel level)
 
 } // namespace
 
+ConsolePanel::~ConsolePanel() = default;
+
 ConsolePanel::ConsolePanel(EditorWorkspaceContext& context, QWidget* parent)
-    : QWidget(parent), m_context(context)
+    : QWidget(parent)
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(6, 6, 6, 6);
@@ -100,7 +102,7 @@ ConsolePanel::ConsolePanel(EditorWorkspaceContext& context, QWidget* parent)
     auto* copyShortcut = new QShortcut(QKeySequence::Copy, m_list);
     connect(copyShortcut, &QShortcut::activated, this, &ConsolePanel::copySelection);
 
-    m_viewModel = create_scope<ConsoleViewModel>(m_context.session());
+    m_viewModel = create_scope<ConsoleViewModel>(context.session());
     m_viewModelConnection = ScopedConnection(
         m_viewModel->changed,
         m_viewModel->changed.connect([this]() { onViewModelChanged(); }));

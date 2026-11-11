@@ -19,6 +19,7 @@ class HistoryPanel : public QWidget {
     Q_OBJECT
 public:
     explicit HistoryPanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
+    ~HistoryPanel() override;
 
 private:
     void onViewModelChanged();

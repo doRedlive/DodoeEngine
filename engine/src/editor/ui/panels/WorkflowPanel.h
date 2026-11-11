@@ -23,6 +23,7 @@ class WorkflowPanel : public QWidget {
     Q_OBJECT
 public:
     explicit WorkflowPanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
+    ~WorkflowPanel() override;
 
 private:
     void onViewModelChanged();

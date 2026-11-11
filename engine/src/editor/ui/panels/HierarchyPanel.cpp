@@ -5,6 +5,7 @@
 #include "HierarchyPanel.h"
 
 #include "presentation/hierarchy/HierarchyViewModel.h"
+#include "ui/common/EditorWorkspaceContext.h"
 #include "ui/common/QtStringInterop.h"
 
 #include <QAbstractItemView>

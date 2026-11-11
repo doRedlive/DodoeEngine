@@ -21,6 +21,8 @@
 
 namespace cakery {
 
+HistoryPanel::~HistoryPanel() = default;
+
 HistoryPanel::HistoryPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
 {

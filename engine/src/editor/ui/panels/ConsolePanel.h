@@ -6,6 +6,8 @@
 #include <QString>
 #include <QWidget>
 
+#include "core/Signal.h"
+
 #include <vector>
 
 class QComboBox;
@@ -31,6 +33,7 @@ class ConsolePanel : public QWidget {
     Q_OBJECT
 public:
     explicit ConsolePanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
+    ~ConsolePanel() override;
 
     void append(ConsoleLogLevel level, const QString& message, const QString& source = {});
 

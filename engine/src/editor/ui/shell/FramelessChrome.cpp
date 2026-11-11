@@ -29,6 +29,7 @@
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWindow>
 
 #include <vector>
 

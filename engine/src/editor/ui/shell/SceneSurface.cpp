@@ -90,8 +90,8 @@ void SceneSurface::resizeEvent(QResizeEvent* event)
 void SceneSurface::mousePressEvent(QMouseEvent* event)
 {
     m_context.session().execute(SceneMouseDownCommand{
-        event->position().x(),
-        event->position().y(),
+        static_cast<Float>(event->position().x()),
+        static_cast<Float>(event->position().y()),
         toCameraButton(event->button()),
         event->modifiers().testFlag(Qt::AltModifier),
         event->modifiers().testFlag(Qt::ControlModifier),
@@ -102,8 +102,8 @@ void SceneSurface::mousePressEvent(QMouseEvent* event)
 void SceneSurface::mouseMoveEvent(QMouseEvent* event)
 {
     m_context.session().execute(SceneMouseMoveCommand{
-        event->position().x(),
-        event->position().y(),
+        static_cast<Float>(event->position().x()),
+        static_cast<Float>(event->position().y()),
         event->modifiers().testFlag(Qt::ControlModifier),
         event->modifiers().testFlag(Qt::ShiftModifier),
         event->modifiers().testFlag(Qt::AltModifier)});
