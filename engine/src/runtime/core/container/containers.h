@@ -17,10 +17,9 @@ namespace dodoe {
 	using StringBase = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
 	using StringView = std::string_view;
 
-	class String : public StringBase {
+	class String : public std::string {
 	public:
-		using StringBase::StringBase;
-		using StringBase::operator=;
+		using std::string::operator=;
 
 		String() = default;
 		String(const String&) = default;
@@ -29,13 +28,16 @@ namespace dodoe {
 		String& operator=(const String&) = default;
 		String& operator=(String&&) noexcept = default;
 
-		String(const StringBase& other) : StringBase(other) {}
-		String(StringBase&& other) noexcept : StringBase(std::move(other)) {}
-		String(const std::string& other) : StringBase(other.data(), other.size()) {}
-		String(std::string_view other) : StringBase(other.data(), other.size()) {}
+		String(const char* s) : std::string(s) {}
+		String(const char* s, Size_t n) : std::string(s, n) {}
+		String(Size_t n, char c) : std::string(n, c) {}
+		String(const std::string& s) : std::string(s) {}
+		String(std::string&& s) noexcept : std::string(std::move(s)) {}
+		String(std::string_view s) : std::string(s) {}
 
-		operator const char*() const noexcept { return this->c_str(); }
-		operator std::string() const { return std::string(this->data(), this->size()); }
+		template <typename InputIt>
+		String(InputIt first, InputIt last) : std::string(first, last) {}
+
 		operator std::filesystem::path() const { return std::filesystem::path(this->c_str()); }
 	};
 
