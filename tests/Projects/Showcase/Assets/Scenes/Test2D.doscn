@@ -21,7 +21,7 @@
                     "m_type_name": "ActiveComponent"
                 },
                 {
-                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.0,0.0],\"sprite\":{\"asset_id\":469319320667056875,\"sub_object_id\":0}}",
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"depth\":0.0,\"flip\":false,\"pivot\":[0.0,0.0],\"sprite\":{\"asset_id\":2024587167002179841,\"sub_object_id\":1}}",
                     "m_type_name": "SpriteRendererComponent"
                 }
             ],
