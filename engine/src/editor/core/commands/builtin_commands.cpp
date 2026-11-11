@@ -54,7 +54,7 @@ const Json* FindPathValue(const Json& root, const String& path) {
         if (!node->is_object()) {
             return nullptr;
         }
-        const auto it = node->find(path.substr(start, end - start));
+        const auto it = node->find(std::string(path.substr(start, end - start)));
         if (it == node->end()) {
             return nullptr;
         }
@@ -77,7 +77,7 @@ Json ParseNumberArray(const String& value, Size_t expected, bool integer) {    J
         Size_t e = token.find_last_not_of(" \t");
         token = token.substr(b, e - b + 1);
         char* end = nullptr;
-        double num = std::strtod(token, &end);
+        double num = std::strtod(token.c_str(), &end);
         if (!end || *end != '\0') return Json();
         if (integer) {
             arr.push_back(static_cast<long long>(num));
@@ -100,7 +100,7 @@ Json ParseFieldValue(const Json& currentValue, const String& value) {
     }
     if (currentValue.is_number_float()) {
         char* end = nullptr;
-        double num = std::strtod(value, &end);
+        double num = std::strtod(value.c_str(), &end);
         if (!end || *end != '\0') return Json();
         return Json(num);
     }
@@ -547,7 +547,7 @@ void RegisterBuiltinCommands(CommandRegistry& registry) {
                  if (fit != args.named.end() && fit->is_number_integer()) {
                      frames = fit->get<int>();
                  } else if (!args.positional.empty()) {
-                     frames = std::atoi(args.positional[0]);
+                     frames = std::atoi(args.positional[0].c_str());
                  }
                  Json out;
                  if (!session.runBenchmark(frames, out)) {

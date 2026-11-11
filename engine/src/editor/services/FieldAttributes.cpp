@@ -51,20 +51,20 @@ void FieldAttributeRegistry::applyTo(dodoe::TypeMeta& meta, const String& typeNa
         const String fieldName(it.key().substr(prefix.size()).c_str());
         const auto& fa = it.value();
         if (fa.contains("Hidden") && fa["Hidden"].is_boolean() && fa["Hidden"].get<bool>()) {
-            meta.set_field_attribute(fieldName, "Hidden", "true");
+            meta.set_field_attribute(fieldName.c_str(), "Hidden", "true");
         }
         if (fa.contains("Tooltip") && fa["Tooltip"].is_string()) {
             const String tooltip = fa["Tooltip"].get<String>();
-            meta.set_field_attribute(fieldName, "Tooltip", tooltip);
+            meta.set_field_attribute(fieldName.c_str(), "Tooltip", tooltip.c_str());
         }
         if (fa.contains("Range") && fa["Range"].is_array() && fa["Range"].size() == 2 &&
             fa["Range"][0].is_number() && fa["Range"][1].is_number()) {
             const String rangeStr = ToString(fa["Range"][0].get<float>()) + "," +
                                           ToString(fa["Range"][1].get<float>());
-            meta.set_field_attribute(fieldName, "Range", rangeStr);
+            meta.set_field_attribute(fieldName.c_str(), "Range", rangeStr.c_str());
         }
         if (fa.contains("ReadOnly") && fa["ReadOnly"].is_boolean() && fa["ReadOnly"].get<bool>()) {
-            meta.set_field_attribute(fieldName, "ReadOnly", "true");
+            meta.set_field_attribute(fieldName.c_str(), "ReadOnly", "true");
         }
     }
 }

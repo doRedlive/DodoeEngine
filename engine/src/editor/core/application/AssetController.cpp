@@ -192,7 +192,7 @@ String AssetController::uniqueDestination(const FsPath& directory, const String&
     const String suffix = name.extension().string();
     FsPath candidate = directory / name;
     for (int index = 1; std::filesystem::exists(candidate) && index < 1000; ++index) {
-        candidate = directory / (base + " " + std::to_string(index) + suffix);
+        candidate = directory / (std::string(base) + " " + std::to_string(index) + std::string(suffix));
     }
     return candidate.string();
 }

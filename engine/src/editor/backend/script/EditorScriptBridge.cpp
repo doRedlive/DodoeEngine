@@ -90,7 +90,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         if (name == "scene_mouse_down") {
             SceneMouseDownCommand command;
             int alt = 0, ctrl = 0, shift = 0;
-            if (std::sscanf(payload, "%f,%f,%d,%d,%d,%d", &command.x, &command.y,
+            if (std::sscanf(payload.c_str(), "%f,%f,%d,%d,%d,%d", &command.x, &command.y,
                             &command.button, &alt, &ctrl, &shift) < 3) {
                 return false;
             }
@@ -103,7 +103,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         if (name == "scene_mouse_move") {
             SceneMouseMoveCommand command;
             int ctrl = 0, shift = 0, alt = 0;
-            if (std::sscanf(payload, "%f,%f,%d,%d,%d", &command.x, &command.y,
+            if (std::sscanf(payload.c_str(), "%f,%f,%d,%d,%d", &command.x, &command.y,
                             &ctrl, &shift, &alt) < 2) {
                 return false;
             }
@@ -115,7 +115,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         }
         if (name == "scene_mouse_up") {
             SceneMouseUpCommand command;
-            if (std::sscanf(payload, "%d", &command.button) < 1) {
+            if (std::sscanf(payload.c_str(), "%d", &command.button) < 1) {
                 return false;
             }
             out = command;
@@ -123,7 +123,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         }
         if (name == "scene_mouse_wheel") {
             SceneMouseWheelCommand command;
-            if (std::sscanf(payload, "%f", &command.delta) < 1) {
+            if (std::sscanf(payload.c_str(), "%f", &command.delta) < 1) {
                 return false;
             }
             out = command;
@@ -132,7 +132,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         if (name == "scene_key") {
             SceneKeyCommand command;
             int down = 0;
-            if (std::sscanf(payload, "%d,%d", &command.key, &down) < 2) {
+            if (std::sscanf(payload.c_str(), "%d,%d", &command.key, &down) < 2) {
                 return false;
             }
             command.down = down != 0;
@@ -153,7 +153,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         }
         if (name == "gizmo_snap_step") {
             GizmoSnapStepCommand command;
-            if (std::sscanf(payload, "%f,%f,%f", &command.translate,
+            if (std::sscanf(payload.c_str(), "%f,%f,%f", &command.translate,
                             &command.rotate, &command.scale) < 1) {
                 return false;
             }
@@ -173,7 +173,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
                 lines.push_back(line);
             }
             if (lines.size() < 3 ||
-                std::sscanf(lines[0], "%f,%f", &command.x, &command.y) < 2) {
+                std::sscanf(lines[0].c_str(), "%f,%f", &command.x, &command.y) < 2) {
                 return false;
             }
             for (Size_t i = 1; i + 1 < lines.size(); i += 2) {
@@ -273,7 +273,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         if (name == "tilemap.layer_visible") {
             UInt64 uuid = 0;
             int visible = 0;
-            if (std::sscanf(payload, "%llu,%d", &uuid, &visible) < 2) {
+            if (std::sscanf(payload.c_str(), "%llu,%d", &uuid, &visible) < 2) {
                 return false;
             }
             out = TilemapLayerVisibleCommand{uuid, visible != 0};
@@ -282,7 +282,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         if (name == "tilemap.layer_opacity") {
             UInt64 uuid = 0;
             float opacity = 1.0f;
-            if (std::sscanf(payload, "%llu,%f", &uuid, &opacity) < 2) {
+            if (std::sscanf(payload.c_str(), "%llu,%f", &uuid, &opacity) < 2) {
                 return false;
             }
             out = TilemapLayerOpacityCommand{uuid, opacity};
@@ -328,7 +328,7 @@ bool ParseLegacyCommand(const String& name, const String& payload,
         if (name == "tilemap.resize") {
             UInt64 uuid = 0;
             unsigned int w = 0, h = 0;
-            if (std::sscanf(payload, "%llu,%u,%u", &uuid, &w, &h) < 3) {
+            if (std::sscanf(payload.c_str(), "%llu,%u,%u", &uuid, &w, &h) < 3) {
                 return false;
             }
             out = TilemapResizeCommand{uuid, w, h};
@@ -536,7 +536,7 @@ bool EditorScriptBridge::GetCustomInspectorUI(const String& typeName, Json& out)
     if (typeName.empty()) {
         return false;
     }
-    return CallJsonCommand(dodoe::ScriptCommand::EditorGetInspectorUI, typeName, out);
+    return CallJsonCommand(dodoe::ScriptCommand::EditorGetInspectorUI, typeName.c_str(), out);
 }
 
 bool EditorScriptBridge::ListEditorWindows(DynamicArray<Pair<String, String>>& out) {
@@ -559,7 +559,7 @@ bool EditorScriptBridge::GetEditorWindowUI(const String& id, Json& out) {
     if (id.empty()) {
         return false;
     }
-    return CallJsonCommand(dodoe::ScriptCommand::EditorGetWindowUI, id, out);
+    return CallJsonCommand(dodoe::ScriptCommand::EditorGetWindowUI, id.c_str(), out);
 }
 
 bool EditorScriptBridge::DispatchEditorEvent(const String& owner, const String& ownerId,
