@@ -5,13 +5,14 @@
 #include "ProjectManagerDialogs.h"
 
 #include <QGridLayout>
+#include <QApplication>
+#include <QAbstractButton>
 #include <QMouseEvent>
 #include <QDir>
 #include <QFileInfo>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDateTime>
 #include <QStandardPaths>
 #include <QRegularExpression>
 #include <QScrollArea>
@@ -54,14 +55,6 @@ void repolish(QWidget* widget)
     widget->style()->polish(widget);
 }
 
-QString formatSize(qint64 bytes)
-{
-    const double gb = bytes / (1024.0 * 1024.0 * 1024.0);
-    if (gb < 1.0)
-        return QStringLiteral("%1 MB").arg(bytes / (1024.0 * 1024.0), 0, 'f', 1);
-    return QStringLiteral("%1 GB").arg(gb, 0, 'f', 1);
-}
-
 QWidget* fieldLabel(const QString& text, QWidget* parent)
 {
     auto* label = new QLabel(text, parent);
@@ -99,10 +92,24 @@ QPushButton* switchRow(const QString& name, const QString& desc, bool checked, Q
     pill->setFixedSize(34, 18);
     pill->setProperty("on", checked);
     pill->setAttribute(Qt::WA_TransparentForMouseEvents);
+    auto* pillLayout = new QHBoxLayout(pill);
+    pillLayout->setContentsMargins(2, 2, 2, 2);
+    pillLayout->setSpacing(0);
+    auto* knob = new QLabel(pill);
+    knob->setObjectName(QStringLiteral("pmSwitchKnob"));
+    knob->setFixedSize(12, 12);
+    knob->setAttribute(Qt::WA_TransparentForMouseEvents);
+    pillLayout->addWidget(knob);
+    pillLayout->setAlignment(knob, checked ? Qt::AlignRight : Qt::AlignLeft);
     QObject::connect(row, &QPushButton::toggled, pill, [pill](bool on) {
         pill->setProperty("on", on);
         pill->style()->unpolish(pill);
         pill->style()->polish(pill);
+    });
+    QObject::connect(row, &QPushButton::toggled, pill, [pillLayout, knob](bool on) {
+        pillLayout->setAlignment(knob, on ? Qt::AlignRight : Qt::AlignLeft);
+        knob->style()->unpolish(knob);
+        knob->style()->polish(knob);
     });
     layout->addWidget(pill, 0, Qt::AlignVCenter);
     return row;
@@ -149,6 +156,12 @@ IslandDialog::IslandDialog(QWidget* parent, int preferredWidth)
     m_bodyLayout->setSpacing(14);
     scroll->setWidget(body);
     m_shellLayout->addWidget(scroll, 1);
+    qApp->installEventFilter(this);
+}
+
+IslandDialog::~IslandDialog()
+{
+    qApp->removeEventFilter(this);
 }
 
 void IslandDialog::showEvent(QShowEvent* event)
@@ -200,9 +213,11 @@ QHBoxLayout* IslandDialog::buildFoot(const QString& note)
     auto* footLayout = new QHBoxLayout(foot);
     footLayout->setContentsMargins(22, 12, 22, 14);
     footLayout->setSpacing(10);
-    auto* noteLabel = new QLabel(note, foot);
-    noteLabel->setObjectName(QStringLiteral("pmFootNote"));
-    footLayout->addWidget(noteLabel);
+    if (!note.isEmpty()) {
+        auto* noteLabel = new QLabel(note, foot);
+        noteLabel->setObjectName(QStringLiteral("pmFootNote"));
+        footLayout->addWidget(noteLabel);
+    }
     footLayout->addStretch();
     m_shellLayout->addWidget(foot);
     return footLayout;
@@ -210,6 +225,38 @@ QHBoxLayout* IslandDialog::buildFoot(const QString& note)
 
 bool IslandDialog::eventFilter(QObject* watched, QEvent* event)
 {
+    if (event->type() == QEvent::MouseButtonPress) {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (mouse->button() == Qt::LeftButton) {
+            auto* target = QApplication::widgetAt(mouse->globalPosition().toPoint());
+            bool owned = false;
+            for (QWidget* window = target ? target->window() : nullptr;
+                 window; window = window->parentWidget()) {
+                if (window == this) {
+                    owned = true;
+                    break;
+                }
+            }
+            if (owned) {
+                QWidget* focus = focusWidget();
+                bool clickedInsideFocus = false;
+                bool clickedFocusable = false;
+                for (QWidget* ancestor = target; ancestor; ancestor = ancestor->parentWidget()) {
+                    if (ancestor == focus)
+                        clickedInsideFocus = true;
+                    if (ancestor->focusPolicy() != Qt::NoFocus
+                        || qobject_cast<QAbstractButton*>(ancestor)
+                        || qobject_cast<QLineEdit*>(ancestor)
+                        || qobject_cast<QComboBox*>(ancestor)) {
+                        clickedFocusable = true;
+                        break;
+                    }
+                }
+                if (focus && !clickedInsideFocus && !clickedFocusable)
+                    focus->clearFocus();
+            }
+        }
+    }
     if (watched == m_head && event->type() == QEvent::MouseButtonPress) {
         auto* mouse = static_cast<QMouseEvent*>(event);
         if (mouse->button() == Qt::LeftButton && windowHandle()) {
@@ -673,18 +720,7 @@ ProjectSettingsDialog::ProjectSettingsDialog(QWidget* parent, ProjectEntry& entr
     bodyLayout()->addWidget(m_windowlessRow);
     bodyLayout()->addWidget(m_archiveRow);
 
-    auto* meta = new QLabel(this);
-    meta->setObjectName(QStringLiteral("pmMeta"));
-    const QFileInfo configInfo(m_configPath);
-    meta->setText(configInfo.exists()
-        ? tr("Config file %1  ·  Size %2  ·  Modified %3")
-            .arg(configInfo.fileName(),
-                 formatSize(configInfo.size()),
-                 configInfo.lastModified().toString(QStringLiteral("yyyy-MM-dd HH:mm")))
-        : tr("app_config.json will be created on save."));
-    bodyLayout()->addWidget(meta);
-
-    auto* footLayout = buildFoot(tr("Saved into app_config.json; applies on next launch."));
+    auto* footLayout = buildFoot(QString());
     auto* cancel = new QPushButton(tr("Cancel"), this);
     cancel->setObjectName(QStringLiteral("pmBtn"));
     auto* save = new QPushButton(tr("Save Settings"), this);

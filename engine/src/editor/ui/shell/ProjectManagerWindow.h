@@ -33,6 +33,7 @@ private:
     void toggleMaximize();
 
     QWidget* m_window = nullptr;
+    QToolButton* m_maxButton = nullptr;
 };
 
 class ProjectCard final : public QFrame {
@@ -83,6 +84,7 @@ signals:
     void onProjectOpened(const QString& projectPath);
 
 protected:
+    void changeEvent(QEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private slots:
@@ -138,6 +140,8 @@ private:
     QList<ProjectCard*> m_cards;
     QHash<QString, qint64> m_sizeCache;
     ProjectConfig& m_config;
+    QFrame* m_shell = nullptr;
+    QHBoxLayout* m_bodyLayout = nullptr;
 };
 
 } // namespace cakery

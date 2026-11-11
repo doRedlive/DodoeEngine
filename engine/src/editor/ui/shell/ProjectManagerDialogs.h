@@ -31,6 +31,7 @@ class IslandDialog : public QDialog {
     Q_OBJECT
 public:
     IslandDialog(QWidget* parent, int preferredWidth);
+    ~IslandDialog() override;
 
     QVBoxLayout* bodyLayout() const { return m_bodyLayout; }
     void buildHead(const QString& title, const QString& desc);

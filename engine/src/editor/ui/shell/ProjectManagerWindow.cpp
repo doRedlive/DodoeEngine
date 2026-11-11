@@ -9,6 +9,8 @@
 #include "ui/common/EditorIcons.h"
 
 #include <QApplication>
+#include <QAbstractButton>
+#include <QAbstractItemView>
 #include <QButtonGroup>
 #include <QComboBox>
 #include <QCursor>
@@ -39,6 +41,7 @@
 #include <QStandardPaths>
 #include <QStackedWidget>
 #include <QStyle>
+#include <QTimer>
 #include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -221,9 +224,11 @@ ProjectManagerTitleBar::ProjectManagerTitleBar(QWidget* window)
         button->setToolTip(tr(tip));
         connect(button, &QToolButton::clicked, this, callback);
         layout->addWidget(button);
+        return button;
     };
     makeWindowButton("pmWinButton", "minus.svg", "Minimize", [this]() { m_window->showMinimized(); });
-    makeWindowButton("pmWinButton", "maximize-2.svg", "Maximize", [this]() { toggleMaximize(); });
+    m_maxButton = makeWindowButton("pmWinButton", "maximize-2.svg", "Maximize",
+                                   [this]() { toggleMaximize(); });
     makeWindowButton("pmWinClose", "x.svg", "Close", [this]() { m_window->close(); });
 }
 
@@ -251,10 +256,28 @@ void ProjectManagerTitleBar::toggleMaximize()
 {
     if (!m_window)
         return;
-    if (m_window->isMaximized())
+    const bool maximized = m_window->windowState().testFlag(Qt::WindowMaximized)
+        || m_window->isFullScreen();
+    if (maximized)
         m_window->showNormal();
     else
         m_window->showMaximized();
+    if (m_maxButton) {
+        const bool restore = m_window->windowState().testFlag(Qt::WindowMaximized)
+            || m_window->isFullScreen();
+        m_maxButton->setIcon(editorThemedIcon(restore ? QStringLiteral("minimize-2.svg")
+                                                       : QStringLiteral("maximize-2.svg")));
+        m_maxButton->setToolTip(restore ? tr("Restore Down") : tr("Maximize"));
+        QTimer::singleShot(0, this, [this]() {
+            if (!m_window || !m_maxButton)
+                return;
+            const bool restore = m_window->windowState().testFlag(Qt::WindowMaximized)
+                || m_window->isFullScreen();
+            m_maxButton->setIcon(editorThemedIcon(restore ? QStringLiteral("minimize-2.svg")
+                                                           : QStringLiteral("maximize-2.svg")));
+            m_maxButton->setToolTip(restore ? tr("Restore Down") : tr("Maximize"));
+        });
+    }
 }
 
 ProjectCard::ProjectCard(const ProjectEntry& entry, qint64 sizeBytes, int hue, int variant,
@@ -275,6 +298,8 @@ ProjectCard::ProjectCard(const ProjectEntry& entry, qint64 sizeBytes, int hue, i
     cardLayout->setSpacing(0);
 
     m_previewSpacer = new QWidget(this);
+    m_previewSpacer->setObjectName(QStringLiteral("pmCardPreview"));
+    m_previewSpacer->setAttribute(Qt::WA_TranslucentBackground);
     m_previewSpacer->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_previewSpacer->setFixedHeight(kPreviewMinHeight);
     cardLayout->addWidget(m_previewSpacer);
@@ -376,10 +401,12 @@ void ProjectCard::paintEvent(QPaintEvent* event)
     QFrame::paintEvent(event);
 
     QPainter painter(this);
+    const QRect thumbnailRect = rect().adjusted(1, 1, -1, 0);
     QPainterPath clip;
-    clip.addRoundedRect(rect(), 12, 12);
+    clip.addRoundedRect(QRectF(rect().adjusted(1, 1, -1, -1)), 11, 11);
     painter.setClipPath(clip);
-    drawThumbnail(painter, QRect(0, 0, width(), m_previewSpacer->height()));
+    drawThumbnail(painter, QRect(thumbnailRect.left(), thumbnailRect.top(),
+                                 thumbnailRect.width(), m_previewSpacer->height() - 1));
 }
 
 void ProjectCard::drawThumbnail(QPainter& painter, const QRect& rect) const
@@ -514,22 +541,22 @@ ProjectManagerWindow::ProjectManagerWindow(ProjectConfig& config, QWidget* paren
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    auto* shell = new QFrame(this);
-    shell->setObjectName(QStringLiteral("pmShell"));
-    shell->setAttribute(Qt::WA_StyledBackground);
-    rootLayout->addWidget(shell);
+    m_shell = new QFrame(this);
+    m_shell->setObjectName(QStringLiteral("pmShell"));
+    m_shell->setAttribute(Qt::WA_StyledBackground);
+    rootLayout->addWidget(m_shell);
 
-    auto* shellLayout = new QVBoxLayout(shell);
+    auto* shellLayout = new QVBoxLayout(m_shell);
     shellLayout->setContentsMargins(0, 0, 0, 0);
     shellLayout->setSpacing(0);
     shellLayout->addWidget(createTitleBar());
 
-    auto* bodyLayout = new QHBoxLayout();
-    bodyLayout->setContentsMargins(16, 0, 16, 14);
-    bodyLayout->setSpacing(16);
-    bodyLayout->addWidget(createSidebar());
-    bodyLayout->addWidget(createMainArea(), 1);
-    shellLayout->addLayout(bodyLayout, 1);
+    m_bodyLayout = new QHBoxLayout();
+    m_bodyLayout->setContentsMargins(16, 0, 16, 14);
+    m_bodyLayout->setSpacing(16);
+    m_bodyLayout->addWidget(createSidebar());
+    m_bodyLayout->addWidget(createMainArea(), 1);
+    shellLayout->addLayout(m_bodyLayout, 1);
 
     connect(m_searchEdit, &QLineEdit::textChanged, this, &ProjectManagerWindow::onSearchChanged);
     connect(m_sortCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -571,6 +598,7 @@ ProjectManagerWindow::ProjectManagerWindow(ProjectConfig& config, QWidget* paren
     m_config.load();
     applyFilterList();
     rebuildGrid();
+    updateChrome();
 }
 
 ProjectManagerWindow::~ProjectManagerWindow()
@@ -687,6 +715,8 @@ QWidget* ProjectManagerWindow::createMainArea()
 
     m_sortCombo = new QComboBox(head);
     m_sortCombo->addItems({tr("Last Modified"), tr("Name"), tr("Size")});
+    m_sortCombo->setMinimumWidth(168);
+    m_sortCombo->view()->setMinimumWidth(184);
     headRow->addWidget(m_sortCombo);
 
     auto* importButton = new QPushButton(editorThemedIcon(QStringLiteral("upload.svg")),
@@ -805,9 +835,15 @@ void ProjectManagerWindow::applyFilterList()
 
 void ProjectManagerWindow::rebuildGrid()
 {
+    const bool gridWasVisible = m_gridHost->isVisible();
+    if (gridWasVisible)
+        m_gridHost->hide();
+    setUpdatesEnabled(false);
     while (auto* item = m_grid->takeAt(0)) {
-        if (auto* widget = item->widget())
+        if (auto* widget = item->widget()) {
+            widget->hide();
             widget->deleteLater();
+        }
         delete item;
     }
     m_cards.clear();
@@ -837,9 +873,14 @@ void ProjectManagerWindow::rebuildGrid()
     for (int col = 0; col < 3; ++col)
         m_grid->setColumnStretch(col, 1);
     m_grid->setRowStretch(m_filtered.isEmpty() ? 0 : m_filtered.size() / 3 + 1, 1);
+    m_grid->activate();
     m_stack->setCurrentIndex(m_filtered.isEmpty() ? 1 : 0);
+    if (gridWasVisible)
+        m_gridHost->show();
 
     updateChrome();
+    setUpdatesEnabled(true);
+    update();
 }
 
 void ProjectManagerWindow::updateChrome()
@@ -962,6 +1003,18 @@ qint64 ProjectManagerWindow::cachedDirSize(const ProjectEntry& proj)
     return total;
 }
 
+void ProjectManagerWindow::changeEvent(QEvent* event)
+{
+    if (event->type() == QEvent::WindowStateChange && m_bodyLayout && m_shell) {
+        const bool edgeToEdge = isMaximized() || isFullScreen();
+        m_bodyLayout->setContentsMargins(edgeToEdge ? 0 : 16, 0,
+                                         edgeToEdge ? 0 : 16, edgeToEdge ? 0 : 14);
+        m_shell->setProperty("edgeToEdge", edgeToEdge);
+        repolish(m_shell);
+    }
+    QDialog::changeEvent(event);
+}
+
 bool ProjectManagerWindow::eventFilter(QObject* watched, QEvent* event)
 {
     if (event->type() == QEvent::Show) {
@@ -973,8 +1026,38 @@ bool ProjectManagerWindow::eventFilter(QObject* watched, QEvent* event)
 
     if (event->type() == QEvent::MouseButtonPress) {
         auto* widget = qobject_cast<QWidget*>(watched);
-        if (widget && widget->window() == this && windowHandle() && !isMaximized()) {
-            auto* mouse = static_cast<QMouseEvent*>(event);
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (widget && mouse->button() == Qt::LeftButton) {
+            auto belongsToManager = [this](QWidget* candidate) {
+                for (QWidget* window = candidate ? candidate->window() : nullptr;
+                     window; window = window->parentWidget()) {
+                    if (window == this)
+                        return true;
+                }
+                return false;
+            };
+            if (belongsToManager(widget)) {
+                QWidget* focus = focusWidget();
+                QWidget* target = QApplication::widgetAt(mouse->globalPosition().toPoint());
+                bool clickedInsideFocus = false;
+                bool clickedFocusable = false;
+                for (QWidget* ancestor = target; ancestor; ancestor = ancestor->parentWidget()) {
+                    if (ancestor == focus)
+                        clickedInsideFocus = true;
+                    if (ancestor->focusPolicy() != Qt::NoFocus
+                        || qobject_cast<QAbstractButton*>(ancestor)
+                        || qobject_cast<QLineEdit*>(ancestor)
+                        || qobject_cast<QComboBox*>(ancestor)) {
+                        clickedFocusable = true;
+                        break;
+                    }
+                }
+                if (focus && !clickedInsideFocus && !clickedFocusable)
+                    focus->clearFocus();
+            }
+        }
+        if (widget && widget->window() == this && windowHandle()
+            && !isMaximized() && !isFullScreen()) {
             if (mouse->button() == Qt::LeftButton) {
                 bool pressedOnCard = false;
                 for (const QObject* ancestor = widget; ancestor; ancestor = ancestor->parent()) {
