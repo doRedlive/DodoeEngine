@@ -180,6 +180,11 @@ bool UpdateComponentCommand::mergeWith(const EditorCommand& next) {
     return true;
 }
 
+bool UpdateComponentCommand::canMergeWith(const EditorCommand& next) const {
+    const auto* other = dynamic_cast<const UpdateComponentCommand*>(&next);
+    return other && other->m_uuid == m_uuid && other->m_index == m_index;
+}
+
 RemoveManagedComponentCommand::RemoveManagedComponentCommand(UInt64 uuid, Size_t index)
     : m_uuid(uuid), m_index(index)
 {
@@ -239,6 +244,11 @@ bool UpdateManagedComponentCommand::mergeWith(const EditorCommand& next) {
     }
     m_newValue = other->m_newValue;
     return true;
+}
+
+bool UpdateManagedComponentCommand::canMergeWith(const EditorCommand& next) const {
+    const auto* other = dynamic_cast<const UpdateManagedComponentCommand*>(&next);
+    return other && other->m_uuid == m_uuid && other->m_index == m_index;
 }
 
 SetFieldValueCommand::SetFieldValueCommand(UInt64 uuid, Size_t nativeIndex, String fieldPath, Json newValue)

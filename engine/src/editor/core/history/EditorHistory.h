@@ -28,7 +28,7 @@ public:
     const DynamicArray<Scope<EditorCommand>>& redoStack() const { return m_redoStack; }
 
     void beginMerge() { m_merging = true; m_mergeGroup.clear(); }
-    void endMerge() { m_merging = false; m_mergeGroup.clear(); }
+    void endMerge();
 
     String undoLabel() const;
     String redoLabel() const;

@@ -21,6 +21,8 @@ public:
 
     virtual String label() const { return "Command"; }
     virtual bool mergeWith(const EditorCommand& /*next*/) { return false; }
+    virtual bool canMergeWith(const EditorCommand& /*next*/) const { return false; }
+    virtual bool isObsolete() const { return false; }
 };
 
 class CreateEntityCommand final : public EditorCommand {
@@ -101,6 +103,8 @@ public:
     void revert(EditorDocumentModel& model) override;
     String label() const override;
     bool mergeWith(const EditorCommand& next) override;
+    bool canMergeWith(const EditorCommand& next) const override;
+    bool isObsolete() const override { return m_oldValue == m_newValue; }
 
 private:
     UInt64 m_uuid = 0;
@@ -130,6 +134,8 @@ public:
     void revert(EditorDocumentModel& model) override;
     String label() const override;
     bool mergeWith(const EditorCommand& next) override;
+    bool canMergeWith(const EditorCommand& next) const override;
+    bool isObsolete() const override { return m_oldValue == m_newValue; }
 
 private:
     UInt64 m_uuid = 0;

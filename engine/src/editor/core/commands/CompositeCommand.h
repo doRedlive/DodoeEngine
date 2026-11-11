@@ -21,6 +21,9 @@ public:
     bool execute(EditorDocumentModel& model) override;
     void revert(EditorDocumentModel& model) override;
     String label() const override;
+    bool canMergeWith(const EditorCommand& next) const override;
+    bool mergeWith(const EditorCommand& next) override;
+    bool isObsolete() const override;
 
 private:
     DynamicArray<Scope<EditorCommand>> m_commands;

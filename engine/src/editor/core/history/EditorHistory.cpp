@@ -8,8 +8,19 @@
 #include "core/document/EditorDocumentSerializer.h"
 
 #include <utility>
+#include <algorithm>
 
 namespace cakery {
+
+void EditorHistory::endMerge() {
+    m_merging = false;
+    m_undoStack.erase(std::remove_if(m_undoStack.begin(), m_undoStack.end(), [this](const auto& command) {
+        return std::find(m_mergeGroup.begin(), m_mergeGroup.end(), command.get()) != m_mergeGroup.end()
+            && command->isObsolete();
+    }), m_undoStack.end());
+    m_mergeGroup.clear();
+    emitChanged();
+}
 
 EditorCommand* EditorHistory::execute(Scope<EditorCommand> command, EditorDocumentModel& model) {
     if (!command) {
@@ -33,7 +44,7 @@ EditorCommand* EditorHistory::execute(Scope<EditorCommand> command, EditorDocume
     if (m_merging) {
         for (auto it = m_mergeGroup.rbegin(); it != m_mergeGroup.rend(); ++it) {
             if ((*it)->mergeWith(*command)) {
-                return nullptr;
+                return *it;
             }
         }
     }
@@ -101,6 +112,7 @@ bool EditorHistory::redo(EditorDocumentModel& model) {
 }
 
 void EditorHistory::clear() {
+    m_merging = false;
     m_undoStack.clear();
     m_redoStack.clear();
     m_mergeGroup.clear();
