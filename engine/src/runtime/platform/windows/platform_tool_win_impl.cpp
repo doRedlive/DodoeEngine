@@ -168,7 +168,7 @@ namespace dodoe {
         ofn.lpstrFilter = "Dodoe Project (*.doproj)\0*.doproj\0All Files (*.*)\0*.*\0";
         ofn.nFilterIndex = 1;
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-        ofn.lpstrInitialDir = initial_dir;
+        ofn.lpstrInitialDir = initial_dir.c_str();
         return GetOpenFileNameA(&ofn) ? String(file_buffer) : String();
     }
 

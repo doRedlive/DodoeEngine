@@ -168,7 +168,7 @@ namespace dodoe {
         void PassTooltip(const RenderGraphDebugSnapshot& snap, const UInt32 index) {
             const auto& pass = snap.passes[index];
             ImGui::BeginTooltip();
-            ImGui::TextUnformatted(pass.name);
+            ImGui::TextUnformatted(pass.name.c_str());
             ImGui::TextDisabled("%s | level %u | %u barriers", PassFlagsName(pass.flags),
                                 pass.level, pass.barrier_count);
             if (pass.subgraph_index < snap.subgraph_names.size()) {
@@ -337,7 +337,7 @@ namespace dodoe {
                            static_cast<UInt32>(resource_index) < snap.resource_count) {
                     const auto& resource = snap.resources[static_cast<UInt32>(resource_index)];
                     ImGui::BeginTooltip();
-                    ImGui::TextUnformatted(resource.name);
+                    ImGui::TextUnformatted(resource.name.c_str());
                     ImGui::TextDisabled("%u writers / %u readers",
                                         static_cast<UInt32>(resource.writer_passes.size()),
                                         static_cast<UInt32>(resource.reader_passes.size()));
@@ -351,7 +351,7 @@ namespace dodoe {
                     if (link.id != hovered_link) continue;
                     const auto& resource = snap.resources[link.resource_index];
                     ImGui::BeginTooltip();
-                    ImGui::TextUnformatted(resource.name);
+                    ImGui::TextUnformatted(resource.name.c_str());
                     ImGui::EndTooltip();
                     break;
                 }
@@ -379,7 +379,7 @@ namespace dodoe {
                 const auto& resource = snap.resources[r];
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(resource.name);
+                ImGui::TextUnformatted(resource.name.c_str());
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(resource.type == RenderGraphResourceType::Texture
                                            ? "texture"

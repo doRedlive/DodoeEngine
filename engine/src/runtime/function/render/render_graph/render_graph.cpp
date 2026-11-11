@@ -543,7 +543,7 @@ namespace dodoe {
                         out_commands.commitBarriers();
                     }
                     recordPassAttachments(pass, prepared_attachments[i], pass_context, out_commands);
-                    out_commands.beginMarker(pass->getName());
+                    out_commands.beginMarker(pass->getName().c_str());
                     pass->execute(pass_context, out_commands);
                     out_commands.endMarker();
                 }
@@ -577,7 +577,7 @@ namespace dodoe {
                             cmd_list->commitBarriers();
                         }
                         recordPassAttachments(pass, *attachments, pass_context, *cmd_list);
-                        cmd_list->beginMarker(pass->getName());
+                        cmd_list->beginMarker(pass->getName().c_str());
                         pass->execute(pass_context, *cmd_list);
                         cmd_list->endMarker();
                         wg.done();

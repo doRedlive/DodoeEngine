@@ -362,7 +362,7 @@ namespace dodoe {
 
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
-            absolute_source_path,
+            absolute_source_path.c_str(),
             aiProcess_Triangulate |
             aiProcess_GenSmoothNormals |
             aiProcess_CalcTangentSpace |

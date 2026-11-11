@@ -96,7 +96,7 @@ namespace dodoe {
         if (!RenderSettings::IsWindowless()) {
             WindowManagerCreateInfo window_manager_create_info;
             window_manager_create_info.host_handle = m_init_info.spec.host_handle;
-            window_manager_create_info.prop.title = m_init_info.spec.name;
+            window_manager_create_info.prop.title = m_init_info.spec.name.c_str();
             window_manager_create_info.prop.width = m_init_info.spec.width;
             window_manager_create_info.prop.height = m_init_info.spec.height;
             window_manager_create_info.prop.backend_api = m_init_info.spec.render_settings.api;

@@ -46,11 +46,11 @@ namespace dodoe {
             free();
         }
         stbi_set_flip_vertically_on_load(flip_vertical);
-        is_hdr = stbi_is_hdr(path) != 0;
+        is_hdr = stbi_is_hdr(path.c_str()) != 0;
         if (is_hdr) {
-            pixels = stbi_loadf(path, &width, &height, &channels, STBI_rgb_alpha);
+            pixels = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
         } else {
-            pixels = stbi_load(path, &width, &height, &channels, STBI_rgb_alpha);
+            pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
         }
 
 		if (!flip_vertical) {

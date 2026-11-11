@@ -105,8 +105,8 @@ namespace dodoe {
             Json properties = Json::object();
             for (const auto& [localId, props] : m_tile_properties) {
                 Json entry = Json::object();
-                for (const auto& [key, value] : props) {
-                    entry[std::string(key)] = value;
+                for (auto propIt = props.begin(); propIt != props.end(); ++propIt) {
+                    entry[string_to_std(propIt->first)] = propIt->second;
                 }
                 properties[std::to_string(localId)] = std::move(entry);
             }
