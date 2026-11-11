@@ -378,9 +378,9 @@
             "dependencies": [],
             "import_signature": 879418651,
             "is_builtin": false,
-            "meta_file_mtime": 13438857255,
+            "meta_file_mtime": 13438859928,
             "name": "grm",
-            "source_file_mtime": 13432195158,
+            "source_file_mtime": 13438859928,
             "source_path": "Textures/grm.jpg",
             "sub_object_id": 0,
             "tags": [],
@@ -598,6 +598,20 @@
             "sub_object_id": 0,
             "tags": [],
             "type": "Material"
+        },
+        "5539338663531488450": {
+            "asset_file_mtime": 0,
+            "asset_id": 5539338663531488450,
+            "dependencies": [],
+            "import_signature": 0,
+            "is_builtin": false,
+            "meta_file_mtime": 13438868360,
+            "name": "New",
+            "source_file_mtime": 0,
+            "source_path": "Scenes/New.doscn",
+            "sub_object_id": 0,
+            "tags": [],
+            "type": "Scene"
         },
         "5891956434921870500": {
             "asset_file_mtime": 0,
