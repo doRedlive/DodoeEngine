@@ -371,9 +371,9 @@ namespace Generator
                 info.cpp_set_params = "const char* v";
                 std::string tag = compName + "_" + fieldName;
                 if (hasGetter)
-                    info.cpp_getter_body = "DEF_STR_RET(" + tag + "); auto* c = TryGetComponent<" + compName + ">(uuid); if (c) { _s_" + tag + " = c->get" + fieldNameCs + "(); return _s_" + tag + "; } return \"\";";
+                    info.cpp_getter_body = "DEF_STR_RET(" + tag + "); auto* c = TryGetComponent<" + compName + ">(uuid); if (c) { _s_" + tag + " = c->get" + fieldNameCs + "(); return _s_" + tag + ".c_str(); } return \"\";";
                 else
-                    info.cpp_getter_body = "DEF_STR_RET(" + tag + "); auto* c = TryGetComponent<" + compName + ">(uuid); if (c) { _s_" + tag + " = c->" + fieldName + "; return _s_" + tag + "; } return \"\";";
+                    info.cpp_getter_body = "DEF_STR_RET(" + tag + "); auto* c = TryGetComponent<" + compName + ">(uuid); if (c) { _s_" + tag + " = c->" + fieldName + "; return _s_" + tag + ".c_str(); } return \"\";";
                 if (hasSetter)
                     info.cpp_setter_body = "if (auto* c = TryGetComponent<" + compName + ">(uuid)) { if (v) c->set" + fieldNameCs + "(v); }";
                 else
