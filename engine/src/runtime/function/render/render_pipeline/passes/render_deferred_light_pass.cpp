@@ -207,8 +207,15 @@ namespace dodoe {
                         skybox_texture = fallback_cubemap->getGpuHandle();
                     }
                 }
-                const auto* brdf_lut = ctx.getTextureManager()->getBrdfLut();
-                const GfxTextureHandle brdf_lut_handle = brdf_lut ? brdf_lut->getGpuHandle() : GfxTextureHandle{};
+                const auto* texture_manager = ctx.getTextureManager();
+                const auto* fallback_texture = texture_manager->getFallback();
+                const GfxTextureHandle fallback_texture_handle = fallback_texture
+                    ? fallback_texture->getGpuHandle() : GfxTextureHandle{};
+                const auto* brdf_lut = texture_manager->getBrdfLut();
+                const GfxTextureHandle brdf_lut_handle = brdf_lut
+                    ? brdf_lut->getGpuHandle() : fallback_texture_handle;
+                const GfxTextureHandle emissive_texture = emissive_handle
+                    ? emissive_handle : fallback_texture_handle;
 
                 const Matrix4f transposed_view_projection =
                     Math::Transpose(ctx.getView()->getViewProjectionMatrix());
@@ -355,7 +362,7 @@ namespace dodoe {
                             7, brdf_lut_handle ? brdf_lut_handle->getRHIHandle().Get() : nullptr))
                         .addItem(GfxBindingSetItem::StructuredBuffer_SRV(8, light_buffer->getRHIHandle().Get()))
                         .addItem(GfxBindingSetItem::Texture_SRV(
-                            10, emissive_handle ? emissive_handle->getRHIHandle().Get() : nullptr))
+                            10, emissive_texture ? emissive_texture->getRHIHandle().Get() : nullptr))
                         .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
                     binding_layout);
                 if (!binding_set) {

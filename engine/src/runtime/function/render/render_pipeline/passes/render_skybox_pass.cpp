@@ -16,6 +16,7 @@
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/shader/global_samplers.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_keys.h"
 #include "runtime/function/render/render_pipeline/render_graph_import_registry.h"
@@ -130,13 +131,17 @@ namespace dodoe {
 
                 DynamicArray<GfxBindingSetHandle> binding_sets{};
                 if (parameters.depth_test_variant) {
+                    const auto* fallback_texture = ctx.getTextureManager()->getFallback();
+                    const GfxTextureHandle depth_fallback = fallback_texture
+                        ? fallback_texture->getGpuHandle() : cubemap_handle;
                     const auto binding_set = command_list.createBindingSet(
                         GfxBindingSetDesc()
                             .addItem(GfxBindingSetItem::ConstantBuffer(0, skybox_cb->getRHIHandle().Get()))
                             .addItem(GfxBindingSetItem::Texture_SRV(
                                 1, cubemap_handle->getRHIHandle().Get(),
                                 GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
-                            .addItem(GfxBindingSetItem::Texture_SRV(2, nullptr))
+                            .addItem(GfxBindingSetItem::Texture_SRV(
+                                2, depth_fallback ? depth_fallback->getRHIHandle().Get() : nullptr))
                             .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
                         binding_layouts.back());
                     if (binding_set) {

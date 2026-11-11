@@ -16,6 +16,7 @@
 #include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/texture/texture_manager.h"
 #include "runtime/function/render/shader/shader_library.h"
 #include "runtime/function/render/shader/shader_parameter.h"
 #include "runtime/function/render/shader/global_samplers.h"
@@ -123,6 +124,10 @@ namespace dodoe {
                         ? ctx.resolveTexture(parameters.depth)
                         : nullptr;
                     const Bool has_depth = depth_texture && depth_texture->isGpuReady();
+                    const auto* fallback_texture = ctx.getTextureManager()->getFallback();
+                    const GfxTextureHandle fallback_handle = fallback_texture
+                        ? fallback_texture->getGpuHandle() : GfxTextureHandle{};
+                    const GfxTextureHandle depth_binding = has_depth ? depth_texture : fallback_handle;
                     if (staging && grid_vs && grid_ps) {
                         struct EditorGridConstants {
                             Matrix4f inverse_view_projection{1.0f};
@@ -156,7 +161,7 @@ namespace dodoe {
                                         0, allocation.buffer->getRHIHandle().Get(),
                                         GfxBufferRange(allocation.offset, allocation.size)))
                                     .addItem(GfxBindingSetItem::Texture_SRV(
-                                        1, has_depth ? depth_texture->getRHIHandle().Get() : nullptr))
+                                        1, depth_binding ? depth_binding->getRHIHandle().Get() : nullptr))
                                     .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
                                 m_grid_binding_layout);
                             if (grid_binding_set) {
