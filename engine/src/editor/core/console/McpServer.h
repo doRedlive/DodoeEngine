@@ -55,6 +55,7 @@ public:
 private:
     void acceptLoop();
     void serveClient(std::uintptr_t socketHandle);
+    void pruneFinishedClients();
     Optional<Json> handleRpc(const Json& message);
     Ref<McpToolCall> enqueueToolCall(const Json& params);
     Json awaitToolCall(const Ref<McpToolCall>& call);
@@ -69,7 +70,10 @@ private:
     std::uintptr_t m_listenSocket = 0;
     UInt16 m_port = 0;
     std::atomic<bool> m_running{false};
-    std::atomic<Size_t> m_activeConnections{0};
+
+    std::mutex m_clientsMutex;
+    Deque<std::uintptr_t> m_clientSockets;
+    std::vector<std::thread> m_clientThreads;
 
     mutable std::mutex m_stateMutex;
     String m_mcpSessionId;

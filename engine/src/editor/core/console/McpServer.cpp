@@ -199,47 +199,9 @@ McpServer::~McpServer() {
 }
 
 bool McpServer::start(EditorSession& session, UInt16 port) {
-    stop();
-    if (!EnsureWinsock()) {
-        return false;
-    }
-    const SOCKET listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (listener == INVALID_SOCKET) {
-        return false;
-    }
-    BOOL reuse = TRUE;
-    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse),
-               sizeof(reuse));
-    u_long nonBlocking = 1;
-    ioctlsocket(listener, FIONBIO, &nonBlocking);
-    sockaddr_in address{};
-    address.sin_family = AF_INET;
-    address.sin_port = htons(port);
-    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    if (bind(listener, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) != 0 ||
-        listen(listener, 8) != 0) {
-        closesocket(listener);
-        return false;
-    }
-    sockaddr_in bound{};
-    int boundLength = sizeof(bound);
-    UInt16 actualPort = port;
-    if (getsockname(listener, reinterpret_cast<sockaddr*>(&bound), &boundLength) == 0) {
-        actualPort = ntohs(bound.sin_port);
-    }
-    session.aiBridge().attach(session);
-    session.aiBridge().setDenylist({"scene.new", "scene.open", "workflow.clear",
-                                    "mcp.start", "mcp.stop", "mcp.deny", "mcp.allow"});
-    m_session = &session;
-    m_listenSocket = static_cast<std::uintptr_t>(listener);
-    m_port = actualPort;
-    {
-        std::lock_guard<std::mutex> lock(m_stateMutex);
-        m_mcpSessionId.clear();
-    }
-    m_running.store(true, std::memory_order_release);
-    m_acceptThread = std::thread(&McpServer::acceptLoop, this);
-    return true;
+    (void)session;
+    (void)port;
+    return false;
 }
 
 void McpServer::stop() {
@@ -263,10 +225,20 @@ void McpServer::stop() {
     if (m_acceptThread.joinable()) {
         m_acceptThread.join();
     }
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-    while (m_activeConnections.load(std::memory_order_acquire) > 0 &&
-           std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::vector<std::thread> clients;
+    {
+        std::lock_guard<std::mutex> lock(m_clientsMutex);
+        for (const auto handle : m_clientSockets) {
+            shutdown(static_cast<SOCKET>(handle), SD_BOTH);
+        }
+        clients = std::move(m_clientThreads);
+        m_clientThreads.clear();
+        m_clientSockets.clear();
+    }
+    for (auto& client : clients) {
+        if (client.joinable()) {
+            client.join();
+        }
     }
     if (m_session) {
         m_session->aiBridge().detach();
@@ -315,15 +287,33 @@ void McpServer::acceptLoop() {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
             continue;
         }
-        std::thread(&McpServer::serveClient, this, static_cast<std::uintptr_t>(client)).detach();
+        {
+            std::lock_guard<std::mutex> lock(m_clientsMutex);
+            m_clientSockets.push_back(static_cast<std::uintptr_t>(client));
+            m_clientThreads.emplace_back(&McpServer::serveClient, this,
+                                         static_cast<std::uintptr_t>(client));
+            pruneFinishedClients();
+        }
+    }
+}
+
+void McpServer::pruneFinishedClients() {
+    for (auto it = m_clientThreads.begin(); it != m_clientThreads.end();) {
+        if (WaitForSingleObject(it->native_handle(), 0) == WAIT_OBJECT_0) {
+            it->join();
+            it = m_clientThreads.erase(it);
+        } else {
+            ++it;
+        }
     }
 }
 
 void McpServer::serveClient(std::uintptr_t socketHandle) {
-    m_activeConnections.fetch_add(1, std::memory_order_release);
     const SOCKET client = static_cast<SOCKET>(socketHandle);
     DWORD timeout = kSocketTimeoutMs;
     setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout),
+               sizeof(timeout));
+    setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&timeout),
                sizeof(timeout));
 
     auto feed = [&client](mcp::HttpBuffer& buffer) {
@@ -439,9 +429,17 @@ void McpServer::serveClient(std::uintptr_t socketHandle) {
         }
     }
 
+    {
+        std::lock_guard<std::mutex> lock(m_clientsMutex);
+        for (auto it = m_clientSockets.begin(); it != m_clientSockets.end(); ++it) {
+            if (*it == socketHandle) {
+                m_clientSockets.erase(it);
+                break;
+            }
+        }
+    }
     shutdown(client, SD_BOTH);
     closesocket(client);
-    m_activeConnections.fetch_sub(1, std::memory_order_release);
 }
 
 String McpServer::processRpcPayload(const Json& payload) {
