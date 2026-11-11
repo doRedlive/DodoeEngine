@@ -10,6 +10,7 @@
 class QEvent;
 class QMouseEvent;
 class QResizeEvent;
+class QWheelEvent;
 
 namespace cakery {
 
@@ -24,17 +25,21 @@ public:
     QString wordUnderCursor() const;
     int currentLine() const;
     int currentColumn() const;
+    int codeFontPointSize() const;
 
     void gotoLine(int line, int column = 0, int selectLength = 0);
+    void setCodeFontPointSize(int pointSize);
 
 signals:
     void navigateRequested(const QString& symbol);
     void cursorInfoChanged(int line, int column);
+    void fontSizeChanged(int pointSize);
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
 
 private slots:
     void updateLineNumberAreaWidth();

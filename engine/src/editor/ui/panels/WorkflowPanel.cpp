@@ -197,11 +197,11 @@ void WorkflowPanel::refresh()
         item->setText(4, QString::number(row.durationMs, 'f', 1));
         item->setText(5, ToQString(row.session));
 
-        QColor statusColor = row.ok ? QColor("#7fbf7f") : QColor("#e06c6c");
-        QColor baseColor("#d8d8d8");
+        QColor statusColor = row.ok ? QColor("#50fa7b") : QColor("#ff5555");
+        QColor baseColor = palette().text().color();
         if (marker) {
-            statusColor = QColor("#9a9a9a");
-            baseColor = QColor("#9a9a9a");
+            statusColor = palette().placeholderText().color();
+            baseColor = palette().placeholderText().color();
             QFont markerFont = item->font(1);
             markerFont.setItalic(true);
             item->setFont(1, markerFont);

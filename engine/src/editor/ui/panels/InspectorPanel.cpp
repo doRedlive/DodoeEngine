@@ -35,6 +35,12 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidgetAction>
+#include <QFileInfo>
+#include <QDir>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QApplication>
+#include <QClipboard>
 
 #include <string>
 #include <unordered_set>
@@ -51,7 +57,8 @@ public:
         : QWidget(parent), m_image(std::move(image))
     {
         setObjectName(QStringLiteral("inspectorAssetPreview"));
-        setMinimumHeight(200);
+        setMinimumHeight(140);
+        setMaximumHeight(220);
         setToolTip(QStringLiteral("%1 x %2 px").arg(m_image.width()).arg(m_image.height()));
     }
 
@@ -60,13 +67,13 @@ protected:
     {
         QWidget::paintEvent(event);
         QPainter painter(this);
-        painter.fillRect(rect(), QColor(34, 34, 34));
+        painter.fillRect(rect(), palette().color(QPalette::Base));
         constexpr int cell = 8;
         painter.setPen(Qt::NoPen);
         for (int y = 0; y < height(); y += cell) {
             for (int x = 0; x < width(); x += cell) {
                 if (((x / cell) + (y / cell)) % 2 == 0) {
-                    painter.fillRect(x, y, cell, cell, QColor(56, 56, 56));
+                    painter.fillRect(x, y, cell, cell, palette().color(QPalette::AlternateBase));
                 }
             }
         }
@@ -120,8 +127,8 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
     auto* container = new QWidget();
     container->setObjectName(QStringLiteral("inspectorContent"));
     m_layout = new QVBoxLayout(container);
-    m_layout->setContentsMargins(16, 16, 16, 16);
-    m_layout->setSpacing(8);
+    m_layout->setContentsMargins(8, 8, 8, 8);
+    m_layout->setSpacing(6);
     scroll->setWidget(container);
     outer->addWidget(scroll);
 
@@ -130,13 +137,24 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
     refresh();
 }
 
-InspectorPanel::~InspectorPanel() = default;
+InspectorPanel::~InspectorPanel()
+{
+    for (auto* editor : findChildren<EditorJsonWidget*>()) editor->disconnect(this);
+    m_viewModel->endInteractiveEdit();
+}
 
 void InspectorPanel::onViewModelChanged()
 {
     if (m_editing) {
         return;
     }
+    m_browserPath.clear();
+    refresh();
+}
+
+void InspectorPanel::inspectPath(const QString& path)
+{
+    m_browserPath = path;
     refresh();
 }
 
@@ -174,18 +192,62 @@ void InspectorPanel::refresh()
     const InspectorAssetModel& assetModel = m_viewModel->asset();
     if (assetModel.valid) {
         const AssetBrowserEntry& asset = assetModel.asset;
-        auto* title = new QLabel(ToQString(asset.name), this);
+        const QString path = ToQString(asset.path);
+        const QFileInfo info(path);
+        auto* heading = new QWidget(this);
+        auto* headingLayout = new QHBoxLayout(heading);
+        headingLayout->setContentsMargins(0, 0, 0, 4);
+        auto* icon = new QLabel(heading);
+        icon->setObjectName(QStringLiteral("inspectorObjectIcon"));
+        icon->setFixedSize(40, 40);
+        icon->setAlignment(Qt::AlignCenter);
+        icon->setPixmap(editorAssetIcon(ToQString(asset.type), path).pixmap(28, 28));
+        headingLayout->addWidget(icon);
+        auto* title = new QLabel(ToQString(asset.name), heading);
         title->setObjectName(QStringLiteral("inspectorAssetName"));
         title->setWordWrap(true);
-        m_layout->addWidget(title);
+        title->setTextFormat(Qt::PlainText);
+        headingLayout->addWidget(title, 1);
+        auto* options = new QToolButton(heading);
+        options->setIcon(editorThemedIcon(QStringLiteral("ellipsis.svg")));
+        options->setToolTip(tr("Asset actions"));
+        options->setPopupMode(QToolButton::InstantPopup);
+        auto* menu = new QMenu(options);
+        menu->addAction(tr("Show in Explorer"), this, [path]() {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+        });
+        menu->addAction(tr("Copy Path"), this, [path]() { QApplication::clipboard()->setText(path); });
+        menu->addAction(tr("Copy GUID"), this, [guid = asset.uuid]() {
+            QApplication::clipboard()->setText(QString::number(static_cast<qulonglong>(guid)));
+        });
+        options->setMenu(menu);
+        headingLayout->addWidget(options);
+        m_layout->addWidget(heading);
+
+        auto* meta = new QLabel(tr("%1  |  %2 KB").arg(ToQString(asset.type))
+            .arg(info.size() / 1024.0, 0, 'f', 1), this);
+        meta->setObjectName(QStringLiteral("inspectorAssetMeta"));
+        meta->setToolTip(path);
+        m_layout->addWidget(meta);
 
         QImage image(ToQString(asset.path));
         if (!image.isNull()) {
+            meta->setText(meta->text() + tr("  |  %1 x %2").arg(image.width()).arg(image.height()));
             auto* preview = new AssetImagePreview(std::move(image), this);
             m_layout->addWidget(preview);
         }
 
-        auto* details = new QGroupBox(tr("Asset"), this);
+        auto* detailsToggle = new QToolButton(this);
+        detailsToggle->setText(tr("Technical details"));
+        detailsToggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        detailsToggle->setArrowType(Qt::RightArrow);
+        detailsToggle->setCheckable(true);
+        auto* details = new QGroupBox(this);
+        details->hide();
+        connect(detailsToggle, &QToolButton::toggled, details, [details, detailsToggle](bool open) {
+            details->setVisible(open);
+            detailsToggle->setArrowType(open ? Qt::DownArrow : Qt::RightArrow);
+        });
         auto* detailsLayout = new QFormLayout(details);
         const auto addDetailRow = [details, detailsLayout](const QString& label, const QString& value) {
             auto* valueLabel = new QLabel(value, details);
@@ -193,28 +255,46 @@ void InspectorPanel::refresh()
             valueLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
             detailsLayout->addRow(label, valueLabel);
         };
-        addDetailRow(tr("Type"), ToQString(asset.type));
         addDetailRow(tr("Path"), ToQString(asset.path));
         addDetailRow(tr("GUID"), QString::number(static_cast<qulonglong>(asset.uuid)));
-        m_layout->addWidget(details);
 
         if (assetModel.hasImportSettings) {
             const AssetImportSettings& importSettings = assetModel.importSettings;
             auto* importGroup = new QGroupBox(tr("Import Settings"), this);
             auto* importLayout = new QVBoxLayout(importGroup);
-            auto* importer = new QLabel(tr("Importer: %1").arg(ToQString(importSettings.importer)), importGroup);
-            importer->setObjectName(QStringLiteral("inspectorAssetImporter"));
-            importLayout->addWidget(importer);
+            addDetailRow(tr("Importer"), ToQString(importSettings.importer));
             auto* settingsEditor = new EditorJsonWidget(importSettings.settings, importGroup);
             importLayout->addWidget(settingsEditor);
             auto* apply = new QPushButton(tr("Apply"), importGroup);
             apply->setObjectName(QStringLiteral("projectPrimaryButton"));
+            apply->setEnabled(false);
+            auto* revert = new QPushButton(tr("Revert"), importGroup);
+            revert->setEnabled(false);
+            const Json originalSettings = importSettings.settings;
+            connect(settingsEditor, &EditorJsonWidget::valueChanged, importGroup,
+                [settingsEditor, originalSettings, apply, revert]() {
+                    const bool changed = settingsEditor->value() != originalSettings;
+                    apply->setEnabled(changed);
+                    revert->setEnabled(changed);
+                });
+            connect(revert, &QPushButton::clicked, settingsEditor,
+                [settingsEditor, originalSettings, apply, revert]() {
+                    settingsEditor->setValue(originalSettings);
+                    apply->setEnabled(false);
+                    revert->setEnabled(false);
+                });
             connect(apply, &QPushButton::clicked, this, [this, settingsEditor]() {
                 m_viewModel->applyAssetSettings(settingsEditor->value());
             });
-            importLayout->addWidget(apply);
+            auto* buttons = new QHBoxLayout();
+            buttons->addStretch();
+            buttons->addWidget(revert);
+            buttons->addWidget(apply);
+            importLayout->addLayout(buttons);
             m_layout->addWidget(importGroup);
         }
+        m_layout->addWidget(detailsToggle);
+        m_layout->addWidget(details);
         m_layout->addStretch();
         restoreViewState();
         return;
@@ -222,8 +302,36 @@ void InspectorPanel::refresh()
 
     const InspectorEntityModel& entity = m_viewModel->entity();
     if (!entity.valid) {
-        auto* label = new QLabel(tr("No GameObject selected"), this);
-        label->setStyleSheet(QStringLiteral("color: #A0A0A0;"));
+        if (!m_browserPath.isEmpty()) {
+            const QFileInfo info(m_browserPath);
+            auto* icon = new QLabel(this);
+            icon->setAlignment(Qt::AlignCenter);
+            icon->setPixmap(editorAssetIcon({}, m_browserPath, info.isDir()).pixmap(64, 64));
+            icon->setMinimumHeight(88);
+            m_layout->addWidget(icon);
+            auto* title = new QLabel(info.fileName(), this);
+            title->setObjectName(QStringLiteral("inspectorAssetName"));
+            title->setTextFormat(Qt::PlainText);
+            title->setWordWrap(true);
+            m_layout->addWidget(title);
+            auto* meta = new QLabel(info.isDir()
+                ? tr("Folder  |  %1 items").arg(QDir(m_browserPath).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).size())
+                : tr("%1 file  |  %2 KB").arg(info.suffix().toUpper()).arg(info.size() / 1024.0, 0, 'f', 1), this);
+            meta->setObjectName(QStringLiteral("inspectorAssetMeta"));
+            meta->setToolTip(m_browserPath);
+            m_layout->addWidget(meta);
+            auto* reveal = new QPushButton(tr("Show in Explorer"), this);
+            connect(reveal, &QPushButton::clicked, this, [path = m_browserPath]() {
+                const QFileInfo file(path);
+                QDesktopServices::openUrl(QUrl::fromLocalFile(file.isDir() ? path : file.absolutePath()));
+            });
+            m_layout->addWidget(reveal);
+            m_layout->addStretch();
+            return;
+        }
+        auto* label = new QLabel(tr("Select an object or asset to inspect."), this);
+        label->setObjectName(QStringLiteral("inspectorObjectSubtitle"));
+        label->setWordWrap(true);
         m_layout->addWidget(label);
         m_layout->addStretch();
         restoreViewState();
@@ -233,8 +341,15 @@ void InspectorPanel::refresh()
     auto* selectionBar = new QWidget(this);
     selectionBar->setObjectName(QStringLiteral("inspectorSelectionBar"));
     auto* selectionLayout = new QHBoxLayout(selectionBar);
-    selectionLayout->setContentsMargins(10, 8, 6, 8);
-    selectionLayout->setSpacing(8);
+    selectionLayout->setContentsMargins(2, 2, 2, 4);
+    selectionLayout->setSpacing(6);
+
+    auto* objectIcon = new QLabel(selectionBar);
+    objectIcon->setObjectName(QStringLiteral("inspectorObjectIcon"));
+    objectIcon->setFixedSize(26, 26);
+    objectIcon->setAlignment(Qt::AlignCenter);
+    objectIcon->setPixmap(editorThemedIcon(QStringLiteral("box.svg")).pixmap(16, 16));
+    selectionLayout->addWidget(objectIcon);
 
     m_nameEdit = new QLineEdit(ToQString(entity.name), selectionBar);
     m_nameEdit->setObjectName(QStringLiteral("inspectorObjectName"));
@@ -264,6 +379,7 @@ void InspectorPanel::refresh()
     auto* filter = new QLineEdit(this);
     filter->setObjectName(QStringLiteral("inspectorFilter"));
     filter->setPlaceholderText(tr("Filter properties"));
+    filter->setClearButtonEnabled(true);
     if (!m_filterText.isEmpty()) {
         filter->setText(m_filterText);
     }
@@ -322,11 +438,17 @@ void InspectorPanel::refresh()
                                 m_componentClipboardType == component.typeName);
         connect(pasteAction, &QAction::triggered, this, [this, index, managed]() {
             commitComponentValue(index, managed, m_componentClipboardValue);
+            QTimer::singleShot(0, this, [this]() { refresh(); });
         });
-        connect(copyAction, &QAction::triggered, this, [this, typeName = component.typeName,
-                                                        value = component.value]() {
-            m_componentClipboardType = typeName;
-            m_componentClipboardValue = value;
+        connect(sectionMenu, &QMenu::aboutToShow, this, [this, pasteAction, typeName = component.typeName]() {
+            pasteAction->setEnabled(!typeName.empty() && m_componentClipboardType == typeName);
+        });
+        connect(copyAction, &QAction::triggered, this, [this, index, managed]() {
+            const auto& current = m_viewModel->entity();
+            const auto& components = managed ? current.managedComponents : current.nativeComponents;
+            if (index >= components.size()) return;
+            m_componentClipboardType = components[index].typeName;
+            m_componentClipboardValue = components[index].value;
         });
         sectionMenu->addSeparator();
         QAction* resetAction = sectionMenu->addAction(tr("Reset to Default"));
@@ -337,6 +459,7 @@ void InspectorPanel::refresh()
             connect(resetAction, &QAction::triggered, this,
                     [this, index, managed, defaultValue]() {
                         commitComponentValue(index, managed, defaultValue);
+                        QTimer::singleShot(0, this, [this]() { refresh(); });
                     });
         }
         if (!managed) {
@@ -364,6 +487,7 @@ void InspectorPanel::refresh()
         sectionMenu->addSeparator();
         QAction* removeAction = sectionMenu->addAction(
             managed ? tr("Remove Managed Component") : tr("Remove Component"));
+        removeAction->setEnabled(managed || component.typeName != "TransformComponent");
         connect(removeAction, &QAction::triggered, this, [this, index, managed]() {
             if (managed) {
                 if (index < m_managedComponentExpanded.size()) {
@@ -401,8 +525,8 @@ void InspectorPanel::refresh()
         body->setObjectName(QStringLiteral("inspectorSectionBody"));
         body->setVisible(expanded);
         auto* bodyLayout = new QVBoxLayout(body);
-        bodyLayout->setContentsMargins(6, 8, 0, 4);
-        bodyLayout->setSpacing(8);
+        bodyLayout->setContentsMargins(6, 5, 6, 5);
+        bodyLayout->setSpacing(5);
 
         if (!managed && component.hasCustomUI) {
             const String typeName = component.typeName;
@@ -427,9 +551,10 @@ void InspectorPanel::refresh()
             auto* editor = component.reflectedFields.empty()
                 ? new EditorJsonWidget(component.value, body)
                 : new EditorJsonWidget(component.value, component.reflectedFields, entity.assets, body);
-            connect(editor, &EditorJsonWidget::valueChanged, this, [this, index, managed, editor]() {
-                commitComponentValue(index, managed, editor->value());
-            });
+            connect(editor, &EditorJsonWidget::interactiveEditStarted, this,
+                [this]() { m_viewModel->beginInteractiveEdit(); });
+            connect(editor, &EditorJsonWidget::interactiveEditFinished, this,
+                [this]() { m_viewModel->endInteractiveEdit(); });
             connect(editor, &EditorJsonWidget::fieldChanged, this,
                     [this, index, managed, editor](const QString& path) {
                 commitComponentValue(index, managed, editor->value(), path);

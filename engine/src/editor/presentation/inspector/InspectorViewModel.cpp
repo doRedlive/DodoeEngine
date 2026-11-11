@@ -75,11 +75,29 @@ InspectorViewModel::InspectorViewModel(DocumentController& documents,
     m_documentSubscription = m_events.subscribe<DocumentChangedEvent>(
         [this](const DocumentChangedEvent&) { rebuild(); });
     m_selectionSubscription = m_events.subscribe<SelectionChangedEvent>(
-        [this](const SelectionChangedEvent&) { rebuild(); });
+        [this](const SelectionChangedEvent&) { endInteractiveEdit(); rebuild(); });
+    m_assetSubscription = m_events.subscribe<AssetCatalogChangedEvent>(
+        [this](const AssetCatalogChangedEvent&) {
+            if (m_selection.target() == EditorSelection::Target::Asset) rebuild();
+        });
     rebuild();
 }
 
-InspectorViewModel::~InspectorViewModel() = default;
+InspectorViewModel::~InspectorViewModel() { endInteractiveEdit(); }
+
+void InspectorViewModel::beginInteractiveEdit()
+{
+    if (m_interactiveEdit) return;
+    m_interactiveEdit = true;
+    m_documents.history().beginMerge();
+}
+
+void InspectorViewModel::endInteractiveEdit()
+{
+    if (!m_interactiveEdit) return;
+    m_interactiveEdit = false;
+    m_documents.history().endMerge();
+}
 
 const DynamicArray<String>& InspectorViewModel::componentTypes() const
 {

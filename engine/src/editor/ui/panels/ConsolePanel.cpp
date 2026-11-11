@@ -17,6 +17,10 @@
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLineEdit>
+#include <QLabel>
+#include <QSignalBlocker>
+#include <QItemSelectionModel>
+#include <QMap>
 #include <QListWidget>
 #include <QShortcut>
 #include <QScrollBar>
@@ -77,13 +81,13 @@ ConsolePanel::ConsolePanel(EditorWorkspaceContext& context, QWidget* parent)
 
     auto* copy = new QToolButton(tools);
     copy->setObjectName(QStringLiteral("consoleToolButton"));
-    copy->setIcon(editorIcon(QStringLiteral("copy.svg")));
+    copy->setIcon(editorThemedIcon(QStringLiteral("copy.svg")));
     copy->setToolTip(tr("Copy selected logs"));
     toolsLayout->addWidget(copy);
 
     auto* clear = new QToolButton(tools);
     clear->setObjectName(QStringLiteral("consoleToolButton"));
-    clear->setIcon(editorIcon(QStringLiteral("trash.svg")));
+    clear->setIcon(editorThemedIcon(QStringLiteral("trash.svg")));
     clear->setToolTip(tr("Clear logs"));
     toolsLayout->addWidget(clear);
     layout->addWidget(tools);
@@ -100,7 +104,21 @@ ConsolePanel::ConsolePanel(EditorWorkspaceContext& context, QWidget* parent)
     connect(copy, &QToolButton::clicked, this, &ConsolePanel::copySelection);
     connect(clear, &QToolButton::clicked, this, &ConsolePanel::clearEntries);
     auto* copyShortcut = new QShortcut(QKeySequence::Copy, m_list);
+    copyShortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(copyShortcut, &QShortcut::activated, this, &ConsolePanel::copySelection);
+
+    m_detail = new QLabel(tr("Select a message to view details."), this);
+    m_detail->setObjectName(QStringLiteral("consoleDetail"));
+    m_detail->setWordWrap(true);
+    m_detail->setMaximumHeight(72);
+    m_detail->setTextFormat(Qt::PlainText);
+    m_detail->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    layout->addWidget(m_detail);
+    connect(m_list, &QListWidget::currentItemChanged, this,
+        [this](QListWidgetItem* item, QListWidgetItem*) {
+            m_detail->setText(item ? item->data(Qt::UserRole).toString()
+                : tr("Select a message to view details."));
+        });
 
     m_viewModel = create_scope<ConsoleViewModel>(context.session());
     m_viewModelConnection = ScopedConnection(
@@ -135,9 +153,24 @@ void ConsolePanel::refresh()
 
     const QString needle = m_search->text().trimmed();
     const int selectedLevel = m_levelFilter->currentData().toInt();
+    // An index alone is not stable when local messages are prepended to backend logs.
+    const auto selectedItems = m_list->selectedItems();
+    QMap<qulonglong, QString> selectedIndices;
+    for (const auto* item : selectedItems) selectedIndices.insert(item->data(Qt::UserRole + 1).toULongLong(), item->text());
+    const QString currentText = m_list->currentItem() ? m_list->currentItem()->text() : QString();
+    const qulonglong currentIndex = m_list->currentItem()
+        ? m_list->currentItem()->data(Qt::UserRole + 1).toULongLong()
+        : static_cast<qulonglong>(-1);
+    QSignalBlocker blocker(m_list);
     m_list->clear();
+    int warnings = 0;
+    int errors = 0;
+    qulonglong entryIndex = 0;
     for (const ConsoleEntry& entry : m_viewModel->entries()) {
+        const qulonglong sourceIndex = entryIndex++;
         const ConsoleLogLevel level = ToConsoleLogLevel(entry.level);
+        if (level == ConsoleLogLevel::Warning) ++warnings;
+        if (level == ConsoleLogLevel::Error || level == ConsoleLogLevel::Critical) ++errors;
         if (selectedLevel >= 0 && selectedLevel != static_cast<int>(level)) {
             continue;
         }
@@ -152,8 +185,19 @@ void ConsolePanel::refresh()
         auto* item = new QListWidgetItem(
             QStringLiteral("%1  %2").arg(levelName(level), fullMessage), m_list);
         item->setData(Qt::UserRole, fullMessage);
+        item->setData(Qt::UserRole + 1, sourceIndex);
+        if (sourceIndex == currentIndex && item->text() == currentText) m_list->setCurrentItem(item, QItemSelectionModel::NoUpdate);
+        item->setSelected(selectedIndices.value(sourceIndex) == item->text());
         item->setForeground(levelColor(level));
         item->setToolTip(fullMessage);
+    }
+    blocker.unblock();
+    m_detail->setText(m_list->currentItem() ? m_list->currentItem()->data(Qt::UserRole).toString()
+        : tr("Select a message to view details."));
+    if (warnings != m_warningCount || errors != m_errorCount) {
+        m_warningCount = warnings;
+        m_errorCount = errors;
+        emit messageCountsChanged(warnings, errors);
     }
 
     if (atBottom) {
@@ -203,14 +247,14 @@ QString ConsolePanel::levelName(ConsoleLogLevel level)
 QColor ConsolePanel::levelColor(ConsoleLogLevel level)
 {
     switch (level) {
-    case ConsoleLogLevel::Trace: return QColor(QStringLiteral("#7f8c8d"));
-    case ConsoleLogLevel::Debug: return QColor(QStringLiteral("#75a7d9"));
-    case ConsoleLogLevel::Info: return QColor(QStringLiteral("#d8d8d8"));
-    case ConsoleLogLevel::Warning: return QColor(QStringLiteral("#e4b44c"));
-    case ConsoleLogLevel::Error: return QColor(QStringLiteral("#e05b5b"));
-    case ConsoleLogLevel::Critical: return QColor(QStringLiteral("#ff6680"));
+    case ConsoleLogLevel::Trace: return QColor(QStringLiteral("#6272a4"));
+    case ConsoleLogLevel::Debug: return QColor(QStringLiteral("#8be9fd"));
+    case ConsoleLogLevel::Info: return QColor(QStringLiteral("#f8f8f2"));
+    case ConsoleLogLevel::Warning: return QColor(QStringLiteral("#f1fa8c"));
+    case ConsoleLogLevel::Error: return QColor(QStringLiteral("#ff5555"));
+    case ConsoleLogLevel::Critical: return QColor(QStringLiteral("#ff79c6"));
     }
-    return QColor(QStringLiteral("#d8d8d8"));
+    return QColor(QStringLiteral("#f8f8f2"));
 }
 
 } // namespace cakery

@@ -25,6 +25,7 @@ class QLabel;
 class QScrollArea;
 class QListWidget;
 class QListWidgetItem;
+class QToolButton;
 
 namespace cakery {
 
@@ -42,6 +43,7 @@ public:
 
 signals:
     void scriptOpenRequested(const QString& path);
+    void assetPathSelected(const QString& path);
 
 private:
     void reloadAssets();
@@ -79,6 +81,11 @@ private:
     void onDocumentDoubleClicked(QTreeWidgetItem* item, int column);
     void updatePreview(QTreeWidgetItem* item);
     void populateAssetGrid(const FsPath& directory);
+    void navigateTo(const FsPath& directory, bool record = true, bool updateSelection = true);
+    void applyGridFilter();
+    void setListMode(bool enabled);
+    void commitRename(const QString& path, const QString& name);
+    bool canRename(const QString& path) const;
     void selectTreeAsset(const QString& path);
     QPixmap loadThumbnail(const String& path, const String& type);
 
@@ -91,6 +98,12 @@ private:
     QLineEdit* m_filter = nullptr;
     QComboBox* m_typeFilter = nullptr;
     QFileSystemWatcher* m_watcher = nullptr;
+    QLabel* m_breadcrumb = nullptr;
+    QLabel* m_itemCount = nullptr;
+    QToolButton* m_backButton = nullptr;
+    QToolButton* m_upButton = nullptr;
+    QStringList m_navigationHistory;
+    int m_navigationIndex = -1;
     bool m_refreshPending = false;
     FsPath m_gridDirectory;
     QHash<QString, QPair<qint64, QPixmap>> m_thumbnailCache;

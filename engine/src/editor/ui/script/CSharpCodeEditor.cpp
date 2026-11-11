@@ -10,6 +10,7 @@
 #include <QMouseEvent>
 #include <QTextBlock>
 #include <QTextCursor>
+#include <QWheelEvent>
 
 namespace cakery {
 
@@ -55,6 +56,25 @@ QString cleanWord(QString text)
 bool blockEndsWithOpenBrace(const QString& trimmed)
 {
     return trimmed.endsWith(QLatin1Char('{'));
+}
+
+QChar matchingCloser(QChar character)
+{
+    switch (character.unicode()) {
+    case '(': return QLatin1Char(')');
+    case '[': return QLatin1Char(']');
+    case '{': return QLatin1Char('}');
+    case '\'': return QLatin1Char('\'');
+    case '"': return QLatin1Char('"');
+    default: return QChar();
+    }
+}
+
+bool isClosingCharacter(QChar character)
+{
+    return character == QLatin1Char(')') || character == QLatin1Char(']')
+        || character == QLatin1Char('}') || character == QLatin1Char('\'')
+        || character == QLatin1Char('"');
 }
 
 } // namespace
@@ -131,7 +151,7 @@ void CSharpCodeEditor::updateCurrentLineHighlight()
     QList<QTextEdit::ExtraSelection> selections;
     if (!isReadOnly()) {
         QTextEdit::ExtraSelection selection;
-        selection.format.setBackground(QColor(0x2a, 0x2a, 0x2e));
+        selection.format.setBackground(QColor(0x34, 0x37, 0x46));
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
         selection.cursor = textCursor();
         selection.cursor.clearSelection();
@@ -143,8 +163,8 @@ void CSharpCodeEditor::updateCurrentLineHighlight()
 void CSharpCodeEditor::lineNumberAreaPaintEvent(QPaintEvent* event)
 {
     QPainter painter(m_lineNumberArea);
-    painter.fillRect(event->rect(), QColor(0x1e, 0x1e, 0x22));
-    painter.setPen(QColor(0x6a, 0x6a, 0x70));
+    painter.fillRect(event->rect(), QColor(0x28, 0x2a, 0x36));
+    painter.setPen(QColor(0x62, 0x72, 0xa4));
     painter.setFont(font());
 
     QTextBlock block = firstVisibleBlock();
@@ -182,6 +202,21 @@ int CSharpCodeEditor::currentColumn() const
     return textCursor().positionInBlock();
 }
 
+int CSharpCodeEditor::codeFontPointSize() const
+{
+    return font().pointSize();
+}
+
+void CSharpCodeEditor::setCodeFontPointSize(int pointSize)
+{
+    QFont codeFont = font();
+    codeFont.setPointSize(qBound(8, pointSize, 32));
+    setFont(codeFont);
+    setTabStopDistance(4 * QFontMetricsF(font()).horizontalAdvance(QLatin1Char(' ')));
+    updateLineNumberAreaWidth();
+    m_lineNumberArea->update();
+}
+
 void CSharpCodeEditor::gotoLine(int line, int column, int selectLength)
 {
     line = qMax(0, line);
@@ -203,6 +238,56 @@ void CSharpCodeEditor::gotoLine(int line, int column, int selectLength)
 void CSharpCodeEditor::keyPressEvent(QKeyEvent* event)
 {
     QTextCursor cursor = textCursor();
+
+    const QString typedText = event->text();
+    const Qt::KeyboardModifiers textModifiers = event->modifiers();
+    const bool isDirectTextInput = typedText.size() == 1
+        && !(textModifiers & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier));
+    if (isDirectTextInput) {
+        const QChar typed = typedText.at(0);
+        if (!cursor.hasSelection() && isClosingCharacter(typed)
+            && document()->characterAt(cursor.position()) == typed) {
+            cursor.movePosition(QTextCursor::Right);
+            setTextCursor(cursor);
+            event->accept();
+            return;
+        }
+
+        const QChar closer = matchingCloser(typed);
+        if (!closer.isNull()) {
+            cursor.beginEditBlock();
+            if (cursor.hasSelection()) {
+                const int start = cursor.selectionStart();
+                QString selected = cursor.selectedText();
+                selected.replace(QChar::ParagraphSeparator, QLatin1Char('\n'));
+                cursor.insertText(QString(typed) + selected + closer);
+                cursor.setPosition(start + 1);
+                cursor.setPosition(start + 1 + selected.size(), QTextCursor::KeepAnchor);
+            } else {
+                cursor.insertText(QString(typed) + closer);
+                cursor.movePosition(QTextCursor::Left);
+            }
+            cursor.endEditBlock();
+            setTextCursor(cursor);
+            event->accept();
+            return;
+        }
+    }
+
+    if (event->key() == Qt::Key_Backspace && !cursor.hasSelection()
+        && cursor.position() > 0) {
+        const QChar closer = matchingCloser(document()->characterAt(cursor.position() - 1));
+        if (!closer.isNull() && closer == document()->characterAt(cursor.position())) {
+            cursor.beginEditBlock();
+            cursor.setPosition(cursor.position() - 1);
+            cursor.setPosition(cursor.position() + 2, QTextCursor::KeepAnchor);
+            cursor.removeSelectedText();
+            cursor.endEditBlock();
+            setTextCursor(cursor);
+            event->accept();
+            return;
+        }
+    }
 
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
         const QString blockText = cursor.block().text();
@@ -301,6 +386,26 @@ void CSharpCodeEditor::mousePressEvent(QMouseEvent* event)
         }
     }
     QPlainTextEdit::mousePressEvent(event);
+}
+
+void CSharpCodeEditor::wheelEvent(QWheelEvent* event)
+{
+    if (event->modifiers() & Qt::ControlModifier) {
+        int delta = event->angleDelta().y();
+        if (delta == 0) {
+            delta = event->pixelDelta().y();
+        }
+        if (delta != 0) {
+            const int pointSize = qBound(8, codeFontPointSize() + (delta > 0 ? 1 : -1), 32);
+            if (pointSize != codeFontPointSize()) {
+                setCodeFontPointSize(pointSize);
+                emit fontSizeChanged(pointSize);
+            }
+            event->accept();
+            return;
+        }
+    }
+    QPlainTextEdit::wheelEvent(event);
 }
 
 } // namespace cakery

@@ -1,0 +1,316 @@
+/* Refined island workspace with the supplied Dracula palette.
+   Scope includes the editor and its floating docks, not the project manager. */
+QWidget[editorWorkspace="true"] { background: #191a21; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QWidget { background: transparent; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QLabel { background: transparent; }
+QWidget[editorWorkspace="true"] QMenuBar,
+QWidget[editorWorkspace="true"] #editorTitleBar { background: #21222c; border: 0; border-bottom: 1px solid #44475a; }
+QWidget[editorWorkspace="true"] #editorTitleBar { min-height: 28px; max-height: 28px; }
+QWidget[editorWorkspace="true"] #editorTitleBar QMenuBar { border: 0; background: transparent; }
+QWidget[editorWorkspace="true"] #editorTitleIcon {
+    background: #44475a; color: #bd93f9; border-radius: 3px; font-weight: 700;
+}
+QWidget[editorWorkspace="true"] QMenuBar::item { padding: 4px 9px; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QMenuBar::item:selected { background: #44475a; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QMenu { background: #282a36; border: 1px solid #44475a; padding: 6px; }
+QWidget[editorWorkspace="true"] QMenu::item { padding: 6px 24px 6px 14px; }
+QWidget[editorWorkspace="true"] QMenu::item:selected { background: #44475a; }
+QWidget[editorWorkspace="true"] QMenu::item:disabled { color: #6272a4; }
+QWidget[editorWorkspace="true"] QToolBar#editorToolbar {
+    background: #21222c; border-bottom: 1px solid #44475a;
+    spacing: 4px; padding: 5px 0; min-height: 34px;
+}
+QWidget[editorWorkspace="true"] #editorToolbar QLabel#editorBrand {
+    background: transparent; color: #f8f8f2; border: none;
+    padding: 0 6px 0 2px; font-size: 12px; font-weight: 600;
+}
+QWidget[editorWorkspace="true"] QToolBar::separator { background: #44475a; width: 1px; margin: 5px 5px; }
+QWidget[editorWorkspace="true"] QToolButton,
+QWidget[editorWorkspace="true"] QPushButton {
+    background: #343746; border: 1px solid #44475a; border-radius: 3px;
+    color: #f8f8f2; padding: 1px 6px; min-height: 20px;
+}
+QWidget[editorWorkspace="true"] QToolButton:hover,
+QWidget[editorWorkspace="true"] QPushButton:hover { background: #44475a; border-color: #bd93f9; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QToolButton:checked { background: #44475a; border-color: #bd93f9; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QToolButton:disabled,
+QWidget[editorWorkspace="true"] QPushButton:disabled { color: #6272a4; border-color: #343746; }
+QWidget[editorWorkspace="true"] #editorToolbar QToolButton#runtimeToolButton {
+    background: transparent; border: 1px solid transparent; min-width: 32px; max-width: 32px;
+    min-height: 32px; max-height: 32px; padding: 0; border-radius: 5px;
+}
+QWidget[editorWorkspace="true"] #editorToolbar QToolButton#runtimeToolButton:hover { background: #343746; border-color: #44475a; }
+QWidget[editorWorkspace="true"] #editorToolbar QToolButton#runtimeToolButton:checked { background: #44475a; border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QLabel#workspaceProjectChip {
+    color: #9b9db4; background: transparent; border: none; border-radius: 0;
+    padding: 0; font-size: 12px; font-weight: normal;
+}
+QWidget[editorWorkspace="true"] QToolButton#workspaceToolbarButton {
+    background: transparent; border: 1px solid transparent; border-radius: 3px;
+    min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px; padding: 0;
+}
+QWidget[editorWorkspace="true"] QToolButton#workspaceToolbarButton:hover { background: #44475a; border-color: #44475a; }
+/* The native row layout measures complete button boxes, including their borders. */
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar {
+    background: #21222c; border: 0; border-bottom: 1px solid #343746; padding: 0;
+}
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar QToolButton#sceneToolButton {
+    background: transparent; border: 1px solid transparent; border-radius: 4px;
+    min-width: 24px; min-height: 24px; padding: 0;
+}
+QWidget[editorWorkspace="true"] QWidget#sceneToolSeparator { background: #44475a; border: 0; }
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar QToolButton#sceneToolButton:hover { background: #343746; border-color: #44475a; }
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar QToolButton#sceneToolButton:checked { background: #44475a; border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QLabel#workspaceSceneName { color: #9b9db4; font: 11px Consolas; padding: 0; }
+QWidget[editorWorkspace="true"] QLineEdit,
+QWidget[editorWorkspace="true"] QSpinBox,
+QWidget[editorWorkspace="true"] QDoubleSpinBox,
+QWidget[editorWorkspace="true"] QComboBox {
+    background: #21222c; color: #f8f8f2; border: 1px solid #44475a; border-radius: 3px;
+    min-height: 20px; padding: 1px 6px; selection-background-color: #44475a; selection-color: #f8f8f2;
+}
+QWidget[editorWorkspace="true"] QLineEdit:focus,
+QWidget[editorWorkspace="true"] QSpinBox:focus,
+QWidget[editorWorkspace="true"] QDoubleSpinBox:focus,
+QWidget[editorWorkspace="true"] QComboBox:focus { border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QComboBox QAbstractItemView { background: #282a36; color: #f8f8f2; selection-background-color: #44475a; }
+QWidget[editorWorkspace="true"] QTreeWidget,
+QWidget[editorWorkspace="true"] QListWidget { background: #21222c; border: none; outline: 0; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QTreeWidget::item { min-height: 20px; padding: 1px 3px; border: 1px solid transparent; border-radius: 2px; }
+QWidget[editorWorkspace="true"] QTreeWidget::item:hover,
+QWidget[editorWorkspace="true"] QListWidget::item:hover { background: #343746; }
+QWidget[editorWorkspace="true"] QTreeWidget::item:selected,
+QWidget[editorWorkspace="true"] QListWidget::item:selected { background: #44475a; color: #f8f8f2; border-color: #6272a4; }
+QWidget[editorWorkspace="true"] QListWidget#projectAssetGrid { background: #21222c; padding: 0; border: 0; }
+QWidget[editorWorkspace="true"] QListWidget#projectAssetGrid::item { border: 1px solid transparent; border-radius: 2px; padding: 5px; }
+QWidget[editorWorkspace="true"] QListWidget#projectAssetGrid::item:selected { background: #44475a; border-color: #bd93f9; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QLabel#projectBreadcrumb,
+QWidget[editorWorkspace="true"] QLabel#projectItemCount { color: #9b9db4; font-size: 11px; }
+QWidget[editorWorkspace="true"] QScrollArea,
+QWidget[editorWorkspace="true"] QWidget#inspectorContent { background: #21222c; border: 0; }
+QWidget[editorWorkspace="true"] QWidget#inspectorSelectionBar { background: transparent; border: none; min-height: 28px; }
+QWidget[editorWorkspace="true"] QLineEdit#inspectorObjectName { background: transparent; color: #f8f8f2; border: 1px solid transparent; font-size: 12px; min-height: 22px; padding: 0 4px; }
+QWidget[editorWorkspace="true"] QLineEdit#inspectorObjectName:focus { background: #21222c; border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QLabel#inspectorObjectIcon { background: #44475a; color: #bd93f9; border-radius: 3px; font-size: 14px; }
+QWidget[editorWorkspace="true"] QLabel#inspectorObjectSubtitle,
+QWidget[editorWorkspace="true"] QLabel#inspectorAssetMeta { color: #9b9db4; font-size: 11px; }
+QWidget[editorWorkspace="true"] QLabel#inspectorAssetName { color: #f8f8f2; font-size: 14px; font-weight: 600; }
+QWidget[editorWorkspace="true"] QLineEdit#inspectorFilter { background: #21222c; border: 1px solid #44475a; color: #f8f8f2; min-height: 20px; }
+QWidget[editorWorkspace="true"] QWidget#inspectorSection { background: transparent; border: 0; border-radius: 0; }
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionHeaderRow { background: #282a36; border: 0; border-top: 1px solid #343746; border-radius: 0; min-height: 26px; }
+QWidget[editorWorkspace="true"] QPushButton#inspectorSectionHeader { background: transparent; border: 0; color: #f8f8f2; min-height: 22px; padding: 1px 6px; text-align: left; }
+QWidget[editorWorkspace="true"] QPushButton#inspectorSectionHeader:hover { background: #343746; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionBody { background: transparent; border: 0; }
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionBody QLineEdit,
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionBody QSpinBox,
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionBody QDoubleSpinBox { background: #21222c; border: 1px solid #44475a; border-radius: 3px; min-height: 20px; padding: 1px 4px; }
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionBody QDoubleSpinBox:focus,
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionBody QSpinBox:focus,
+QWidget[editorWorkspace="true"] QWidget#inspectorSectionBody QLineEdit:focus { border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QLabel#inspectorFieldLabel { color: #bfbfd2; font-size: 11px; }
+QWidget[editorWorkspace="true"] QWidget#inspectorVector,
+QWidget[editorWorkspace="true"] QWidget#inspectorBoolField,
+QWidget[editorWorkspace="true"] QWidget#inspectorColorField { background: transparent; border: 0; }
+QWidget[editorWorkspace="true"] QLabel#inspectorAxisLabel { background: transparent; font: 10px Consolas; min-width: 8px; }
+QWidget[editorWorkspace="true"] QLabel#inspectorAxisLabel[axis="x"] { color: #ff5555; }
+QWidget[editorWorkspace="true"] QLabel#inspectorAxisLabel[axis="y"] { color: #50fa7b; }
+QWidget[editorWorkspace="true"] QLabel#inspectorAxisLabel[axis="z"] { color: #8be9fd; }
+QWidget[editorWorkspace="true"] QPushButton#inspectorAddButton { background: #343746; border: 1px solid #44475a; color: #f8f8f2; min-height: 22px; }
+QWidget[editorWorkspace="true"] QGroupBox { background: transparent; border: 0; border-top: 1px solid #343746; border-radius: 0; margin-top: 14px; }
+QWidget[editorWorkspace="true"] QGroupBox::title { color: #f8f8f2; background: #21222c; }
+QWidget[editorWorkspace="true"] QToolButton#inspectorAssetReference { background: #282a36; color: #f8f8f2; border: 1px solid #44475a; border-radius: 5px; }
+QWidget[editorWorkspace="true"] QToolButton#inspectorObjectMenu,
+QWidget[editorWorkspace="true"] QToolButton#inspectorSectionMenu { background: transparent; border: 0; min-width: 20px; max-width: 20px; min-height: 20px; max-height: 20px; padding: 0; }
+QWidget[editorWorkspace="true"] QLineEdit#consoleSearch,
+QWidget[editorWorkspace="true"] QLineEdit#historySearch,
+QWidget[editorWorkspace="true"] QComboBox#consoleLevelFilter { background: #21222c; border: 1px solid #44475a; border-radius: 3px; min-height: 20px; }
+QWidget[editorWorkspace="true"] QListWidget#consoleList,
+QWidget[editorWorkspace="true"] QListWidget#historyList { background: #282a36; border: 0; padding: 2px; }
+QWidget[editorWorkspace="true"] QListWidget#consoleList { font: 12px Consolas; }
+QWidget[editorWorkspace="true"] QLabel#consoleDetail { color: #bd93f9; padding: 5px 6px; border-top: 1px solid #44475a; font: 11px Consolas; }
+QWidget[editorWorkspace="true"] QToolButton#consoleToolButton,
+QWidget[editorWorkspace="true"] QToolButton#historyToolButton { background: #282a36; border: 1px solid #44475a; border-radius: 5px; }
+QWidget[editorWorkspace="true"] QScrollBar:vertical { background: transparent; width: 9px; }
+QWidget[editorWorkspace="true"] QScrollBar:horizontal { background: transparent; height: 9px; }
+QWidget[editorWorkspace="true"] QScrollBar::handle { background: #44475a; border-radius: 4px; }
+QWidget[editorWorkspace="true"] QScrollBar::handle:hover { background: #6272a4; }
+QWidget[editorWorkspace="true"] QSplitter::handle,
+QWidget[editorWorkspace="true"] ads--CDockSplitter::handle { background: #343746; border: 0; }
+QWidget[editorWorkspace="true"] QSplitter::handle:hover { background: #6272a4; }
+QWidget[editorWorkspace="true"] ads--CDockManager,
+QWidget[editorWorkspace="true"] ads--CDockContainerWidget,
+QWidget[editorWorkspace="true"] ads--CDockSplitter { background: #191a21; border: 0; border-radius: 0; padding: 0; }
+QWidget[editorWorkspace="true"] ads--CDockAreaWidget { background: #191a21; border: 0; border-radius: 8px; margin: 0; padding: 0; }
+QWidget[editorWorkspace="true"] ads--CDockWidget { background: #21222c; border: 1px solid #343746; border-top: 0; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; margin: 0; padding: 0; }
+QWidget[editorWorkspace="true"] ads--CDockWidget QScrollArea#dockWidgetScrollArea { background: #21222c; border: 0; border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
+QWidget[editorWorkspace="true"] ads--CDockAreaTitleBar { background: #21222c; border: 1px solid #343746; padding: 4px 5px; min-height: 0; max-height: 16777215px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+QWidget[editorWorkspace="true"] ads--CDockAreaTabBar,
+QWidget[editorWorkspace="true"] ads--CDockAreaTabBar QWidget { background: transparent; border: 0; }
+QWidget[editorWorkspace="true"] ads--CDockWidgetTab {
+    background: transparent; border: 0;
+    border-radius: 4px; padding: 0 3px; margin: 0 2px 0 0; min-width: 0; min-height: 22px;
+}
+QWidget[editorWorkspace="true"] ads--CDockWidgetTab[activeTab="true"] { background: #343746; border: 0; border-radius: 4px; }
+QWidget[editorWorkspace="true"] ads--CDockWidgetTab[activeTab="false"] { background: transparent; border: 0; }
+QWidget[editorWorkspace="true"] ads--CDockWidgetTab[activeTab="false"]:hover { background: #343746; }
+QWidget[editorWorkspace="true"] ads--CDockWidgetTab QLabel#dockWidgetTabLabel {
+    background: transparent; color: #bfbfd2; border: 0; padding: 0; margin: 0; font-size: 12px;
+}
+QWidget[editorWorkspace="true"] ads--CDockWidgetTab[activeTab="true"] QLabel#dockWidgetTabLabel { background: transparent; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] ads--CDockWidgetTab #tabCloseButton {
+    background: transparent; border: none; padding: 0; margin: 0;
+    min-width: 0; max-width: 0; min-height: 0; max-height: 0;
+}
+QWidget[editorWorkspace="true"] ads--CTitleBarButton {
+    background: transparent; border: 0; min-width: 20px; max-width: 20px;
+    min-height: 20px; max-height: 20px; padding: 0; margin: 0 1px; border-radius: 2px;
+    qproperty-iconSize: 12px 12px;
+}
+QWidget[editorWorkspace="true"] ads--CTitleBarButton:hover { background: #44475a; }
+QWidget[editorWorkspace="true"] QToolButton#tabsMenuButton::menu-indicator { image: none; width: 0; }
+QWidget[editorWorkspace="true"] QStatusBar#workspaceStatusBar { background: #21222c; border-top: 1px solid #343746; min-height: 36px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+QWidget[editorWorkspace="true"] QStatusBar::item { border: none; }
+QWidget[editorWorkspace="true"] QToolButton#workspacePanelButton { background: transparent; border: 1px solid transparent; border-radius: 5px; color: #bfbfd2; padding: 1px 10px; min-width: 0; min-height: 24px; max-height: 24px; font-size: 12px; }
+QWidget[editorWorkspace="true"] QToolButton#workspacePanelButton:hover { background: #343746; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QToolButton#workspacePanelButton:checked { background: #44475a; border-color: #6272a4; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QLabel#workspaceRuntimeStatus { color: #50fa7b; padding: 0 10px; font: 11px Consolas; }
+QWidget[editorWorkspace="true"] QLabel#workspaceRuntimeStatus[runtimeState="playing"] { color: #50fa7b; }
+QWidget[editorWorkspace="true"] QLabel#workspaceRuntimeStatus[runtimeState="paused"] { color: #f1fa8c; }
+QWidget[editorWorkspace="true"] QToolButton#workspaceLogCounts { background: transparent; border: 0; color: #9b9db4; font: 10px Consolas; min-height: 18px; max-height: 18px; padding: 0 6px; }
+QWidget[editorWorkspace="true"] QToolButton#windowMinButton,
+QWidget[editorWorkspace="true"] QToolButton#windowMaxButton,
+QWidget[editorWorkspace="true"] QToolButton#windowCloseButton {
+    background: transparent; border: 0; border-radius: 0; padding: 0;
+    min-width: 34px; max-width: 34px; min-height: 24px; max-height: 24px;
+}
+QWidget[editorWorkspace="true"] QToolButton#windowMinButton:hover,
+QWidget[editorWorkspace="true"] QToolButton#windowMaxButton:hover { background: #44475a; }
+QWidget[editorWorkspace="true"] QToolButton#windowCloseButton:hover { background: #ff5555; }
+QWidget[editorWorkspace="true"] QToolButton#inspectorAssetReferenceClear {
+    background: transparent; border: none; padding: 0; min-width: 20px; max-width: 20px;
+    min-height: 20px; max-height: 20px; qproperty-iconSize: 12px 12px;
+}
+QWidget[editorWorkspace="true"] QToolButton#inspectorAssetReferenceClear:hover { background: #44475a; }
+
+/* Consistent island gutters are also comfortable splitter drag targets. */
+QWidget[editorWorkspace="true"] QSplitter { qproperty-handleWidth: 4; }
+QWidget[editorWorkspace="true"] ads--CDockSplitter { qproperty-handleWidth: 8; }
+QWidget[editorWorkspace="true"] QSplitter::handle:horizontal { width: 4px; background: #21222c; }
+QWidget[editorWorkspace="true"] ads--CDockSplitter::handle:horizontal { width: 8px; background: #191a21; }
+QWidget[editorWorkspace="true"] QSplitter::handle:vertical { height: 4px; background: #21222c; }
+QWidget[editorWorkspace="true"] ads--CDockSplitter::handle:vertical { height: 8px; background: #191a21; }
+QWidget[editorWorkspace="true"] ads--CDockSplitter::handle:hover { background: #343746; }
+QWidget[editorWorkspace="true"] QWidget#hierarchyPanel,
+QWidget[editorWorkspace="true"] QWidget#projectPanel { background: #21222c; }
+
+/* Functional accents mirror the reference's green / cyan / pink / yellow roles. */
+QWidget[editorWorkspace="true"] #editorToolbar QToolButton#runtimeToolButton[runtimeCommand="play"]:checked { background: #253d32; border-color: #50fa7b; }
+QWidget[editorWorkspace="true"] #editorToolbar QToolButton#runtimeToolButton[runtimeCommand="pause"]:checked { background: #3d3e2d; border-color: #f1fa8c; }
+QWidget[editorWorkspace="true"] #editorToolbar QToolButton#runtimeToolButton[runtimeCommand="stop"]:pressed { background: #412c3a; border-color: #ff79c6; }
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar QToolButton#sceneToolButton[sceneTool="translate"]:checked,
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar QToolButton#sceneToolButton[sceneTool="camera"]:checked { background: #263b42; border-color: #8be9fd; }
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar QToolButton#sceneToolButton[sceneTool="rotate"]:checked { background: #412c3a; border-color: #ff79c6; }
+QWidget[editorWorkspace="true"] QWidget#sceneToolbar QToolButton#sceneToolButton[sceneTool="scale"]:checked { background: #3f342b; border-color: #ffb86c; }
+QWidget[editorWorkspace="true"] QToolButton#workspaceLogCounts[severity="warning"] { color: #f1fa8c; }
+QWidget[editorWorkspace="true"] QToolButton#workspaceLogCounts[severity="error"] { color: #ff5555; }
+
+/* Editor content uses the lighter plane; navigation stays on the darker plane. */
+QWidget[editorWorkspace="true"] QPlainTextEdit#scriptEditor {
+    background: #282a36; color: #f8f8f2; border: none;
+    selection-background-color: #44475a; selection-color: #f8f8f2;
+}
+QWidget[editorWorkspace="true"] QTreeWidget#scriptOutline { background: #21222c; border: 0; border-radius: 0; }
+QWidget[editorWorkspace="true"] QTabWidget#scriptTabs::pane { background: #282a36; border: 0; }
+QWidget[editorWorkspace="true"] QTabWidget#scriptTabs > QTabBar::tab {
+    background: #191a21; color: #bfbfd2; border: 0; border-radius: 0; padding: 6px 12px; margin: 0;
+}
+QWidget[editorWorkspace="true"] QTabWidget#scriptTabs > QTabBar::tab:selected { background: #282a36; color: #f8f8f2; }
+QWidget[editorWorkspace="true"] QWidget#scriptToolbar,
+QWidget[editorWorkspace="true"] QWidget#scriptFindBar,
+QWidget[editorWorkspace="true"] QLabel#scriptStatus { background: #21222c; color: #6272a4; border: 0; }
+QWidget[editorWorkspace="true"] QListWidget#consoleList::item,
+QWidget[editorWorkspace="true"] QListWidget#historyList::item { border: 0; border-radius: 0; padding: 2px 6px; margin: 0; }
+QToolTip { background: #282a36; color: #f8f8f2; border: 1px solid #44475a; padding: 4px 6px; font-size: 12px; }
+
+/* Override the legacy ID-scoped rules as well as the generic controls. */
+QWidget[editorWorkspace="true"] QLineEdit#scriptOutlineFilter,
+QWidget[editorWorkspace="true"] QWidget#scriptFindBar QLineEdit,
+QWidget[editorWorkspace="true"] QLineEdit#inspectorAddSearch,
+QWidget[editorWorkspace="true"] QComboBox#inspectorLayerField,
+QWidget[editorWorkspace="true"] QToolButton#inspectorMaskField {
+    background: #21222c; color: #f8f8f2; border: 1px solid #44475a; border-radius: 3px;
+}
+QWidget[editorWorkspace="true"] QLineEdit#scriptOutlineFilter:focus,
+QWidget[editorWorkspace="true"] QWidget#scriptFindBar QLineEdit:focus,
+QWidget[editorWorkspace="true"] QLineEdit#inspectorAddSearch:focus { border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QWidget#scriptToolbar QToolButton,
+QWidget[editorWorkspace="true"] QWidget#scriptFindBar QToolButton {
+    background: #343746; color: #f8f8f2; border: 1px solid #44475a; border-radius: 3px; padding: 3px 10px;
+}
+QWidget[editorWorkspace="true"] QWidget#scriptToolbar QToolButton:hover,
+QWidget[editorWorkspace="true"] QWidget#scriptFindBar QToolButton:hover { background: #44475a; border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QAbstractItemView {
+    background: #282a36; alternate-background-color: #21222c; color: #f8f8f2;
+    selection-background-color: #44475a; selection-color: #f8f8f2; border: 0; outline: 0;
+}
+QWidget[editorWorkspace="true"] QHeaderView,
+QWidget[editorWorkspace="true"] QHeaderView::section {
+    background: #21222c; color: #bfbfd2; border: 0; border-bottom: 1px solid #44475a; padding: 5px 8px;
+}
+QWidget[editorWorkspace="true"] QPlainTextEdit,
+QWidget[editorWorkspace="true"] QTextEdit,
+QWidget[editorWorkspace="true"] QGraphicsView#workflowGraph {
+    background: #282a36; color: #f8f8f2; border: 1px solid #44475a; border-radius: 3px;
+    selection-background-color: #44475a; selection-color: #f8f8f2;
+}
+QWidget[editorWorkspace="true"] QTreeWidget#workflowList { background: #282a36; }
+QWidget[editorWorkspace="true"] QTreeWidget#projectFolderTree {
+    background: #21222c; border: 1px solid #343746; border-radius: 7px; padding: 5px; outline: 0;
+}
+QWidget[editorWorkspace="true"] QTreeWidget#projectFolderTree::item {
+    border: 0; border-radius: 5px; min-height: 24px; padding: 2px 6px; margin: 1px 0;
+}
+QWidget[editorWorkspace="true"] QTreeWidget#projectFolderTree::item:selected,
+QWidget[editorWorkspace="true"] QTreeWidget#projectFolderTree::item:selected:!active {
+    background: #44475a; color: #f8f8f2; border: 0;
+}
+QWidget[editorWorkspace="true"] QCheckBox::indicator,
+QWidget[editorWorkspace="true"] QRadioButton::indicator { background: #343746; border: 1px solid #6272a4; }
+QWidget[editorWorkspace="true"] QCheckBox::indicator:checked,
+QWidget[editorWorkspace="true"] QRadioButton::indicator:checked { background: #bd93f9; border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QScrollBar::add-page,
+QWidget[editorWorkspace="true"] QScrollBar::sub-page,
+QWidget[editorWorkspace="true"] QScrollBar::corner { background: #21222c; }
+QWidget[editorWorkspace="true"] QSlider::groove:horizontal { background: #44475a; }
+QWidget[editorWorkspace="true"] QSlider::handle:horizontal { background: #bd93f9; }
+QWidget[editorWorkspace="true"] QSlider::handle:horizontal:hover { background: #d6b7ff; }
+QWidget[editorWorkspace="true"] QLabel#inspectorAssetPreview { background: #282a36; border-color: #44475a; }
+
+/* Popups are top-level windows and explicitly opt into the workspace theme. */
+QFrame#inspectorAssetPicker[editorWorkspace="true"] {
+    background: #21222c; color: #f8f8f2; border: 1px solid #6272a4; border-radius: 6px;
+}
+QFrame#inspectorAssetPicker[editorWorkspace="true"] QLineEdit {
+    background: #282a36; color: #f8f8f2; border: 1px solid #44475a; border-radius: 3px; min-height: 28px; padding: 2px 8px;
+}
+QFrame#inspectorAssetPicker[editorWorkspace="true"] QLineEdit:focus { border-color: #bd93f9; }
+QFrame#inspectorAssetPicker[editorWorkspace="true"] QListWidget { background: #21222c; border: 0; padding: 4px; }
+QFrame#inspectorAssetPicker[editorWorkspace="true"] QListWidget::item { background: transparent; color: #f8f8f2; border: 1px solid transparent; border-radius: 4px; padding: 4px; margin: 0; }
+QFrame#inspectorAssetPicker[editorWorkspace="true"] QListWidget::item:hover { background: #343746; border-color: #44475a; }
+QFrame#inspectorAssetPicker[editorWorkspace="true"] QListWidget::item:selected { background: #44475a; border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] QDialog,
+QWidget[editorWorkspace="true"] QDialog#unsavedChangesDialog,
+QWidget[editorWorkspace="true"] QMessageBox,
+QColorDialog#editorColorDialog[editorWorkspace="true"] { background: #21222c; color: #f8f8f2; border: 1px solid #44475a; }
+QWidget[editorWorkspace="true"] QDialog#unsavedChangesDialog QWidget#unsavedChangesBody { background: #21222c; }
+QWidget[editorWorkspace="true"] QDialog#unsavedChangesDialog QLabel#unsavedChangesMessage,
+QWidget[editorWorkspace="true"] QMessageBox QLabel { color: #f8f8f2; }
+QColorDialog#editorColorDialog QLabel { background: transparent; color: #f8f8f2; border: 0; }
+QColorDialog#editorColorDialog #editorTitleBar { background: #21222c; border: 0; border-bottom: 1px solid #44475a; }
+QWidget[editorWorkspace="true"] ads--CAutoHideSideBar { background: #191a21; border: 0; }
+QWidget[editorWorkspace="true"] ads--CAutoHideTab { background: #21222c; color: #bfbfd2; border: 1px solid #44475a; }
+QWidget[editorWorkspace="true"] ads--CAutoHideTab:hover,
+QWidget[editorWorkspace="true"] ads--CAutoHideTab[activeTab="true"] { background: #44475a; color: #f8f8f2; border-color: #bd93f9; }
+QWidget[editorWorkspace="true"] ads--CAutoHideDockContainer,
+QWidget[editorWorkspace="true"] ads--CAutoHideDockContainer #autoHideDockArea,
+QWidget[editorWorkspace="true"] ads--CAutoHideDockContainer ads--CDockWidget { background: #21222c; border-color: #44475a; }

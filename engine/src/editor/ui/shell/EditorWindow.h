@@ -13,6 +13,7 @@
 
 class QAction;
 class QEvent;
+class QLabel;
 class QMenu;
 class QMenuBar;
 class QPoint;
@@ -26,6 +27,7 @@ namespace ads {
 class CDockManager;
 class CDockWidget;
 class CFloatingDockContainer;
+class CElidingLabel;
 }
 
 namespace cakery {
@@ -68,6 +70,9 @@ protected:
 private:
     void createTitleBar();
     void createToolbar();
+    void createStatusBar();
+    void setupBottomPanels();
+    void enforceExclusiveBottomPanel(ads::CDockWidget* active = nullptr);
     void createMenus();
     void createToolsMenu();
     void refreshToolsMenu();
@@ -144,10 +149,14 @@ private:
     QToolButton* m_playButton = nullptr;
     QToolButton* m_pauseButton = nullptr;
     QToolButton* m_stopButton = nullptr;
+    ads::CElidingLabel* m_projectLabel = nullptr;
+    ads::CElidingLabel* m_sceneLabel = nullptr;
+    QLabel* m_runtimeStatus = nullptr;
     QTimer* m_safePointTimer = nullptr;
     QTimer* m_assetImportTimer = nullptr;
     QProgressDialog* m_assetImportDialog = nullptr;
     bool m_closed = false;
+    bool m_switchingBottomPanel = false;
     ScopedConnection m_historyViewSubscription;
     ScopedConnection m_cameraViewSubscription;
     ScopedConnection m_gizmoViewSubscription;

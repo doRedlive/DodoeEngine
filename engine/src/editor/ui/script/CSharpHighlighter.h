@@ -27,7 +27,8 @@ public:
         Literal,
         Preprocessor,
         Attribute,
-        TypeName
+        TypeName,
+        Function
     };
 
     explicit CSharpHighlighter(QTextDocument* document);
@@ -45,7 +46,7 @@ private:
     void formatRange(int start, int length, Token token);
 
     QHash<QString, Token> m_keywords;
-    QTextCharFormat m_formats[10];
+    QTextCharFormat m_formats[11];
     QRegularExpression m_attributeRegex;
     QRegularExpression m_preprocessorRegex;
 };

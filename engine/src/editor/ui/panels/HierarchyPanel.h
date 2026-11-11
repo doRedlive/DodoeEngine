@@ -25,6 +25,7 @@ public:
 
 signals:
     void newTilemapRequested();
+    void frameSelectionRequested();
 
 private:
     void refresh();

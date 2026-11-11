@@ -7,6 +7,7 @@
 #include "presentation/hierarchy/HierarchyViewModel.h"
 #include "ui/common/EditorWorkspaceContext.h"
 #include "ui/common/QtStringInterop.h"
+#include "ui/common/EditorIcons.h"
 
 #include <QAbstractItemView>
 #include <QDir>
@@ -27,6 +28,8 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QToolButton>
 
 #include <filesystem>
 #include <functional>
@@ -93,13 +96,13 @@ protected:
         const QList<QTreeWidgetItem*> selected = selectedItems();
         QTreeWidgetItem* source = selected.isEmpty() ? nullptr : selected.first();
         QTreeWidgetItem* target = itemAt(event->position().toPoint());
-        if (!source || !target || source == target) {
+        if (!source || source == target) {
             event->ignore();
             return;
         }
         const UInt64 child = ItemUuid(source);
         const UInt64 parent = ItemUuid(target);
-        if (child == 0 || parent == 0) {
+        if (child == 0) {
             event->ignore();
             return;
         }
@@ -125,17 +128,31 @@ HierarchyPanel::HierarchyPanel(EditorWorkspaceContext& context, QWidget* parent)
           context.documents(), context.selection(), context.assets(), context.events()))
 {
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(0);
+    setObjectName(QStringLiteral("hierarchyPanel"));
+    layout->setContentsMargins(10, 10, 10, 8);
+    layout->setSpacing(8);
 
     m_filter = new QLineEdit(this);
+    m_filter->setObjectName(QStringLiteral("hierarchySearch"));
     m_filter->setPlaceholderText(tr("Search hierarchy..."));
     m_filter->setClearButtonEnabled(true);
-    layout->addWidget(m_filter);
+    auto* searchRow = new QHBoxLayout();
+    searchRow->setSpacing(6);
+    searchRow->addWidget(m_filter, 1);
+    auto* create = new QToolButton(this);
+    create->setIcon(editorThemedIcon(QStringLiteral("plus.svg")));
+    create->setToolTip(tr("Create GameObject"));
+    connect(create, &QToolButton::clicked, this, &HierarchyPanel::onCreateEntity);
+    searchRow->addWidget(create);
+    layout->addLayout(searchRow);
 
     m_tree = new HierarchyTree(
         [this](UInt64 uuid, UInt64 parent) { onReparentEntity(uuid, parent); }, this);
     m_tree->setHeaderHidden(true);
+    m_tree->setObjectName(QStringLiteral("hierarchyTree"));
+    m_tree->setIndentation(18);
+    m_tree->setUniformRowHeights(true);
+    m_tree->setEditTriggers(QAbstractItemView::EditKeyPressed);
     m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
     m_tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_tree->setDragEnabled(true);
@@ -147,12 +164,15 @@ HierarchyPanel::HierarchyPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     connect(m_tree, &QTreeWidget::itemSelectionChanged, this, &HierarchyPanel::onTreeSelectionChanged);
     connect(m_tree, &QTreeWidget::itemChanged, this, &HierarchyPanel::onItemEdited);
+    connect(m_tree, &QTreeWidget::itemDoubleClicked, this, [this](QTreeWidgetItem*, int) {
+        emit frameSelectionRequested();
+    });
     connect(m_tree, &QTreeWidget::customContextMenuRequested, this, &HierarchyPanel::onContextMenu);
     connect(m_filter, &QLineEdit::textChanged, this, [this](const QString&) { applyFilter(); });
 
     const auto addShortcut = [this](const QKeySequence& key, auto&& slot) {
         auto* shortcut = new QShortcut(key, m_tree);
-        shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+        shortcut->setContext(Qt::WidgetShortcut);
         connect(shortcut, &QShortcut::activated, this, slot);
     };
     addShortcut(Qt::Key_Delete, &HierarchyPanel::onDeleteEntity);
@@ -162,6 +182,7 @@ HierarchyPanel::HierarchyPanel(EditorWorkspaceContext& context, QWidget* parent)
     addShortcut(QKeySequence::Paste, &HierarchyPanel::onPasteEntities);
     addShortcut(Qt::CTRL | Qt::Key_D, &HierarchyPanel::onDuplicateEntities);
     addShortcut(QKeySequence::SelectAll, &HierarchyPanel::onSelectAll);
+    addShortcut(Qt::Key_F, [this]() { emit frameSelectionRequested(); });
 
     m_viewModelSubscription = ScopedConnection(
         m_viewModel->changed, m_viewModel->changed.connect([this]() { refresh(); }));
@@ -190,6 +211,7 @@ void HierarchyPanel::refresh()
     const auto addItem = [&](auto&& self, const HierarchyNode& node, QTreeWidgetItem* parent) -> void {
         auto* item = parent ? new QTreeWidgetItem(parent) : new QTreeWidgetItem(m_tree);
         item->setText(0, ToQString(node.name));
+        item->setIcon(0, editorThemedIcon(QStringLiteral("box.svg")));
         item->setData(0, Qt::UserRole, QString::number(node.uuid));
         item->setFlags(item->flags() | Qt::ItemIsEditable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
         item->setSelected(m_viewModel->isSelected(node.uuid));
@@ -248,9 +270,12 @@ bool HierarchyPanel::filterItem(QTreeWidgetItem* item, const QString& needle)
 void HierarchyPanel::refreshSelection()
 {
     QSignalBlocker blocker(m_tree);
+    QTreeWidgetItem* firstSelected = nullptr;
     for (QTreeWidgetItemIterator it(m_tree); *it; ++it) {
         (*it)->setSelected(m_viewModel->isSelected(ItemUuid(*it)));
+        if ((*it)->isSelected() && !firstSelected) firstSelected = *it;
     }
+    if (firstSelected && !m_tree->hasFocus()) m_tree->scrollToItem(firstSelected, QAbstractItemView::EnsureVisible);
     blocker.unblock();
 }
 

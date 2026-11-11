@@ -1,6 +1,7 @@
 // do@Redlive
 
 #include "ui/common/QtStringInterop.h"
+#include "ui/common/EditorIcons.h"
 
 #include "dopch.h"
 
@@ -26,7 +27,9 @@
 #include <QPushButton>
 #include <QSaveFile>
 #include <QScrollBar>
+#include <QSignalBlocker>
 #include <QShortcut>
+#include <QSpinBox>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStringListModel>
@@ -39,6 +42,7 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QTreeWidget>
+#include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
 
 namespace cakery {
@@ -89,12 +93,22 @@ QStringList engineApiWords()
     };
 }
 
+constexpr int kWorkspacePathRole = Qt::UserRole;
+constexpr int kWorkspaceDirectoryRole = Qt::UserRole + 1;
+
+QString workspaceRoot(const EditorWorkspaceContext& context)
+{
+    const QString root = ToQString(context.session().assetRoot().string());
+    return root.isEmpty() ? QString() : CSharpSymbolIndex::normalizePath(root);
+}
+
 } // namespace
 
 ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
 {
     setObjectName(QStringLiteral("scriptPanel"));
+    m_codeFontPointSize = m_context.config().scriptFontPointSize();
 
     m_completionModel = new QStringListModel(this);
     m_completer = new QCompleter(m_completionModel, this);
@@ -107,6 +121,10 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_watcher = new QFileSystemWatcher(this);
     connect(m_watcher, &QFileSystemWatcher::fileChanged,
             this, &ScriptPanel::onWatcherFileChanged);
+
+    m_workspaceWatcher = new QFileSystemWatcher(this);
+    connect(m_workspaceWatcher, &QFileSystemWatcher::directoryChanged,
+            this, [this](const QString&) { scheduleWorkspaceRefresh(); });
 
     m_outlineTimer = new QTimer(this);
     m_outlineTimer->setSingleShot(true);
@@ -124,11 +142,68 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
         }
     });
 
+    m_workspaceTimer = new QTimer(this);
+    m_workspaceTimer->setSingleShot(true);
+    m_workspaceTimer->setInterval(200);
+    connect(m_workspaceTimer, &QTimer::timeout, this, [this]() {
+        rebuildWorkspace();
+        scheduleIndexRebuild();
+    });
+
+    m_assetSubscription = m_context.assets().subscribeChanged(
+        [this]() { scheduleWorkspaceRefresh(); });
+
     auto* splitter = new QSplitter(Qt::Horizontal, this);
     splitter->setObjectName(QStringLiteral("scriptSplitter"));
     splitter->setChildrenCollapsible(false);
 
-    auto* outlineBody = new QWidget(splitter);
+    auto* sideSplitter = new QSplitter(Qt::Vertical, splitter);
+    sideSplitter->setObjectName(QStringLiteral("scriptSideSplitter"));
+    sideSplitter->setChildrenCollapsible(false);
+
+    auto* workspaceBody = new QWidget(sideSplitter);
+    workspaceBody->setObjectName(QStringLiteral("scriptWorkspaceBody"));
+    auto* workspaceLayout = new QVBoxLayout(workspaceBody);
+    workspaceLayout->setContentsMargins(6, 6, 6, 6);
+    workspaceLayout->setSpacing(4);
+    m_workspaceFilter = new QLineEdit(workspaceBody);
+    m_workspaceFilter->setObjectName(QStringLiteral("scriptWorkspaceFilter"));
+    m_workspaceFilter->setPlaceholderText(tr("Filter scripts"));
+    m_workspaceFilter->setClearButtonEnabled(true);
+    auto* workspaceRefresh = new QToolButton(workspaceBody);
+    workspaceRefresh->setIcon(editorThemedIcon(QStringLiteral("refresh-ccw.svg")));
+    workspaceRefresh->setToolTip(tr("Refresh script explorer"));
+    m_workspace = new QTreeWidget(workspaceBody);
+    m_workspace->setObjectName(QStringLiteral("scriptWorkspace"));
+    m_workspace->setHeaderHidden(true);
+    m_workspace->setRootIsDecorated(true);
+    m_workspace->setUniformRowHeights(true);
+    m_workspace->setSelectionMode(QAbstractItemView::SingleSelection);
+    connect(m_workspaceFilter, &QLineEdit::textChanged,
+            this, [this](const QString&) { applyWorkspaceFilter(); });
+    connect(m_workspace, &QTreeWidget::itemDoubleClicked,
+            this, [this](QTreeWidgetItem* item, int) {
+        if (!item || item->data(0, kWorkspaceDirectoryRole).toBool()) {
+            return;
+        }
+        const QString path = item->data(0, kWorkspacePathRole).toString();
+        if (!path.isEmpty()) {
+            openFile(path);
+        }
+    });
+    connect(workspaceRefresh, &QToolButton::clicked, this, [this]() {
+        rebuildWorkspace();
+        scheduleIndexRebuild();
+    });
+    auto* workspaceFilterRow = new QHBoxLayout();
+    workspaceFilterRow->setContentsMargins(0, 0, 0, 0);
+    workspaceFilterRow->setSpacing(4);
+    workspaceFilterRow->addWidget(m_workspaceFilter, 1);
+    workspaceFilterRow->addWidget(workspaceRefresh);
+    workspaceLayout->addLayout(workspaceFilterRow);
+    workspaceLayout->addWidget(m_workspace, 1);
+
+    auto* outlineBody = new QWidget(sideSplitter);
     outlineBody->setObjectName(QStringLiteral("scriptOutlineBody"));
     auto* outlineLayout = new QVBoxLayout(outlineBody);
     outlineLayout->setContentsMargins(6, 6, 6, 6);
@@ -150,6 +225,12 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
             this, [this](const QString&) { applyOutlineFilter(); });
     outlineLayout->addWidget(m_outlineFilter);
     outlineLayout->addWidget(m_outline, 1);
+
+    sideSplitter->addWidget(workspaceBody);
+    sideSplitter->addWidget(outlineBody);
+    sideSplitter->setStretchFactor(0, 1);
+    sideSplitter->setStretchFactor(1, 1);
+    sideSplitter->setSizes({360, 260});
 
     auto* editorBody = new QWidget(splitter);
     auto* editorLayout = new QVBoxLayout(editorBody);
@@ -177,10 +258,20 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     backButton->setText(tr("Back"));
     backButton->setToolTip(tr("Navigate back (Alt+Left)"));
     connect(backButton, &QToolButton::clicked, this, [this]() { navigateBack(); });
+    m_fontSize = new QSpinBox(toolbar);
+    m_fontSize->setObjectName(QStringLiteral("scriptFontSize"));
+    m_fontSize->setRange(8, 32);
+    m_fontSize->setSuffix(tr(" pt"));
+    m_fontSize->setValue(m_codeFontPointSize);
+    m_fontSize->setToolTip(tr("Code font size"));
+    connect(m_fontSize, qOverload<int>(&QSpinBox::valueChanged), this, [this](int pointSize) {
+        setCodeFontPointSize(pointSize);
+    });
     toolbarLayout->addWidget(saveButton);
     toolbarLayout->addWidget(saveAllButton);
     toolbarLayout->addWidget(findButton);
     toolbarLayout->addWidget(backButton);
+    toolbarLayout->addWidget(m_fontSize);
     toolbarLayout->addStretch();
 
     m_tabs = new QTabWidget(editorBody);
@@ -201,11 +292,24 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_statusLabel = new QLabel(editorBody);
     m_statusLabel->setObjectName(QStringLiteral("scriptStatus"));
 
+    m_emptyEditor = new QWidget(editorBody);
+    auto* emptyEditorLayout = new QVBoxLayout(m_emptyEditor);
+    emptyEditorLayout->addStretch();
+    auto* emptyEditorLabel = new QLabel(tr("Select a C# script from Explorer to open it here."),
+                                        m_emptyEditor);
+    emptyEditorLabel->setObjectName(QStringLiteral("scriptEmptyLabel"));
+    emptyEditorLabel->setAlignment(Qt::AlignCenter);
+    emptyEditorLayout->addWidget(emptyEditorLabel);
+    emptyEditorLayout->addStretch();
+    m_editorStack = new QStackedWidget(editorBody);
+    m_editorStack->addWidget(m_emptyEditor);
+    m_editorStack->addWidget(m_tabs);
+
     editorLayout->addWidget(toolbar);
-    editorLayout->addWidget(m_tabs, 1);
+    editorLayout->addWidget(m_editorStack, 1);
     editorLayout->addWidget(m_statusLabel);
 
-    splitter->addWidget(outlineBody);
+    splitter->addWidget(sideSplitter);
     splitter->addWidget(editorBody);
     splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
@@ -265,23 +369,10 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_findEdit->installEventFilter(this);
     m_replaceEdit->installEventFilter(this);
 
-    auto* emptyBody = new QWidget(this);
-    auto* emptyLayout = new QVBoxLayout(emptyBody);
-    emptyLayout->addStretch();
-    auto* emptyLabel = new QLabel(tr("Double-click a .cs script in the Project panel to open it here."), emptyBody);
-    emptyLabel->setObjectName(QStringLiteral("scriptEmptyLabel"));
-    emptyLabel->setAlignment(Qt::AlignCenter);
-    emptyLayout->addWidget(emptyLabel);
-    emptyLayout->addStretch();
-
-    m_stack = new QStackedWidget(this);
-    m_stack->addWidget(emptyBody);
-    m_stack->addWidget(splitter);
-
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
-    mainLayout->addWidget(m_stack, 1);
+    mainLayout->addWidget(splitter, 1);
     mainLayout->addWidget(m_findBar);
 
     const auto addShortcut = [this](const QKeySequence& sequence, auto&& slot) {
@@ -301,6 +392,7 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     });
     addShortcut(QKeySequence(QStringLiteral("Alt+Left")), [this]() { navigateBack(); });
 
+    rebuildWorkspace();
     updateEmptyState();
 }
 
@@ -356,6 +448,10 @@ const ScriptPanel::EditorPage* ScriptPanel::currentPage() const
 
 void ScriptPanel::openFile(const QString& path)
 {
+    const QString currentRoot = workspaceRoot(m_context);
+    if (currentRoot != m_workspaceRoot) {
+        rebuildWorkspace();
+    }
     const QString normalized = CSharpSymbolIndex::normalizePath(path);
     const int existing = pageIndex(normalized);
     if (existing >= 0) {
@@ -378,6 +474,7 @@ void ScriptPanel::openFile(const QString& path)
     EditorPage page;
     page.path = normalized;
     page.editor = new CSharpCodeEditor(this);
+    page.editor->setCodeFontPointSize(m_codeFontPointSize);
     page.editor->setPlainText(content);
     page.editor->document()->setModified(false);
     page.highlighter = new CSharpHighlighter(page.editor->document());
@@ -396,6 +493,8 @@ void ScriptPanel::openFile(const QString& path)
     });
     connect(page.editor, &CSharpCodeEditor::navigateRequested,
             this, &ScriptPanel::navigateToSymbol);
+    connect(page.editor, &CSharpCodeEditor::fontSizeChanged,
+            this, &ScriptPanel::setCodeFontPointSize);
 
     m_watcher->addPath(normalized);
 
@@ -406,6 +505,7 @@ void ScriptPanel::openFile(const QString& path)
 
     updateEmptyState();
     m_tabs->setCurrentIndex(index);
+    setCurrentTab(index);
 }
 
 void ScriptPanel::reopenProject()
@@ -430,6 +530,7 @@ void ScriptPanel::reopenProject()
     closeAll(true);
     ensureIndexBuilt();
     rebuildCompletionModel();
+    rebuildWorkspace();
 }
 
 bool ScriptPanel::hasUnsavedChanges() const
@@ -591,6 +692,8 @@ void ScriptPanel::closeTab(int index)
     updateEmptyState();
     if (m_pages.isEmpty()) {
         rebuildOutline();
+    } else {
+        setCurrentTab(m_tabs->currentIndex());
     }
     emit dirtyChanged();
 }
@@ -623,6 +726,7 @@ void ScriptPanel::setCurrentTab(int index)
     }
     EditorPage& page = m_pages[index];
     updateTabText(index);
+    selectWorkspaceFile(page.path);
     rebuildOutline();
     updateStatus();
     page.editor->setFocus();
@@ -643,6 +747,185 @@ void ScriptPanel::ensureIndexBuilt()
 void ScriptPanel::scheduleIndexRebuild()
 {
     m_indexTimer->start();
+}
+
+void ScriptPanel::setCodeFontPointSize(int pointSize)
+{
+    const int normalized = qBound(8, pointSize, 32);
+    if (m_codeFontPointSize == normalized) {
+        return;
+    }
+    m_codeFontPointSize = normalized;
+    if (m_fontSize) {
+        const QSignalBlocker blocker(m_fontSize);
+        m_fontSize->setValue(normalized);
+    }
+    for (EditorPage& page : m_pages) {
+        if (page.editor) {
+            page.editor->setCodeFontPointSize(normalized);
+        }
+    }
+    m_context.config().setScriptFontPointSize(normalized);
+}
+
+void ScriptPanel::rebuildWorkspace()
+{
+    if (!m_workspace) {
+        return;
+    }
+
+    QStringList expandedDirectories;
+    QString selectedPath;
+    for (QTreeWidgetItemIterator it(m_workspace); *it; ++it) {
+        QTreeWidgetItem* item = *it;
+        if (item->data(0, kWorkspaceDirectoryRole).toBool() && item->isExpanded()) {
+            expandedDirectories.append(item->data(0, kWorkspacePathRole).toString());
+        }
+        if (item == m_workspace->currentItem()) {
+            selectedPath = item->data(0, kWorkspacePathRole).toString();
+        }
+    }
+
+    const QSignalBlocker blocker(m_workspace);
+    m_workspace->clear();
+    if (m_workspaceWatcher) {
+        const QStringList watched = m_workspaceWatcher->directories();
+        if (!watched.isEmpty()) {
+            m_workspaceWatcher->removePaths(watched);
+        }
+    }
+
+    m_workspaceRoot = workspaceRoot(m_context);
+    if (m_workspaceRoot.isEmpty() || !QDir(m_workspaceRoot).exists()) {
+        auto* item = new QTreeWidgetItem(m_workspace);
+        item->setText(0, tr("No project open"));
+        item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
+        return;
+    }
+
+    const QFileInfo rootInfo(m_workspaceRoot);
+    auto* rootItem = new QTreeWidgetItem(m_workspace);
+    rootItem->setText(0, rootInfo.fileName().isEmpty() ? tr("Assets") : rootInfo.fileName());
+    rootItem->setData(0, kWorkspacePathRole, m_workspaceRoot);
+    rootItem->setData(0, kWorkspaceDirectoryRole, true);
+    rootItem->setToolTip(0, m_workspaceRoot);
+    rootItem->setIcon(0, editorAssetIcon({}, m_workspaceRoot, true));
+
+    QStringList watchedDirectories{m_workspaceRoot};
+    addWorkspaceChildren(rootItem, m_workspaceRoot, watchedDirectories);
+    rootItem->setExpanded(true);
+
+    for (QTreeWidgetItemIterator it(m_workspace); *it; ++it) {
+        QTreeWidgetItem* item = *it;
+        if (expandedDirectories.contains(item->data(0, kWorkspacePathRole).toString())) {
+            item->setExpanded(true);
+        }
+    }
+
+    if (m_workspaceWatcher) {
+        const QStringList failed = m_workspaceWatcher->addPaths(watchedDirectories);
+        if (!failed.isEmpty()) {
+            m_statusLabel->setText(tr("Some script folders could not be watched"));
+        }
+    }
+
+    applyWorkspaceFilter();
+    if (selectedPath.isEmpty()) {
+        if (const EditorPage* page = currentPage()) {
+            selectedPath = page->path;
+        }
+    }
+    if (!selectedPath.isEmpty()) {
+        selectWorkspaceFile(selectedPath);
+    }
+}
+
+void ScriptPanel::scheduleWorkspaceRefresh()
+{
+    if (m_workspaceTimer) {
+        m_workspaceTimer->start();
+    }
+}
+
+void ScriptPanel::addWorkspaceChildren(QTreeWidgetItem* parent, const QString& directory,
+                                       QStringList& watchedDirectories)
+{
+    const QDir dir(directory);
+    const QFileInfoList entries = dir.entryInfoList(
+        QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot,
+        QDir::DirsFirst | QDir::Name | QDir::IgnoreCase);
+    for (const QFileInfo& entry : entries) {
+        const QString path = CSharpSymbolIndex::normalizePath(entry.absoluteFilePath());
+        if (entry.isDir()) {
+            auto* item = new QTreeWidgetItem(parent);
+            item->setText(0, entry.fileName());
+            item->setData(0, kWorkspacePathRole, path);
+            item->setData(0, kWorkspaceDirectoryRole, true);
+            item->setToolTip(0, path);
+            item->setIcon(0, editorAssetIcon({}, path, true));
+            watchedDirectories.append(path);
+            if (!entry.isSymLink()) {
+                addWorkspaceChildren(item, path, watchedDirectories);
+            }
+            continue;
+        }
+        if (!entry.isFile() || entry.suffix().compare(QStringLiteral("cs"), Qt::CaseInsensitive) != 0) {
+            continue;
+        }
+        auto* item = new QTreeWidgetItem(parent);
+        item->setText(0, entry.fileName());
+        item->setData(0, kWorkspacePathRole, path);
+        item->setData(0, kWorkspaceDirectoryRole, false);
+        item->setToolTip(0, path);
+        item->setIcon(0, editorAssetIcon({}, path));
+    }
+}
+
+void ScriptPanel::applyWorkspaceFilter()
+{
+    if (!m_workspace || m_workspace->topLevelItemCount() == 0) {
+        return;
+    }
+    filterWorkspaceItem(m_workspace->topLevelItem(0),
+                        m_workspaceFilter ? m_workspaceFilter->text().trimmed() : QString());
+}
+
+bool ScriptPanel::filterWorkspaceItem(QTreeWidgetItem* item, const QString& filter)
+{
+    if (!item) {
+        return false;
+    }
+    bool childVisible = false;
+    for (int i = 0; i < item->childCount(); ++i) {
+        childVisible = filterWorkspaceItem(item->child(i), filter) || childVisible;
+    }
+    const bool isDirectory = item->data(0, kWorkspaceDirectoryRole).toBool();
+    const bool matches = filter.isEmpty()
+        || item->text(0).contains(filter, Qt::CaseInsensitive)
+        || item->toolTip(0).contains(filter, Qt::CaseInsensitive);
+    const bool visible = item->parent() == nullptr || (isDirectory ? matches || childVisible : matches);
+    item->setHidden(!visible);
+    if (isDirectory && childVisible && !filter.isEmpty()) {
+        item->setExpanded(true);
+    }
+    return visible;
+}
+
+void ScriptPanel::selectWorkspaceFile(const QString& path)
+{
+    if (!m_workspace || path.isEmpty()) {
+        return;
+    }
+    const QString normalized = CSharpSymbolIndex::normalizePath(path);
+    const QSignalBlocker blocker(m_workspace);
+    for (QTreeWidgetItemIterator it(m_workspace); *it; ++it) {
+        QTreeWidgetItem* item = *it;
+        if (item->data(0, kWorkspacePathRole).toString() == normalized) {
+            m_workspace->setCurrentItem(item);
+            m_workspace->scrollToItem(item);
+            return;
+        }
+    }
 }
 
 void ScriptPanel::rebuildOutline()
@@ -1006,23 +1289,26 @@ void ScriptPanel::onWatcherFileChanged(const QString& path)
     if (m_suppressWatcher > 0) {
         return;
     }
+    scheduleWorkspaceRefresh();
     const int index = pageIndex(path);
     if (index < 0) {
         scheduleIndexRebuild();
         return;
     }
     EditorPage& page = m_pages[index];
+    if (!QFileInfo::exists(page.path)) {
+        m_statusLabel->setText(tr("'%1' was removed on disk")
+            .arg(QFileInfo(path).fileName()));
+        return;
+    }
+    m_watcher->removePath(page.path);
+    m_watcher->addPath(page.path);
     if (page.editor->document()->isModified()) {
         m_statusLabel->setText(tr("'%1' changed on disk while there are unsaved edits")
             .arg(QFileInfo(path).fileName()));
         return;
     }
     QFile file(page.path);
-    if (!file.exists()) {
-        m_statusLabel->setText(tr("'%1' was removed on disk")
-            .arg(QFileInfo(path).fileName()));
-        return;
-    }
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return;
     }
@@ -1038,7 +1324,10 @@ void ScriptPanel::onWatcherFileChanged(const QString& path)
 
 void ScriptPanel::updateEmptyState()
 {
-    m_stack->setCurrentIndex(m_pages.isEmpty() ? 0 : 1);
+    m_editorStack->setCurrentIndex(m_pages.isEmpty() ? 0 : 1);
+    if (m_pages.isEmpty()) {
+        hideFindBar();
+    }
 }
 
 } // namespace cakery

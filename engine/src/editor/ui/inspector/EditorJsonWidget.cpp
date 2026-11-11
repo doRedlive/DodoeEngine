@@ -7,9 +7,10 @@
 #include "EditorJsonWidget.h"
 
 #include "InspectorWidgets.h"
+#include "ui/shell/FramelessChrome.h"
 
 #include <QCheckBox>
-#include <QColorDialog>
+#include <QColor>
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QDoubleSpinBox>
@@ -26,6 +27,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QLabel>
+#include <QKeyEvent>
 #include <QImage>
 #include <QIcon>
 #include <QLineEdit>
@@ -38,6 +40,7 @@
 #include <QPointer>
 #include <QPixmap>
 #include <QSizePolicy>
+#include <QScreen>
 #include <QSpinBox>
 #include <QStyle>
 #include <QToolButton>
@@ -142,7 +145,7 @@ public:
         setAcceptDrops(true);
         setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
         setIconSize(QSize(24, 24));
-        setMinimumHeight(30);
+        setMinimumHeight(24);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 
@@ -177,9 +180,10 @@ public:
         : QFrame(nullptr), m_selected(std::move(selected))
     {
         setObjectName(QStringLiteral("inspectorAssetPicker"));
+        setProperty("editorWorkspace", true);
         setWindowFlags(Qt::Popup);
         setAttribute(Qt::WA_DeleteOnClose);
-        setFixedSize(560, 390);
+        resize(680, 430);
         auto* layout = new QVBoxLayout(this);
         layout->setContentsMargins(8, 8, 8, 8);
         layout->setSpacing(6);
@@ -196,7 +200,8 @@ public:
         m_grid->setWrapping(true);
         m_grid->setWordWrap(true);
         m_grid->setIconSize(QSize(56, 56));
-        m_grid->setGridSize(QSize(96, 92));
+        m_grid->setGridSize(QSize(120, 100));
+        m_grid->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         m_grid->setSpacing(4);
         layout->addWidget(m_grid, 1);
 
@@ -230,6 +235,7 @@ private:
     void addItem(const QString& name, UInt64 id, const QString& path) {
         auto* item = new QListWidgetItem(name, m_grid);
         item->setTextAlignment(Qt::AlignHCenter);
+        item->setToolTip(path.isEmpty() ? name : name + QLatin1Char('\n') + path);
         item->setData(Qt::UserRole, QVariant::fromValue<qulonglong>(id));
         item->setData(Qt::UserRole + 1, path);
     }
@@ -295,20 +301,29 @@ private:
 class NumericScrubFilter final : public QObject {
 public:
     NumericScrubFilter(std::function<double()> readValue, std::function<void(double)> setValue,
-                       std::function<void()> commit, QObject* parent)
+                       std::function<void()> commit, EditorJsonWidget* owner, QObject* parent)
         : QObject(parent), m_readValue(std::move(readValue)), m_setValue(std::move(setValue)),
-          m_commit(std::move(commit)) {}
+          m_commit(std::move(commit)), m_owner(owner) {}
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override {
         switch (event->type()) {
+        case QEvent::ShortcutOverride:
+            if (m_pressed) {
+                event->accept();
+                return true;
+            }
+            return false;
         case QEvent::MouseButtonPress: {
             auto* mouse = static_cast<QMouseEvent*>(event);
             if (mouse->button() != Qt::LeftButton) return false;
             m_pressed = true;
             m_dragging = false;
             m_startPosition = mouse->globalPosition();
+            m_lastPosition = m_startPosition;
             m_startValue = m_readValue();
+            m_dragValue = m_startValue;
+            static_cast<QWidget*>(watched)->setFocus(Qt::MouseFocusReason);
             return true;
         }
         case QEvent::MouseMove: {
@@ -316,18 +331,50 @@ protected:
             auto* mouse = static_cast<QMouseEvent*>(event);
             const double offset = mouse->globalPosition().x() - m_startPosition.x();
             if (!m_dragging && qAbs(offset) < 3.0) return true;
-            m_dragging = true;
-            const double step = qMax(qAbs(m_startValue) * 0.01, 0.05);
-            m_setValue(m_startValue + offset * step);
+            if (!m_dragging) {
+                m_dragging = true;
+                m_owner->beginInteractiveEdit();
+            }
+            double step = qMax(qAbs(m_startValue) * 0.01, 0.01);
+            if (mouse->modifiers().testFlag(Qt::ShiftModifier)) step *= 0.1;
+            if (mouse->modifiers().testFlag(Qt::ControlModifier)) step *= 10.0;
+            const double previous = m_readValue();
+            m_dragValue += (mouse->globalPosition().x() - m_lastPosition.x()) * step;
+            m_lastPosition = mouse->globalPosition();
+            m_setValue(m_dragValue);
+            if (m_readValue() != previous) m_commit();
             return true;
         }
         case QEvent::MouseButtonRelease: {
             auto* mouse = static_cast<QMouseEvent*>(event);
             if (!m_pressed || mouse->button() != Qt::LeftButton) return false;
             m_pressed = false;
-            if (m_dragging) m_commit();
+            if (m_dragging) {
+                m_dragging = false;
+                m_owner->endInteractiveEdit();
+            }
             return true;
         }
+        case QEvent::KeyPress: {
+            auto* key = static_cast<QKeyEvent*>(event);
+            if (key->key() != Qt::Key_Escape || !m_pressed) return false;
+            m_pressed = false;
+            if (m_dragging) {
+                m_setValue(m_startValue);
+                m_commit();
+                m_dragging = false;
+                m_owner->endInteractiveEdit();
+            }
+            return true;
+        }
+        case QEvent::UngrabMouse:
+        case QEvent::FocusOut:
+            m_pressed = false;
+            if (m_dragging) {
+                m_dragging = false;
+                m_owner->endInteractiveEdit();
+            }
+            return false;
         default:
             return false;
         }
@@ -337,33 +384,40 @@ private:
     std::function<double()> m_readValue;
     std::function<void(double)> m_setValue;
     std::function<void()> m_commit;
+    EditorJsonWidget* m_owner;
     QPointF m_startPosition;
+    QPointF m_lastPosition;
     double m_startValue = 0.0;
+    double m_dragValue = 0.0;
     bool m_pressed = false;
     bool m_dragging = false;
 };
 
-void InstallNumericScrub(QLabel* label, QDoubleSpinBox* spin) {
+void InstallNumericScrub(QLabel* label, QDoubleSpinBox* spin, EditorJsonWidget* owner) {
     label->setCursor(Qt::SizeHorCursor);
+    label->setFocusPolicy(Qt::ClickFocus);
+    label->setToolTip(QObject::tr("Drag to adjust. Shift: fine, Ctrl: coarse. Esc: cancel.\nClick the value to type."));
     label->installEventFilter(new NumericScrubFilter(
         [spin]() { return spin->value(); }, [spin](double value) { spin->setValue(value); },
-        [spin]() { emit spin->editingFinished(); }, label));
+        [spin]() { emit spin->editingFinished(); }, owner, label));
 }
 
-void InstallNumericScrub(QLabel* label, QSpinBox* spin) {
+void InstallNumericScrub(QLabel* label, QSpinBox* spin, EditorJsonWidget* owner) {
     label->setCursor(Qt::SizeHorCursor);
+    label->setFocusPolicy(Qt::ClickFocus);
+    label->setToolTip(QObject::tr("Drag to adjust. Shift: fine, Ctrl: coarse. Esc: cancel."));
     label->installEventFilter(new NumericScrubFilter(
         [spin]() { return static_cast<double>(spin->value()); },
         [spin](double value) { spin->setValue(qRound(value)); },
-        [spin]() { emit spin->editingFinished(); }, label));
+        [spin]() { emit spin->editingFinished(); }, owner, label));
 }
-
-int DecimalsFor(double value);
 
 QDoubleSpinBox* MakeDoubleSpinBox(double value) {
     auto* spin = new ScrubDoubleSpinBox();
     spin->setRange(-1000000.0, 1000000.0);
-    spin->setDecimals(DecimalsFor(value));
+    spin->setDecimals(6);
+    spin->setSingleStep(0.1);
+    spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
     spin->setValue(value);
     return spin;
 }
@@ -391,22 +445,6 @@ QColor ColorFromArray(const Json& value) {
 QString SwatchStyle(const QColor& color) {
     return QStringLiteral("background: %1; border: 1px solid #000000; border-radius: 2px;")
         .arg(color.name());
-}
-
-int DecimalsFor(double value) {
-    QString text = QString::number(value, 'g', 12);
-    const int dot = text.indexOf(QLatin1Char('.'));
-    if (dot < 0) {
-        return 1;
-    }
-    int decimals = text.size() - dot - 1;
-    while (decimals > 0 && text.at(dot + decimals) == QLatin1Char('0')) {
-        --decimals;
-    }
-    if (decimals == 0) {
-        return 1;
-    }
-    return qMin(decimals, 6);
 }
 
 QString TitleCaseKey(const String& key) {
@@ -457,6 +495,20 @@ void EditorJsonWidget::setValue(const Json& value) {
     rebuild();
 }
 
+EditorJsonWidget::~EditorJsonWidget() { endInteractiveEdit(); }
+
+void EditorJsonWidget::beginInteractiveEdit() {
+    if (m_interactiveEdit) return;
+    m_interactiveEdit = true;
+    emit interactiveEditStarted();
+}
+
+void EditorJsonWidget::endInteractiveEdit() {
+    if (!m_interactiveEdit) return;
+    m_interactiveEdit = false;
+    emit interactiveEditFinished();
+}
+
 void EditorJsonWidget::rebuild() {
     QLayout* oldLayout = layout();
     if (oldLayout) {
@@ -476,10 +528,11 @@ void EditorJsonWidget::rebuild() {
         if (metadata.name.find('.') != String::npos) {
             continue;
         }
-        if (metadata.hidden || !m_value.contains(metadata.name)) {
+        if (!m_value.contains(metadata.name)) {
             continue;
         }
         rendered.insert(metadata.name);
+        if (metadata.hidden) continue;
         buildField(form, metadata.name, metadata.name, m_value.at(metadata.name), &metadata);
     }
     for (auto it = m_value.begin(); it != m_value.end(); ++it) {
@@ -597,8 +650,9 @@ void EditorJsonWidget::buildField(QFormLayout* form, const String& key, const St
                 spin->setRange(static_cast<int>(metadata->rangeMin), static_cast<int>(metadata->rangeMax));
             }
             if (metadata && metadata->readOnly) spin->setReadOnly(true);
-            if (!metadata || !metadata->readOnly) InstallNumericScrub(label, spin);
+            if (!metadata || !metadata->readOnly) InstallNumericScrub(label, spin, this);
             connect(spin, &QSpinBox::editingFinished, this, [this, path, spin]() {
+                if (valueAt(path) == spin->value()) return;
                 valueAt(path) = spin->value();
                 emit valueChanged();
                 emit fieldChanged(ToQString(path));
@@ -615,8 +669,9 @@ void EditorJsonWidget::buildField(QFormLayout* form, const String& key, const St
                 spin->setRange(static_cast<int>(metadata->rangeMin), static_cast<int>(metadata->rangeMax));
             }
             if (metadata && metadata->readOnly) spin->setReadOnly(true);
-            if (!metadata || !metadata->readOnly) InstallNumericScrub(label, spin);
+            if (!metadata || !metadata->readOnly) InstallNumericScrub(label, spin, this);
             connect(spin, &QSpinBox::editingFinished, this, [this, path, spin]() {
+                if (valueAt(path) == spin->value()) return;
                 valueAt(path) = spin->value();
                 emit valueChanged();
                 emit fieldChanged(ToQString(path));
@@ -634,8 +689,9 @@ void EditorJsonWidget::buildField(QFormLayout* form, const String& key, const St
             spin->setRange(metadata->rangeMin, metadata->rangeMax);
         }
         if (metadata && metadata->readOnly) spin->setReadOnly(true);
-        if (!metadata || !metadata->readOnly) InstallNumericScrub(label, spin);
+        if (!metadata || !metadata->readOnly) InstallNumericScrub(label, spin, this);
         connect(spin, &QDoubleSpinBox::editingFinished, this, [this, path, spin]() {
+            if (valueAt(path) == spin->value()) return;
             valueAt(path) = spin->value();
             emit valueChanged();
             emit fieldChanged(ToQString(path));
@@ -737,7 +793,7 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const String& path,
     clear->setObjectName(QStringLiteral("inspectorAssetReferenceClear"));
     clear->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
     clear->setToolTip(tr("Clear reference"));
-    clear->setFixedSize(30, 30);
+    clear->setFixedSize(22, 22);
     layout->addWidget(field, 1);
     layout->addWidget(clear);
     UInt64 guid = 0;
@@ -825,7 +881,17 @@ QWidget* EditorJsonWidget::buildAssetReferenceField(const String& path,
     connect(clear, &QToolButton::clicked, this, [assign]() { assign(0, QString()); });
     connect(field, &QToolButton::clicked, this, [this, field, targetType, assign]() {
         auto* picker = new AssetPickerPopup(m_assets, targetType, assign);
-        picker->move(field->mapToGlobal(QPoint(0, field->height())));
+        QPoint position = field->mapToGlobal(QPoint(0, field->height()));
+        if (const auto* screen = field->screen()) {
+            const QRect available = screen->availableGeometry().adjusted(8, 8, -8, -8);
+            picker->resize(picker->size().boundedTo(available.size()));
+            if (position.y() + picker->height() > available.bottom() + 1) {
+                position.setY(field->mapToGlobal(QPoint(0, 0)).y() - picker->height());
+            }
+            position.setX(qBound(available.left(), position.x(), available.right() - picker->width() + 1));
+            position.setY(qBound(available.top(), position.y(), available.bottom() - picker->height() + 1));
+        }
+        picker->move(position);
         picker->show();
     });
     field->assigned = [assign](UInt64 assetId, const QString& assetPath) {
@@ -849,20 +915,21 @@ QWidget* EditorJsonWidget::buildVectorField(const String& path, const Json& valu
         hbox->addWidget(axis);
         auto* spin = MakeDoubleSpinBox(value[index].get<double>());
         spin->setMinimumWidth(0);
-        InstallNumericScrub(axis, spin);
+        InstallNumericScrub(axis, spin, this);
         spins.push_back(spin);
         hbox->addWidget(spin);
     }
-    hbox->addStretch();
-    for (auto* spin : spins) {
-        connect(spin, &QDoubleSpinBox::editingFinished, this, [this, path, spins]() {
+    for (Size_t axisIndex = 0; axisIndex < spins.size(); ++axisIndex) {
+        auto* spin = spins[axisIndex];
+        connect(spin, &QDoubleSpinBox::editingFinished, this, [this, path, spins, axisIndex]() {
             Json array = Json::array();
             for (auto* s : spins) {
                 array.push_back(s->value());
             }
+            if (valueAt(path) == array) return;
             valueAt(path) = array;
             emit valueChanged();
-            emit fieldChanged(ToQString(path));
+            emit fieldChanged(ToQString(path + "." + ToString(axisIndex)));
         });
     }
     return container;
@@ -883,7 +950,7 @@ QWidget* EditorJsonWidget::buildColorField(const String& path, const Json& value
     hbox->addStretch();
     const bool hasAlpha = value.size() >= 4;
     connect(swatch, &QPushButton::clicked, this, [this, path, swatch, color, hasAlpha](bool) {
-        const QColor picked = QColorDialog::getColor(*color, swatch, tr("Select Color"));
+        const QColor picked = selectEditorColor(*color, swatch, tr("Select Color"));
         if (!picked.isValid()) {
             return;
         }
@@ -907,13 +974,13 @@ QWidget* EditorJsonWidget::buildBoolField(const String& path, const Json& value)
     auto* container = new QWidget();
     container->setObjectName(QStringLiteral("inspectorBoolField"));
     container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    container->setMinimumHeight(28);
+    container->setMinimumHeight(22);
     auto* hbox = new QHBoxLayout(container);
     hbox->setContentsMargins(6, 1, 6, 1);
     hbox->setSpacing(6);
     auto* check = new QCheckBox(container);
     check->setCursor(Qt::PointingHandCursor);
-    check->setMinimumHeight(24);
+    check->setMinimumHeight(20);
     check->setText(value.get<bool>() ? QObject::tr("On") : QObject::tr("Off"));
     check->setChecked(value.get<bool>());
     hbox->addWidget(check);

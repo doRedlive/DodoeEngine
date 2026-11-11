@@ -58,6 +58,8 @@ public:
     void commitComponentValue(Size_t index, bool managed, const Json& value,
                               const String& fieldPath = {});
     void applyAssetSettings(const Json& settings);
+    void beginInteractiveEdit();
+    void endInteractiveEdit();
     bool getCustomInspectorUI(const String& typeName, Json& out) const;
     void dispatchInspectorEvent(const String& typeName, const String& controlId,
                                 const String& eventName, const Json& value);
@@ -73,8 +75,10 @@ private:
     DomainEventBus& m_events;
     InspectorEntityModel m_entity;
     InspectorAssetModel m_asset;
+    bool m_interactiveEdit = false;
     ScopedConnection m_documentSubscription;
     ScopedConnection m_selectionSubscription;
+    ScopedConnection m_assetSubscription;
 };
 
 } // namespace cakery

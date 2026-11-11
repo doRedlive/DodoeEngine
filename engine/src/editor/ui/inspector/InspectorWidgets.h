@@ -8,6 +8,7 @@
 #include <QSizePolicy>
 #include <QSpinBox>
 #include <QWheelEvent>
+#include <QLocale>
 
 namespace cakery {
 
@@ -37,6 +38,17 @@ public:
     }
 
 protected:
+    QString textFromValue(double value) const override
+    {
+        QString text = QDoubleSpinBox::textFromValue(value);
+        const QString point = locale().decimalPoint();
+        if (text.contains(point)) {
+            while (text.endsWith(QLatin1Char('0'))) text.chop(1);
+            if (text.endsWith(point)) text.chop(point.size());
+        }
+        return text == QStringLiteral("-0") ? QStringLiteral("0") : text;
+    }
+
     QSize minimumSizeHint() const override
     {
         return QSize(48, QAbstractSpinBox::minimumSizeHint().height());

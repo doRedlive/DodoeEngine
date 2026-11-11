@@ -42,16 +42,18 @@
 #include <DockManager.h>
 #include <DockWidget.h>
 #include <FloatingDockContainer.h>
+#include <ElidingLabel.h>
+#include <IconProvider.h>
 
 #include <QAbstractButton>
 #include <QApplication>
 #include <QActionGroup>
 #include <QBoxLayout>
 #include <QCloseEvent>
+#include <QComboBox>
 #include <QByteArray>
 #include <QDir>
 #include <QDialog>
-#include <QDoubleSpinBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFile>
@@ -61,6 +63,7 @@
 #include <QIcon>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QList>
 #include <QListWidget>
 #include <QMenu>
@@ -76,6 +79,7 @@
 #include <QResizeEvent>
 #include <QRegularExpression>
 #include <QScrollBar>
+#include <QScopedValueRollback>
 #include <QSignalBlocker>
 #include <QStyle>
 #include <QGridLayout>
@@ -83,6 +87,7 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QStandardPaths>
+#include <QStatusBar>
 #include <QUrl>
 #include <QStringList>
 #include <QVBoxLayout>
@@ -128,25 +133,35 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
           ToDodoeString(QApplication::applicationName())))
 {
     setWindowTitle(QApplication::applicationName());
+    setObjectName(QStringLiteral("editorWorkspace"));
+    setProperty("editorWorkspace", true);
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     resize(1440, 900);
     setMinimumSize(900, 600);
-    setStatusBar(nullptr);
 
     ads::CDockManager::setConfigFlag(ads::CDockManager::OpaqueSplitterResize, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DisableStylesheet, true);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::ActiveTabHasCloseButton, true);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::AllTabsHaveCloseButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::ActiveTabHasCloseButton, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::AllTabsHaveCloseButton, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasCloseButton, true);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasUndockButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaCloseButtonClosesTab, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasUndockButton, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasTabsMenuButton, true);
-    ads::CDockManager::setConfigFlag(ads::CDockManager::DisableTabTextEliding, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHideDisabledButtons, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaDynamicTabsMenuButtonVisibility, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DisableTabTextEliding, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::RetainTabSizeWhenCloseButtonHidden, false);
+    ads::CDockManager::iconProvider().registerCustomIcon(
+        ads::DockAreaMenuIcon, editorThemedIcon(QStringLiteral("chevron-down.svg")));
+    ads::CDockManager::iconProvider().registerCustomIcon(
+        ads::DockAreaCloseIcon, editorThemedIcon(QStringLiteral("x.svg")));
     ads::CDockManager::setAutoHideConfigFlag(ads::CDockManager::AutoHideFeatureEnabled, true);
     // Auto Hide is available from the dock title context menu only. Godot's
     // layout does not expose a permanent pin button in every title bar.
     ads::CDockManager::setAutoHideConfigFlag(ads::CDockManager::DockAreaHasAutoHideButton, false);
     ads::CDockManager::setAutoHideConfigFlag(ads::CDockManager::AutoHideCloseOnOutsideMouseClick, true);
     m_dockManager = new ads::CDockManager(this);
+    m_dockManager->setContentsMargins(8, 8, 8, 8);
     connect(m_dockManager, &ads::CDockManager::floatingWidgetCreated,
             this, &EditorWindow::setupFloatingDockWindow);
     qApp->installEventFilter(this);
@@ -156,11 +171,14 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
     createToolbar();
     createDocks();
     createPanels();
+    // Bottom dock pointers are initialized by createPanels(), not createDocks().
+    setupBottomPanels();
     createWindowMenu();
+    createStatusBar();
     const QString safeName = QApplication::applicationName().toLower().replace(
         QRegularExpression(QStringLiteral("[^a-z0-9]+")), QStringLiteral("_"));
     m_layoutController = create_scope<EditorLayoutController>(
-        m_dockManager, safeName + QStringLiteral("_layout.state"));
+        m_dockManager, safeName + QStringLiteral("_workspace_v2.state"));
     m_layoutController->captureDefault();
     m_layoutController->restore();
     startSafePointTimer();
@@ -234,6 +252,7 @@ void EditorWindow::createMenus()
     });
 
     auto* saveAs = file->addAction(tr("Save Scene As..."));
+    saveAs->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
     connect(saveAs, &QAction::triggered, this, [this]() {
         if (!m_shellViewModel->hasDocument()) {
             return;
@@ -266,14 +285,17 @@ void EditorWindow::createMenus()
 
     auto* runtime = m_menuBar->addMenu(tr("Runtime"));
     m_runtimeMenuActions[0] = runtime->addAction(tr("Play"));
+    m_runtimeMenuActions[0]->setShortcut(QKeySequence(Qt::Key_F5));
     connect(m_runtimeMenuActions[0], &QAction::triggered, this, [this]() {
         m_shellViewModel->play();
     });
     m_runtimeMenuActions[1] = runtime->addAction(tr("Pause"));
+    m_runtimeMenuActions[1]->setShortcut(QKeySequence(Qt::Key_F6));
     connect(m_runtimeMenuActions[1], &QAction::triggered, this, [this]() {
         m_shellViewModel->pauseOrResume();
     });
     m_runtimeMenuActions[2] = runtime->addAction(tr("Stop"));
+    m_runtimeMenuActions[2]->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_F5));
     connect(m_runtimeMenuActions[2], &QAction::triggered, this, &EditorWindow::stopPlayWithPrompt);
 
     m_settingsMenu = m_menuBar->addMenu(tr("Settings"));
@@ -350,7 +372,7 @@ void EditorWindow::createWindowMenu()
     const StaticArray<Pair<const char*, const char*>, 3> themeChoices = {{
         {"cakery-light", QT_TR_NOOP("Light")},
         {"cakery-dark", QT_TR_NOOP("Dark")},
-        {"cakery-color", QT_TR_NOOP("Color")},
+        {"cakery-color", QT_TR_NOOP("Dracula")},
     }};
     auto* themeGroup = new QActionGroup(themes);
     themeGroup->setExclusive(true);
@@ -500,6 +522,7 @@ void EditorWindow::setupFloatingDockWindow(ads::CFloatingDockContainer* floating
     }
 
     floating->setProperty("cakeryCustomTitleBar", true);
+    floating->setProperty("editorWorkspace", true);
     floating->setAttribute(Qt::WA_TranslucentBackground, true);
     floating->setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
     layout->insertWidget(0, new FloatingWindowTitleBar(floating));
@@ -529,6 +552,7 @@ void EditorWindow::createTitleBar()
     titleIcon->setAlignment(Qt::AlignCenter);
     titleIcon->setAttribute(Qt::WA_TransparentForMouseEvents);
     titleIcon->setPixmap(windowIcon().pixmap(QSize(18, 18)));
+    if (windowIcon().isNull()) titleIcon->setText(QStringLiteral("C"));
     titleBarLayout->addWidget(titleIcon);
 
     m_menuBar = new QMenuBar(m_titleBar);
@@ -567,11 +591,26 @@ void EditorWindow::createToolbar()
     m_editorToolbar = addToolBar(tr("Tools"));
     m_editorToolbar->setObjectName(QStringLiteral("editorToolbar"));
     m_editorToolbar->setMovable(false);
+    m_editorToolbar->setFloatable(false);
+    m_editorToolbar->setIconSize(QSize(16, 16));
+    m_editorToolbar->setMinimumHeight(44);
 
+    // Native insets keep the end widgets clear of the frameless window edges.
+    const auto addInset = [this]() {
+        auto* inset = new QWidget(m_editorToolbar);
+        inset->setFixedSize(8, 1);
+        m_editorToolbar->addWidget(inset);
+    };
+    addInset();
     auto* brand = new QLabel(QApplication::applicationName(), m_editorToolbar);
     brand->setObjectName(QStringLiteral("editorBrand"));
+    brand->setTextFormat(Qt::PlainText);
+    brand->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    brand->setMinimumWidth(64);
+    brand->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
     brand->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_editorToolbar->addWidget(brand);
+    m_editorToolbar->addSeparator();
 
     struct RuntimeButton {
         QString tooltip;
@@ -580,27 +619,35 @@ void EditorWindow::createToolbar()
         const char* name;
     };
     const RuntimeButton runtimeButtons[] = {
-        {tr("Play"), QStringLiteral("play.svg"), PlayAction::Play, "play"},
-        {tr("Pause"), QStringLiteral("pause.svg"), PlayAction::Pause, "pause"},
-        {tr("Stop"), QStringLiteral("square.svg"), PlayAction::Stop, "stop"},
+        {tr("Play (F5)"), QStringLiteral("play.svg"), PlayAction::Play, "play"},
+        {tr("Pause (F6)"), QStringLiteral("pause.svg"), PlayAction::Pause, "pause"},
+        {tr("Stop (Shift+F5)"), QStringLiteral("square.svg"), PlayAction::Stop, "stop"},
     };
     for (const RuntimeButton& runtimeButton : runtimeButtons) {
         auto* button = new QToolButton(m_editorToolbar);
         button->setObjectName(QStringLiteral("runtimeToolButton"));
         button->setProperty("runtimeCommand", QString::fromLatin1(runtimeButton.name));
-        button->setIcon(editorIcon(runtimeButton.icon));
-        button->setIconSize(QSize(16, 16));
+        button->setIcon(editorThemedIcon(runtimeButton.icon));
+        button->setCheckable(true);
+        button->setFocusPolicy(Qt::NoFocus);
+        button->setAccessibleName(runtimeButton.tooltip);
+        button->setIconSize(QSize(18, 18));
+        button->setFixedSize(34, 34);
+        button->setAutoRaise(true);
         button->setToolTip(runtimeButton.tooltip);
         connect(button, &QToolButton::clicked, this, [this, action = runtimeButton.action]() {
             if (action == PlayAction::Stop) {
                 stopPlayWithPrompt();
+                updateRuntimeControls();
                 return;
             }
             if (action == PlayAction::Pause) {
                 m_shellViewModel->pauseOrResume();
+                updateRuntimeControls();
                 return;
             }
             m_shellViewModel->play();
+            updateRuntimeControls();
         });
         if (runtimeButton.action == PlayAction::Play) {
             m_playButton = button;
@@ -616,11 +663,147 @@ void EditorWindow::createToolbar()
     trailingSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     trailingSpacer->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_editorToolbar->addWidget(trailingSpacer);
+
+    m_projectLabel = new ads::CElidingLabel(tr("No project open"), m_editorToolbar);
+    m_projectLabel->setObjectName(QStringLiteral("workspaceProjectChip"));
+    m_projectLabel->setElideMode(Qt::ElideMiddle);
+    m_projectLabel->setMaximumWidth(180);
+    m_projectLabel->setMinimumWidth(90);
+    m_projectLabel->setFixedHeight(28);
+    m_projectLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    m_editorToolbar->addWidget(m_projectLabel);
+
+    auto* layoutButton = new QToolButton(m_editorToolbar);
+    layoutButton->setObjectName(QStringLiteral("workspaceToolbarButton"));
+    layoutButton->setIconSize(QSize(16, 16));
+    layoutButton->setFixedSize(28, 28);
+    layoutButton->setAutoRaise(true);
+    layoutButton->setIcon(editorThemedIcon(QStringLiteral("grid.svg")));
+    layoutButton->setToolTip(tr("Panels and workspace layout"));
+    connect(layoutButton, &QToolButton::clicked, this, [this, layoutButton]() {
+        if (m_windowMenu) m_windowMenu->popup(layoutButton->mapToGlobal(QPoint(0, layoutButton->height())));
+    });
+    m_editorToolbar->addWidget(layoutButton);
+
+    auto* settingsButton = new QToolButton(m_editorToolbar);
+    settingsButton->setObjectName(QStringLiteral("workspaceToolbarButton"));
+    settingsButton->setIconSize(QSize(16, 16));
+    settingsButton->setFixedSize(28, 28);
+    settingsButton->setAutoRaise(true);
+    settingsButton->setIcon(editorThemedIcon(QStringLiteral("settings.svg")));
+    settingsButton->setToolTip(tr("Project settings"));
+    connect(settingsButton, &QToolButton::clicked, this, [this]() {
+        m_gameSettingsDock->toggleView(true);
+        m_gameSettingsDock->raise();
+    });
+    m_editorToolbar->addWidget(settingsButton);
+    addInset();
+}
+
+void EditorWindow::setupBottomPanels()
+{
+    // All tools below Scene share one open slot, including menu-only tools.
+    for (auto* dock : {m_consoleDock, m_historyDock, m_terminalDock,
+                       m_workflowDock, m_tilePaletteDock}) {
+        connect(dock, &ads::CDockWidget::viewToggled, this, [this, dock](bool open) {
+            if (open) enforceExclusiveBottomPanel(dock);
+        });
+    }
+    connect(m_dockManager, &ads::CDockManager::stateRestored, this, [this]() {
+        enforceExclusiveBottomPanel();
+    });
+    enforceExclusiveBottomPanel(m_consoleDock);
+}
+
+void EditorWindow::enforceExclusiveBottomPanel(ads::CDockWidget* active)
+{
+    if (m_switchingBottomPanel || m_dockManager->isRestoringState()) return;
+    const QScopedValueRollback<bool> switching(m_switchingBottomPanel, true);
+    const auto panels = {m_consoleDock, m_historyDock, m_terminalDock,
+                         m_workflowDock, m_tilePaletteDock};
+    if (!active) {
+        // Keep the selected tool when restoring an older multi-panel layout.
+        for (auto* dock : panels) {
+            if (!dock->isClosed() && dock->isCurrentTab()) {
+                active = dock;
+                break;
+            }
+        }
+        if (!active) {
+            for (auto* dock : panels) {
+                if (!dock->isClosed()) {
+                    active = dock;
+                    break;
+                }
+            }
+        }
+    }
+    for (auto* dock : panels) {
+        if (dock != active && !dock->isClosed()) dock->toggleView(false);
+    }
+}
+
+void EditorWindow::createStatusBar()
+{
+    auto* bar = statusBar();
+    bar->setObjectName(QStringLiteral("workspaceStatusBar"));
+    bar->setSizeGripEnabled(false);
+    auto* panelButtons = new QWidget(bar);
+    panelButtons->setObjectName(QStringLiteral("workspacePanelButtons"));
+    auto* panelLayout = new QHBoxLayout(panelButtons);
+    // Keep the button backgrounds inside the rounded window edge.
+    panelLayout->setContentsMargins(8, 4, 8, 4);
+    panelLayout->setSpacing(4);
+    for (ads::CDockWidget* dock : {m_consoleDock, m_historyDock, m_terminalDock}) {
+        auto* button = new QToolButton(panelButtons);
+        button->setObjectName(QStringLiteral("workspacePanelButton"));
+        button->setText(dock->windowTitle());
+        button->setToolTip(tr("Show / hide %1").arg(dock->windowTitle()));
+        button->setCheckable(true);
+        button->setFocusPolicy(Qt::NoFocus);
+        const auto sync = [button, dock]() {
+            const QSignalBlocker blocker(button);
+            button->setChecked(!dock->isClosed() && dock->isCurrentTab());
+        };
+        connect(button, &QToolButton::clicked, this, [dock]() {
+            if (!dock->isClosed() && dock->isCurrentTab()) {
+                dock->toggleView(false);
+            } else {
+                dock->toggleView(true);
+                dock->raise();
+            }
+        });
+        connect(dock, &ads::CDockWidget::visibilityChanged, button, [sync](bool) { sync(); });
+        connect(dock, &ads::CDockWidget::viewToggled, button, [sync](bool) { sync(); });
+        sync();
+        panelLayout->addWidget(button);
+    }
+    bar->addWidget(panelButtons);
+    m_runtimeStatus = new QLabel(bar);
+    m_runtimeStatus->setObjectName(QStringLiteral("workspaceRuntimeStatus"));
+    bar->addPermanentWidget(m_runtimeStatus);
+    auto* counts = new QToolButton(bar);
+    counts->setObjectName(QStringLiteral("workspaceLogCounts"));
+    counts->setToolTip(tr("Open Console"));
+    const auto updateCounts = [counts](int warnings, int errors) {
+        counts->setText(tr("%1 warnings  /  %2 errors").arg(warnings).arg(errors));
+        counts->setProperty("severity", errors > 0 ? QStringLiteral("error")
+            : warnings > 0 ? QStringLiteral("warning") : QStringLiteral("none"));
+        counts->style()->unpolish(counts);
+        counts->style()->polish(counts);
+    };
+    connect(m_console, &ConsolePanel::messageCountsChanged, counts, updateCounts);
+    updateCounts(m_console->warningCount(), m_console->errorCount());
+    connect(counts, &QToolButton::clicked, this, [this]() {
+        m_consoleDock->toggleView(true);
+        m_consoleDock->raise();
+    });
+    bar->addPermanentWidget(counts);
 }
 
 void EditorWindow::toggleMaximize()
 {
-    if (isMaximized() || isFullScreen()) {
+    if (windowState().testFlag(Qt::WindowMaximized) || isFullScreen()) {
         showNormal();
     } else {
         showMaximized();
@@ -656,8 +839,29 @@ bool EditorWindow::eventFilter(QObject* watched, QEvent* event)
     }
 
     if (event->type() == QEvent::MouseButtonPress) {
-        auto* floating = floatingWindowAncestor(watched);
+        auto* watchedWidget = qobject_cast<QWidget*>(watched);
         auto* mouse = static_cast<QMouseEvent*>(event);
+        if (watchedWidget && watchedWidget->window() == this
+            && mouse->button() == Qt::LeftButton) {
+            QWidget* focus = focusWidget();
+            QWidget* target = QApplication::widgetAt(mouse->globalPosition().toPoint());
+            bool clickedInsideFocus = false;
+            bool clickedFocusable = false;
+            for (QWidget* ancestor = target; ancestor; ancestor = ancestor->parentWidget()) {
+                if (ancestor == focus)
+                    clickedInsideFocus = true;
+                if (ancestor->focusPolicy() != Qt::NoFocus
+                    || qobject_cast<QAbstractButton*>(ancestor)
+                    || qobject_cast<QLineEdit*>(ancestor)
+                    || qobject_cast<QComboBox*>(ancestor)) {
+                    clickedFocusable = true;
+                    break;
+                }
+            }
+            if (focus && !clickedInsideFocus && !clickedFocusable)
+                focus->clearFocus();
+        }
+        auto* floating = floatingWindowAncestor(watched);
         if (floating && mouse->button() == Qt::LeftButton && floating->windowHandle()
             && !floating->isMaximized()) {
             const QPoint pos = floating->mapFromGlobal(mouse->globalPosition().toPoint());
@@ -776,17 +980,34 @@ void EditorWindow::createDocks()
     m_sceneDock = sceneDock;
     auto* sceneBody = new QWidget(sceneDock);
     auto* sceneLayout = new QVBoxLayout(sceneBody);
-    sceneLayout->setContentsMargins(0, 0, 0, 0);
+    sceneLayout->setContentsMargins(1, 0, 1, 8);
     sceneLayout->setSpacing(0);
 
-    auto* sceneToolbar = new QToolBar(sceneBody);
+    auto* sceneToolbar = new QWidget(sceneBody);
     sceneToolbar->setObjectName(QStringLiteral("sceneToolbar"));
-    sceneToolbar->setMovable(false);
-    sceneToolbar->setIconSize(QSize(16, 16));
-    sceneToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    sceneToolbar->setAttribute(Qt::WA_StyledBackground);
+    sceneToolbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+    auto* sceneToolsLayout = new QHBoxLayout(sceneToolbar);
+    sceneToolsLayout->setContentsMargins(8, 5, 8, 5);
+    sceneToolsLayout->setSpacing(4);
+    const auto addSceneAction = [sceneToolbar, sceneToolsLayout](const QIcon& icon, const QString& tool) {
+        auto* action = new QAction(icon, QString(), sceneToolbar);
+        auto* button = new QToolButton(sceneToolbar);
+        button->setObjectName(QStringLiteral("sceneToolButton"));
+        button->setProperty("sceneTool", tool);
+        button->setDefaultAction(action);
+        button->setIconSize(QSize(16, 16));
+        button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        button->setFocusPolicy(Qt::NoFocus);
+        button->setAutoRaise(true);
+        button->setMinimumSize(28, 28);
+        button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        sceneToolsLayout->addWidget(button, 0, Qt::AlignVCenter);
+        return action;
+    };
 
-    m_camera2DAction = sceneToolbar->addAction(
-        editorThemedIcon(QStringLiteral("viewport-3d.svg")), QString());
+    m_camera2DAction = addSceneAction(
+        editorThemedIcon(QStringLiteral("viewport-3d.svg")), QStringLiteral("camera"));
     m_camera2DAction->setCheckable(true);
     m_camera2DAction->setChecked(false);
     m_camera2DAction->setToolTip(tr("Switch to 2D view (orthographic)"));
@@ -802,17 +1023,15 @@ void EditorWindow::createDocks()
         GizmoMode mode;
     };
     const SceneTool sceneTools[] = {
-        {tr("Hand"), QStringLiteral("hand.svg"), GizmoMode::None},
-        {tr("Move"), QStringLiteral("move-3d.svg"), GizmoMode::Translate},
-        {tr("Rotate"), QStringLiteral("rotate-3d.svg"), GizmoMode::Rotate},
-        {tr("Scale"), QStringLiteral("scale-3d.svg"), GizmoMode::Scale},
+        {tr("Hand (Q)"), QStringLiteral("hand.svg"), GizmoMode::None},
+        {tr("Move (W)"), QStringLiteral("move-3d.svg"), GizmoMode::Translate},
+        {tr("Rotate (E)"), QStringLiteral("rotate-3d.svg"), GizmoMode::Rotate},
+        {tr("Scale (R)"), QStringLiteral("scale-3d.svg"), GizmoMode::Scale},
     };
     int toolIndex = 0;
     for (const SceneTool& sceneTool : sceneTools) {
-        auto* action = sceneToolbar->addAction(editorThemedIcon(sceneTool.icon), QString());
-        if (auto* toolButton = sceneToolbar->widgetForAction(action)) {
-            toolButton->setProperty("sceneTool", QString::fromLatin1(gizmoModeName(sceneTool.mode)));
-        }
+        auto* action = addSceneAction(editorThemedIcon(sceneTool.icon),
+            QString::fromLatin1(gizmoModeName(sceneTool.mode)));
         action->setCheckable(true);
         action->setToolTip(sceneTool.tooltip);
         toolGroup->addAction(action);
@@ -822,47 +1041,30 @@ void EditorWindow::createDocks()
         if (sceneTool.mode == GizmoMode::Translate) action->setChecked(true);
         connect(action, &QAction::triggered, this, [this, mode = sceneTool.mode]() {
             m_shellViewModel->setGizmoMode(mode);
+            if (m_sceneSurface) m_sceneSurface->setFocus(Qt::OtherFocusReason);
         });
         ++toolIndex;
     }
 
-    sceneToolbar->addSeparator();
+    auto* separator = new QWidget(sceneToolbar);
+    separator->setObjectName(QStringLiteral("sceneToolSeparator"));
+    separator->setFixedSize(1, 18);
+    sceneToolsLayout->addWidget(separator, 0, Qt::AlignVCenter);
 
-    auto* snapAction = sceneToolbar->addAction(editorThemedIcon(QStringLiteral("grid.svg")), QString());
+    auto* snapAction = addSceneAction(editorThemedIcon(QStringLiteral("grid.svg")), QStringLiteral("snap"));
     snapAction->setCheckable(true);
     snapAction->setToolTip(tr("Toggle snapping (hold Ctrl while dragging to snap temporarily)"));
     connect(snapAction, &QAction::triggered, this, [this](bool checked) {
         m_shellViewModel->setGizmoSnap(checked);
     });
 
-    const auto makeStepBox = [&](const QString& prefix, double value, double step, const QString& tooltip) {
-        auto* box = new QDoubleSpinBox(sceneToolbar);
-        box->setToolTip(tooltip);
-        box->setPrefix(prefix + QLatin1Char(' '));
-        box->setRange(0.0, 1000.0);
-        box->setDecimals(3);
-        box->setSingleStep(step);
-        box->setValue(value);
-        box->setFixedWidth(78);
-        return box;
-    };
-    QDoubleSpinBox* translateStep = makeStepBox(QStringLiteral("T"), 0.25, 0.05, tr("Translate snap step"));
-    QDoubleSpinBox* rotateStep = makeStepBox(QStringLiteral("R"), 15.0, 1.0, tr("Rotate snap step (degrees)"));
-    QDoubleSpinBox* scaleStep = makeStepBox(QStringLiteral("S"), 0.1, 0.05, tr("Scale snap step"));
-    sceneToolbar->addWidget(translateStep);
-    sceneToolbar->addWidget(rotateStep);
-    sceneToolbar->addWidget(scaleStep);
-
-    const auto pushSnapSteps = [this, translateStep, rotateStep, scaleStep]() {
-        m_shellViewModel->setGizmoSnapStep(
-            static_cast<float>(translateStep->value()),
-            static_cast<float>(rotateStep->value()),
-            static_cast<float>(scaleStep->value()));
-    };
-    for (QDoubleSpinBox* box : {translateStep, rotateStep, scaleStep}) {
-        connect(box, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
-                [pushSnapSteps](double) { pushSnapSteps(); });
-    }
+    sceneToolsLayout->addStretch();
+    m_sceneLabel = new ads::CElidingLabel(sceneToolbar);
+    m_sceneLabel->setObjectName(QStringLiteral("workspaceSceneName"));
+    m_sceneLabel->setElideMode(Qt::ElideMiddle);
+    m_sceneLabel->setMinimumWidth(0);
+    m_sceneLabel->setMaximumWidth(180);
+    sceneToolsLayout->addWidget(m_sceneLabel, 0, Qt::AlignVCenter);
 
     sceneLayout->addWidget(sceneToolbar);
 
@@ -875,7 +1077,8 @@ void EditorWindow::createDocks()
     sceneDock->setFeature(ads::CDockWidget::DockWidgetFloatable, false);
     sceneDock->setFeature(ads::CDockWidget::DockWidgetMovable, false);
     sceneDock->setFeature(ads::CDockWidget::DockWidgetPinnable, false);
-    m_dockManager->addDockWidget(ads::CenterDockWidgetArea, sceneDock);
+    auto* sceneArea = m_dockManager->setCentralWidget(sceneDock);
+    sceneArea->setDockAreaFlag(ads::CDockAreaWidget::HideSingleWidgetTitleBar, false);
 }
 
 void EditorWindow::createPanels()
@@ -898,8 +1101,13 @@ void EditorWindow::createPanels()
     m_projectDock->setObjectName(QStringLiteral("Project"));
     m_projectPanel = new ProjectPanel(m_context, m_projectDock);
     m_projectDock->setWidget(m_projectPanel);
+    connect(m_projectPanel, &ProjectPanel::assetPathSelected, m_inspector, &InspectorPanel::inspectPath);
     m_projectDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_projectDock, m_hierarchyDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_projectDock, m_hierarchyDock->dockAreaWidget());
+    connect(m_hierarchy, &HierarchyPanel::frameSelectionRequested, this, [this]() {
+        m_context.session().execute(SceneKeyCommand{Qt::Key_F, true});
+        m_sceneSurface->setFocus(Qt::OtherFocusReason);
+    });
 
     m_scriptDock = new ads::CDockWidget(tr("Script"));
     m_scriptDock->setObjectName(QStringLiteral("Script"));
@@ -909,7 +1117,7 @@ void EditorWindow::createPanels()
     m_scriptDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_scriptDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
     m_scriptDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_scriptDock, m_inspectorDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_scriptDock, m_sceneDock->dockAreaWidget());
     m_scriptDock->toggleView(false);
     connect(m_projectPanel, &ProjectPanel::scriptOpenRequested, this, [this](const QString& path) {
         m_scriptDock->toggleView(true);
@@ -933,14 +1141,15 @@ void EditorWindow::createPanels()
     m_terminalDock->setWidget(unavailablePanel(tr("Terminal unavailable"),
         tr("The runtime terminal panel is not implemented yet."), m_terminalDock));
     m_terminalDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_terminalDock, m_consoleDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_terminalDock, m_consoleDock->dockAreaWidget());
+    m_terminalDock->toggleView(false);
 
     m_historyDock = new ads::CDockWidget(tr("History"));
     m_historyDock->setObjectName(QStringLiteral("History"));
     m_historyPanel = new HistoryPanel(m_context, m_historyDock);
     m_historyDock->setWidget(m_historyPanel);
     m_historyDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_historyDock, m_consoleDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_historyDock, m_consoleDock->dockAreaWidget());
 
     m_workflowDock = new ads::CDockWidget(tr("Workflow"));
     m_workflowDock->setObjectName(QStringLiteral("Workflow"));
@@ -950,7 +1159,7 @@ void EditorWindow::createPanels()
     m_workflowDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_workflowDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
     m_workflowDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_workflowDock, m_historyDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_workflowDock, m_consoleDock->dockAreaWidget());
     m_workflowDock->toggleView(false);
 
     m_tilePaletteDock = new ads::CDockWidget(tr("Tile Palette"));
@@ -961,7 +1170,8 @@ void EditorWindow::createPanels()
     m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
     m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_tilePaletteDock, m_historyDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_tilePaletteDock, m_consoleDock->dockAreaWidget());
+    m_tilePaletteDock->toggleView(false);
 
     m_tileLayersDock = new ads::CDockWidget(tr("Tile Layers"));
     m_tileLayersDock->setObjectName(QStringLiteral("Tile Layers"));
@@ -971,7 +1181,8 @@ void EditorWindow::createPanels()
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_tileLayersDock, m_tilePaletteDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_tileLayersDock, m_hierarchyDock->dockAreaWidget());
+    m_tileLayersDock->toggleView(false);
 
     if (m_hierarchy && m_tilePalette) {
         connect(m_hierarchy, &HierarchyPanel::newTilemapRequested,
@@ -983,7 +1194,7 @@ void EditorWindow::createPanels()
     m_gameSettingsDock->setObjectName(QStringLiteral("Game Settings"));
     m_gameSettingsDock->setWidget(m_gameSettingsPanel);
     m_gameSettingsDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_gameSettingsDock, m_consoleDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_gameSettingsDock, m_inspectorDock->dockAreaWidget());
     m_gameSettingsDock->toggleView(false);
     connect(m_gameSettingsPanel, &SettingsPanel::saved, this, [this]() {
         const auto& config = m_gameSettingsPanel->value();
@@ -999,7 +1210,7 @@ void EditorWindow::createPanels()
     m_engineSettingsDock->setObjectName(QStringLiteral("Engine Settings"));
     m_engineSettingsDock->setWidget(m_engineSettingsPanel);
     m_engineSettingsDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_engineSettingsDock, m_consoleDock->dockAreaWidget());
+    m_dockManager->addDockWidgetTabToArea(m_engineSettingsDock, m_inspectorDock->dockAreaWidget());
     m_engineSettingsDock->toggleView(false);
     connect(m_engineSettingsPanel, &SettingsPanel::saved, this, [this]() {
         m_context.config().reload();
@@ -1007,9 +1218,11 @@ void EditorWindow::createPanels()
     });
 
     // Establish the single-Scene authoring layout before the user resizes any dock.
-    m_dockManager->setSplitterSizes(m_inspectorDock->dockAreaWidget(), QList<int>{260, 820, 320});
-    m_dockManager->setSplitterSizes(m_hierarchyDock->dockAreaWidget(), QList<int>{610, 240});
-    m_dockManager->setSplitterSizes(m_consoleDock->dockAreaWidget(), QList<int>{610, 240});
+    m_dockManager->setSplitterSizes(m_inspectorDock->dockAreaWidget(), QList<int>{270, 790, 350});
+    m_dockManager->setSplitterSizes(m_consoleDock->dockAreaWidget(), QList<int>{570, 220});
+    m_hierarchyDock->raise();
+    m_inspectorDock->raise();
+    m_consoleDock->raise();
 }
 
 void EditorWindow::startSafePointTimer()
@@ -1055,18 +1268,21 @@ void EditorWindow::updateRuntimeControls()
     const PlayState state = m_shellViewModel->playState();
     if (m_playButton) {
         m_playButton->setEnabled(state == PlayState::Edit);
-        m_playButton->setToolTip(tr("Play"));
+        m_playButton->setChecked(state != PlayState::Edit);
+        m_playButton->setToolTip(tr("Play (F5)"));
     }
     if (m_pauseButton) {
         const bool paused = state == PlayState::Paused;
         m_pauseButton->setEnabled(state != PlayState::Edit);
-        m_pauseButton->setIcon(editorIcon(
+        m_pauseButton->setChecked(paused);
+        m_pauseButton->setIcon(editorThemedIcon(
             paused ? QStringLiteral("play.svg") : QStringLiteral("pause.svg")));
-        m_pauseButton->setToolTip(paused ? tr("Resume") : tr("Pause"));
+        m_pauseButton->setToolTip(paused ? tr("Resume (F6)") : tr("Pause (F6)"));
     }
     if (m_stopButton) {
         m_stopButton->setEnabled(state != PlayState::Edit);
-        m_stopButton->setToolTip(tr("Stop"));
+        m_stopButton->setChecked(false);
+        m_stopButton->setToolTip(tr("Stop (Shift+F5)"));
     }
     if (m_runtimeMenuActions[0]) {
         m_runtimeMenuActions[0]->setEnabled(state == PlayState::Edit);
@@ -1078,6 +1294,14 @@ void EditorWindow::updateRuntimeControls()
     }
     if (m_runtimeMenuActions[2]) {
         m_runtimeMenuActions[2]->setEnabled(state != PlayState::Edit);
+    }
+    if (m_runtimeStatus) {
+        m_runtimeStatus->setText(state == PlayState::Edit ? tr("Ready")
+            : state == PlayState::Paused ? tr("Paused") : tr("Playing"));
+        m_runtimeStatus->setProperty("runtimeState", state == PlayState::Paused ? QStringLiteral("paused")
+            : state == PlayState::Edit ? QStringLiteral("edit") : QStringLiteral("playing"));
+        m_runtimeStatus->style()->unpolish(m_runtimeStatus);
+        m_runtimeStatus->style()->polish(m_runtimeStatus);
     }
 }
 
@@ -1121,6 +1345,12 @@ void EditorWindow::showMissingAssetReferences(Size_t count)
 void EditorWindow::updateWindowTitle()
 {
     setWindowTitle(ToQString(m_shellViewModel->windowTitle()));
+    if (m_sceneLabel) {
+        const QString path = ToQString(m_shellViewModel->documentPath());
+        m_sceneLabel->setText((path.isEmpty() ? tr("Untitled Scene") : QFileInfo(path).fileName())
+            + (m_shellViewModel->isDirty() ? QStringLiteral(" *") : QString()));
+        m_sceneLabel->setToolTip(path);
+    }
 }
 
 bool EditorWindow::promptUnsavedChanges()
@@ -1225,6 +1455,10 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
         return false;
     }
     m_context.resources().setProjectRoot(FsPath(project.rootPath));
+    if (m_projectLabel) {
+        m_projectLabel->setText(QFileInfo(ToQString(project.rootPath)).fileName());
+        m_projectLabel->setToolTip(ToQString(project.rootPath));
+    }
     if (m_gameSettingsPanel) {
         m_gameSettingsPanel->setFilePath(
             QDir(ToQString(project.rootPath)).filePath(QStringLiteral("app_config.json")));

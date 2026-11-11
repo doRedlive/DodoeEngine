@@ -20,12 +20,14 @@ public:
     dodoe::Json layoutJson(const String& name) const;
 
     String themeName() const;
+    int scriptFontPointSize() const;
     String defaultLayoutName() const;
     String themePath() const;
     String builtinDir() const { return m_builtinDir; }
 
     String shortcut(const String& action) const;
     void setThemeName(const String& themeName);
+    void setScriptFontPointSize(int pointSize);
 
     void reload();
 

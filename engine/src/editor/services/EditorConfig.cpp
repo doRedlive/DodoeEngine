@@ -4,6 +4,7 @@
 
 #include "EditorConfig.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -48,6 +49,14 @@ String EditorConfig::themeName() const
     return "cakery-dark";
 }
 
+int EditorConfig::scriptFontPointSize() const
+{
+    if (m_editor.contains("scriptFontSize") && m_editor["scriptFontSize"].is_number_integer()) {
+        return std::clamp(m_editor["scriptFontSize"].get<int>(), 8, 32);
+    }
+    return 11;
+}
+
 String EditorConfig::defaultLayoutName() const
 {
     if (m_editor.contains("defaultLayout") && m_editor["defaultLayout"].is_string()) {
@@ -86,6 +95,27 @@ void EditorConfig::setThemeName(const String& themeName)
         override = dodoe::Json::object();
     }
     override["theme"] = themeName;
+    std::ofstream file(path);
+    if (file.is_open()) {
+        file << override.dump(2) << '\n';
+    }
+}
+
+void EditorConfig::setScriptFontPointSize(int pointSize)
+{
+    const int normalized = std::clamp(pointSize, 8, 32);
+    m_editor["scriptFontSize"] = normalized;
+    if (m_userDir.empty()) {
+        return;
+    }
+
+    std::filesystem::create_directories(m_userDir);
+    const FsPath path = FsPath(m_userDir) / "editor.json";
+    dodoe::Json override = dodoe::config::LoadJsonFile(path);
+    if (!override.is_object()) {
+        override = dodoe::Json::object();
+    }
+    override["scriptFontSize"] = normalized;
     std::ofstream file(path);
     if (file.is_open()) {
         file << override.dump(2) << '\n';

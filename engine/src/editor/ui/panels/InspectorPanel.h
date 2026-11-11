@@ -29,6 +29,7 @@ class InspectorPanel : public QWidget {
 public:
     explicit InspectorPanel(EditorWorkspaceContext& context, QWidget* parent = nullptr);
     ~InspectorPanel() override;
+    void inspectPath(const QString& path);
 
 private:
     void refresh();
@@ -42,6 +43,7 @@ private:
     QScrollArea* m_scroll = nullptr;
     QPointer<QLineEdit> m_filter = nullptr;
     QString m_filterText;
+    QString m_browserPath;
     bool m_filterFocused = false;
     int m_scrollPosition = 0;
     QPointer<QLineEdit> m_nameEdit = nullptr;

@@ -64,15 +64,16 @@ CSharpHighlighter::CSharpHighlighter(QTextDocument* document)
         m_keywords.insert(QString::fromLatin1(word), Token::Literal);
     }
 
-    m_formats[int(Token::Comment)] = makeFormat(QColor(0x6a, 0x99, 0x55), false, true);
-    m_formats[int(Token::String)] = makeFormat(QColor(0xce, 0x91, 0x78));
-    m_formats[int(Token::Number)] = makeFormat(QColor(0xb5, 0xce, 0xa8));
-    m_formats[int(Token::Keyword)] = makeFormat(QColor(0xc5, 0x86, 0xc0));
-    m_formats[int(Token::Type)] = makeFormat(QColor(0x4e, 0xc9, 0xb0));
-    m_formats[int(Token::Literal)] = makeFormat(QColor(0x56, 0x9c, 0xd6));
-    m_formats[int(Token::Preprocessor)] = makeFormat(QColor(0x9b, 0x9b, 0x9b));
-    m_formats[int(Token::Attribute)] = makeFormat(QColor(0x4f, 0xc1, 0xff));
-    m_formats[int(Token::TypeName)] = makeFormat(QColor(0x4e, 0xc9, 0xb0), true);
+    m_formats[int(Token::Comment)] = makeFormat(QColor("#6272a4"), false, true);
+    m_formats[int(Token::String)] = makeFormat(QColor("#f1fa8c"));
+    m_formats[int(Token::Number)] = makeFormat(QColor("#bd93f9"));
+    m_formats[int(Token::Keyword)] = makeFormat(QColor("#ff79c6"));
+    m_formats[int(Token::Type)] = makeFormat(QColor("#8be9fd"), false, true);
+    m_formats[int(Token::Literal)] = makeFormat(QColor("#bd93f9"));
+    m_formats[int(Token::Preprocessor)] = makeFormat(QColor("#ff79c6"));
+    m_formats[int(Token::Attribute)] = makeFormat(QColor("#50fa7b"));
+    m_formats[int(Token::TypeName)] = makeFormat(QColor("#8be9fd"), false, true);
+    m_formats[int(Token::Function)] = makeFormat(QColor("#50fa7b"));
 
     m_attributeRegex = QRegularExpression(QStringLiteral(
         "\\[[A-Za-z_][\\w.]*(?:\\([^\\)\\n]*\\))?\\]"));
@@ -270,8 +271,12 @@ void CSharpHighlighter::highlightBlock(const QString& text)
             }
             const QString word = text.mid(index, end - index);
             const auto it = m_keywords.constFind(word);
+            int next = end;
+            while (next < length && text.at(next).isSpace()) ++next;
             if (it != m_keywords.constEnd()) {
                 formatRange(index, end - index, it.value());
+            } else if (next < length && text.at(next) == QLatin1Char('(')) {
+                formatRange(index, end - index, Token::Function);
             } else if (!word.isEmpty() && word.at(0).isUpper()) {
                 formatRange(index, end - index, Token::TypeName);
             }

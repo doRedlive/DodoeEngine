@@ -25,10 +25,15 @@ public:
 
     void setValue(const Json& value);
     const Json& value() const { return m_value; }
+    void beginInteractiveEdit();
+    void endInteractiveEdit();
+    ~EditorJsonWidget() override;
 
 signals:
     void valueChanged();
     void fieldChanged(const QString& path);
+    void interactiveEditStarted();
+    void interactiveEditFinished();
 
 private:
     void rebuild();
@@ -45,6 +50,7 @@ private:
     Json& valueAt(const String& path);
 
     Json m_value;
+    bool m_interactiveEdit = false;
     DynamicArray<InspectorFieldMetadata> m_fields;
     DynamicArray<AssetBrowserEntry> m_assets;
 };

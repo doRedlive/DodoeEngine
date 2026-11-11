@@ -8,6 +8,7 @@
 #include <QMessageBox>
 
 class QLabel;
+class QColor;
 class QToolButton;
 
 namespace ads {
@@ -45,6 +46,8 @@ private:
 };
 
 void setupFramelessMessageBox(QMessageBox* messageBox);
+QColor selectEditorColor(const QColor& initial, QWidget* parent,
+                         const QString& title, bool showAlpha = false);
 ads::CFloatingDockContainer* floatingWindowAncestor(QObject* object);
 void applyWindowsFrameAttributes(QWidget* widget);
 

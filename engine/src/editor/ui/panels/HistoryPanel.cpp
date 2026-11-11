@@ -44,19 +44,19 @@ HistoryPanel::HistoryPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     m_undo = new QToolButton(tools);
     m_undo->setObjectName(QStringLiteral("historyToolButton"));
-    m_undo->setIcon(editorIcon(QStringLiteral("undo.svg")));
+    m_undo->setIcon(editorThemedIcon(QStringLiteral("undo.svg")));
     m_undo->setToolTip(tr("Undo"));
     toolsLayout->addWidget(m_undo);
 
     m_redo = new QToolButton(tools);
     m_redo->setObjectName(QStringLiteral("historyToolButton"));
-    m_redo->setIcon(editorIcon(QStringLiteral("redo.svg")));
+    m_redo->setIcon(editorThemedIcon(QStringLiteral("redo.svg")));
     m_redo->setToolTip(tr("Redo"));
     toolsLayout->addWidget(m_redo);
 
     auto* clear = new QToolButton(tools);
     clear->setObjectName(QStringLiteral("historyToolButton"));
-    clear->setIcon(editorIcon(QStringLiteral("trash.svg")));
+    clear->setIcon(editorThemedIcon(QStringLiteral("trash.svg")));
     clear->setToolTip(tr("Clear history"));
     toolsLayout->addWidget(clear);
     layout->addWidget(tools);

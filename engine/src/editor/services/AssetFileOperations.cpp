@@ -40,7 +40,7 @@ AssetFileResult AssetFileOperations::moveFile(const FsPath& source,
                                               const FsPath& destination)
 {
     std::error_code ec;
-    if (!std::filesystem::is_regular_file(source, ec)) {
+    if (!std::filesystem::is_regular_file(source, ec) && !std::filesystem::is_directory(source, ec)) {
         return AssetFileResult::SourceMissing;
     }
     if (std::filesystem::exists(destination, ec)) {
@@ -59,6 +59,11 @@ AssetFileResult AssetFileOperations::moveFile(const FsPath& source,
     if (hasMeta) {
         std::error_code metaError;
         std::filesystem::rename(sourceMeta, destinationMeta, metaError);
+        if (metaError) {
+            std::error_code rollbackError;
+            std::filesystem::rename(destination, source, rollbackError);
+            return AssetFileResult::Failed;
+        }
     }
     return AssetFileResult::Ok;
 }

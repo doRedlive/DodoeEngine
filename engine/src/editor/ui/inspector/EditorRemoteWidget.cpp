@@ -7,11 +7,11 @@
 #include "EditorRemoteWidget.h"
 
 #include "InspectorWidgets.h"
+#include "ui/shell/FramelessChrome.h"
 
 #include <QApplication>
 #include <QCheckBox>
 #include <QColor>
-#include <QColorDialog>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFrame>
@@ -325,7 +325,7 @@ void EditorRemoteWidget::buildNode(QBoxLayout* layout, const Json& node)
         button->setText(color.name(QColor::HexArgb));
         connect(button, &QPushButton::clicked, this, [this, id, button, color]() mutable {
             const QColor picked =
-                QColorDialog::getColor(color, button, tr("Select Color"), QColorDialog::ShowAlphaChannel);
+                selectEditorColor(color, button, tr("Select Color"), true);
             if (!picked.isValid()) {
                 return;
             }
@@ -489,7 +489,7 @@ void EditorRemoteWidget::buildPropertyNode(QBoxLayout* layout, const Json& node)
         button->setText(color.name(QColor::HexArgb));
         connect(button, &QPushButton::clicked, this, [this, value, commit, button, color]() mutable {
             const QColor picked =
-                QColorDialog::getColor(color, button, tr("Select Color"), QColorDialog::ShowAlphaChannel);
+                selectEditorColor(color, button, tr("Select Color"), true);
             if (!picked.isValid()) {
                 return;
             }

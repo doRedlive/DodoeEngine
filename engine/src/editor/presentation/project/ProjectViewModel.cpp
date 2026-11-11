@@ -410,12 +410,22 @@ ProjectOperationResult ProjectViewModel::renameAsset(const String& path,
                                                      const String& newBaseName,
                                                      String& outPath)
 {
-    if (path.empty() || newBaseName.empty()) {
+    if (path.empty() || newBaseName.empty() || newBaseName == "." || newBaseName == ".."
+        || newBaseName.find_first_of("/\\:*?\"<>|") != String::npos
+        || newBaseName.back() == '.' || newBaseName.back() == ' ') {
         return ProjectOperationResult::Failed;
     }
     const FsPath source(path.c_str());
+    const String normalizedRoot = AssetController::normalizePath(root());
+    const String normalizedSource = AssetController::normalizePath(source);
+    if (normalizedRoot.empty() || normalizedSource == normalizedRoot
+        || normalizedSource.rfind(normalizedRoot + "/", 0) != 0) {
+        return ProjectOperationResult::Failed;
+    }
+    std::error_code ec;
+    const bool directory = std::filesystem::is_directory(source, ec);
     const FsPath destination =
-        source.parent_path() / (newBaseName + source.extension().string());
+        source.parent_path() / (newBaseName + (directory ? String() : source.extension().string()));
     if (AssetController::normalizePath(source) ==
         AssetController::normalizePath(destination)) {
         outPath = path;
@@ -424,7 +434,7 @@ ProjectOperationResult ProjectViewModel::renameAsset(const String& path,
     if (!m_controller.moveFile(path, destination)) {
         return ProjectOperationResult::Failed;
     }
-    if (!m_controller.importAsset(destination.string())) {
+    if (!directory && !m_controller.importAsset(destination.string())) {
         m_controller.moveFile(destination.string(), source);
         return ProjectOperationResult::ImportRejected;
     }

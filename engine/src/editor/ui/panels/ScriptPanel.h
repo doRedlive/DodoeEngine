@@ -4,6 +4,9 @@
 
 #include <QWidget>
 
+#include "core/Signal.h"
+
+#include <QStringList>
 #include <utility>
 #include <vector>
 
@@ -16,6 +19,7 @@ class QLabel;
 class QLineEdit;
 class QStringListModel;
 class QStackedWidget;
+class QSpinBox;
 class QTabWidget;
 class QTimer;
 class QToolButton;
@@ -67,6 +71,15 @@ private:
 
     void ensureIndexBuilt();
     void scheduleIndexRebuild();
+    void setCodeFontPointSize(int pointSize);
+
+    void rebuildWorkspace();
+    void scheduleWorkspaceRefresh();
+    void addWorkspaceChildren(QTreeWidgetItem* parent, const QString& directory,
+                              QStringList& watchedDirectories);
+    void applyWorkspaceFilter();
+    bool filterWorkspaceItem(QTreeWidgetItem* item, const QString& filter);
+    void selectWorkspaceFile(const QString& path);
 
     void rebuildOutline();
     void applyOutlineFilter();
@@ -97,8 +110,12 @@ private:
 
     EditorWorkspaceContext& m_context;
     CSharpSymbolIndex m_index;
-    QStackedWidget* m_stack = nullptr;
+    QStackedWidget* m_editorStack = nullptr;
+    QWidget* m_emptyEditor = nullptr;
     QTabWidget* m_tabs = nullptr;
+    QSpinBox* m_fontSize = nullptr;
+    QTreeWidget* m_workspace = nullptr;
+    QLineEdit* m_workspaceFilter = nullptr;
     QTreeWidget* m_outline = nullptr;
     QLineEdit* m_outlineFilter = nullptr;
     QWidget* m_findBar = nullptr;
@@ -112,10 +129,15 @@ private:
     QCompleter* m_completer = nullptr;
     QStringListModel* m_completionModel = nullptr;
     QFileSystemWatcher* m_watcher = nullptr;
+    QFileSystemWatcher* m_workspaceWatcher = nullptr;
     QTimer* m_outlineTimer = nullptr;
     QTimer* m_indexTimer = nullptr;
+    QTimer* m_workspaceTimer = nullptr;
     QVector<EditorPage> m_pages;
     QVector<Pair<QString, int>> m_history;
+    ScopedConnection m_assetSubscription;
+    QString m_workspaceRoot;
+    int m_codeFontPointSize = 11;
     int m_historyPosition = -1;
     int m_suppressWatcher = 0;
 };

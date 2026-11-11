@@ -56,6 +56,11 @@
 #include <QVBoxLayout>
 #include <QShortcut>
 #include <QKeySequence>
+#include <QToolButton>
+#include <QSignalBlocker>
+#include <QTreeWidgetItemIterator>
+#include <QCollator>
+#include <algorithm>
 
 #include <filesystem>
 #include <functional>
@@ -417,53 +422,6 @@ bool GetIsImageAsset(const String& type, const FsPath& path)
     return kImageExtensions.contains(ext);
 }
 
-QString GetAssetTypeIcon(const String& type, const FsPath& path)
-{
-    if (type == "Texture" || type == "Sprite") {
-        return QStringLiteral("image.svg");
-    }
-    if (type == "Mesh" || type == "Prefab") {
-        return QStringLiteral("box.svg");
-    }
-    if (type == "Material") {
-        return QStringLiteral("material.svg");
-    }
-    if (type == "Tileset") {
-        return QStringLiteral("grid.svg");
-    }
-    if (type == "TiledMap") {
-        return QStringLiteral("map.svg");
-    }
-    if (type == "Scene") {
-        return QStringLiteral("scene.svg");
-    }
-    const QString ext = ToQString(path.extension().string()).toLower();
-    if (ext == QStringLiteral(".png") || ext == QStringLiteral(".jpg") ||
-        ext == QStringLiteral(".jpeg") || ext == QStringLiteral(".bmp") ||
-        ext == QStringLiteral(".gif") || ext == QStringLiteral(".tga") ||
-        ext == QStringLiteral(".psd") || ext == QStringLiteral(".hdr")) {
-        return QStringLiteral("image.svg");
-    }
-    if (ext == QStringLiteral(".obj") || ext == QStringLiteral(".fbx") ||
-        ext == QStringLiteral(".gltf") || ext == QStringLiteral(".glb") ||
-        ext == QStringLiteral(".prefab")) {
-        return QStringLiteral("box.svg");
-    }
-    if (ext == QStringLiteral(".tsx")) {
-        return QStringLiteral("grid.svg");
-    }
-    if (ext == QStringLiteral(".tmj")) {
-        return QStringLiteral("map.svg");
-    }
-    if (ext == QStringLiteral(".doscn")) {
-        return QStringLiteral("scene.svg");
-    }
-    if (ext == QStringLiteral(".domat")) {
-        return QStringLiteral("material.svg");
-    }
-    return QStringLiteral("image-minus.svg");
-}
-
 DynamicArray<String> ToPaths(const QStringList& paths)
 {
     DynamicArray<String> converted;
@@ -481,26 +439,51 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
       m_viewModel(create_scope<ProjectViewModel>(context.assets(), context.events())),
       m_context(context)
 {
+    setObjectName(QStringLiteral("projectPanel"));
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setContentsMargins(10, 10, 10, 8);
+    layout->setSpacing(8);
 
     m_filter = new QLineEdit(this);
-    m_filter->setPlaceholderText(tr("Search assets..."));
+    m_filter->setObjectName(QStringLiteral("projectSearch"));
+    m_filter->setPlaceholderText(tr("Search all assets..."));
     m_filter->setClearButtonEnabled(true);
     m_typeFilter = new QComboBox(this);
     m_typeFilter->setObjectName(QStringLiteral("projectTypeFilter"));
-    m_typeFilter->setMinimumContentsLength(14);
-    m_typeFilter->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_typeFilter->setMinimumContentsLength(8);
+    m_typeFilter->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
     m_typeFilter->addItem(tr("All asset types"));
     auto* filterRow = new QWidget(this);
     auto* filterLayout = new QHBoxLayout(filterRow);
     filterLayout->setContentsMargins(0, 0, 0, 0);
     filterLayout->setSpacing(6);
-    filterLayout->addWidget(m_filter, 1);
-    filterLayout->addWidget(m_typeFilter);
+    layout->addWidget(m_filter);
+    filterLayout->addWidget(m_typeFilter, 1);
+    auto* createButton = new QToolButton(this);
+    createButton->setIcon(editorThemedIcon(QStringLiteral("plus.svg")));
+    createButton->setToolTip(tr("Create asset"));
+    createButton->setPopupMode(QToolButton::InstantPopup);
+    auto* createMenu = new QMenu(createButton);
+    createMenu->addAction(tr("Folder"), this, &ProjectPanel::onNewFolder);
+    createMenu->addAction(tr("Scene"), this, &ProjectPanel::onNewScene);
+    createMenu->addAction(tr("C# Script"), this, &ProjectPanel::onCreateScript);
+    createMenu->addSeparator();
+    createMenu->addAction(tr("Import Asset..."), this, &ProjectPanel::onImportAsset);
+    createButton->setMenu(createMenu);
+    filterLayout->addWidget(createButton);
+    auto* listMode = new QToolButton(this);
+    listMode->setIcon(editorThemedIcon(QStringLiteral("list.svg")));
+    listMode->setToolTip(tr("Switch between thumbnails and list"));
+    listMode->setCheckable(true);
+    connect(listMode, &QToolButton::toggled, this, &ProjectPanel::setListMode);
+    filterLayout->addWidget(listMode);
     layout->addWidget(filterRow);
 
     m_tree = new AssetTreeWidget(this);
+    m_tree->setObjectName(QStringLiteral("projectFolderTree"));
+    m_tree->setEditTriggers(QAbstractItemView::EditKeyPressed);
+    m_tree->setExpandsOnDoubleClick(true);
+    m_tree->setUniformRowHeights(true);
     m_tree->setHeaderHidden(true);
     m_tree->setIconSize(QSize(16, 16));
     m_tree->setIndentation(16);
@@ -534,20 +517,59 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_assetGrid->setDragDropMode(QAbstractItemView::DragDrop);
     m_assetGrid->setContextMenuPolicy(Qt::CustomContextMenu);
     m_assetGrid->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    m_assetGrid->setEditTriggers(QAbstractItemView::EditKeyPressed);
+    m_assetGrid->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    m_assetGrid->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     static_cast<AssetGridWidget*>(m_assetGrid)->dropHandler =
         [this](const QStringList& paths, const QStringList& externalFiles, const QString& targetDir) {
             handleAssetDrop(paths, externalFiles, targetDir);
         };
 
-    auto* contentSplitter = new QSplitter(Qt::Horizontal, this);
+    auto* browser = new QWidget(this);
+    auto* browserLayout = new QVBoxLayout(browser);
+    browserLayout->setContentsMargins(0, 0, 0, 0);
+    browserLayout->setSpacing(6);
+    auto* navigation = new QHBoxLayout();
+    navigation->setSpacing(4);
+    m_backButton = new QToolButton(browser);
+    m_backButton->setIcon(editorThemedIcon(QStringLiteral("arrow-left.svg")));
+    m_backButton->setToolTip(tr("Back (Alt+Left)"));
+    m_upButton = new QToolButton(browser);
+    m_upButton->setIcon(editorThemedIcon(QStringLiteral("arrow-up.svg")));
+    m_upButton->setToolTip(tr("Parent folder (Alt+Up)"));
+    m_breadcrumb = new QLabel(browser);
+    m_breadcrumb->setObjectName(QStringLiteral("projectBreadcrumb"));
+    m_breadcrumb->setTextFormat(Qt::PlainText);
+    m_breadcrumb->setMinimumWidth(0);
+    m_breadcrumb->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    navigation->addWidget(m_backButton);
+    navigation->addWidget(m_upButton);
+    navigation->addWidget(m_breadcrumb, 1);
+    browserLayout->addLayout(navigation);
+    browserLayout->addWidget(m_assetGrid, 1);
+    m_itemCount = new QLabel(browser);
+    m_itemCount->setObjectName(QStringLiteral("projectItemCount"));
+    browserLayout->addWidget(m_itemCount);
+    connect(m_backButton, &QToolButton::clicked, this, [this]() {
+        if (m_navigationIndex > 0) navigateTo(toFsPath(m_navigationHistory[--m_navigationIndex]), false);
+    });
+    connect(m_upButton, &QToolButton::clicked, this, [this]() { navigateTo(m_gridDirectory.parent_path()); });
+    auto* backShortcut = new QShortcut(QKeySequence(Qt::ALT | Qt::Key_Left), this);
+    backShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(backShortcut, &QShortcut::activated, m_backButton, &QToolButton::click);
+    auto* upShortcut = new QShortcut(QKeySequence(Qt::ALT | Qt::Key_Up), this);
+    upShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(upShortcut, &QShortcut::activated, m_upButton, &QToolButton::click);
+
+    auto* contentSplitter = new QSplitter(Qt::Vertical, this);
     contentSplitter->setObjectName(QStringLiteral("projectContentSplitter"));
-    contentSplitter->setHandleWidth(1);
+    contentSplitter->setHandleWidth(5);
     contentSplitter->addWidget(m_tree);
-    contentSplitter->addWidget(m_assetGrid);
+    contentSplitter->addWidget(browser);
     contentSplitter->setChildrenCollapsible(false);
-    contentSplitter->setStretchFactor(0, 1);
+    contentSplitter->setStretchFactor(0, 0);
     contentSplitter->setStretchFactor(1, 1);
-    contentSplitter->setSizes(QList<int>{300, 240});
+    contentSplitter->setSizes(QList<int>{180, 420});
     layout->addWidget(contentSplitter, 1);
     m_watcher = new QFileSystemWatcher(this);
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, [this](const QString&) {
@@ -560,11 +582,18 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
     });
 
     connect(m_tree, &QTreeWidget::itemDoubleClicked, this, &ProjectPanel::onDocumentDoubleClicked);
+    connect(m_tree, &QTreeWidget::itemSelectionChanged, this, [this]() {
+        if (m_tree->selectedItems().isEmpty()) {
+            m_context.selection().clear();
+            emit assetPathSelected(QString());
+        }
+    });
     connect(m_tree, &QTreeWidget::currentItemChanged, this,
             [this](QTreeWidgetItem* current, QTreeWidgetItem*) {
         updatePreview(current);
         if (!current || current->data(0, Qt::UserRole + 1).toBool()) {
             m_context.selection().clear();
+            emit assetPathSelected(current ? current->data(0, Qt::UserRole).toString() : QString());
             return;
         }
         const UInt64 guid = current->data(0, Qt::UserRole + 3).toULongLong();
@@ -575,17 +604,26 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
             }
         }
         m_context.selection().clear();
+        emit assetPathSelected(current->data(0, Qt::UserRole).toString());
     });
-    connect(m_assetGrid, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
-        if (item) {
-            selectTreeAsset(item->data(Qt::UserRole).toString());
+    connect(m_assetGrid, &QListWidget::itemSelectionChanged, this, [this]() {
+        const auto selected = m_assetGrid->selectedItems();
+        if (selected.size() == 1) {
+            const UInt64 guid = selected.first()->data(Qt::UserRole + 1).toULongLong();
+            if (guid != 0) {
+                m_context.selection().setAsset(guid);
+                return;
+            }
         }
+        m_context.selection().clear();
+        emit assetPathSelected(selected.size() == 1 ? selected.first()->data(Qt::UserRole).toString() : QString());
     });
     connect(m_assetGrid, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
         if (!item) {
             return;
         }
-        openAssets(QStringList{item->data(Qt::UserRole).toString()});
+        const QString path = item->data(Qt::UserRole).toString();
+        QTimer::singleShot(0, this, [this, path]() { openAssets(QStringList{path}); });
     });
     connect(m_tree, &QTreeWidget::customContextMenuRequested, this, &ProjectPanel::onContextMenu);
     connect(m_assetGrid, &QListWidget::customContextMenuRequested, this, &ProjectPanel::onGridContextMenu);
@@ -593,20 +631,45 @@ ProjectPanel::ProjectPanel(EditorWorkspaceContext& context, QWidget* parent)
         if (m_tree->topLevelItemCount() > 0) {
             filterTreeItem(m_tree->topLevelItem(0), text);
         }
+        populateAssetGrid(m_gridDirectory);
     });
     connect(m_typeFilter, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             [this](int) {
         if (m_tree->topLevelItemCount() > 0) {
             filterTreeItem(m_tree->topLevelItem(0), m_filter ? m_filter->text() : QString());
         }
+        populateAssetGrid(m_gridDirectory);
     });
     const auto addSelectAllShortcut = [](QWidget* target, auto&& slot) {
         auto* shortcut = new QShortcut(QKeySequence::SelectAll, target);
-        shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+        shortcut->setContext(Qt::WidgetShortcut);
         QObject::connect(shortcut, &QShortcut::activated, target, slot);
     };
     addSelectAllShortcut(m_tree, &QTreeWidget::selectAll);
     addSelectAllShortcut(m_assetGrid, &QListWidget::selectAll);
+
+    connect(m_tree, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem* item, int column) {
+        if (column == 0) commitRename(item->data(0, Qt::UserRole).toString(), item->text(0));
+    });
+    connect(m_assetGrid, &QListWidget::itemChanged, this, [this](QListWidgetItem* item) {
+        commitRename(item->data(Qt::UserRole).toString(), item->text());
+    });
+    for (QWidget* target : {static_cast<QWidget*>(m_tree), static_cast<QWidget*>(m_assetGrid)}) {
+        const auto paths = [this, target]() {
+            return target == m_tree ? selectedTreePaths() : selectedGridPaths();
+        };
+        const auto bind = [this, target](const QKeySequence& key, auto slot) {
+            auto* shortcut = new QShortcut(key, target);
+            shortcut->setContext(Qt::WidgetShortcut);
+            connect(shortcut, &QShortcut::activated, this, slot);
+        };
+        bind(QKeySequence::Copy, [this, paths]() { copyAssets(paths()); });
+        bind(QKeySequence::Cut, [this, paths]() { cutAssets(paths()); });
+        bind(QKeySequence::Paste, [this]() { pasteAssets(); });
+        bind(QKeySequence(Qt::CTRL | Qt::Key_D), [this, paths]() { duplicateAssets(paths()); });
+        bind(QKeySequence(Qt::Key_Delete), [this, paths]() { deleteAssets(paths()); });
+        bind(QKeySequence(Qt::Key_Return), [this, paths]() { openAssets(paths()); });
+    }
 
     m_viewModelSubscription = ScopedConnection(
         m_viewModel->changed, m_viewModel->changed.connect([this]() { onViewModelChanged(); }));
@@ -626,6 +689,13 @@ void ProjectPanel::onViewModelChanged()
 
 void ProjectPanel::reloadAssets()
 {
+    const QSignalBlocker treeBlocker(m_tree);
+    const QStringList selectedAssets = selectedGridPaths();
+    const int gridScroll = m_assetGrid->verticalScrollBar()->value();
+    QStringList expandedFolders;
+    for (QTreeWidgetItemIterator it(m_tree); *it; ++it) {
+        if ((*it)->isExpanded()) expandedFolders.append((*it)->data(0, Qt::UserRole).toString());
+    }
     m_refreshPending = false;
     m_tree->clear();
     if (m_watcher) {
@@ -679,40 +749,44 @@ void ProjectPanel::reloadAssets()
     }
     auto* rootItem = new QTreeWidgetItem(m_tree);
     rootItem->setText(0, ToQString(tree->name));
-    rootItem->setIcon(0, editorIcon(QStringLiteral("folder-up.svg")));
+    rootItem->setIcon(0, editorAssetIcon({}, ToQString(tree->path), true));
     rootItem->setData(0, Qt::UserRole, ToQString(tree->path));
     rootItem->setData(0, Qt::UserRole + 1, true);
     addTreeChildren(rootItem, *tree);
     rootItem->setExpanded(true);
     filterTreeItem(rootItem, m_filter ? m_filter->text() : QString());
-    populateAssetGrid(m_gridDirectory.empty() ? root : m_gridDirectory);
+    const QString rootPath = ToQString(root.string());
+    const QString relative = QDir(rootPath).relativeFilePath(ToQString(m_gridDirectory.string()));
+    if (m_gridDirectory.empty() || relative == QStringLiteral("..") || relative.startsWith(QStringLiteral("../"))
+        || !QFileInfo(ToQString(m_gridDirectory.string())).isDir()) {
+        m_navigationHistory.clear();
+        m_navigationIndex = -1;
+        navigateTo(root, true, false);
+    } else {
+        navigateTo(m_gridDirectory, false, false);
+    }
+    for (QTreeWidgetItemIterator it(m_tree); *it; ++it) {
+        if (expandedFolders.contains((*it)->data(0, Qt::UserRole).toString())) (*it)->setExpanded(true);
+    }
+    const QSignalBlocker gridBlocker(m_assetGrid);
+    for (int i = 0; i < m_assetGrid->count(); ++i) {
+        auto* item = m_assetGrid->item(i);
+        item->setSelected(!item->isHidden() && selectedAssets.contains(item->data(Qt::UserRole).toString()));
+    }
+    m_assetGrid->verticalScrollBar()->setValue(gridScroll);
 }
 
 void ProjectPanel::addTreeChildren(QTreeWidgetItem* parentItem, const ProjectTreeNode& node)
 {
     for (const ProjectTreeNode& child : node.children) {
+        if (!child.isDirectory) continue;
         auto* item = new QTreeWidgetItem(parentItem);
         item->setText(0, ToQString(child.name));
         item->setData(0, Qt::UserRole, ToQString(child.path));
         item->setData(0, Qt::UserRole + 1, child.isDirectory);
-        if (child.isDirectory) {
-            item->setIcon(0, editorIcon(QStringLiteral("folder-up.svg")));
-        } else {
-            item->setData(0, Qt::UserRole + 2, ToQString(child.type));
-            item->setData(0, Qt::UserRole + 3,
-                          QString::number(static_cast<qulonglong>(child.uuid)));
-            item->setIcon(0, editorIcon(GetAssetTypeIcon(child.type, FsPath(child.path.c_str()))));
-            if (child.uuid != 0 || !child.type.empty()) {
-                item->setToolTip(0, QStringLiteral("%1\nGUID: %2\nType: %3%4%5")
-                    .arg(ToQString(child.path))
-                    .arg(QString::number(static_cast<qulonglong>(child.uuid)))
-                    .arg(ToQString(child.type))
-                    .arg(child.dirty ? tr("\nStatus: Import required") : QString())
-                    .arg(child.dependencyCount == 0
-                             ? QString()
-                             : tr("\nDependencies: %1").arg(child.dependencyCount)));
-            }
-        }
+        if (canRename(ToQString(child.path))) item->setFlags(item->flags() | Qt::ItemIsEditable);
+        item->setIcon(0, editorAssetIcon({}, ToQString(child.path), true));
+        item->setToolTip(0, ToQString(child.path));
         addTreeChildren(item, child);
     }
 }
@@ -735,7 +809,7 @@ bool ProjectPanel::filterTreeItem(QTreeWidgetItem* item, const QString& filter)
     const QString itemType = item->data(0, Qt::UserRole + 2).toString();
     const bool typeMatches = selectedType.isEmpty() || itemType == selectedType;
     const bool visible = item->parent() == nullptr ||
-        ((selfMatches && typeMatches) || (isDirectory && childVisible));
+        (isDirectory ? (selfMatches || childVisible) : (selfMatches && typeMatches));
     item->setHidden(!visible);
     if (isDirectory && childVisible && !needle.isEmpty()) {
         item->setExpanded(true);
@@ -745,6 +819,11 @@ bool ProjectPanel::filterTreeItem(QTreeWidgetItem* item, const QString& filter)
 
 FsPath ProjectPanel::selectedDirectory() const
 {
+    if (m_assetGrid->hasFocus()) {
+        const QStringList selected = selectedGridPaths();
+        if (selected.size() == 1 && QFileInfo(selected.first()).isDir()) return toFsPath(selected.first());
+        if (!m_gridDirectory.empty()) return m_gridDirectory;
+    }
     const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
     if (!selected.isEmpty()) {
         const QString path = selected.first()->data(0, Qt::UserRole).toString();
@@ -756,7 +835,7 @@ FsPath ProjectPanel::selectedDirectory() const
             return FsPath(ToDodoeString(info.absolutePath()));
         }
     }
-    return m_viewModel->root();
+    return m_gridDirectory.empty() ? m_viewModel->root() : m_gridDirectory;
 }
 
 QStringList ProjectPanel::selectedTreePaths() const
@@ -764,9 +843,6 @@ QStringList ProjectPanel::selectedTreePaths() const
     QStringList paths;
     const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
     for (QTreeWidgetItem* item : selected) {
-        if (item->data(0, Qt::UserRole + 1).toBool()) {
-            continue;
-        }
         const QString path = item->data(0, Qt::UserRole).toString();
         if (!path.isEmpty()) {
             paths << path;
@@ -780,8 +856,9 @@ QStringList ProjectPanel::selectedGridPaths() const
     QStringList paths;
     const QList<QListWidgetItem*> selected = m_assetGrid->selectedItems();
     for (QListWidgetItem* item : selected) {
+        if (item->isHidden()) continue;
         const QString path = item->data(Qt::UserRole).toString();
-        if (!path.isEmpty() && !QFileInfo(path).isDir()) {
+        if (!path.isEmpty()) {
             paths << path;
         }
     }
@@ -824,6 +901,9 @@ void ProjectPanel::openAssetMenu(const QStringList& paths, const QPoint& globalP
 {
     QMenu menu(this);
     const bool hasAssets = !paths.isEmpty();
+    const bool hasFolders = std::any_of(paths.begin(), paths.end(), [](const QString& path) {
+        return QFileInfo(path).isDir();
+    });
     QAction* openAction = nullptr;
     if (hasAssets && paths.size() == 1) {
         openAction = menu.addAction(tr("Open"));
@@ -852,10 +932,15 @@ void ProjectPanel::openAssetMenu(const QStringList& paths, const QPoint& globalP
         copyAssetAction = menu.addAction(tr("Copy"));
         cutAssetAction = menu.addAction(tr("Cut"));
         renameAssetAction = menu.addAction(tr("Rename"));
+        renameAssetAction->setShortcut(QKeySequence(Qt::Key_F2));
+        renameAssetAction->setEnabled(paths.size() == 1 && canRename(paths.first()));
         deleteAssetAction = menu.addAction(paths.size() > 1 ? tr("Delete Assets") : tr("Delete"));
+        // Folder rename preserves child metadata; other folder operations are not offered yet.
+        for (QAction* action : {reimportAssetAction, duplicateAssetAction, copyAssetAction,
+                               cutAssetAction, deleteAssetAction}) action->setEnabled(!hasFolders);
         menu.addSeparator();
         copyPathAction = menu.addAction(tr("Copy Path"));
-        if (paths.size() == 1) {
+        if (paths.size() == 1 && !hasFolders) {
             copyGuidAction = menu.addAction(tr("Copy GUID"));
             findReferencesAction = menu.addAction(tr("Find References"));
         }
@@ -912,6 +997,10 @@ void ProjectPanel::openAssets(const QStringList& paths)
         return;
     }
     const QString path = paths.first();
+    if (QFileInfo(path).isDir()) {
+        navigateTo(toFsPath(path));
+        return;
+    }
     if (openScriptIfNeeded(path)) {
         return;
     }
@@ -1051,26 +1140,72 @@ void ProjectPanel::duplicateAssets(const QStringList& paths)
 
 void ProjectPanel::renameAsset(const QString& path)
 {
-    if (path.isEmpty()) {
-        return;
+    if (!canRename(path)) return;
+    for (int i = 0; i < m_assetGrid->count(); ++i) {
+        auto* item = m_assetGrid->item(i);
+        if (item->data(Qt::UserRole).toString() == path) {
+            m_assetGrid->editItem(item);
+            return;
+        }
     }
+    for (QTreeWidgetItemIterator it(m_tree); *it; ++it) {
+        if ((*it)->data(0, Qt::UserRole).toString() == path) {
+            m_tree->editItem(*it);
+            return;
+        }
+    }
+}
+
+bool ProjectPanel::canRename(const QString& path) const
+{
+    const QString relative = QDir(ToQString(m_viewModel->root().string())).relativeFilePath(path);
+    return !path.isEmpty() && relative != QStringLiteral(".") && relative != QStringLiteral("..")
+        && !relative.startsWith(QStringLiteral("../")) && !QDir::isAbsolutePath(relative);
+}
+
+void ProjectPanel::commitRename(const QString& path, const QString& displayName)
+{
     const QFileInfo oldInfo(path);
-    bool ok = false;
-    const QString name = QInputDialog::getText(
-        this, tr("Rename Asset"), tr("Asset name:"), QLineEdit::Normal,
-        oldInfo.completeBaseName(), &ok).trimmed();
-    if (!ok || name.isEmpty()) {
-        return;
+    if (!canRename(path) || displayName == oldInfo.fileName()) return;
+    QString name = displayName.trimmed();
+    if (!oldInfo.isDir() && !oldInfo.suffix().isEmpty()
+        && name.endsWith(QLatin1Char('.') + oldInfo.suffix(), Qt::CaseInsensitive)) {
+        name.chop(oldInfo.suffix().size() + 1);
     }
-    String outPath;
-    const ProjectOperationResult result =
-        m_viewModel->renameAsset(ToDodoeString(path), ToDodoeString(name), outPath);
-    if (result == ProjectOperationResult::ImportRejected) {
-        QMessageBox::warning(this, tr("Rename Asset"),
-                             tr("The asset importer rejected the renamed file; the rename was reverted."));
-    } else if (result != ProjectOperationResult::Ok) {
-        QMessageBox::warning(this, tr("Rename Asset"), tr("Could not rename the asset."));
-    }
+    // The item delegate still owns this row during itemChanged; refresh on the next turn.
+    const QString oldDirectory = ToQString(m_gridDirectory.string());
+    QTimer::singleShot(0, this, [this, path, name, oldDirectory]() {
+        String outPath;
+        const ProjectOperationResult result =
+            m_viewModel->renameAsset(ToDodoeString(path), ToDodoeString(name), outPath);
+        if (result == ProjectOperationResult::ImportRejected) {
+            QMessageBox::warning(this, tr("Rename Asset"),
+                                 tr("The asset importer rejected the renamed file; the rename was reverted."));
+        } else if (result != ProjectOperationResult::Ok) {
+            QMessageBox::warning(this, tr("Rename Asset"), tr("Could not rename the asset."));
+        }
+        if (result == ProjectOperationResult::Ok) {
+            const QString relative = QDir(path).relativeFilePath(oldDirectory);
+            if (relative == QStringLiteral(".") || (!relative.startsWith(QStringLiteral(".."))
+                && !QDir::isAbsolutePath(relative))) {
+                m_gridDirectory = toFsPath(QDir(ToQString(outPath)).filePath(relative));
+            }
+            m_navigationHistory.clear();
+            m_navigationIndex = -1;
+        }
+        reloadAssets();
+        if (result == ProjectOperationResult::Ok) {
+            const QString renamed = ToQString(outPath);
+            for (int i = 0; i < m_assetGrid->count(); ++i) {
+                auto* item = m_assetGrid->item(i);
+                if (item->data(Qt::UserRole).toString() == renamed) {
+                    m_assetGrid->setCurrentItem(item);
+                    return;
+                }
+            }
+            selectTreeAsset(renamed);
+        }
+    });
 }
 
 void ProjectPanel::deleteAssets(const QStringList& paths)
@@ -1080,6 +1215,7 @@ void ProjectPanel::deleteAssets(const QStringList& paths)
     }
     QStringList referenced;
     for (const QString& path : paths) {
+        if (QFileInfo(path).isDir()) return;
         const UInt64 guid = m_viewModel->guidForPath(ToDodoeString(path));
         if (guid == 0) {
             continue;
@@ -1172,7 +1308,7 @@ void ProjectPanel::updatePreview(QTreeWidgetItem* item)
     }
     const QString path = item->data(0, Qt::UserRole).toString();
     if (item->data(0, Qt::UserRole + 1).toBool()) {
-        populateAssetGrid(FsPath(ToDodoeString(path)));
+        navigateTo(toFsPath(path));
     }
 }
 
@@ -1182,14 +1318,43 @@ void ProjectPanel::populateAssetGrid(const FsPath& directory)
         return;
     }
     m_gridDirectory = directory;
+    const QSignalBlocker blocker(m_assetGrid);
+    const QStringList previousSelection = selectedGridPaths();
     m_assetGrid->clear();
-    for (const ProjectGridEntry& entry : m_viewModel->buildGrid(directory)) {
-        const FsPath path(entry.path.c_str());
+    DynamicArray<ProjectGridEntry> entries;
+    const bool searching = !m_filter->text().trimmed().isEmpty()
+        || !m_typeFilter->currentData().toString().isEmpty();
+    if (searching && m_viewModel->tree()) {
+        const auto collect = [&](auto&& self, const ProjectTreeNode& node) -> void {
+            for (const auto& child : node.children) {
+                entries.push_back({child.path, child.name, child.isDirectory, child.type, child.uuid, child.dirty});
+                if (child.isDirectory) self(self, child);
+            }
+        };
+        collect(collect, *m_viewModel->tree());
+    } else {
+        entries = m_viewModel->buildGrid(directory);
+    }
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+    std::sort(entries.begin(), entries.end(), [&collator](const auto& left, const auto& right) {
+        if (left.isDirectory != right.isDirectory) return left.isDirectory;
+        return collator.compare(ToQString(left.name), ToQString(right.name)) < 0;
+    });
+    const QString searchText = m_filter->text().trimmed();
+    const QString searchType = m_typeFilter->currentData().toString();
+    for (const ProjectGridEntry& entry : entries) {
+        if (!searchText.isEmpty() && !ToQString(entry.name).contains(searchText, Qt::CaseInsensitive)) continue;
+        if (!searchType.isEmpty() && (entry.isDirectory || ToQString(entry.type) != searchType)) continue;
         auto* item = new QListWidgetItem(m_assetGrid);
         item->setData(Qt::UserRole, ToQString(entry.path));
+        item->setData(Qt::UserRole + 2, ToQString(entry.type));
+        item->setData(Qt::UserRole + 3, entry.isDirectory);
         item->setText(ToQString(entry.name));
+        if (canRename(ToQString(entry.path))) item->setFlags(item->flags() | Qt::ItemIsEditable);
         if (entry.isDirectory) {
-            item->setIcon(editorIcon(QStringLiteral("folder-up.svg")));
+            item->setIcon(editorAssetIcon({}, ToQString(entry.path), true));
             continue;
         }
         item->setData(Qt::UserRole + 1, QString::number(static_cast<qulonglong>(entry.uuid)));
@@ -1198,22 +1363,98 @@ void ProjectPanel::populateAssetGrid(const FsPath& directory)
                                                             ToQString(entry.path)));
             const QPixmap thumbnail = loadThumbnail(entry.path, entry.type);
             item->setIcon(thumbnail.isNull()
-                              ? editorIcon(GetAssetTypeIcon(entry.type, path))
+                              ? editorAssetIcon(ToQString(entry.type), ToQString(entry.path))
                               : QIcon(thumbnail));
-            if (entry.dirty) {
-                item->setText(item->text() + QStringLiteral(" ⚠"));
-            }
+            if (entry.dirty) item->setToolTip(item->toolTip() + tr("\nImport required"));
         } else {
-            item->setIcon(editorIcon(GetAssetTypeIcon(String(), path)));
+            item->setIcon(editorAssetIcon({}, ToQString(entry.path)));
         }
     }
+    applyGridFilter();
+    bool selectionVisible = false;
+    for (int i = 0; i < m_assetGrid->count(); ++i) {
+        auto* item = m_assetGrid->item(i);
+        const bool selected = !item->isHidden() && previousSelection.contains(item->data(Qt::UserRole).toString());
+        item->setSelected(selected);
+        selectionVisible = selectionVisible || selected;
+    }
+    if (!previousSelection.isEmpty() && !selectionVisible
+        && m_context.selection().target() == EditorSelection::Target::Asset) {
+        m_context.selection().clear();
+        emit assetPathSelected(QString());
+    }
+}
+
+void ProjectPanel::navigateTo(const FsPath& directory, bool record, bool updateSelection)
+{
+    const QString root = ToQString(m_viewModel->root().string());
+    const QString path = QDir::cleanPath(ToQString(directory.string()));
+    const QString relative = QDir(root).relativeFilePath(path);
+    if (root.isEmpty() || relative == QStringLiteral("..") || relative.startsWith(QStringLiteral("../"))
+        || QDir::isAbsolutePath(relative) || !QFileInfo(path).isDir()) return;
+    if (record && (m_navigationIndex < 0 || m_navigationHistory.value(m_navigationIndex) != path)) {
+        while (m_navigationHistory.size() > m_navigationIndex + 1) m_navigationHistory.removeLast();
+        m_navigationHistory.append(path);
+        m_navigationIndex = m_navigationHistory.size() - 1;
+    }
+    if (updateSelection) {
+        const QSignalBlocker searchBlocker(m_filter);
+        const QSignalBlocker typeBlocker(m_typeFilter);
+        m_filter->clear();
+        m_typeFilter->setCurrentIndex(0);
+        if (m_tree->topLevelItemCount() > 0) filterTreeItem(m_tree->topLevelItem(0), QString());
+    }
+    populateAssetGrid(toFsPath(path));
+    const QSignalBlocker blocker(m_tree);
+    selectTreeAsset(path);
+    m_breadcrumb->setText(relative == QStringLiteral(".") ? QFileInfo(root).fileName()
+        : QFileInfo(root).fileName() + QStringLiteral(" / ") + relative);
+    m_breadcrumb->setToolTip(path);
+    m_backButton->setEnabled(m_navigationIndex > 0);
+    m_upButton->setEnabled(relative != QStringLiteral("."));
+    if (updateSelection) {
+        m_context.selection().clear();
+        emit assetPathSelected(path);
+    }
+}
+
+void ProjectPanel::applyGridFilter()
+{
+    if (!m_assetGrid) return;
+    const QString needle = m_filter->text().trimmed();
+    const QString type = m_typeFilter->currentData().toString();
+    int visible = 0;
+    const QSignalBlocker blocker(m_assetGrid);
+    for (int i = 0; i < m_assetGrid->count(); ++i) {
+        auto* item = m_assetGrid->item(i);
+        const bool folder = item->data(Qt::UserRole + 3).toBool();
+        const bool matches = (needle.isEmpty() || item->text().contains(needle, Qt::CaseInsensitive))
+            && (type.isEmpty() || (!folder && item->data(Qt::UserRole + 2).toString() == type));
+        item->setHidden(!matches);
+        if (!matches) item->setSelected(false);
+        if (matches) ++visible;
+    }
+    if (m_itemCount) m_itemCount->setText(visible == 0 ? tr("No matching assets") : tr("%1 items").arg(visible));
+}
+
+void ProjectPanel::setListMode(bool enabled)
+{
+    m_assetGrid->setViewMode(enabled ? QListView::ListMode : QListView::IconMode);
+    m_assetGrid->setFlow(enabled ? QListView::TopToBottom : QListView::LeftToRight);
+    m_assetGrid->setWrapping(!enabled);
+    m_assetGrid->setWordWrap(false);
+    m_assetGrid->setIconSize(enabled ? QSize(22, 22) : QSize(72, 72));
+    m_assetGrid->setGridSize(enabled ? QSize() : QSize(104, 110));
+    m_assetGrid->setSpacing(enabled ? 2 : 6);
+    m_assetGrid->setMovement(QListView::Static);
 }
 
 void ProjectPanel::selectTreeAsset(const QString& path)
 {
+    const String normalized = AssetController::normalizePath(toFsPath(path));
     const auto items = m_tree->findItems(QString(), Qt::MatchContains | Qt::MatchRecursive);
     for (QTreeWidgetItem* item : items) {
-        if (item->data(0, Qt::UserRole).toString() == path) {
+        if (AssetController::normalizePath(toFsPath(item->data(0, Qt::UserRole).toString())) == normalized) {
             m_tree->setCurrentItem(item);
             return;
         }

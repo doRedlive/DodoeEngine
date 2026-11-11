@@ -12,6 +12,7 @@
 
 class QComboBox;
 class QLineEdit;
+class QLabel;
 class QListWidget;
 class QTimer;
 
@@ -36,6 +37,11 @@ public:
     ~ConsolePanel() override;
 
     void append(ConsoleLogLevel level, const QString& message, const QString& source = {});
+    int warningCount() const { return m_warningCount; }
+    int errorCount() const { return m_errorCount; }
+
+signals:
+    void messageCountsChanged(int warnings, int errors);
 
 private:
     void onViewModelChanged();
@@ -49,6 +55,9 @@ private:
     QLineEdit* m_search = nullptr;
     QComboBox* m_levelFilter = nullptr;
     QListWidget* m_list = nullptr;
+    QLabel* m_detail = nullptr;
+    int m_warningCount = 0;
+    int m_errorCount = 0;
     Scope<ConsoleViewModel> m_viewModel;
     ScopedConnection m_viewModelConnection;
     QTimer* m_refreshTimer = nullptr;

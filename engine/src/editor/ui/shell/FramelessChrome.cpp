@@ -19,6 +19,7 @@
 #include <FloatingDockContainer.h>
 
 #include <QAbstractButton>
+#include <QColorDialog>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -105,7 +106,7 @@ void FloatingWindowTitleBar::toggleMaximize()
     if (!m_window) {
         return;
     }
-    if (m_window->isMaximized()) {
+    if (m_window->windowState().testFlag(Qt::WindowMaximized) || m_window->isFullScreen()) {
         m_window->showNormal();
     } else {
         m_window->showMaximized();
@@ -224,6 +225,22 @@ void setupFramelessMessageBox(QMessageBox* messageBox)
                       entry.rowSpan, entry.columnSpan);
     }
     messageBox->show();
+}
+
+QColor selectEditorColor(const QColor& initial, QWidget* parent,
+                         const QString& title, bool showAlpha)
+{
+    QColorDialog dialog(parent);
+    dialog.setOption(QColorDialog::DontUseNativeDialog);
+    dialog.setOption(QColorDialog::ShowAlphaChannel, showAlpha);
+    dialog.setCurrentColor(initial);
+    dialog.setWindowTitle(title);
+    dialog.setProperty("editorWorkspace", true);
+    dialog.setObjectName(QStringLiteral("editorColorDialog"));
+    dialog.setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setAttribute(Qt::WA_StyledBackground, true);
+    dialog.layout()->setMenuBar(new FloatingWindowTitleBar(&dialog, false));
+    return dialog.exec() == QDialog::Accepted ? dialog.selectedColor() : QColor();
 }
 
 ads::CFloatingDockContainer* floatingWindowAncestor(QObject* object)

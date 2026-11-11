@@ -74,7 +74,7 @@ WorkflowGraphView::WorkflowGraphView(QWidget* parent)
     m_scene = new QGraphicsScene(this);
     setScene(m_scene);
     setRenderHint(QPainter::Antialiasing);
-    setBackgroundBrush(QColor(30, 30, 30));
+    // Let the viewport use the application palette and workspace stylesheet.
     setTransformationAnchor(AnchorUnderMouse);
 }
 
@@ -96,7 +96,7 @@ void WorkflowGraphView::highlightNode(const UInt64 sequence)
     m_selectedSequence = sequence;
     const auto it = m_itemsBySeq.find(sequence);
     if (it != m_itemsBySeq.end()) {
-        it->second->setPen(QPen(QColor(235, 235, 235), 2.4));
+        it->second->setPen(QPen(palette().highlight().color(), 2.4));
     }
 }
 
@@ -114,7 +114,7 @@ void WorkflowGraphView::setGraph(const Json& graph)
 
     if (!hasContent) {
         auto* hint = m_scene->addText(tr("Run commands to build the workflow graph"));
-        hint->setDefaultTextColor(QColor(150, 150, 150));
+        hint->setDefaultTextColor(palette().placeholderText().color());
         setSceneRect(hint->boundingRect().adjusted(-40, -20, 40, 20));
         fitInView(sceneRect(), Qt::KeepAspectRatio);
         m_hadContent = false;
@@ -159,7 +159,7 @@ void WorkflowGraphView::setGraph(const Json& graph)
             }
         }
         auto* laneLabel = m_scene->addText(label);
-        laneLabel->setDefaultTextColor(QColor(120, 120, 120));
+        laneLabel->setDefaultTextColor(palette().placeholderText().color());
         laneLabel->setPos(8.0, kMarginY + lane * kLaneHeight + kLaneHeight / 2.0 - 10.0);
         laneLabel->setZValue(-1);
     }
@@ -192,7 +192,7 @@ void WorkflowGraphView::setGraph(const Json& graph)
         const double midX = (start.x() + end.x()) / 2.0;
         QPainterPath path(start);
         path.cubicTo(QPointF(midX, start.y()), QPointF(midX, end.y()), end);
-        auto* edgeItem = m_scene->addPath(path, QPen(QColor(150, 150, 150, 130), 1.5));
+        auto* edgeItem = m_scene->addPath(path, QPen(palette().midlight().color(), 1.5));
         edgeItem->setZValue(-1);
         edgeItem->setToolTip(QStringLiteral("artifact ") +
                              ToQString(edge.value("artifact", String())));
@@ -210,11 +210,12 @@ void WorkflowGraphView::setGraph(const Json& graph)
 
         auto* item = new WorkflowNodeItem(
             QRectF(posIt->second.x, posIt->second.y, kNodeWidth, kNodeHeight));
-        QPen pen(marker ? QColor(110, 110, 110) : (ok ? QColor(90, 150, 90) : QColor(190, 90, 90)));
+        QPen pen(marker ? palette().placeholderText().color()
+                        : (ok ? QColor("#50fa7b") : QColor("#ff5555")));
         pen.setWidthF(1.4);
         pen.setStyle(marker ? Qt::DashLine : Qt::SolidLine);
         item->setPen(pen);
-        item->setBrush(QBrush(QColor(40, 40, 40)));
+        item->setBrush(palette().button());
         QString tooltip = ToQString(command);
         if (node.contains("message") && node["message"].is_string()) {
             tooltip += QStringLiteral("\n") + ToQString(node.value("message", String()));
@@ -225,7 +226,7 @@ void WorkflowGraphView::setGraph(const Json& graph)
 
         auto* label = new QGraphicsTextItem(item);
         label->setPlainText(ToQString(command));
-        label->setDefaultTextColor(marker ? QColor(160, 160, 160) : QColor(220, 220, 220));
+        label->setDefaultTextColor(marker ? palette().placeholderText().color() : palette().text().color());
         QFont font = label->font();
         font.setPointSizeF(font.pointSizeF() - 1.0);
         label->setFont(font);
@@ -236,7 +237,7 @@ void WorkflowGraphView::setGraph(const Json& graph)
         sub->setPlainText(ToQString(node.value("author", String())) +
                           QStringLiteral("  ·  ") +
                           QString::number(node.value("duration_ms", 0.0), 'f', 1) + QStringLiteral(" ms"));
-        sub->setDefaultTextColor(QColor(140, 140, 140));
+        sub->setDefaultTextColor(palette().placeholderText().color());
         QFont subFont = sub->font();
         subFont.setPointSizeF(subFont.pointSizeF() - 2.0);
         sub->setFont(subFont);
