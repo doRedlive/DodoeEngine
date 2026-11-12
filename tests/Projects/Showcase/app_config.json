@@ -1,22 +1,21 @@
 {
-    "name": "Showcase",
     "app_mode": 1,
-    "width": 1600,
     "height": 900,
-    "window_resizeable": true,
+    "name": "Showcase",
     "render_settings": {
+        "aa_mode": 2,
         "api": 3,
+        "culling_path": 0,
+        "enable_async_compute": false,
+        "enable_baseline_renderer": false,
+        "enable_bindless": false,
+        "enable_gpu_driven": false,
+        "enable_single_thread": true,
+        "msaa_sample_count": 4,
         "pipeline": 5,
         "present_mode": 1,
-        "aa_mode": 2,
-        "msaa_sample_count": 4,
-        "enable_single_thread": true,
-        "enable_baseline_renderer": false,
-        "windowless": false,
-        "enable_gpu_driven": false,
-        "enable_async_compute": false,
-        "enable_bindless": false,
-        "culling_path": 0
-    }
+        "windowless": false
+    },
+    "width": 1600,
+    "window_resizeable": true
 }
-
