@@ -4,10 +4,12 @@
 
 #include "ui/script/CSharpCodeEditor.h"
 
+#include <QApplication>
 #include <QFontMetrics>
 #include <QKeyEvent>
 #include <QPainter>
 #include <QMouseEvent>
+#include <QScrollBar>
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QWheelEvent>
@@ -128,7 +130,7 @@ void CSharpCodeEditor::updateLineNumberAreaWidth()
 
 void CSharpCodeEditor::updateLineNumberArea(const QRect& rect, int delta)
 {
-    if (delta > 0) {
+    if (delta != 0) {
         m_lineNumberArea->scroll(0, delta);
     } else {
         m_lineNumberArea->update(0, rect.y(), m_lineNumberArea->width(), rect.height());
@@ -204,16 +206,35 @@ int CSharpCodeEditor::currentColumn() const
 
 int CSharpCodeEditor::codeFontPointSize() const
 {
-    return font().pointSize();
+    return m_codeFontPointSize;
 }
 
 void CSharpCodeEditor::setCodeFontPointSize(int pointSize)
 {
-    QFont codeFont = font();
-    codeFont.setPointSize(qBound(8, pointSize, 32));
+    setCodeFont(m_codeFontFamily, pointSize, m_codeFontWeight);
+}
+
+void CSharpCodeEditor::setCodeFont(const QString& family, int pointSize, int weight)
+{
+    m_codeFontFamily = family;
+    m_codeFontPointSize = qBound(8, pointSize, 32);
+    m_codeFontWeight = qBound(100, weight, 900);
+    QFont codeFont(family, m_codeFontPointSize, m_codeFontWeight);
+    codeFont.setStyleHint(QFont::Monospace);
+    codeFont.setFixedPitch(true);
+    // A widget-local rule wins over the application-wide pixel font, including
+    // when a new page is polished or reparented into the tab widget.
+    QString escapedFamily = family;
+    escapedFamily.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    escapedFamily.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    setStyleSheet(QStringLiteral("QPlainTextEdit#scriptEditor { font-family: \"%1\"; font-size: %2pt; font-weight: %3; }")
+        .arg(escapedFamily).arg(m_codeFontPointSize).arg(m_codeFontWeight));
     setFont(codeFont);
-    setTabStopDistance(4 * QFontMetricsF(font()).horizontalAdvance(QLatin1Char(' ')));
+    document()->setDefaultFont(codeFont);
+    setTabStopDistance(m_indentWidth * QFontMetricsF(codeFont).horizontalAdvance(QLatin1Char(' ')));
     updateLineNumberAreaWidth();
+    const QRect contents = contentsRect();
+    m_lineNumberArea->setGeometry(contents.left(), contents.top(), lineNumberAreaWidth(), contents.height());
     m_lineNumberArea->update();
 }
 
@@ -237,6 +258,10 @@ void CSharpCodeEditor::gotoLine(int line, int column, int selectLength)
 
 void CSharpCodeEditor::keyPressEvent(QKeyEvent* event)
 {
+    if (isReadOnly()) {
+        QPlainTextEdit::keyPressEvent(event);
+        return;
+    }
     QTextCursor cursor = textCursor();
 
     const QString typedText = event->text();
@@ -274,7 +299,7 @@ void CSharpCodeEditor::keyPressEvent(QKeyEvent* event)
         }
     }
 
-    if (event->key() == Qt::Key_Backspace && !cursor.hasSelection()
+    if (event->key() == Qt::Key_Backspace && event->modifiers() == Qt::NoModifier && !cursor.hasSelection()
         && cursor.position() > 0) {
         const QChar closer = matchingCloser(document()->characterAt(cursor.position() - 1));
         if (!closer.isNull() && closer == document()->characterAt(cursor.position())) {
@@ -289,21 +314,26 @@ void CSharpCodeEditor::keyPressEvent(QKeyEvent* event)
         }
     }
 
-    if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+    if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+        && !(event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
+        cursor.beginEditBlock();
+        if (cursor.hasSelection()) cursor.removeSelectedText();
         const QString blockText = cursor.block().text();
-        const QString indent = leadingWhitespace(blockText);
-        QString extra;
-        const QString trimmed = blockText.trimmed();
-        bool closesBrace = false;
-        if (blockEndsWithOpenBrace(trimmed)) {
-            extra = QString(m_indentWidth, QLatin1Char(' '));
-            const QString rest = toPlainText().mid(cursor.position());
-            closesBrace = rest.trimmed().startsWith(QLatin1Char('}'));
+        const QString before = blockText.left(cursor.positionInBlock());
+        const QString after = blockText.mid(cursor.positionInBlock());
+        const QString indent = leadingWhitespace(before);
+        const bool opensBrace = blockEndsWithOpenBrace(before.trimmed());
+        const QString extra = opensBrace ? QString(m_indentWidth, QLatin1Char(' ')) : QString();
+        const bool splitPair = !cursor.hasSelection() && opensBrace
+            && after.trimmed().startsWith(QLatin1Char('}'));
+        if (splitPair) {
+            cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, leadingWhitespace(after).size());
         }
         cursor.insertText(QLatin1Char('\n') + indent + extra);
-        if (closesBrace) {
-            cursor.insertText(QLatin1Char('\n') + indent);
-        }
+        const int bodyPosition = cursor.position();
+        if (splitPair) cursor.insertText(QLatin1Char('\n') + indent);
+        cursor.endEditBlock();
+        cursor.setPosition(bodyPosition);
         setTextCursor(cursor);
         event->accept();
         return;
@@ -313,39 +343,48 @@ void CSharpCodeEditor::keyPressEvent(QKeyEvent* event)
         || (event->key() == Qt::Key_Tab && event->modifiers() & Qt::ShiftModifier)) {
         QTextCursor anchor = cursor;
         const int startBlock = document()->findBlock(anchor.selectionStart()).blockNumber();
-        const int endBlock = document()->findBlock(anchor.selectionEnd()).blockNumber();
+        const int endPosition = anchor.hasSelection() ? anchor.selectionEnd() - 1 : anchor.position();
+        const int endBlock = document()->findBlock(endPosition).blockNumber();
+        cursor.beginEditBlock();
         for (int b = startBlock; b <= endBlock; ++b) {
             QTextCursor line(document()->findBlockByNumber(b));
-            line.beginEditBlock();
             const QString text = line.block().text();
             int remove = 0;
             while (remove < text.length() && remove < m_indentWidth
                 && text.at(remove) == QLatin1Char(' ')) {
                 ++remove;
             }
+            if (text.startsWith(QLatin1Char('\t'))) remove = 1;
             if (remove > 0) {
                 line.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, remove);
                 line.removeSelectedText();
             }
-            line.endEditBlock();
         }
+        cursor.endEditBlock();
         event->accept();
         return;
     }
 
-    if (event->key() == Qt::Key_Tab) {
+    if (event->key() == Qt::Key_Tab && event->modifiers() == Qt::NoModifier) {
+        if (!cursor.hasSelection() && isClosingCharacter(document()->characterAt(cursor.position()))) {
+            cursor.movePosition(QTextCursor::Right);
+            setTextCursor(cursor);
+            event->accept();
+            return;
+        }
         if (cursor.hasSelection()) {
             QTextCursor anchor = cursor;
             const int startBlock = document()->findBlock(anchor.selectionStart()).blockNumber();
-            const int endBlock = document()->findBlock(anchor.selectionEnd()).blockNumber();
+            const int endBlock = document()->findBlock(anchor.selectionEnd() - 1).blockNumber();
+            cursor.beginEditBlock();
             for (int b = startBlock; b <= endBlock; ++b) {
                 QTextCursor line(document()->findBlockByNumber(b));
-                line.beginEditBlock();
                 line.insertText(QString(m_indentWidth, QLatin1Char(' ')));
-                line.endEditBlock();
             }
+            cursor.endEditBlock();
         } else {
-            cursor.insertText(QString(m_indentWidth, QLatin1Char(' ')));
+            const int spaces = m_indentWidth - cursor.positionInBlock() % m_indentWidth;
+            cursor.insertText(QString(spaces, QLatin1Char(' ')));
         }
         event->accept();
         return;
@@ -404,6 +443,28 @@ void CSharpCodeEditor::wheelEvent(QWheelEvent* event)
             event->accept();
             return;
         }
+    }
+    if (event->modifiers() & Qt::ShiftModifier) {
+        QScrollBar* scrollBar = horizontalScrollBar();
+        const QPoint pixels = event->pixelDelta();
+        if (!pixels.isNull()) {
+            const int delta = pixels.x() != 0 ? pixels.x() : pixels.y();
+            scrollBar->setValue(scrollBar->value() - delta);
+        } else {
+            const QPoint angle = event->angleDelta();
+            const int delta = angle.x() != 0 ? angle.x() : angle.y();
+            // Forward as a horizontal wheel so Qt retains fractional wheel
+            // steps and the system scroll speed. Shift must not turn it into
+            // page scrolling inside QScrollBar.
+            QWheelEvent horizontalEvent(
+                scrollBar->mapFromGlobal(event->globalPosition().toPoint()),
+                event->globalPosition(), QPoint(), QPoint(delta, 0),
+                event->buttons(), event->modifiers() & ~Qt::ShiftModifier,
+                event->phase(), event->inverted(), event->source());
+            QApplication::sendEvent(scrollBar, &horizontalEvent);
+        }
+        event->accept();
+        return;
     }
     QPlainTextEdit::wheelEvent(event);
 }

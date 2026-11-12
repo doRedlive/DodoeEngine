@@ -29,6 +29,7 @@ public:
 
     void gotoLine(int line, int column = 0, int selectLength = 0);
     void setCodeFontPointSize(int pointSize);
+    void setCodeFont(const QString& family, int pointSize, int weight);
 
 signals:
     void navigateRequested(const QString& symbol);
@@ -49,6 +50,9 @@ private slots:
 private:
     QWidget* m_lineNumberArea = nullptr;
     int m_indentWidth = 4;
+    QString m_codeFontFamily = QStringLiteral("Consolas");
+    int m_codeFontPointSize = 11;
+    int m_codeFontWeight = 400;
 };
 
 } // namespace cakery

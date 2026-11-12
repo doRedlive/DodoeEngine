@@ -19,7 +19,6 @@ class QLabel;
 class QLineEdit;
 class QStringListModel;
 class QStackedWidget;
-class QSpinBox;
 class QTabWidget;
 class QTimer;
 class QToolButton;
@@ -55,13 +54,15 @@ private:
         QString path;
         CSharpCodeEditor* editor = nullptr;
         CSharpHighlighter* highlighter = nullptr;
+        bool saved = false;
+        QString saveError;
     };
 
     int pageIndex(const QString& path) const;
     EditorPage* currentPage();
     const EditorPage* currentPage() const;
 
-    void savePage(int index);
+    bool savePage(int index);
     void saveCurrent();
     void reloadPage(int index);
     void closeTab(int index);
@@ -72,10 +73,13 @@ private:
     void ensureIndexBuilt();
     void scheduleIndexRebuild();
     void setCodeFontPointSize(int pointSize);
+    void applyCodeFont();
+    QString displayPath(const QString& path) const;
+    void updateScriptReloadStatus(const String& state);
 
     void rebuildWorkspace();
     void scheduleWorkspaceRefresh();
-    void addWorkspaceChildren(QTreeWidgetItem* parent, const QString& directory,
+    bool addWorkspaceChildren(QTreeWidgetItem* parent, const QString& directory,
                               QStringList& watchedDirectories);
     void applyWorkspaceFilter();
     bool filterWorkspaceItem(QTreeWidgetItem* item, const QString& filter);
@@ -113,7 +117,6 @@ private:
     QStackedWidget* m_editorStack = nullptr;
     QWidget* m_emptyEditor = nullptr;
     QTabWidget* m_tabs = nullptr;
-    QSpinBox* m_fontSize = nullptr;
     QTreeWidget* m_workspace = nullptr;
     QLineEdit* m_workspaceFilter = nullptr;
     QTreeWidget* m_outline = nullptr;
@@ -126,6 +129,8 @@ private:
     QToolButton* m_replaceAllButton = nullptr;
     QLabel* m_matchLabel = nullptr;
     QLabel* m_statusLabel = nullptr;
+    QLabel* m_saveStatus = nullptr;
+    QLabel* m_reloadStatus = nullptr;
     QCompleter* m_completer = nullptr;
     QStringListModel* m_completionModel = nullptr;
     QFileSystemWatcher* m_watcher = nullptr;
@@ -136,10 +141,13 @@ private:
     QVector<EditorPage> m_pages;
     QVector<Pair<QString, int>> m_history;
     ScopedConnection m_assetSubscription;
+    ScopedConnection m_fontSubscription;
+    ScopedConnection m_reloadSubscription;
     QString m_workspaceRoot;
     int m_codeFontPointSize = 11;
     int m_historyPosition = -1;
     int m_suppressWatcher = 0;
+    bool m_insertingCompletion = false;
 };
 
 } // namespace cakery

@@ -65,6 +65,23 @@ String EditorConfig::defaultLayoutName() const
     return "default";
 }
 
+String EditorConfig::scriptFontFamily() const
+{
+    if (m_editor.contains("scriptFontFamily") && m_editor["scriptFontFamily"].is_string()) {
+        const auto family = m_editor["scriptFontFamily"].get<String>();
+        if (!family.empty()) return family;
+    }
+    return "Consolas";
+}
+
+int EditorConfig::scriptFontWeight() const
+{
+    if (m_editor.contains("scriptFontWeight") && m_editor["scriptFontWeight"].is_number_integer()) {
+        return std::clamp(m_editor["scriptFontWeight"].get<int>(), 100, 900);
+    }
+    return 400;
+}
+
 String EditorConfig::themePath() const
 {
     return m_builtinDir + "/themes/" + themeName() + ".qss";
@@ -103,8 +120,18 @@ void EditorConfig::setThemeName(const String& themeName)
 
 void EditorConfig::setScriptFontPointSize(int pointSize)
 {
+    setScriptFont(scriptFontFamily(), pointSize, scriptFontWeight());
+}
+
+void EditorConfig::setScriptFont(const String& family, int pointSize, int weight)
+{
     const int normalized = std::clamp(pointSize, 8, 32);
+    const int normalizedWeight = std::clamp(weight, 100, 900);
+    const String normalizedFamily = family.empty() ? String("Consolas") : family;
     m_editor["scriptFontSize"] = normalized;
+    m_editor["scriptFontFamily"] = normalizedFamily;
+    m_editor["scriptFontWeight"] = normalizedWeight;
+    scriptFontChanged.fire();
     if (m_userDir.empty()) {
         return;
     }
@@ -116,6 +143,8 @@ void EditorConfig::setScriptFontPointSize(int pointSize)
         override = dodoe::Json::object();
     }
     override["scriptFontSize"] = normalized;
+    override["scriptFontFamily"] = normalizedFamily;
+    override["scriptFontWeight"] = normalizedWeight;
     std::ofstream file(path);
     if (file.is_open()) {
         file << override.dump(2) << '\n';
@@ -125,6 +154,7 @@ void EditorConfig::setScriptFontPointSize(int pointSize)
 void EditorConfig::reload()
 {
     load(m_builtinDir, m_projectDir, m_userDir);
+    scriptFontChanged.fire();
 }
 
 } // namespace cakery

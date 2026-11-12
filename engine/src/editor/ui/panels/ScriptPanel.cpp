@@ -19,19 +19,24 @@
 #include <QFileInfo>
 #include <QFileSystemWatcher>
 #include <QFontMetrics>
+#include <QHeaderView>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListView>
 #include <QMessageBox>
+#include <QPainter>
+#include <QPainterPath>
 #include <QPushButton>
 #include <QSaveFile>
+#include <QScopedValueRollback>
 #include <QScrollBar>
 #include <QSignalBlocker>
 #include <QShortcut>
-#include <QSpinBox>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QStringListModel>
 #include <QTabBar>
 #include <QTabWidget>
@@ -48,6 +53,90 @@
 namespace cakery {
 
 namespace {
+
+class ScriptTabBar final : public QTabBar {
+public:
+    explicit ScriptTabBar(QWidget* parent) : QTabBar(parent) {}
+
+protected:
+    void tabInserted(int index) override
+    {
+        QTabBar::tabInserted(index);
+        // Let the tab layout reserve space for the whole hit target, including
+        // when tabs are elided, reordered or scrolled out of view.
+        for (const auto side : {QTabBar::LeftSide, QTabBar::RightSide}) {
+            if (QWidget* nativeClose = tabButton(index, side)) {
+                setTabButton(index, side, nullptr);
+                nativeClose->deleteLater();
+            }
+        }
+        auto* close = new QToolButton(this);
+        close->setObjectName(QStringLiteral("scriptTabClose"));
+        close->setIcon(editorThemedIcon(QStringLiteral("x.svg")));
+        close->setIconSize(QSize(10, 10));
+        close->setFixedSize(18, 18);
+        close->setAutoRaise(true);
+        close->setFocusPolicy(Qt::NoFocus);
+        close->setToolTip(tr("Close script"));
+        close->setAccessibleName(tr("Close script"));
+        setTabButton(index, QTabBar::RightSide, close);
+        connect(close, &QToolButton::clicked, this, [this, close]() {
+            for (int tab = 0; tab < count(); ++tab) {
+                if (tabButton(tab, QTabBar::RightSide) == close) {
+                    emit tabCloseRequested(tab);
+                    return;
+                }
+            }
+        });
+    }
+};
+
+class ScriptTabs final : public QTabWidget {
+public:
+    explicit ScriptTabs(QWidget* parent) : QTabWidget(parent)
+    {
+        setTabBar(new ScriptTabBar(this));
+    }
+};
+
+// Draw only the disclosure chevron. Native Windows branch painting also draws
+// blue connector/focus fragments into the indentation area of selected rows.
+class ScriptTreeWidget final : public QTreeWidget {
+public:
+    explicit ScriptTreeWidget(QWidget* parent) : QTreeWidget(parent)
+    {
+        setIndentation(18);
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        header()->setStretchLastSection(true);
+        header()->setSectionResizeMode(QHeaderView::Stretch);
+        setTextElideMode(Qt::ElideMiddle);
+    }
+
+protected:
+    void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const override
+    {
+        if (!model()->hasChildren(index)) return;
+        const qreal x = isRightToLeft() ? rect.left() + indentation() / 2.0
+                                       : rect.right() - indentation() / 2.0 + 1;
+        const qreal y = rect.center().y();
+        QPainterPath chevron;
+        if (isExpanded(index)) {
+            chevron.moveTo(x - 3, y - 1.5);
+            chevron.lineTo(x, y + 1.5);
+            chevron.lineTo(x + 3, y - 1.5);
+        } else {
+            chevron.moveTo(x - 1.5, y - 3);
+            chevron.lineTo(x + 1.5, y);
+            chevron.lineTo(x - 1.5, y + 3);
+        }
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
+        painter->setPen(QPen(palette().color(QPalette::PlaceholderText), 1.5,
+                            Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter->drawPath(chevron);
+        painter->restore();
+    }
+};
 
 QString kindLabel(CSharpSymbolKind kind)
 {
@@ -102,19 +191,48 @@ QString workspaceRoot(const EditorWorkspaceContext& context)
     return root.isEmpty() ? QString() : CSharpSymbolIndex::normalizePath(root);
 }
 
+bool isIdentifierCharacter(QChar character)
+{
+    return character.isLetterOrNumber() || character == QLatin1Char('_');
+}
+
+QString completionPrefix(const CSharpCodeEditor* editor)
+{
+    const QTextCursor cursor = editor->textCursor();
+    if (cursor.hasSelection()) return {};
+    const QString before = cursor.block().text().left(cursor.positionInBlock());
+    int start = before.size();
+    while (start > 0 && isIdentifierCharacter(before.at(start - 1))) --start;
+    const QString prefix = before.mid(start);
+    return !prefix.isEmpty() && prefix.front().isDigit() ? QString() : prefix;
+}
+
 } // namespace
 
 ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     : QWidget(parent), m_context(context)
 {
     setObjectName(QStringLiteral("scriptPanel"));
+    setAttribute(Qt::WA_StyledBackground, true);
     m_codeFontPointSize = m_context.config().scriptFontPointSize();
+    auto& fontChanged = m_context.config().scriptFontChanged;
+    m_fontSubscription = ScopedConnection(fontChanged, fontChanged.connect([this]() { applyCodeFont(); }));
 
     m_completionModel = new QStringListModel(this);
     m_completer = new QCompleter(m_completionModel, this);
     m_completer->setCompletionMode(QCompleter::PopupCompletion);
     m_completer->setCaseSensitivity(Qt::CaseInsensitive);
-    m_completer->setWidget(this);
+    m_completer->setMaxVisibleItems(8);
+    auto* completionPopup = new QListView;
+    completionPopup->setObjectName(QStringLiteral("scriptCompletionPopup"));
+    completionPopup->setUniformItemSizes(true);
+    completionPopup->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    completionPopup->setSelectionMode(QAbstractItemView::SingleSelection);
+    completionPopup->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    completionPopup->setMouseTracking(true);
+    m_completer->setPopup(completionPopup);
+    // Run before QCompleter forwards keys to the editor's indent/newline logic.
+    completionPopup->installEventFilter(this);
     connect(m_completer, qOverload<const QString&>(&QCompleter::activated),
             this, &ScriptPanel::insertCompletion);
 
@@ -163,9 +281,13 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     auto* workspaceBody = new QWidget(sideSplitter);
     workspaceBody->setObjectName(QStringLiteral("scriptWorkspaceBody"));
+    workspaceBody->setAttribute(Qt::WA_StyledBackground, true);
     auto* workspaceLayout = new QVBoxLayout(workspaceBody);
-    workspaceLayout->setContentsMargins(6, 6, 6, 6);
-    workspaceLayout->setSpacing(4);
+    workspaceLayout->setContentsMargins(3, 3, 3, 3);
+    workspaceLayout->setSpacing(3);
+    auto* explorerTitle = new QLabel(tr("EXPLORER"), workspaceBody);
+    explorerTitle->setObjectName(QStringLiteral("scriptSectionTitle"));
+    workspaceLayout->addWidget(explorerTitle);
     m_workspaceFilter = new QLineEdit(workspaceBody);
     m_workspaceFilter->setObjectName(QStringLiteral("scriptWorkspaceFilter"));
     m_workspaceFilter->setPlaceholderText(tr("Filter scripts"));
@@ -173,11 +295,15 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     auto* workspaceRefresh = new QToolButton(workspaceBody);
     workspaceRefresh->setIcon(editorThemedIcon(QStringLiteral("refresh-ccw.svg")));
     workspaceRefresh->setToolTip(tr("Refresh script explorer"));
-    m_workspace = new QTreeWidget(workspaceBody);
+    m_workspace = new ScriptTreeWidget(workspaceBody);
     m_workspace->setObjectName(QStringLiteral("scriptWorkspace"));
     m_workspace->setHeaderHidden(true);
     m_workspace->setRootIsDecorated(true);
     m_workspace->setUniformRowHeights(true);
+    m_workspace->setIconSize(QSize(16, 16));
+    m_workspace->setAnimated(true);
+    m_workspace->setExpandsOnDoubleClick(true);
+    m_workspace->setTextElideMode(Qt::ElideMiddle);
     m_workspace->setSelectionMode(QAbstractItemView::SingleSelection);
     connect(m_workspaceFilter, &QLineEdit::textChanged,
             this, [this](const QString&) { applyWorkspaceFilter(); });
@@ -189,6 +315,16 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
         const QString path = item->data(0, kWorkspacePathRole).toString();
         if (!path.isEmpty()) {
             openFile(path);
+        }
+    });
+    connect(m_workspace, &QTreeWidget::itemClicked,
+            this, [this](QTreeWidgetItem* item, int) {
+        if (!item || item->data(0, kWorkspaceDirectoryRole).toBool()) {
+            return;
+        }
+        const QString path = item->data(0, kWorkspacePathRole).toString();
+        if (const int index = pageIndex(path); index >= 0) {
+            m_tabs->setCurrentIndex(index);
         }
     });
     connect(workspaceRefresh, &QToolButton::clicked, this, [this]() {
@@ -205,20 +341,36 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     auto* outlineBody = new QWidget(sideSplitter);
     outlineBody->setObjectName(QStringLiteral("scriptOutlineBody"));
+    outlineBody->setAttribute(Qt::WA_StyledBackground, true);
     auto* outlineLayout = new QVBoxLayout(outlineBody);
-    outlineLayout->setContentsMargins(6, 6, 6, 6);
-    outlineLayout->setSpacing(4);
+    outlineLayout->setContentsMargins(3, 3, 3, 3);
+    outlineLayout->setSpacing(3);
+    auto* outlineToggle = new QToolButton(outlineBody);
+    outlineToggle->setObjectName(QStringLiteral("scriptOutlineToggle"));
+    outlineToggle->setText(tr("SYMBOLS"));
+    outlineToggle->setToolTip(tr("Classes, methods and fields in the current file. Click a symbol to jump to it."));
+    outlineToggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    outlineToggle->setCheckable(true);
+    outlineToggle->setChecked(true);
+    outlineToggle->setArrowType(Qt::DownArrow);
+    outlineLayout->addWidget(outlineToggle);
     m_outlineFilter = new QLineEdit(outlineBody);
     m_outlineFilter->setObjectName(QStringLiteral("scriptOutlineFilter"));
-    m_outlineFilter->setPlaceholderText(tr("Filter outline"));
+    m_outlineFilter->setPlaceholderText(tr("Find symbol in file"));
     m_outlineFilter->setClearButtonEnabled(true);
-    m_outline = new QTreeWidget(outlineBody);
+    m_outline = new ScriptTreeWidget(outlineBody);
     m_outline->setObjectName(QStringLiteral("scriptOutline"));
-    m_outline->setColumnCount(2);
+    m_outline->setColumnCount(1);
     m_outline->setHeaderHidden(true);
     m_outline->setRootIsDecorated(true);
     m_outline->setUniformRowHeights(true);
-    m_outline->setColumnWidth(0, 190);
+    connect(outlineToggle, &QToolButton::toggled, this,
+            [this, outlineToggle, outlineBody](bool expanded) {
+        m_outlineFilter->setVisible(expanded);
+        m_outline->setVisible(expanded);
+        outlineToggle->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
+        outlineBody->setMaximumHeight(expanded ? QWIDGETSIZE_MAX : outlineBody->sizeHint().height());
+    });
     connect(m_outline, &QTreeWidget::itemClicked,
             this, &ScriptPanel::jumpToOutlineItem);
     connect(m_outlineFilter, &QLineEdit::textChanged,
@@ -228,20 +380,23 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     sideSplitter->addWidget(workspaceBody);
     sideSplitter->addWidget(outlineBody);
-    sideSplitter->setStretchFactor(0, 1);
+    sideSplitter->setMinimumWidth(180);
+    sideSplitter->setStretchFactor(0, 3);
     sideSplitter->setStretchFactor(1, 1);
-    sideSplitter->setSizes({360, 260});
+    sideSplitter->setSizes({420, 220});
 
     auto* editorBody = new QWidget(splitter);
+    editorBody->setMinimumWidth(300);
     auto* editorLayout = new QVBoxLayout(editorBody);
     editorLayout->setContentsMargins(0, 0, 0, 0);
-    editorLayout->setSpacing(0);
+    editorLayout->setSpacing(2);
 
     auto* toolbar = new QWidget(editorBody);
     toolbar->setObjectName(QStringLiteral("scriptToolbar"));
+    toolbar->setAttribute(Qt::WA_StyledBackground, true);
     auto* toolbarLayout = new QHBoxLayout(toolbar);
-    toolbarLayout->setContentsMargins(6, 4, 6, 4);
-    toolbarLayout->setSpacing(4);
+    toolbarLayout->setContentsMargins(4, 2, 4, 2);
+    toolbarLayout->setSpacing(3);
     auto* saveButton = new QToolButton(toolbar);
     saveButton->setText(tr("Save"));
     saveButton->setToolTip(tr("Save current script (Ctrl+S)"));
@@ -252,45 +407,62 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     connect(saveAllButton, &QToolButton::clicked, this, [this]() { saveAll(); });
     auto* findButton = new QToolButton(toolbar);
     findButton->setText(tr("Find"));
+    findButton->setIcon(editorThemedIcon(QStringLiteral("search.svg")));
     findButton->setToolTip(tr("Find and replace (Ctrl+F)"));
     connect(findButton, &QToolButton::clicked, this, [this]() { showFindBar(false); });
     auto* backButton = new QToolButton(toolbar);
     backButton->setText(tr("Back"));
+    backButton->setIcon(editorThemedIcon(QStringLiteral("arrow-left.svg")));
     backButton->setToolTip(tr("Navigate back (Alt+Left)"));
     connect(backButton, &QToolButton::clicked, this, [this]() { navigateBack(); });
-    m_fontSize = new QSpinBox(toolbar);
-    m_fontSize->setObjectName(QStringLiteral("scriptFontSize"));
-    m_fontSize->setRange(8, 32);
-    m_fontSize->setSuffix(tr(" pt"));
-    m_fontSize->setValue(m_codeFontPointSize);
-    m_fontSize->setToolTip(tr("Code font size"));
-    connect(m_fontSize, qOverload<int>(&QSpinBox::valueChanged), this, [this](int pointSize) {
-        setCodeFontPointSize(pointSize);
-    });
     toolbarLayout->addWidget(saveButton);
     toolbarLayout->addWidget(saveAllButton);
     toolbarLayout->addWidget(findButton);
     toolbarLayout->addWidget(backButton);
-    toolbarLayout->addWidget(m_fontSize);
     toolbarLayout->addStretch();
 
-    m_tabs = new QTabWidget(editorBody);
+    m_tabs = new ScriptTabs(editorBody);
     m_tabs->setObjectName(QStringLiteral("scriptTabs"));
     m_tabs->setTabsClosable(true);
     m_tabs->setMovable(true);
     m_tabs->setDocumentMode(true);
+    m_tabs->setIconSize(QSize(14, 14));
     connect(m_tabs, &QTabWidget::currentChanged,
             this, &ScriptPanel::setCurrentTab);
     connect(m_tabs, &QTabWidget::tabCloseRequested, this, &ScriptPanel::closeTab);
     if (QTabBar* tabBar = m_tabs->findChild<QTabBar*>()) {
+        tabBar->setExpanding(false);
+        tabBar->setDrawBase(false);
+        tabBar->setElideMode(Qt::ElideMiddle);
+        tabBar->setUsesScrollButtons(true);
         connect(tabBar, &QTabBar::tabMoved, this, [this](int from, int to) {
             EditorPage page = m_pages.takeAt(from);
             m_pages.insert(to, page);
+            setCurrentTab(m_tabs->currentIndex());
         });
     }
 
     m_statusLabel = new QLabel(editorBody);
     m_statusLabel->setObjectName(QStringLiteral("scriptStatus"));
+    m_statusLabel->setTextFormat(Qt::PlainText);
+    m_statusLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusLabel->installEventFilter(this);
+    auto* statusBar = new QWidget(editorBody);
+    statusBar->setObjectName(QStringLiteral("scriptStatusBar"));
+    statusBar->setAttribute(Qt::WA_StyledBackground, true);
+    auto* statusLayout = new QHBoxLayout(statusBar);
+    statusLayout->setContentsMargins(4, 1, 4, 1);
+    statusLayout->setSpacing(6);
+    m_saveStatus = new QLabel(statusBar);
+    m_saveStatus->setObjectName(QStringLiteral("scriptSaveStatus"));
+    m_reloadStatus = new QLabel(statusBar);
+    m_reloadStatus->setObjectName(QStringLiteral("scriptReloadStatus"));
+    statusLayout->addWidget(m_statusLabel, 1);
+    statusLayout->addWidget(m_saveStatus);
+    statusLayout->addWidget(m_reloadStatus);
+    m_reloadSubscription = m_context.events().subscribe<ScriptReloadStatusEvent>(
+        [this](const ScriptReloadStatusEvent& event) { updateScriptReloadStatus(event.state); });
+    updateScriptReloadStatus(m_context.session().scriptReloadState());
 
     m_emptyEditor = new QWidget(editorBody);
     auto* emptyEditorLayout = new QVBoxLayout(m_emptyEditor);
@@ -307,13 +479,13 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
 
     editorLayout->addWidget(toolbar);
     editorLayout->addWidget(m_editorStack, 1);
-    editorLayout->addWidget(m_statusLabel);
+    editorLayout->addWidget(statusBar);
 
     splitter->addWidget(sideSplitter);
     splitter->addWidget(editorBody);
     splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
-    splitter->setSizes({230, 900});
+    splitter->setSizes({220, 940});
 
     m_findBar = new QWidget(this);
     m_findBar->setObjectName(QStringLiteral("scriptFindBar"));
@@ -326,11 +498,14 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_findEdit->setPlaceholderText(tr("Find"));
     m_matchLabel = new QLabel(m_findBar);
     auto* findNextButton = new QToolButton(m_findBar);
-    findNextButton->setText(tr("Next"));
+    findNextButton->setIcon(editorThemedIcon(QStringLiteral("chevron-down.svg")));
+    findNextButton->setToolTip(tr("Next match"));
     auto* findPrevButton = new QToolButton(m_findBar);
-    findPrevButton->setText(tr("Previous"));
+    findPrevButton->setIcon(editorThemedIcon(QStringLiteral("arrow-up.svg")));
+    findPrevButton->setToolTip(tr("Previous match"));
     auto* closeFindButton = new QToolButton(m_findBar);
-    closeFindButton->setText(QStringLiteral("x"));
+    closeFindButton->setIcon(editorThemedIcon(QStringLiteral("x.svg")));
+    closeFindButton->setToolTip(tr("Close find"));
     findRow->addWidget(m_findEdit, 1);
     findRow->addWidget(m_matchLabel);
     findRow->addWidget(findPrevButton);
@@ -370,8 +545,8 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
     m_replaceEdit->installEventFilter(this);
 
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(0);
+    mainLayout->setContentsMargins(2, 2, 2, 2);
+    mainLayout->setSpacing(2);
     mainLayout->addWidget(splitter, 1);
     mainLayout->addWidget(m_findBar);
 
@@ -398,6 +573,50 @@ ScriptPanel::ScriptPanel(EditorWorkspaceContext& context, QWidget* parent)
 
 bool ScriptPanel::eventFilter(QObject* watched, QEvent* event)
 {
+    if (event->type() == QEvent::KeyPress && m_completer->popup()->isVisible()
+        && (watched == m_completer->popup() || watched == m_completer->widget())) {
+        auto* keyEvent = static_cast<QKeyEvent*>(event);
+        auto* popup = m_completer->popup();
+        if (keyEvent->key() == Qt::Key_Escape) {
+            popup->hide();
+            keyEvent->accept();
+            return true;
+        }
+        if (!(keyEvent->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier
+                                      | Qt::AltModifier | Qt::MetaModifier))) {
+            switch (keyEvent->key()) {
+            case Qt::Key_Tab:
+            case Qt::Key_Return:
+            case Qt::Key_Enter: {
+                QModelIndex candidate = popup->currentIndex();
+                if (!candidate.isValid()) candidate = m_completer->completionModel()->index(0, 0);
+                insertCompletion(candidate.data(Qt::DisplayRole).toString());
+                keyEvent->accept();
+                return true;
+            }
+            case Qt::Key_Up:
+            case Qt::Key_Down:
+            case Qt::Key_PageUp:
+            case Qt::Key_PageDown: {
+                const int count = m_completer->completionCount();
+                if (count > 0) {
+                    const bool backwards = keyEvent->key() == Qt::Key_Up || keyEvent->key() == Qt::Key_PageUp;
+                    const int step = keyEvent->key() == Qt::Key_PageUp || keyEvent->key() == Qt::Key_PageDown
+                        ? m_completer->maxVisibleItems() : 1;
+                    const int row = popup->currentIndex().isValid()
+                        ? qBound(0, popup->currentIndex().row() + (backwards ? -step : step), count - 1) : 0;
+                    const QModelIndex candidate = m_completer->completionModel()->index(row, 0);
+                    popup->setCurrentIndex(candidate);
+                    popup->scrollTo(candidate);
+                }
+                keyEvent->accept();
+                return true;
+            }
+            default: break;
+            }
+        }
+    }
+    if (watched == m_statusLabel && event->type() == QEvent::Resize) updateStatus();
     if (event->type() == QEvent::KeyPress
         && (watched == m_findEdit || watched == m_replaceEdit)) {
         auto* keyEvent = static_cast<QKeyEvent*>(event);
@@ -461,7 +680,7 @@ void ScriptPanel::openFile(const QString& path)
 
     QFile file(normalized);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        m_statusLabel->setText(tr("Could not open '%1'").arg(normalized));
+        m_statusLabel->setText(tr("Could not open '%1'").arg(displayPath(normalized)));
         return;
     }
     QTextStream stream(&file);
@@ -474,13 +693,16 @@ void ScriptPanel::openFile(const QString& path)
     EditorPage page;
     page.path = normalized;
     page.editor = new CSharpCodeEditor(this);
-    page.editor->setCodeFontPointSize(m_codeFontPointSize);
+    page.editor->setCodeFont(ToQString(m_context.config().scriptFontFamily()),
+                             m_codeFontPointSize, m_context.config().scriptFontWeight());
     page.editor->setPlainText(content);
     page.editor->document()->setModified(false);
     page.highlighter = new CSharpHighlighter(page.editor->document());
 
-    connect(page.editor, &QPlainTextEdit::textChanged,
-            this, &ScriptPanel::updateCompletion);
+    connect(page.editor, &QPlainTextEdit::textChanged, this, [this, editor = page.editor]() {
+        if (editor == m_completer->widget()) updateCompletion();
+    });
+    connect(page.editor, &QPlainTextEdit::textChanged, this, [this]() { m_outlineTimer->start(); });
     connect(page.editor, &CSharpCodeEditor::cursorInfoChanged,
             this, [this](int, int) { updateStatus(); });
     connect(page.editor->document(), &QTextDocument::modificationChanged, this,
@@ -489,6 +711,7 @@ void ScriptPanel::openFile(const QString& path)
         if (index >= 0) {
             updateTabText(index);
         }
+        updateStatus();
         emit dirtyChanged();
     });
     connect(page.editor, &CSharpCodeEditor::navigateRequested,
@@ -499,9 +722,9 @@ void ScriptPanel::openFile(const QString& path)
     m_watcher->addPath(normalized);
 
     const QString name = QFileInfo(normalized).fileName();
-    const int index = m_tabs->addTab(page.editor, name);
-    m_tabs->setTabToolTip(index, normalized);
     m_pages.push_back(page);
+    const int index = m_tabs->addTab(page.editor, editorAssetIcon({}, normalized), name);
+    m_tabs->setTabToolTip(index, displayPath(normalized));
 
     updateEmptyState();
     m_tabs->setCurrentIndex(index);
@@ -520,7 +743,7 @@ void ScriptPanel::reopenProject()
         QPushButton* cancel = box.addButton(tr("Cancel"), QMessageBox::RejectRole);
         box.exec();
         if (box.clickedButton() == save) {
-            saveAll();
+            if (!saveAll()) return;
         } else if (box.clickedButton() == cancel || box.clickedButton() == nullptr) {
             return;
         } else if (box.clickedButton() == discard) {
@@ -557,13 +780,14 @@ void ScriptPanel::closeAll(bool force)
                 return;
             }
             if (choice == QMessageBox::Save) {
-                savePage(i);
+                if (!savePage(i)) return;
             }
         }
         m_watcher->removePath(page.path);
-        m_tabs->removeTab(i);
-        page.editor->deleteLater();
+        auto* editor = page.editor;
         m_pages.removeAt(i);
+        m_tabs->removeTab(i);
+        editor->deleteLater();
     }
     m_history.clear();
     m_historyPosition = -1;
@@ -573,10 +797,10 @@ void ScriptPanel::closeAll(bool force)
     emit dirtyChanged();
 }
 
-void ScriptPanel::savePage(int index)
+bool ScriptPanel::savePage(int index)
 {
     if (index < 0 || index >= m_pages.size()) {
-        return;
+        return false;
     }
     EditorPage& page = m_pages[index];
     const QString content = page.editor->toPlainText();
@@ -586,22 +810,28 @@ void ScriptPanel::savePage(int index)
 
     QSaveFile file(page.path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        m_statusLabel->setText(tr("Could not save '%1'").arg(page.path));
+        page.saveError = tr("Could not save %1: %2").arg(displayPath(page.path), file.errorString());
+        m_saveStatus->setText(tr("Save failed"));
+        m_saveStatus->setToolTip(page.saveError);
         m_watcher->addPath(page.path);
         --m_suppressWatcher;
-        return;
+        return false;
     }
     QTextStream stream(&file);
     stream.setEncoding(QStringConverter::Utf8);
     stream << content;
     stream.flush();
-    if (!file.commit()) {
-        m_statusLabel->setText(tr("Could not save '%1'").arg(page.path));
+    if (stream.status() != QTextStream::Ok || !file.commit()) {
+        page.saveError = tr("Could not save %1: %2").arg(displayPath(page.path), file.errorString());
+        m_saveStatus->setText(tr("Save failed"));
+        m_saveStatus->setToolTip(page.saveError);
         m_watcher->addPath(page.path);
         --m_suppressWatcher;
-        return;
+        return false;
     }
 
+    page.saved = true;
+    page.saveError.clear();
     page.editor->document()->setModified(false);
     m_watcher->addPath(page.path);
     --m_suppressWatcher;
@@ -612,6 +842,9 @@ void ScriptPanel::savePage(int index)
         m_outlineTimer->start();
     }
     scheduleIndexRebuild();
+    updateStatus();
+    m_context.session().requestScriptReload();
+    return true;
 }
 
 void ScriptPanel::saveCurrent()
@@ -624,12 +857,17 @@ void ScriptPanel::saveCurrent()
 
 bool ScriptPanel::saveAll()
 {
+    bool saved = true;
     for (int i = 0; i < m_pages.size(); ++i) {
         if (m_pages.at(i).editor->document()->isModified()) {
-            savePage(i);
+            saved = savePage(i) && saved;
         }
     }
-    return true;
+    if (!saved) {
+        m_saveStatus->setText(tr("Some files were not saved"));
+        m_saveStatus->setToolTip(tr("Check the unsaved tabs for save errors."));
+    }
+    return saved;
 }
 
 void ScriptPanel::discardAll()
@@ -649,7 +887,7 @@ void ScriptPanel::reloadPage(int index)
     EditorPage& page = m_pages[index];
     QFile file(page.path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        m_statusLabel->setText(tr("Could not reload '%1'").arg(page.path));
+        m_statusLabel->setText(tr("Could not reload '%1'").arg(displayPath(page.path)));
         return;
     }
     QTextStream stream(&file);
@@ -658,6 +896,8 @@ void ScriptPanel::reloadPage(int index)
     file.close();
 
     const bool wasCurrent = m_tabs->currentIndex() == index;
+    page.saved = false;
+    page.saveError.clear();
     page.editor->setPlainText(content);
     page.editor->document()->setModified(false);
     if (wasCurrent) {
@@ -682,13 +922,14 @@ void ScriptPanel::closeTab(int index)
             return;
         }
         if (choice == QMessageBox::Save) {
-            savePage(index);
+            if (!savePage(index)) return;
         }
     }
     m_watcher->removePath(page.path);
-    m_tabs->removeTab(index);
-    page.editor->deleteLater();
+    auto* editor = page.editor;
     m_pages.removeAt(index);
+    m_tabs->removeTab(index);
+    editor->deleteLater();
     updateEmptyState();
     if (m_pages.isEmpty()) {
         rebuildOutline();
@@ -720,11 +961,14 @@ void ScriptPanel::setCurrentTab(int index)
 {
     m_completer->popup()->hide();
     if (index < 0 || index >= m_pages.size()) {
+        m_completer->setWidget(nullptr);
         rebuildOutline();
         updateStatus();
         return;
     }
     EditorPage& page = m_pages[index];
+    m_completer->setWidget(page.editor);
+    page.editor->installEventFilter(this);
     updateTabText(index);
     selectWorkspaceFile(page.path);
     rebuildOutline();
@@ -752,20 +996,50 @@ void ScriptPanel::scheduleIndexRebuild()
 void ScriptPanel::setCodeFontPointSize(int pointSize)
 {
     const int normalized = qBound(8, pointSize, 32);
-    if (m_codeFontPointSize == normalized) {
-        return;
-    }
-    m_codeFontPointSize = normalized;
-    if (m_fontSize) {
-        const QSignalBlocker blocker(m_fontSize);
-        m_fontSize->setValue(normalized);
-    }
+    m_context.config().setScriptFontPointSize(normalized);
+}
+
+void ScriptPanel::applyCodeFont()
+{
+    const auto& config = m_context.config();
+    m_codeFontPointSize = config.scriptFontPointSize();
     for (EditorPage& page : m_pages) {
         if (page.editor) {
-            page.editor->setCodeFontPointSize(normalized);
+            page.editor->setCodeFont(ToQString(config.scriptFontFamily()),
+                                     m_codeFontPointSize, config.scriptFontWeight());
         }
     }
-    m_context.config().setScriptFontPointSize(normalized);
+}
+
+QString ScriptPanel::displayPath(const QString& path) const
+{
+    if (!m_workspaceRoot.isEmpty()) {
+        const QString relative = QDir(m_workspaceRoot).relativeFilePath(path);
+        if (!QDir::isAbsolutePath(relative) && relative != QStringLiteral("..")
+            && !relative.startsWith(QStringLiteral("../"))) {
+            return relative == QStringLiteral(".") ? QStringLiteral("Assets")
+                : QStringLiteral("Assets/") + relative;
+        }
+    }
+    return QFileInfo(path).fileName();
+}
+
+void ScriptPanel::updateScriptReloadStatus(const String& state)
+{
+    QString text;
+    if (state == "queued") text = tr("Update queued");
+    else if (state == "deferred") text = tr("Update after Play stops");
+    else if (state == "building") text = tr("Building scripts...");
+    else if (state == "succeeded") text = tr("Scripts updated");
+    else if (state == "unchanged") text = tr("Scripts up to date");
+    else if (state == "failed") text = tr("Update failed (Console)");
+    else if (state == "unavailable") text = tr("Runtime unavailable");
+    else text = tr("Update idle");
+    m_reloadStatus->setText(text);
+    m_reloadStatus->setToolTip(text);
+    m_reloadStatus->setProperty("failed", state == "failed" || state == "unavailable");
+    m_reloadStatus->style()->unpolish(m_reloadStatus);
+    m_reloadStatus->style()->polish(m_reloadStatus);
 }
 
 void ScriptPanel::rebuildWorkspace()
@@ -808,11 +1082,24 @@ void ScriptPanel::rebuildWorkspace()
     rootItem->setText(0, rootInfo.fileName().isEmpty() ? tr("Assets") : rootInfo.fileName());
     rootItem->setData(0, kWorkspacePathRole, m_workspaceRoot);
     rootItem->setData(0, kWorkspaceDirectoryRole, true);
-    rootItem->setToolTip(0, m_workspaceRoot);
+    rootItem->setToolTip(0, displayPath(m_workspaceRoot));
     rootItem->setIcon(0, editorAssetIcon({}, m_workspaceRoot, true));
 
     QStringList watchedDirectories{m_workspaceRoot};
-    addWorkspaceChildren(rootItem, m_workspaceRoot, watchedDirectories);
+    const bool hasScripts = addWorkspaceChildren(rootItem, m_workspaceRoot, watchedDirectories);
+    if (!hasScripts) {
+        m_workspace->clear();
+        auto* emptyItem = new QTreeWidgetItem(m_workspace);
+        emptyItem->setText(0, tr("No C# scripts in Assets"));
+        emptyItem->setFlags(emptyItem->flags() & ~Qt::ItemIsSelectable);
+        if (m_workspaceWatcher) {
+            const QStringList failed = m_workspaceWatcher->addPaths(watchedDirectories);
+            if (!failed.isEmpty()) {
+                m_statusLabel->setText(tr("Some script folders could not be watched"));
+            }
+        }
+        return;
+    }
     rootItem->setExpanded(true);
 
     for (QTreeWidgetItemIterator it(m_workspace); *it; ++it) {
@@ -847,9 +1134,10 @@ void ScriptPanel::scheduleWorkspaceRefresh()
     }
 }
 
-void ScriptPanel::addWorkspaceChildren(QTreeWidgetItem* parent, const QString& directory,
+bool ScriptPanel::addWorkspaceChildren(QTreeWidgetItem* parent, const QString& directory,
                                        QStringList& watchedDirectories)
 {
+    bool hasScripts = false;
     const QDir dir(directory);
     const QFileInfoList entries = dir.entryInfoList(
         QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot,
@@ -857,15 +1145,25 @@ void ScriptPanel::addWorkspaceChildren(QTreeWidgetItem* parent, const QString& d
     for (const QFileInfo& entry : entries) {
         const QString path = CSharpSymbolIndex::normalizePath(entry.absoluteFilePath());
         if (entry.isDir()) {
-            auto* item = new QTreeWidgetItem(parent);
-            item->setText(0, entry.fileName());
-            item->setData(0, kWorkspacePathRole, path);
-            item->setData(0, kWorkspaceDirectoryRole, true);
-            item->setToolTip(0, path);
-            item->setIcon(0, editorAssetIcon({}, path, true));
             watchedDirectories.append(path);
+            QTreeWidgetItem* item = nullptr;
+            bool directoryHasScripts = false;
             if (!entry.isSymLink()) {
-                addWorkspaceChildren(item, path, watchedDirectories);
+                item = new QTreeWidgetItem;
+                directoryHasScripts = addWorkspaceChildren(item, path, watchedDirectories);
+                if (!directoryHasScripts) {
+                    delete item;
+                    item = nullptr;
+                }
+            }
+            if (item) {
+                item->setText(0, entry.fileName());
+                item->setData(0, kWorkspacePathRole, path);
+                item->setData(0, kWorkspaceDirectoryRole, true);
+                item->setToolTip(0, displayPath(path));
+                item->setIcon(0, editorAssetIcon({}, path, true));
+                parent->addChild(item);
+                hasScripts = true;
             }
             continue;
         }
@@ -876,9 +1174,11 @@ void ScriptPanel::addWorkspaceChildren(QTreeWidgetItem* parent, const QString& d
         item->setText(0, entry.fileName());
         item->setData(0, kWorkspacePathRole, path);
         item->setData(0, kWorkspaceDirectoryRole, false);
-        item->setToolTip(0, path);
+        item->setToolTip(0, displayPath(path));
         item->setIcon(0, editorAssetIcon({}, path));
+        hasScripts = true;
     }
+    return hasScripts;
 }
 
 void ScriptPanel::applyWorkspaceFilter()
@@ -943,13 +1243,11 @@ void ScriptPanel::rebuildOutline()
     for (const CSharpSymbol& symbol : symbols) {
         auto* item = new QTreeWidgetItem;
         item->setText(0, symbol.name);
-        item->setText(1, kindLabel(symbol.kind));
         item->setForeground(0, kindColor(symbol.kind));
-        item->setForeground(1, QColor(0x8a, 0x8a, 0x8a));
         item->setData(0, Qt::UserRole, symbol.line);
         item->setData(0, Qt::UserRole + 1, symbol.column);
-        item->setToolTip(0, QStringLiteral("%1:%2")
-            .arg(QFileInfo(page->path).fileName()).arg(symbol.line + 1));
+        item->setToolTip(0, QStringLiteral("%1 %2\n%3:%4")
+            .arg(kindLabel(symbol.kind), symbol.name, displayPath(page->path)).arg(symbol.line + 1));
 
         if (symbol.kind == CSharpSymbolKind::Namespace) {
             m_outline->addTopLevelItem(item);
@@ -1087,14 +1385,16 @@ void ScriptPanel::navigateBack()
 
 void ScriptPanel::updateCompletion()
 {
+    if (m_insertingCompletion) return;
     EditorPage* page = currentPage();
-    if (!page) {
+    if (!page || page->editor->isReadOnly()) {
+        m_completer->popup()->hide();
         return;
     }
-    if (m_completer->widget() != page->editor) {
-        m_completer->setWidget(page->editor);
+    if (!page->editor->hasFocus() && !m_completer->popup()->isVisible()) {
+        return;
     }
-    const QString word = page->editor->wordUnderCursor();
+    const QString word = completionPrefix(page->editor);
     if (word.length() < 2) {
         m_completer->popup()->hide();
         return;
@@ -1104,30 +1404,39 @@ void ScriptPanel::updateCompletion()
         m_completer->popup()->hide();
         return;
     }
-    if (m_completer->popup()->isVisible()
-        && m_completer->currentCompletion() == word) {
+    if (m_completer->completionCount() == 1 && m_completer->currentCompletion() == word) {
+        m_completer->popup()->hide();
         return;
     }
     QRect rect = page->editor->cursorRect();
-    rect.setWidth(m_completer->popup()->sizeHintForColumn(0)
-        + m_completer->popup()->verticalScrollBar()->sizeHint().width() + 8);
+    rect.setWidth(qBound(220, m_completer->popup()->sizeHintForColumn(0)
+        + m_completer->popup()->verticalScrollBar()->sizeHint().width() + 16, 420));
     m_completer->complete(rect);
+    m_completer->popup()->setCurrentIndex(m_completer->completionModel()->index(0, 0));
 }
 
 void ScriptPanel::insertCompletion(const QString& completion)
 {
     auto* editor = qobject_cast<CSharpCodeEditor*>(m_completer->widget());
-    if (!editor || completion.isEmpty()) {
+    m_completer->popup()->hide();
+    if (!editor || editor->isReadOnly() || completion.isEmpty()) {
         return;
     }
-    QTextCursor cursor = editor->textCursor();
     const QString prefix = m_completer->completionPrefix();
-    if (cursor.selectedText().isEmpty() && !prefix.isEmpty()) {
-        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, prefix.length());
-    }
+    if (prefix.isEmpty() || completionPrefix(editor) != prefix) return;
+
+    QScopedValueRollback<bool> inserting(m_insertingCompletion, true);
+    QTextCursor cursor = editor->textCursor();
+    const QString line = cursor.block().text();
+    int end = cursor.positionInBlock();
+    while (end < line.size() && isIdentifierCharacter(line.at(end))) ++end;
+    const int start = cursor.position() - prefix.size();
+    cursor.beginEditBlock();
+    cursor.setPosition(cursor.block().position() + end);
+    cursor.setPosition(start, QTextCursor::KeepAnchor);
     cursor.insertText(completion);
+    cursor.endEditBlock();
     editor->setTextCursor(cursor);
-    m_completer->popup()->hide();
 }
 
 void ScriptPanel::rebuildCompletionModel()
@@ -1274,14 +1583,24 @@ void ScriptPanel::updateStatus()
     if (!page) {
         m_statusLabel->setText(tr("%1 script(s) indexed")
             .arg(m_index.isBuilt() ? m_index.fileCount() : 0));
+        m_statusLabel->setToolTip(QString());
+        m_saveStatus->clear();
+        m_saveStatus->setToolTip(QString());
         return;
     }
     const int line = page->editor->currentLine() + 1;
     const int column = page->editor->currentColumn() + 1;
-    const QString elided = QFontMetrics(m_statusLabel->font()).elidedText(
-        page->path, Qt::ElideMiddle, 420);
-    m_statusLabel->setText(QStringLiteral("%1  \u2014  Ln %2, Col %3")
-        .arg(elided).arg(line).arg(column));
+    const QString position = tr("  |  Ln %1, Col %2").arg(line).arg(column);
+    const QFontMetrics metrics(m_statusLabel->font());
+    const QString relative = displayPath(page->path);
+    const QString elided = metrics.elidedText(relative, Qt::ElideMiddle,
+        qMax(0, m_statusLabel->contentsRect().width() - metrics.horizontalAdvance(position) - 16));
+    m_statusLabel->setText(elided + position);
+    m_statusLabel->setToolTip(relative + position);
+    m_saveStatus->setText(!page->saveError.isEmpty() ? tr("Save failed")
+                         : page->editor->document()->isModified() ? tr("Unsaved")
+                         : page->saved ? tr("Saved") : tr("Unmodified"));
+    m_saveStatus->setToolTip(page->saveError.isEmpty() ? relative : page->saveError);
 }
 
 void ScriptPanel::onWatcherFileChanged(const QString& path)
