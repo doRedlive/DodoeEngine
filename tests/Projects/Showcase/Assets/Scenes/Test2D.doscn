@@ -13,11 +13,11 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_component": "{\"position\":[-0.030542,0.928217,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
-                    "m_component": "{\"active_self\":false}",
+                    "m_component": "{\"active_self\":true}",
                     "m_type_name": "ActiveComponent"
                 },
                 {

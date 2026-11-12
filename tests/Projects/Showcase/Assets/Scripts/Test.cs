@@ -12,4 +12,14 @@ public class Test : CakeBehaviour
     public override void Update()
     {
     }
+    
+    public void test() 
+    {
+        Debug.Log("");
+    }
+    
+    public void Test2() 
+    {
+        
+    }
 }

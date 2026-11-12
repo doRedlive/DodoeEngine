@@ -13,7 +13,7 @@
                     "m_type_name": "TagComponent"
                 },
                 {
-                    "m_component": "{\"position\":[0.0,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_component": "{\"position\":[-0.030542,0.928217,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
                     "m_type_name": "TransformComponent"
                 },
                 {
@@ -27,6 +27,34 @@
             ],
             "m_parent": 0,
             "m_uuid": 1455446171250473886
+        },
+        {
+            "m_managed_components": [],
+            "m_name": "New GameObject",
+            "m_native_components": [
+                {
+                    "m_component": "{\"id\":8212497811367414724,\"name\":\"New GameObject\"}",
+                    "m_type_name": "IDComponent"
+                },
+                {
+                    "m_component": "{\"tag\":\"default\"}",
+                    "m_type_name": "TagComponent"
+                },
+                {
+                    "m_component": "{\"position\":[0.277493953704834,0.0,0.0],\"rotation\":[0.0,0.0,0.0],\"scale\":[1.0,1.0,1.0]}",
+                    "m_type_name": "TransformComponent"
+                },
+                {
+                    "m_component": "{\"active_self\":true}",
+                    "m_type_name": "ActiveComponent"
+                },
+                {
+                    "m_component": "{\"color\":[1.0,1.0,1.0,1.0],\"radius\":1.0,\"segments\":32,\"thickness\":0.0}",
+                    "m_type_name": "CircleRendererComponent"
+                }
+            ],
+            "m_parent": 0,
+            "m_uuid": 8212497811367414724
         }
     ],
     "m_name": "Test2D"
