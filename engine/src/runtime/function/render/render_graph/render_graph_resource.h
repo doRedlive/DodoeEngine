@@ -37,6 +37,14 @@ namespace dodoe {
         DepthStencil,
     };
 
+    enum class RenderGraphBufferUsage : UInt8 {
+        Vertex,
+        Index,
+        Constant,
+        ShaderResource,
+        Indirect,
+    };
+
     struct RenderGraphSubresourceRange {
         UInt32 base_mip{0};
         UInt32 mip_count{1};
@@ -170,6 +178,8 @@ namespace dodoe {
         RenderGraphAccessType access_type{RenderGraphAccessType::Read};
         RenderGraphPipelineStage stage{RenderGraphPipelineStage::PixelShader};
         RenderGraphSubresourceRange subresource{};
+        GfxResourceStates required_state{GfxResourceStates::Unknown};
+        Bool upload{false};
     };
 
     struct RenderGraphResourceRecord {
@@ -185,6 +195,7 @@ namespace dodoe {
         Int32 last_pass_index{-1};
         DynamicArray<UInt32> reader_passes{};
         Bool is_exported{false};
+        Bool is_live{false};
         GfxResourceStates export_final_state{GfxResourceStates::Unknown};
 
         [[nodiscard]] Bool isImported() const {

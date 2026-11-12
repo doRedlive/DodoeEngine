@@ -25,9 +25,7 @@ namespace dodoe {
 
     struct SpritePassParameters {
         RenderGraphTextureHandle color_target{};
-        Bool clear_target{false};
         Bool depth_occlusion{false};
-        GfxColor clear_color{0.0f, 0.0f, 0.0f, 1.0f};
         RenderGraphBufferHandle instance_buffer{};
         RenderGraphBufferHandle quad_vertex_buffer{};
         RenderGraphBufferHandle quad_index_buffer{};
@@ -53,10 +51,8 @@ namespace dodoe {
                     parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
                     const Vector4f background = context.view.getBackground();
-                    parameters.clear_target = true;
-                    parameters.clear_color = GfxColor(background.x, background.y, background.z, background.w);
                     color_attachment.load_op = LoadOp::Clear;
-                    color_attachment.clear_color = parameters.clear_color;
+                    color_attachment.clear_color = GfxColor(background.x, background.y, background.z, background.w);
                     parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(
                             swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG SpriteColor"),
@@ -102,10 +98,7 @@ namespace dodoe {
                     }
                     std::stable_sort(parameters.instances.begin(), parameters.instances.end(),
                         [](const SpriteInstance& a, const SpriteInstance& b) {
-                            if (a.sorting_key != b.sorting_key) {
-                                return a.sorting_key < b.sorting_key;
-                            }
-                            return a.atlas_index < b.atlas_index;
+                            return a.sorting_key < b.sorting_key;
                         });
                 }
 
@@ -115,10 +108,11 @@ namespace dodoe {
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG VisibleSpriteInstances");
-                parameters.instance_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(instance_desc, "VisibleSpriteInstances"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.instance_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.instance_buffer = pass_builder.createTransientBuffer(instance_desc, "VisibleSpriteInstances");
+                pass_builder.uploadBuffer(parameters.instance_buffer, parameters.instances.data(),
+                    parameters.instances.size() * sizeof(SpriteInstance));
+                if (!parameters.instances.empty())
+                    pass_builder.readBuffer(parameters.instance_buffer, RenderGraphBufferUsage::Vertex);
 
                 RenderGraphBufferDesc vp_desc{};
                 vp_desc.desc = GfxBufferDesc()
@@ -126,10 +120,18 @@ namespace dodoe {
                     .setIsConstantBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG SpriteVP");
-                parameters.vp_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(vp_desc, "SpriteVpBuffer"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.vp_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.vp_buffer = pass_builder.createTransientBuffer(vp_desc, "SpriteVpBuffer");
+                const Matrix4f projection = context.view.getViewProjectionMatrix();
+                pass_builder.uploadBuffer(parameters.vp_buffer, &projection, sizeof(projection));
+                pass_builder.readBuffer(parameters.vp_buffer, RenderGraphBufferUsage::Constant);
+
+                UnorderedSet<UInt32> texture_slots;
+                for (const auto& instance : parameters.instances) {
+                    if (!texture_slots.insert(instance.atlas_index).second) continue;
+                    const auto texture = context.shared_render_service->resolveTextureBySlot(instance.atlas_index);
+                    if (texture) pass_builder.read(pass_builder.importTexture(texture, "SpriteAtlas"));
+                }
+
 
                 const auto* gpu_scene = context.scene ? context.scene->getGpuScene() : nullptr;
                 if (!gpu_scene) {
@@ -137,23 +139,14 @@ namespace dodoe {
                 }
                 const auto scene_resources = gpu_scene->getPassResources();
                 if (scene_resources.quad_vb && scene_resources.quad_ib) {
-                    parameters.quad_vertex_buffer = pass_builder.importBuffer(scene_resources.quad_vb, "SpriteQuadVB");
-                    parameters.quad_index_buffer = pass_builder.importBuffer(scene_resources.quad_ib, "SpriteQuadIB");
+                    parameters.quad_vertex_buffer = pass_builder.readBuffer(pass_builder.importBuffer(scene_resources.quad_vb, "SpriteQuadVB"), RenderGraphBufferUsage::Vertex);
+                    parameters.quad_index_buffer = pass_builder.readBuffer(pass_builder.importBuffer(scene_resources.quad_ib, "SpriteQuadIB"), RenderGraphBufferUsage::Index);
                 }
             },
             [this](const SpritePassParameters& parameters, const RenderGraphPassContext& ctx,
                    DrawCommandList& command_list) {
-                const auto color_target = ctx.resolveTexture(parameters.color_target);
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                if (parameters.clear_target) {
-                    command_list.clearTextureFloat(color_target, GfxAllSubresources, parameters.clear_color);
-                }
-
                 if (parameters.instances.empty() || !parameters.quad_vertex_buffer.isValid() ||
                     !parameters.quad_index_buffer.isValid() || !m_input_layout) {
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -162,8 +155,6 @@ namespace dodoe {
                 const auto* pipeline_cache = shared_service ? shared_service->getPipelineStateCache() : nullptr;
                 if (!shader_library || !pipeline_cache) {
                     DO_ERROR("SpritePass: shader library or pipeline cache unavailable");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -172,21 +163,6 @@ namespace dodoe {
                 const auto quad_vertex_buffer = ctx.resolveBuffer(parameters.quad_vertex_buffer);
                 const auto quad_index_buffer = ctx.resolveBuffer(parameters.quad_index_buffer);
 
-                // Upload instance data and VP
-                command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
-                command_list.setBufferState(vp_buffer, GfxResourceStates::CopyDest);
-                command_list.commitBarriers();
-                command_list.writeBuffer(instance_buffer, parameters.instances.data(),
-                                         parameters.instances.size() * sizeof(SpriteInstance));
-                const Matrix4f view_projection = ctx.getView()->getViewProjectionMatrix();
-                command_list.writeBuffer(vp_buffer, &view_projection, sizeof(view_projection));
-
-                command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
-                command_list.setBufferState(vp_buffer, GfxResourceStates::ConstantBuffer);
-                command_list.setBufferState(quad_vertex_buffer, GfxResourceStates::VertexBuffer);
-                command_list.setBufferState(quad_index_buffer, GfxResourceStates::IndexBuffer);
-                command_list.commitBarriers();
-
                 const Bool use_bindless = RenderSettings::IsBindlessActive();
 
                 if (use_bindless) {
@@ -194,15 +170,13 @@ namespace dodoe {
                     if (!descriptor_manager || !descriptor_manager->getDescriptorTable() ||
                         !m_cb_binding_layout || !m_sampler_binding_layout) {
                         DO_ERROR("SpritePass: bindless sprite resources are unavailable");
-                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                        command_list.commitBarriers();
                         return;
                     }
 
                     auto* set_cache = shared_service->getBindingSetCache();
                     const GfxLogicalBindingSetDesc cb_desc = GfxLogicalBindingSetDesc()
                         .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer));
-                    const auto cb_binding_set = set_cache->getOrCreate(command_list, cb_desc, m_cb_binding_layout, 0);
+                    const auto cb_binding_set = command_list.createBindingSet(cb_desc, m_cb_binding_layout);
                     const GfxLogicalBindingSetDesc sampler_desc = GfxLogicalBindingSetDesc()
                         .addItem(GfxLogicalBindingItem::Sampler(1, GlobalSamplers::Screen()));
                     const auto sampler_binding_set = set_cache->getOrCreate(command_list, sampler_desc, m_sampler_binding_layout, 0);
@@ -266,8 +240,6 @@ namespace dodoe {
                     auto* set_cache = shared_service ? shared_service->getBindingSetCache() : nullptr;
                     if (!m_cb_binding_layout || !m_material_binding_layout || !shared_service || !set_cache) {
                         DO_ERROR("SpritePass: array binding layout unavailable");
-                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                        command_list.commitBarriers();
                         return;
                     }
 
@@ -308,11 +280,10 @@ namespace dodoe {
                             continue;
                         }
 
-                        auto cb_binding_set = set_cache->getOrCreate(
-                            command_list,
+                        auto cb_binding_set = command_list.createBindingSet(
                             GfxLogicalBindingSetDesc()
                                 .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer)),
-                            m_cb_binding_layout, 0);
+                            m_cb_binding_layout);
                         auto material_binding_set = set_cache->getOrCreate(
                             command_list,
                             GfxLogicalBindingSetDesc()
@@ -362,8 +333,6 @@ namespace dodoe {
                     }
                 }
 
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                command_list.commitBarriers();
             });
     }
 

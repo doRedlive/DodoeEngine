@@ -35,8 +35,8 @@ namespace dodoe {
     Bool RenderTargetHandle::resolve(const UInt32 reference_width, const UInt32 reference_height,
         GfxContext& gfx, const UInt64 current_frame) {
         DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::resolve", "swapchain");
-        UInt32 target_width  = reference_width;
-        UInt32 target_height = reference_height;
+        UInt32 target_width  = m_desc.fixed_width;
+        UInt32 target_height = m_desc.fixed_height;
 
         if (m_desc.scale_policy == RenderTargetScalePolicy::Relative) {
             target_width  = static_cast<UInt32>(static_cast<Float>(reference_width)  * m_desc.scale_x);
@@ -124,12 +124,6 @@ namespace dodoe {
 
     void RenderTargetHandle::createAllTextures(GfxContext& gfx) {
         DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::createAllTextures", "resource");
-        const auto device = gfx.getDevice();
-        if (!device) {
-            DO_ERROR("RenderTargetHandle::createAllTextures: graphics device is unavailable");
-            return;
-        }
-
         for (const auto& ca : m_desc.color_attachments) {
             GfxTextureDesc tex_desc{};
             tex_desc.width  = m_current_width;
@@ -142,10 +136,9 @@ namespace dodoe {
             tex_desc.enableAutomaticStateTracking(GfxResourceStates::ShaderResource);
             tex_desc.setIsRenderTarget(true);
             tex_desc.setClearValue(ca.clear_color);
+            tex_desc.setDebugName(ca.debug_name);
 
-            auto tex = create_ref<GfxTexture>(tex_desc, ca.debug_name);
-            tex->initializeGpu(device);
-            m_color_textures.push_back(tex);
+            m_color_textures.push_back(GDrawCommandList.createTexture(tex_desc));
         }
 
         if (m_desc.has_depth) {
@@ -160,9 +153,9 @@ namespace dodoe {
             depth_desc.enableAutomaticStateTracking(GfxResourceStates::DepthWrite);
             depth_desc.setIsRenderTarget(true);
             depth_desc.setClearValue(GfxColor(m_desc.clear_depth, 0.0f, 0.0f, 0.0f));
+            depth_desc.setDebugName(m_desc.depth_debug_name);
 
-            m_depth_texture = create_ref<GfxTexture>(depth_desc, m_desc.depth_debug_name);
-            m_depth_texture->initializeGpu(device);
+            m_depth_texture = GDrawCommandList.createTexture(depth_desc);
         }
         // DO_DEBUG("RenderTargetHandle: created {} color texture(s){}",
         //     m_color_textures.size(), m_depth_texture ? " and depth texture" : "");

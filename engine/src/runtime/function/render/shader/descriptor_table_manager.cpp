@@ -25,6 +25,7 @@ namespace dodoe {
         };
         auto bindless_layout = GDrawCommandList.getDevice()->createBindlessLayout(bindless_layout_desc);
         descriptor_table_ = GDrawCommandList.getDevice()->createDescriptorTable(bindless_layout);
+        if (!descriptor_table_) return false;
 
         size_t capacity = descriptor_table_->getCapacity();
         allocated_descriptors_.resize(capacity);
@@ -41,6 +42,7 @@ namespace dodoe {
             }
         }
         descriptors_.clear();
+        texture_descriptors_.clear();
         descriptor_index_umap_.clear();
         allocated_descriptors_.clear();
         search_start_ = 0;
@@ -92,6 +94,14 @@ namespace dodoe {
         return index;
     }
 
+    DescriptorIndex DescriptorTableManager::createDescriptor(DrawCommandList& commands, const GfxTextureHandle& texture) {
+        if (!descriptor_table_ || !texture) return -1;
+        const UInt32 slot = allocateSlot();
+        if (texture_descriptors_.size() <= slot) texture_descriptors_.resize(slot + 1);
+        texture_descriptors_[slot] = texture;
+        return commands.createDescriptor(descriptor_table_, texture, slot);
+    }
+
     void DescriptorTableManager::releaseDescriptor(const DescriptorIndex index) {
         if (index < 0 || index >= static_cast<Int32>(allocated_descriptors_.size())) {
             return;
@@ -105,6 +115,8 @@ namespace dodoe {
         if (descriptors_[index].resourceHandle) {
             descriptors_[index].resourceHandle->Release();
         }
+        descriptors_[index] = {};
+        if (static_cast<Size_t>(index) < texture_descriptors_.size()) texture_descriptors_[index].reset();
 
         for (auto it = descriptor_index_umap_.begin(); it != descriptor_index_umap_.end(); ++it) {
             if (it->second == index) {

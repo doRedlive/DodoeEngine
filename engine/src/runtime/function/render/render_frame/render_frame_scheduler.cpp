@@ -39,6 +39,7 @@ namespace dodoe {
             m_device->waitEventQuery(slot.completion_query);
             m_device->resetEventQuery(slot.completion_query);
             slot.in_flight = false;
+            m_completed_frame = slot.frame_number;
             m_deletion_queue.processCompleted(slot.frame_number);
         }
 
@@ -82,7 +83,12 @@ namespace dodoe {
             }
             slot.in_flight = false;
         }
+        if (m_frame_counter > 0) m_completed_frame = m_frame_counter - 1;
         m_deletion_queue.processCompleted((std::numeric_limits<UInt64>::max)());
+    }
+
+    void RenderFrameScheduler::resetTransientResources() {
+        for (auto& slot : m_slots) slot.transient_resource_pool.reset();
     }
 
     void RenderFrameScheduler::deferDeleteFunc(std::function<void()> deleter) {

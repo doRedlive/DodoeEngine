@@ -352,7 +352,7 @@ namespace dodoe {
 
         if (RenderSettings::IsBindlessActive()) {
             const DescriptorIndex desc_idx = m_descriptor_table->createDescriptor(
-                GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle()));
+                GDrawCommandList, handle);
             if (desc_idx < 0) {
                 DO_ERROR("TextureManager::realizeTexture: descriptor allocation failed for '{}'", texture_path);
                 return nullptr;
@@ -436,7 +436,7 @@ namespace dodoe {
 
         if (RenderSettings::IsBindlessActive()) {
             const DescriptorIndex fallback_descriptor_index = m_descriptor_table->createDescriptor(
-                GfxBindingSetItem::Texture_SRV(0, handle->getRHIHandle()));
+                GDrawCommandList, handle);
             if (fallback_descriptor_index < 0) {
                 DO_ERROR("TextureManager: fallback descriptor allocation failed");
                 return false;

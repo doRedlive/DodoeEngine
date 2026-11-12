@@ -7,6 +7,7 @@
 namespace dodoe {
 
     class GfxContext;
+    class DrawCommandList;
 
     using DescriptorIndex = int;
 
@@ -41,6 +42,9 @@ namespace dodoe {
         
         GfxDescriptorTableHandle descriptor_table_{};
         std::vector<GfxBindingSetItem> descriptors_{};
+        // Descriptor tables do not own their textures. Retain logical resources
+        // for the lifetime of their slots, including before physical creation.
+        DynamicArray<GfxTextureHandle> texture_descriptors_{};
         std::unordered_map<GfxBindingSetItem, DescriptorIndex, BindingSetItemHasher, BindingSetItemsEqual> descriptor_index_umap_{};
         std::vector<bool> allocated_descriptors_{};
         int search_start_ = 0;
@@ -50,6 +54,7 @@ namespace dodoe {
     public:
 
         DescriptorIndex createDescriptor(GfxBindingSetItem item);
+        DescriptorIndex createDescriptor(DrawCommandList& commands, const GfxTextureHandle& texture);
         void releaseDescriptor(DescriptorIndex index);
         UInt32 allocateSlot();
         [[nodiscard]] GfxDescriptorTable* getDescriptorTable() const { return descriptor_table_; }

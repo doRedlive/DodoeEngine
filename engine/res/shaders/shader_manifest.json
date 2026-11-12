@@ -21,6 +21,7 @@
     { "name": "FxaaPS",                "source": "post/fxaa_pass",                     "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "OutlinePS",             "source": "post/outline_pass",                  "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "PresentPS",             "source": "post/combine_pass",                  "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
+    { "name": "Present2DPS",           "source": "post/combine_2d_pass",               "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "BaselineVS",            "source": "reference/baseline_pass",            "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "BaselinePS",            "source": "reference/baseline_pass",            "entry_point": "main", "stage": "pixel",    "platforms": ["d3d12", "vulkan", "opengl"] },
     { "name": "ImGuiVS",               "source": "ui/imgui_pass",                      "entry_point": "main", "stage": "vertex",   "platforms": ["d3d12", "vulkan", "opengl"] },

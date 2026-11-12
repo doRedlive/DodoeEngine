@@ -3,6 +3,7 @@
 #if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 
 #include "imgui_builder.h"
+#include <mutex>
 
 #include "imgui_style.h"
 #include "imgui_viewport_renderer.h"
@@ -13,6 +14,33 @@
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 namespace dodoe {
+    namespace {
+        std::mutex s_texture_mutex;
+        UnorderedMap<ImTextureID, Weak<GfxTexture>> s_textures;
+    }
+
+    ImTextureID ImGuiBuilder::RegisterTexture(const GfxTextureHandle& texture) {
+        if (!texture) return ImTextureID_Invalid;
+        std::lock_guard<std::mutex> lock(s_texture_mutex);
+        const auto id = reinterpret_cast<ImTextureID>(texture.get());
+        s_textures[id] = Weak<GfxTexture>(texture);
+        return id;
+    }
+
+    void ImGuiBuilder::UnregisterTexture(ImTextureID id) {
+        std::lock_guard<std::mutex> lock(s_texture_mutex);
+        s_textures.erase(id);
+    }
+
+    GfxTextureHandle ImGuiBuilder::ResolveTexture(ImTextureID id) {
+        std::lock_guard<std::mutex> lock(s_texture_mutex);
+        const auto it = s_textures.find(id);
+        if (it == s_textures.end()) return {};
+        auto texture = it->second.lock();
+        if (!texture) s_textures.erase(it);
+        return texture;
+    }
+
 
     void ImGuiBuilder::SetupImGui(GLFWwindow* window) {
         IMGUI_CHECKVERSION();
@@ -163,6 +191,7 @@ namespace dodoe {
                 ImGuiRenderCmd& cmd = dst.commands[i];
                 cmd.clip_rect = Vector4f(src.ClipRect.x, src.ClipRect.y, src.ClipRect.z, src.ClipRect.w);
                 cmd.texture_id = src.GetTexID();
+                cmd.texture = ResolveTexture(cmd.texture_id);
                 cmd.vtx_offset = src.VtxOffset;
                 cmd.idx_offset = src.IdxOffset;
                 cmd.elem_count = src.ElemCount;
@@ -173,6 +202,10 @@ namespace dodoe {
 
     void ImGuiBuilder::CleanupImGui() {
         if (!ImGui::GetCurrentContext()) return;
+        {
+            std::lock_guard<std::mutex> lock(s_texture_mutex);
+            s_textures.clear();
+        }
         UninstallViewportRenderer();
         if (s_glfwBackendInit) {
             ImGui_ImplGlfw_Shutdown();

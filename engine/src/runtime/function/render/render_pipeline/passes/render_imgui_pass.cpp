@@ -22,6 +22,7 @@ namespace dodoe {
         RenderGraphBufferHandle imgui_cb{};
         RenderGraphBufferHandle vertex_buffer{};
         RenderGraphBufferHandle index_buffer{};
+        ImGuiRenderPacket packet{};
     };
 
     void ImGuiPass::build(RenderGraphBuilder& graph,
@@ -50,10 +51,13 @@ namespace dodoe {
                     parameters.font_texture = pass_builder.read(
                         pass_builder.importTexture(*font_texture, "ImGuiFontTexture"));
                 }
-                parameters.imgui_cb = pass_builder.write(pass_builder.importBuffer(
-                    context.graph_imports->require<ImGuiConstantBufferKey>(), "ImGuiViewportCB"));
+                RenderGraphBufferDesc cb_desc{};
+                cb_desc.desc.setByteSize(sizeof(ImGuiViewportConstants)).setIsConstantBuffer(true)
+                    .enableAutomaticStateTracking(GfxResourceStates::CopyDest).setDebugName("ImGuiViewportCB");
+                parameters.imgui_cb = pass_builder.createTransientBuffer(cb_desc, "ImGuiViewportCB");
 
-                const auto& packet = ImGuiBuilder::GetRenderPacket();
+                parameters.packet = ImGuiBuilder::GetRenderPacket();
+                const auto& packet = parameters.packet;
                 Size_t vertex_count = 1;
                 Size_t index_count = 1;
                 for (const auto& list : packet.lists) {
@@ -67,10 +71,7 @@ namespace dodoe {
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG ImGuiVB");
-                parameters.vertex_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(vb_desc, "ImGuiVertexBuffer"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.vertex_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.vertex_buffer = pass_builder.createTransientBuffer(vb_desc, "ImGuiVertexBuffer");
 
                 RenderGraphBufferDesc ib_desc{};
                 ib_desc.desc = GfxBufferDesc()
@@ -78,14 +79,31 @@ namespace dodoe {
                     .setIsIndexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG ImGuiIB");
-                parameters.index_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(ib_desc, "ImGuiIndexBuffer"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.index_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.index_buffer = pass_builder.createTransientBuffer(ib_desc, "ImGuiIndexBuffer");
+                UInt64 vertex_offset = 0, index_offset = 0;
+                UnorderedSet<GfxTexture*> textures;
+                for (const auto& list : packet.lists) {
+                    const Size_t vb_bytes = list.vertices.size() * sizeof(ImDrawVert);
+                    const Size_t ib_bytes = list.indices.size() * sizeof(ImDrawIdx);
+                    pass_builder.uploadBuffer(parameters.vertex_buffer, list.vertices.data(), vb_bytes, vertex_offset);
+                    pass_builder.uploadBuffer(parameters.index_buffer, list.indices.data(), ib_bytes, index_offset);
+                    vertex_offset += vb_bytes;
+                    index_offset += ib_bytes;
+                    for (const auto& draw : list.commands) {
+                        const auto& texture = draw.texture;
+                        if (!draw.user_callback && texture && textures.insert(texture.get()).second)
+                            pass_builder.read(pass_builder.importTexture(texture, "ImGuiTexture"));
+                    }
+                }
+                const auto constants = ImGuiDrawRenderer::makeViewportConstants(packet);
+                pass_builder.uploadBuffer(parameters.imgui_cb, &constants, sizeof(constants));
+                pass_builder.readBuffer(parameters.imgui_cb, RenderGraphBufferUsage::Constant);
+                if (vertex_offset) pass_builder.readBuffer(parameters.vertex_buffer, RenderGraphBufferUsage::Vertex);
+                if (index_offset) pass_builder.readBuffer(parameters.index_buffer, RenderGraphBufferUsage::Index);
             },
             [this](const ImGuiPassParameters& parameters, const RenderGraphPassContext& ctx,
                DrawCommandList& command_list) {
-                const auto& packet = ImGuiBuilder::GetRenderPacket();
+                const auto& packet = parameters.packet;
                 if (packet.lists.empty()) {
                     return;
                 }
@@ -96,7 +114,7 @@ namespace dodoe {
                 const auto framebuffer = ctx.getFramebuffer();
                 m_renderer.render(packet, framebuffer, ctx.getRenderTargetSignature(),
                                   vb, ib, imgui_cb, command_list,
-                                  ctx.getPipelineStateCache(), ctx.getShaderLibrary());
+                                  ctx.getPipelineStateCache(), ctx.getShaderLibrary(), true);
             });
     }
 

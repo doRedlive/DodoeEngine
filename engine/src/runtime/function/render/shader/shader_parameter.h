@@ -206,6 +206,10 @@ namespace dodoe {
     };
 
     namespace detail {
+        inline std::recursive_mutex& BindingLayoutCacheMutex() {
+            static std::recursive_mutex mutex;
+            return mutex;
+        }
         inline DynamicArray<DynamicArray<GfxBindingLayoutHandle>*>& GetBindingLayoutCaches() {
             static DynamicArray<DynamicArray<GfxBindingLayoutHandle>*> caches;
             return caches;
@@ -213,21 +217,29 @@ namespace dodoe {
     }
 
     inline void RegisterStaticBindingLayoutCache(DynamicArray<GfxBindingLayoutHandle>* cache) {
+        std::lock_guard<std::recursive_mutex> lock(detail::BindingLayoutCacheMutex());
         detail::GetBindingLayoutCaches().push_back(cache);
     }
 
     inline void ClearStaticBindingLayoutCaches() {
+        std::lock_guard<std::recursive_mutex> lock(detail::BindingLayoutCacheMutex());
         for (auto* cache : detail::GetBindingLayoutCaches()) {
             cache->clear();
         }
-        detail::GetBindingLayoutCaches().clear();
     }
 
     template <typename ShaderParamStruct>
     struct ShaderBindingReflector {
 
         static DynamicArray<GfxBindingLayoutHandle> getOrCreateLayouts(GfxShaderType visibility = GfxShaderType::All) {
-            static DynamicArray<GfxBindingLayoutHandle> s_layouts = [visibility]() {
+            std::lock_guard<std::recursive_mutex> lock(detail::BindingLayoutCacheMutex());
+            static DynamicArray<GfxBindingLayoutHandle> s_layouts;
+            static GfxShaderType s_visibility = visibility;
+            if (s_visibility != visibility) {
+                s_layouts.clear();
+                s_visibility = visibility;
+            }
+            if (s_layouts.empty()) s_layouts = [visibility]() {
                 DynamicArray<GfxBindingLayoutHandle> layouts;
                 ShaderParamStruct dummy{};
 
@@ -295,7 +307,8 @@ namespace dodoe {
             const DynamicArray<GfxBindingLayoutHandle>& layouts,
             ShaderParamStruct& params,
             ResolveTexFunc&& resolveTex,
-            ResolveBufFunc&& resolveBuf)
+            ResolveBufFunc&& resolveBuf,
+            BindingSetFrequency frequency = BindingSetFrequency::Material)
         {
             StaticArray<GfxLogicalBindingSetDesc, 8> set_descs{};
             buildSetDescs(params, set_descs, std::forward<ResolveTexFunc>(resolveTex), std::forward<ResolveBufFunc>(resolveBuf));
@@ -306,7 +319,9 @@ namespace dodoe {
                 if (set_descs[set].bindings.empty()) {
                     continue;
                 }
-                auto bs = cache.getOrCreate(command_list, set_descs[set], layouts[layout_index], 0);
+                auto bs = frequency == BindingSetFrequency::Pass || frequency == BindingSetFrequency::Draw
+                    ? command_list.createBindingSet(set_descs[set], layouts[layout_index])
+                    : cache.getOrCreate(command_list, set_descs[set], layouts[layout_index], 0);
                 if (!bs) {
                     DO_ERROR("ShaderBindingReflector::createBindingSets getOrCreate failed for set {}", set);
                 }

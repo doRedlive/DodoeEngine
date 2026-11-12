@@ -81,6 +81,10 @@ namespace dodoe {
     UInt32 RenderGraph::addImportedTextureResource(const GfxTextureHandle& texture, const String& name) {
         DO_ASSERT(!m_compiled, "Cannot add resource after compile");
         DO_ASSERT(texture != nullptr, "RenderGraph::addImportedTextureResource requires valid texture");
+        for (Size_t i = 0; i < m_resources.size(); ++i) {
+            if (m_resources[i].source == RenderGraphResourceSource::ImportedTexture &&
+                m_resources[i].imported_texture.get() == texture.get()) return static_cast<UInt32>(i);
+        }
         RenderGraphResourceRecord record{};
         record.type = RenderGraphResourceType::Texture;
         record.source = RenderGraphResourceSource::ImportedTexture;
@@ -93,6 +97,10 @@ namespace dodoe {
     UInt32 RenderGraph::addImportedBufferResource(const GfxBufferHandle& buffer, const String& name) {
         DO_ASSERT(!m_compiled, "Cannot add resource after compile");
         DO_ASSERT(buffer != nullptr, "RenderGraph::addImportedBufferResource requires valid buffer");
+        for (Size_t i = 0; i < m_resources.size(); ++i) {
+            if (m_resources[i].source == RenderGraphResourceSource::ImportedBuffer &&
+                m_resources[i].imported_buffer.get() == buffer.get()) return static_cast<UInt32>(i);
+        }
         RenderGraphResourceRecord record{};
         record.type = RenderGraphResourceType::Buffer;
         record.source = RenderGraphResourceSource::ImportedBuffer;
@@ -104,6 +112,9 @@ namespace dodoe {
 
     UInt32 RenderGraph::addBackBufferResource(const String& name) {
         DO_ASSERT(!m_compiled, "Cannot add resource after compile");
+        for (Size_t i = 0; i < m_resources.size(); ++i) {
+            if (m_resources[i].source == RenderGraphResourceSource::ImportedBackBuffer) return static_cast<UInt32>(i);
+        }
         RenderGraphResourceRecord record{};
         record.type = RenderGraphResourceType::Texture;
         record.source = RenderGraphResourceSource::ImportedBackBuffer;
@@ -113,167 +124,71 @@ namespace dodoe {
     }
 
     void RenderGraph::validateAccesses() {
-        for (const auto& resource : m_resources) {
-            if (resource.first_pass_index < 0) {
-                continue;
-            }
-            if (resource.isImported()) {
-                continue;
-            }
-            const Bool has_writer = !resource.writer_passes.empty();
-            const Bool has_readers = !resource.reader_passes.empty();
-            if (!has_writer && has_readers) {
-                DO_ASSERT(false, "RenderGraph validation: uninitialized read - resource read before any write");
-            }
-            if (has_writer && !has_readers && !resource.is_exported) {
-                DO_ERROR("RenderGraph validation: resource {} written but never read and not exported", resource.name);
-                DO_ASSERT(false);
-            }
-        }
-
-        for (Size_t pass_index = 0; pass_index < m_passes.size(); pass_index++) {
-            if (m_culled_passes[pass_index]) {
-                continue;
-            }
-            const auto& pass = m_passes[pass_index];
+        DynamicArray<Bool> initialized(m_resources.size(), false);
+        for (Size_t i = 0; i < m_resources.size(); ++i) initialized[i] = m_resources[i].isImported();
+        for (Size_t i = 0; i < m_passes.size(); ++i) {
+            if (m_culled_passes[i]) continue;
+            const auto& pass = m_passes[i];
+            // Uploads execute before all raster accesses regardless of declaration order.
+            for (const auto& upload : pass->getUploads()) initialized[upload.buffer.index] = true;
+            for (const auto& slot : pass->getColorSlots())
+                DO_ASSERT(slot.load_op != LoadOp::Load || initialized[slot.texture.index],
+                    "RenderGraph: Load requires initialized color contents");
             for (const auto& access : pass->getAccesses()) {
-                if (access.access_type != RenderGraphAccessType::ReadWrite) {
-                    continue;
-                }
-                const auto& resource = m_resources[access.resource_index];
-                for (const auto reader_index : resource.reader_passes) {
-                    if (reader_index == pass_index) {
-                        continue;
-                    }
-                    const auto& other_pass = m_passes[reader_index];
-                    for (const auto& other_access : other_pass->getAccesses()) {
-                        if (other_access.resource_index == access.resource_index &&
-                            other_access.access_type == RenderGraphAccessType::ReadWrite) {
-                            DO_ASSERT(false, "RenderGraph validation: UAV conflict - two passes use ReadWrite on same resource");
-                        }
-                    }
-                }
+                if (access.access_type == RenderGraphAccessType::Read)
+                    DO_ASSERT(initialized[access.resource_index], "RenderGraph: resource read before its first write");
+                else initialized[access.resource_index] = true;
             }
         }
     }
 
     void RenderGraph::deriveBarriers() {
-        const Size_t resource_count = m_resources.size();
-        DynamicArray<GfxResourceStates> current_states(resource_count, GfxResourceStates::Unknown);
-
-        for (Size_t i = 0; i < resource_count; i++) {
-            if (m_resources[i].isImported() || m_resources[i].source == RenderGraphResourceSource::ImportedBackBuffer) {
-                current_states[i] = GfxResourceStates::Common;
-            }
-        }
-
-        for (Size_t pass_index = 0; pass_index < m_passes.size(); pass_index++) {
-            if (m_culled_passes[pass_index]) {
-                continue;
-            }
-            auto& pass = m_passes[pass_index];
-            DynamicArray<RenderGraphBarrier> pre_barriers{};
-
-            for (const auto& access : pass->getAccesses()) {
-                const UInt32 res_idx = access.resource_index;
-                const GfxResourceStates required = accessToRequiredState(access.access_type, access.stage);
-
-                if (current_states[res_idx] != required && current_states[res_idx] != GfxResourceStates::Unknown) {
+        // Declare the required state at each pass boundary. The RHI tracks the
+        // actual state, including earlier submissions and upload transitions.
+        for (Size_t index = 0; index < m_passes.size(); ++index) {
+            auto& pass = m_passes[index];
+            DynamicArray<RenderGraphBarrier> barriers;
+            if (!m_culled_passes[index]) {
+                for (const auto& access : pass->getAccesses()) {
+                    if (access.upload) continue;
                     RenderGraphBarrier barrier{};
-                    barrier.resource_index = res_idx;
-                    barrier.resource_type = m_resources[res_idx].type;
-                    barrier.from_state = current_states[res_idx];
-                    barrier.to_state = required;
+                    barrier.resource_index = access.resource_index;
+                    barrier.resource_type = m_resources[access.resource_index].type;
+                    barrier.to_state = access.required_state != GfxResourceStates::Unknown
+                        ? access.required_state : accessToRequiredState(access.access_type, access.stage);
                     barrier.subresource = access.subresource;
-                    pre_barriers.push_back(barrier);
+                    barriers.push_back(barrier);
                 }
-                current_states[res_idx] = required;
             }
-
-            if (!pre_barriers.empty()) {
-                pass->setAutoBarriers(std::move(pre_barriers));
-            }
+            pass->setAutoBarriers(std::move(barriers));
         }
     }
 
     void RenderGraph::cullUnreachablePasses(const DynamicArray<DynamicArray<Size_t>>& edges) {
-        const Size_t pass_count = m_passes.size();
-        DynamicArray<Bool> reachable_passes(pass_count, false);
-        DynamicArray<Bool> reachable_resources(m_resources.size(), false);
-        DynamicArray<UInt32> resource_queue{};
+        DynamicArray<DynamicArray<Size_t>> predecessors(m_passes.size());
+        for (Size_t from = 0; from < edges.size(); ++from)
+            for (const auto to : edges[from]) predecessors[to].push_back(from);
 
-        for (Size_t i = 0; i < m_resources.size(); i++) {
-            if (m_resources[i].is_exported || m_resources[i].source == RenderGraphResourceSource::ImportedBackBuffer) {
-                reachable_resources[i] = true;
-                resource_queue.push_back(static_cast<UInt32>(i));
-            }
+        DynamicArray<Bool> reachable(m_passes.size(), false);
+        DynamicArray<Size_t> pending;
+        for (Size_t i = 0; i < m_passes.size(); ++i)
+            if (HasAnyFlags(m_passes[i]->getFlags(), RenderGraphPassFlags::NeverCull)) pending.push_back(i);
+        for (const auto& resource : m_resources) {
+            if ((resource.is_exported || resource.source == RenderGraphResourceSource::ImportedBackBuffer) &&
+                !resource.writer_passes.empty()) pending.push_back(resource.writer_passes.back());
         }
-
-        auto propagatePassResources = [&](const Size_t pass_idx) {
-            const auto& pass = m_passes[pass_idx];
-            for (const auto& access : pass->getAccesses()) {
-                if (!reachable_resources[access.resource_index]) {
-                    reachable_resources[access.resource_index] = true;
-                    resource_queue.push_back(access.resource_index);
-                }
-            }
-        };
-
-        while (!resource_queue.empty()) {
-            const UInt32 res_idx = resource_queue.back();
-            resource_queue.pop_back();
-            const auto& resource = m_resources[res_idx];
-
-            for (const auto writer_idx : resource.writer_passes) {
-                const Size_t writer = static_cast<Size_t>(writer_idx);
-                if (!reachable_passes[writer]) {
-                    reachable_passes[writer] = true;
-                    propagatePassResources(writer);
-                }
-            }
-
-            for (const auto reader_idx : resource.reader_passes) {
-                const Size_t reader = static_cast<Size_t>(reader_idx);
-                if (!reachable_passes[reader]) {
-                    reachable_passes[reader] = true;
-                    propagatePassResources(reader);
-                }
-            }
+        while (!pending.empty()) {
+            const auto index = pending.back();
+            pending.pop_back();
+            if (reachable[index]) continue;
+            reachable[index] = true;
+            for (const auto predecessor : predecessors[index]) pending.push_back(predecessor);
         }
-
-        DynamicArray<Size_t> pass_queue{};
-        for (Size_t i = 0; i < pass_count; i++) {
-            if (reachable_passes[i]) {
-                pass_queue.push_back(i);
-            }
-        }
-        while (!pass_queue.empty()) {
-            const Size_t pass_idx = pass_queue.back();
-            pass_queue.pop_back();
-            for (const auto next : edges[pass_idx]) {
-                if (!reachable_passes[next] && !m_culled_passes[next]) {
-                    reachable_passes[next] = true;
-                    pass_queue.push_back(next);
-                    const auto& next_pass = m_passes[next];
-                    for (const auto& access : next_pass->getAccesses()) {
-                        if (access.access_type != RenderGraphAccessType::Write &&
-                            access.access_type != RenderGraphAccessType::ReadWrite) {
-                            if (!reachable_resources[access.resource_index]) {
-                                reachable_resources[access.resource_index] = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        for (Size_t i = 0; i < pass_count; i++) {
-            if (HasAnyFlags(m_passes[i]->getFlags(), RenderGraphPassFlags::NeverCull)) {
-                continue;
-            }
-            if (!reachable_passes[i]) {
-                m_culled_passes[i] = true;
-            }
+        for (auto& resource : m_resources) resource.is_live = resource.is_exported;
+        for (Size_t i = 0; i < m_passes.size(); ++i) {
+            m_culled_passes[i] = !reachable[i];
+            if (reachable[i])
+                for (const auto& access : m_passes[i]->getAccesses()) m_resources[access.resource_index].is_live = true;
         }
     }
 
@@ -288,6 +203,7 @@ namespace dodoe {
 
     void RenderGraph::buildDependencyGraph(DynamicArray<DynamicArray<Size_t>>& edges, DynamicArray<Int32>& indegree) {
         const Size_t pass_count = m_passes.size();
+        DynamicArray<DynamicArray<UInt32>> readers_since_write(m_resources.size());
 
         for (Size_t pass_index = 0; pass_index < pass_count; pass_index++) {
             const auto& pass = m_passes[pass_index];
@@ -312,6 +228,7 @@ namespace dodoe {
                         AddEdge(edges, indegree, static_cast<Size_t>(resource.writer_passes.back()), pass_index);
                     }
                     resource.reader_passes.push_back(static_cast<UInt32>(pass_index));
+                    readers_since_write[access.resource_index].push_back(static_cast<UInt32>(pass_index));
                     continue;
                 }
 
@@ -319,11 +236,11 @@ namespace dodoe {
                     AddEdge(edges, indegree, static_cast<Size_t>(resource.writer_passes.back()), pass_index);
                 }
 
-                for (const auto reader_index : resource.reader_passes) {
+                for (const auto reader_index : readers_since_write[access.resource_index]) {
                     AddEdge(edges, indegree, reader_index, pass_index);
                 }
 
-                resource.reader_passes.clear();
+                readers_since_write[access.resource_index].clear();
                 resource.writer_passes.push_back(static_cast<UInt32>(pass_index));
             }
         }
@@ -382,8 +299,8 @@ namespace dodoe {
         resetResourceTracking();
         buildDependencyGraph(edges, indegree);
 
-        validateAccesses();
         cullUnreachablePasses(edges);
+        validateAccesses();
         deriveBarriers();
 
         topologicalSort(edges, indegree);
@@ -463,6 +380,8 @@ namespace dodoe {
                     if (fb_desc.depth()) {
                         key.depth_ref = {fb_desc.depth().get(), 0, 0, 0};
                     }
+                    const auto first = !fb_desc.colors().empty() ? fb_desc.colors().front() : fb_desc.depth();
+                    if (first) key.sample_count = first->getDesc().sampleCount;
                     prepared.framebuffer = fb_cache->getOrCreate(out_commands, key, fb_desc);
                 } else {
                     prepared.framebuffer = out_commands.createFramebuffer(fb_desc);
@@ -489,19 +408,6 @@ namespace dodoe {
 
             if (!prepared.uses_swapchain) {
                 for (const auto& slot : pass->getColorSlots()) {
-                    const auto tex = resource_resolver.getTexture(slot.texture);
-                    cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                }
-
-                if (pass->getDepthSlot().has_value()) {
-                    const auto& ds = pass->getDepthSlot().value();
-                    const auto tex = resource_resolver.getTexture(ds.texture);
-                    cmd.setTextureState(tex, GfxAllSubresources, GfxResourceStates::DepthWrite);
-                }
-
-                cmd.commitBarriers();
-
-                for (const auto& slot : pass->getColorSlots()) {
                     if (slot.load_op == LoadOp::Clear) {
                         cmd.clearTextureFloat(resource_resolver.getTexture(slot.texture),
                                               GfxAllSubresources, slot.clear_color);
@@ -521,84 +427,65 @@ namespace dodoe {
             pass_context.setFramebufferInfo(prepared.framebuffer_info);
         };
 
-        for (Size_t graph_level_index = 0; graph_level_index < m_levels.size(); ++graph_level_index) {
-            const auto& level = m_levels[graph_level_index];
-            DynamicArray<PreparedPassAttachments> prepared_attachments{};
-            prepared_attachments.reserve(level.size());
-            for (const auto pass_index : level) {
-                prepared_attachments.push_back(preparePassAttachments(m_passes[pass_index]));
+        auto recordPass = [&](const Ref<RenderGraphPass>& pass, const PreparedPassAttachments& attachments,
+                              DrawCommandList& commands) {
+            GfxRenderScope render_scope;
+            RenderGraphPassContext pass_context(context, resource_resolver);
+            commands.beginMarker(pass->getName().c_str());
+            for (const auto& upload : pass->getUploads())
+                commands.setBufferState(resource_resolver.getBuffer(upload.buffer), GfxResourceStates::CopyDest);
+            if (!pass->getUploads().empty()) commands.commitBarriers();
+            for (const auto& upload : pass->getUploads())
+                commands.writeBuffer(resource_resolver.getBuffer(upload.buffer), upload.data.data(),
+                                     upload.data.size(), upload.offset);
+            for (const auto& barrier : pass->getPreBarriers()) {
+                if (barrier.resource_type == RenderGraphResourceType::Texture) {
+                    const auto texture = resource_resolver.getTexture({barrier.resource_index});
+                    if (texture) commands.setTextureState(texture, GfxAllSubresources, barrier.to_state);
+                } else {
+                    commands.setBufferState(resource_resolver.getBuffer({barrier.resource_index}), barrier.to_state);
+                }
             }
+            if (!pass->getPreBarriers().empty()) commands.commitBarriers();
+            recordPassAttachments(pass, attachments, pass_context, commands);
+            pass->execute(pass_context, commands);
+            commands.endMarker();
+        };
 
-            if (direct_mode) {
-                for (Size_t i = 0; i < level.size(); ++i) {
-                    const auto pass_index = level[i];
-                    const auto pass = m_passes[pass_index];
-                    DO_PROFILE_SCOPE_CATEGORY(pass->getName(), "render-pass");
-                    RenderGraphPassContext pass_context(context, resource_resolver);
-                    for (const auto& barrier : pass->getPreBarriers()) {
-                        if (barrier.resource_type == RenderGraphResourceType::Texture) {
-                            const auto texture = resource_resolver.getTexture({barrier.resource_index});
-                            if (texture) out_commands.setTextureState(texture, {}, barrier.to_state);
-                        } else {
-                            const auto buffer = resource_resolver.getBuffer({barrier.resource_index});
-                            out_commands.setBufferState(buffer, barrier.to_state);
-                        }
-                    }
-                    if (!pass->getPreBarriers().empty()) {
-                        out_commands.commitBarriers();
-                    }
-                    recordPassAttachments(pass, prepared_attachments[i], pass_context, out_commands);
-                    out_commands.beginMarker(pass->getName().c_str());
-                    pass->execute(pass_context, out_commands);
-                    out_commands.endMarker();
-                }
-            } else {
-                DynamicArray<DrawCommandList> pass_command_lists(level.size());
-                for (auto& cmd_list : pass_command_lists) {
-                    cmd_list.setDevice(context.gfx_context->getDevice());
-                }
-
-                WaitGroup wg(static_cast<Int32>(level.size()));
-                for (Size_t i = 0; i < level.size(); ++i) {
-                    const auto pass_index = level[i];
-                    const auto pass = m_passes[pass_index];
-                    auto* cmd_list = &pass_command_lists[i];
-                    const auto* attachments = &prepared_attachments[i];
-
-                    pool.enqueue([pass, &context, &resource_resolver, &wg, cmd_list, attachments, &recordPassAttachments] {
-                        GfxRenderScope render_scope;
-                        DO_PROFILE_SCOPE_CATEGORY(pass->getName(), "render-pass");
-                        RenderGraphPassContext pass_context(context, resource_resolver);
-                        for (const auto& barrier : pass->getPreBarriers()) {
-                            if (barrier.resource_type == RenderGraphResourceType::Texture) {
-                                const auto texture = resource_resolver.getTexture({barrier.resource_index});
-                                if (texture) cmd_list->setTextureState(texture, {}, barrier.to_state);
-                            } else {
-                                const auto buffer = resource_resolver.getBuffer({barrier.resource_index});
-                                cmd_list->setBufferState(buffer, barrier.to_state);
-                            }
-                        }
-                        if (!pass->getPreBarriers().empty()) {
-                            cmd_list->commitBarriers();
-                        }
-                        recordPassAttachments(pass, *attachments, pass_context, *cmd_list);
-                        cmd_list->beginMarker(pass->getName().c_str());
-                        pass->execute(pass_context, *cmd_list);
-                        cmd_list->endMarker();
-                        wg.done();
-                    });
-                }
-                {
-                    DO_PROFILE_SCOPE_CATEGORY("RenderGraph::waitForPassRecording", "synchronization");
-                    wg.wait();
-                }
-
-                for (auto& cmd_list : pass_command_lists) {
-                    out_commands.append(std::move(cmd_list));
-                }
+        for (const auto& level : m_levels) {
+            DynamicArray<PreparedPassAttachments> attachments;
+            for (const auto index : level) attachments.push_back(preparePassAttachments(m_passes[index]));
+            if (direct_mode || level.size() == 1) {
+                for (Size_t i = 0; i < level.size(); ++i) recordPass(m_passes[level[i]], attachments[i], out_commands);
+                continue;
+            }
+            DynamicArray<DrawCommandList> lists(level.size());
+            WaitGroup group(static_cast<Int32>(level.size()));
+            for (Size_t i = 0; i < level.size(); ++i) {
+                lists[i].setDevice(context.gfx_context->getDevice());
+                pool.enqueue([&, i] {
+                    recordPass(m_passes[level[i]], attachments[i], lists[i]);
+                    group.done();
+                });
+            }
+            group.wait();
+            for (auto& list : lists) out_commands.append(std::move(list));
+        }
+        Bool has_exports = false;
+        for (Size_t i = 0; i < m_resources.size(); ++i) {
+            const auto& resource = m_resources[i];
+            if (resource.is_exported && resource.export_final_state != GfxResourceStates::Unknown) {
+                out_commands.setTextureState(resource_resolver.getTexture({static_cast<UInt32>(i)}),
+                    GfxAllSubresources, resource.export_final_state);
+                has_exports = true;
             }
         }
-
+        if (has_exports) out_commands.commitBarriers();
+        if (context.shared_render_service) {
+            context.transient_resource_pool->flushEvictions(
+                context.shared_render_service->getFramebufferCache(),
+                context.shared_render_service->getBindingSetCache());
+        }
     }
 
     void RenderGraph::reset() {

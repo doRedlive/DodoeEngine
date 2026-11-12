@@ -16,6 +16,7 @@ namespace dodoe {
     class PipelineStateCache : public Managed<PipelineStateCache, PipelineStateCacheCreateInfo> {
         friend class Managed<PipelineStateCache, PipelineStateCacheCreateInfo>;
         GfxDeviceHandle m_device{};
+        mutable std::mutex m_mutex{};
         mutable UnorderedMap<GraphicsPipelineCacheKey, GfxGraphicsPipelineHandle, GraphicsPipelineCacheKeyHash> m_graphics_pipelines{};
 
     public:
@@ -29,7 +30,7 @@ namespace dodoe {
             const GfxFramebufferInfo& framebuffer_info,
             DrawCommandList& command_list) const;
         void clear();
-        [[nodiscard]] Size_t size() const { return m_graphics_pipelines.size(); }
+        [[nodiscard]] Size_t size() const { std::lock_guard<std::mutex> lock(m_mutex); return m_graphics_pipelines.size(); }
 
     private:
         Bool initialize(const PipelineStateCacheCreateInfo& info) { m_device = info.device; return m_device != nullptr; }

@@ -11,6 +11,11 @@
 namespace dodoe {
 
     struct ImGuiRenderPacket;
+    struct ImGuiViewportConstants {
+        Float inv_display_size[2]{};
+        Float display_origin[2]{};
+        Float ndc_y_flip{1.0f};
+    };
 
     class DrawCommandList;
     class PipelineStateCache;
@@ -39,7 +44,9 @@ namespace dodoe {
                     const GfxBufferHandle& constant_buffer,
                     DrawCommandList& command_list,
                     const PipelineStateCache* pipeline_cache,
-                    const ShaderLibrary* shader_library);
+                    const ShaderLibrary* shader_library,
+                    Bool buffers_uploaded = false);
+        static ImGuiViewportConstants makeViewportConstants(const ImGuiRenderPacket& packet);
     };
 
 } // namespace dodoe

@@ -20,6 +20,7 @@ namespace dodoe {
     struct ImGuiRenderCmd {
         Vector4f        clip_rect;
         ImTextureID     texture_id;
+        GfxTextureHandle texture{};
         UInt32          vtx_offset;
         UInt32          idx_offset;
         UInt32          elem_count;
@@ -56,6 +57,11 @@ namespace dodoe {
                                             const ShaderLibrary* shader_library);
         static void UninstallViewportRenderer();
         static void SerializeImGuiDrawData(const ImDrawData* draw_data, ImGuiRenderPacket& out_packet);
+        // Register logical textures before passing their IDs to ImGui. Packets
+        // capture strong references; the registry itself does not retain assets.
+        static ImTextureID RegisterTexture(const GfxTextureHandle& texture);
+        static void UnregisterTexture(ImTextureID id);
+        static GfxTextureHandle ResolveTexture(ImTextureID id);
 
         static ImGuiContext* GetContext() { return s_context; }
         static const ImGuiRenderPacket& GetRenderPacket() { return s_active_packet ? *s_active_packet : s_empty_packet; }

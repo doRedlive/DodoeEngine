@@ -9,6 +9,7 @@
 
 #include "../render_pipeline_pass_utils.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
+#include "runtime/function/render/render_settings.h"
 
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "runtime/function/render/shader/shader_parameter.h"
@@ -30,9 +31,11 @@ namespace dodoe {
 
     void PostProcess2DPass::build(RenderGraphBuilder& graph,
                                    const RenderPassBuildContext& context) {
+        if (RenderSettings::GetAntialiasingMode() != AntialiasingMode::FXAA) return;
         const auto* shader_library = context.shared_render_service->getShaderLibrary();
         DO_ASSERT(shader_library != nullptr, "PostProcess2DPass shader library is null");
 
+        const auto binding_layouts = ShaderBindingReflector<PostProcess2DPassShaderParams>::getOrCreateLayouts();
         graph.addPass<PostProcess2DPassParameters>(
             "PostProcess2DPass",
             RenderGraphPassFlags::Raster,
@@ -49,19 +52,18 @@ namespace dodoe {
                     "PostProcess2DOutput"), output_attachment);
                 pass_builder.blackboard().set<SceneColorKey>(parameters.output);
             },
-            [shader_library](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
+            [shader_library, binding_layouts](const PostProcess2DPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 PostProcess2DPassShaderParams shader_params;
                 shader_params.input.value = parameters.input;
                 shader_params.sampler.value = GlobalSamplers::Screen();
 
-                const auto binding_layouts = ShaderBindingReflector<PostProcess2DPassShaderParams>::getOrCreateLayouts();
 
                 auto binding_sets = ShaderBindingReflector<PostProcess2DPassShaderParams>::createBindingSets(
                     *ctx.getSharedRenderService()->getBindingSetCache(),
                     command_list,
                     binding_layouts, shader_params,
                     [&](auto h) { return ctx.resolveTexture(h); },
-                    [&](auto h) { return ctx.resolveBuffer(h); });
+                    [&](auto h) { return ctx.resolveBuffer(h); }, BindingSetFrequency::Pass);
 
                 if (binding_sets.empty()) {
                     DO_ERROR("PostProcess2DPass: Failed to create binding set");
@@ -83,7 +85,9 @@ namespace dodoe {
                     return;
                 }
 
-                const auto viewport_state = rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
+                const auto extent = ctx.getGfxContext()->getSwapchainExtent2D();
+                const auto viewport_state = GfxViewportState().addViewportAndScissorRect(
+                    GfxViewport(0.0f, static_cast<Float>(extent.x), 0.0f, static_cast<Float>(extent.y), 0.0f, 1.0f));
 
                 command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, binding_sets, viewport_state);
                 command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));

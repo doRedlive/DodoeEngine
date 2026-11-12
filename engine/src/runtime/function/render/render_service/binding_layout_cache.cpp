@@ -25,6 +25,19 @@ namespace dodoe {
             }
             return h;
         }
+        Bool EqualBindingLayout(const GfxBindingLayoutDesc& a, const GfxBindingLayoutDesc& b) {
+            if (a.visibility != b.visibility || a.registerSpace != b.registerSpace ||
+                a.registerSpaceIsDescriptorSet != b.registerSpaceIsDescriptorSet ||
+                a.bindingOffsets.shaderResource != b.bindingOffsets.shaderResource ||
+                a.bindingOffsets.sampler != b.bindingOffsets.sampler ||
+                a.bindingOffsets.constantBuffer != b.bindingOffsets.constantBuffer ||
+                a.bindingOffsets.unorderedAccess != b.bindingOffsets.unorderedAccess ||
+                a.bindings.size() != b.bindings.size()) return false;
+            for (Size_t i = 0; i < a.bindings.size(); ++i)
+                if (a.bindings[i].type != b.bindings[i].type || a.bindings[i].slot != b.bindings[i].slot ||
+                    a.bindings[i].size != b.bindings[i].size) return false;
+            return true;
+        }
     } // anonymous namespace
 
     Bool BindingLayoutCache::initialize(const BindingLayoutCacheCreateInfo& info) {
@@ -38,6 +51,7 @@ namespace dodoe {
     }
 
     void BindingLayoutCache::shutdown() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         DO_PROFILE_SCOPE_CATEGORY("BindingLayoutCache::shutdown", "shutdown");
         DO_INFO("BindingLayoutCache: releasing {} cached binding layout(s)", m_cache.size());
         m_cache.clear();
@@ -47,20 +61,17 @@ namespace dodoe {
     GfxBindingLayoutHandle BindingLayoutCache::getOrCreate(const GfxBindingLayoutDesc& desc) {
         DO_PROFILE_SCOPE_CATEGORY("BindingLayoutCache::getOrCreate", "resource-cache");
         const auto hash = HashBindingLayoutDesc(desc);
-        auto it = m_cache.find(hash);
-        if (it != m_cache.end()) {
-            return it->second.layout;
-        }
-
-        auto layout = GDrawCommandList.createBindingLayout(desc);
-        m_cache[hash] = {layout, m_next_generation++};
-        // DO_DEBUG("BindingLayoutCache: created binding layout (bindings={}, generation={})",
-        //     desc.bindings.size(), m_cache[hash].generation);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (const auto& entry : m_cache)
+            if (entry.hash == hash && EqualBindingLayout(entry.desc, desc)) return entry.layout;
+        auto layout = m_gfx_context->getDevice()->createBindingLayout(desc);
+        if (layout) m_cache.push_back({layout, m_next_generation++, desc, hash});
         return layout;
     }
 
     UInt64 BindingLayoutCache::getLayoutGeneration(GfxBindingLayoutHandle layout) const {
-        for (const auto& [hash, entry] : m_cache) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (const auto& entry : m_cache) {
             if (entry.layout == layout) {
                 return entry.generation;
             }
@@ -69,9 +80,9 @@ namespace dodoe {
     }
 
     void BindingLayoutCache::clear() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         DO_PROFILE_SCOPE_CATEGORY("BindingLayoutCache::clear", "resource-cache");
         m_cache.clear();
-        m_next_generation = 1;
     }
 
 } // namespace dodoe

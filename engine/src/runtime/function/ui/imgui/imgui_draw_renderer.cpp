@@ -29,6 +29,16 @@ namespace dodoe {
         , m_font_binding_set_cb(std::move(font_binding_set_cb)) {
     }
 
+    ImGuiViewportConstants ImGuiDrawRenderer::makeViewportConstants(const ImGuiRenderPacket& packet) {
+        ImGuiViewportConstants constants{};
+        constants.inv_display_size[0] = 1.0f / std::max(packet.display_size.x, 1.0f);
+        constants.inv_display_size[1] = 1.0f / std::max(packet.display_size.y, 1.0f);
+        constants.display_origin[0] = packet.display_pos.x;
+        constants.display_origin[1] = packet.display_pos.y;
+        constants.ndc_y_flip = RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL ? 1.0f : -1.0f;
+        return constants;
+    }
+
     void ImGuiDrawRenderer::render(const ImGuiRenderPacket& packet,
                                    const GfxFramebufferHandle& framebuffer,
                                    const GfxFramebufferInfo& render_target_signature,
@@ -37,15 +47,19 @@ namespace dodoe {
                                    const GfxBufferHandle& constant_buffer,
                                    DrawCommandList& command_list,
                                    const PipelineStateCache* pipeline_cache,
-                                   const ShaderLibrary* shader_library) {
+                                   const ShaderLibrary* shader_library,
+                                   Bool buffers_uploaded) {
         if (packet.lists.empty()) {
             return;
         }
 
-        const UInt32 fb_width = framebuffer
-            ? framebuffer->getFramebufferInfo().getRHI().width : 0u;
-        const UInt32 fb_height = framebuffer
-            ? framebuffer->getFramebufferInfo().getRHI().height : 0u;
+        const auto attachment = framebuffer && !framebuffer->getDesc().colors().empty()
+            ? framebuffer->getDesc().colors().front() : GfxTextureHandle{};
+        const auto* physical = framebuffer ? framebuffer->getRHI() : nullptr;
+        const UInt32 fb_width = attachment ? attachment->getWidth()
+            : (physical ? physical->getFramebufferInfo().width : 0u);
+        const UInt32 fb_height = attachment ? attachment->getHeight()
+            : (physical ? physical->getFramebufferInfo().height : 0u);
         const Float fb_size_x = static_cast<Float>(fb_width);
         const Float fb_size_y = static_cast<Float>(fb_height);
         if (fb_size_x <= 0.0f || fb_size_y <= 0.0f) {
@@ -76,28 +90,31 @@ namespace dodoe {
             return;
         }
 
-        command_list.setBufferState(vb, GfxResourceStates::CopyDest);
-        command_list.setBufferState(ib, GfxResourceStates::CopyDest);
-        command_list.commitBarriers();
+        if (!buffers_uploaded) {
+            command_list.setBufferState(vb, GfxResourceStates::CopyDest);
+            command_list.setBufferState(ib, GfxResourceStates::CopyDest);
+            command_list.commitBarriers();
 
-        UInt32 vertex_offset = 0;
-        UInt32 index_offset = 0;
-        for (const auto& list : packet.lists) {
-            if (!list.vertices.empty()) {
-                command_list.writeBuffer(vb, list.vertices.data(),
-                                         list.vertices.size() * sizeof(ImDrawVert), vertex_offset);
+            UInt32 vertex_offset = 0;
+            UInt32 index_offset = 0;
+            for (const auto& list : packet.lists) {
+                if (!list.vertices.empty()) {
+                    command_list.writeBuffer(vb, list.vertices.data(),
+                                             list.vertices.size() * sizeof(ImDrawVert), vertex_offset);
+                }
+                if (!list.indices.empty()) {
+                    command_list.writeBuffer(ib, list.indices.data(),
+                                             list.indices.size() * sizeof(ImDrawIdx), index_offset);
+                }
+                vertex_offset += static_cast<UInt32>(list.vertices.size() * sizeof(ImDrawVert));
+                index_offset += static_cast<UInt32>(list.indices.size() * sizeof(ImDrawIdx));
             }
-            if (!list.indices.empty()) {
-                command_list.writeBuffer(ib, list.indices.data(),
-                                         list.indices.size() * sizeof(ImDrawIdx), index_offset);
-            }
-            vertex_offset += static_cast<UInt32>(list.vertices.size() * sizeof(ImDrawVert));
-            index_offset += static_cast<UInt32>(list.indices.size() * sizeof(ImDrawIdx));
+
+            command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
+            command_list.setBufferState(ib, GfxResourceStates::IndexBuffer);
+            command_list.commitBarriers();
+
         }
-
-        command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
-        command_list.setBufferState(ib, GfxResourceStates::IndexBuffer);
-        command_list.commitBarriers();
 
         if (!shader_library || !pipeline_cache || !m_binding_layout || !m_input_layout) {
             DO_ERROR("ImGuiDrawRenderer: shader or pipeline resources are unavailable");
@@ -141,19 +158,14 @@ namespace dodoe {
             return;
         }
 
-        struct ImGuiPushConstants {
-            Float inv_display_size[2];
-            Float display_origin[2];
-            Float ndc_y_flip;
-        } push_data{
-            {1.0f / (right - left), 1.0f / (bottom - top)},
-            {left, top},
-            RenderSettings::GetRenderBackendApiType() == RenderBackendApiType::OpenGL ? 1.0f : -1.0f};
-
-        command_list.setBufferState(constant_buffer, GfxResourceStates::CopyDest);
-        command_list.commitBarriers();
-        command_list.writeBuffer(constant_buffer, &push_data, sizeof(push_data));
-        command_list.setBufferState(constant_buffer, GfxResourceStates::ConstantBuffer);
+        if (!buffers_uploaded) {
+            const auto constants = makeViewportConstants(packet);
+            command_list.setBufferState(constant_buffer, GfxResourceStates::CopyDest);
+            command_list.commitBarriers();
+            command_list.writeBuffer(constant_buffer, constants);
+            command_list.setBufferState(constant_buffer, GfxResourceStates::ConstantBuffer);
+            command_list.commitBarriers();
+        }
 
         UInt32 global_vertex_offset = 0;
         UInt32 global_index_offset = 0;
@@ -172,17 +184,17 @@ namespace dodoe {
                     continue;
                 }
 
-                auto* texture = reinterpret_cast<GfxTexture*>(draw.texture_id);
-                if (!texture || !texture->isGpuReady()) {
+                const auto texture = draw.texture;
+                if (!texture) {
                     continue;
                 }
-                const auto binding_set = texture == m_font_texture.get() && m_font_binding_set &&
+                const auto binding_set = texture.get() == m_font_texture.get() && m_font_binding_set &&
                                          constant_buffer.get() == m_font_binding_set_cb.get()
                     ? m_font_binding_set
                     : command_list.createBindingSet(
                         GfxLogicalBindingSetDesc()
                             .addItem(GfxLogicalBindingItem::ConstantBuffer(0, constant_buffer))
-                            .addItem(GfxLogicalBindingItem::Texture_SRV(1, Ref<GfxTexture>(texture)))
+                            .addItem(GfxLogicalBindingItem::Texture_SRV(1, texture))
                             .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
                         m_binding_layout);
                 if (!binding_set) {

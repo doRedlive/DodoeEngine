@@ -1,6 +1,7 @@
 // do@Redlive
 
 #include "only_2d_renderer.h"
+#include "render_feature/scene_color_feature.h"
 
 #include "render_feature/post_process_2d_feature.h"
 #include "render_feature/present_feature.h"
@@ -25,6 +26,7 @@ namespace dodoe {
         m_shared_render_service = info.shared_render_service;
 
         LogEnabledRenderFeatures();
+        addFeature<SceneColorFeature>();
         if (IsRenderFeatureEnabled("sprite"))   addFeature<SpriteFeature>();
         if (IsRenderFeatureEnabled("ui"))       addFeature<UIFeature>();
         if (IsRenderFeatureEnabled("postprocess2d")) addFeature<PostProcess2DFeature>();

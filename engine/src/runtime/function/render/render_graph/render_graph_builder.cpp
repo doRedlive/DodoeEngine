@@ -230,6 +230,40 @@ namespace dodoe {
         return handle;
     }
 
+    RenderGraphBufferHandle RenderGraphPassBuilder::readBuffer(RenderGraphBufferHandle handle, RenderGraphBufferUsage usage) {
+        DO_ASSERT(handle.isValid(), "Invalid graph buffer read");
+        GfxResourceStates state = GfxResourceStates::ShaderResource;
+        switch (usage) {
+            case RenderGraphBufferUsage::Vertex: state = GfxResourceStates::VertexBuffer; break;
+            case RenderGraphBufferUsage::Index: state = GfxResourceStates::IndexBuffer; break;
+            case RenderGraphBufferUsage::Constant: state = GfxResourceStates::ConstantBuffer; break;
+            case RenderGraphBufferUsage::Indirect: state = GfxResourceStates::IndirectArgument; break;
+            default: break;
+        }
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Read,
+            RenderGraphPipelineStage::VertexShader, {}, state);
+        return handle;
+    }
+
+    void RenderGraphPassBuilder::uploadBuffer(RenderGraphBufferHandle handle, const void* data, Size_t size, UInt64 offset) {
+        if (size == 0) return;
+        DO_ASSERT(handle.isValid() && data, "Invalid graph buffer upload");
+        if (!handle.isValid() || !data || handle.index >= m_builder->graph().getResources().size()) return;
+        const auto& resource = m_builder->graph().getResources()[handle.index];
+        const auto capacity = resource.isImported() ? resource.imported_buffer->getDesc().byteSize
+                                                   : resource.buffer_desc.desc.byteSize;
+        DO_ASSERT(offset <= capacity && size <= capacity - offset, "Graph buffer upload exceeds capacity");
+        if (offset > capacity || size > capacity - offset) return;
+        RenderGraphPass::BufferUpload upload{};
+        upload.buffer = handle;
+        upload.offset = offset;
+        const auto* bytes = static_cast<const UInt8*>(data);
+        upload.data.assign(bytes, bytes + size);
+        m_pass->addUpload(std::move(upload));
+        m_pass->addAccess(handle.index, RenderGraphAccessType::Write,
+            RenderGraphPipelineStage::Copy, {}, GfxResourceStates::CopyDest, true);
+    }
+
     void RenderGraphPassBuilder::exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state) {
         DO_ASSERT(m_builder, "RenderGraphPassBuilder builder is null");
         DO_ASSERT(handle.isValid(), "RenderGraphPassBuilder::exportTexture invalid handle");

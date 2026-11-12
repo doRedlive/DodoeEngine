@@ -7,6 +7,7 @@
 #include "runtime/function/render/render_service/binding_set_cache.h"
 
 #include <atomic>
+#include <limits>
 
 namespace dodoe {
 
@@ -18,9 +19,18 @@ namespace dodoe {
 #endif
 
     static UInt64 EstimateTextureBytes(const GfxTextureDesc& desc) {
-        UInt64 bytes = static_cast<UInt64>(desc.width) * desc.height * desc.depth * desc.arraySize;
-        bytes *= desc.sampleCount * desc.sampleCount;
-        bytes *= 4;
+        const auto& format = cutie::getFormatInfo(desc.format);
+        const UInt32 block = std::max<UInt32>(format.blockSize, 1);
+        UInt64 bytes = 0;
+        UInt32 width = desc.width, height = desc.height, depth = desc.depth;
+        for (UInt32 mip = 0; mip < desc.mipLevels; ++mip) {
+            bytes += ((static_cast<UInt64>(width) + block - 1) / block) *
+                     ((static_cast<UInt64>(height) + block - 1) / block) *
+                     depth * desc.arraySize * desc.sampleCount * format.bytesPerBlock;
+            width = std::max(width / 2, 1u);
+            height = std::max(height / 2, 1u);
+            depth = std::max(depth / 2, 1u);
+        }
         return bytes;
     }
 
@@ -33,9 +43,18 @@ namespace dodoe {
                 if (pooled.width == desc.width && pooled.height == desc.height &&
                     pooled.depth == desc.depth && pooled.arraySize == desc.arraySize &&
                     pooled.mipLevels == desc.mipLevels && pooled.sampleCount == desc.sampleCount &&
-                    pooled.format == desc.format && pooled.dimension == desc.dimension) {
+                    pooled.format == desc.format && pooled.dimension == desc.dimension &&
+                    pooled.sampleQuality == desc.sampleQuality &&
+                    pooled.isShaderResource == desc.isShaderResource &&
+                    pooled.isRenderTarget == desc.isRenderTarget && pooled.isUAV == desc.isUAV &&
+                    pooled.isTypeless == desc.isTypeless &&
+                    pooled.isShadingRateSurface == desc.isShadingRateSurface &&
+                    pooled.isVirtual == desc.isVirtual && pooled.isTiled == desc.isTiled &&
+                    pooled.sharedResourceFlags == desc.sharedResourceFlags &&
+                    pooled.keepInitialState == desc.keepInitialState && pooled.initialState == desc.initialState) {
                     m_texture_in_use[i] = true;
                     m_textures[i].stamp = m_stamp;
+                    command_list.requestRealize(m_textures[i].texture);
                     return m_textures[i].texture;
                 }
             }
@@ -82,6 +101,10 @@ namespace dodoe {
                 pooled.isAccelStructBuildInput != desc.isAccelStructBuildInput ||
                 pooled.isAccelStructStorage != desc.isAccelStructStorage ||
                 pooled.isShaderBindingTable != desc.isShaderBindingTable ||
+                pooled.cpuAccess != desc.cpuAccess ||
+                pooled.isVirtual != desc.isVirtual ||
+                pooled.keepInitialState != desc.keepInitialState ||
+                pooled.initialState != desc.initialState ||
                 pooled.isVolatile != desc.isVolatile) {
                 continue;
             }
@@ -92,30 +115,37 @@ namespace dodoe {
         if (best != kInvalidIndex) {
             m_buffer_in_use[best] = true;
             m_buffers[best].stamp = m_stamp;
+            command_list.requestRealize(m_buffers[best].buffer);
             return m_buffers[best].buffer;
         }
-        const auto buffer = command_list.createBuffer(desc);
+        auto allocation_desc = desc;
+        // Grow in capacity classes so slowly increasing instance counts do not
+        // leave one allocation behind for every intermediate size.
+        UInt64 capacity = 256;
+        while (capacity < desc.byteSize && capacity <= (std::numeric_limits<UInt64>::max)() / 2) capacity *= 2;
+        allocation_desc.byteSize = std::max<UInt64>(capacity, desc.byteSize);
+        const auto buffer = command_list.createBuffer(allocation_desc);
         if (!buffer) {
             return nullptr;
         }
         PooledBuffer entry{};
         entry.buffer = buffer;
-        entry.desc = desc;
-        entry.bytes = desc.byteSize;
+        entry.desc = allocation_desc;
+        entry.bytes = allocation_desc.byteSize;
         entry.stamp = m_stamp;
         m_buffer_bytes += entry.bytes;
         m_buffers.push_back(std::move(entry));
         m_buffer_in_use.push_back(true);
 #ifdef DODOE_PERF_ENABLED
         s_buffer_count.fetch_add(1, std::memory_order_relaxed);
-        s_buffer_bytes.fetch_add(desc.byteSize, std::memory_order_relaxed);
+        s_buffer_bytes.fetch_add(allocation_desc.byteSize, std::memory_order_relaxed);
 #endif
         enforceBufferBudget();
         return buffer;
     }
 
     void RenderGraphTransientPool::enforceTextureBudget() {
-        while (m_texture_bytes > m_texture_budget_bytes) {
+        while (true) {
             constexpr Size_t kInvalidIndex = static_cast<Size_t>(-1);
             Size_t victim = kInvalidIndex;
             for (Size_t i = 0; i < m_textures.size(); i++) {
@@ -129,6 +159,7 @@ namespace dodoe {
             if (victim == kInvalidIndex) {
                 break;
             }
+            if (m_texture_bytes <= m_texture_budget_bytes && m_stamp - m_textures[victim].stamp < 120) break;
 #ifdef DODOE_PERF_ENABLED
             s_texture_count.fetch_sub(1, std::memory_order_relaxed);
             s_texture_bytes.fetch_sub(m_textures[victim].bytes, std::memory_order_relaxed);
@@ -143,7 +174,7 @@ namespace dodoe {
     }
 
     void RenderGraphTransientPool::enforceBufferBudget() {
-        while (m_buffer_bytes > m_buffer_budget_bytes) {
+        while (true) {
             constexpr Size_t kInvalidIndex = static_cast<Size_t>(-1);
             Size_t victim = kInvalidIndex;
             for (Size_t i = 0; i < m_buffers.size(); i++) {
@@ -157,6 +188,7 @@ namespace dodoe {
             if (victim == kInvalidIndex) {
                 break;
             }
+            if (m_buffer_bytes <= m_buffer_budget_bytes && m_stamp - m_buffers[victim].stamp < 120) break;
 #ifdef DODOE_PERF_ENABLED
             s_buffer_count.fetch_sub(1, std::memory_order_relaxed);
             s_buffer_bytes.fetch_sub(m_buffers[victim].bytes, std::memory_order_relaxed);
@@ -174,17 +206,17 @@ namespace dodoe {
                                                    BindingSetCache* binding_set_cache) {
         for (const auto& texture : m_pending_eviction_textures) {
             if (framebuffer_cache) {
-                framebuffer_cache->invalidateTexture(texture.Get());
+                framebuffer_cache->invalidateTexture(texture.get());
             }
             if (binding_set_cache) {
-                binding_set_cache->invalidateFor(texture.Get());
+                binding_set_cache->invalidateFor(texture.get());
             }
         }
         m_pending_eviction_textures.clear();
 
         for (const auto& buffer : m_pending_eviction_buffers) {
             if (binding_set_cache) {
-                binding_set_cache->invalidateFor(buffer.Get());
+                binding_set_cache->invalidateFor(buffer.get());
             }
         }
         m_pending_eviction_buffers.clear();
@@ -199,6 +231,8 @@ namespace dodoe {
             in_use = false;
         }
         ++m_stamp;
+        enforceTextureBudget();
+        enforceBufferBudget();
     }
 
     void RenderGraphTransientPool::reset() {

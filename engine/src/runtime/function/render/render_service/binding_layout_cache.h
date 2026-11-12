@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "runtime/function/graphics/gfx.h"
+#include <mutex>
 
 namespace dodoe {
 
@@ -30,10 +31,13 @@ namespace dodoe {
         struct LayoutEntry {
             GfxBindingLayoutHandle layout{};
             UInt64 generation{0};
+            GfxBindingLayoutDesc desc{};
+            Size_t hash{0};
         };
 
         GfxContext* m_gfx_context{nullptr};
-        UnorderedMap<Size_t, LayoutEntry> m_cache{};
+        mutable std::mutex m_mutex{};
+        DynamicArray<LayoutEntry> m_cache{};
         UInt64 m_next_generation{1};
     };
 

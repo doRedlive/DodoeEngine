@@ -13,7 +13,6 @@
 #include "../render_pipeline_pass_utils.h"
 
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
-#include "runtime/function/render/render_frame/frame_staging_allocator.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
 #include "runtime/function/render/render_service/shared_render_service.h"
 #include "runtime/function/render/texture/texture_manager.h"
@@ -23,16 +22,24 @@
 #include "runtime/function/render/render_graph/render_graph_builder.h"
 #include "render_pass_blackboard_keys.h"
 
-#include <chrono>
-#include <cstring>
 
 namespace dodoe {
+
+    struct EditorGridConstants {
+        Matrix4f inverse_view_projection{1.0f};
+        Matrix4f view_projection{1.0f};
+        Vector4f camera_world{0.0f, 0.0f, 0.0f, 1.0f};
+        Vector4f plane{0.0f, 1.0f, 0.0f, 0.0f};
+        Vector4f params{1.0f, 10.0f, 40.0f, 300.0f};
+    };
 
     struct GizmoPassParameters {
         RenderGraphTextureHandle color_target{};
         RenderGraphTextureHandle depth{};
         RenderGraphBufferHandle vertex_buffer{};
         RenderGraphBufferHandle index_buffer{};
+        RenderGraphBufferHandle grid_buffer{};
+        RenderGraphTextureHandle grid_depth{};
         GizmoChannelData gizmo_data{};
     };
 
@@ -48,7 +55,7 @@ namespace dodoe {
                         .setVisibility(GfxShaderType::Pixel)
                         .setRegisterSpaceIsDescriptorSet(true)
                         .setRegisterSpace(static_cast<UInt32>(ShaderParameterSet::Pass))
-                        .addItem(GfxBindingLayoutItem::VolatileConstantBuffer(0))
+                        .addItem(GfxBindingLayoutItem::ConstantBuffer(0))
                         .addItem(GfxBindingLayoutItem::Texture_SRV(1))
                         .addItem(GfxBindingLayoutItem::Sampler(9)));
             }
@@ -66,6 +73,7 @@ namespace dodoe {
                 if (scene_color) {
                     parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
+                    color_attachment.load_op = LoadOp::Clear;
                     const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                     parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG GizmoColor"),
@@ -80,25 +88,54 @@ namespace dodoe {
 
                 RenderGraphBufferDesc vb_desc{};
                 vb_desc.desc = GfxBufferDesc()
-                    .setByteSize(65536 * sizeof(GizmoVertex))
+                    .setByteSize(std::max<Size_t>(parameters.gizmo_data.vertices.size(), 1) * sizeof(GizmoVertex))
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG GizmoVB");
-                parameters.vertex_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(vb_desc, "GizmoVertexBuffer"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.vertex_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.vertex_buffer = pass_builder.createTransientBuffer(vb_desc, "GizmoVertexBuffer");
+                if (!parameters.gizmo_data.vertices.empty()) {
+                    pass_builder.uploadBuffer(parameters.vertex_buffer, parameters.gizmo_data.vertices.data(),
+                        parameters.gizmo_data.vertices.size() * sizeof(GizmoVertex));
+                    pass_builder.readBuffer(parameters.vertex_buffer, RenderGraphBufferUsage::Vertex);
+                }
 
                 RenderGraphBufferDesc ib_desc{};
                 ib_desc.desc = GfxBufferDesc()
-                    .setByteSize(65536 * sizeof(UInt32))
+                    .setByteSize(std::max<Size_t>(parameters.gizmo_data.indices.size(), 1) * sizeof(UInt32))
                     .setIsIndexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG GizmoIB");
-                parameters.index_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.index_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.index_buffer = pass_builder.createTransientBuffer(ib_desc, "GizmoIndexBuffer");
+                if (!parameters.gizmo_data.indices.empty()) {
+                    pass_builder.uploadBuffer(parameters.index_buffer, parameters.gizmo_data.indices.data(),
+                        parameters.gizmo_data.indices.size() * sizeof(UInt32));
+                    pass_builder.readBuffer(parameters.index_buffer, RenderGraphBufferUsage::Index);
+                }
+                const auto* fallback = context.shared_render_service->getTextureManager()->getFallback();
+                parameters.grid_depth = parameters.depth.isValid() ? parameters.depth
+                    : pass_builder.read(pass_builder.importTexture(fallback->getGpuHandle(), "GridFallback"));
+                EditorGridConstants grid_constants{};
+                grid_constants.inverse_view_projection =
+                    Math::Inverse(context.view.getViewProjectionMatrix());
+                grid_constants.view_projection = context.view.getViewProjectionMatrix();
+                grid_constants.camera_world = Vector4f(
+                    rendering_pipeline_utils::ExtractCameraPosition(context.view),
+                    parameters.depth.isValid() ? 1.0f : 0.0f);
+                grid_constants.plane = parameters.gizmo_data.grid.ortho2d
+                    ? Vector4f(0.0f, 0.0f, 1.0f, 0.0f)
+                    : Vector4f(0.0f, 1.0f, 0.0f, 0.0f);
+                grid_constants.params = Vector4f(
+                    parameters.gizmo_data.grid.minor_spacing,
+                    parameters.gizmo_data.grid.major_spacing,
+                    parameters.gizmo_data.grid.fade_begin,
+                    parameters.gizmo_data.grid.fade_end);
+
+                RenderGraphBufferDesc grid_desc{};
+                grid_desc.desc.setByteSize(sizeof(EditorGridConstants)).setIsConstantBuffer(true)
+                    .enableAutomaticStateTracking(GfxResourceStates::CopyDest).setDebugName("EditorGridConstants");
+                parameters.grid_buffer = pass_builder.createTransientBuffer(grid_desc, "EditorGridConstants");
+                pass_builder.uploadBuffer(parameters.grid_buffer, &grid_constants, sizeof(grid_constants));
+                pass_builder.readBuffer(parameters.grid_buffer, RenderGraphBufferUsage::Constant);
             },
             [this](const GizmoPassParameters& parameters, const RenderGraphPassContext& ctx, DrawCommandList& command_list) {
                 const auto vb = ctx.resolveBuffer(parameters.vertex_buffer);
@@ -119,63 +156,27 @@ namespace dodoe {
                 if (m_grid_binding_layout) {
                     const auto grid_vs = shader_library->getFullscreenVertexShader();
                     const auto grid_ps = shader_library->getEditorGridPixelShader();
-                    auto* staging = ctx.getFrameStagingAllocator();
-                    const auto depth_texture = parameters.depth.isValid()
-                        ? ctx.resolveTexture(parameters.depth)
-                        : nullptr;
-                    const Bool has_depth = depth_texture != nullptr;
-                    const auto* fallback_texture = ctx.getTextureManager()->getFallback();
-                    const GfxTextureHandle fallback_handle = fallback_texture
-                        ? fallback_texture->getGpuHandle() : GfxTextureHandle{};
-                    const GfxTextureHandle depth_binding = has_depth ? depth_texture : fallback_handle;
-                    if (staging && grid_vs && grid_ps) {
-                        struct EditorGridConstants {
-                            Matrix4f inverse_view_projection{1.0f};
-                            Matrix4f view_projection{1.0f};
-                            Vector4f camera_world{0.0f, 0.0f, 0.0f, 1.0f};
-                            Vector4f plane{0.0f, 1.0f, 0.0f, 0.0f};
-                            Vector4f params{1.0f, 10.0f, 40.0f, 300.0f};
-                        };
-                        EditorGridConstants grid_constants{};
-                        grid_constants.inverse_view_projection =
-                            Math::Inverse(ctx.getView()->getViewProjectionMatrix());
-                        grid_constants.view_projection = ctx.getView()->getViewProjectionMatrix();
-                        grid_constants.camera_world = Vector4f(
-                            rendering_pipeline_utils::ExtractCameraPosition(*ctx.getView()),
-                            has_depth ? 1.0f : 0.0f);
-                        grid_constants.plane = gizmo_data.grid.ortho2d
-                            ? Vector4f(0.0f, 0.0f, 1.0f, 0.0f)
-                            : Vector4f(0.0f, 1.0f, 0.0f, 0.0f);
-                        grid_constants.params = Vector4f(
-                            gizmo_data.grid.minor_spacing,
-                            gizmo_data.grid.major_spacing,
-                            gizmo_data.grid.fade_begin,
-                            gizmo_data.grid.fade_end);
-
-                        const auto allocation = staging->allocate(sizeof(EditorGridConstants));
-                        if (allocation.buffer && allocation.mapped_data) {
-                            std::memcpy(allocation.mapped_data, &grid_constants, sizeof(grid_constants));
-                            const auto grid_binding_set = command_list.createBindingSet(
-                                GfxLogicalBindingSetDesc()
-                                    .addItem(GfxLogicalBindingItem::ConstantBuffer(
-                                        0, allocation.buffer,
-                                        GfxBufferRange(allocation.offset, allocation.size)))
-                                    .addItem(GfxLogicalBindingItem::Texture_SRV(1, depth_binding))
-                                    .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
-                                m_grid_binding_layout);
-                            if (grid_binding_set) {
-                                const auto grid_pipeline = pso_cache->resolveGraphicsPipeline(
-                                    rendering_pipeline_utils::BuildFullscreenPipelineDesc(
-                                        grid_vs, grid_ps, m_grid_binding_layout, false, true),
-                                    ctx.getRenderTargetSignature(), command_list);
-                                if (grid_pipeline) {
-                                    command_list.setGraphicsState(
-                                        ctx.getFramebuffer(), grid_pipeline,
-                                        DynamicArray<GfxBindingSetHandle>{grid_binding_set},
-                                        rendering_pipeline_utils::BuildViewportState(
-                                            *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D()));
-                                    command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
-                                }
+                    const auto depth_binding = ctx.resolveTexture(parameters.grid_depth);
+                    if (grid_vs && grid_ps) {
+                        const auto grid_binding_set = command_list.createBindingSet(
+                            GfxLogicalBindingSetDesc()
+                                .addItem(GfxLogicalBindingItem::ConstantBuffer(
+                                    0, ctx.resolveBuffer(parameters.grid_buffer)))
+                                .addItem(GfxLogicalBindingItem::Texture_SRV(1, depth_binding))
+                                .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
+                            m_grid_binding_layout);
+                        if (grid_binding_set) {
+                            const auto grid_pipeline = pso_cache->resolveGraphicsPipeline(
+                                rendering_pipeline_utils::BuildFullscreenPipelineDesc(
+                                    grid_vs, grid_ps, m_grid_binding_layout, false, true),
+                                ctx.getRenderTargetSignature(), command_list);
+                            if (grid_pipeline) {
+                                command_list.setGraphicsState(
+                                    ctx.getFramebuffer(), grid_pipeline,
+                                    DynamicArray<GfxBindingSetHandle>{grid_binding_set},
+                                    rendering_pipeline_utils::BuildViewportState(
+                                        *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D()));
+                                command_list.draw(GfxDrawArguments().setVertexCount(6).setInstanceCount(1));
                             }
                         }
                     }
@@ -199,24 +200,6 @@ namespace dodoe {
                 blend.setRenderTarget(0, blend_target);
                 GfxRenderState render_state;
                 render_state.setDepthStencilState(ds).setRasterState(raster).setBlendState(blend);
-
-                const UInt64 vb_byte_size = gizmo_data.vertices.size() * sizeof(GizmoVertex);
-                const UInt64 ib_byte_size = gizmo_data.indices.size() * sizeof(UInt32);
-
-                command_list.setBufferState(vb, GfxResourceStates::CopyDest);
-                if (ib_byte_size > 0) {
-                    command_list.setBufferState(ib, GfxResourceStates::CopyDest);
-                }
-                command_list.commitBarriers();
-                command_list.writeBuffer(vb, gizmo_data.vertices.data(), vb_byte_size, 0);
-                if (ib_byte_size > 0) {
-                    command_list.writeBuffer(ib, gizmo_data.indices.data(), ib_byte_size, 0);
-                }
-                command_list.setBufferState(vb, GfxResourceStates::VertexBuffer);
-                if (ib_byte_size > 0) {
-                    command_list.setBufferState(ib, GfxResourceStates::IndexBuffer);
-                }
-                command_list.commitBarriers();
 
                 if (!m_push_constant_binding_set) {
                     m_push_constant_binding_set = command_list.createBindingSet(

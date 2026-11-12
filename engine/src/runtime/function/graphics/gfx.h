@@ -141,7 +141,7 @@ namespace dodoe {
         }
         [[nodiscard]] cutie::IBuffer* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::BufferHandle& getRHIHandle() const { return m_rhi; }
-        [[nodiscard]] UInt32 getByteSize() const { return m_desc.byteSize; }
+        [[nodiscard]] UInt64 getByteSize() const { return m_desc.byteSize; }
         [[nodiscard]] const GfxBufferDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const String& getDebugName() const { return m_debug_name; }
         [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
@@ -171,6 +171,8 @@ namespace dodoe {
         explicit GfxFramebufferInfo(const GfxFramebufferDesc& desc) {
             for (auto& c : desc.colors()) m_info.addColorFormat(c->getFormat());
             if (desc.depth()) m_info.setDepthFormat(desc.depth()->getFormat());
+            const auto attachment = !desc.colors().empty() ? desc.colors().front() : desc.depth();
+            if (attachment) m_info.setSampleCount(attachment->getDesc().sampleCount);
         }
         [[nodiscard]] const cutie::FramebufferInfo& getRHI() const { return m_info; }
         GfxFramebufferInfo& addColorFormat(GfxFormat f) { m_info.addColorFormat(f); return *this; }
@@ -201,6 +203,7 @@ namespace dodoe {
         [[nodiscard]] cutie::IFramebuffer* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::FramebufferHandle& getRHIHandle() const { return m_rhi; }
         [[nodiscard]] const GfxFramebufferInfo& getInfo() const { return m_info; }
+        [[nodiscard]] const GfxFramebufferDesc& getDesc() const { return m_desc; }
         [[nodiscard]] const GfxFramebufferInfo& getFramebufferInfo() const { return m_info; }
         [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
     };
@@ -436,7 +439,7 @@ namespace dodoe {
         UInt64 offset{0};
 
         [[nodiscard]] Bool operator==(const GfxVertexBindingDesc& other) const {
-            return buffer.Get() == other.buffer.Get() && slot == other.slot && offset == other.offset;
+            return buffer.get() == other.buffer.get() && slot == other.slot && offset == other.offset;
         }
         [[nodiscard]] Bool operator!=(const GfxVertexBindingDesc& other) const { return !(*this == other); }
 
@@ -451,7 +454,7 @@ namespace dodoe {
         UInt32 offset{0};
 
         [[nodiscard]] Bool operator==(const GfxIndexBindingDesc& other) const {
-            return buffer.Get() == other.buffer.Get() && format == other.format && offset == other.offset;
+            return buffer.get() == other.buffer.get() && format == other.format && offset == other.offset;
         }
         [[nodiscard]] Bool operator!=(const GfxIndexBindingDesc& other) const { return !(*this == other); }
 

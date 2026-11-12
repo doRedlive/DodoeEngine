@@ -78,6 +78,7 @@ namespace dodoe {
         }
         m_gfx->waitForIdle();
         m_retired_command_lists.clear();
+        m_pending_resource_commands.beginFrame();
         RenderPipeline::Destroy(m_render_pipeline);
         RenderFrameScheduler::Destroy(m_frame_scheduler);
         RenderScene::Destroy(m_render_scene);
@@ -212,6 +213,7 @@ namespace dodoe {
     void RenderSystem::renderFrame() {
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::renderFrame", "frame");
         GfxRenderScope render_scope;
+        releaseCompletedCommandLists();
         Memory::ResetFrame();
         RenderFrameCounters::Self().reset();
 
@@ -250,6 +252,10 @@ namespace dodoe {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::resizeTargets", "swapchain");
             m_gfx->waitForIdle();
             m_frame_scheduler->retireCompletedFrames();
+            m_retired_command_lists.clear();
+            m_shared_render_service->getFramebufferCache()->reset();
+            m_shared_render_service->getBindingSetCache()->clear();
+            m_frame_scheduler->resetTransientResources();
             if (!m_gfx->recreateSwapchain(static_cast<UInt32>(cur_pixel.x),
                                           static_cast<UInt32>(cur_pixel.y))) {
                 DO_ERROR("RenderSystem failed to recreate swapchain on window resize.");
@@ -272,7 +278,10 @@ namespace dodoe {
             }
         }
 
-        {
+        const auto pipeline_type = RenderSettings::GetRenderingPipelineType();
+        const Bool defer_uploads_to_frame = !RenderSettings::IsEnableBaselineRender() &&
+            (pipeline_type == RenderingPipelineType::Only2D || pipeline_type == RenderingPipelineType::OnlyGUI);
+        if (!defer_uploads_to_frame) {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::executeDeferredCommands", "render-command");
             auto pending = GDrawCommandList.detachRecordedCommands();
             if (!pending.isEmpty() || !pending.getRealizePlan().empty()) {
@@ -304,7 +313,9 @@ namespace dodoe {
         auto frame_ctx = m_frame_scheduler->beginFrame(image_index);
         {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::processDeferredDeletions", "frame");
-            m_shared_render_service->processDeferredDeletions(frame_ctx.frame_number);
+            if (const auto completed = m_frame_scheduler->getCompletedFrame()) {
+                m_shared_render_service->processDeferredDeletions(*completed);
+            }
         }
         DO_PROFILE_SCOPE_CATEGORY("RenderSystem::buildFrame", "frame");
 
@@ -312,6 +323,12 @@ namespace dodoe {
         const Float frame_delta = packet.frame.frame_delta;
 
         frame_ctx.command_list->setDevice(m_gfx->getDevice());
+        if (defer_uploads_to_frame) {
+            // Keep one-shot uploads until they have actually been submitted.
+            // A failed frame must not discard texture initialization data.
+            m_pending_resource_commands.setDevice(m_gfx->getDevice());
+            m_pending_resource_commands.append(GDrawCommandList.detachRecordedCommands());
+        }
         {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::sceneFlush", "frame");
             if (RenderSettings::IsEnableBaselineRender() && RenderSettings::IsGpuDrivenSupported()) {
@@ -365,6 +382,12 @@ namespace dodoe {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::submitGfxCommands", "frame");
             auto& gfx_cmd = m_gfx->getCommandList();
             auto gfx_device = m_gfx->getDevice();
+            if (defer_uploads_to_frame)
+                m_pending_resource_commands.append(GDrawCommandList.detachRecordedCommands());
+            const Bool uploads_ready = !defer_uploads_to_frame ||
+                SubmissionExecutor::prepareResources(m_pending_resource_commands, gfx_device);
+            const Bool frame_ready = uploads_ready &&
+                SubmissionExecutor::prepareResources(*frame_ctx.command_list, gfx_device);
             if (!m_gpu_frame_queries[0]) {
                 m_gpu_frame_queries[0] = gfx_device->createTimerQuery();
                 m_gpu_frame_queries[1] = gfx_device->createTimerQuery();
@@ -384,7 +407,14 @@ namespace dodoe {
             if (measured) {
                 gfx_cmd->beginTimerQuery(write_query);
             }
-            SubmissionExecutor::prepareAndReplay(*frame_ctx.command_list, gfx_device, *gfx_cmd);
+            if (defer_uploads_to_frame && uploads_ready) {
+                SubmissionExecutor::replay(m_pending_resource_commands, *gfx_cmd);
+            }
+            if (frame_ready) {
+                SubmissionExecutor::replay(*frame_ctx.command_list, *gfx_cmd);
+            } else {
+                DO_ERROR("RenderSystem: skipped frame draws because resource preparation failed");
+            }
             if (measured) {
                 gfx_cmd->endTimerQuery(write_query);
                 m_gpu_frame_query_slot ^= 1;
@@ -392,6 +422,9 @@ namespace dodoe {
             }
             gfx_cmd->close();
             gfx_device->executeCommandList(gfx_cmd);
+            if (defer_uploads_to_frame && uploads_ready) {
+                retireCommandList(m_pending_resource_commands.detachRecordedCommands());
+            }
         }
         gfx->getDevice()->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);
         DO_PROFILE_MARK("RenderSystem::renderFrame.commandsSubmitted", "frame");
@@ -439,7 +472,7 @@ namespace dodoe {
             break;
         case ResourceCommandType::CreateBuffer:
             if (cmd.buffer) {
-                cmd.buffer->initializeGpu(m_gfx->getDevice());
+                GDrawCommandList.requestRealize(cmd.buffer);
                 if (!cmd.resource_data.empty()) {
                     GDrawCommandList.writeBuffer(cmd.buffer, cmd.resource_data.data(), cmd.resource_data.size(), 0);
                 }
@@ -494,9 +527,22 @@ namespace dodoe {
         if (list.isEmpty() && list.getRealizePlan().empty()) {
             return;
         }
-        m_retired_command_lists.push_back(std::move(list));
-        if (m_retired_command_lists.size() > kRetiredCommandListCount) {
-            m_retired_command_lists.erase(m_retired_command_lists.begin());
+        const auto device = m_gfx->getDevice();
+        auto completion = device->createEventQuery();
+        if (!completion) {
+            device->waitForIdle();
+            return;
+        }
+        device->setEventQuery(completion, GfxCommandQueue::Graphics);
+        m_retired_command_lists.push_back({std::move(list), completion});
+        releaseCompletedCommandLists();
+    }
+
+    void RenderSystem::releaseCompletedCommandLists() {
+        const auto device = m_gfx->getDevice();
+        while (!m_retired_command_lists.empty() &&
+               device->pollEventQuery(m_retired_command_lists.front().completion)) {
+            m_retired_command_lists.pop_front();
         }
     }
 

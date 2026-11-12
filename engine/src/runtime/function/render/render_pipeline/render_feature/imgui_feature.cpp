@@ -39,18 +39,18 @@ namespace dodoe {
 	            .enableAutomaticStateTracking(GfxResourceStates::ShaderResource)
 	            .setDebugName("ImGui Font Texture");
 	        m_font_texture = GDrawCommandList.createTexture(font_desc, pixels, static_cast<Size_t>(width) * height * 4u);
-	        io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_font_texture.get()));
+	        io.Fonts->SetTexID(ImGuiBuilder::RegisterTexture(m_font_texture));
 	    }
 #endif
 
-	    auto* gfx = resources.getGfxContext();
-	    m_imgui_cb = create_ref<GfxBuffer>(
-	        GfxBufferDesc()
-	            .setByteSize(sizeof(Float) * 5)
-	            .setIsConstantBuffer(true)
-	            .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
-	            .setDebugName("ImGuiViewportCB"));
-	    m_imgui_cb->initializeGpu(gfx->getDevice());
+        // Allocate a logical constant buffer. The pending resource is realized
+        // by the submission executor before the first frame uses it.
+        m_imgui_cb = resources.getResourceService()->createBuffer(
+            GfxBufferDesc()
+                .setByteSize(sizeof(Float) * 5)
+                .setIsConstantBuffer(true)
+                .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
+                .setDebugName("ImGuiViewportCB"));
 
 	    auto* cache = resources.getBindingLayoutCache();
 	    m_binding_layout = cache->getOrCreate(
@@ -115,6 +115,7 @@ namespace dodoe {
 
 	void ImGuiFeature::shutdown() {
 #if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
+        if (m_font_texture) ImGuiBuilder::UnregisterTexture(reinterpret_cast<ImTextureID>(m_font_texture.get()));
 	    if (ImGui::GetCurrentContext()) {
 	        ImGui::GetIO().Fonts->SetTexID(ImTextureID_Invalid);
 	    }

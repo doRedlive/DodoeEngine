@@ -101,10 +101,18 @@ namespace dodoe {
     };
 
     class RenderGraphPass {
+    public:
+        struct BufferUpload {
+            RenderGraphBufferHandle buffer{};
+            FrameArray<UInt8> data{};
+            UInt64 offset{0};
+        };
+    private:
         String m_name{};
         RenderGraphPassFlags m_flags{RenderGraphPassFlags::None};
         DynamicArray<RenderGraphPassResourceAccess> m_accesses{};
         DynamicArray<RenderGraphBarrier> m_pre_barriers{};
+        DynamicArray<BufferUpload> m_uploads{};
         std::function<void(const RenderGraphPassContext&, DrawCommandList&)> m_execute_function{};
         UInt32 m_subgraph_index{~0u};
         DynamicArray<RenderGraphColorAttachment> m_color_slots{};
@@ -117,14 +125,21 @@ namespace dodoe {
 
         void addAccess(const UInt32 resource_index, const RenderGraphAccessType access_type,
                        const RenderGraphPipelineStage stage = RenderGraphPipelineStage::PixelShader,
-                       const RenderGraphSubresourceRange& subresource = {}) {
+                       const RenderGraphSubresourceRange& subresource = {},
+                       GfxResourceStates required_state = GfxResourceStates::Unknown,
+                       Bool upload = false) {
             RenderGraphPassResourceAccess access{};
             access.resource_index = resource_index;
             access.access_type = access_type;
             access.stage = stage;
             access.subresource = subresource;
+            access.required_state = required_state;
+            access.upload = upload;
             m_accesses.push_back(access);
         }
+
+        void addUpload(BufferUpload&& upload) { m_uploads.push_back(std::move(upload)); }
+        [[nodiscard]] const DynamicArray<BufferUpload>& getUploads() const { return m_uploads; }
 
         void setSubgraphIndex(const UInt32 index) { m_subgraph_index = index; }
         [[nodiscard]] UInt32 getSubgraphIndex() const { return m_subgraph_index; }
@@ -185,6 +200,8 @@ namespace dodoe {
                                           const RenderGraphPipelineStage stage);
         RenderGraphBufferHandle readBuffer(const RenderGraphBufferHandle handle,
                                            const RenderGraphPipelineStage stage);
+        RenderGraphBufferHandle readBuffer(RenderGraphBufferHandle handle, RenderGraphBufferUsage usage);
+        void uploadBuffer(RenderGraphBufferHandle handle, const void* data, Size_t size, UInt64 offset = 0);
         RenderGraphBufferHandle writeBuffer(const RenderGraphBufferHandle handle,
                                             const RenderGraphPipelineStage stage);
         void exportTexture(const RenderGraphTextureHandle handle, const GfxResourceStates final_state);

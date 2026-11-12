@@ -94,7 +94,7 @@ namespace dodoe {
             .setIsVertexBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
             .setDebugName("Viewport ImGuiVertexBuffer"));
-        data->vertex_buffer->initializeGpu(s_device);
+
         data->vertex_capacity = kViewportVertexCapacity;
 
         data->index_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
@@ -102,7 +102,7 @@ namespace dodoe {
             .setIsIndexBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
             .setDebugName("Viewport ImGuiIndexBuffer"));
-        data->index_buffer->initializeGpu(s_device);
+
         data->index_capacity = kViewportIndexCapacity;
 
         data->constant_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
@@ -111,7 +111,7 @@ namespace dodoe {
             .setIsConstantBuffer(true)
             .enableAutomaticStateTracking(GfxResourceStates::ConstantBuffer)
             .setDebugName("Viewport ImGuiConstantBuffer"));
-        data->constant_buffer->initializeGpu(s_device);
+
 
         data->tracker = s_device->createCommandListLifetimeTracker(GfxCommandQueue::Graphics);
         data->recorder.setDevice(s_device);
@@ -175,12 +175,17 @@ namespace dodoe {
 
         // The recorder owns references to the previous frame's framebuffer. Release
         // those references before DXGI is asked to replace its backbuffers.
+        while (!data->in_flight_commands.empty() &&
+               s_device->pollEventQuery(data->in_flight_commands.front().completion)) {
+            data->in_flight_commands.pop_front();
+        }
         data->recorder.beginFrame();
 
         if (data->resize_pending) {
             const auto extent = data->surface->extent();
             if (data->resize_width != extent.x || data->resize_height != extent.y) {
                 s_gfx->waitForIdle();
+                data->in_flight_commands.clear();
                 if (data->tracker) {
                     // The viewport uses a private lifetime tracker, so the device-wide
                     // garbage collection pass does not release its completed command list.
@@ -224,14 +229,14 @@ namespace dodoe {
                 .setIsVertexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                 .setDebugName("Viewport ImGuiVertexBuffer"));
-            data->vertex_buffer->initializeGpu(s_device);
+
             data->vertex_capacity = vertex_capacity;
             data->index_buffer = create_ref<GfxBuffer>(GfxBufferDesc()
                 .setByteSize(static_cast<UInt64>(index_capacity) * sizeof(ImDrawIdx))
                 .setIsIndexBuffer(true)
                 .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                 .setDebugName("Viewport ImGuiIndexBuffer"));
-            data->index_buffer->initializeGpu(s_device);
+
             data->index_capacity = index_capacity;
         }
 
@@ -243,9 +248,18 @@ namespace dodoe {
             auto cmd = s_device->createCommandList(
                 GfxCommandListParameters().setLifetimeTracker(data->tracker.Get()));
             cmd->open();
-            SubmissionExecutor::prepareAndReplay(data->recorder, s_device, *cmd);
+            const Bool ready = SubmissionExecutor::prepareAndReplay(data->recorder, s_device, *cmd);
             cmd->close();
-            s_device->executeCommandList(cmd);
+            if (ready) {
+                s_device->executeCommandList(cmd);
+                const auto completion = s_device->createEventQuery();
+                if (completion) {
+                    s_device->setEventQuery(completion, GfxCommandQueue::Graphics);
+                    data->in_flight_commands.push_back({data->recorder.detachRecordedCommands(), completion});
+                } else {
+                    s_device->waitForIdle();
+                }
+            }
             data->tracker->runGarbageCollection();
         }
 

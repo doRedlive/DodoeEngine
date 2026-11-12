@@ -36,6 +36,7 @@ namespace dodoe {
         StaticArray<FrameSlot, kMaxFramesInFlight> m_slots{};
         Size_t m_current_index{0};
         UInt64 m_frame_counter{0};
+        Optional<UInt64> m_completed_frame{};
 
         DeferredDeletionQueue m_deletion_queue{};
         FrameTelemetryCollector m_telemetry{};
@@ -44,6 +45,8 @@ namespace dodoe {
         FrameContext beginFrame(UInt32 swapchain_image_index);
         void endFrame(FrameContext& ctx);
         void retireCompletedFrames();
+        void resetTransientResources(); // Requires all GPU work to be idle.
+        [[nodiscard]] Optional<UInt64> getCompletedFrame() const { return m_completed_frame; }
 
         void deferDeleteFunc(std::function<void()> deleter);
 

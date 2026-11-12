@@ -29,22 +29,24 @@ namespace dodoe {
         UInt64 destination_offset{0};
     };
 
-    // Owns the low-level resource creation and upload boundary. Resource-specific
-    // systems keep ownership, caching, and lifetime policy for their own objects.
+    // Creates logical resources; physical objects are prepared by SubmissionExecutor.
+    // Resource owners retain caching and lifetime policy for their own objects.
     class RenderResourceService : public Managed<RenderResourceService, RenderResourceServiceCreateInfo> {
         friend class Managed<RenderResourceService, RenderResourceServiceCreateInfo>;
 
         GfxDeviceHandle m_device{};
 
     public:
+        // Returned handles describe resources only. Record their upload/use in a
+        // command list to include them in that submission's preparation plan.
         [[nodiscard]] GfxTextureHandle createTexture(const GfxTextureDesc& desc) const;
         [[nodiscard]] GfxBufferHandle createBuffer(const GfxBufferDesc& desc) const;
 
         Bool enqueueTextureUpload(DrawCommandList& commands, const TextureUploadData& upload) const;
         Bool enqueueBufferUpload(DrawCommandList& commands, const BufferUploadData& upload) const;
 
-        // Creates one short-lived command list for a startup batch and submits it
-        // before returning. Queue ordering makes its resources usable by later work.
+        // Records a startup batch through the same resource preparation/replay path.
+        // Waits for completion before releasing its locally owned command data.
         Bool submitStartupUploads(
             const DynamicArray<TextureUploadData>& texture_uploads,
             const DynamicArray<BufferUploadData>& buffer_uploads = {}) const;

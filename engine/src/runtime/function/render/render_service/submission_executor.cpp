@@ -23,12 +23,12 @@ namespace dodoe {
             const auto& texture = entry.texture;
             if (!texture) return true;
             if (texture->isGpuReady()) {
-                MarkRecovered(texture.Get());
+                MarkRecovered(texture.get());
                 return true;
             }
             texture->initializeGpu(device);
             if (!texture->isGpuReady() || !texture->getRHIHandle()) {
-                if (ShouldReportFailure(texture.Get())) {
+                if (ShouldReportFailure(texture.get())) {
                     DO_ERROR("SubmissionExecutor: texture realize failed ({})", string_to_std(texture->getDebugName()));
                 }
                 return false;
@@ -40,12 +40,12 @@ namespace dodoe {
             const auto& buffer = entry.buffer;
             if (!buffer) return true;
             if (buffer->isGpuReady()) {
-                MarkRecovered(buffer.Get());
+                MarkRecovered(buffer.get());
                 return true;
             }
             buffer->initializeGpu(device);
             if (!buffer->isGpuReady() || !buffer->getRHIHandle()) {
-                if (ShouldReportFailure(buffer.Get())) {
+                if (ShouldReportFailure(buffer.get())) {
                     DO_ERROR("SubmissionExecutor: buffer realize failed ({})", string_to_std(buffer->getDebugName()));
                 }
                 return false;
@@ -57,33 +57,30 @@ namespace dodoe {
             const auto& framebuffer = entry.framebuffer;
             if (!framebuffer) return true;
             if (framebuffer->isGpuReady()) {
-                MarkRecovered(framebuffer.Get());
+                MarkRecovered(framebuffer.get());
                 return true;
             }
 
             const auto& desc = framebuffer->getDesc();
             for (const auto& color : desc.colors()) {
                 if (!color || !color->isGpuReady()) {
-                    if (ShouldReportFailure(framebuffer.Get())) {
-                        DO_ERROR("SubmissionExecutor: framebuffer realize deferred, attachment not ready ({})",
-                            string_to_std(framebuffer->getDebugName()));
+                    if (ShouldReportFailure(framebuffer.get())) {
+                        DO_ERROR("SubmissionExecutor: framebuffer attachment is not ready");
                     }
                     return false;
                 }
             }
             if (desc.depth() && !desc.depth()->isGpuReady()) {
-                if (ShouldReportFailure(framebuffer.Get())) {
-                    DO_ERROR("SubmissionExecutor: framebuffer realize deferred, depth attachment not ready ({})",
-                        string_to_std(framebuffer->getDebugName()));
+                if (ShouldReportFailure(framebuffer.get())) {
+                    DO_ERROR("SubmissionExecutor: framebuffer depth attachment is not ready");
                 }
                 return false;
             }
 
             framebuffer->initializeGpu(device);
             if (!framebuffer->isGpuReady() || !framebuffer->getRHIHandle()) {
-                if (ShouldReportFailure(framebuffer.Get())) {
-                    DO_ERROR("SubmissionExecutor: framebuffer realize failed ({})",
-                        string_to_std(framebuffer->getDebugName()));
+                if (ShouldReportFailure(framebuffer.get())) {
+                    DO_ERROR("SubmissionExecutor: framebuffer creation failed");
                 }
                 return false;
             }
@@ -94,12 +91,12 @@ namespace dodoe {
             const auto& binding_set = entry.binding_set;
             if (!binding_set) return true;
             if (binding_set->isGpuReady()) {
-                MarkRecovered(binding_set.Get());
+                MarkRecovered(binding_set.get());
                 return true;
             }
 
             if (!binding_set->getLayout()) {
-                if (ShouldReportFailure(binding_set.Get())) {
+                if (ShouldReportFailure(binding_set.get())) {
                     DO_ERROR("SubmissionExecutor: binding set realize failed, layout is null");
                 }
                 return false;
@@ -108,7 +105,7 @@ namespace dodoe {
             const auto& logical_desc = binding_set->getLogicalDesc();
             for (const auto& item : logical_desc.bindings) {
                 if (!item.isResolved(device)) {
-                    if (ShouldReportFailure(binding_set.Get())) {
+                    if (ShouldReportFailure(binding_set.get())) {
                         DO_ERROR("SubmissionExecutor: binding set realize deferred, resource not ready (slot={})",
                             item.slot);
                     }
@@ -118,7 +115,7 @@ namespace dodoe {
 
             binding_set->initializeGpu(device);
             if (!binding_set->isGpuReady() || !binding_set->getRHIHandle()) {
-                if (ShouldReportFailure(binding_set.Get())) {
+                if (ShouldReportFailure(binding_set.get())) {
                     DO_ERROR("SubmissionExecutor: binding set realize failed");
                 }
                 return false;
@@ -130,13 +127,13 @@ namespace dodoe {
             const auto& pipeline = entry.pipeline;
             if (!pipeline) return true;
             if (pipeline->isGpuReady()) {
-                MarkRecovered(pipeline.Get());
+                MarkRecovered(pipeline.get());
                 return true;
             }
 
             pipeline->initializeGpu(device);
             if (!pipeline->isGpuReady() || !pipeline->getRHIHandle()) {
-                if (ShouldReportFailure(pipeline.Get())) {
+                if (ShouldReportFailure(pipeline.get())) {
                     DO_ERROR("SubmissionExecutor: graphics pipeline realize failed");
                 }
                 return false;
@@ -146,37 +143,77 @@ namespace dodoe {
 
     } // namespace
 
-    void SubmissionExecutor::prepareResources(DrawCommandList& commands, GfxDeviceHandle device) {
+    Bool SubmissionExecutor::prepareResources(DrawCommandList& commands, GfxDeviceHandle device) {
         DO_PROFILE_SCOPE_CATEGORY("SubmissionExecutor::prepareResources", "resource");
         if (!device) {
             DO_ERROR("SubmissionExecutor::prepareResources: graphics device is unavailable");
-            return;
+            return false;
         }
 
-        constexpr UInt32 kMaxRealizePasses = 2;
-        for (UInt32 pass = 0; pass < kMaxRealizePasses; ++pass) {
-            for (const auto& entry : commands.getRealizePlan()) {
-                switch (entry.kind) {
-                    case GfxResourceRealizeEntry::Kind::Texture:
-                        RealizeTexture(entry, device);
-                        break;
-                    case GfxResourceRealizeEntry::Kind::Buffer:
-                        RealizeBuffer(entry, device);
-                        break;
-                    case GfxResourceRealizeEntry::Kind::Framebuffer:
-                        RealizeFramebuffer(entry, device);
-                        break;
-                    case GfxResourceRealizeEntry::Kind::BindingSet:
-                        RealizeBindingSet(entry, device);
-                        break;
-                    case GfxResourceRealizeEntry::Kind::GraphicsPipeline:
-                        RealizeGraphicsPipeline(entry, device);
-                        break;
-                    default:
-                        break;
+        // Discover leaf dependencies even when their original creation list is not
+        // part of this submission (for example, a cached pending binding set).
+        UnorderedSet<const void*> visited;
+        Bool ready = true;
+        auto texture = [&](const GfxTextureHandle& handle) {
+            if (!handle || !visited.insert(handle.get()).second) return;
+            GfxResourceRealizeEntry entry{};
+            entry.texture = handle;
+            ready = RealizeTexture(entry, device) && ready;
+        };
+        auto buffer = [&](const GfxBufferHandle& handle) {
+            if (!handle || !visited.insert(handle.get()).second) return;
+            GfxResourceRealizeEntry entry{};
+            entry.buffer = handle;
+            ready = RealizeBuffer(entry, device) && ready;
+        };
+        for (const auto& entry : commands.getRealizePlan()) {
+            texture(entry.texture);
+            buffer(entry.buffer);
+            if (entry.descriptor_write) texture(entry.descriptor_write->texture);
+            if (entry.framebuffer) {
+                const auto& desc = entry.framebuffer->getDesc();
+                for (const auto& color : desc.colors()) texture(color);
+                texture(desc.depth());
+            }
+            if (entry.binding_set) {
+                for (const auto& item : entry.binding_set->getLogicalDesc().bindings) {
+                    texture(item.texture);
+                    buffer(item.buffer);
                 }
             }
         }
+        if (!ready) return false;
+
+        // All buffer/texture dependencies exist before dependent objects are created.
+        for (const auto& entry : commands.getRealizePlan()) {
+            switch (entry.kind) {
+                case GfxResourceRealizeEntry::Kind::Framebuffer:
+                    ready = RealizeFramebuffer(entry, device) && ready;
+                    break;
+                case GfxResourceRealizeEntry::Kind::BindingSet:
+                    ready = RealizeBindingSet(entry, device) && ready;
+                    break;
+                case GfxResourceRealizeEntry::Kind::GraphicsPipeline:
+                    ready = RealizeGraphicsPipeline(entry, device) && ready;
+                    break;
+                case GfxResourceRealizeEntry::Kind::DescriptorWrite: {
+                    const auto& write = entry.descriptor_write;
+                    if (!write || !write->table || !write->texture || !write->texture->isGpuReady()) {
+                        ready = false;
+                        break;
+                    }
+                    auto item = GfxBindingSetItem::Texture_SRV(write->slot, write->texture->getRHIHandle());
+                    if (!device->writeDescriptorTable(write->table, item)) {
+                        DO_ERROR("SubmissionExecutor: descriptor write failed (slot={})", write->slot);
+                        ready = false;
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+        return ready;
     }
 
     void SubmissionExecutor::replay(DrawCommandList& commands, GfxCommandList& target) {
@@ -184,9 +221,13 @@ namespace dodoe {
         commands.execute(target);
     }
 
-    void SubmissionExecutor::prepareAndReplay(DrawCommandList& commands, GfxDeviceHandle device, GfxCommandList& target) {
-        prepareResources(commands, device);
+    Bool SubmissionExecutor::prepareAndReplay(DrawCommandList& commands, GfxDeviceHandle device, GfxCommandList& target) {
+        if (!prepareResources(commands, device)) {
+            DO_ERROR("SubmissionExecutor: resource preparation failed; submission commands were not replayed");
+            return false;
+        }
         replay(commands, target);
+        return true;
     }
 
 } // namespace dodoe

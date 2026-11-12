@@ -3,6 +3,7 @@
 #include "render_resource_service.h"
 
 #include "runtime/function/graphics/gfx_context.h"
+#include "submission_executor.h"
 
 namespace dodoe {
 
@@ -24,9 +25,7 @@ namespace dodoe {
             DO_ERROR("RenderResourceService::createTexture: graphics device is unavailable");
             return nullptr;
         }
-        auto texture = create_ref<GfxTexture>(desc);
-        texture->initializeGpu(m_device);
-        return texture;
+        return create_ref<GfxTexture>(desc);
     }
 
     GfxBufferHandle RenderResourceService::createBuffer(const GfxBufferDesc& desc) const {
@@ -34,13 +33,12 @@ namespace dodoe {
             DO_ERROR("RenderResourceService::createBuffer: graphics device is unavailable");
             return nullptr;
         }
-        auto buffer = create_ref<GfxBuffer>(desc);
-        buffer->initializeGpu(m_device);
-        return buffer;
+        return create_ref<GfxBuffer>(desc);
     }
 
     Bool RenderResourceService::enqueueTextureUpload(DrawCommandList& commands, const TextureUploadData& upload) const {
-        if (!upload.texture || !upload.texture->isGpuReady() || !upload.data || upload.row_pitch == 0) {
+        if (!m_device || commands.getDevice() != m_device ||
+            !upload.texture || !upload.data || upload.row_pitch == 0) {
             DO_ERROR("RenderResourceService::enqueueTextureUpload: invalid texture upload");
             return false;
         }
@@ -49,7 +47,8 @@ namespace dodoe {
     }
 
     Bool RenderResourceService::enqueueBufferUpload(DrawCommandList& commands, const BufferUploadData& upload) const {
-        if (!upload.buffer || !upload.buffer->isGpuReady() || !upload.data || upload.data_size == 0) {
+        if (!m_device || commands.getDevice() != m_device ||
+            !upload.buffer || !upload.data || upload.data_size == 0) {
             DO_ERROR("RenderResourceService::enqueueBufferUpload: invalid buffer upload");
             return false;
         }
@@ -68,33 +67,35 @@ namespace dodoe {
             return true;
         }
 
+        DrawCommandList commands;
+        commands.setDevice(m_device);
+        for (const auto& upload : texture_uploads) {
+            if (!enqueueTextureUpload(commands, upload)) return false;
+        }
+        for (const auto& upload : buffer_uploads) {
+            if (!enqueueBufferUpload(commands, upload)) return false;
+        }
+        if (!SubmissionExecutor::prepareResources(commands, m_device)) return false;
+
         auto command_list = m_device->createCommandList();
         if (!command_list) {
             DO_ERROR("RenderResourceService::submitStartupUploads: command list creation failed");
             return false;
         }
-
         command_list->open();
-        for (const auto& upload : texture_uploads) {
-            if (!upload.texture || !upload.texture->isGpuReady() || !upload.data || upload.row_pitch == 0) {
-                DO_ERROR("RenderResourceService::submitStartupUploads: invalid texture upload");
-                command_list->close();
-                return false;
-            }
-            command_list->writeTexture(
-                upload.texture->getRHIHandle(), upload.array_slice, upload.mip_level, upload.data, upload.row_pitch);
-        }
-        for (const auto& upload : buffer_uploads) {
-            if (!upload.buffer || !upload.buffer->isGpuReady() || !upload.data || upload.data_size == 0) {
-                DO_ERROR("RenderResourceService::submitStartupUploads: invalid buffer upload");
-                command_list->close();
-                return false;
-            }
-            command_list->writeBuffer(
-                upload.buffer->getRHIHandle(), upload.data, upload.data_size, upload.destination_offset);
-        }
+        SubmissionExecutor::replay(commands, *command_list);
         command_list->close();
         m_device->executeCommandList(command_list);
+
+        // Startup batches own their CPU command payload locally. Keep it alive
+        // until this submission completes; runtime uploads use frame ownership.
+        const auto completion = m_device->createEventQuery();
+        if (completion) {
+            m_device->setEventQuery(completion, GfxCommandQueue::Graphics);
+            m_device->waitEventQuery(completion);
+        } else {
+            m_device->waitForIdle();
+        }
         return true;
     }
 

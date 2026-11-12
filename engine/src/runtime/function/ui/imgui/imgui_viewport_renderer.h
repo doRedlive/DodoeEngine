@@ -30,6 +30,11 @@ namespace dodoe {
             GfxBufferHandle constant_buffer{};
             GfxCommandListLifetimeTrackerHandle tracker{};
             DrawCommandList recorder;
+            struct InFlightCommands {
+                DrawCommandList commands{};
+                GfxEventQueryHandle completion{};
+            };
+            std::deque<InFlightCommands> in_flight_commands;
             UInt32 vertex_capacity{0};
             UInt32 index_capacity{0};
             UInt32 image_index{0};

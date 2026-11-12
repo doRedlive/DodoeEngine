@@ -25,7 +25,6 @@ namespace dodoe {
 
     struct UIPassParameters {
         RenderGraphTextureHandle color_target{};
-        Bool clear_target{false};
         RenderGraphBufferHandle instance_buffer{};
         RenderGraphBufferHandle quad_vertex_buffer{};
         RenderGraphBufferHandle quad_index_buffer{};
@@ -41,14 +40,16 @@ namespace dodoe {
             [&context](RenderGraphPassBuilder& pass_builder, UIPassParameters& parameters) {
                 const auto swapchain_extent = context.gfx_context->getSwapchainExtent2D();
                 const auto* scene_color = pass_builder.blackboard().get<SceneColorKey>();
+                RenderGraphAttachmentInfo color_attachment{};
+                color_attachment.load_op = scene_color ? LoadOp::Load : LoadOp::Clear;
+                color_attachment.clear_color = GfxColor(0.0f, 0.0f, 0.0f, 1.0f);
                 if (scene_color) {
-                    parameters.color_target = pass_builder.writeColor(*scene_color);
+                    parameters.color_target = pass_builder.writeColor(*scene_color, color_attachment);
                 } else {
-                    parameters.clear_target = true;
                     parameters.color_target = pass_builder.writeColor(pass_builder.createTransientTexture(
                         rendering_pipeline_utils::MakeSwapchainRT2D(
                             swapchain_extent, GfxFormat::RGBA8_UNORM, "RDG UIColor"),
-                        "UIColor"));
+                        "UIColor"), color_attachment);
                     pass_builder.blackboard().set<SceneColorKey>(parameters.color_target);
                 }
 
@@ -58,12 +59,7 @@ namespace dodoe {
                     for (const auto& info : ui_infos) {
                         parameters.instances.push_back(info.toInstance());
                     }
-                    if (!RenderSettings::IsBindlessActive()) {
-                        std::stable_sort(parameters.instances.begin(), parameters.instances.end(),
-                            [](const UIInstance& a, const UIInstance& b) {
-                                return a.atlas_index < b.atlas_index;
-                            });
-                    }
+
                 }
 
                 // Instance buffer
@@ -73,10 +69,11 @@ namespace dodoe {
                     .setIsVertexBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG VisibleUIInstances");
-                parameters.instance_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(instance_desc, "VisibleUIInstances"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.instance_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.instance_buffer = pass_builder.createTransientBuffer(instance_desc, "VisibleUIInstances");
+                pass_builder.uploadBuffer(parameters.instance_buffer, parameters.instances.data(),
+                    parameters.instances.size() * sizeof(UIInstance));
+                if (!parameters.instances.empty())
+                    pass_builder.readBuffer(parameters.instance_buffer, RenderGraphBufferUsage::Vertex);
 
                 // VP constant buffer (orthographic projection)
                 RenderGraphBufferDesc vp_desc{};
@@ -85,10 +82,22 @@ namespace dodoe {
                     .setIsConstantBuffer(true)
                     .enableAutomaticStateTracking(GfxResourceStates::CopyDest)
                     .setDebugName("RDG UIVP");
-                parameters.vp_buffer = pass_builder.writeBuffer(
-                    pass_builder.createTransientBuffer(vp_desc, "UIVpBuffer"),
-                    RenderGraphPipelineStage::Copy);
-                pass_builder.readBuffer(parameters.vp_buffer, RenderGraphPipelineStage::VertexShader);
+                parameters.vp_buffer = pass_builder.createTransientBuffer(vp_desc, "UIVpBuffer");
+                const auto rect = context.view.getViewportRect();
+                Matrix4f projection = Math::OrthoRH_ZO(
+                    0.0f, static_cast<Float>(rect.z > 0 ? rect.z : swapchain_extent.x),
+                    static_cast<Float>(rect.w > 0 ? rect.w : swapchain_extent.y), 0.0f, 0.0f, 1.0f);
+                projection = Math::FlipClipSpaceY(projection);
+                pass_builder.uploadBuffer(parameters.vp_buffer, &projection, sizeof(projection));
+                pass_builder.readBuffer(parameters.vp_buffer, RenderGraphBufferUsage::Constant);
+
+                UnorderedSet<UInt32> texture_slots;
+                for (const auto& instance : parameters.instances) {
+                    if (!texture_slots.insert(instance.atlas_index).second) continue;
+                    const auto texture = context.shared_render_service->resolveTextureBySlot(instance.atlas_index);
+                    if (texture) pass_builder.read(pass_builder.importTexture(texture, "UIAtlas"));
+                }
+
 
                 // Quad mesh (reused from GpuScene)
                 const auto* gpu_scene = context.scene ? context.scene->getGpuScene() : nullptr;
@@ -97,23 +106,14 @@ namespace dodoe {
                 }
                 const auto scene_resources = gpu_scene->getPassResources();
                 if (scene_resources.quad_vb && scene_resources.quad_ib) {
-                    parameters.quad_vertex_buffer = pass_builder.importBuffer(scene_resources.quad_vb, "UIQuadVB");
-                    parameters.quad_index_buffer = pass_builder.importBuffer(scene_resources.quad_ib, "UIQuadIB");
+                    parameters.quad_vertex_buffer = pass_builder.readBuffer(pass_builder.importBuffer(scene_resources.quad_vb, "UIQuadVB"), RenderGraphBufferUsage::Vertex);
+                    parameters.quad_index_buffer = pass_builder.readBuffer(pass_builder.importBuffer(scene_resources.quad_ib, "UIQuadIB"), RenderGraphBufferUsage::Index);
                 }
             },
             [this](const UIPassParameters& parameters, const RenderGraphPassContext& ctx,
                    DrawCommandList& command_list) {
-                const auto color_target = ctx.resolveTexture(parameters.color_target);
-                command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::RenderTarget);
-                command_list.commitBarriers();
-                if (parameters.clear_target) {
-                    command_list.clearTextureFloat(color_target, GfxAllSubresources, GfxColor(0.0f, 0.0f, 0.0f, 1.0f));
-                }
-
                 if (parameters.instances.empty() || !parameters.quad_vertex_buffer.isValid() ||
                     !parameters.quad_index_buffer.isValid() || !m_input_layout) {
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -122,8 +122,6 @@ namespace dodoe {
                 const auto* pipeline_cache = shared_service ? shared_service->getPipelineStateCache() : nullptr;
                 if (!shader_library || !pipeline_cache) {
                     DO_ERROR("UIPass: shader library or pipeline cache unavailable");
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
 
@@ -131,28 +129,6 @@ namespace dodoe {
                 const auto vp_buffer = ctx.resolveBuffer(parameters.vp_buffer);
                 const auto quad_vertex_buffer = ctx.resolveBuffer(parameters.quad_vertex_buffer);
                 const auto quad_index_buffer = ctx.resolveBuffer(parameters.quad_index_buffer);
-
-                // Upload instance data
-                command_list.setBufferState(instance_buffer, GfxResourceStates::CopyDest);
-                command_list.setBufferState(vp_buffer, GfxResourceStates::CopyDest);
-                command_list.commitBarriers();
-                command_list.writeBuffer(instance_buffer, parameters.instances.data(),
-                                         parameters.instances.size() * sizeof(UIInstance));
-
-                // Build orthographic projection for screen-space rendering
-                const auto extent = ctx.getGfxContext()->getSwapchainExtent2D();
-                Matrix4f ui_view_projection = Math::OrthoRH_ZO(
-                    0.0f, static_cast<Float>(extent.x),
-                    static_cast<Float>(extent.y), 0.0f,   // top-down Y
-                    0.0f, 1.0f);
-                ui_view_projection = Math::FlipClipSpaceY(ui_view_projection);
-                command_list.writeBuffer(vp_buffer, &ui_view_projection, sizeof(ui_view_projection));
-
-                command_list.setBufferState(instance_buffer, GfxResourceStates::VertexBuffer);
-                command_list.setBufferState(vp_buffer, GfxResourceStates::ConstantBuffer);
-                command_list.setBufferState(quad_vertex_buffer, GfxResourceStates::VertexBuffer);
-                command_list.setBufferState(quad_index_buffer, GfxResourceStates::IndexBuffer);
-                command_list.commitBarriers();
 
                 const Bool use_bindless = RenderSettings::IsBindlessActive();
 
@@ -162,15 +138,13 @@ namespace dodoe {
                     const auto* descriptor_manager = shared_service ? shared_service->getDescriptorTable() : nullptr;
                     if (!descriptor_manager || !descriptor_manager->getDescriptorTable() || !m_bindless_binding_layout) {
                         DO_ERROR("UIPass: bindless UI resources are unavailable");
-                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                        command_list.commitBarriers();
                         return;
                     }
 
                     auto* set_cache = shared_service->getBindingSetCache();
                     const GfxLogicalBindingSetDesc view_desc = GfxLogicalBindingSetDesc()
                         .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer));
-                    auto view_binding_set = set_cache->getOrCreate(command_list, view_desc, m_view_binding_layout, 0);
+                    auto view_binding_set = command_list.createBindingSet(view_desc, m_view_binding_layout);
                     const GfxLogicalBindingSetDesc material_desc = GfxLogicalBindingSetDesc()
                         .addItem(GfxLogicalBindingItem::Sampler(1, GlobalSamplers::Screen()));
                     auto material_binding_set = set_cache->getOrCreate(command_list, material_desc, m_bindless_binding_layout, 0);
@@ -211,8 +185,6 @@ namespace dodoe {
                     const auto pipeline = pipeline_cache->resolveGraphicsPipeline(
                         pipeline_desc, ctx.getRenderTargetSignature(), command_list);
                     if (!pipeline) {
-                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                        command_list.commitBarriers();
                         return;
                     }
 
@@ -228,14 +200,10 @@ namespace dodoe {
                     command_list.drawIndexed(GfxDrawArguments()
                         .setVertexCount(6)
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 } else {
                     if (!m_view_binding_layout || !m_material_binding_layout || !shared_service) {
                         DO_ERROR("UIPass: array binding layout unavailable");
-                        command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                        command_list.commitBarriers();
                         return;
                     }
 
@@ -274,7 +242,7 @@ namespace dodoe {
                         auto* set_cache = shared_service->getBindingSetCache();
                         const GfxLogicalBindingSetDesc view_desc = GfxLogicalBindingSetDesc()
                             .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer));
-                        auto view_binding_set = set_cache->getOrCreate(command_list, view_desc, m_view_binding_layout, 0);
+                        auto view_binding_set = command_list.createBindingSet(view_desc, m_view_binding_layout);
                         const GfxLogicalBindingSetDesc material_desc = GfxLogicalBindingSetDesc()
                             .addItem(GfxLogicalBindingItem::Texture_SRV(2, tex_handle))
                             .addItem(GfxLogicalBindingItem::Sampler(1, GlobalSamplers::Screen()));
@@ -321,8 +289,6 @@ namespace dodoe {
                         start = end;
                     }
 
-                    command_list.setTextureState(color_target, GfxAllSubresources, GfxResourceStates::ShaderResource);
-                    command_list.commitBarriers();
                     return;
                 }
             });

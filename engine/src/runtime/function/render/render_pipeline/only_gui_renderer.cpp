@@ -1,6 +1,7 @@
 // do@Redlive
 
 #include "only_gui_renderer.h"
+#include "render_feature/scene_color_feature.h"
 
 #include "render_feature/present_feature.h"
 #include "render_feature/ui_feature.h"
@@ -19,6 +20,7 @@ namespace dodoe {
         m_gfx_context = info.gfx_context;
         m_shared_render_service = info.shared_render_service;
 
+        addFeature<SceneColorFeature>();
         addFeature<UIFeature>();
         addFeature<ImGuiFeature>();
         addFeature<PresentFeature>();

@@ -20,6 +20,7 @@ namespace dodoe {
 
         for (Size_t resource_index = 0; resource_index < resources.size(); resource_index++) {
             const auto& resource = resources[resource_index];
+            if (!resource.is_live && resource.source == RenderGraphResourceSource::Transient) continue;
             if (resource.type == RenderGraphResourceType::Texture) {
                 switch (resource.source) {
                     case RenderGraphResourceSource::Transient:

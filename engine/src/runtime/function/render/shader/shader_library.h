@@ -59,6 +59,7 @@ namespace dodoe {
         GfxShaderHandle getPickVertexShader() const { return findShaderValue("PickVS"); }
         GfxShaderHandle getPickPixelShader() const { return findShaderValue("PickPS"); }
         GfxShaderHandle getPresentPixelShader() const { return findShaderValue("PresentPS"); }
+        GfxShaderHandle getPresent2DPixelShader() const { return findShaderValue("Present2DPS"); }
         GfxShaderHandle getBaselineVertexShader() const { return findShaderValue("BaselineVS"); }
         GfxShaderHandle getBaselinePixelShader() const { return findShaderValue("BaselinePS"); }
         GfxShaderHandle getImGuiVertexShader() const { return findShaderValue("ImGuiVS"); }

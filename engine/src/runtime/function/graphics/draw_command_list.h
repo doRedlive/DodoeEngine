@@ -22,6 +22,12 @@ namespace dodoe {
 
     class GfxContext;
 
+    struct GfxDescriptorWrite {
+        GfxDescriptorTableHandle table{};
+        GfxTextureHandle texture{};
+        UInt32 slot{0};
+    };
+
     struct GfxResourceRealizeEntry {
         enum class Kind : UInt8 {
             Texture = 0,
@@ -29,6 +35,7 @@ namespace dodoe {
             Framebuffer,
             BindingSet,
             GraphicsPipeline,
+            DescriptorWrite,
         };
 
         Kind kind{Kind::Texture};
@@ -37,20 +44,29 @@ namespace dodoe {
         GfxFramebufferHandle framebuffer{};
         GfxBindingSetHandle binding_set{};
         GfxGraphicsPipelineHandle pipeline{};
+        Ref<GfxDescriptorWrite> descriptor_write{};
     };
 
-    class DrawCommandList : public CommandList<GfxCommandList> {
-    public:
-        using CommandList::execute;
+    // Validity belongs to one replay, never to the recorded commands or a global list.
+    struct DrawCommandReplayContext {
+        GfxCommandList& target;
+        Bool graphics_state_valid{false};
+        Bool compute_state_valid{false};
+    };
 
+    class DrawCommandList : public CommandList<DrawCommandReplayContext> {
+    public:
         inline static constexpr Size_t kDefaultBlockSize = 4096;
 
         DrawCommandList() = default;
+        DrawCommandList(DrawCommandList&& other) noexcept;
+        DrawCommandList& operator=(DrawCommandList&& other) noexcept;
 
     private:
         GfxDeviceHandle m_device{};
         std::mutex m_record_mutex{};
         DynamicArray<GfxResourceRealizeEntry> m_realize_plan{};
+        UnorderedSet<const void*> m_realize_resources{};
 
     public:
         void setDevice(GfxDeviceHandle device) { m_device = device; }
@@ -69,6 +85,7 @@ namespace dodoe {
         void endFrame();
 
         void execute(const GfxCommandListHandle& command_list) const;
+        void execute(GfxCommandList& command_list) const;
 
         void registerRealizeEntry(const GfxResourceRealizeEntry& entry);
         void requestRealize(const GfxTextureHandle& texture);
@@ -182,28 +199,28 @@ namespace dodoe {
                 return *c;
             }
         private:
-            static void SExec(const Command& c, GfxCommandList& e) { static_cast<const TDerived&>(c).execute(e); }
+            static void SExec(const Command& c, DrawCommandReplayContext& e) { static_cast<const TDerived&>(c).execute(e); }
             static void SDestroy(Command& c) { static_cast<TDerived&>(c).~TDerived(); }
         };
 
-        GFX_DRAW_CMD(OpenCommand) { OpenCommand() = default; void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(CloseCommand) { CloseCommand() = default; void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(ClearStateCommand) { ClearStateCommand() = default; void execute(GfxCommandList&) const; };
+        GFX_DRAW_CMD(OpenCommand) { OpenCommand() = default; void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(CloseCommand) { CloseCommand() = default; void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(ClearStateCommand) { ClearStateCommand() = default; void execute(DrawCommandReplayContext&) const; };
 
-        GFX_DRAW_CMD(EndMarkerCommand) { EndMarkerCommand() = default; void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(ClearTextureFloatCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; GfxColor m_clear_color{}; ClearTextureFloatCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, const GfxColor& c) : m_texture(t), m_subresources(s), m_clear_color(c) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(ClearTextureUIntCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; UInt32 m_clear_color{0}; ClearTextureUIntCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, UInt32 c) : m_texture(t), m_subresources(s), m_clear_color(c) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(ClearDepthStencilTextureCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; Float m_depth{1}; Bool m_clear_depth{true}, m_clear_stencil{false}; UInt8 m_stencil{0}; ClearDepthStencilTextureCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, Bool cd, Float d, Bool cs, UInt8 st) : m_texture(t), m_subresources(s), m_depth(d), m_clear_depth(cd), m_clear_stencil(cs), m_stencil(st) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(CopyBufferCommand) { GfxBufferHandle m_dst{}, m_src{}; UInt64 m_dst_off{0}, m_src_off{0}, m_size{0}; CopyBufferCommand(const GfxBufferHandle& d, UInt64 doff, const GfxBufferHandle& s, UInt64 soff, UInt64 sz) : m_dst(d), m_src(s), m_dst_off(doff), m_src_off(soff), m_size(sz) {} void execute(GfxCommandList&) const; };
+        GFX_DRAW_CMD(EndMarkerCommand) { EndMarkerCommand() = default; void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(ClearTextureFloatCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; GfxColor m_clear_color{}; ClearTextureFloatCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, const GfxColor& c) : m_texture(t), m_subresources(s), m_clear_color(c) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(ClearTextureUIntCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; UInt32 m_clear_color{0}; ClearTextureUIntCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, UInt32 c) : m_texture(t), m_subresources(s), m_clear_color(c) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(ClearDepthStencilTextureCommand) { GfxTextureHandle m_texture{}; GfxTextureSubresourceSet m_subresources{}; Float m_depth{1}; Bool m_clear_depth{true}, m_clear_stencil{false}; UInt8 m_stencil{0}; ClearDepthStencilTextureCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, Bool cd, Float d, Bool cs, UInt8 st) : m_texture(t), m_subresources(s), m_depth(d), m_clear_depth(cd), m_clear_stencil(cs), m_stencil(st) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(CopyBufferCommand) { GfxBufferHandle m_dst{}, m_src{}; UInt64 m_dst_off{0}, m_src_off{0}, m_size{0}; CopyBufferCommand(const GfxBufferHandle& d, UInt64 doff, const GfxBufferHandle& s, UInt64 soff, UInt64 sz) : m_dst(d), m_src(s), m_dst_off(doff), m_src_off(soff), m_size(sz) {} void execute(DrawCommandReplayContext&) const; };
         struct CopyTextureToStagingCommand final : CommandImpl<CopyTextureToStagingCommand> {
             GfxStagingTextureHandle m_dst{}; GfxTextureSlice m_dst_slice{};
             GfxTextureHandle m_src{}; GfxTextureSlice m_src_slice{};
             CopyTextureToStagingCommand(const GfxStagingTextureHandle& d, const GfxTextureSlice& ds,
                 const GfxTextureHandle& s, const GfxTextureSlice& ss)
                 : m_dst(d), m_dst_slice(ds), m_src(s), m_src_slice(ss) {}
-            void execute(GfxCommandList&) const;
+            void execute(DrawCommandReplayContext&) const;
         };
-        GFX_DRAW_CMD(ResolveTextureCommand) { GfxTextureHandle m_dst{}, m_src{}; GfxTextureSubresourceSet m_subresources{}; ResolveTextureCommand(const GfxTextureHandle& d, const GfxTextureHandle& s, const GfxTextureSubresourceSet& sub) : m_dst(d), m_src(s), m_subresources(sub) {} void execute(GfxCommandList&) const; };
+        GFX_DRAW_CMD(ResolveTextureCommand) { GfxTextureHandle m_dst{}, m_src{}; GfxTextureSubresourceSet m_subresources{}; ResolveTextureCommand(const GfxTextureHandle& d, const GfxTextureHandle& s, const GfxTextureSubresourceSet& sub) : m_dst(d), m_src(s), m_subresources(sub) {} void execute(DrawCommandReplayContext&) const; };
 
         struct WriteBufferCommand final : VarCmd<WriteBufferCommand> {
             GfxBufferHandle m_b{}; UInt64 m_off{0}; Size_t m_sz{0};
@@ -211,51 +228,51 @@ namespace dodoe {
             static WriteBufferCommand& Create(DrawCommandList& cl, const GfxBufferHandle& b, const void* d, Size_t s, UInt64 o) {
                 auto& c = VarCmd::Create(cl, s, d, b, o); return c;
             }
-            void execute(GfxCommandList& c) const { if (m_b->isGpuReady()) c.writeBuffer(m_b->getRHIHandle(), data(), m_sz, m_off); }
+            void execute(DrawCommandReplayContext& c) const { if (m_b->isGpuReady()) c.target.writeBuffer(m_b->getRHIHandle(), data(), m_sz, m_off); }
         };
 
         struct WriteTextureCommand final : VarCmd<WriteTextureCommand> {
             GfxTextureHandle m_t{}; UInt32 m_m{0}, m_s{0}; Size_t m_p{0}, m_ds{0};
             WriteTextureCommand(const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, Size_t pi, Size_t sz) : VarCmd(CalcSize(sz)), m_t(tx), m_m(mi), m_s(sl), m_p(pi), m_ds(sz) {}
             static WriteTextureCommand& Create(DrawCommandList& cl, const GfxTextureHandle& tx, UInt32 mi, UInt32 sl, const void* d, Size_t pi, Size_t sz) { auto& c=VarCmd::Create(cl,sz,d,tx,mi,sl,pi); return c; }
-            void execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.writeTexture(m_t->getRHIHandle(), m_s, m_m, data(), m_p); }
+            void execute(DrawCommandReplayContext& c) const { if (m_t->isGpuReady()) c.target.writeTexture(m_t->getRHIHandle(), m_s, m_m, data(), m_p); }
         };
 
         struct PushConstantsCommand final : VarCmd<PushConstantsCommand> {
             Size_t m_s{0};
             explicit PushConstantsCommand(Size_t sz) : VarCmd(CalcSize(sz)), m_s(sz) {}
             static PushConstantsCommand& Create(DrawCommandList& cl, const void* d, Size_t sz) { auto& c=VarCmd::Create(cl,sz,d); return c; }
-            void execute(GfxCommandList& c) const { c.setPushConstants(data(), m_s); }
+            void execute(DrawCommandReplayContext& c) const { if (c.graphics_state_valid || c.compute_state_valid) c.target.setPushConstants(data(), m_s); }
         };
 
         struct BeginMarkerCommand final : VarCmd<BeginMarkerCommand> {
             static BeginMarkerCommand& Create(DrawCommandList& cl, const char* name) { const char* n=name?name:""; Size_t l=std::strlen(n)+1; auto& c=VarCmd::Create(cl,l,(const void*)n); return c; }
             const char* name() const { return (const char*)data(); }
-            void execute(GfxCommandList& c) const { c.beginMarker(name()); }
+            void execute(DrawCommandReplayContext& c) const { c.target.beginMarker(name()); }
             friend class VarCmd<BeginMarkerCommand>;
         private: explicit BeginMarkerCommand(Size_t l) : VarCmd(CalcSize(l)) {}
         };
 
-        GFX_DRAW_CMD(SetTextureStateCommand) { GfxTextureHandle m_t{}; GfxTextureSubresourceSet m_s{}; GfxResourceStates m_st{GfxResourceStates::Unknown}; SetTextureStateCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, GfxResourceStates st) : m_t(t), m_s(s), m_st(st) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(SetBufferStateCommand) { GfxBufferHandle m_b{}; GfxResourceStates m_st{GfxResourceStates::Unknown}; SetBufferStateCommand(const GfxBufferHandle& b, GfxResourceStates s) : m_b(b), m_st(s) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(CommitBarriersCommand) { CommitBarriersCommand() = default; void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(DrawPrimitiveCommand) { GfxDrawArguments m_args{}; explicit DrawPrimitiveCommand(const GfxDrawArguments& a) : m_args(a) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(DrawIndexedPrimitiveCommand) { GfxDrawArguments m_args{}; explicit DrawIndexedPrimitiveCommand(const GfxDrawArguments& a) : m_args(a) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(DispatchCommand) { UInt32 m_x{1},m_y{1},m_z{1}; DispatchCommand(UInt32 x,UInt32 y,UInt32 z) : m_x(x),m_y(y),m_z(z) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(DrawIndirectCommand) { UInt32 m_off{0},m_cnt{1}; DrawIndirectCommand(UInt32 o,UInt32 c) : m_off(o),m_cnt(c) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(DrawIndexedIndirectCommand) { UInt32 m_off{0},m_cnt{1}; DrawIndexedIndirectCommand(UInt32 o,UInt32 c) : m_off(o),m_cnt(c) {} void execute(GfxCommandList&) const; };
-        GFX_DRAW_CMD(DispatchIndirectCommand) { UInt32 m_off{0}; explicit DispatchIndirectCommand(UInt32 o) : m_off(o) {} void execute(GfxCommandList&) const; };
+        GFX_DRAW_CMD(SetTextureStateCommand) { GfxTextureHandle m_t{}; GfxTextureSubresourceSet m_s{}; GfxResourceStates m_st{GfxResourceStates::Unknown}; SetTextureStateCommand(const GfxTextureHandle& t, const GfxTextureSubresourceSet& s, GfxResourceStates st) : m_t(t), m_s(s), m_st(st) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(SetBufferStateCommand) { GfxBufferHandle m_b{}; GfxResourceStates m_st{GfxResourceStates::Unknown}; SetBufferStateCommand(const GfxBufferHandle& b, GfxResourceStates s) : m_b(b), m_st(s) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(CommitBarriersCommand) { CommitBarriersCommand() = default; void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(DrawPrimitiveCommand) { GfxDrawArguments m_args{}; explicit DrawPrimitiveCommand(const GfxDrawArguments& a) : m_args(a) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(DrawIndexedPrimitiveCommand) { GfxDrawArguments m_args{}; explicit DrawIndexedPrimitiveCommand(const GfxDrawArguments& a) : m_args(a) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(DispatchCommand) { UInt32 m_x{1},m_y{1},m_z{1}; DispatchCommand(UInt32 x,UInt32 y,UInt32 z) : m_x(x),m_y(y),m_z(z) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(DrawIndirectCommand) { UInt32 m_off{0},m_cnt{1}; DrawIndirectCommand(UInt32 o,UInt32 c) : m_off(o),m_cnt(c) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(DrawIndexedIndirectCommand) { UInt32 m_off{0},m_cnt{1}; DrawIndexedIndirectCommand(UInt32 o,UInt32 c) : m_off(o),m_cnt(c) {} void execute(DrawCommandReplayContext&) const; };
+        GFX_DRAW_CMD(DispatchIndirectCommand) { UInt32 m_off{0}; explicit DispatchIndirectCommand(UInt32 o) : m_off(o) {} void execute(DrawCommandReplayContext&) const; };
 
         struct SetGraphicsStateCommand final : CommandImpl<SetGraphicsStateCommand> {
             GfxDrawState m_state{};
             explicit SetGraphicsStateCommand(const GfxDrawState& state) : m_state(state) {}
-            void execute(GfxCommandList&) const;
+            void execute(DrawCommandReplayContext&) const;
         };
 
         struct SetComputeStateCommand final : CommandImpl<SetComputeStateCommand> {
             GfxComputeDispatchState m_state{};
             explicit SetComputeStateCommand(const GfxComputeDispatchState& state) : m_state(state) {}
-            void execute(GfxCommandList&) const;
+            void execute(DrawCommandReplayContext&) const;
         };
 
         [[nodiscard]] static Size_t alignUp(Size_t value, Size_t alignment);

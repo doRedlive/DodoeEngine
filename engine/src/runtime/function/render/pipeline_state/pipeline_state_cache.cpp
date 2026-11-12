@@ -22,10 +22,10 @@ namespace dodoe {
         }
 
         const auto cache_key = BuildGraphicsPipelineCacheKey(pass_type, effective_desc, framebuffer_info);
+        std::lock_guard<std::mutex> lock(m_mutex);
         const auto cache_it = m_graphics_pipelines.find(cache_key);
         if (cache_it != m_graphics_pipelines.end()) {
             if (!cache_it->second->isGpuReady()) {
-                cache_it->second->setPendingDesc(effective_desc, framebuffer_info);
                 command_list.requestRealize(cache_it->second);
             }
             return cache_it->second;
@@ -49,6 +49,7 @@ namespace dodoe {
     }
 
     void PipelineStateCache::clear() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_graphics_pipelines.clear();
     }
 

@@ -60,7 +60,6 @@ namespace dodoe {
 
     class RenderSystem : public Managed<RenderSystem, RenderSystemCreateInfo> {
         static constexpr Size_t kFramePacketQueueCapacity = 4;
-        static constexpr Size_t kRetiredCommandListCount = 3;
 
         Scope<GfxContext> m_gfx{nullptr};
         Scope<RenderFrameScheduler> m_frame_scheduler{nullptr};
@@ -83,7 +82,12 @@ namespace dodoe {
         UInt32 m_gpu_frame_query_slot{0};
         Float m_last_gpu_frame_ms{0.0f};
         Bool m_gpu_frame_ms_valid{false};
-        DynamicArray<DrawCommandList> m_retired_command_lists{};
+        struct RetiredCommandList {
+            DrawCommandList commands{};
+            GfxEventQueryHandle completion{};
+        };
+        std::deque<RetiredCommandList> m_retired_command_lists{};
+        DrawCommandList m_pending_resource_commands{};
 
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:
@@ -113,6 +117,7 @@ namespace dodoe {
         void releaseApplicationGraphicsContext();
         void renderFrameOnRenderThread();
         void renderFrame();
+        void releaseCompletedCommandLists();
     };
 
 } // namespace dodoe

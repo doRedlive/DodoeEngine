@@ -5,6 +5,7 @@
 #include "dopch.h"
 
 #include "runtime/function/graphics/gfx.h"
+#include <mutex>
 
 namespace dodoe {
 
@@ -29,7 +30,14 @@ namespace dodoe {
         void shutdown();
 
         GfxContext* m_gfx_context{nullptr};
-        UnorderedMap<Size_t, GfxInputLayoutHandle> m_cache{};
+        struct Entry {
+            Size_t hash{0};
+            GfxShaderHandle shader{};
+            DynamicArray<GfxVertexAttributeDesc> attributes{};
+            GfxInputLayoutHandle layout{};
+        };
+        mutable std::mutex m_mutex{};
+        DynamicArray<Entry> m_cache{};
     };
 
 } // namespace dodoe
