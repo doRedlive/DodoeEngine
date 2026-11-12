@@ -37,6 +37,8 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QStyleOptionToolButton>
+#include <QStylePainter>
 #include <QPointer>
 #include <QPixmap>
 #include <QSizePolicy>
@@ -144,14 +146,40 @@ public:
         setObjectName(QStringLiteral("inspectorAssetReference"));
         setAcceptDrops(true);
         setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-        setIconSize(QSize(24, 24));
-        setMinimumHeight(24);
+        setIconSize(QSize(20, 20));
+        setMinimumWidth(0);
+        setMinimumHeight(28);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 
     std::function<void(UInt64, const QString&)> assigned;
 
 protected:
+    QSize sizeHint() const override { return QSize(120, 28); }
+    QSize minimumSizeHint() const override { return QSize(48, 28); }
+
+    void paintEvent(QPaintEvent*) override {
+        QStylePainter painter(this);
+        QStyleOptionToolButton option;
+        initStyleOption(&option);
+        option.text.clear();
+        option.icon = QIcon();
+        painter.drawComplexControl(QStyle::CC_ToolButton, option);
+        QRect content = rect().adjusted(7, 3, -7, -3);
+        painter.setClipRect(content);
+        if (!icon().isNull()) {
+            const int extent = qMin(iconSize().height(), content.height());
+            const QRect iconRect(content.left(), content.center().y() - extent / 2, extent, extent);
+            icon().paint(&painter, iconRect, Qt::AlignCenter,
+                         isEnabled() ? QIcon::Normal : QIcon::Disabled);
+            content.setLeft(iconRect.right() + 6);
+        }
+        painter.setPen(palette().color(isEnabled() ? QPalette::Active : QPalette::Disabled,
+                                       QPalette::ButtonText));
+        painter.drawText(content, Qt::AlignLeft | Qt::AlignVCenter,
+                         fontMetrics().elidedText(text(), Qt::ElideMiddle, qMax(0, content.width())));
+    }
+
     void dragEnterEvent(QDragEnterEvent* event) override {
         if (event->mimeData()->hasFormat("application/x-cakery-asset")) {
             event->acceptProposedAction();
@@ -443,7 +471,8 @@ QColor ColorFromArray(const Json& value) {
 }
 
 QString SwatchStyle(const QColor& color) {
-    return QStringLiteral("background: %1; border: 1px solid #000000; border-radius: 2px;")
+    return QStringLiteral("background: %1; border: 1px solid palette(midlight); border-radius: 4px;"
+                          "min-width: 0; min-height: 0; padding: 0;")
         .arg(color.name());
 }
 
@@ -520,8 +549,8 @@ void EditorJsonWidget::rebuild() {
     auto* form = new QFormLayout();
     form->setContentsMargins(0, 0, 0, 0);
     form->setHorizontalSpacing(8);
-    form->setVerticalSpacing(7);
-    form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
+    form->setVerticalSpacing(4);
+    form->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     UnorderedSet<String> rendered;
     for (const auto& metadata : m_fields) {
@@ -578,8 +607,8 @@ void EditorJsonWidget::buildField(QFormLayout* form, const String& key, const St
         auto* subForm = new QFormLayout(group);
         subForm->setContentsMargins(6, 16, 6, 6);
         subForm->setHorizontalSpacing(8);
-        subForm->setVerticalSpacing(7);
-        subForm->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
+        subForm->setVerticalSpacing(4);
+        subForm->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         subForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
         for (auto it = value.begin(); it != value.end(); ++it) {
             const String subPath = path + "." + String(it.key());
@@ -943,7 +972,8 @@ QWidget* EditorJsonWidget::buildColorField(const String& path, const Json& value
     auto color = create_ref<QColor>(ColorFromArray(value));
     auto* swatch = new QPushButton(container);
     swatch->setObjectName(QStringLiteral("inspectorColorSwatch"));
-    swatch->setFixedSize(28, 16);
+    swatch->setFixedSize(32, 22);
+    swatch->setToolTip(tr("Select Color"));
     swatch->setCursor(Qt::PointingHandCursor);
     swatch->setStyleSheet(SwatchStyle(*color));
     hbox->addWidget(swatch);

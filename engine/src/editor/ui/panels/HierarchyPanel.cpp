@@ -24,6 +24,9 @@
 #include <QScrollBar>
 #include <QShortcut>
 #include <QSignalBlocker>
+#include <QStyle>
+#include <QStyleOptionViewItem>
+#include <QStyledItemDelegate>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
@@ -76,6 +79,19 @@ UInt64 ItemUuid(QTreeWidgetItem* item) {
     return item ? item->data(0, Qt::UserRole).toString().toULongLong() : 0;
 }
 
+class HierarchyItemDelegate final : public QStyledItemDelegate {
+public:
+    explicit HierarchyItemDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option,
+               const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem item(option);
+        item.state &= ~QStyle::State_HasFocus;
+        QStyledItemDelegate::paint(painter, item, index);
+    }
+};
+
 class HierarchyTree final : public QTreeWidget {
 public:
     using ReparentCallback = std::function<void(UInt64, UInt64)>;
@@ -83,9 +99,25 @@ public:
     explicit HierarchyTree(ReparentCallback callback, QWidget* parent = nullptr)
         : QTreeWidget(parent), m_reparentCallback(std::move(callback))
     {
+        setItemDelegate(new HierarchyItemDelegate(this));
     }
 
 protected:
+    void drawRow(QPainter* painter, const QStyleOptionViewItem& option,
+                 const QModelIndex& index) const override
+    {
+        const QRect itemRect = visualRect(index);
+        QPainterPath clip;
+        clip.addRoundedRect(QRectF(itemRect), 6, 6);
+        // Keep the branch indicators outside the rounded item background visible.
+        clip.addRect(QRectF(option.rect.left(), option.rect.top(),
+                            itemRect.left() - option.rect.left(), option.rect.height()));
+        painter->save();
+        painter->setClipPath(clip, Qt::IntersectClip);
+        QTreeWidget::drawRow(painter, option, index);
+        painter->restore();
+    }
+
     void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const override
     {
         DrawTreeBranchIndicator(this, painter, rect, index);

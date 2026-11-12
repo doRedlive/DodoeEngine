@@ -4,6 +4,9 @@
 
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QFocusEvent>
+#include <QLineEdit>
+#include <QSignalBlocker>
 #include <QSize>
 #include <QSizePolicy>
 #include <QSpinBox>
@@ -40,13 +43,36 @@ public:
 protected:
     QString textFromValue(double value) const override
     {
-        QString text = QDoubleSpinBox::textFromValue(value);
+        QLocale displayLocale(locale());
+        if (!isGroupSeparatorShown()) {
+            displayLocale.setNumberOptions(displayLocale.numberOptions() | QLocale::OmitGroupSeparator);
+        }
+        QString text = m_editing
+            ? QDoubleSpinBox::textFromValue(value)
+            : displayLocale.toString(value, 'f', qMin(3, decimals()));
+        if (!m_editing && value != 0.0 && displayLocale.toDouble(text) == 0.0) {
+            return displayLocale.toString(value, 'g', 3);
+        }
         const QString point = locale().decimalPoint();
         if (text.contains(point)) {
             while (text.endsWith(QLatin1Char('0'))) text.chop(1);
             if (text.endsWith(point)) text.chop(point.size());
         }
         return text == QStringLiteral("-0") ? QStringLiteral("0") : text;
+    }
+
+    void focusInEvent(QFocusEvent* event) override
+    {
+        m_editing = true;
+        refreshDisplay();
+        QDoubleSpinBox::focusInEvent(event);
+    }
+
+    void focusOutEvent(QFocusEvent* event) override
+    {
+        QDoubleSpinBox::focusOutEvent(event);
+        m_editing = false;
+        refreshDisplay();
     }
 
     QSize minimumSizeHint() const override
@@ -63,6 +89,16 @@ protected:
     {
         event->ignore();
     }
+
+private:
+    void refreshDisplay()
+    {
+        // Formatting alone must never be interpreted as a user edit.
+        const QSignalBlocker blocker(lineEdit());
+        lineEdit()->setText(prefix() + textFromValue(value()) + suffix());
+    }
+
+    bool m_editing = false;
 };
 
 class ScrubIntSpinBox : public QSpinBox {

@@ -128,7 +128,7 @@ InspectorPanel::InspectorPanel(EditorWorkspaceContext& context, QWidget* parent)
     container->setObjectName(QStringLiteral("inspectorContent"));
     m_layout = new QVBoxLayout(container);
     m_layout->setContentsMargins(8, 8, 8, 8);
-    m_layout->setSpacing(6);
+    m_layout->setSpacing(8);
     scroll->setWidget(container);
     outer->addWidget(scroll);
 
@@ -417,7 +417,7 @@ void InspectorPanel::refresh()
         auto* headerRow = new QWidget(section);
         headerRow->setObjectName(QStringLiteral("inspectorSectionHeaderRow"));
         auto* headerRowLayout = new QHBoxLayout(headerRow);
-        headerRowLayout->setContentsMargins(0, 0, 0, 0);
+        headerRowLayout->setContentsMargins(2, 1, 3, 1);
         headerRowLayout->setSpacing(0);
 
         auto* header = new QPushButton(headerRow);
@@ -508,6 +508,7 @@ void InspectorPanel::refresh()
         menuBtn->setObjectName(QStringLiteral("inspectorSectionMenu"));
         menuBtn->setIcon(editorIcon(QStringLiteral("ellipsis.svg")));
         menuBtn->setIconSize(QSize(16, 16));
+        menuBtn->setToolTip(tr("Component options"));
         menuBtn->setCursor(Qt::PointingHandCursor);
         connect(menuBtn, &QToolButton::clicked, menuBtn, [menuBtn, sectionMenu]() {
             sectionMenu->popup(menuBtn->mapToGlobal(QPoint(0, menuBtn->height())));
@@ -525,8 +526,8 @@ void InspectorPanel::refresh()
         body->setObjectName(QStringLiteral("inspectorSectionBody"));
         body->setVisible(expanded);
         auto* bodyLayout = new QVBoxLayout(body);
-        bodyLayout->setContentsMargins(6, 5, 6, 5);
-        bodyLayout->setSpacing(5);
+        bodyLayout->setContentsMargins(4, 5, 4, 2);
+        bodyLayout->setSpacing(4);
 
         if (!managed && component.hasCustomUI) {
             const String typeName = component.typeName;

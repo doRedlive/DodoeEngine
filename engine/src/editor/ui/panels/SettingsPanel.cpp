@@ -146,12 +146,13 @@ void SettingsPanel::reload()
             }
         }
     }
-    if (value.is_null() || (value.is_object() && value.empty())) {
-        if (m_fallback) {
-            Json fallbackValue = m_fallback();
-            if (fallbackValue.is_object() && !fallbackValue.empty()) {
-                value = std::move(fallbackValue);
+    if (m_fallback) {
+        Json fallbackValue = m_fallback();
+        if (fallbackValue.is_object()) {
+            if (value.is_object()) {
+                fallbackValue.merge_patch(value);
             }
+            value = std::move(fallbackValue);
         }
     }
     if (value.is_null()) {
