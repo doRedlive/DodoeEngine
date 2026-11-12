@@ -29,8 +29,8 @@ namespace dodoe {
         [[nodiscard]] ScriptLifecycleFn getInvokeFinalizeFn() const { return m_invoke_finalize; }
         [[nodiscard]] void* getAlcHandle() const { return m_alc_gchandle; }
 
-        bool onScriptSourcesChanged();
-        bool buildAppAssembly();
+        bool DODOE_API onScriptSourcesChanged();
+        bool DODOE_API buildAppAssembly();
         bool autoBuildAppAssembly();
         void unloadAppAssembly(Bool collect_garbage = true);
         bool loadAppAssembly();

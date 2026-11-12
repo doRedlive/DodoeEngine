@@ -15,11 +15,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
 
 namespace cakery {
 

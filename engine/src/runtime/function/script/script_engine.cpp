@@ -193,6 +193,13 @@ namespace dodoe {
     Bool ScriptEngine::buildAppAssembly() {
         DO_PROFILE_SCOPE_CATEGORY("ScriptEngine::buildAppAssembly", "script");
         const auto active_project = Project::ActiveProject();
+        if (!active_project) return false;
+#ifndef DODOE_SHIPPING
+        // The output may change even if a later save supersedes this result.
+        // Only loading it successfully may restore a valid fingerprint cache.
+        std::error_code cacheError;
+        fs::remove(ScriptFingerprintCachePath(), cacheError);
+#endif
         if (PlatformTool::BuildCSharpAssembly(Project::AssetDirectory(), Project::BinariesDirectory(), active_project->config().name)) {
             return true;
         }

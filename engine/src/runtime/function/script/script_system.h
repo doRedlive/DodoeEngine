@@ -23,6 +23,7 @@ namespace dodoe {
         [[nodiscard]] ScriptRuntime* getScriptRuntime() const { return m_script_runtime.get(); }
 
         Bool reloadScripts();
+        Bool DODOE_API reloadBuiltAssembly();
 
         bool DODOE_API listToolActions(DynamicArray<String>& out_actions);
         bool DODOE_API invokeToolAction(const String& action_name, String& out_error);

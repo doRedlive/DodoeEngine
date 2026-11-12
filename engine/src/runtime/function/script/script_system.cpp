@@ -32,7 +32,10 @@ namespace dodoe {
             DO_ERROR("Build App Assembly failed");
             return false;
         }
+        return reloadBuiltAssembly();
+    }
 
+    Bool ScriptSystem::reloadBuiltAssembly() {
         m_script_runtime->snapshotFields();
         m_script_runtime->clearRuntimeState();
         m_script_engine->unloadAppAssembly();
