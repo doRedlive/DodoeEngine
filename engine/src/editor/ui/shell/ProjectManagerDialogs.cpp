@@ -3,6 +3,8 @@
 #include "dopch.h"
 
 #include "ProjectManagerDialogs.h"
+#include "FramelessChrome.h"
+#include "ui/common/EditorIcons.h"
 
 #include <QGridLayout>
 #include <QApplication>
@@ -13,6 +15,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPalette>
 #include <QStandardPaths>
 #include <QRegularExpression>
 #include <QScrollArea>
@@ -121,7 +124,9 @@ IslandDialog::IslandDialog(QWidget* parent, int preferredWidth)
     : QDialog(parent)
 {
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
-    setAttribute(Qt::WA_TranslucentBackground);
+    setProperty("editorDialog", true);
+    setAttribute(Qt::WA_StyledBackground);
+    setAutoFillBackground(true);
     setModal(true);
     setMinimumWidth(preferredWidth);
 
@@ -176,6 +181,7 @@ void IslandDialog::showEvent(QShowEvent* event)
         move(avail.center() - QPoint(width() / 2, height() / 2));
     }
     QDialog::showEvent(event);
+    applyWindowsFrameAttributes(this);
 }
 
 void IslandDialog::buildHead(const QString& title, const QString& desc)
@@ -198,6 +204,9 @@ void IslandDialog::buildHead(const QString& title, const QString& desc)
 
     auto* close = new QPushButton(m_head);
     close->setObjectName(QStringLiteral("pmDlgClose"));
+    close->setIcon(editorThemedIcon(QStringLiteral("x.svg")));
+    close->setIconSize(QSize(14, 14));
+    close->setToolTip(tr("Close"));
     close->setFixedSize(28, 28);
     close->setCursor(Qt::PointingHandCursor);
     connect(close, &QPushButton::clicked, this, &QDialog::reject);
@@ -390,17 +399,17 @@ void DirectoryPickerDialog::refreshList()
         auto* item = new QListWidgetItem(info.fileName(), m_list);
         item->setData(Qt::UserRole, info.absoluteFilePath());
         item->setData(Qt::UserRole + 1, true);
-        item->setForeground(QColor(0xBD, 0xC5, 0xD1));
+        item->setForeground(m_list->palette().color(QPalette::Text));
     }
     for (const QFileInfo& info : files) {
         auto* item = new QListWidgetItem(info.fileName(), m_list);
         item->setData(Qt::UserRole, info.absoluteFilePath());
         item->setData(Qt::UserRole + 1, false);
-        item->setForeground(QColor(0x6E, 0x78, 0x86));
+        item->setForeground(m_list->palette().color(QPalette::PlaceholderText));
     }
     if (m_list->count() == 0) {
         auto* item = new QListWidgetItem(tr("This folder is empty"), m_list);
-        item->setForeground(QColor(0x6E, 0x78, 0x86));
+        item->setForeground(m_list->palette().color(QPalette::PlaceholderText));
         Qt::ItemFlags flags = item->flags();
         flags &= ~Qt::ItemIsEnabled;
         item->setFlags(flags);

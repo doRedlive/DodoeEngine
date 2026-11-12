@@ -131,8 +131,9 @@ UnsavedChangesDialog::UnsavedChangesDialog(QWidget* parent)
     setWindowTitle(tr("Unsaved Changes"));
     setObjectName(QStringLiteral("unsavedChangesDialog"));
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
-    setAttribute(Qt::WA_TranslucentBackground, true);
+    setProperty("editorDialog", true);
     setAttribute(Qt::WA_StyledBackground, true);
+    setAutoFillBackground(true);
     setModal(true);
     setMinimumWidth(430);
 
@@ -217,7 +218,10 @@ void setupFramelessMessageBox(QMessageBox* messageBox)
     }
 
     messageBox->setProperty("cakeryCustomTitleBar", true);
-    messageBox->setAttribute(Qt::WA_TranslucentBackground, true);
+    messageBox->setProperty("editorDialog", true);
+    messageBox->setAttribute(Qt::WA_TranslucentBackground, false);
+    messageBox->setAttribute(Qt::WA_StyledBackground, true);
+    messageBox->setAutoFillBackground(true);
     messageBox->setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     grid->addWidget(new FloatingWindowTitleBar(messageBox, false), 0, 0, 1, columnCount);
     for (const auto& entry : items) {
@@ -225,6 +229,7 @@ void setupFramelessMessageBox(QMessageBox* messageBox)
                       entry.rowSpan, entry.columnSpan);
     }
     messageBox->show();
+    applyWindowsFrameAttributes(messageBox);
 }
 
 QColor selectEditorColor(const QColor& initial, QWidget* parent,

@@ -20,6 +20,8 @@
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QPainterPath>
+#include <QRegion>
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QStringList>
@@ -269,13 +271,6 @@ void SceneSurface::initFpsOverlay()
     m_fpsLabel->setAttribute(Qt::WA_TranslucentBackground);
     m_fpsLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_fpsLabel->setAutoFillBackground(false);
-    m_fpsLabel->setStyleSheet(QStringLiteral(
-        "QLabel#sceneFpsOverlay {"
-        " color: #9b9db4; background: #21222c;"
-        " border: none; border-radius: 2px; padding: 2px 5px;"
-        " font-family: Consolas;"
-        " font-size: 11px;"
-        "}"));
     m_fpsLabel->hide();
 
     m_fpsTimer = new QTimer(this);
@@ -291,6 +286,10 @@ void SceneSurface::positionFpsLabel()
     const int x = width() - hint.width() - 12;
     const int y = height() - hint.height() - 12;
     m_fpsLabel->setGeometry(std::max(0, x), std::max(0, y), hint.width(), hint.height());
+    QPainterPath outline;
+    // Match the stylesheet radius so the native overlay clips its corners too.
+    outline.addRoundedRect(QRectF(m_fpsLabel->rect()), 10, 10);
+    m_fpsLabel->setMask(QRegion(outline.toFillPolygon().toPolygon()));
     m_fpsLabel->raise();
 }
 

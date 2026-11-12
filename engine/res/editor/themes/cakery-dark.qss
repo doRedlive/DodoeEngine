@@ -99,8 +99,12 @@ QToolBar {
 }
 
 QToolBar#editorToolbar {
-    background: #242424;
+    background: palette(base);
     border: none;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
     spacing: 8px;
     padding: 4px 10px;
     min-height: 30px;
@@ -761,9 +765,10 @@ QListWidget#consoleList::item, QListWidget#historyList::item {
 }
 
 QPlainTextEdit#scriptEditor {
-    background: #1a1a1e;
-    color: #d4d4d4;
+    background: palette(base);
+    color: palette(text);
     border: none;
+    border-radius: 0;
     selection-background-color: #443a5e;
     selection-color: #ffffff;
 }
@@ -775,8 +780,39 @@ QTreeWidget#scriptOutline {
     padding: 2px;
 }
 
+QTreeWidget#scriptWorkspace {
+    background: #1f1f1f;
+    color: #c9c9c9;
+    border: 1px solid #151515;
+    border-radius: 3px;
+    padding: 4px 2px;
+    outline: none;
+}
+
+QTreeWidget#scriptWorkspace::item {
+    min-height: 18px;
+    padding: 0 4px;
+    border: none;
+}
+
+QTreeWidget#scriptWorkspace::item:hover {
+    background: #2a2d2e;
+}
+
+QTreeWidget#scriptWorkspace::item:selected {
+    background: #44475a;
+    color: #ffffff;
+}
+
+QLineEdit#scriptWorkspaceFilter {
+    min-height: 20px;
+    background: #1f1f1f;
+    border: 1px solid #151515;
+    border-radius: 3px;
+}
+
 QLineEdit#scriptOutlineFilter {
-    min-height: 24px;
+    min-height: 20px;
     background: #1f1f1f;
     border: 1px solid #151515;
     border-radius: 3px;
@@ -799,27 +835,61 @@ QWidget#scriptToolbar QToolButton:hover {
     border-color: #555555;
 }
 
-QTabWidget#scriptTabs::pane {
-    border: none;
-    border-top: 1px solid #151515;
+QWidget#scriptWorkspaceBody QToolButton {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 2px;
 }
 
+QTabWidget#scriptTabs::pane {
+    background: palette(base);
+    border: none;
+    border-radius: 0;
+    top: 0;
+}
+
+QTabWidget#scriptTabs > QTabBar { background: palette(window); border: 0; }
 QTabWidget#scriptTabs > QTabBar::tab {
-    background: #242424;
-    color: #b0b0b0;
-    border: 1px solid #1f1f1f;
-    border-bottom: none;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    background: palette(window);
+    color: palette(placeholder-text);
+    border: 0;
+    border-radius: 0;
     padding: 4px 10px;
-    margin-right: 1px;
+    margin: 0;
+}
+
+QTabWidget#scriptTabs > QTabBar::tab:hover {
+    background: palette(button);
+    color: palette(text);
 }
 
 QTabWidget#scriptTabs > QTabBar::tab:selected {
-    background: #1a1a1e;
-    color: #e8e8e8;
-    border-color: #333333;
+    background: palette(base);
+    color: palette(text);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
 }
+
+QWidget#scriptWorkspaceBody, QWidget#scriptOutlineBody,
+QWidget#scriptToolbar, QWidget#scriptStatusBar {
+    background: #21222c;
+    border: 1px solid #343746;
+    border-radius: 8px;
+}
+QLabel#scriptSectionTitle, QToolButton#scriptOutlineToggle {
+    background: transparent;
+    border: 0;
+    color: #bfbfd2;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 6px;
+}
+QLabel#scriptSaveStatus, QLabel#scriptReloadStatus {
+    background: transparent;
+    color: #9b9db4;
+    padding: 2px 4px;
+}
+QLabel#scriptReloadStatus[failed="true"] { color: #ff5555; }
 
 QWidget#scriptFindBar {
     background: #1f1f1f;
@@ -1132,9 +1202,9 @@ ads--CAutoHideDockContainer ads--CResizeHandle {
 }
 
 QFrame#pmShell {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1A1F27, stop:1 #151920);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
+    background: palette(window);
+    border: none;
+    border-radius: 8px;
 }
 
 QFrame#pmShell[edgeToEdge="true"] {
@@ -1169,30 +1239,30 @@ QLabel#unsavedChangesMessage {
     font-size: 13px;
 }
 
-/* ============ Project manager (island dark) ============ */
+/* Project manager layout. Colors come from the same application palette as the workspace. */
 
 QWidget#pmTitleBar {
     background: transparent;
 }
 
 QLabel#pmLogoMark {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #BD93F9, stop:1 #7C5CD6);
+    background: palette(highlight);
     border-radius: 5px;
-    color: #282A36;
+    color: palette(highlighted-text);
     font-size: 13px;
     font-weight: 700;
 }
 
 QLabel#pmTitle {
     background: transparent;
-    color: #DFE4EC;
+    color: palette(window-text);
     font-size: 13px;
     font-weight: 600;
 }
 
 QLabel#pmTitleSmall {
     background: transparent;
-    color: #8791A0;
+    color: palette(placeholder-text);
     font-size: 11px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
@@ -1209,11 +1279,11 @@ QToolButton#pmWinButton {
 }
 
 QToolButton#pmWinButton:hover {
-    background: #353B47;
+    background: palette(button);
 }
 
 QToolButton#pmWinButton:pressed {
-    background: #44475A;
+    background: palette(midlight);
 }
 
 QToolButton#pmWinClose {
@@ -1251,16 +1321,16 @@ QScrollArea#pmScroll > QWidget > QWidget {
 }
 
 QFrame#pmSidebar {
-    background: rgba(255, 255, 255, 0.028);
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    border-radius: 16px;
+    background: palette(base);
+    border: none;
+    border-radius: 8px;
 }
 
 QLabel#pmSideLabel {
     background: transparent;
-    color: #6C7685;
+    color: palette(placeholder-text);
     font-size: 11px;
-    letter-spacing: 1px;
+    letter-spacing: 0;
     padding-left: 6px;
 }
 
@@ -1268,75 +1338,75 @@ QPushButton#pmSideItem {
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
-    color: #B9C1CD;
+    color: palette(window-text);
     text-align: left;
     padding: 7px 9px;
     min-height: 18px;
 }
 
 QPushButton#pmSideItem:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #E8EDF4;
+    background: palette(button);
+    color: palette(window-text);
 }
 
 QPushButton#pmSideItem:checked {
-    background: rgba(189, 147, 249, 0.10);
-    border: 1px solid rgba(189, 147, 249, 0.40);
-    color: #F0F4FA;
+    background: palette(midlight);
+    border: 1px solid transparent;
+    color: palette(window-text);
     font-weight: 600;
 }
 
 QLabel#pmViewTitle {
     background: transparent;
-    color: #F0F4FA;
+    color: palette(window-text);
     font-size: 17px;
     font-weight: 600;
 }
 
 QLabel#pmViewSub {
     background: transparent;
-    color: #8791A0;
+    color: palette(placeholder-text);
     font-size: 11px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QPushButton#pmBtn {
-    background: rgba(255, 255, 255, 0.045);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    color: #C8D0DA;
-    padding: 6px 13px;
+    background: palette(button);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: palette(button-text);
+    padding: 4px 12px;
 }
 
 QPushButton#pmBtn:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.14);
-    color: #F0F4FA;
+    background: palette(midlight);
+    border-color: transparent;
+    color: palette(button-text);
 }
 
 QPushButton#pmPrimaryButton {
-    background: #BD93F9;
-    border: 1px solid #BD93F9;
-    border-radius: 8px;
-    color: #282A36;
+    background: palette(highlight);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: palette(highlighted-text);
     font-weight: 600;
-    padding: 6px 14px;
+    padding: 4px 12px;
 }
 
 QPushButton#pmPrimaryButton:hover {
-    background: #D6B7FF;
-    border-color: #D6B7FF;
+    background: palette(link);
+    border-color: transparent;
 }
 
 QPushButton#pmPrimaryButton:pressed {
-    background: #A57BE8;
-    border-color: #A57BE8;
+    background: palette(midlight);
+    border-color: transparent;
 }
 
 QPushButton#pmPrimaryButton:disabled {
-    background: #463B63;
-    border-color: #463B63;
-    color: #8A7FA6;
+    background: palette(button);
+    border-color: transparent;
+    color: palette(placeholder-text);
 }
 
 QPushButton#pmTab {
@@ -1344,30 +1414,30 @@ QPushButton#pmTab {
     border: none;
     border-bottom: 2px solid transparent;
     border-radius: 0;
-    color: #929CAB;
+    color: palette(placeholder-text);
     padding: 7px 12px 8px;
 }
 
 QPushButton#pmTab:hover {
-    color: #F0F4FA;
-    background: rgba(255, 255, 255, 0.03);
+    color: palette(window-text);
+    background: palette(button);
 }
 
 QPushButton#pmTab:checked {
-    color: #F0F4FA;
-    border-bottom: 2px solid #BD93F9;
-    background: rgba(189, 147, 249, 0.04);
+    color: palette(window-text);
+    border-bottom: 2px solid palette(highlight);
+    background: palette(base);
 }
 
 QFrame#pmCard {
-    background: rgba(255, 255, 255, 0.038);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 12px;
+    background: palette(base);
+    border: 1px solid transparent;
+    border-radius: 8px;
 }
 
 QFrame#pmCard[sel="true"] {
-    background: #2B2536;
-    border: 1px solid #BD93F9;
+    background: palette(button);
+    border: 1px solid palette(highlight);
 }
 
 QWidget#pmCardBody {
@@ -1380,21 +1450,21 @@ QWidget#pmCardPreview {
 
 QLabel#pmCardName {
     background: transparent;
-    color: #EDF1F7;
+    color: palette(window-text);
     font-size: 13px;
     font-weight: 600;
 }
 
 QLabel#pmCardPath {
     background: transparent;
-    color: #75808E;
+    color: palette(placeholder-text);
     font-size: 10.5px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QLabel#pmCardMeta {
     background: transparent;
-    color: #7A8391;
+    color: palette(placeholder-text);
     font-size: 10.5px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
@@ -1413,10 +1483,10 @@ QLabel#pmDot[state="miss"] {
 }
 
 QLabel#pmCardPill {
-    background: rgba(11, 14, 19, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: palette(window);
+    border: 1px solid transparent;
     border-radius: 4px;
-    color: #BAC3CF;
+    color: palette(window-text);
     font-size: 10px;
     padding: 2px 6px;
 }
@@ -1426,10 +1496,10 @@ QWidget#pmCardTools {
 }
 
 QToolButton#pmCardTool {
-    background: rgba(14, 17, 22, 0.82);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: palette(window);
+    border: 1px solid transparent;
     border-radius: 6px;
-    color: #D5DCE6;
+    color: palette(button-text);
     min-width: 26px;
     max-width: 26px;
     min-height: 26px;
@@ -1438,32 +1508,32 @@ QToolButton#pmCardTool {
 }
 
 QToolButton#pmCardTool:hover {
-    background: #BD93F9;
-    border-color: #BD93F9;
-    color: #282A36;
+    background: palette(midlight);
+    border-color: transparent;
+    color: palette(button-text);
 }
 
 QLabel#pmEmptyHint {
     background: transparent;
-    color: #76808E;
+    color: palette(placeholder-text);
     font-size: 13px;
 }
 
 QLabel#pmStatus {
     background: transparent;
-    color: #737D8B;
+    color: palette(placeholder-text);
     font-size: 11px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QFrame#pmDialogShell {
-    background: #171C24;
-    border: 1px solid #303946;
+    background: palette(window);
+    border: none;
     border-radius: 8px;
 }
 
 QWidget#pmDlgBody {
-    background: transparent;
+    background: palette(window);
 }
 
 QScrollArea#pmDlgScroll,
@@ -1473,25 +1543,25 @@ QScrollArea#pmDlgScroll > QWidget > QWidget {
 }
 
 QWidget#pmDlgHead {
-    background: transparent;
-    border-bottom: 1px solid #2A3039;
+    background: palette(window);
+    border-bottom: 1px solid palette(base);
 }
 
 QWidget#pmDlgFoot {
-    background: #12161C;
-    border-top: 1px solid #2A3039;
+    background: palette(window);
+    border-top: 1px solid palette(base);
 }
 
 QLabel#pmDlgTitle {
     background: transparent;
-    color: #F0F4FA;
-    font-size: 16px;
+    color: palette(window-text);
+    font-size: 14px;
     font-weight: 600;
 }
 
 QLabel#pmDlgDesc {
     background: transparent;
-    color: #8791A0;
+    color: palette(placeholder-text);
     font-size: 11.5px;
 }
 
@@ -1499,82 +1569,84 @@ QPushButton#pmDlgClose {
     background: transparent;
     border: none;
     border-radius: 4px;
-    color: #8791A0;
+    color: palette(button-text);
+    min-height: 0;
+    padding: 0;
     font-size: 13px;
 }
 
 QPushButton#pmDlgClose:hover {
-    background: #222933;
-    color: #F0F4FA;
+    background: palette(button);
+    color: palette(button-text);
 }
 
 QLabel#pmFootNote {
     background: transparent;
-    color: #6F7987;
+    color: palette(placeholder-text);
     font-size: 10.5px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QLabel#pmFieldLabel {
     background: transparent;
-    color: #7C8695;
+    color: palette(placeholder-text);
     font-size: 11px;
-    letter-spacing: 1px;
+    letter-spacing: 0;
 }
 
 QLabel#pmHint {
     background: transparent;
-    color: #6F7987;
+    color: palette(placeholder-text);
     font-size: 10.5px;
 }
 
 QLabel#pmHint[bad="true"] {
-    color: #D98585;
+    color: palette(bright-text);
 }
 
 QPushButton#pmTpl {
-    background: #1B2029;
-    border: 1px solid #2A3039;
+    background: palette(base);
+    border: 1px solid transparent;
     border-radius: 6px;
-    color: #DFE4EC;
+    color: palette(button-text);
     text-align: left;
     padding: 10px 11px;
 }
 
 QPushButton#pmTpl:hover {
-    background: #212732;
-    border-color: #3B4553;
+    background: palette(button);
+    border-color: transparent;
 }
 
 QPushButton#pmTpl:checked {
-    background: rgba(189, 147, 249, 0.09);
-    border: 1px solid #BD93F9;
-    color: #EBDDFF;
+    background: palette(button);
+    border: 1px solid palette(highlight);
+    color: palette(button-text);
 }
 
 QFrame#pmSummary {
-    background: #1B2029;
-    border: 1px solid #2A3039;
+    background: palette(base);
+    border: none;
     border-radius: 6px;
 }
 
 QLabel#pmSumKey {
     background: transparent;
-    color: #6E7886;
+    color: palette(placeholder-text);
     font-size: 11px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QLabel#pmSumValue {
     background: transparent;
-    color: #CFD6E0;
+    color: palette(window-text);
     font-size: 11px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QFrame#pmSeg {
-    background: #1B2029;
-    border: 1px solid #2A3039;
+    background: palette(base);
+    border: none;
     border-radius: 6px;
 }
 
@@ -1582,24 +1654,24 @@ QPushButton#pmSegBtn {
     background: transparent;
     border: none;
     border-radius: 4px;
-    color: #9AA4B2;
-    padding: 6px 10px;
+    color: palette(placeholder-text);
+    padding: 4px 8px;
 }
 
 QPushButton#pmSegBtn:hover {
-    background: #252C37;
-    color: #F0F4FA;
+    background: palette(button);
+    color: palette(button-text);
 }
 
 QPushButton#pmSegBtn:checked {
-    background: #BD93F9;
-    color: #282A36;
+    background: palette(midlight);
+    color: palette(button-text);
     font-weight: 600;
 }
 
 QPushButton#pmSwitchRow {
-    background: #1C222B;
-    border: 1px solid #303946;
+    background: palette(base);
+    border: 1px solid transparent;
     border-radius: 5px;
     color: transparent;
     padding: 0;
@@ -1607,35 +1679,35 @@ QPushButton#pmSwitchRow {
 }
 
 QPushButton#pmSwitchRow:hover {
-    background: #222A35;
-    border-color: #465264;
+    background: palette(button);
+    border-color: transparent;
 }
 
 QPushButton#pmSwitchRow:checked {
-    background: rgba(189, 147, 249, 0.12);
-    border: 1px solid rgba(189, 147, 249, 0.65);
+    background: palette(base);
+    border: 1px solid transparent;
 }
 
 QLabel#pmSwitchName {
     background: transparent;
-    color: #DFE4EC;
+    color: palette(window-text);
     font-size: 12px;
     font-weight: 600;
 }
 
 QPushButton#pmSwitchRow:checked QLabel#pmSwitchName {
-    color: #EBDDFF;
+    color: palette(window-text);
 }
 
 QLabel#pmSwitchDesc {
     background: transparent;
-    color: #7A8494;
+    color: palette(placeholder-text);
     font-size: 10.5px;
 }
 
 QLabel#pmSwitchPill {
-    background: #303A48;
-    border: 1px solid #4A5666;
+    background: palette(midlight);
+    border: 1px solid transparent;
     border-radius: 9px;
     min-width: 34px;
     max-width: 34px;
@@ -1644,44 +1716,44 @@ QLabel#pmSwitchPill {
 }
 
 QLabel#pmSwitchPill[on="true"] {
-    background: #A979E8;
-    border: 1px solid #C9A5FF;
+    background: palette(highlight);
+    border: 1px solid transparent;
 }
 
 QLabel#pmSwitchKnob {
-    background: #E9E2F8;
-    border: 1px solid rgba(40, 42, 54, 0.35);
+    background: palette(window-text);
+    border: 1px solid transparent;
     border-radius: 6px;
 }
 
 QWidget#pmCrumbs {
     background: transparent;
-    border-bottom: 1px solid #222831;
+    border-bottom: 1px solid palette(base);
 }
 
 QPushButton#pmCrumb {
     background: transparent;
     border: none;
     border-radius: 3px;
-    color: #8C96A4;
+    color: palette(placeholder-text);
     padding: 2px 6px;
     font-size: 11px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QPushButton#pmCrumb:hover {
-    background: #222933;
-    color: #F0F4FA;
+    background: palette(button);
+    color: palette(button-text);
 }
 
 QLabel#pmCrumbSlash {
     background: transparent;
-    color: #4E5763;
+    color: palette(placeholder-text);
     font-size: 11px;
 }
 
 QListWidget#pmFsList {
-    background: #12161C;
+    background: palette(window);
     border: none;
     padding: 8px;
     outline: none;
@@ -1694,25 +1766,25 @@ QListWidget#pmFsList::item {
 }
 
 QListWidget#pmFsList::item:hover {
-    background: #1D242F;
+    background: palette(button);
 }
 
 QListWidget#pmFsList::item:selected {
-    background: rgba(189, 147, 249, 0.16);
-    color: #F0F4FA;
+    background: palette(midlight);
+    color: palette(text);
 }
 
 QLabel#pmFsCur {
     background: transparent;
-    color: #8A94A2;
+    color: palette(placeholder-text);
     font-size: 11px;
     font-family: "Consolas", "JetBrains Mono", monospace;
 }
 
 QLabel#pmMeta {
     background: transparent;
-    border-top: 1px solid #222831;
-    color: #77818F;
+    border-top: 1px solid palette(base);
+    color: palette(placeholder-text);
     font-size: 10.5px;
     font-family: "Consolas", "JetBrains Mono", monospace;
     padding-top: 10px;

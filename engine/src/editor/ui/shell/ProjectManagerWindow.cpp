@@ -532,7 +532,8 @@ ProjectManagerWindow::ProjectManagerWindow(ProjectConfig& config, QWidget* paren
     setWindowTitle(tr("Cakery - Project Manager"));
     setObjectName("ProjectManagerWindow");
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
-    setAttribute(Qt::WA_TranslucentBackground);
+    setAttribute(Qt::WA_StyledBackground);
+    setAutoFillBackground(true);
     resize(1180, 760);
     setMinimumSize(920, 600);
     qApp->installEventFilter(this);
@@ -1011,12 +1012,16 @@ void ProjectManagerWindow::changeEvent(QEvent* event)
                                          edgeToEdge ? 0 : 16, edgeToEdge ? 0 : 14);
         m_shell->setProperty("edgeToEdge", edgeToEdge);
         repolish(m_shell);
+        applyWindowsFrameAttributes(this);
     }
     QDialog::changeEvent(event);
 }
 
 bool ProjectManagerWindow::eventFilter(QObject* watched, QEvent* event)
 {
+    if (watched == this && event->type() == QEvent::Show) {
+        applyWindowsFrameAttributes(this);
+    }
     if (event->type() == QEvent::Show) {
         if (auto* box = qobject_cast<QMessageBox*>(watched)) {
             if (box->parentWidget() && box->parentWidget()->window() == this)

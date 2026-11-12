@@ -1,0 +1,188 @@
+/* Shared form controls for the workspace, project manager and dialogs.
+   Colors follow the application palette; panels only specialize density. */
+QMainWindow[editorWorkspace="true"] > QWidget#editorTitleBar { border-bottom: 0; }
+
+/* The tab owns the close-button geometry; keep its hit target independent of
+   the general toolbar button padding and minimum dimensions. */
+QTabWidget#scriptTabs QToolButton#scriptTabClose {
+    background: transparent;
+    color: palette(button-text);
+    border: 0;
+    border-radius: 4px;
+    padding: 0;
+    margin: 0;
+    min-width: 18px;
+    max-width: 18px;
+    min-height: 18px;
+    max-height: 18px;
+}
+QTabWidget#scriptTabs QToolButton#scriptTabClose:hover { background: palette(midlight); }
+QTabWidget#scriptTabs QToolButton#scriptTabClose:pressed { background: palette(highlight); }
+
+/* Completion is a top-level popup, so it needs its own theme selectors. */
+QListView#scriptCompletionPopup {
+    background: palette(base);
+    color: palette(text);
+    border: 1px solid palette(midlight);
+    border-radius: 6px;
+    padding: 4px;
+    outline: 0;
+    selection-background-color: palette(midlight);
+    selection-color: palette(text);
+}
+QListView#scriptCompletionPopup::item {
+    min-height: 20px;
+    padding: 3px 8px;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+QListView#scriptCompletionPopup::item:hover { background: palette(button); }
+QListView#scriptCompletionPopup::item:selected {
+    background: palette(midlight);
+    color: palette(text);
+    border-color: palette(highlight);
+}
+
+QMenu,
+QWidget[editorWorkspace="true"] QMenu,
+QWidget[editorWorkspace="true"] QWidget QMenu {
+    background: palette(base);
+    color: palette(text);
+    border: 1px solid palette(midlight);
+    border-radius: 6px;
+    padding: 6px;
+}
+QMenu::item,
+QWidget[editorWorkspace="true"] QMenu::item,
+QWidget[editorWorkspace="true"] QWidget QMenu::item {
+    background: transparent;
+    color: palette(text);
+    min-height: 20px;
+    padding: 6px 24px 6px 14px;
+    margin: 0;
+    border: 0;
+    border-radius: 4px;
+}
+QMenu::item:selected,
+QWidget[editorWorkspace="true"] QMenu::item:selected,
+QWidget[editorWorkspace="true"] QWidget QMenu::item:selected {
+    background: palette(midlight);
+    color: palette(text);
+}
+QMenu::item:disabled,
+QWidget[editorWorkspace="true"] QMenu::item:disabled,
+QWidget[editorWorkspace="true"] QWidget QMenu::item:disabled {
+    color: palette(placeholder-text);
+}
+QMenu::separator,
+QWidget[editorWorkspace="true"] QMenu::separator,
+QWidget[editorWorkspace="true"] QWidget QMenu::separator {
+    background: palette(window);
+    border: 0;
+    height: 1px;
+    margin: 5px 6px;
+}
+
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox,
+QWidget[editorWorkspace="true"] QLineEdit,
+QWidget[editorWorkspace="true"] QSpinBox,
+QWidget[editorWorkspace="true"] QDoubleSpinBox,
+QWidget[editorWorkspace="true"] QComboBox {
+    background: palette(base);
+    color: palette(text);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    min-height: 20px;
+    padding: 2px 7px;
+    selection-background-color: palette(highlight);
+    selection-color: palette(highlighted-text);
+}
+
+QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover, QComboBox:hover,
+QWidget[editorWorkspace="true"] QLineEdit:hover,
+QWidget[editorWorkspace="true"] QSpinBox:hover,
+QWidget[editorWorkspace="true"] QDoubleSpinBox:hover,
+QWidget[editorWorkspace="true"] QComboBox:hover {
+    border-color: palette(midlight);
+}
+
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus,
+QWidget[editorWorkspace="true"] QLineEdit:focus,
+QWidget[editorWorkspace="true"] QSpinBox:focus,
+QWidget[editorWorkspace="true"] QDoubleSpinBox:focus,
+QWidget[editorWorkspace="true"] QComboBox:focus {
+    border-color: palette(link);
+}
+
+QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {
+    color: palette(mid);
+    background: palette(window);
+}
+
+QAbstractSpinBox > QLineEdit,
+QAbstractSpinBox > QLineEdit:hover,
+QAbstractSpinBox > QLineEdit:focus,
+QWidget[editorWorkspace="true"] QAbstractSpinBox > QLineEdit,
+QWidget[editorWorkspace="true"] QAbstractSpinBox > QLineEdit:hover,
+QWidget[editorWorkspace="true"] QAbstractSpinBox > QLineEdit:focus {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    min-height: 0;
+    padding: 0;
+}
+
+QComboBox, QWidget[editorWorkspace="true"] QComboBox { padding-right: 25px; }
+QComboBox::drop-down { border: 0; width: 22px; }
+QComboBox::down-arrow {
+    image: url("@CHEVRON_DOWN@");
+    width: 12px;
+    height: 12px;
+}
+QComboBox QAbstractItemView, QWidget[editorWorkspace="true"] QComboBox QAbstractItemView {
+    background: palette(base);
+    color: palette(text);
+    border: 1px solid palette(midlight);
+    border-radius: 6px;
+    padding: 4px;
+    outline: 0;
+    selection-background-color: palette(midlight);
+    selection-color: palette(text);
+}
+QComboBox QAbstractItemView::item { min-height: 22px; padding: 3px 8px; border-radius: 4px; }
+
+QWidget QDialog[editorDialog="true"], QDialog[editorDialog="true"], QDialog#ProjectManagerWindow {
+    background: palette(window);
+    color: palette(window-text);
+    border: 0;
+}
+QDialog[editorDialog="true"] QLabel { background: transparent; color: palette(window-text); }
+QDialog[editorDialog="true"] #editorTitleBar {
+    background: palette(window);
+    border: 0;
+    border-bottom: 1px solid palette(base);
+}
+QDialog[editorDialog="true"] #editorTitleBar QLabel { color: palette(window-text); }
+QDialog[editorDialog="true"] QWidget#unsavedChangesBody { background: palette(window); }
+QDialog[editorDialog="true"] QPushButton {
+    background: palette(button);
+    color: palette(button-text);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    min-height: 22px;
+    padding: 3px 12px;
+}
+QDialog[editorDialog="true"] QPushButton:hover { background: palette(midlight); }
+QDialog[editorDialog="true"] QPushButton:focus { border-color: palette(link); }
+QDialog[editorDialog="true"] QPushButton:default { border-color: palette(link); }
+
+QLabel#sceneFpsOverlay {
+    color: palette(placeholder-text);
+    background: palette(window);
+    border: none;
+    border-radius: 10px;
+    padding: 4px 10px;
+    font-family: Consolas;
+    font-size: 11px;
+}

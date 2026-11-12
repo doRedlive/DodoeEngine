@@ -8,15 +8,44 @@
 #include "services/EditorResourceLocator.h"
 
 #include <QApplication>
+#include <QAbstractItemView>
+#include <QAbstractSpinBox>
 #include <QColor>
+#include <QComboBox>
+#include <QDir>
+#include <QEvent>
 #include <QFile>
+#include <QObject>
 #include <QPalette>
 
 namespace cakery {
 
+namespace {
+
+class FormInteractionFilter final : public QObject {
+public:
+    explicit FormInteractionFilter(QObject* parent) : QObject(parent) {}
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        if (event->type() == QEvent::Wheel) {
+            auto* combo = qobject_cast<QComboBox*>(watched);
+            if ((combo && !combo->view()->isVisible()) || qobject_cast<QAbstractSpinBox*>(watched)) {
+                event->ignore();
+                return true;
+            }
+        }
+        return QObject::eventFilter(watched, event);
+    }
+};
+
+} // namespace
+
 ThemeController::ThemeController(EditorResourceLocator& resources)
     : m_resources(resources)
 {
+    qApp->installEventFilter(new FormInteractionFilter(qApp));
 }
 
 void ThemeController::apply(const String& themeName)
@@ -45,6 +74,14 @@ void ThemeController::apply(const String& themeName)
         if (workspaceFile.open(QFile::ReadOnly | QFile::Text)) {
             styleSheet += QStringLiteral("\n") + QString::fromUtf8(workspaceFile.readAll());
         }
+    }
+    QFile commonFile(ToQString(m_resources.resolve("editor://themes/cakery-common.qss").string()));
+    if (commonFile.open(QFile::ReadOnly | QFile::Text)) {
+        QString commonStyle = QString::fromUtf8(commonFile.readAll());
+        const QString chevronPath = QDir::fromNativeSeparators(
+            QDir(QApplication::applicationDirPath()).filePath("resources/pictures/Icons/chevron-down.svg"));
+        commonStyle.replace(QStringLiteral("@CHEVRON_DOWN@"), chevronPath);
+        styleSheet += QStringLiteral("\n") + commonStyle;
     }
     qApp->setProperty("editorTheme", normalized);
 

@@ -72,13 +72,16 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPaintEvent>
 #include <QPixmap>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QResizeEvent>
+#include <QRegion>
 #include <QRegularExpression>
 #include <QScrollBar>
+#include <QScrollArea>
 #include <QScopedValueRollback>
 #include <QSignalBlocker>
 #include <QStyle>
@@ -141,6 +144,8 @@ EditorWindow::EditorWindow(EditorWorkspaceContext& context, QWidget* parent)
 
     ads::CDockManager::setConfigFlag(ads::CDockManager::OpaqueSplitterResize, true);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DisableStylesheet, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::AlwaysShowTabs, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::HideSingleCentralWidgetTitleBar, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::ActiveTabHasCloseButton, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::AllTabsHaveCloseButton, false);
     ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasCloseButton, true);
@@ -468,7 +473,12 @@ void EditorWindow::openEditorWindow(const QString& id, const QString& title)
             m_shellViewModel->dispatchEditorEvent("window", windowId, controlId, eventName, value);
         },
         dock);
-    dock->setWidget(remote);
+    auto* scroll = new QScrollArea(dock);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setWidget(remote);
+    dock->setWidget(scroll, ads::CDockWidget::ForceNoScrollArea);
     dock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::RightDockWidgetArea, dock);
     m_editorWindowDocks.emplace_back(id, dock);
@@ -832,6 +842,16 @@ void EditorWindow::changeEvent(QEvent* event)
 
 bool EditorWindow::eventFilter(QObject* watched, QEvent* event)
 {
+    if (event->type() == QEvent::Show || event->type() == QEvent::Resize) {
+        if (auto* area = qobject_cast<ads::CDockAreaWidget*>(watched);
+            area && area->dockManager() == m_dockManager) {
+            // Stylesheet radii do not clip child viewports or native-painted backgrounds.
+            QPainterPath outline;
+            outline.addRoundedRect(QRectF(area->rect()), 8, 8);
+            area->setMask(QRegion(outline.toFillPolygon().toPolygon()));
+        }
+    }
+
     if (event->type() == QEvent::Show) {
         if (auto* messageBox = qobject_cast<QMessageBox*>(watched)) {
             setupFramelessMessageBox(messageBox);
@@ -1070,7 +1090,7 @@ void EditorWindow::createDocks()
 
     m_sceneSurface = new SceneSurface(m_context, sceneBody);
     sceneLayout->addWidget(m_sceneSurface, 1);
-    sceneDock->setWidget(sceneBody);
+    sceneDock->setWidget(sceneBody, ads::CDockWidget::ForceNoScrollArea);
     // Scene is the single central work area. Tool panels may be moved or
     // pinned, but the scene itself must never turn into a floating island.
     sceneDock->setFeature(ads::CDockWidget::DockWidgetClosable, false);
@@ -1086,21 +1106,21 @@ void EditorWindow::createPanels()
     m_hierarchyDock = new ads::CDockWidget(tr("Hierarchy"));
     m_hierarchyDock->setObjectName(QStringLiteral("Hierarchy"));
     m_hierarchy = new HierarchyPanel(m_context, m_hierarchyDock);
-    m_hierarchyDock->setWidget(m_hierarchy);
+    m_hierarchyDock->setWidget(m_hierarchy, ads::CDockWidget::ForceNoScrollArea);
     m_hierarchyDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::LeftDockWidgetArea, m_hierarchyDock);
 
     m_inspectorDock = new ads::CDockWidget(tr("Inspector"));
     m_inspectorDock->setObjectName(QStringLiteral("Inspector"));
     m_inspector = new InspectorPanel(m_context, m_inspectorDock);
-    m_inspectorDock->setWidget(m_inspector);
+    m_inspectorDock->setWidget(m_inspector, ads::CDockWidget::ForceNoScrollArea);
     m_inspectorDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_inspectorDock);
 
     m_projectDock = new ads::CDockWidget(tr("Project"));
     m_projectDock->setObjectName(QStringLiteral("Project"));
     m_projectPanel = new ProjectPanel(m_context, m_projectDock);
-    m_projectDock->setWidget(m_projectPanel);
+    m_projectDock->setWidget(m_projectPanel, ads::CDockWidget::ForceNoScrollArea);
     connect(m_projectPanel, &ProjectPanel::assetPathSelected, m_inspector, &InspectorPanel::inspectPath);
     m_projectDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidgetTabToArea(m_projectDock, m_hierarchyDock->dockAreaWidget());
@@ -1112,7 +1132,7 @@ void EditorWindow::createPanels()
     m_scriptDock = new ads::CDockWidget(tr("Script"));
     m_scriptDock->setObjectName(QStringLiteral("Script"));
     m_scriptPanel = new ScriptPanel(m_context, m_scriptDock);
-    m_scriptDock->setWidget(m_scriptPanel);
+    m_scriptDock->setWidget(m_scriptPanel, ads::CDockWidget::ForceNoScrollArea);
     m_scriptDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
     m_scriptDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_scriptDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
@@ -1132,14 +1152,15 @@ void EditorWindow::createPanels()
                       QStringLiteral("Cakery"));
     m_console->append(ConsoleLogLevel::Info, ToQString(m_shellViewModel->diagnostic()),
                       QStringLiteral("Backend"));
-    m_consoleDock->setWidget(m_console);
+    m_consoleDock->setWidget(m_console, ads::CDockWidget::ForceNoScrollArea);
     m_consoleDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_consoleDock, m_sceneDock->dockAreaWidget());
 
     m_terminalDock = new ads::CDockWidget(tr("Terminal"));
     m_terminalDock->setObjectName(QStringLiteral("Terminal"));
     m_terminalDock->setWidget(unavailablePanel(tr("Terminal unavailable"),
-        tr("The runtime terminal panel is not implemented yet."), m_terminalDock));
+        tr("The runtime terminal panel is not implemented yet."), m_terminalDock),
+        ads::CDockWidget::ForceNoScrollArea);
     m_terminalDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidgetTabToArea(m_terminalDock, m_consoleDock->dockAreaWidget());
     m_terminalDock->toggleView(false);
@@ -1147,14 +1168,14 @@ void EditorWindow::createPanels()
     m_historyDock = new ads::CDockWidget(tr("History"));
     m_historyDock->setObjectName(QStringLiteral("History"));
     m_historyPanel = new HistoryPanel(m_context, m_historyDock);
-    m_historyDock->setWidget(m_historyPanel);
+    m_historyDock->setWidget(m_historyPanel, ads::CDockWidget::ForceNoScrollArea);
     m_historyDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidgetTabToArea(m_historyDock, m_consoleDock->dockAreaWidget());
 
     m_workflowDock = new ads::CDockWidget(tr("Workflow"));
     m_workflowDock->setObjectName(QStringLiteral("Workflow"));
     m_workflowPanel = new WorkflowPanel(m_context, m_workflowDock);
-    m_workflowDock->setWidget(m_workflowPanel);
+    m_workflowDock->setWidget(m_workflowPanel, ads::CDockWidget::ForceNoScrollArea);
     m_workflowDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
     m_workflowDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_workflowDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
@@ -1165,7 +1186,7 @@ void EditorWindow::createPanels()
     m_tilePaletteDock = new ads::CDockWidget(tr("Tile Palette"));
     m_tilePaletteDock->setObjectName(QStringLiteral("Tile Palette"));
     m_tilePalette = new TilePalettePanel(m_context, m_tilePaletteDock);
-    m_tilePaletteDock->setWidget(m_tilePalette);
+    m_tilePaletteDock->setWidget(m_tilePalette, ads::CDockWidget::ForceNoScrollArea);
     m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
     m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_tilePaletteDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
@@ -1176,7 +1197,7 @@ void EditorWindow::createPanels()
     m_tileLayersDock = new ads::CDockWidget(tr("Tile Layers"));
     m_tileLayersDock->setObjectName(QStringLiteral("Tile Layers"));
     m_tileLayers = new TileLayersPanel(m_context, m_tileLayersDock);
-    m_tileLayersDock->setWidget(m_tileLayers);
+    m_tileLayersDock->setWidget(m_tileLayers, ads::CDockWidget::ForceNoScrollArea);
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetClosable, true);
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
     m_tileLayersDock->setFeature(ads::CDockWidget::DockWidgetMovable, true);
@@ -1192,7 +1213,7 @@ void EditorWindow::createPanels()
     m_gameSettingsPanel = new SettingsPanel(nullptr);
     m_gameSettingsDock = new ads::CDockWidget(tr("Game Settings"));
     m_gameSettingsDock->setObjectName(QStringLiteral("Game Settings"));
-    m_gameSettingsDock->setWidget(m_gameSettingsPanel);
+    m_gameSettingsDock->setWidget(m_gameSettingsPanel, ads::CDockWidget::ForceNoScrollArea);
     m_gameSettingsDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidgetTabToArea(m_gameSettingsDock, m_inspectorDock->dockAreaWidget());
     m_gameSettingsDock->toggleView(false);
@@ -1208,13 +1229,18 @@ void EditorWindow::createPanels()
     m_engineSettingsPanel = new SettingsPanel(nullptr);
     m_engineSettingsDock = new ads::CDockWidget(tr("Engine Settings"));
     m_engineSettingsDock->setObjectName(QStringLiteral("Engine Settings"));
-    m_engineSettingsDock->setWidget(m_engineSettingsPanel);
+    m_engineSettingsDock->setWidget(m_engineSettingsPanel, ads::CDockWidget::ForceNoScrollArea);
     m_engineSettingsDock->setFeature(ads::CDockWidget::DockWidgetPinnable, true);
     m_dockManager->addDockWidgetTabToArea(m_engineSettingsDock, m_inspectorDock->dockAreaWidget());
     m_engineSettingsDock->toggleView(false);
     connect(m_engineSettingsPanel, &SettingsPanel::saved, this, [this]() {
-        m_context.config().reload();
-        m_context.theme().apply(m_context.config().themeName());
+        auto& config = m_context.config();
+        const auto& value = m_engineSettingsPanel->value();
+        config.reload();
+        config.setScriptFont(value.value("scriptFontFamily", config.scriptFontFamily()),
+                             value.value("scriptFontSize", config.scriptFontPointSize()),
+                             value.value("scriptFontWeight", config.scriptFontWeight()));
+        m_context.theme().apply(config.themeName());
     });
 
     // Establish the single-Scene authoring layout before the user resizes any dock.
@@ -1464,7 +1490,14 @@ bool EditorWindow::enterWorkspace(const QString& projectPath)
             QDir(ToQString(project.rootPath)).filePath(QStringLiteral("app_config.json")));
     }
     if (m_engineSettingsPanel) {
-        m_engineSettingsPanel->setFallback([this]() { return m_context.config().editorJson(); });
+        m_engineSettingsPanel->setFallback([this]() {
+            const auto& config = m_context.config();
+            Json value = config.editorJson();
+            value["scriptFontFamily"] = config.scriptFontFamily();
+            value["scriptFontSize"] = config.scriptFontPointSize();
+            value["scriptFontWeight"] = config.scriptFontWeight();
+            return value;
+        });
         m_engineSettingsPanel->setFilePath(
             QDir(ToQString(project.rootPath))
                 .filePath(QStringLiteral("ProjectSettings/Editor/editor.json")));
