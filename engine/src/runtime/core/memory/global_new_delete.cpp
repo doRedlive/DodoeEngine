@@ -4,13 +4,16 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <mimalloc.h>
 #include <new>
 
 namespace {
 
 bool IsEngineHeapPointer(const void* p) noexcept {
-    return mi_is_in_heap_region(p);
+    return dodoe::Memory::IsPersistentHeap(p);
+}
+
+std::size_t EngineHeapSize(const void* p) noexcept {
+    return dodoe::Memory::UsableSize(p);
 }
 
 } // namespace
@@ -69,7 +72,7 @@ void operator delete(void* p) noexcept {
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }
 
 void operator delete(void* p, std::size_t size) noexcept {
@@ -87,7 +90,7 @@ void operator delete(void* p, std::align_val_t) noexcept {
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }
 
 void operator delete(void* p, std::size_t size, std::align_val_t) noexcept {
@@ -105,7 +108,7 @@ void operator delete[](void* p) noexcept {
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }
 
 void operator delete[](void* p, std::size_t size) noexcept {
@@ -123,7 +126,7 @@ void operator delete[](void* p, std::align_val_t) noexcept {
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }
 
 void operator delete[](void* p, std::size_t size, std::align_val_t) noexcept {
@@ -141,7 +144,7 @@ void operator delete(void* p, const std::nothrow_t&) noexcept {
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }
 
 void operator delete[](void* p, const std::nothrow_t&) noexcept {
@@ -150,7 +153,7 @@ void operator delete[](void* p, const std::nothrow_t&) noexcept {
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }
 
 void operator delete(void* p, std::align_val_t, const std::nothrow_t&) noexcept {
@@ -159,7 +162,7 @@ void operator delete(void* p, std::align_val_t, const std::nothrow_t&) noexcept 
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }
 
 void operator delete[](void* p, std::align_val_t, const std::nothrow_t&) noexcept {
@@ -168,5 +171,5 @@ void operator delete[](void* p, std::align_val_t, const std::nothrow_t&) noexcep
         std::free(p);
         return;
     }
-    dodoe::Memory::DeallocatePersistent(p, static_cast<dodoe::Size_t>(mi_malloc_size(p)), dodoe::AllocTag::Misc);
+    dodoe::Memory::DeallocatePersistent(p, EngineHeapSize(p), dodoe::AllocTag::Misc);
 }

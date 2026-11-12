@@ -94,6 +94,7 @@ namespace dodoe {
 
 		static void* AllocatePersistent(Size_t size, Size_t align, AllocTag tag = AllocTag::Object);
 		static void  DeallocatePersistent(void* p, Size_t size, AllocTag tag = AllocTag::Object);
+		static Bool  IsPersistentHeap(const void* p);
 		static Size_t UsableSize(const void* p);
 		static void* AllocateFrame(Size_t size, Size_t align, AllocTag tag = AllocTag::RenderCmd);
 		static void* AllocateScratch(Size_t size, Size_t align);

@@ -171,6 +171,17 @@ namespace dodoe {
 		Deallocate(AllocTier::Persistent, p, size, tag);
 	}
 
+	Bool Memory::IsPersistentHeap(const void* p) {
+		if (!p) return false;
+		for (auto& slot : s_pools) {
+			PoolAllocator* pool = slot.load(std::memory_order_acquire);
+			if (pool && pool->owns(p)) {
+				return true;
+			}
+		}
+		return mi_is_in_heap_region(p);
+	}
+
 	Size_t Memory::UsableSize(const void* p) {
 		if (!p) return 0;
 		for (auto& slot : s_pools) {

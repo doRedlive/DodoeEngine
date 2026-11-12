@@ -55,7 +55,6 @@ target_include_directories(DodoeNewDelete
                 ${ENGINE_ROOT_DIR}/external/cutie-rhi/include
                 ${ENGINE_ROOT_DIR}/external/miniaudio
 )
-target_link_libraries(DodoeNewDelete PRIVATE mimalloc::mimalloc)
 target_link_libraries(${TARGET_NAME} PUBLIC DodoeNewDelete)
 
 target_sources(${TARGET_NAME} PRIVATE

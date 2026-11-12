@@ -145,13 +145,13 @@ namespace dodoe {
         m_context->getLayerStack().attach();
     }
 
-    void Application::stepFrame(const std::function<void(Float)>& preTick) {
+    void Application::stepFrame(const std::function<void(Float)>& pre_tick) {
         DO_PROFILE_SCOPE_CATEGORY("Application::stepFrame", "frame");
         EventSystem::Publish<BeforeOneTickEvent>();
 
         m_context->getTimeSystem()->updateTime();
         const Float delta = std::min(0.05f, m_context->getTimeSystem()->getDeltaTime());
-        const Float unscaledDelta = std::min(0.05f, m_context->getTimeSystem()->getUnscaledDeltaTime());
+        const Float unscale_delta = std::min(0.05f, m_context->getTimeSystem()->getUnscaledDeltaTime());
 
         if (auto* input_manager = m_context->getInputManager()) {
             input_manager->beginFrame();
@@ -166,9 +166,9 @@ namespace dodoe {
                 input_manager->update(delta);
             }
         }
-        if (preTick) {
+        if (pre_tick) {
             DO_PROFILE_SCOPE_CATEGORY("Application::preTick", "frame");
-            preTick(unscaledDelta);
+            pre_tick(unscale_delta);
         }
         m_context->tickOneFrame();
         DO_PROFILE_FRAME();
