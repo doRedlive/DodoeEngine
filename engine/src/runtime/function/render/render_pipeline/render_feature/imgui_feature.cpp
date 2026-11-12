@@ -62,16 +62,17 @@ namespace dodoe {
 	            .addItem(GfxBindingLayoutItem::Texture_SRV(1))
 	            .addItem(GfxBindingLayoutItem::Sampler(9)));
 
-	    if (m_font_texture && resources.getBindingSetCache()) {
-	        const auto layout_generation = cache->getLayoutGeneration(m_binding_layout);
-	        m_font_binding_set = resources.getBindingSetCache()->getOrCreate(
-	            GfxBindingSetDesc()
-	                .addItem(GfxBindingSetItem::ConstantBuffer(0, m_imgui_cb->getRHIHandle().Get()))
-	                .addItem(GfxBindingSetItem::Texture_SRV(1, m_font_texture->getRHIHandle().Get()))
-	                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
-	            m_binding_layout,
-	            layout_generation);
-	    }
+    if (m_font_texture && resources.getBindingSetCache()) {
+        const auto layout_generation = cache->getLayoutGeneration(m_binding_layout);
+        m_font_binding_set = resources.getBindingSetCache()->getOrCreate(
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(0, m_imgui_cb))
+                .addItem(GfxLogicalBindingItem::Texture_SRV(1, m_font_texture))
+                .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
+            m_binding_layout,
+            layout_generation);
+    }
 
 #if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 	    if (auto* input_layout_cache = resources.getInputLayoutCache()) {

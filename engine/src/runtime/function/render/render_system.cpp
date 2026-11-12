@@ -9,6 +9,7 @@
 #include "runtime/core/thread/render_thread.h"
 #include "runtime/core/context/system_context.h"
 #include "runtime/function/time/time_system.h"
+#include "runtime/function/render/render_service/submission_executor.h"
 #include "render_frame/frame_telemetry.h"
 #if defined(DODOE_DEBUG_ENABLED) && defined(DODOE_IMGUI_ENABLED)
 #include "runtime/function/ui/imgui/imgui_builder.h"
@@ -76,6 +77,7 @@ namespace dodoe {
             m_recording_packet.scene_commands.clear();
         }
         m_gfx->waitForIdle();
+        m_retired_command_lists.clear();
         RenderPipeline::Destroy(m_render_pipeline);
         RenderFrameScheduler::Destroy(m_frame_scheduler);
         RenderScene::Destroy(m_render_scene);
@@ -273,13 +275,14 @@ namespace dodoe {
         {
             DO_PROFILE_SCOPE_CATEGORY("RenderSystem::executeDeferredCommands", "render-command");
             auto pending = GDrawCommandList.detachRecordedCommands();
-            if (!pending.isEmpty()) {
+            if (!pending.isEmpty() || !pending.getRealizePlan().empty()) {
                 auto& gfx_cmd = m_gfx->getCommandList();
                 gfx_cmd->open();
-                pending.execute(*gfx_cmd);
+                SubmissionExecutor::prepareAndReplay(pending, m_gfx->getDevice(), *gfx_cmd);
                 gfx_cmd->close();
                 m_gfx->getDevice()->executeCommandList(gfx_cmd);
             }
+            retireCommandList(std::move(pending));
         }
 
         {
@@ -317,9 +320,10 @@ namespace dodoe {
                 scene->flushUpdates(upload_list);
                 auto& upload_cmd = m_gfx->getCommandList();
                 upload_cmd->open();
-                upload_list.execute(upload_cmd);
+                SubmissionExecutor::prepareAndReplay(upload_list, m_gfx->getDevice(), *upload_cmd);
                 upload_cmd->close();
                 m_gfx->getDevice()->executeCommandList(upload_cmd);
+                retireCommandList(std::move(upload_list));
             } else {
                 scene->flushUpdates(*frame_ctx.command_list);
             }
@@ -380,7 +384,7 @@ namespace dodoe {
             if (measured) {
                 gfx_cmd->beginTimerQuery(write_query);
             }
-            frame_ctx.command_list->execute(gfx_cmd);
+            SubmissionExecutor::prepareAndReplay(*frame_ctx.command_list, gfx_device, *gfx_cmd);
             if (measured) {
                 gfx_cmd->endTimerQuery(write_query);
                 m_gpu_frame_query_slot ^= 1;
@@ -483,6 +487,16 @@ namespace dodoe {
             break;
         default:
             break;
+        }
+    }
+
+    void RenderSystem::retireCommandList(DrawCommandList&& list) {
+        if (list.isEmpty() && list.getRealizePlan().empty()) {
+            return;
+        }
+        m_retired_command_lists.push_back(std::move(list));
+        if (m_retired_command_lists.size() > kRetiredCommandListCount) {
+            m_retired_command_lists.erase(m_retired_command_lists.begin());
         }
     }
 

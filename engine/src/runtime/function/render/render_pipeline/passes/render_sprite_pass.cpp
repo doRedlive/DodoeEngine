@@ -200,12 +200,12 @@ namespace dodoe {
                     }
 
                     auto* set_cache = shared_service->getBindingSetCache();
-                    const GfxBindingSetDesc cb_desc = GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()));
-                    const auto cb_binding_set = set_cache->getOrCreate(cb_desc, m_cb_binding_layout, 0);
-                    const GfxBindingSetDesc sampler_desc = GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get()));
-                    const auto sampler_binding_set = set_cache->getOrCreate(sampler_desc, m_sampler_binding_layout, 0);
+                    const GfxLogicalBindingSetDesc cb_desc = GfxLogicalBindingSetDesc()
+                        .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer));
+                    const auto cb_binding_set = set_cache->getOrCreate(command_list, cb_desc, m_cb_binding_layout, 0);
+                    const GfxLogicalBindingSetDesc sampler_desc = GfxLogicalBindingSetDesc()
+                        .addItem(GfxLogicalBindingItem::Sampler(1, GlobalSamplers::Screen()));
+                    const auto sampler_binding_set = set_cache->getOrCreate(command_list, sampler_desc, m_sampler_binding_layout, 0);
                     if (!cb_binding_set || !sampler_binding_set) {
                         DO_ERROR("SpritePass: failed to create bindless binding sets");
                         return;
@@ -250,14 +250,14 @@ namespace dodoe {
                     }
 
                     DynamicArray<GfxBindingSetHandle> binding_sets = {cb_binding_set, sampler_binding_set, descriptor_binding_set};
-                    DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
-                        GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
-                        GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+                    DynamicArray<GfxVertexBindingDesc> vertex_buffers = {
+                        GfxVertexBindingDesc().setBuffer(quad_vertex_buffer).setSlot(0).setOffset(0),
+                        GfxVertexBindingDesc().setBuffer(instance_buffer).setSlot(1).setOffset(0)};
                     command_list.setGraphicsState(
                         ctx.getFramebuffer(), pipeline, binding_sets,
                         rendering_pipeline_utils::BuildViewportState(*ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D()),
                         vertex_buffers,
-                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
+                        GfxIndexBindingDesc().setBuffer(quad_index_buffer).setFormat(GfxFormat::R16_UINT));
                     command_list.drawIndexed(GfxDrawArguments()
                         .setVertexCount(6)
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
@@ -309,13 +309,15 @@ namespace dodoe {
                         }
 
                         auto cb_binding_set = set_cache->getOrCreate(
-                            GfxBindingSetDesc()
-                                .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI())),
+                            command_list,
+                            GfxLogicalBindingSetDesc()
+                                .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer)),
                             m_cb_binding_layout, 0);
                         auto material_binding_set = set_cache->getOrCreate(
-                            GfxBindingSetDesc()
-                                .addItem(GfxBindingSetItem::Texture_SRV(2, tex_handle->getRHIHandle().Get()))
-                                .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get())),
+                            command_list,
+                            GfxLogicalBindingSetDesc()
+                                .addItem(GfxLogicalBindingItem::Texture_SRV(2, tex_handle))
+                                .addItem(GfxLogicalBindingItem::Sampler(1, GlobalSamplers::Screen())),
                             m_material_binding_layout, 0);
 
                         if (!cb_binding_set || !material_binding_set) {
@@ -341,16 +343,16 @@ namespace dodoe {
                         }
 
                         DynamicArray<GfxBindingSetHandle> binding_sets = {cb_binding_set, material_binding_set};
-                        DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
-                            GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
-                            GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+                        DynamicArray<GfxVertexBindingDesc> vertex_buffers = {
+                            GfxVertexBindingDesc().setBuffer(quad_vertex_buffer).setSlot(0).setOffset(0),
+                            GfxVertexBindingDesc().setBuffer(instance_buffer).setSlot(1).setOffset(0)};
 
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                             *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                         command_list.setGraphicsState(
                             ctx.getFramebuffer(), pipeline, binding_sets,
                             viewport_state, vertex_buffers,
-                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
+                            GfxIndexBindingDesc().setBuffer(quad_index_buffer).setFormat(GfxFormat::R16_UINT));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(6)
                             .setInstanceCount(static_cast<UInt32>(end - start))

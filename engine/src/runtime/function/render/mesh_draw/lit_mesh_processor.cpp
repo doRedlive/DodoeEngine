@@ -142,24 +142,28 @@ namespace dodoe {
                 .setMaxVersions(kVolatileConstantBufferVersions)
                 .setDebugName("LitMeshProcessor Primitive ConstantBuffer"));
         m_global_binding_set = binding_set_cache.getOrCreate(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kGlobalBindingConstants, m_global_constant_buffer->getRHIHandle())),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(shader_bindings::kGlobalBindingConstants, m_global_constant_buffer)),
             m_global_binding_layout,
             binding_layout_cache.getLayoutGeneration(m_global_binding_layout));
         m_view_binding_set = binding_set_cache.getOrCreate(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle()))
-                .addItem(GfxBindingSetItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer->getRHIHandle())),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer))
+                .addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer)),
             m_view_binding_layout,
             binding_layout_cache.getLayoutGeneration(m_view_binding_layout));
         m_primitive_binding_set = binding_set_cache.getOrCreate(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kPrimitiveBindingConstants, m_primitive_constant_buffer->getRHIHandle())),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(shader_bindings::kPrimitiveBindingConstants, m_primitive_constant_buffer)),
             m_primitive_binding_layout,
             binding_layout_cache.getLayoutGeneration(m_primitive_binding_layout));
         m_sampler_binding_set = binding_set_cache.getOrCreate(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::Sampler(shader_bindings::kMaterialBindingSampler, m_sampler)),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::Sampler(shader_bindings::kMaterialBindingSampler, m_sampler)),
             m_sampler_binding_layout,
             binding_layout_cache.getLayoutGeneration(m_sampler_binding_layout));
     }
@@ -187,9 +191,10 @@ namespace dodoe {
         }
         m_skinning_buffer = buffer;
         m_view_binding_set = m_binding_set_cache->getOrCreate(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle()))
-                .addItem(GfxBindingSetItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer->getRHIHandle())),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer))
+                .addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer)),
             m_view_binding_layout,
             m_view_layout_generation);
     }

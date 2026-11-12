@@ -130,17 +130,16 @@ namespace dodoe {
                                                             const GfxTextureHandle& brdf_lut,
                                                             const GfxBindingLayoutHandle& binding_layout) {
         return command_list.createBindingSet(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(
-                    0, allocation.buffer->getRHIHandle().Get(),
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(
+                    0, allocation.buffer,
                     GfxBufferRange(allocation.offset, allocation.size)))
-                .addItem(GfxBindingSetItem::Texture_SRV(1, shadow_handle->getRHIHandle().Get()))
-                .addItem(GfxBindingSetItem::Texture_SRV(
-                    2, skybox_texture ? skybox_texture->getRHIHandle().Get() : nullptr,
+                .addItem(GfxLogicalBindingItem::Texture_SRV(1, shadow_handle))
+                .addItem(GfxLogicalBindingItem::Texture_SRV(
+                    2, skybox_texture,
                     GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
-                .addItem(GfxBindingSetItem::Texture_SRV(
-                    3, brdf_lut ? brdf_lut->getRHIHandle().Get() : nullptr))
-                .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                .addItem(GfxLogicalBindingItem::Texture_SRV(3, brdf_lut))
+                .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
             binding_layout);
     }
 

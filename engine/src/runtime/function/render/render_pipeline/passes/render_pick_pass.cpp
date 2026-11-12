@@ -152,14 +152,14 @@ namespace dodoe {
         }
         if (!m_view_binding_set && m_view_cb) {
             m_view_binding_set = command_list.createBindingSet(
-                GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(
-                    shader_bindings::kViewBindingConstants, m_view_cb->getRHIHandle())),
+                GfxLogicalBindingSetDesc().addItem(GfxLogicalBindingItem::ConstantBuffer(
+                    shader_bindings::kViewBindingConstants, m_view_cb)),
                 m_view_binding_layout);
         }
         if (!m_primitive_binding_set && m_primitive_cb) {
             m_primitive_binding_set = command_list.createBindingSet(
-                GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(
-                    shader_bindings::kPrimitiveBindingConstants, m_primitive_cb->getRHIHandle())),
+                GfxLogicalBindingSetDesc().addItem(GfxLogicalBindingItem::ConstantBuffer(
+                    shader_bindings::kPrimitiveBindingConstants, m_primitive_cb)),
                 m_primitive_binding_layout);
         }
         return m_view_cb && m_primitive_cb && m_view_binding_set && m_primitive_binding_set;
@@ -356,13 +356,13 @@ namespace dodoe {
             command_list.writeBuffer(m_primitive_cb, shader_data);
             m_pick_ids.push_back(primitive->getId().value());
 
-            DynamicArray<GfxVertexBufferBinding> vertex_buffers;
-            vertex_buffers.push_back(GfxVertexBufferBinding()
-                .setBuffer(picked_element->vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0));
-            vertex_buffers.push_back(GfxVertexBufferBinding()
-                .setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(instance_offset));
-            GfxIndexBufferBinding index_binding;
-            index_binding.setBuffer(picked_element->index_buffer->getRHIHandle())
+            DynamicArray<GfxVertexBindingDesc> vertex_buffers;
+            vertex_buffers.push_back(GfxVertexBindingDesc()
+                .setBuffer(picked_element->vertex_buffer).setSlot(0).setOffset(0));
+            vertex_buffers.push_back(GfxVertexBindingDesc()
+                .setBuffer(instance_buffer).setSlot(1).setOffset(instance_offset));
+            GfxIndexBindingDesc index_binding;
+            index_binding.setBuffer(picked_element->index_buffer)
                 .setFormat(GfxFormat::R32_UINT)
                 .setOffset(0);
 

@@ -71,9 +71,9 @@ namespace dodoe {
                 }
 
                 const auto binding_set = command_list.createBindingSet(
-                    GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::Texture_SRV(1, depth_handle->getRHIHandle().Get()))
-                        .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                    GfxLogicalBindingSetDesc()
+                        .addItem(GfxLogicalBindingItem::Texture_SRV(1, depth_handle))
+                        .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
                     binding_layout);
                 if (!binding_set) {
                     DO_ERROR("TaaDepthCopyPass: failed to create binding set");

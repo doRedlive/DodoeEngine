@@ -22,6 +22,23 @@ namespace dodoe {
 
     class GfxContext;
 
+    struct GfxResourceRealizeEntry {
+        enum class Kind : UInt8 {
+            Texture = 0,
+            Buffer,
+            Framebuffer,
+            BindingSet,
+            GraphicsPipeline,
+        };
+
+        Kind kind{Kind::Texture};
+        GfxTextureHandle texture{};
+        GfxBufferHandle buffer{};
+        GfxFramebufferHandle framebuffer{};
+        GfxBindingSetHandle binding_set{};
+        GfxGraphicsPipelineHandle pipeline{};
+    };
+
     class DrawCommandList : public CommandList<GfxCommandList> {
     public:
         using CommandList::execute;
@@ -33,6 +50,7 @@ namespace dodoe {
     private:
         GfxDeviceHandle m_device{};
         std::mutex m_record_mutex{};
+        DynamicArray<GfxResourceRealizeEntry> m_realize_plan{};
 
     public:
         void setDevice(GfxDeviceHandle device) { m_device = device; }
@@ -46,11 +64,21 @@ namespace dodoe {
             return enqueue<TCommand>(std::forward<TArgs>(args)...);
         }
 
-        CommandList<GfxCommandList> detachRecordedCommands();
+        DrawCommandList detachRecordedCommands();
         void beginFrame();
         void endFrame();
 
         void execute(const GfxCommandListHandle& command_list) const;
+
+        void registerRealizeEntry(const GfxResourceRealizeEntry& entry);
+        void requestRealize(const GfxTextureHandle& texture);
+        void requestRealize(const GfxBufferHandle& buffer);
+        void requestRealize(const GfxFramebufferHandle& framebuffer);
+        void requestRealize(const GfxBindingSetHandle& binding_set);
+        void requestRealize(const GfxGraphicsPipelineHandle& pipeline);
+        [[nodiscard]] const DynamicArray<GfxResourceRealizeEntry>& getRealizePlan() const { return m_realize_plan; }
+
+        void append(DrawCommandList&& other);
 
         void open();
         void close();
@@ -106,11 +134,11 @@ namespace dodoe {
             const GfxGraphicsPipelineHandle& pipeline,
             const DynamicArray<GfxBindingSetHandle>& binding_sets,
             const GfxViewportState& viewport,
-            const DynamicArray<GfxVertexBufferBinding>& vertex_buffers = {},
-            const GfxIndexBufferBinding& index_buffer = {},
+            const DynamicArray<GfxVertexBindingDesc>& vertex_buffers = {},
+            const GfxIndexBindingDesc& index_buffer = {},
             const GfxBufferHandle& indirect_params = {});
-        void setGraphicsState(const GfxGraphicsState& state);
-        void setComputeState(const GfxComputeState& state);
+        void setGraphicsState(const GfxDrawState& state);
+        void setComputeState(const GfxComputeDispatchState& state);
         void draw(const GfxDrawArguments& args);
         void drawIndexed(const GfxDrawArguments& args);
         void drawIndirect(UInt32 offset_bytes, UInt32 draw_count = 1);
@@ -124,7 +152,7 @@ namespace dodoe {
         void unmapStagingTexture(const GfxStagingTextureHandle& texture);
         GfxBufferHandle createBuffer(const GfxBufferDesc& desc, const void* data = nullptr, Size_t data_size = 0);
         GfxFramebufferHandle createFramebuffer(const GfxFramebufferDesc& desc);
-        GfxBindingSetHandle createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout);
+        GfxBindingSetHandle createBindingSet(const GfxLogicalBindingSetDesc& desc, const GfxBindingLayoutHandle& layout);
         GfxGraphicsPipelineHandle createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& framebuffer_info);
         DescriptorIndex createDescriptor(GfxDescriptorTableHandle descriptor_table, GfxTextureHandle texture, UInt32 slot);
 
@@ -219,14 +247,16 @@ namespace dodoe {
         GFX_DRAW_CMD(DispatchIndirectCommand) { UInt32 m_off{0}; explicit DispatchIndirectCommand(UInt32 o) : m_off(o) {} void execute(GfxCommandList&) const; };
 
         struct SetGraphicsStateCommand final : CommandImpl<SetGraphicsStateCommand> {
-            GfxFramebufferHandle m_fb{}; GfxGraphicsPipelineHandle m_pso{}; DynamicArray<GfxBindingSetHandle> m_bs{}; GfxViewportState m_vp{}; DynamicArray<GfxVertexBufferBinding> m_vb{}; GfxIndexBufferBinding m_ib{}; GfxBufferHandle m_indirect{};
-            SetGraphicsStateCommand(const GfxFramebufferHandle& fb, const GfxGraphicsPipelineHandle& pso, const DynamicArray<GfxBindingSetHandle>& bs, const GfxViewportState& vp, const DynamicArray<GfxVertexBufferBinding>& vb, const GfxIndexBufferBinding& ib, const GfxBufferHandle& indirect);
+            GfxDrawState m_state{};
+            explicit SetGraphicsStateCommand(const GfxDrawState& state) : m_state(state) {}
             void execute(GfxCommandList&) const;
         };
 
-        GFX_DRAW_CMD(SetComputeStateCommand) { GfxComputeState m_st{}; explicit SetComputeStateCommand(const GfxComputeState& s) : m_st(s) {} void execute(GfxCommandList&) const; };
-
-        GFX_DRAW_CMD(SetGraphicsStateByValueCommand) { GfxGraphicsState m_st{}; explicit SetGraphicsStateByValueCommand(const GfxGraphicsState& s) : m_st(s) {} void execute(GfxCommandList& c) const { c.setGraphicsState(m_st); } };
+        struct SetComputeStateCommand final : CommandImpl<SetComputeStateCommand> {
+            GfxComputeDispatchState m_state{};
+            explicit SetComputeStateCommand(const GfxComputeDispatchState& state) : m_state(state) {}
+            void execute(GfxCommandList&) const;
+        };
 
         [[nodiscard]] static Size_t alignUp(Size_t value, Size_t alignment);
     };

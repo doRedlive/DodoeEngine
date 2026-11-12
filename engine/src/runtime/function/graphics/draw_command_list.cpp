@@ -8,41 +8,6 @@ namespace dodoe {
 
     DrawCommandList GDrawCommandList;
 
-    namespace {
-
-        Bool IsFramebufferAttachmentsReady(const GfxFramebufferDesc& desc) {
-            for (const auto& color : desc.colors()) {
-                if (!color || !color->isGpuReady()) return false;
-            }
-            const GfxTextureHandle& depth = desc.depth();
-            if (depth && !depth->isGpuReady()) return false;
-            return true;
-        }
-
-        Bool IsBindingSetResourcesReady(const GfxBindingSetDesc& desc) {
-            for (const auto& item : desc.bindings) {
-                switch (item.type) {
-                case cutie::ResourceType::Texture_SRV:
-                case cutie::ResourceType::Texture_UAV:
-                case cutie::ResourceType::TypedBuffer_SRV:
-                case cutie::ResourceType::TypedBuffer_UAV:
-                case cutie::ResourceType::StructuredBuffer_SRV:
-                case cutie::ResourceType::StructuredBuffer_UAV:
-                case cutie::ResourceType::RawBuffer_SRV:
-                case cutie::ResourceType::RawBuffer_UAV:
-                case cutie::ResourceType::ConstantBuffer:
-                case cutie::ResourceType::VolatileConstantBuffer:
-                    if (item.resourceHandle == nullptr) return false;
-                    break;
-                default:
-                    break;
-                }
-            }
-            return true;
-        }
-
-    } // namesapce
-
     void DrawCommandList::setDevice(GfxContext& gfx) {
         DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::setDevice", "startup");
         m_device = gfx.getDevice();
@@ -56,17 +21,80 @@ namespace dodoe {
         m_device = nullptr;
     }
 
-    void DrawCommandList::beginFrame() { resetAndRelease(); }
+    void DrawCommandList::beginFrame() {
+        resetAndRelease();
+        std::lock_guard<std::mutex> lock(m_record_mutex);
+        m_realize_plan.clear();
+    }
     void DrawCommandList::endFrame() {}
 
-    CommandList<GfxCommandList> DrawCommandList::detachRecordedCommands() {
+    DrawCommandList DrawCommandList::detachRecordedCommands() {
         std::lock_guard<std::mutex> lock(m_record_mutex);
-        return CommandList<GfxCommandList>(std::move(*this));
+        DrawCommandList detached{};
+        detached.m_device = m_device;
+        static_cast<CommandList<GfxCommandList>&>(detached) = CommandList<GfxCommandList>(std::move(*this));
+        detached.m_realize_plan = std::move(m_realize_plan);
+        return detached;
     }
 
     void DrawCommandList::execute(const GfxCommandListHandle& command_list) const {
         DO_ASSERT(command_list != nullptr, "DrawCommandList command list is null");
         CommandList::execute(*command_list);
+    }
+
+    void DrawCommandList::registerRealizeEntry(const GfxResourceRealizeEntry& entry) {
+        std::lock_guard<std::mutex> lock(m_record_mutex);
+        m_realize_plan.push_back(entry);
+    }
+
+    void DrawCommandList::requestRealize(const GfxTextureHandle& texture) {
+        if (!texture || texture->isGpuReady()) return;
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::Texture;
+        entry.texture = texture;
+        registerRealizeEntry(entry);
+    }
+
+    void DrawCommandList::requestRealize(const GfxBufferHandle& buffer) {
+        if (!buffer || buffer->isGpuReady()) return;
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::Buffer;
+        entry.buffer = buffer;
+        registerRealizeEntry(entry);
+    }
+
+    void DrawCommandList::requestRealize(const GfxFramebufferHandle& framebuffer) {
+        if (!framebuffer || framebuffer->isGpuReady()) return;
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::Framebuffer;
+        entry.framebuffer = framebuffer;
+        registerRealizeEntry(entry);
+    }
+
+    void DrawCommandList::requestRealize(const GfxBindingSetHandle& binding_set) {
+        if (!binding_set || binding_set->isGpuReady()) return;
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::BindingSet;
+        entry.binding_set = binding_set;
+        registerRealizeEntry(entry);
+    }
+
+    void DrawCommandList::requestRealize(const GfxGraphicsPipelineHandle& pipeline) {
+        if (!pipeline || pipeline->isGpuReady()) return;
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::GraphicsPipeline;
+        entry.pipeline = pipeline;
+        registerRealizeEntry(entry);
+    }
+
+    void DrawCommandList::append(DrawCommandList&& other) {
+        if (!other.m_realize_plan.empty()) {
+            for (auto& entry : other.m_realize_plan) {
+                m_realize_plan.push_back(std::move(entry));
+            }
+            other.m_realize_plan.clear();
+        }
+        CommandList<GfxCommandList>::append(std::move(other));
     }
 
     void DrawCommandList::open()  { recordCommand<OpenCommand>(); }
@@ -112,7 +140,7 @@ namespace dodoe {
             return;
         }
         if (!buffer->isGpuReady()) {
-            DO_WARN("DrawCommandList::writeBuffer: buffer not realized, deferring upload");
+            DO_DEBUG("DrawCommandList::writeBuffer: buffer pending realize, upload replayed after prepare");
         }
         WriteBufferCommand::Create(*this, buffer, data, data_size, destination_offset_bytes);
     }
@@ -124,7 +152,7 @@ namespace dodoe {
             return;
         }
         if (!texture->isGpuReady()) {
-            DO_WARN("DrawCommandList::writeTexture: texture not realized, deferring upload");
+            DO_DEBUG("DrawCommandList::writeTexture: texture pending realize, upload replayed after prepare");
         }
         const auto& desc = texture->getDesc();
         UInt32 effective_mip_height = desc.height >> mip_level;
@@ -150,13 +178,25 @@ namespace dodoe {
         recordCommand<CommitBarriersCommand>();
     }
 
-    void DrawCommandList::setGraphicsState(const GfxFramebufferHandle& framebuffer, const GfxGraphicsPipelineHandle& pipeline, const DynamicArray<GfxBindingSetHandle>& binding_sets, const GfxViewportState& viewport, const DynamicArray<GfxVertexBufferBinding>& vertex_buffers, const GfxIndexBufferBinding& index_buffer, const GfxBufferHandle& indirect_params) {
-        recordCommand<SetGraphicsStateCommand>(framebuffer, pipeline, binding_sets, viewport, vertex_buffers, index_buffer, indirect_params);
+    void DrawCommandList::setGraphicsState(const GfxFramebufferHandle& framebuffer, const GfxGraphicsPipelineHandle& pipeline, const DynamicArray<GfxBindingSetHandle>& binding_sets, const GfxViewportState& viewport, const DynamicArray<GfxVertexBindingDesc>& vertex_buffers, const GfxIndexBindingDesc& index_buffer, const GfxBufferHandle& indirect_params) {
+        GfxDrawState state{};
+        state.setFramebuffer(framebuffer)
+            .setPipeline(pipeline)
+            .setViewport(viewport)
+            .setIndexBuffer(index_buffer)
+            .setIndirectParams(indirect_params);
+        for (const auto& binding_set : binding_sets) {
+            state.addBindingSet(binding_set);
+        }
+        for (const auto& vertex_buffer : vertex_buffers) {
+            state.addVertexBuffer(vertex_buffer);
+        }
+        recordCommand<SetGraphicsStateCommand>(state);
     }
-    void DrawCommandList::setGraphicsState(const GfxGraphicsState& state) {
-        recordCommand<SetGraphicsStateByValueCommand>(state);
+    void DrawCommandList::setGraphicsState(const GfxDrawState& state) {
+        recordCommand<SetGraphicsStateCommand>(state);
     }
-    void DrawCommandList::setComputeState(const GfxComputeState& state) {
+    void DrawCommandList::setComputeState(const GfxComputeDispatchState& state) {
         recordCommand<SetComputeStateCommand>(state);
     }
 
@@ -192,13 +232,16 @@ namespace dodoe {
             return nullptr;
         }
         auto texture = create_ref<GfxTexture>(desc);
-        texture->initializeGpu(m_device);
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::Texture;
+        entry.texture = texture;
+        registerRealizeEntry(entry);
         if (data && data_size > 0) {
             const UInt32 bpp = desc.format == GfxFormat::RGBA32_FLOAT ? 16u : 4u;
             const UInt32 pitch = desc.width * bpp;
             writeTexture(texture, 0, 0, data, pitch);
         }
-        // DO_DEBUG("DrawCommandList: created texture ({}x{}, data={})", desc.width, desc.height, data_size > 0);
+        // DO_DEBUG("DrawCommandList: registered texture ({}x{}, data={})", desc.width, desc.height, data_size > 0);
         return texture;
     }
     GfxStagingTextureHandle DrawCommandList::createStagingTexture(const GfxTextureDesc& desc, GfxCpuAccessMode cpu_access) {
@@ -231,11 +274,14 @@ namespace dodoe {
             return nullptr;
         }
         auto buffer = create_ref<GfxBuffer>(desc);
-        buffer->initializeGpu(m_device);
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::Buffer;
+        entry.buffer = buffer;
+        registerRealizeEntry(entry);
         if (data && data_size > 0) {
             writeBuffer(buffer, data, data_size, 0);
         }
-        // DO_DEBUG("DrawCommandList: created buffer (size={}, data={})", desc.byteSize, data_size > 0);
+        // DO_DEBUG("DrawCommandList: registered buffer (size={}, data={})", desc.byteSize, data_size > 0);
         return buffer;
     }
     GfxFramebufferHandle DrawCommandList::createFramebuffer(const GfxFramebufferDesc& desc) {
@@ -245,25 +291,24 @@ namespace dodoe {
             return nullptr;
         }
         auto fb = create_ref<GfxFramebuffer>(desc);
-        if (IsFramebufferAttachmentsReady(desc)) {
-            fb->initializeGpu(m_device);
-        } else {
-            // DO_DEBUG("DrawCommandList: deferred framebuffer creation because attachments are not ready");
-        }
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::Framebuffer;
+        entry.framebuffer = fb;
+        registerRealizeEntry(entry);
         return fb;
     }
-    GfxBindingSetHandle DrawCommandList::createBindingSet(const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
+    GfxBindingSetHandle DrawCommandList::createBindingSet(const GfxLogicalBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
         DO_PROFILE_SCOPE_CATEGORY("DrawCommandList::createBindingSet", "resource");
         if (!m_device || !layout) {
             DO_ERROR("DrawCommandList::createBindingSet: graphics device or layout is unavailable");
             return nullptr;
         }
         auto bs = create_ref<GfxBindingSet>();
-        if (IsBindingSetResourcesReady(desc)) {
-            bs->initializeGpu(m_device, desc, layout);
-        } else {
-            // DO_DEBUG("DrawCommandList: deferred binding set creation because resources are not ready");
-        }
+        bs->setPendingDesc(desc, layout);
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::BindingSet;
+        entry.binding_set = bs;
+        registerRealizeEntry(entry);
         return bs;
     }
     GfxGraphicsPipelineHandle DrawCommandList::createGraphicsPipeline(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
@@ -273,7 +318,11 @@ namespace dodoe {
             return nullptr;
         }
         auto pso = create_ref<GfxGraphicsPipeline>();
-        pso->initializeGpu(m_device, desc, info);
+        pso->setPendingDesc(desc, info);
+        GfxResourceRealizeEntry entry{};
+        entry.kind = GfxResourceRealizeEntry::Kind::GraphicsPipeline;
+        entry.pipeline = pso;
+        registerRealizeEntry(entry);
         return pso;
     }
     DescriptorIndex DrawCommandList::createDescriptor(GfxDescriptorTableHandle table, GfxTextureHandle texture, UInt32 slot) {
@@ -326,7 +375,6 @@ namespace dodoe {
     void DrawCommandList::ClearStateCommand::execute(GfxCommandList& c) const { c.clearState(); }
     void DrawCommandList::EndMarkerCommand::execute(GfxCommandList& c) const { c.endMarker(); }
     void DrawCommandList::CommitBarriersCommand::execute(GfxCommandList& c) const { c.commitBarriers(); }
-    void DrawCommandList::SetComputeStateCommand::execute(GfxCommandList& c) const { c.setComputeState(m_st); }
     void DrawCommandList::DrawPrimitiveCommand::execute(GfxCommandList& c) const { c.draw(m_args); }
     void DrawCommandList::DrawIndexedPrimitiveCommand::execute(GfxCommandList& c) const { c.drawIndexed(m_args); }
     void DrawCommandList::DispatchCommand::execute(GfxCommandList& c) const { c.dispatch(m_x, m_y, m_z); }
@@ -343,35 +391,164 @@ namespace dodoe {
     void DrawCommandList::SetTextureStateCommand::execute(GfxCommandList& c) const { if (m_t->isGpuReady()) c.setTextureState(m_t->getRHIHandle(), m_s, m_st); else DO_WARN("SetTextureState: texture not realized"); }
     void DrawCommandList::SetBufferStateCommand::execute(GfxCommandList& c) const { if (m_b->isGpuReady()) c.setBufferState(m_b->getRHIHandle(), m_st); else DO_WARN("SetBufferState: buffer not realized"); }
 
-    void DrawCommandList::SetGraphicsStateCommand::execute(GfxCommandList& cm) const {
-        GfxGraphicsState s;
-        s.setViewport(m_vp);
-        if (m_pso && m_pso->isGpuReady()) s.setPipeline(m_pso->getRHIHandle());
-        if (m_fb && m_fb->isGpuReady()) s.setFramebuffer(m_fb->getRHIHandle());
-        else if (m_fb) DO_WARN("SetGraphicsState: framebuffer skipped, rhi_ready={}", m_fb->isGpuReady());
-        for (auto& bs : m_bs) {
-            if (bs && bs->isGpuReady()) s.addBindingSet(bs->getRHIHandle());
-            else if (bs) DO_WARN("SetGraphicsState: binding set skipped, rhi_ready={}", bs->isGpuReady());
+    namespace {
+
+        UnorderedSet<const void*>& ReplayWarnKeys() {
+            static UnorderedSet<const void*> s_keys;
+            return s_keys;
         }
-        for (auto& vb : m_vb) s.addVertexBuffer(vb);
-        s.setIndexBuffer(m_ib);
-        if (m_indirect && m_indirect->isGpuReady()) s.setIndirectParams(m_indirect->getRHIHandle());
+
+        Bool ShouldWarnReplay(const void* key) {
+            return ReplayWarnKeys().insert(key).second;
+        }
+
+        void ClearReplayWarn(const void* key) {
+            ReplayWarnKeys().erase(key);
+        }
+
+        Bool ResolveBindingSet(GfxGraphicsState& state, const GfxBindingSetHandle& binding_set) {
+            if (!binding_set) return true;
+            if (!binding_set->isGpuReady()) {
+                if (ShouldWarnReplay(binding_set.Get())) {
+                    DO_WARN("SetGraphicsState: binding set not ready at replay");
+                }
+                return false;
+            }
+            ClearReplayWarn(binding_set.Get());
+            state.addBindingSet(binding_set->getRHIHandle());
+            return true;
+        }
+
+        Bool ResolveVertexBinding(GfxGraphicsState& state, const GfxVertexBindingDesc& binding) {
+            if (!binding.buffer) return true;
+            if (!binding.buffer->isGpuReady()) {
+                if (ShouldWarnReplay(binding.buffer.Get())) {
+                    DO_WARN("SetGraphicsState: vertex buffer not ready at replay (slot={})", binding.slot);
+                }
+                return false;
+            }
+            ClearReplayWarn(binding.buffer.Get());
+            state.addVertexBuffer(
+                GfxVertexBufferBinding()
+                    .setBuffer(binding.buffer->getRHIHandle())
+                    .setSlot(binding.slot)
+                    .setOffset(binding.offset));
+            return true;
+        }
+
+    } // namespace
+
+    void DrawCommandList::SetGraphicsStateCommand::execute(GfxCommandList& cm) const {
+        const GfxDrawState& state = m_state;
+        Bool blocked = false;
+
+        GfxGraphicsState s;
+        s.setViewport(state.viewport);
+        if (state.pipeline) {
+            if (state.pipeline->isGpuReady()) {
+                ClearReplayWarn(state.pipeline.Get());
+                s.setPipeline(state.pipeline->getRHIHandle());
+            } else {
+                if (ShouldWarnReplay(state.pipeline.Get())) {
+                    DO_WARN("SetGraphicsState: pipeline not ready at replay");
+                }
+                blocked = true;
+            }
+        }
+        if (state.framebuffer) {
+            if (state.framebuffer->isGpuReady()) {
+                ClearReplayWarn(state.framebuffer.Get());
+                s.setFramebuffer(state.framebuffer->getRHIHandle());
+            } else {
+                if (ShouldWarnReplay(state.framebuffer.Get())) {
+                    DO_WARN("SetGraphicsState: framebuffer not ready at replay");
+                }
+                blocked = true;
+            }
+        }
+        for (const auto& binding_set : state.bindings) {
+            if (!ResolveBindingSet(s, binding_set)) blocked = true;
+        }
+        for (const auto& vertex_buffer : state.vertex_buffers) {
+            if (!ResolveVertexBinding(s, vertex_buffer)) blocked = true;
+        }
+        if (state.index_buffer.buffer) {
+            if (state.index_buffer.buffer->isGpuReady()) {
+                ClearReplayWarn(state.index_buffer.buffer.Get());
+                s.setIndexBuffer(
+                    GfxIndexBufferBinding()
+                        .setBuffer(state.index_buffer.buffer->getRHIHandle())
+                        .setFormat(state.index_buffer.format)
+                        .setOffset(state.index_buffer.offset));
+            } else {
+                if (ShouldWarnReplay(state.index_buffer.buffer.Get())) {
+                    DO_WARN("SetGraphicsState: index buffer not ready at replay");
+                }
+                blocked = true;
+            }
+        }
+        if (state.indirect_params) {
+            if (state.indirect_params->isGpuReady()) {
+                ClearReplayWarn(state.indirect_params.Get());
+                s.setIndirectParams(state.indirect_params->getRHIHandle());
+            } else {
+                if (ShouldWarnReplay(state.indirect_params.Get())) {
+                    DO_WARN("SetGraphicsState: indirect params not ready at replay");
+                }
+                blocked = true;
+            }
+        }
+        if (state.indirect_count_buffer) {
+            if (state.indirect_count_buffer->isGpuReady()) {
+                ClearReplayWarn(state.indirect_count_buffer.Get());
+                s.setIndirectCountBuffer(state.indirect_count_buffer->getRHIHandle());
+            } else {
+                if (ShouldWarnReplay(state.indirect_count_buffer.Get())) {
+                    DO_WARN("SetGraphicsState: indirect count buffer not ready at replay");
+                }
+                blocked = true;
+            }
+        }
+        if (blocked) return;
         cm.setGraphicsState(s);
+    }
+
+    void DrawCommandList::SetComputeStateCommand::execute(GfxCommandList& cm) const {
+        const GfxComputeDispatchState& state = m_state;
+        Bool blocked = false;
+
+        GfxComputeState s;
+        s.setPipeline(state.pipeline);
+        for (const auto& binding_set : state.bindings) {
+            if (!binding_set) continue;
+            if (binding_set->isGpuReady()) {
+                ClearReplayWarn(binding_set.Get());
+                s.addBindingSet(binding_set->getRHIHandle());
+            } else {
+                if (ShouldWarnReplay(binding_set.Get())) {
+                    DO_WARN("SetComputeState: binding set not ready at replay");
+                }
+                blocked = true;
+            }
+        }
+        if (state.indirect_params) {
+            if (state.indirect_params->isGpuReady()) {
+                ClearReplayWarn(state.indirect_params.Get());
+                s.setIndirectParams(state.indirect_params->getRHIHandle());
+            } else {
+                if (ShouldWarnReplay(state.indirect_params.Get())) {
+                    DO_WARN("SetComputeState: indirect params not ready at replay");
+                }
+                blocked = true;
+            }
+        }
+        if (blocked) return;
+        cm.setComputeState(s);
     }
 
     Size_t DrawCommandList::alignUp(Size_t v, Size_t a) {
         DO_ASSERT(a != 0 && (a & (a - 1)) == 0, "alignUp: invalid alignment");
         return (v + a - 1) & ~(a - 1);
     }
-
-    DrawCommandList::SetGraphicsStateCommand::SetGraphicsStateCommand(
-        const GfxFramebufferHandle& fb,
-        const GfxGraphicsPipelineHandle& pso,
-        const DynamicArray<GfxBindingSetHandle>& bs,
-        const GfxViewportState& vp,
-        const DynamicArray<GfxVertexBufferBinding>& vb,
-        const GfxIndexBufferBinding& ib,
-        const GfxBufferHandle& indirect)
-        : m_fb(fb), m_pso(pso), m_bs(bs), m_vp(vp), m_vb(vb), m_ib(ib), m_indirect(indirect) {}
 
 } // dodoe

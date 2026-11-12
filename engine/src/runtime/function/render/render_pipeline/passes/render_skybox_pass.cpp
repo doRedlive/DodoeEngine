@@ -135,14 +135,13 @@ namespace dodoe {
                     const GfxTextureHandle depth_fallback = fallback_texture
                         ? fallback_texture->getGpuHandle() : cubemap_handle;
                     const auto binding_set = command_list.createBindingSet(
-                        GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(0, skybox_cb->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(
-                                1, cubemap_handle->getRHIHandle().Get(),
+                        GfxLogicalBindingSetDesc()
+                            .addItem(GfxLogicalBindingItem::ConstantBuffer(0, skybox_cb))
+                            .addItem(GfxLogicalBindingItem::Texture_SRV(
+                                1, cubemap_handle,
                                 GfxFormat::UNKNOWN, GfxAllSubresources, GfxTextureDimension::TextureCube))
-                            .addItem(GfxBindingSetItem::Texture_SRV(
-                                2, depth_fallback ? depth_fallback->getRHIHandle().Get() : nullptr))
-                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                            .addItem(GfxLogicalBindingItem::Texture_SRV(2, depth_fallback))
+                            .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
                         binding_layouts.back());
                     if (binding_set) {
                         binding_sets.push_back(binding_set);
@@ -150,6 +149,7 @@ namespace dodoe {
                 } else {
                     binding_sets = ShaderBindingReflector<SkyboxPassShaderParams>::createBindingSets(
                         *ctx.getSharedRenderService()->getBindingSetCache(),
+                        command_list,
                         binding_layouts, shader_params,
                         [&](auto h) { return ctx.resolveTexture(h); },
                         [&](auto h) { return ctx.resolveBuffer(h); });

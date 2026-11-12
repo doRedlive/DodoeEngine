@@ -34,22 +34,23 @@ namespace dodoe {
         return m_gfx_context != nullptr;
     }
 
-    GfxFramebufferHandle FramebufferCache::getOrCreate(const FramebufferCacheKey& key,
+    GfxFramebufferHandle FramebufferCache::getOrCreate(DrawCommandList& command_list,
+                                                         const FramebufferCacheKey& key,
                                                          const GfxFramebufferDesc& desc) {
         DO_PROFILE_SCOPE_CATEGORY("FramebufferCache::getOrCreate", "resource-cache");
         const auto hash = key.computeHash();
         for (auto& entry : m_entries) {
             if (entry.key == key) {
-                if (entry.framebuffer->isGpuReady()) {
-                    return entry.framebuffer;
+                if (!entry.framebuffer) {
+                    entry.framebuffer = command_list.createFramebuffer(desc);
+                } else if (!entry.framebuffer->isGpuReady()) {
+                    command_list.requestRealize(entry.framebuffer);
                 }
-                auto framebuffer = GDrawCommandList.createFramebuffer(desc);
-                entry.framebuffer = framebuffer;
-                return framebuffer;
+                return entry.framebuffer;
             }
         }
 
-        auto framebuffer = GDrawCommandList.createFramebuffer(desc);
+        auto framebuffer = command_list.createFramebuffer(desc);
         m_entries.push_back({key, framebuffer});
         // DO_DEBUG("FramebufferCache: created framebuffer (cache size={})", m_entries.size());
         return framebuffer;

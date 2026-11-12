@@ -3,6 +3,7 @@
 #include "shadow_mesh_processor.h"
 
 #include "../render_scene/primitive_render_object.h"
+#include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/graphics/gfx_context.h"
 #include "mesh_draw_list.h"
 #include "runtime/function/render/render_service/binding_layout_cache.h"
@@ -74,14 +75,16 @@ namespace dodoe {
         m_binding_set_cache = &binding_set_cache;
         m_view_layout_generation = binding_layout_cache.getLayoutGeneration(m_view_binding_layout);
         m_global_binding_set = binding_set_cache.getOrCreate(
-            GfxBindingSetDesc().addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kGlobalBindingConstants, m_global_constant_buffer->getRHIHandle())),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc().addItem(GfxLogicalBindingItem::ConstantBuffer(shader_bindings::kGlobalBindingConstants, m_global_constant_buffer)),
             m_global_binding_layout,
             binding_layout_cache.getLayoutGeneration(m_global_binding_layout)
         );
         m_view_binding_set = binding_set_cache.getOrCreate(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle()))
-                .addItem(GfxBindingSetItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer->getRHIHandle())),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer))
+                .addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer)),
             m_view_binding_layout,
             binding_layout_cache.getLayoutGeneration(m_view_binding_layout)
         );
@@ -104,9 +107,10 @@ namespace dodoe {
         }
         m_skinning_buffer = buffer;
         m_view_binding_set = m_binding_set_cache->getOrCreate(
-            GfxBindingSetDesc()
-                .addItem(GfxBindingSetItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer->getRHIHandle()))
-                .addItem(GfxBindingSetItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer->getRHIHandle())),
+            GDrawCommandList,
+            GfxLogicalBindingSetDesc()
+                .addItem(GfxLogicalBindingItem::ConstantBuffer(shader_bindings::kViewBindingConstants, m_view_constant_buffer))
+                .addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(shader_bindings::kViewBindingSkinning, m_skinning_buffer)),
             m_view_binding_layout,
             m_view_layout_generation);
     }

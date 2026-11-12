@@ -36,7 +36,8 @@ namespace dodoe {
     class FramebufferCache : public Managed<FramebufferCache, FramebufferCacheCreateInfo> {
         friend class Managed<FramebufferCache, FramebufferCacheCreateInfo>;
     public:
-        GfxFramebufferHandle getOrCreate(const FramebufferCacheKey& key,
+        GfxFramebufferHandle getOrCreate(DrawCommandList& command_list,
+                                          const FramebufferCacheKey& key,
                                           const GfxFramebufferDesc& desc);
         void invalidateTexture(const void* texture_ptr);
         void endFrame();

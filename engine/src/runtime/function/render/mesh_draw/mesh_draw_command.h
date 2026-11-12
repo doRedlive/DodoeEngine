@@ -67,8 +67,8 @@ namespace dodoe {
         MeshPassType m_pass_type{MeshPassType::Opaque};
         GfxGraphicsPipelineHandle m_pipeline{};
         StaticArray<GfxBindingSetHandle, ShaderParameterBinder::kShaderParameterSetCount> m_binding_sets{};
-        DynamicArray<GfxVertexBufferBinding> m_vertex_bindings{};
-        GfxIndexBufferBinding m_index_binding{};
+        DynamicArray<GfxVertexBindingDesc> m_vertex_bindings{};
+        GfxIndexBindingDesc m_index_binding{};
         GfxDrawArguments m_draw_args{};
         Size_t m_material_sort_id{0};
 
@@ -76,8 +76,8 @@ namespace dodoe {
         [[nodiscard]] MeshPassType getPassType() const { return m_pass_type; }
         [[nodiscard]] const GfxGraphicsPipelineHandle& getPipeline() const { return m_pipeline; }
         [[nodiscard]] const StaticArray<GfxBindingSetHandle, ShaderParameterBinder::kShaderParameterSetCount>& getBindingSets() const { return m_binding_sets; }
-        [[nodiscard]] const DynamicArray<GfxVertexBufferBinding>& getVertexBindings() const { return m_vertex_bindings; }
-        [[nodiscard]] const GfxIndexBufferBinding& getIndexBinding() const { return m_index_binding; }
+        [[nodiscard]] const DynamicArray<GfxVertexBindingDesc>& getVertexBindings() const { return m_vertex_bindings; }
+        [[nodiscard]] const GfxIndexBindingDesc& getIndexBinding() const { return m_index_binding; }
         [[nodiscard]] const GfxDrawArguments& getDrawArguments() const { return m_draw_args; }
         [[nodiscard]] Size_t getMaterialSortId() const { return m_material_sort_id; }
 
@@ -133,8 +133,8 @@ namespace dodoe {
                 reinterpret_cast<Size_t>(m_pipeline.get()),
                 m_material_sort_id,
                 binding_set_hash,
-                m_vertex_bindings.empty() ? 0 : reinterpret_cast<Size_t>(m_vertex_bindings.front().buffer),
-                reinterpret_cast<Size_t>(m_index_binding.buffer),
+                m_vertex_bindings.empty() ? 0 : reinterpret_cast<Size_t>(m_vertex_bindings.front().buffer.Get()),
+                reinterpret_cast<Size_t>(m_index_binding.buffer.Get()),
                 m_draw_args.vertexCount,
                 m_draw_args.startIndexLocation,
                 static_cast<Int32>(m_draw_args.startVertexLocation),
@@ -148,8 +148,8 @@ namespace dodoe {
         void setBindingSet(const ShaderParameterSet set, const GfxBindingSetHandle& binding_set) {
             m_binding_sets[static_cast<Size_t>(set)] = binding_set;
         }
-        void addVertexBinding(const GfxVertexBufferBinding& binding) { m_vertex_bindings.push_back(binding); }
-        void setIndexBinding(const GfxIndexBufferBinding& binding) { m_index_binding = binding; }
+        void addVertexBinding(const GfxVertexBindingDesc& binding) { m_vertex_bindings.push_back(binding); }
+        void setIndexBinding(const GfxIndexBindingDesc& binding) { m_index_binding = binding; }
         void setDrawArguments(const GfxDrawArguments& args) { m_draw_args = args; }
         void setMaterialSortId(const Size_t material_sort_id) { m_material_sort_id = material_sort_id; }
     };

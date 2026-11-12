@@ -269,22 +269,22 @@ namespace dodoe {
         cmd_list.setBufferState(m_visible_count_buffer, GfxResourceStates::UnorderedAccess);
         cmd_list.commitBarriers();
 
-        GfxBindingSetDesc binding_desc;
-        binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, scene_resources.object_meta->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.transforms->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, scene_resources.bounds->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_visible_objects_buffer->getRHIHandle()));
-        binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_visible_count_buffer->getRHIHandle()));
+        GfxLogicalBindingSetDesc binding_desc;
+        binding_desc.addItem(GfxLogicalBindingItem::ConstantBuffer(0, m_culling_params_buffer));
+        binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(1, scene_resources.object_meta));
+        binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(2, scene_resources.transforms));
+        binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(3, scene_resources.bounds));
+        binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_UAV(4, m_visible_objects_buffer));
+        binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_UAV(5, m_visible_count_buffer));
 
         const auto& pipeline_layouts = m_culling_pipeline->getDesc().bindingLayouts;
         auto binding_set = cmd_list.createBindingSet(binding_desc,
             pipeline_layouts.empty() ? m_culling_binding_layout : pipeline_layouts.front());
         m_frame_binding_sets.push_back(binding_set);
 
-        GfxComputeState compute_state;
+        GfxComputeDispatchState compute_state;
         compute_state.setPipeline(m_culling_pipeline);
-        compute_state.addBindingSet(binding_set->getRHIHandle());
+        compute_state.addBindingSet(binding_set);
 
         cmd_list.setComputeState(compute_state);
 
@@ -308,7 +308,7 @@ namespace dodoe {
                                          UInt32 object_count) {
         if (!m_enabled || !m_shader_library || object_count == 0) return;
         if (!m_visible_objects_buffer || !m_visible_count_buffer) return;
-        if (!scene_resources.primitive_instance || !scene_resources.primitive_instance->getRHI()) return;
+        if (!scene_resources.primitive_instance || !scene_resources.primitive_instance->isGpuReady()) return;
 
         ensureBucketBuffers(cmd_list, object_count);
 
@@ -397,22 +397,22 @@ namespace dodoe {
             cmd_list.setBufferState(m_culling_params_buffer, GfxResourceStates::ConstantBuffer);
             cmd_list.commitBarriers();
 
-            GfxBindingSetDesc count_binding_desc;
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_objects_buffer->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.object_meta->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, m_visible_count_buffer->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(4, scene_resources.primitive_instance->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
-            count_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, m_bucket_counts_buffer->getRHIHandle()));
+            GfxLogicalBindingSetDesc count_binding_desc;
+            count_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(1, m_visible_objects_buffer));
+            count_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(2, scene_resources.object_meta));
+            count_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(3, m_visible_count_buffer));
+            count_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(4, scene_resources.primitive_instance));
+            count_binding_desc.addItem(GfxLogicalBindingItem::ConstantBuffer(0, m_culling_params_buffer));
+            count_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_UAV(5, m_bucket_counts_buffer));
 
             const auto& count_pipeline_layouts = m_bucket_count_pipeline->getDesc().bindingLayouts;
             auto count_binding_set = cmd_list.createBindingSet(count_binding_desc,
                 count_pipeline_layouts.empty() ? m_bucket_count_binding_layout : count_pipeline_layouts.front());
             m_frame_binding_sets.push_back(count_binding_set);
 
-            GfxComputeState count_state;
+            GfxComputeDispatchState count_state;
             count_state.setPipeline(m_bucket_count_pipeline);
-            count_state.addBindingSet(count_binding_set->getRHIHandle());
+            count_state.addBindingSet(count_binding_set);
             cmd_list.setComputeState(count_state);
 
             const UInt32 count_groups = (object_count + 63) / 64;
@@ -429,19 +429,19 @@ namespace dodoe {
         }
 
         if (bucket_scan_cs && m_bucket_scan_pipeline) {
-            GfxBindingSetDesc scan_binding_desc;
-            scan_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
-            scan_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_bucket_counts_buffer->getRHIHandle()));
-            scan_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(2, m_bucket_bases_buffer->getRHIHandle()));
+            GfxLogicalBindingSetDesc scan_binding_desc;
+            scan_binding_desc.addItem(GfxLogicalBindingItem::ConstantBuffer(0, m_culling_params_buffer));
+            scan_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(1, m_bucket_counts_buffer));
+            scan_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_UAV(2, m_bucket_bases_buffer));
 
             const auto& scan_pipeline_layouts = m_bucket_scan_pipeline->getDesc().bindingLayouts;
             auto scan_binding_set = cmd_list.createBindingSet(scan_binding_desc,
                 scan_pipeline_layouts.empty() ? m_bucket_scan_binding_layout : scan_pipeline_layouts.front());
             m_frame_binding_sets.push_back(scan_binding_set);
 
-            GfxComputeState scan_state;
+            GfxComputeDispatchState scan_state;
             scan_state.setPipeline(m_bucket_scan_pipeline);
-            scan_state.addBindingSet(scan_binding_set->getRHIHandle());
+            scan_state.addBindingSet(scan_binding_set);
             cmd_list.setComputeState(scan_state);
             cmd_list.dispatch(1, 1, 1);
 
@@ -486,27 +486,27 @@ namespace dodoe {
             cmd_list.setBufferState(m_bucket_ranges_buffer, GfxResourceStates::UnorderedAccess);
             cmd_list.commitBarriers();
 
-            GfxBindingSetDesc fill_binding_desc;
-            fill_binding_desc.addItem(GfxBindingSetItem::ConstantBuffer(0, m_culling_params_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(1, m_visible_objects_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(2, scene_resources.object_meta->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(3, m_visible_count_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(4, m_bucket_counts_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(5, indirect_args->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(7, scene_resources.primitive_instance->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(8, templates->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(10, template_map->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_SRV(11, m_bucket_bases_buffer->getRHIHandle()));
-            fill_binding_desc.addItem(GfxBindingSetItem::StructuredBuffer_UAV(12, m_bucket_ranges_buffer->getRHIHandle()));
+            GfxLogicalBindingSetDesc fill_binding_desc;
+            fill_binding_desc.addItem(GfxLogicalBindingItem::ConstantBuffer(0, m_culling_params_buffer));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(1, m_visible_objects_buffer));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(2, scene_resources.object_meta));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(3, m_visible_count_buffer));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_UAV(4, m_bucket_counts_buffer));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_UAV(5, indirect_args));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(7, scene_resources.primitive_instance));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(8, templates));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(10, template_map));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_SRV(11, m_bucket_bases_buffer));
+            fill_binding_desc.addItem(GfxLogicalBindingItem::StructuredBuffer_UAV(12, m_bucket_ranges_buffer));
 
             const auto& fill_pipeline_layouts = m_bucket_fill_pipeline->getDesc().bindingLayouts;
             auto fill_binding_set = cmd_list.createBindingSet(fill_binding_desc,
                 fill_pipeline_layouts.empty() ? m_bucket_fill_binding_layout : fill_pipeline_layouts.front());
             m_frame_binding_sets.push_back(fill_binding_set);
 
-            GfxComputeState fill_state;
+            GfxComputeDispatchState fill_state;
             fill_state.setPipeline(m_bucket_fill_pipeline);
-            fill_state.addBindingSet(fill_binding_set->getRHIHandle());
+            fill_state.addBindingSet(fill_binding_set);
             cmd_list.setComputeState(fill_state);
 
             const UInt32 fill_groups = (object_count + 63) / 64;

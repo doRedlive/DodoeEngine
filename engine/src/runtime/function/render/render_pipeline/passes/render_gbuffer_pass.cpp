@@ -142,7 +142,7 @@ namespace dodoe {
                 if (gpu_active) {
                     const Bool has_culling = gpu_culling && gpu_culling->isEnabled();
                     const Bool has_instance_buffer = gpu_scene_resources.primitive_render_instance
-                        && gpu_scene_resources.primitive_render_instance->getRHI();
+                        && gpu_scene_resources.primitive_render_instance->isGpuReady();
                     const Bool has_buckets = !gpu_buckets.empty();
                     const Bool has_draws = has_culling && has_instance_buffer && has_buckets
                         && gpu_culling->acquireBucketDraws(gpu_draws);
@@ -160,8 +160,8 @@ namespace dodoe {
 
                 if (use_gpu_draws) {
                     const auto indirect_args = gpu_culling->getIndirectArgsBuffer(1);
-                    const auto instance_binding = GfxVertexBufferBinding()
-                        .setBuffer(gpu_scene_resources.primitive_render_instance->getRHI())
+                    const auto instance_binding = GfxVertexBindingDesc()
+                        .setBuffer(gpu_scene_resources.primitive_render_instance)
                         .setSlot(1)
                         .setOffset(0);
                     const auto& draw_snapshots = gpu_culling->getBucketDrawSnapshots(1);
@@ -174,7 +174,7 @@ namespace dodoe {
                             continue;
                         }
                         command_list.writeBuffer(processor->getPrimitiveConstantBuffer(), snapshot.shader_data);
-                        DynamicArray<GfxVertexBufferBinding> vertex_bindings = snapshot.vertex_bindings;
+                        DynamicArray<GfxVertexBindingDesc> vertex_bindings = snapshot.vertex_bindings;
                         vertex_bindings.push_back(instance_binding);
                         command_list.setGraphicsState(fb, snapshot.pipeline, snapshot.binding_sets,
                             viewport_state, vertex_bindings, snapshot.index_binding, indirect_args);

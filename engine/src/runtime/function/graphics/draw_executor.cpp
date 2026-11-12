@@ -2,6 +2,7 @@
 
 #include "draw_executor.h"
 #include "gfx_context.h"
+#include "runtime/function/render/render_service/submission_executor.h"
 
 namespace dodoe {
 
@@ -12,9 +13,9 @@ namespace dodoe {
         }
 
         gfx_cmd->open();
-        frame_ctx.command_list->execute(gfx_cmd);
+        SubmissionExecutor::prepareAndReplay(*frame_ctx.command_list, device, *gfx_cmd);
         gfx_cmd->close();
-        
+
         device->executeCommandList(gfx_cmd);
 
         device->setEventQuery(frame_ctx.completion_query, GfxCommandQueue::Graphics);

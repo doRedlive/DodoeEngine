@@ -150,16 +150,16 @@ namespace dodoe {
                 std::memcpy(allocation.mapped_data, &constants, sizeof(constants));
 
                 const auto binding_set = command_list.createBindingSet(
-                    GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::ConstantBuffer(
-                            0, allocation.buffer->getRHIHandle().Get(),
+                    GfxLogicalBindingSetDesc()
+                        .addItem(GfxLogicalBindingItem::ConstantBuffer(
+                            0, allocation.buffer,
                             GfxBufferRange(allocation.offset, allocation.size)))
-                        .addItem(GfxBindingSetItem::Texture_SRV(1, input_handle->getRHIHandle().Get()))
-                        .addItem(GfxBindingSetItem::Texture_SRV(2, history_handle->getRHIHandle().Get()))
-                        .addItem(GfxBindingSetItem::Texture_SRV(3, position_handle->getRHIHandle().Get()))
-                        .addItem(GfxBindingSetItem::Texture_SRV(4, motion_handle->getRHIHandle().Get()))
-                        .addItem(GfxBindingSetItem::Texture_SRV(5, prev_depth_handle->getRHIHandle().Get()))
-                        .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                        .addItem(GfxLogicalBindingItem::Texture_SRV(1, input_handle))
+                        .addItem(GfxLogicalBindingItem::Texture_SRV(2, history_handle))
+                        .addItem(GfxLogicalBindingItem::Texture_SRV(3, position_handle))
+                        .addItem(GfxLogicalBindingItem::Texture_SRV(4, motion_handle))
+                        .addItem(GfxLogicalBindingItem::Texture_SRV(5, prev_depth_handle))
+                        .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
                     binding_layout);
                 if (!binding_set) {
                     DO_ERROR("TaaPass: failed to create binding set");

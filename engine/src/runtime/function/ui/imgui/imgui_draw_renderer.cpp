@@ -42,10 +42,10 @@ namespace dodoe {
             return;
         }
 
-        const UInt32 fb_width = framebuffer && framebuffer->getRHI()
-            ? framebuffer->getRHI()->getFramebufferInfo().width : 0u;
-        const UInt32 fb_height = framebuffer && framebuffer->getRHI()
-            ? framebuffer->getRHI()->getFramebufferInfo().height : 0u;
+        const UInt32 fb_width = framebuffer
+            ? framebuffer->getFramebufferInfo().getRHI().width : 0u;
+        const UInt32 fb_height = framebuffer
+            ? framebuffer->getFramebufferInfo().getRHI().height : 0u;
         const Float fb_size_x = static_cast<Float>(fb_width);
         const Float fb_size_y = static_cast<Float>(fb_height);
         if (fb_size_x <= 0.0f || fb_size_y <= 0.0f) {
@@ -64,8 +64,7 @@ namespace dodoe {
 
         const auto& vb = vertex_buffer;
         const auto& ib = index_buffer;
-        if (!vb || !ib || !constant_buffer || !vb->isGpuReady() || !ib->isGpuReady() ||
-            !constant_buffer->isGpuReady()) {
+        if (!vb || !ib || !constant_buffer) {
             DO_ERROR("ImGuiDrawRenderer: transient buffers are unavailable");
             return;
         }
@@ -181,10 +180,10 @@ namespace dodoe {
                                          constant_buffer.get() == m_font_binding_set_cb.get()
                     ? m_font_binding_set
                     : command_list.createBindingSet(
-                        GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(0, constant_buffer->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Texture_SRV(1, texture->getRHI()))
-                            .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                        GfxLogicalBindingSetDesc()
+                            .addItem(GfxLogicalBindingItem::ConstantBuffer(0, constant_buffer))
+                            .addItem(GfxLogicalBindingItem::Texture_SRV(1, Ref<GfxTexture>(texture)))
+                            .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
                         m_binding_layout);
                 if (!binding_set) {
                     continue;
@@ -205,10 +204,10 @@ namespace dodoe {
                     static_cast<Int32>(clip_y), static_cast<Int32>(clip_w)));
 
                 DynamicArray<GfxBindingSetHandle> binding_sets = {binding_set};
-                DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
-                    GfxVertexBufferBinding().setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(global_vertex_offset)};
+                DynamicArray<GfxVertexBindingDesc> vertex_buffers = {
+                    GfxVertexBindingDesc().setBuffer(vb).setSlot(0).setOffset(global_vertex_offset)};
                 command_list.setGraphicsState(framebuffer, pipeline, binding_sets, viewport, vertex_buffers,
-                    GfxIndexBufferBinding().setBuffer(ib->getRHIHandle()).setFormat(GfxFormat::R32_UINT).setOffset(global_index_offset));
+                    GfxIndexBindingDesc().setBuffer(ib).setFormat(GfxFormat::R32_UINT).setOffset(global_index_offset));
                 command_list.drawIndexed(GfxDrawArguments()
                     .setVertexCount(draw.elem_count)
                     .setStartIndexLocation(draw.idx_offset)

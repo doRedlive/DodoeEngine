@@ -10,6 +10,7 @@
 #include "runtime/function/graphics/gfx_context.h"
 #include "runtime/function/graphics/gfx_viewport_surface.h"
 #include "runtime/function/render/pipeline_state/pipeline_state_cache.h"
+#include "runtime/function/render/render_service/submission_executor.h"
 #include "runtime/function/render/shader/shader_library.h"
 
 #include <algorithm>
@@ -242,7 +243,7 @@ namespace dodoe {
             auto cmd = s_device->createCommandList(
                 GfxCommandListParameters().setLifetimeTracker(data->tracker.Get()));
             cmd->open();
-            data->recorder.execute(cmd);
+            SubmissionExecutor::prepareAndReplay(data->recorder, s_device, *cmd);
             cmd->close();
             s_device->executeCommandList(cmd);
             data->tracker->runGarbageCollection();

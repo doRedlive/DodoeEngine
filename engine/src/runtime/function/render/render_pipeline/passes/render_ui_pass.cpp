@@ -168,12 +168,12 @@ namespace dodoe {
                     }
 
                     auto* set_cache = shared_service->getBindingSetCache();
-                    const GfxBindingSetDesc view_desc = GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()));
-                    auto view_binding_set = set_cache->getOrCreate(view_desc, m_view_binding_layout, 0);
-                    const GfxBindingSetDesc material_desc = GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get()));
-                    auto material_binding_set = set_cache->getOrCreate(material_desc, m_bindless_binding_layout, 0);
+                    const GfxLogicalBindingSetDesc view_desc = GfxLogicalBindingSetDesc()
+                        .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer));
+                    auto view_binding_set = set_cache->getOrCreate(command_list, view_desc, m_view_binding_layout, 0);
+                    const GfxLogicalBindingSetDesc material_desc = GfxLogicalBindingSetDesc()
+                        .addItem(GfxLogicalBindingItem::Sampler(1, GlobalSamplers::Screen()));
+                    auto material_binding_set = set_cache->getOrCreate(command_list, material_desc, m_bindless_binding_layout, 0);
                     if (!view_binding_set || !material_binding_set) {
                         DO_ERROR("UIPass: failed to create bindless binding set");
                         return;
@@ -216,15 +216,15 @@ namespace dodoe {
                         return;
                     }
 
-                    DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
-                        GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
-                        GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+                    DynamicArray<GfxVertexBindingDesc> vertex_buffers = {
+                        GfxVertexBindingDesc().setBuffer(quad_vertex_buffer).setSlot(0).setOffset(0),
+                        GfxVertexBindingDesc().setBuffer(instance_buffer).setSlot(1).setOffset(0)};
                     const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                         *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                     command_list.setGraphicsState(
                         ctx.getFramebuffer(), pipeline, binding_sets,
                         viewport_state, vertex_buffers,
-                        GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
+                        GfxIndexBindingDesc().setBuffer(quad_index_buffer).setFormat(GfxFormat::R16_UINT));
                     command_list.drawIndexed(GfxDrawArguments()
                         .setVertexCount(6)
                         .setInstanceCount(static_cast<UInt32>(parameters.instances.size())));
@@ -272,13 +272,13 @@ namespace dodoe {
                         }
 
                         auto* set_cache = shared_service->getBindingSetCache();
-                        const GfxBindingSetDesc view_desc = GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::ConstantBuffer(0, vp_buffer->getRHI()));
-                        auto view_binding_set = set_cache->getOrCreate(view_desc, m_view_binding_layout, 0);
-                        const GfxBindingSetDesc material_desc = GfxBindingSetDesc()
-                            .addItem(GfxBindingSetItem::Texture_SRV(2, tex_handle->getRHIHandle().Get()))
-                            .addItem(GfxBindingSetItem::Sampler(1, GlobalSamplers::Screen().Get()));
-                        auto material_binding_set = set_cache->getOrCreate(material_desc, m_material_binding_layout, 0);
+                        const GfxLogicalBindingSetDesc view_desc = GfxLogicalBindingSetDesc()
+                            .addItem(GfxLogicalBindingItem::ConstantBuffer(0, vp_buffer));
+                        auto view_binding_set = set_cache->getOrCreate(command_list, view_desc, m_view_binding_layout, 0);
+                        const GfxLogicalBindingSetDesc material_desc = GfxLogicalBindingSetDesc()
+                            .addItem(GfxLogicalBindingItem::Texture_SRV(2, tex_handle))
+                            .addItem(GfxLogicalBindingItem::Sampler(1, GlobalSamplers::Screen()));
+                        auto material_binding_set = set_cache->getOrCreate(command_list, material_desc, m_material_binding_layout, 0);
 
                         if (!view_binding_set || !material_binding_set) {
                             start = end;
@@ -303,16 +303,16 @@ namespace dodoe {
                         }
 
                         DynamicArray<GfxBindingSetHandle> binding_sets = {view_binding_set, material_binding_set};
-                        DynamicArray<GfxVertexBufferBinding> vertex_buffers = {
-                            GfxVertexBufferBinding().setBuffer(quad_vertex_buffer->getRHIHandle()).setSlot(0).setOffset(0),
-                            GfxVertexBufferBinding().setBuffer(instance_buffer->getRHIHandle()).setSlot(1).setOffset(0)};
+                        DynamicArray<GfxVertexBindingDesc> vertex_buffers = {
+                            GfxVertexBindingDesc().setBuffer(quad_vertex_buffer).setSlot(0).setOffset(0),
+                            GfxVertexBindingDesc().setBuffer(instance_buffer).setSlot(1).setOffset(0)};
 
                         const auto viewport_state = rendering_pipeline_utils::BuildViewportState(
                             *ctx.getView(), ctx.getGfxContext()->getSwapchainExtent2D());
                         command_list.setGraphicsState(
                             ctx.getFramebuffer(), pipeline, binding_sets,
                             viewport_state, vertex_buffers,
-                            GfxIndexBufferBinding().setBuffer(quad_index_buffer->getRHIHandle()).setFormat(GfxFormat::R16_UINT));
+                            GfxIndexBindingDesc().setBuffer(quad_index_buffer).setFormat(GfxFormat::R16_UINT));
                         command_list.drawIndexed(GfxDrawArguments()
                             .setVertexCount(6)
                             .setInstanceCount(static_cast<UInt32>(end - start))

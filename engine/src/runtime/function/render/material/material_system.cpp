@@ -574,12 +574,13 @@ namespace dodoe {
                 .addItem(GfxBindingLayoutItem::Texture_SRV(shader_bindings::kMaterialBindingBaseColor))
                 .addItem(GfxBindingLayoutItem::Texture_SRV(shader_bindings::kMaterialBindingMetallicRough)));
 
-        GfxBindingSetDesc set_desc;
-        set_desc.addItem(GfxBindingSetItem::Sampler(shader_bindings::kMaterialBindingSampler, instance.sampler.Get()));
-        set_desc.addItem(GfxBindingSetItem::Texture_SRV(shader_bindings::kMaterialBindingBaseColor, base_handle->getRHIHandle().Get()));
-        set_desc.addItem(GfxBindingSetItem::Texture_SRV(shader_bindings::kMaterialBindingMetallicRough, metallic_handle->getRHIHandle().Get()));
+        GfxLogicalBindingSetDesc set_desc;
+        set_desc.addItem(GfxLogicalBindingItem::Sampler(shader_bindings::kMaterialBindingSampler, instance.sampler));
+        set_desc.addItem(GfxLogicalBindingItem::Texture_SRV(shader_bindings::kMaterialBindingBaseColor, base_handle));
+        set_desc.addItem(GfxLogicalBindingItem::Texture_SRV(shader_bindings::kMaterialBindingMetallicRough, metallic_handle));
 
         instance.texture_binding_set = m_binding_set_cache->getOrCreate(
+            GDrawCommandList,
             set_desc,
             texture_layout,
             m_binding_layout_cache->getLayoutGeneration(texture_layout));

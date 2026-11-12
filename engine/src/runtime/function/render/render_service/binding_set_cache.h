@@ -26,9 +26,11 @@ namespace dodoe {
         friend class Managed<BindingSetCache, BindingSetCacheCreateInfo>;
 
     public:
-        GfxBindingSetHandle getOrCreate(const GfxBindingSetDesc& desc,
+        GfxBindingSetHandle getOrCreate(DrawCommandList& command_list,
+                                         const GfxLogicalBindingSetDesc& desc,
                                          GfxBindingLayoutHandle layout,
                                          UInt64 layout_generation);
+        void invalidateFor(const void* resource_ptr);
         void invalidateForLayout(GfxBindingLayoutHandle layout);
         void clear();
         [[nodiscard]] Size_t size() const { return m_cache.size(); }

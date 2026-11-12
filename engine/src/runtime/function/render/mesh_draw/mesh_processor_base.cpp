@@ -81,9 +81,9 @@ namespace dodoe {
         cmd.setPassType(m_pass_type);
         cmd.setPipeline(pipeline);
         cmd.addVertexBinding(
-            GfxVertexBufferBinding().setBuffer(element.vertex_buffer->getRHI()).setSlot(0).setOffset(0));
-        cmd.setIndexBinding(GfxIndexBufferBinding()
-            .setBuffer(element.index_buffer->getRHI())
+            GfxVertexBindingDesc().setBuffer(element.vertex_buffer).setSlot(0).setOffset(0));
+        cmd.setIndexBinding(GfxIndexBindingDesc()
+            .setBuffer(element.index_buffer)
             .setFormat(GfxFormat::R32_UINT)
             .setOffset(0));
         cmd.setDrawArguments(GfxDrawArguments()
@@ -254,11 +254,11 @@ namespace dodoe {
                 }
             }
 
-            DynamicArray<GfxVertexBufferBinding> vertex_bindings = cmd.getVertexBindings();
+            DynamicArray<GfxVertexBindingDesc> vertex_bindings = cmd.getVertexBindings();
             if (primitive_scene_buffer) {
                 vertex_bindings.push_back(
-                    GfxVertexBufferBinding()
-                        .setBuffer(primitive_scene_buffer->getRHI())
+                    GfxVertexBindingDesc()
+                        .setBuffer(primitive_scene_buffer)
                         .setSlot(1)
                         .setOffset(source.instance.instance_offset));
             }

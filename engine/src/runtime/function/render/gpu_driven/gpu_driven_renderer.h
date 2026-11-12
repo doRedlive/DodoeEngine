@@ -19,8 +19,8 @@ namespace dodoe {
     struct GpuBucketDrawSnapshot {
         GfxGraphicsPipelineHandle pipeline{};
         DynamicArray<GfxBindingSetHandle> binding_sets{};
-        DynamicArray<GfxVertexBufferBinding> vertex_bindings{};
-        GfxIndexBufferBinding index_binding{};
+        DynamicArray<GfxVertexBindingDesc> vertex_bindings{};
+        GfxIndexBindingDesc index_binding{};
         PrimitiveMeshDrawShaderData shader_data{};
     };
 

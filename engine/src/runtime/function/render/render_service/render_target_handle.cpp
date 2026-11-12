@@ -99,6 +99,9 @@ namespace dodoe {
     GfxFramebufferHandle RenderTargetHandle::getFramebuffer(DrawCommandList& cmd) {
         DO_PROFILE_SCOPE_CATEGORY("RenderTargetHandle::getFramebuffer", "resource");
         if (m_framebuffer) {
+            if (!m_framebuffer->isGpuReady()) {
+                cmd.requestRealize(m_framebuffer);
+            }
             return m_framebuffer;
         }
 

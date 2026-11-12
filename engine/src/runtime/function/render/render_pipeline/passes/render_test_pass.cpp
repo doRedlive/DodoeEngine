@@ -139,9 +139,10 @@ namespace dodoe {
                 };
                 const auto input_layout = input_layout_cache->getOrCreate(attribs, test_vs);
                 const auto binding_set = binding_set_cache->getOrCreate(
-                    GfxBindingSetDesc()
-                        .addItem(GfxBindingSetItem::Texture_SRV(1, test_tex->getRHIHandle()))
-                        .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                    command_list,
+                    GfxLogicalBindingSetDesc()
+                        .addItem(GfxLogicalBindingItem::Texture_SRV(1, test_tex))
+                        .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
                     binding_layout,
                     binding_layout_cache->getLayoutGeneration(binding_layout));
 
@@ -179,9 +180,9 @@ namespace dodoe {
                     0, 1));
 
                 DynamicArray<GfxBindingSetHandle> bs_arr = {binding_set};
-                DynamicArray<GfxVertexBufferBinding> vbs;
-                vbs.push_back(GfxVertexBufferBinding()
-                    .setBuffer(quad_vb->getRHIHandle()).setSlot(0).setOffset(0));
+                DynamicArray<GfxVertexBindingDesc> vbs;
+                vbs.push_back(GfxVertexBindingDesc()
+                    .setBuffer(quad_vb).setSlot(0).setOffset(0));
 
                 command_list.setGraphicsState(ctx.getFramebuffer(), pipeline, bs_arr, vp, vbs);
                 command_list.draw(GfxDrawArguments().setVertexCount(kTestQuadVertexCount).setInstanceCount(1));

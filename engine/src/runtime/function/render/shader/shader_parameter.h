@@ -82,8 +82,8 @@ namespace dodoe {
         static GfxBindingLayoutItem makeLayoutItem() {
             return GfxBindingLayoutItem::Texture_SRV(Binding);
         }
-        static void addToBindingSet(GfxBindingSetDesc& desc, const GfxTextureHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::Texture_SRV(Binding, resolved->getRHIHandle().Get()));
+        static void addToBindingSet(GfxLogicalBindingSetDesc& desc, const GfxTextureHandle& resolved) {
+            desc.addItem(GfxLogicalBindingItem::Texture_SRV(Binding, resolved));
         }
     };
 
@@ -99,8 +99,8 @@ namespace dodoe {
         static GfxBindingLayoutItem makeLayoutItem() {
             return GfxBindingLayoutItem::Texture_SRV(Binding);
         }
-        static void addToBindingSet(GfxBindingSetDesc& desc, const GfxTextureHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::Texture_SRV(Binding, resolved->getRHIHandle().Get()));
+        static void addToBindingSet(GfxLogicalBindingSetDesc& desc, const GfxTextureHandle& resolved) {
+            desc.addItem(GfxLogicalBindingItem::Texture_SRV(Binding, resolved));
         }
     };
 
@@ -116,8 +116,8 @@ namespace dodoe {
         static GfxBindingLayoutItem makeLayoutItem() {
             return GfxBindingLayoutItem::Sampler(Binding);
         }
-        static void addToBindingSet(GfxBindingSetDesc& desc, const GfxSamplerHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::Sampler(Binding, resolved.Get()));
+        static void addToBindingSet(GfxLogicalBindingSetDesc& desc, const GfxSamplerHandle& resolved) {
+            desc.addItem(GfxLogicalBindingItem::Sampler(Binding, resolved));
         }
     };
 
@@ -133,7 +133,7 @@ namespace dodoe {
         static GfxBindingLayoutItem makeLayoutItem() {
             return GfxBindingLayoutItem::PushConstants(Binding, sizeof(T));
         }
-        static void addToBindingSet(GfxBindingSetDesc& desc, const T& val) {
+        static void addToBindingSet(GfxLogicalBindingSetDesc& desc, const T& val) {
             (void)desc;
             (void)val;
         }
@@ -151,8 +151,8 @@ namespace dodoe {
         static GfxBindingLayoutItem makeLayoutItem() {
             return GfxBindingLayoutItem::VolatileConstantBuffer(Binding);
         }
-        static void addToBindingSet(GfxBindingSetDesc& desc, const GfxBufferHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::ConstantBuffer(Binding, resolved->getRHIHandle().Get()));
+        static void addToBindingSet(GfxLogicalBindingSetDesc& desc, const GfxBufferHandle& resolved) {
+            desc.addItem(GfxLogicalBindingItem::ConstantBuffer(Binding, resolved));
         }
     };
 
@@ -168,8 +168,8 @@ namespace dodoe {
         static GfxBindingLayoutItem makeLayoutItem() {
             return GfxBindingLayoutItem::ConstantBuffer(Binding);
         }
-        static void addToBindingSet(GfxBindingSetDesc& desc, const GfxBufferHandle& resolved) {
-            desc.addItem(GfxBindingSetItem::ConstantBuffer(Binding, resolved->getRHIHandle().Get()));
+        static void addToBindingSet(GfxLogicalBindingSetDesc& desc, const GfxBufferHandle& resolved) {
+            desc.addItem(GfxLogicalBindingItem::ConstantBuffer(Binding, resolved));
         }
     };
 
@@ -263,7 +263,7 @@ namespace dodoe {
 
         template <typename ResolveTexFunc, typename ResolveBufFunc>
         static void buildSetDescs(ShaderParamStruct& params,
-                                  StaticArray<GfxBindingSetDesc, 8>& set_descs,
+                                  StaticArray<GfxLogicalBindingSetDesc, 8>& set_descs,
                                   ResolveTexFunc&& resolveTex,
                                   ResolveBufFunc&& resolveBuf) {
             params.forEachMember([&](auto& member) {
@@ -291,12 +291,13 @@ namespace dodoe {
         template <typename ResolveTexFunc, typename ResolveBufFunc>
         static DynamicArray<GfxBindingSetHandle> createBindingSets(
             BindingSetCache& cache,
+            DrawCommandList& command_list,
             const DynamicArray<GfxBindingLayoutHandle>& layouts,
             ShaderParamStruct& params,
             ResolveTexFunc&& resolveTex,
             ResolveBufFunc&& resolveBuf)
         {
-            StaticArray<GfxBindingSetDesc, 8> set_descs{};
+            StaticArray<GfxLogicalBindingSetDesc, 8> set_descs{};
             buildSetDescs(params, set_descs, std::forward<ResolveTexFunc>(resolveTex), std::forward<ResolveBufFunc>(resolveBuf));
 
             DynamicArray<GfxBindingSetHandle> result;
@@ -305,7 +306,7 @@ namespace dodoe {
                 if (set_descs[set].bindings.empty()) {
                     continue;
                 }
-                auto bs = cache.getOrCreate(set_descs[set], layouts[layout_index], 0);
+                auto bs = cache.getOrCreate(command_list, set_descs[set], layouts[layout_index], 0);
                 if (!bs) {
                     DO_ERROR("ShaderBindingReflector::createBindingSets getOrCreate failed for set {}", set);
                 }
@@ -335,12 +336,12 @@ namespace dodoe {
     public:
         static constexpr UInt32 kShaderParameterSetCount = 6;
 
-        void bind(GfxGraphicsState& graphics_state,
+        void bind(GfxDrawState& draw_state,
                   const StaticArray<GfxBindingSetHandle, kShaderParameterSetCount>& binding_sets) const {
             for (UInt32 set = 0; set < kShaderParameterSetCount; ++set) {
                 const auto& binding_set = binding_sets[set];
-                if (binding_set && binding_set->isGpuReady()) {
-                    graphics_state.addBindingSet(binding_set->getRHIHandle());
+                if (binding_set) {
+                    draw_state.addBindingSet(binding_set);
                 }
             }
         }

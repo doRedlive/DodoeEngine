@@ -123,7 +123,7 @@ namespace dodoe {
                     const auto depth_texture = parameters.depth.isValid()
                         ? ctx.resolveTexture(parameters.depth)
                         : nullptr;
-                    const Bool has_depth = depth_texture && depth_texture->isGpuReady();
+                    const Bool has_depth = depth_texture != nullptr;
                     const auto* fallback_texture = ctx.getTextureManager()->getFallback();
                     const GfxTextureHandle fallback_handle = fallback_texture
                         ? fallback_texture->getGpuHandle() : GfxTextureHandle{};
@@ -156,13 +156,12 @@ namespace dodoe {
                         if (allocation.buffer && allocation.mapped_data) {
                             std::memcpy(allocation.mapped_data, &grid_constants, sizeof(grid_constants));
                             const auto grid_binding_set = command_list.createBindingSet(
-                                GfxBindingSetDesc()
-                                    .addItem(GfxBindingSetItem::ConstantBuffer(
-                                        0, allocation.buffer->getRHIHandle().Get(),
+                                GfxLogicalBindingSetDesc()
+                                    .addItem(GfxLogicalBindingItem::ConstantBuffer(
+                                        0, allocation.buffer,
                                         GfxBufferRange(allocation.offset, allocation.size)))
-                                    .addItem(GfxBindingSetItem::Texture_SRV(
-                                        1, depth_binding ? depth_binding->getRHIHandle().Get() : nullptr))
-                                    .addItem(GfxBindingSetItem::Sampler(9, GlobalSamplers::Screen().Get())),
+                                    .addItem(GfxLogicalBindingItem::Texture_SRV(1, depth_binding))
+                                    .addItem(GfxLogicalBindingItem::Sampler(9, GlobalSamplers::Screen())),
                                 m_grid_binding_layout);
                             if (grid_binding_set) {
                                 const auto grid_pipeline = pso_cache->resolveGraphicsPipeline(
@@ -221,7 +220,7 @@ namespace dodoe {
 
                 if (!m_push_constant_binding_set) {
                     m_push_constant_binding_set = command_list.createBindingSet(
-                        GfxBindingSetDesc().addItem(GfxBindingSetItem::PushConstants(
+                        GfxLogicalBindingSetDesc().addItem(GfxLogicalBindingItem::PushConstants(
                             0, static_cast<UInt32>(sizeof(GizmoPushConstants)))),
                         m_binding_layout);
                 }
@@ -259,14 +258,14 @@ namespace dodoe {
 
                     push.mvp = view_projection * cmd.transform;
 
-                    DynamicArray<GfxVertexBufferBinding> vbs;
-                    vbs.push_back(GfxVertexBufferBinding()
-                        .setBuffer(vb->getRHIHandle()).setSlot(0).setOffset(cmd.vertex_offset * sizeof(GizmoVertex)));
+                    DynamicArray<GfxVertexBindingDesc> vbs;
+                    vbs.push_back(GfxVertexBindingDesc()
+                        .setBuffer(vb).setSlot(0).setOffset(cmd.vertex_offset * sizeof(GizmoVertex)));
 
-                    GfxIndexBufferBinding index_binding;
+                    GfxIndexBindingDesc index_binding;
                     if (cmd.index_count > 0) {
-                        index_binding = GfxIndexBufferBinding()
-                            .setBuffer(ib->getRHIHandle())
+                        index_binding = GfxIndexBindingDesc()
+                            .setBuffer(ib)
                             .setFormat(GfxFormat::R32_UINT)
                             .setOffset(cmd.index_offset * sizeof(UInt32));
                     }

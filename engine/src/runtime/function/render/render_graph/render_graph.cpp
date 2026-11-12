@@ -398,6 +398,11 @@ namespace dodoe {
 
         DO_ASSERT(context.transient_resource_pool != nullptr,
                   "RenderGraphExecuteContext transient resource pool is null");
+        if (context.shared_render_service) {
+            context.transient_resource_pool->flushEvictions(
+                context.shared_render_service->getFramebufferCache(),
+                context.shared_render_service->getBindingSetCache());
+        }
         RenderGraphResourceResolver resource_resolver(
             m_resources, *context.gfx_context, context.swapchain_image_index,
             out_commands, context.transient_resource_pool);
@@ -458,7 +463,7 @@ namespace dodoe {
                     if (fb_desc.depth()) {
                         key.depth_ref = {fb_desc.depth().get(), 0, 0, 0};
                     }
-                    prepared.framebuffer = fb_cache->getOrCreate(key, fb_desc);
+                    prepared.framebuffer = fb_cache->getOrCreate(out_commands, key, fb_desc);
                 } else {
                     prepared.framebuffer = out_commands.createFramebuffer(fb_desc);
                 }

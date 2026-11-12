@@ -106,7 +106,10 @@ namespace dodoe {
         explicit GfxTexture(const cutie::TextureHandle& handle, const GfxTextureDesc& desc, const String& debug_name = "")
             : m_rhi(handle), m_desc(desc), m_debug_name(debug_name), m_gpu_ready(true) {}
         void initializeGpu(GfxDeviceHandle device) {
-            if (!m_gpu_ready) { m_rhi = device->createTexture(m_desc); m_gpu_ready = true; }
+            if (!m_gpu_ready) {
+                m_rhi = device->createTexture(m_desc);
+                m_gpu_ready = m_rhi != nullptr;
+            }
         }
         [[nodiscard]] cutie::ITexture* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::TextureHandle& getRHIHandle() const { return m_rhi; }
@@ -131,7 +134,10 @@ namespace dodoe {
         explicit GfxBuffer(const cutie::BufferHandle& handle, const GfxBufferDesc& desc, const String& debug_name = "")
             : m_rhi(handle), m_desc(desc), m_debug_name(debug_name), m_gpu_ready(true) {}
         void initializeGpu(GfxDeviceHandle device) {
-            if (!m_gpu_ready) { m_rhi = device->createBuffer(m_desc); m_gpu_ready = true; }
+            if (!m_gpu_ready) {
+                m_rhi = device->createBuffer(m_desc);
+                m_gpu_ready = m_rhi != nullptr;
+            }
         }
         [[nodiscard]] cutie::IBuffer* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::BufferHandle& getRHIHandle() const { return m_rhi; }
@@ -189,7 +195,7 @@ namespace dodoe {
         void initializeGpu(GfxDeviceHandle device) {
             if (!m_gpu_ready) {
                 m_rhi = device->createFramebuffer(m_desc.toRHI());
-                m_gpu_ready = true;
+                m_gpu_ready = m_rhi != nullptr;
             }
         }
         [[nodiscard]] cutie::IFramebuffer* getRHI() const { return m_rhi.Get(); }
@@ -207,12 +213,20 @@ namespace dodoe {
         std::atomic<bool> m_gpu_ready{false};
     public:
         GfxGraphicsPipeline() = default;
-        void initializeGpu(GfxDeviceHandle device, const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
+        void setPendingDesc(const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
             if (!m_gpu_ready) {
                 m_desc = desc;
                 m_framebuffer_info = info;
-                m_rhi = device->createGraphicsPipeline(desc, info.getRHI());
-                m_gpu_ready = true;
+            }
+        }
+        void initializeGpu(GfxDeviceHandle device, const GfxGraphicsPipelineDesc& desc, const GfxFramebufferInfo& info) {
+            setPendingDesc(desc, info);
+            initializeGpu(device);
+        }
+        void initializeGpu(GfxDeviceHandle device) {
+            if (!m_gpu_ready) {
+                m_rhi = device->createGraphicsPipeline(m_desc, m_framebuffer_info.getRHI());
+                m_gpu_ready = m_rhi != nullptr;
             }
         }
         [[nodiscard]] cutie::IGraphicsPipeline* getRHI() const { return m_rhi.Get(); }
@@ -223,23 +237,296 @@ namespace dodoe {
     };
     using GfxGraphicsPipelineHandle = Ref<GfxGraphicsPipeline>;
 
+    class GfxBindingSet;
+    using GfxBindingSetHandle = Ref<GfxBindingSet>;
+
+    struct GfxLogicalBindingItem {
+        cutie::ResourceType type{cutie::ResourceType::None};
+        UInt32 slot{0};
+        UInt32 array_element{0};
+        GfxTextureHandle texture{};
+        GfxBufferHandle buffer{};
+        GfxSamplerHandle sampler{};
+        GfxFormat format{GfxFormat::UNKNOWN};
+        GfxTextureDimension dimension{GfxTextureDimension::Unknown};
+        UInt64 raw_data[2]{0, 0};
+
+        [[nodiscard]] cutie::BindingSetItem toRHI() const {
+            cutie::BindingSetItem r;
+            r.slot = slot;
+            r.arrayElement = array_element;
+            r.type = type;
+            r.resourceHandle = nullptr;
+            r.format = format;
+            r.dimension = dimension;
+            r.rawData[0] = raw_data[0];
+            r.rawData[1] = raw_data[1];
+            r.unused = 0;
+            r.unused2 = 0;
+            switch (type) {
+                case cutie::ResourceType::Texture_SRV:
+                case cutie::ResourceType::Texture_UAV:
+                    if (texture) r.resourceHandle = texture->getRHIHandle().Get();
+                    break;
+                case cutie::ResourceType::TypedBuffer_SRV:
+                case cutie::ResourceType::TypedBuffer_UAV:
+                case cutie::ResourceType::StructuredBuffer_SRV:
+                case cutie::ResourceType::StructuredBuffer_UAV:
+                case cutie::ResourceType::RawBuffer_SRV:
+                case cutie::ResourceType::RawBuffer_UAV:
+                case cutie::ResourceType::ConstantBuffer:
+                case cutie::ResourceType::VolatileConstantBuffer:
+                    if (buffer) r.resourceHandle = buffer->getRHIHandle().Get();
+                    break;
+                case cutie::ResourceType::Sampler:
+                    r.resourceHandle = sampler.Get();
+                    break;
+                default:
+                    break;
+            }
+            return r;
+        }
+
+        [[nodiscard]] Bool isResolved(GfxDeviceHandle device) const {
+            (void)device;
+            switch (type) {
+                case cutie::ResourceType::Texture_SRV:
+                case cutie::ResourceType::Texture_UAV:
+                    return texture && texture->isGpuReady();
+                case cutie::ResourceType::TypedBuffer_SRV:
+                case cutie::ResourceType::TypedBuffer_UAV:
+                case cutie::ResourceType::StructuredBuffer_SRV:
+                case cutie::ResourceType::StructuredBuffer_UAV:
+                case cutie::ResourceType::RawBuffer_SRV:
+                case cutie::ResourceType::RawBuffer_UAV:
+                case cutie::ResourceType::ConstantBuffer:
+                case cutie::ResourceType::VolatileConstantBuffer:
+                    return buffer && buffer->isGpuReady();
+                case cutie::ResourceType::Sampler:
+                    return sampler != nullptr;
+                case cutie::ResourceType::PushConstants:
+                case cutie::ResourceType::None:
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        static GfxLogicalBindingItem MakeBase(cutie::BindingSetItem prototype) {
+            GfxLogicalBindingItem item;
+            item.slot = prototype.slot;
+            item.array_element = prototype.arrayElement;
+            item.type = prototype.type;
+            item.format = prototype.format;
+            item.dimension = prototype.dimension;
+            item.raw_data[0] = prototype.rawData[0];
+            item.raw_data[1] = prototype.rawData[1];
+            return item;
+        }
+
+        static GfxLogicalBindingItem None(UInt32 slot = 0) {
+            GfxLogicalBindingItem item = MakeBase(cutie::BindingSetItem::None(slot));
+            return item;
+        }
+
+        static GfxLogicalBindingItem Texture_SRV(UInt32 slot, const GfxTextureHandle& texture,
+            GfxFormat format = GfxFormat::UNKNOWN,
+            GfxTextureSubresourceSet subresources = GfxAllSubresources,
+            GfxTextureDimension dimension = GfxTextureDimension::Unknown) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::Texture_SRV(slot, nullptr, format, subresources, dimension));
+            item.texture = texture;
+            return item;
+        }
+
+        static GfxLogicalBindingItem Texture_UAV(UInt32 slot, const GfxTextureHandle& texture,
+            GfxFormat format = GfxFormat::UNKNOWN,
+            GfxTextureSubresourceSet subresources = GfxTextureSubresourceSet(0, 1, 0, GfxTextureSubresourceSet::AllArraySlices),
+            GfxTextureDimension dimension = GfxTextureDimension::Unknown) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::Texture_UAV(slot, nullptr, format, subresources, dimension));
+            item.texture = texture;
+            return item;
+        }
+
+        static GfxLogicalBindingItem TypedBuffer_SRV(UInt32 slot, const GfxBufferHandle& buffer,
+            GfxFormat format = GfxFormat::UNKNOWN, GfxBufferRange range = cutie::EntireBuffer) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::TypedBuffer_SRV(slot, nullptr, format, range));
+            item.buffer = buffer;
+            return item;
+        }
+
+        static GfxLogicalBindingItem TypedBuffer_UAV(UInt32 slot, const GfxBufferHandle& buffer,
+            GfxFormat format = GfxFormat::UNKNOWN, GfxBufferRange range = cutie::EntireBuffer) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::TypedBuffer_UAV(slot, nullptr, format, range));
+            item.buffer = buffer;
+            return item;
+        }
+
+        static GfxLogicalBindingItem ConstantBuffer(UInt32 slot, const GfxBufferHandle& buffer,
+            GfxBufferRange range = cutie::EntireBuffer) {
+            const Bool is_volatile = buffer && buffer->getDesc().isVolatile;
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::ConstantBuffer(slot, nullptr, range));
+            if (is_volatile) item.type = cutie::ResourceType::VolatileConstantBuffer;
+            item.buffer = buffer;
+            return item;
+        }
+
+        static GfxLogicalBindingItem Sampler(UInt32 slot, const GfxSamplerHandle& sampler) {
+            GfxLogicalBindingItem item = MakeBase(cutie::BindingSetItem::Sampler(slot, nullptr));
+            item.sampler = sampler;
+            return item;
+        }
+
+        static GfxLogicalBindingItem StructuredBuffer_SRV(UInt32 slot, const GfxBufferHandle& buffer,
+            GfxFormat format = GfxFormat::UNKNOWN, GfxBufferRange range = cutie::EntireBuffer) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::StructuredBuffer_SRV(slot, nullptr, format, range));
+            item.buffer = buffer;
+            return item;
+        }
+
+        static GfxLogicalBindingItem StructuredBuffer_UAV(UInt32 slot, const GfxBufferHandle& buffer,
+            GfxFormat format = GfxFormat::UNKNOWN, GfxBufferRange range = cutie::EntireBuffer) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::StructuredBuffer_UAV(slot, nullptr, format, range));
+            item.buffer = buffer;
+            return item;
+        }
+
+        static GfxLogicalBindingItem RawBuffer_SRV(UInt32 slot, const GfxBufferHandle& buffer,
+            GfxBufferRange range = cutie::EntireBuffer) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::RawBuffer_SRV(slot, nullptr, range));
+            item.buffer = buffer;
+            return item;
+        }
+
+        static GfxLogicalBindingItem RawBuffer_UAV(UInt32 slot, const GfxBufferHandle& buffer,
+            GfxBufferRange range = cutie::EntireBuffer) {
+            GfxLogicalBindingItem item = MakeBase(
+                cutie::BindingSetItem::RawBuffer_UAV(slot, nullptr, range));
+            item.buffer = buffer;
+            return item;
+        }
+
+        static GfxLogicalBindingItem PushConstants(UInt32 slot, UInt32 byte_size) {
+            GfxLogicalBindingItem item = MakeBase(cutie::BindingSetItem::PushConstants(slot, byte_size));
+            return item;
+        }
+    };
+
+    struct GfxLogicalBindingSetDesc {
+        DynamicArray<GfxLogicalBindingItem> bindings{};
+
+        GfxLogicalBindingSetDesc& addItem(const GfxLogicalBindingItem& item) {
+            bindings.push_back(item);
+            return *this;
+        }
+
+        [[nodiscard]] Size_t size() const { return bindings.size(); }
+    };
+
+    struct GfxVertexBindingDesc {
+        GfxBufferHandle buffer{};
+        UInt32 slot{0};
+        UInt64 offset{0};
+
+        [[nodiscard]] Bool operator==(const GfxVertexBindingDesc& other) const {
+            return buffer.Get() == other.buffer.Get() && slot == other.slot && offset == other.offset;
+        }
+        [[nodiscard]] Bool operator!=(const GfxVertexBindingDesc& other) const { return !(*this == other); }
+
+        GfxVertexBindingDesc& setBuffer(const GfxBufferHandle& value) { buffer = value; return *this; }
+        GfxVertexBindingDesc& setSlot(UInt32 value) { slot = value; return *this; }
+        GfxVertexBindingDesc& setOffset(UInt64 value) { offset = value; return *this; }
+    };
+
+    struct GfxIndexBindingDesc {
+        GfxBufferHandle buffer{};
+        GfxFormat format{GfxFormat::UNKNOWN};
+        UInt32 offset{0};
+
+        [[nodiscard]] Bool operator==(const GfxIndexBindingDesc& other) const {
+            return buffer.Get() == other.buffer.Get() && format == other.format && offset == other.offset;
+        }
+        [[nodiscard]] Bool operator!=(const GfxIndexBindingDesc& other) const { return !(*this == other); }
+
+        GfxIndexBindingDesc& setBuffer(const GfxBufferHandle& value) { buffer = value; return *this; }
+        GfxIndexBindingDesc& setFormat(GfxFormat value) { format = value; return *this; }
+        GfxIndexBindingDesc& setOffset(UInt32 value) { offset = value; return *this; }
+    };
+
+    struct GfxDrawState {
+        GfxGraphicsPipelineHandle pipeline{};
+        GfxFramebufferHandle framebuffer{};
+        GfxViewportState viewport{};
+        GfxColor blend_constant_color{};
+        UInt8 dynamic_stencil_ref_value{0};
+        DynamicArray<GfxBindingSetHandle> bindings{};
+        DynamicArray<GfxVertexBindingDesc> vertex_buffers{};
+        GfxIndexBindingDesc index_buffer{};
+        GfxBufferHandle indirect_params{};
+        GfxBufferHandle indirect_count_buffer{};
+
+        GfxDrawState& setPipeline(const GfxGraphicsPipelineHandle& value) { pipeline = value; return *this; }
+        GfxDrawState& setFramebuffer(const GfxFramebufferHandle& value) { framebuffer = value; return *this; }
+        GfxDrawState& setViewport(const GfxViewportState& value) { viewport = value; return *this; }
+        GfxDrawState& setBlendColor(const GfxColor& value) { blend_constant_color = value; return *this; }
+        GfxDrawState& setDynamicStencilRefValue(UInt8 value) { dynamic_stencil_ref_value = value; return *this; }
+        GfxDrawState& addBindingSet(const GfxBindingSetHandle& value) { bindings.push_back(value); return *this; }
+        GfxDrawState& addVertexBuffer(const GfxVertexBindingDesc& value) { vertex_buffers.push_back(value); return *this; }
+        GfxDrawState& setIndexBuffer(const GfxIndexBindingDesc& value) { index_buffer = value; return *this; }
+        GfxDrawState& setIndirectParams(const GfxBufferHandle& value) { indirect_params = value; return *this; }
+        GfxDrawState& setIndirectCountBuffer(const GfxBufferHandle& value) { indirect_count_buffer = value; return *this; }
+    };
+
+    struct GfxComputeDispatchState {
+        GfxComputePipelineHandle pipeline{};
+        DynamicArray<GfxBindingSetHandle> bindings{};
+        GfxBufferHandle indirect_params{};
+
+        GfxComputeDispatchState& setPipeline(GfxComputePipelineHandle value) { pipeline = value; return *this; }
+        GfxComputeDispatchState& addBindingSet(const GfxBindingSetHandle& value) { bindings.push_back(value); return *this; }
+        GfxComputeDispatchState& setIndirectParams(const GfxBufferHandle& value) { indirect_params = value; return *this; }
+    };
+
     class GfxBindingSet {
         cutie::BindingSetHandle m_rhi{};
-        GfxBindingSetDesc m_desc{};
+        GfxLogicalBindingSetDesc m_logical_desc{};
         GfxBindingLayoutHandle m_layout{};
         std::atomic<bool> m_gpu_ready{false};
     public:
         GfxBindingSet() = default;
-        void initializeGpu(GfxDeviceHandle device, const GfxBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
-            if (!m_gpu_ready) { m_desc = desc; m_layout = layout; m_rhi = device->createBindingSet(desc, layout); m_gpu_ready = true; }
+        void setPendingDesc(const GfxLogicalBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
+            if (!m_gpu_ready) {
+                m_logical_desc = desc;
+                m_layout = layout;
+            }
         }
-        explicit GfxBindingSet(const cutie::BindingSetHandle& handle, const GfxBindingSetDesc& desc = {}, const GfxBindingLayoutHandle& layout = {}) : m_rhi(handle), m_desc(desc), m_layout(layout), m_gpu_ready(true) {}
+        void initializeGpu(GfxDeviceHandle device) {
+            if (!m_gpu_ready) {
+                cutie::BindingSetDesc desc{};
+                for (const auto& item : m_logical_desc.bindings) {
+                    desc.addItem(item.toRHI());
+                }
+                m_rhi = device->createBindingSet(desc, m_layout);
+                m_gpu_ready = m_rhi != nullptr;
+            }
+        }
+        void initializeGpu(GfxDeviceHandle device, const GfxLogicalBindingSetDesc& desc, const GfxBindingLayoutHandle& layout) {
+            setPendingDesc(desc, layout);
+            initializeGpu(device);
+        }
+        explicit GfxBindingSet(const cutie::BindingSetHandle& handle) : m_rhi(handle), m_gpu_ready(true) {}
         [[nodiscard]] cutie::IBindingSet* getRHI() const { return m_rhi.Get(); }
         [[nodiscard]] const cutie::BindingSetHandle& getRHIHandle() const { return m_rhi; }
-        [[nodiscard]] const GfxBindingSetDesc& getDesc() const { return m_desc; }
+        [[nodiscard]] const GfxLogicalBindingSetDesc& getLogicalDesc() const { return m_logical_desc; }
         [[nodiscard]] const GfxBindingLayoutHandle& getLayout() const { return m_layout; }
         [[nodiscard]] bool isGpuReady() const { return m_gpu_ready.load(std::memory_order_acquire); }
     };
-    using GfxBindingSetHandle = Ref<GfxBindingSet>;
 
 } // dodoe

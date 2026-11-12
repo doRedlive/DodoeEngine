@@ -7,6 +7,7 @@
 #include "render_command.h"
 #include "render_settings.h"
 #include "runtime/function/graphics/gfx_context.h"
+#include "runtime/function/graphics/draw_command_list.h"
 #include "runtime/function/render/render_frame/render_frame_scheduler.h"
 #include "render_service/shared_render_service.h"
 #include "render_view/render_view_manager.h"
@@ -59,6 +60,7 @@ namespace dodoe {
 
     class RenderSystem : public Managed<RenderSystem, RenderSystemCreateInfo> {
         static constexpr Size_t kFramePacketQueueCapacity = 4;
+        static constexpr Size_t kRetiredCommandListCount = 3;
 
         Scope<GfxContext> m_gfx{nullptr};
         Scope<RenderFrameScheduler> m_frame_scheduler{nullptr};
@@ -81,6 +83,7 @@ namespace dodoe {
         UInt32 m_gpu_frame_query_slot{0};
         Float m_last_gpu_frame_ms{0.0f};
         Bool m_gpu_frame_ms_valid{false};
+        DynamicArray<DrawCommandList> m_retired_command_lists{};
 
         friend class Managed<RenderSystem, RenderSystemCreateInfo>;
     public:
@@ -97,6 +100,7 @@ namespace dodoe {
         void setBaselineRendererHook(std::function<void(GfxContext&, UInt32, RenderViewFamily&, RenderScene&)> hook) { m_baseline_renderer_hook = std::move(hook); }
         void realizeResourceCommand(ResourceCommand& cmd);
         void applySceneCommand(RenderScene& scene, SceneCommand& cmd);
+        void retireCommandList(DrawCommandList&& list);
         [[nodiscard]] Bool beginMainThreadFrame();
         void submitFrame();
 

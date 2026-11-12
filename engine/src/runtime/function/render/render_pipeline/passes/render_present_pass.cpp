@@ -81,6 +81,7 @@ namespace dodoe {
 
                 auto binding_sets = ShaderBindingReflector<PresentPassShaderParams>::createBindingSets(
                     *ctx.getSharedRenderService()->getBindingSetCache(),
+                    command_list,
                     binding_layouts, shader_params,
                     [&](auto h) { return ctx.resolveTexture(h); },
                     [&](auto h) { return ctx.resolveBuffer(h); });
