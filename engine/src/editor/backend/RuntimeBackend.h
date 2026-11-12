@@ -15,6 +15,7 @@
 #include "runtime/core/utils/uuid.h"
 
 #include <cstdint>
+#include <future>
 
 namespace dodoe {
     class Application;
@@ -64,7 +65,6 @@ public:
 
     bool assetRefreshPending() const;
     void assetRefreshProgress(Size_t& done, Size_t& total) const;
-    bool queryTilemapState(const String& tilemapUuid, Json& out) const;
     bool queryAssetThumbnail(const String& path, int size, Json& out) const;
     bool queryFrameStats(Json& out) const;
     bool queryFps(int& outFps) const;
@@ -81,6 +81,7 @@ public:
     void requestSceneSurfaceResize(const ViewportMetrics& metrics);
     bool detachSceneSurface();
     void tickAtSafePoint();
+    void requestScriptReload();
     void shutdown();
     BackendStatus status() const;
     String diagnostic() const;
@@ -106,30 +107,10 @@ private:
     bool handleCommand(const AssetReimportCommand& command);
     bool handleCommand(const ScriptToolActionCommand& command);
     bool handleCommand(const AssetUpdateSettingsCommand& command);
-    bool handleCommand(const TilemapCreateCommand& command);
-    bool handleCommand(const TilemapActivateCommand& command);
-    bool handleCommand(const TilemapToolCommand& command);
-    bool handleCommand(const TilemapBrushFlipCommand& command);
-    bool handleCommand(const TilemapBrushRotateCommand& command);
-    bool handleCommand(const TilemapRandomBrushCommand& command);
-    bool handleCommand(const TilemapSelectionDeleteCommand& command);
-    bool handleCommand(const TilemapSelectionCopyCommand& command);
-    bool handleCommand(const TilemapSelectionPasteCommand& command);
-    bool handleCommand(const TilemapBrushCommand& command);
-    bool handleCommand(const TilemapEditTilesetCommand& command);
-    bool handleCommand(const TilemapAddTilesetCommand& command);
-    bool handleCommand(const TilemapRemoveTilesetCommand& command);
-    bool handleCommand(const TilemapResizeCommand& command);
-    bool handleCommand(const TilemapLayerAddCommand& command);
-    bool handleCommand(const TilemapLayerRemoveCommand& command);
-    bool handleCommand(const TilemapLayerMoveCommand& command);
-    bool handleCommand(const TilemapLayerActiveCommand& command);
-    bool handleCommand(const TilemapLayerVisibleCommand& command);
-    bool handleCommand(const TilemapLayerOpacityCommand& command);
-    bool handleCommand(const TilemapLayerRenameCommand& command);
 
     bool bootRuntime();
     void applyPendingMetrics();
+    void processScriptReload();
     bool reconcileScene(const EditorDocument& document);
     void rebuildHierarchy(dodoe::Scene& scene, const EditorDocument& document);
     void updateSceneOverlays();
@@ -140,13 +121,6 @@ private:
     bool importDroppedAsset(const String& assetPath, const Json& position);
     void setPlayAction(PlayAction action);
     dodoe::Entity selectedSceneEntity() const;
-    void updateTileEditFromSelection();
-    void activateTilemapEdit(const dodoe::UUID& tilemapUuid, const dodoe::UUID& layerUuid);
-    bool screenToCell(float screenX, float screenY, int& outX, int& outY) const;
-    void executeTilemapLayerField(dodoe::UUID layer, const String& field,
-                                  const Json& value);
-    dodoe::Entity activeTilemapEntity() const;
-    void emitTilemapEditMode(bool active);
     dodoe::World* runtimeWorld() const;
     void reportMissingAssetReferences();
 
@@ -171,13 +145,14 @@ private:
     String m_playState = "edit";
     EditorSession* m_session = nullptr;
     const Json* m_inspectorConfig = nullptr;
-    Scope<TilePaintService> m_tilePaint;
     Scope<FieldAttributeRegistry> m_fieldAttributes;
     bool m_tilePaintActive = false;
     bool m_hasDocument = false;
     bool m_hasPendingMetrics = false;
     bool m_booted = false;
     bool m_modulesInitialized = false;
+    bool m_scriptReloadPending = false;
+    std::future<bool> m_scriptBuild;
     Json m_lastBenchmark;
     Json m_previousBenchmark;
     bool m_benchmarkRunning = false;

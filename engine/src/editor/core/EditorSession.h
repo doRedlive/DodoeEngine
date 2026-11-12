@@ -31,6 +31,7 @@ class CommandRegistry;
 class ExecutionRecorder;
 class McpServer;
 class RuntimeBackend;
+class TilemapEditController;
 class WorkflowLibrary;
 
 enum class EditorSessionState {
@@ -69,6 +70,8 @@ public:
     void submitViewportMetrics(ViewportMetrics metrics);
     void attachInspectorConfig(const Json* inspectors);
     void tick();
+    void requestScriptReload();
+    const String& scriptReloadState() const { return m_scriptReloadState; }
     void shutdown();
 
     EditorSessionState state() const;
@@ -76,6 +79,8 @@ public:
     const DomainEventBus& events() const { return m_events; }
     EditorCommandBus& commandBus() { return m_commandBus; }
     McpServer& mcpServer() { return *m_mcp; }
+    TilemapEditController& tilemapEdit() { return *m_tilemapEdit; }
+    const TilemapEditController& tilemapEdit() const { return *m_tilemapEdit; }
     ExecutionRecorder& executionRecorder() { return *m_recorder; }
     AICommandBridge& aiBridge() { return *m_aiBridge; }
     WorkflowLibrary& workflows() { return *m_workflows; }
@@ -164,6 +169,7 @@ private:
                                                 bool keepExternalParent) const;
 
     Scope<CommandRegistry> m_commands;
+    Scope<TilemapEditController> m_tilemapEdit;
     Scope<RuntimeBackend> m_backend;
     Scope<McpServer> m_mcp;
     Scope<ExecutionRecorder> m_recorder;
@@ -195,6 +201,7 @@ private:
     bool m_pendingStopKeep = false;
     ScopedConnection m_playDocumentSubscription;
     BenchmarkRunner m_benchmark;
+    String m_scriptReloadState = "idle";
 };
 
 } // namespace cakery

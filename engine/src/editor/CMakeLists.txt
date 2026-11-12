@@ -100,7 +100,8 @@ set(EDITOR_BACKEND_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/SceneSelectionBounds.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/TilemapOverlay.h
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/TilemapOverlay.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendTilemap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/TilemapEditController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/TilemapEditController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/RuntimeBackendThumbnail.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/script/EditorScriptBridge.h
     ${CMAKE_CURRENT_SOURCE_DIR}/backend/script/EditorScriptBridge.cpp

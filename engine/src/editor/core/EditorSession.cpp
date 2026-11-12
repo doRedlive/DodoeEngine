@@ -5,6 +5,7 @@
 #include "EditorSession.h"
 
 #include "backend/RuntimeBackend.h"
+#include "scene/TilemapEditController.h"
 #include "core/console/AICommandBridge.h"
 #include "core/console/CommandRegistry.h"
 #include "core/console/ExecutionRecorder.h"
@@ -70,6 +71,7 @@ Json* ResolveJsonPath(Json& root, const String& path)
 
 EditorSession::EditorSession()
     : m_commands(create_scope<CommandRegistry>()),
+      m_tilemapEdit(create_scope<TilemapEditController>(*this)),
       m_backend(create_scope<RuntimeBackend>(*this)),
       m_mcp(create_scope<McpServer>()),
       m_recorder(create_scope<ExecutionRecorder>()),
@@ -81,6 +83,9 @@ EditorSession::EditorSession()
         return;
     }
     m_backend->setEventCallback([this](const BackendEventMessage& event) {
+        handleBackendEvent(event);
+    });
+    m_tilemapEdit->setPublisher([this](const BackendEventMessage& event) {
         handleBackendEvent(event);
     });
 
@@ -212,7 +217,13 @@ bool EditorSession::execute(EditorOperation command)
                        m_state != EditorSessionState::Degraded)) {
         return false;
     }
-    return m_backend->execute(command);
+    return std::visit([this](const auto& typedCommand) {
+        if constexpr (requires { m_tilemapEdit->handleCommand(typedCommand); }) {
+            return m_tilemapEdit->handleCommand(typedCommand);
+        } else {
+            return m_backend->execute(typedCommand);
+        }
+    }, command);
 }
 
 bool EditorSession::inspectComponent(const String& typeName,
@@ -230,11 +241,11 @@ bool EditorSession::listAssets(DynamicArray<AssetBrowserEntry>& entries) const
 
 bool EditorSession::queryTilemapState(const String& tilemapUuid, Json& out) const
 {
-    if (!m_backend) {
+    if (!m_tilemapEdit) {
         out = nullptr;
         return false;
     }
-    return m_backend->queryTilemapState(tilemapUuid, out);
+    return m_tilemapEdit->queryState(tilemapUuid, out);
 }
 
 bool EditorSession::queryAssetThumbnail(const String& path, int size, Json& out) const
@@ -415,6 +426,7 @@ void EditorSession::shutdown()
     m_selection.clear();
     m_history.clear();
     m_backend->shutdown();
+    handleBackendEvent(BackendEventMessage{"script_reload_status", "idle"});
     m_state = EditorSessionState::Closed;
 }
 
@@ -1018,8 +1030,22 @@ void EditorSession::notifyDocumentChanged()
     m_backend->execute(DocumentChangedCommand{EditorDocumentSerializer::toJson(snapshot)});
 }
 
+void EditorSession::requestScriptReload()
+{
+    if (m_backend) {
+        m_backend->requestScriptReload();
+    } else {
+        handleBackendEvent(BackendEventMessage{"script_reload_status", "unavailable"});
+    }
+}
+
 void EditorSession::handleBackendEvent(const BackendEventMessage& event)
 {
+    if (event.name == "script_reload_status") {
+        m_scriptReloadState = event.payload;
+        m_events.publish(ScriptReloadStatusEvent{m_scriptReloadState});
+        return;
+    }
     if (event.name == "transform_drag_begin") {
         m_history.beginMerge();
         m_transformDragging = true;

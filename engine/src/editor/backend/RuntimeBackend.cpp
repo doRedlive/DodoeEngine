@@ -9,6 +9,7 @@
 
 #include "EditorCamera.h"
 #include "core/EditorSession.h"
+#include "scene/TilemapEditController.h"
 #include "backend/script/EditorScriptBridge.h"
 #include "services/FieldAttributes.h"
 #include "core/commands/CreateTilemapWithTilesetCommand.h"
@@ -227,9 +228,11 @@ Json CollectBenchmarkReport(const FrameTelemetryCollector& telemetry,
 RuntimeBackend::RuntimeBackend(EditorSession& session)
     : m_session(&session)
 {
-    TilePaintService::RegisterCommands(m_session->commands());
     RegisterReparentCommand(m_session->commands());
-    m_tilePaint = create_scope<TilePaintService>(*m_session);
+    m_session->tilemapEdit().setSceneProvider([this]() -> dodoe::Scene* {
+        World* world = runtimeWorld();
+        return world ? world->getActiveScene() : nullptr;
+    });
     m_fieldAttributes = create_scope<FieldAttributeRegistry>();
 }
 
@@ -407,7 +410,13 @@ bool RuntimeBackend::openProject(const ProjectDescriptor& project)
         m_diagnostic = "Runtime backend: project path is empty.";
         return false;
     }
+    if (m_scriptBuild.valid()) {
+        m_scriptBuild.wait();
+        m_scriptBuild = {};
+    }
     m_project = project;
+    m_scriptReloadPending = false;
+    m_eventCallback(BackendEventMessage{"script_reload_status", "idle"});
 
     FsPath projectFile(project.projectFile);
     if (projectFile.empty()) {
@@ -466,7 +475,11 @@ bool RuntimeBackend::openDocument(const String& documentId)
 bool RuntimeBackend::execute(const EditorOperation& command)
 {
     return std::visit([this](const auto& typedCommand) {
-        return handleCommand(typedCommand);
+        if constexpr (requires { m_session->tilemapEdit().handleCommand(typedCommand); }) {
+            return true;
+        } else {
+            return handleCommand(typedCommand);
+        }
     }, command);
 }
 
@@ -496,16 +509,17 @@ bool RuntimeBackend::handleCommand(const SceneMouseDownCommand& command)
     m_altHeld = command.alt;
     m_ctrlHeld = command.ctrl;
     m_shiftHeld = command.shift;
-    const bool tileEditing = m_tilePaint && m_tilePaint->hasTarget() &&
-                             activeTilemapEntity().valid() &&
+    TilemapEditController& tileEdit = m_session->tilemapEdit();
+    const bool tileEditing = tileEdit.paint().hasTarget() &&
+                             tileEdit.activeTilemapEntity().valid() &&
                              command.button == 0 && !command.alt;
     if (tileEditing) {
         int cx = 0, cy = 0;
-        if (screenToCell(command.x, command.y, cx, cy)) {
-            m_tilePaint->setHoverCell(cx, cy);
-            m_tilePaint->onCellDown(cx, cy);
+        if (tileEdit.screenToCell(command.x, command.y, cx, cy)) {
+            tileEdit.paint().setHoverCell(cx, cy);
+            tileEdit.paint().onCellDown(cx, cy);
         } else {
-            m_tilePaint->clearHover();
+            tileEdit.paint().clearHover();
         }
         m_tilePaintActive = true;
         return true;
@@ -531,23 +545,16 @@ bool RuntimeBackend::handleCommand(const SceneMouseMoveCommand& command)
     m_altHeld = command.alt;
     if (m_tilePaintActive) {
         int cx = 0, cy = 0;
-        if (screenToCell(command.x, command.y, cx, cy)) {
-            m_tilePaint->setHoverCell(cx, cy);
-            m_tilePaint->onCellDrag(cx, cy);
+        TilemapEditController& tileEdit = m_session->tilemapEdit();
+        if (tileEdit.screenToCell(command.x, command.y, cx, cy)) {
+            tileEdit.paint().setHoverCell(cx, cy);
+            tileEdit.paint().onCellDrag(cx, cy);
         } else {
-            m_tilePaint->clearHover();
+            tileEdit.paint().clearHover();
         }
         return true;
     }
-    if (m_tilePaint && m_tilePaint->hasTarget() && activeTilemapEntity().valid() &&
-        m_tilePaint->tool() != TileTool::Select) {
-        int cx = 0, cy = 0;
-        if (screenToCell(command.x, command.y, cx, cy)) {
-            m_tilePaint->setHoverCell(cx, cy);
-        } else {
-            m_tilePaint->clearHover();
-        }
-    }
+    m_session->tilemapEdit().updateHover(command.x, command.y);
     if (m_sceneGizmos.dragging()) {
         m_sceneGizmos.updateDrag(sceneGizmoContext(), command.x, command.y);
     } else {
@@ -563,7 +570,7 @@ bool RuntimeBackend::handleCommand(const SceneMouseMoveCommand& command)
 bool RuntimeBackend::handleCommand(const SceneMouseUpCommand& command)
 {
     if (m_tilePaintActive && command.button == 0) {
-        m_tilePaint->onCellUp();
+        m_session->tilemapEdit().paint().onCellUp();
         m_tilePaintActive = false;
         return true;
     }
@@ -619,7 +626,7 @@ bool RuntimeBackend::handleCommand(const SelectionChangedCommand& command)
     if (m_selectedUuid != command.uuid) m_sceneGizmos.cancelDrag(sceneGizmoContext());
     m_selectedUuid = command.uuid;
     m_sceneGizmos.resetHover();
-    updateTileEditFromSelection();
+    m_session->tilemapEdit().updateFromSelection();
     return true;
 }
 
@@ -1319,18 +1326,79 @@ void RuntimeBackend::updateSceneOverlays()
     data.clear();
     if (!m_camera) return;
     configureSceneGrid(*m_camera, data.grid);
-    if (m_tilePaint && m_tilePaint->hasTarget()) {
-        Entity tilemap = activeTilemapEntity();
+    TilemapEditController& tileEdit = m_session->tilemapEdit();
+    if (tileEdit.paint().hasTarget()) {
+        Entity tilemap = tileEdit.activeTilemapEntity();
         if (tilemap && tilemap.hasComponent<TilemapComponent>()) {
-            drawTilemapOverlay(data, *m_tilePaint, tilemap);
+            drawTilemapOverlay(data, tileEdit.paint(), tilemap);
             return;
         }
-        m_tilePaint->setActiveTilemap(UUID(0));
-        m_tilePaint->setActiveLayer(UUID(0));
+        tileEdit.invalidateTarget();
         m_tilePaintActive = false;
-        emitTilemapEditMode(false);
     }
     m_sceneGizmos.draw(sceneGizmoContext(), data);
+}
+
+void RuntimeBackend::requestScriptReload()
+{
+    if (!m_booted || !GetScriptSystem()) {
+        m_eventCallback(BackendEventMessage{"script_reload_status", "unavailable"});
+        return;
+    }
+    m_scriptReloadPending = true;
+    m_eventCallback(BackendEventMessage{"script_reload_status",
+        m_playState != "edit" ? "deferred" : m_scriptBuild.valid() ? "building" : "queued"});
+}
+
+void RuntimeBackend::processScriptReload()
+{
+    if (m_playState != "edit") {
+        return;
+    }
+
+    // A newer save supersedes the completed result before it is applied.
+    if (m_scriptBuild.valid()
+        && m_scriptBuild.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        bool built = false;
+        try {
+            built = m_scriptBuild.get();
+        } catch (const std::exception& error) {
+            DO_ERROR("Script update failed: {}", error.what());
+        }
+        if (!m_scriptReloadPending) {
+            String state = "unavailable";
+            if (auto* scripts = GetScriptSystem()) {
+                try {
+                    state = built && scripts->reloadBuiltAssembly() ? "succeeded" : "failed";
+                } catch (const std::exception& error) {
+                    DO_ERROR("Script update failed: {}", error.what());
+                    state = "failed";
+                }
+            }
+            m_eventCallback(BackendEventMessage{"script_reload_status", state});
+        }
+    }
+    if (m_scriptReloadPending && !m_scriptBuild.valid()) {
+        m_scriptReloadPending = false;
+        String state = "unavailable";
+        if (auto* scripts = GetScriptSystem()) {
+            if (auto* engine = scripts->getScriptEngine()) {
+                try {
+                    if (!engine->onScriptSourcesChanged()) {
+                        state = "unchanged";
+                    } else {
+                        m_scriptBuild = std::async(std::launch::async,
+                            [engine]() { return engine->buildAppAssembly(); });
+                        state = "building";
+                    }
+                } catch (const std::exception& error) {
+                    DO_ERROR("Script update failed: {}", error.what());
+                    state = "failed";
+                }
+            }
+        }
+        m_eventCallback(BackendEventMessage{"script_reload_status", state});
+    }
 }
 
 void RuntimeBackend::tickAtSafePoint()
@@ -1342,6 +1410,8 @@ void RuntimeBackend::tickAtSafePoint()
     if (m_hasPendingMetrics) {
         applyPendingMetrics();
     }
+
+    processScriptReload();
 
     if (m_assetDatabase->refreshPending() && m_assetDatabase->refreshFinished()) {
         m_assetDatabase->finalize();
@@ -1377,6 +1447,11 @@ void RuntimeBackend::reportMissingAssetReferences()
 
 void RuntimeBackend::shutdown()
 {
+    m_scriptReloadPending = false;
+    if (m_scriptBuild.valid()) {
+        m_scriptBuild.wait();
+        m_scriptBuild = {};
+    }
     m_sceneGizmos.resetInteraction();
     if (!m_app) {
         return;
@@ -1389,6 +1464,7 @@ void RuntimeBackend::shutdown()
         m_app->teardown();
         m_modulesInitialized = false;
     }
+    m_session->tilemapEdit().setCamera(nullptr);
     m_camera.reset();
     m_cameraProvider.reset();
     m_sceneTarget = nullptr;
@@ -1539,6 +1615,7 @@ bool RuntimeBackend::bootRuntime()
     DO_INFO("Cakery backend: asset database refresh started");
 
     m_camera = create_scope<EditorCamera>();
+    m_session->tilemapEdit().setCamera(m_camera.get());
     m_cameraProvider = create_scope<EditorCameraProvider>();
 
     auto* viewMgr = ctx.getRenderSystem()->getViewManager();
@@ -1630,6 +1707,10 @@ void RuntimeBackend::setPlayAction(PlayAction action)
         break;
     }
     m_eventCallback(BackendEventMessage{"play_state_changed", m_playState});
+    if (m_scriptReloadPending || m_scriptBuild.valid()) {
+        m_eventCallback(BackendEventMessage{"script_reload_status",
+            m_playState != "edit" ? "deferred" : m_scriptBuild.valid() ? "building" : "queued"});
+    }
 }
 
 } // namespace cakery

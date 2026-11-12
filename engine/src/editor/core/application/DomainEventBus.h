@@ -24,6 +24,10 @@ struct PlayStateChangedEvent {
 
 struct AssetCatalogChangedEvent {};
 
+struct ScriptReloadStatusEvent {
+    String state;
+};
+
 struct HistoryChangedEvent {};
 
 struct ExecutionRecordedEvent {};

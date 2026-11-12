@@ -4,6 +4,8 @@
 
 #include "RuntimeBackend.h"
 
+#include "core/EditorSession.h"
+#include "scene/TilemapEditController.h"
 #include "services/PrefabService.h"
 
 #include "runtime/core/asserts.h"
@@ -139,11 +141,11 @@ bool RuntimeBackend::reconcileScene(const EditorDocument& document)
     }
     DO_INFO("Cakery reconcile: {} entities synced", document.entities.size());
 
-    if (m_tilePaint && m_tilePaint->hasTarget()) {
-        const UUID tilemap_uuid = m_tilePaint->activeTilemap();
+    TilemapEditController& tileEdit = m_session->tilemapEdit();
+    if (tileEdit.paint().hasTarget()) {
+        const UUID tilemap_uuid = tileEdit.paint().activeTilemap();
         if (!scene->tryGetEntityByUUID(tilemap_uuid).valid()) {
-            m_tilePaint->setActiveTilemap(UUID(0));
-            m_tilePaint->setActiveLayer(UUID(0));
+            tileEdit.invalidateTarget();
             m_tilePaintActive = false;
         }
     }
